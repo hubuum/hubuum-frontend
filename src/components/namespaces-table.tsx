@@ -10,8 +10,10 @@ import {
   getApiV1Namespaces,
   postApiV1Namespaces
 } from "@/lib/api/generated/client";
+import { CreateModal } from "@/components/create-modal";
 import type { Group, Namespace, NewNamespaceWithAssignee } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 
 async function fetchNamespaces(): Promise<Namespace[]> {
   const response = await getApiV1Namespaces({
@@ -47,6 +49,7 @@ export function NamespacesTable() {
   const [selectedNamespaceIds, setSelectedNamespaceIds] = useState<number[]>([]);
   const [tableError, setTableError] = useState<string | null>(null);
   const [tableSuccess, setTableSuccess] = useState<string | null>(null);
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const query = useQuery({
     queryKey: ["namespaces"],
     queryFn: fetchNamespaces
@@ -74,6 +77,7 @@ export function NamespacesTable() {
       }
       setFormError(null);
       setFormSuccess("Namespace created.");
+      setCreateModalOpen(false);
     },
     onError: (error) => {
       setFormSuccess(null);
@@ -147,6 +151,20 @@ export function NamespacesTable() {
     setSelectedNamespaceIds((current) => current.filter((namespaceId) => existingIds.has(namespaceId)));
   }, [namespaces, selectedNamespaceIds.length]);
 
+  useEffect(() => {
+    const onOpenCreate = (event: Event) => {
+      const customEvent = event as CustomEvent<OpenCreateEventDetail>;
+      if (customEvent.detail?.section !== "namespaces") {
+        return;
+      }
+
+      setCreateModalOpen(true);
+    };
+
+    window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
+    return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
+  }, []);
+
   if (query.isLoading) {
     return <div className="card">Loading namespaces...</div>;
   }
@@ -193,13 +211,9 @@ export function NamespacesTable() {
     deleteMutation.mutate([...selectedNamespaceIds]);
   }
 
-  return (
-    <div className="stack">
-      <form className="card stack" onSubmit={onSubmit}>
-        <div className="table-header">
-          <h3>Create namespace</h3>
-        </div>
-
+  function renderCreateNamespaceForm() {
+    return (
+      <form className="stack" onSubmit={onSubmit}>
         <div className="form-grid">
           <label className="control-field">
             <span>Name</span>
@@ -259,6 +273,14 @@ export function NamespacesTable() {
           </button>
         </div>
       </form>
+    );
+  }
+
+  return (
+    <div className="stack">
+      <CreateModal open={isCreateModalOpen} title="Create namespace" onClose={() => setCreateModalOpen(false)}>
+        {renderCreateNamespaceForm()}
+      </CreateModal>
 
       <div className="card table-wrap">
         <div className="table-header">

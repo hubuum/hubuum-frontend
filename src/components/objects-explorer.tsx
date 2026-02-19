@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { deleteApiV1ClassesByClassIdByObjectId, getApiV1Classes } from "@/lib/api/generated/client";
-import type { HubuumClassExpanded, HubuumObject, NewHubuumObject } from "@/lib/api/generated/models";
+import { deleteApiV1ClassesByClassIdByObjectId, getApiV1Classes, getApiV1Namespaces } from "@/lib/api/generated/client";
+import { CreateModal } from "@/components/create-modal";
+import type { HubuumClassExpanded, HubuumObject, Namespace, NewHubuumObject } from "@/lib/api/generated/models";
+import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
@@ -46,6 +49,18 @@ async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
   return expectArrayPayload<HubuumObject>(payload, "class objects");
 }
 
+async function fetchNamespaces(): Promise<Namespace[]> {
+  const response = await getApiV1Namespaces({
+    credentials: "include"
+  });
+
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(response.data, "Failed to load namespaces."));
+  }
+
+  return response.data;
+}
+
 function stringifyData(data: unknown): string {
   if (data === null || data === undefined) {
     return "-";
@@ -64,12 +79,20 @@ function stringifyData(data: unknown): string {
 }
 
 export function ObjectsExplorer() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const classesQuery = useQuery({
     queryKey: ["classes", "object-explorer"],
     queryFn: fetchClasses
   });
-  const [selectedClassId, setSelectedClassId] = useState("");
+  const namespacesQuery = useQuery({
+    queryKey: ["namespaces", "object-form"],
+    queryFn: fetchNamespaces
+  });
+  const selectedClassId = searchParams.get("classId") ?? "";
+  const [namespaceId, setNamespaceId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [dataInput, setDataInput] = useState("{}");
@@ -78,20 +101,37 @@ export function ObjectsExplorer() {
   const [selectedObjectIds, setSelectedObjectIds] = useState<number[]>([]);
   const [tableError, setTableError] = useState<string | null>(null);
   const [tableSuccess, setTableSuccess] = useState<string | null>(null);
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
   useEffect(() => {
     if (selectedClassId || !classesQuery.data?.length) {
       return;
     }
 
-    setSelectedClassId(String(classesQuery.data[0].id));
-  }, [selectedClassId, classesQuery.data]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("classId", String(classesQuery.data[0].id));
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  }, [selectedClassId, classesQuery.data, pathname, router, searchParams]);
 
   const parsedClassId = useMemo(() => {
     const value = Number.parseInt(selectedClassId, 10);
     return Number.isFinite(value) ? value : null;
   }, [selectedClassId]);
   const classes = classesQuery.data ?? [];
+  const namespaces = namespacesQuery.data ?? [];
+  const namespaceNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const namespace of namespaces) {
+      map.set(namespace.id, namespace.name);
+    }
+    for (const classItem of classes) {
+      if (!map.has(classItem.namespace.id)) {
+        map.set(classItem.namespace.id, classItem.namespace.name);
+      }
+    }
+    return map;
+  }, [classes, namespaces]);
   const selectedClass = classes.find((item) => item.id === parsedClassId);
 
   const objectsQuery = useQuery({
@@ -122,6 +162,7 @@ export function ObjectsExplorer() {
       setDataInput("{}");
       setFormError(null);
       setFormSuccess("Object created.");
+      setCreateModalOpen(false);
     },
     onError: (error) => {
       setFormSuccess(null);
@@ -156,6 +197,28 @@ export function ObjectsExplorer() {
   });
 
   useEffect(() => {
+    if (!namespaces.length) {
+      setNamespaceId("");
+      return;
+    }
+
+    const hasSelectedNamespace = namespaces.some((namespace) => String(namespace.id) === namespaceId);
+    if (hasSelectedNamespace) {
+      return;
+    }
+
+    if (selectedClass) {
+      const classNamespace = namespaces.find((namespace) => namespace.id === selectedClass.namespace.id);
+      if (classNamespace) {
+        setNamespaceId(String(classNamespace.id));
+        return;
+      }
+    }
+
+    setNamespaceId(String(namespaces[0].id));
+  }, [namespaceId, namespaces, selectedClass]);
+
+  useEffect(() => {
     if (!selectedClassId) {
       setSelectedObjectIds([]);
       setTableError(null);
@@ -180,6 +243,20 @@ export function ObjectsExplorer() {
     setSelectedObjectIds((current) => current.filter((objectId) => existingIds.has(objectId)));
   }, [objects, selectedObjectIds.length]);
 
+  useEffect(() => {
+    const onOpenCreate = (event: Event) => {
+      const customEvent = event as CustomEvent<OpenCreateEventDetail>;
+      if (customEvent.detail?.section !== "objects") {
+        return;
+      }
+
+      setCreateModalOpen(true);
+    };
+
+    window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
+    return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
+  }, []);
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -187,6 +264,12 @@ export function ObjectsExplorer() {
 
     if (!selectedClass || parsedClassId === null) {
       setFormError("Select a class before creating an object.");
+      return;
+    }
+
+    const parsedNamespaceId = Number.parseInt(namespaceId, 10);
+    if (!Number.isFinite(parsedNamespaceId) || parsedNamespaceId < 1) {
+      setFormError("Namespace is required.");
       return;
     }
 
@@ -203,7 +286,7 @@ export function ObjectsExplorer() {
       description: description.trim(),
       data: parsedData,
       hubuum_class_id: selectedClass.id,
-      namespace_id: selectedClass.namespace.id
+      namespace_id: parsedNamespaceId
     });
   }
 
@@ -257,45 +340,14 @@ export function ObjectsExplorer() {
     });
   }
 
-  return (
-    <div className="stack">
-      <div className="card stack">
-        <h3>Class context</h3>
-        <div className="controls-row">
-          <label className="control-field">
-            <span>Class</span>
-            <select
-              value={selectedClassId}
-              onChange={(event) => {
-                setSelectedClassId(event.target.value);
-              }}
-            >
-              <option value="">Select a class...</option>
-              {classes.map((hubuumClass) => (
-                <option key={hubuumClass.id} value={hubuumClass.id}>
-                  {hubuumClass.name} (#{hubuumClass.id})
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="muted">
-            {selectedClass
-              ? `Namespace ${selectedClass.namespace.name} (#${selectedClass.namespace.id})`
-              : "Choose a class to list contained objects."}
-          </div>
-        </div>
-      </div>
+  function renderNamespace(value: number): string {
+    const namespaceName = namespaceNameById.get(value);
+    return namespaceName ? `${namespaceName} (#${value})` : `#${value}`;
+  }
 
-      <form className="card stack" onSubmit={onSubmit}>
-        <div className="table-header">
-          <h3>Create object</h3>
-          <span className="muted">
-            {selectedClass
-              ? `Namespace ${selectedClass.namespace.name} (#${selectedClass.namespace.id})`
-              : "Class selection required"}
-          </span>
-        </div>
-
+  function renderCreateObjectForm() {
+    return (
+      <form className="stack" onSubmit={onSubmit}>
         <div className="form-grid">
           <label className="control-field">
             <span>Name</span>
@@ -307,6 +359,34 @@ export function ObjectsExplorer() {
               disabled={!selectedClass}
             />
           </label>
+
+          <div className="control-field">
+            <span>Namespace</span>
+            {namespaces.length > 0 ? (
+              <select
+                required
+                value={namespaceId}
+                onChange={(event) => setNamespaceId(event.target.value)}
+                disabled={!selectedClass}
+              >
+                {namespaces.map((namespace) => (
+                  <option key={namespace.id} value={namespace.id}>
+                    {namespace.name} (#{namespace.id})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                required
+                type="number"
+                min={1}
+                value={namespaceId}
+                onChange={(event) => setNamespaceId(event.target.value)}
+                placeholder={namespacesQuery.isLoading ? "Loading namespaces..." : "Enter namespace id"}
+                disabled={!selectedClass || namespacesQuery.isLoading}
+              />
+            )}
+          </div>
 
           <label className="control-field control-field--wide">
             <span>Description</span>
@@ -332,6 +412,9 @@ export function ObjectsExplorer() {
         </div>
 
         {formError ? <div className="error-banner">{formError}</div> : null}
+        {namespacesQuery.isError ? (
+          <div className="muted">Could not load namespaces automatically. Falling back to manual namespace ID entry.</div>
+        ) : null}
         {formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
         <div className="form-actions">
@@ -340,6 +423,14 @@ export function ObjectsExplorer() {
           </button>
         </div>
       </form>
+    );
+  }
+
+  return (
+    <div className="stack">
+      <CreateModal open={isCreateModalOpen} title="Create object" onClose={() => setCreateModalOpen(false)}>
+        {renderCreateObjectForm()}
+      </CreateModal>
 
       <div className="card table-wrap">
         <div className="table-header">
@@ -406,7 +497,7 @@ export function ObjectsExplorer() {
                       {objectItem.name}
                     </Link>
                   </td>
-                  <td>{objectItem.namespace_id}</td>
+                  <td>{renderNamespace(objectItem.namespace_id)}</td>
                   <td>{objectItem.description || "-"}</td>
                   <td>{stringifyData(objectItem.data)}</td>
                 </tr>

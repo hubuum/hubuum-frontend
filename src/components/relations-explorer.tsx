@@ -5,14 +5,18 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import {
   getApiV1Classes,
-  postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectId,
+  getApiV1Namespaces,
+  postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectId
 } from "@/lib/api/generated/client";
+import { CreateModal } from "@/components/create-modal";
 import type {
   HubuumClassExpanded,
   HubuumClassRelation,
   HubuumObject,
-  HubuumObjectWithPath
+  HubuumObjectWithPath,
+  Namespace
 } from "@/lib/api/generated/models";
+import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
@@ -27,19 +31,6 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
   return response.data;
 }
 
-async function fetchClassRelations(classId: number): Promise<HubuumClassRelation[]> {
-  const response = await fetch(`/api/classes/${classId}/relations`, {
-    credentials: "include"
-  });
-  const payload = await parseJsonPayload(response);
-
-  if (response.status !== 200) {
-    throw new Error(getApiErrorMessage(payload, "Failed to load class relations."));
-  }
-
-  return expectArrayPayload<HubuumClassRelation>(payload, "class relations");
-}
-
 async function parseJsonPayload(response: Response): Promise<unknown> {
   const text = await response.text();
   if (!text) {
@@ -51,6 +42,19 @@ async function parseJsonPayload(response: Response): Promise<unknown> {
   } catch {
     return null;
   }
+}
+
+async function fetchClassRelations(classId: number): Promise<HubuumClassRelation[]> {
+  const response = await fetch(`/api/classes/${classId}/relations`, {
+    credentials: "include"
+  });
+  const payload = await parseJsonPayload(response);
+
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(payload, "Failed to load class relations."));
+  }
+
+  return expectArrayPayload<HubuumClassRelation>(payload, "class relations");
 }
 
 async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
@@ -79,16 +83,39 @@ async function fetchObjectRelations(classId: number, fromObjectId: number): Prom
   return expectArrayPayload<HubuumObjectWithPath>(payload, "object relations");
 }
 
+async function fetchNamespaces(): Promise<Namespace[]> {
+  const response = await getApiV1Namespaces({
+    credentials: "include"
+  });
+
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(response.data, "Failed to load namespaces."));
+  }
+
+  return response.data;
+}
+
 function parseId(value: string): number | null {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function RelationsExplorer() {
+type RelationsExplorerProps = {
+  mode: "classes" | "objects";
+};
+
+export function RelationsExplorer({ mode }: RelationsExplorerProps) {
   const queryClient = useQueryClient();
+  const isClassMode = mode === "classes";
+  const isObjectMode = mode === "objects";
   const classesQuery = useQuery({
     queryKey: ["classes", "relations-explorer"],
     queryFn: fetchClasses
+  });
+  const namespacesQuery = useQuery({
+    queryKey: ["namespaces", "relations-explorer"],
+    queryFn: fetchNamespaces,
+    enabled: isObjectMode
   });
 
   const [sourceClassId, setSourceClassId] = useState("");
@@ -101,8 +128,29 @@ export function RelationsExplorer() {
   const [classRelationSuccess, setClassRelationSuccess] = useState<string | null>(null);
   const [objectRelationError, setObjectRelationError] = useState<string | null>(null);
   const [objectRelationSuccess, setObjectRelationSuccess] = useState<string | null>(null);
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
   const classes = classesQuery.data ?? [];
+  const namespaces = namespacesQuery.data ?? [];
+  const classNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const classItem of classes) {
+      map.set(classItem.id, classItem.name);
+    }
+    return map;
+  }, [classes]);
+  const namespaceNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const namespace of namespaces) {
+      map.set(namespace.id, namespace.name);
+    }
+    for (const classItem of classes) {
+      if (!map.has(classItem.namespace.id)) {
+        map.set(classItem.namespace.id, classItem.namespace.name);
+      }
+    }
+    return map;
+  }, [classes, namespaces]);
 
   useEffect(() => {
     if (sourceClassId || !classes.length) {
@@ -130,22 +178,26 @@ export function RelationsExplorer() {
   const classRelationsQuery = useQuery({
     queryKey: ["class-relations", parsedSourceClassId],
     queryFn: async () => fetchClassRelations(parsedSourceClassId ?? 0),
-    enabled: parsedSourceClassId !== null
+    enabled: isClassMode && parsedSourceClassId !== null
   });
   const sourceObjectsQuery = useQuery({
     queryKey: ["objects", "relations-source", parsedSourceClassId],
     queryFn: async () => fetchObjectsByClass(parsedSourceClassId ?? 0),
-    enabled: parsedSourceClassId !== null
+    enabled: isObjectMode && parsedSourceClassId !== null
   });
+  const targetClassOptions = useMemo(
+    () => classes.filter((classItem) => classItem.id !== parsedSourceClassId),
+    [classes, parsedSourceClassId]
+  );
   const targetObjectsQuery = useQuery({
     queryKey: ["objects", "relations-target", parsedObjectRelationTargetClassId],
     queryFn: async () => fetchObjectsByClass(parsedObjectRelationTargetClassId ?? 0),
-    enabled: parsedObjectRelationTargetClassId !== null
+    enabled: isObjectMode && parsedObjectRelationTargetClassId !== null
   });
   const objectRelationsQuery = useQuery({
     queryKey: ["object-relations", parsedSourceClassId, parsedSourceObjectId],
     queryFn: async () => fetchObjectRelations(parsedSourceClassId ?? 0, parsedSourceObjectId ?? 0),
-    enabled: parsedSourceClassId !== null && parsedSourceObjectId !== null
+    enabled: isObjectMode && parsedSourceClassId !== null && parsedSourceObjectId !== null
   });
 
   const sourceObjects = sourceObjectsQuery.data ?? [];
@@ -154,6 +206,10 @@ export function RelationsExplorer() {
   const objectRelations = Array.isArray(objectRelationsQuery.data) ? objectRelationsQuery.data : [];
 
   useEffect(() => {
+    if (!isObjectMode) {
+      return;
+    }
+
     if (!sourceObjects.length) {
       setSourceObjectId("");
       return;
@@ -163,9 +219,13 @@ export function RelationsExplorer() {
     if (!exists) {
       setSourceObjectId(String(sourceObjects[0].id));
     }
-  }, [sourceObjectId, sourceObjects]);
+  }, [isObjectMode, sourceObjectId, sourceObjects]);
 
   useEffect(() => {
+    if (!isObjectMode) {
+      return;
+    }
+
     if (!targetObjects.length) {
       setObjectRelationTargetObjectId("");
       return;
@@ -175,25 +235,50 @@ export function RelationsExplorer() {
     if (!exists) {
       setObjectRelationTargetObjectId(String(targetObjects[0].id));
     }
-  }, [objectRelationTargetObjectId, targetObjects]);
+  }, [isObjectMode, objectRelationTargetObjectId, targetObjects]);
 
   useEffect(() => {
+    if (!isClassMode) {
+      return;
+    }
+
     if (classRelationTargetClassId || !classes.length) {
       return;
     }
 
     const preferred = classes.find((item) => String(item.id) !== sourceClassId) ?? classes[0];
     setClassRelationTargetClassId(String(preferred.id));
-  }, [classRelationTargetClassId, classes, sourceClassId]);
+  }, [isClassMode, classRelationTargetClassId, classes, sourceClassId]);
 
   useEffect(() => {
-    if (objectRelationTargetClassId || !classes.length) {
+    if (!isObjectMode) {
       return;
     }
 
-    const preferred = classes.find((item) => String(item.id) !== sourceClassId) ?? classes[0];
-    setObjectRelationTargetClassId(String(preferred.id));
-  }, [objectRelationTargetClassId, classes, sourceClassId]);
+    if (!targetClassOptions.length) {
+      setObjectRelationTargetClassId("");
+      return;
+    }
+
+    const exists = targetClassOptions.some((item) => String(item.id) === objectRelationTargetClassId);
+    if (!exists) {
+      setObjectRelationTargetClassId(String(targetClassOptions[0].id));
+    }
+  }, [isObjectMode, objectRelationTargetClassId, targetClassOptions]);
+
+  useEffect(() => {
+    const onOpenCreate = (event: Event) => {
+      const customEvent = event as CustomEvent<OpenCreateEventDetail>;
+      if (customEvent.detail?.section !== "relations") {
+        return;
+      }
+
+      setCreateModalOpen(true);
+    };
+
+    window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
+    return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
+  }, []);
 
   const createClassRelationMutation = useMutation({
     mutationFn: async (payload: { sourceClassId: number; targetClassId: number }) => {
@@ -217,6 +302,7 @@ export function RelationsExplorer() {
       await queryClient.invalidateQueries({ queryKey: ["class-relations", variables.sourceClassId] });
       setClassRelationError(null);
       setClassRelationSuccess("Class relation created.");
+      setCreateModalOpen(false);
     },
     onError: (error) => {
       setClassRelationSuccess(null);
@@ -251,6 +337,7 @@ export function RelationsExplorer() {
       });
       setObjectRelationError(null);
       setObjectRelationSuccess("Object relation created.");
+      setCreateModalOpen(false);
     },
     onError: (error) => {
       setObjectRelationSuccess(null);
@@ -289,6 +376,11 @@ export function RelationsExplorer() {
       return;
     }
 
+    if (parsedObjectRelationTargetClassId === parsedSourceClassId) {
+      setObjectRelationError("Target class must be different from source class.");
+      return;
+    }
+
     createObjectRelationMutation.mutate({
       sourceClassId: parsedSourceClassId,
       sourceObjectId: parsedSourceObjectId,
@@ -316,15 +408,166 @@ export function RelationsExplorer() {
     parsedSourceClassId !== null &&
     parsedSourceObjectId !== null &&
     parsedObjectRelationTargetClassId !== null &&
-    parsedObjectRelationTargetObjectId !== null;
+    parsedObjectRelationTargetObjectId !== null &&
+    parsedObjectRelationTargetClassId !== parsedSourceClassId;
+
+  function renderClassById(classId: number): string {
+    const className = classNameById.get(classId);
+    return className ? `${className} (#${classId})` : `#${classId}`;
+  }
+
+  function renderNamespaceById(namespaceId: number): string {
+    const namespaceName = namespaceNameById.get(namespaceId);
+    return namespaceName ? `${namespaceName} (#${namespaceId})` : `#${namespaceId}`;
+  }
+
+  function renderCreateClassRelationForm() {
+    return (
+      <form className="stack" onSubmit={onCreateClassRelation}>
+        <div className="relation-create-grid">
+          <div className="relation-create-pane">
+            <h4>From</h4>
+            <label className="control-field">
+              <span>Class</span>
+              <select value={sourceClassId} onChange={(event) => setSourceClassId(event.target.value)} disabled={!classes.length}>
+                {!classes.length ? <option value="">No classes available</option> : null}
+                {classes.map((hubuumClass) => (
+                  <option key={hubuumClass.id} value={hubuumClass.id}>
+                    {hubuumClass.name} (#{hubuumClass.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="relation-create-pane">
+            <h4>To</h4>
+            <label className="control-field">
+              <span>Class</span>
+              <select
+                value={classRelationTargetClassId}
+                onChange={(event) => setClassRelationTargetClassId(event.target.value)}
+                disabled={!classes.length}
+              >
+                {!classes.length ? <option value="">No classes available</option> : null}
+                {classes.map((hubuumClass) => (
+                  <option key={hubuumClass.id} value={hubuumClass.id}>
+                    {hubuumClass.name} (#{hubuumClass.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {classRelationError ? <div className="error-banner">{classRelationError}</div> : null}
+        {classRelationSuccess ? <div className="muted">{classRelationSuccess}</div> : null}
+
+        <div className="form-actions">
+          <button type="submit" disabled={createClassRelationMutation.isPending || !canCreateClassRelation}>
+            {createClassRelationMutation.isPending ? "Creating..." : "Create class relation"}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  function renderCreateObjectRelationForm() {
+    return (
+      <form className="stack" onSubmit={onCreateObjectRelation}>
+        <div className="relation-create-grid">
+          <div className="relation-create-pane">
+            <h4>From</h4>
+            <label className="control-field">
+              <span>Class</span>
+              <select value={sourceClassId} onChange={(event) => setSourceClassId(event.target.value)} disabled={!classes.length}>
+                {!classes.length ? <option value="">No classes available</option> : null}
+                {classes.map((hubuumClass) => (
+                  <option key={hubuumClass.id} value={hubuumClass.id}>
+                    {hubuumClass.name} (#{hubuumClass.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="control-field">
+              <span>Object</span>
+              <select
+                value={sourceObjectId}
+                onChange={(event) => setSourceObjectId(event.target.value)}
+                disabled={!sourceObjects.length}
+              >
+                {!sourceObjects.length ? <option value="">No objects available</option> : null}
+                {sourceObjects.map((objectItem) => (
+                  <option key={objectItem.id} value={objectItem.id}>
+                    {objectItem.name} (#{objectItem.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="relation-create-pane">
+            <h4>To</h4>
+            <label className="control-field">
+              <span>Class</span>
+              <select
+                value={objectRelationTargetClassId}
+                onChange={(event) => setObjectRelationTargetClassId(event.target.value)}
+                disabled={!targetClassOptions.length}
+              >
+                {!targetClassOptions.length ? <option value="">No eligible target classes</option> : null}
+                {targetClassOptions.map((hubuumClass) => (
+                  <option key={hubuumClass.id} value={hubuumClass.id}>
+                    {hubuumClass.name} (#{hubuumClass.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="control-field">
+              <span>Object</span>
+              <select
+                value={objectRelationTargetObjectId}
+                onChange={(event) => setObjectRelationTargetObjectId(event.target.value)}
+                disabled={!targetObjects.length}
+              >
+                {!targetObjects.length ? <option value="">No objects available</option> : null}
+                {targetObjects.map((objectItem) => (
+                  <option key={objectItem.id} value={objectItem.id}>
+                    {objectItem.name} (#{objectItem.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {objectRelationError ? <div className="error-banner">{objectRelationError}</div> : null}
+        {!targetClassOptions.length ? (
+          <div className="muted">Create at least two classes to add object-to-object relations.</div>
+        ) : null}
+        {objectRelationSuccess ? <div className="muted">{objectRelationSuccess}</div> : null}
+
+        <div className="form-actions">
+          <button type="submit" disabled={createObjectRelationMutation.isPending || !canCreateObjectRelation}>
+            {createObjectRelationMutation.isPending ? "Creating..." : "Create object relation"}
+          </button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <div className="stack">
-      <div className="card stack">
-        <h3>Relation scope</h3>
+      <div className="card stack relation-scope-card">
+        <div className="scope-heading">
+          <h3>Scope</h3>
+          <span className="muted">{isClassMode ? "Class relations" : "Object relations"}</span>
+        </div>
         <div className="controls-row">
           <label className="control-field">
-            <span>Source class</span>
+            <span>From class</span>
             <select value={sourceClassId} onChange={(event) => setSourceClassId(event.target.value)}>
               <option value="">Select a class...</option>
               {classes.map((hubuumClass) => (
@@ -335,23 +578,25 @@ export function RelationsExplorer() {
             </select>
           </label>
 
-          <label className="control-field">
-            <span>Source object (for object-level relations)</span>
-            <select
-              value={sourceObjectId}
-              onChange={(event) => setSourceObjectId(event.target.value)}
-              disabled={!sourceObjects.length}
-            >
-              {!sourceObjects.length ? <option value="">No objects available</option> : null}
-              {sourceObjects.map((objectItem) => (
-                <option key={objectItem.id} value={objectItem.id}>
-                  {objectItem.name} (#{objectItem.id})
-                </option>
-              ))}
-            </select>
-          </label>
+          {isObjectMode ? (
+            <label className="control-field">
+              <span>From object</span>
+              <select
+                value={sourceObjectId}
+                onChange={(event) => setSourceObjectId(event.target.value)}
+                disabled={!sourceObjects.length}
+              >
+                {!sourceObjects.length ? <option value="">No objects available</option> : null}
+                {sourceObjects.map((objectItem) => (
+                  <option key={objectItem.id} value={objectItem.id}>
+                    {objectItem.name} (#{objectItem.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
 
-          <div className="muted">
+          <div className="muted scope-note">
             {selectedClass
               ? `Namespace ${selectedClass.namespace.name} (#${selectedClass.namespace.id})`
               : "Choose a class to inspect and create relations."}
@@ -359,87 +604,15 @@ export function RelationsExplorer() {
         </div>
       </div>
 
-      <div className="grid cols-2">
-        <form className="card stack" onSubmit={onCreateClassRelation}>
-          <div className="table-header">
-            <h3>Create class relation</h3>
-          </div>
+      <CreateModal
+        open={isCreateModalOpen}
+        title={isClassMode ? "Create class relation" : "Create object relation"}
+        onClose={() => setCreateModalOpen(false)}
+      >
+        <div className="stack">{isClassMode ? renderCreateClassRelationForm() : renderCreateObjectRelationForm()}</div>
+      </CreateModal>
 
-          <label className="control-field">
-            <span>Target class</span>
-            <select
-              value={classRelationTargetClassId}
-              onChange={(event) => setClassRelationTargetClassId(event.target.value)}
-              disabled={!classes.length}
-            >
-              {!classes.length ? <option value="">No classes available</option> : null}
-              {classes.map((hubuumClass) => (
-                <option key={hubuumClass.id} value={hubuumClass.id}>
-                  {hubuumClass.name} (#{hubuumClass.id})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {classRelationError ? <div className="error-banner">{classRelationError}</div> : null}
-          {classRelationSuccess ? <div className="muted">{classRelationSuccess}</div> : null}
-
-          <div className="form-actions">
-            <button type="submit" disabled={createClassRelationMutation.isPending || !canCreateClassRelation}>
-              {createClassRelationMutation.isPending ? "Creating..." : "Create class relation"}
-            </button>
-          </div>
-        </form>
-
-        <form className="card stack" onSubmit={onCreateObjectRelation}>
-          <div className="table-header">
-            <h3>Create object relation</h3>
-          </div>
-
-          <label className="control-field">
-            <span>Target class</span>
-            <select
-              value={objectRelationTargetClassId}
-              onChange={(event) => setObjectRelationTargetClassId(event.target.value)}
-              disabled={!classes.length}
-            >
-              {!classes.length ? <option value="">No classes available</option> : null}
-              {classes.map((hubuumClass) => (
-                <option key={hubuumClass.id} value={hubuumClass.id}>
-                  {hubuumClass.name} (#{hubuumClass.id})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="control-field">
-            <span>Target object</span>
-            <select
-              value={objectRelationTargetObjectId}
-              onChange={(event) => setObjectRelationTargetObjectId(event.target.value)}
-              disabled={!targetObjects.length}
-            >
-              {!targetObjects.length ? <option value="">No objects available</option> : null}
-              {targetObjects.map((objectItem) => (
-                <option key={objectItem.id} value={objectItem.id}>
-                  {objectItem.name} (#{objectItem.id})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {objectRelationError ? <div className="error-banner">{objectRelationError}</div> : null}
-          {objectRelationSuccess ? <div className="muted">{objectRelationSuccess}</div> : null}
-
-          <div className="form-actions">
-            <button type="submit" disabled={createObjectRelationMutation.isPending || !canCreateObjectRelation}>
-              {createObjectRelationMutation.isPending ? "Creating..." : "Create object relation"}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div className="grid cols-2">
+      {isClassMode ? (
         <div className="card table-wrap">
           <div className="table-header">
             <h3>Class relations</h3>
@@ -474,15 +647,17 @@ export function RelationsExplorer() {
                 {classRelations.map((relation) => (
                   <tr key={relation.id}>
                     <td>{relation.id}</td>
-                    <td>{relation.from_hubuum_class_id}</td>
-                    <td>{relation.to_hubuum_class_id}</td>
+                    <td>{renderClassById(relation.from_hubuum_class_id)}</td>
+                    <td>{renderClassById(relation.to_hubuum_class_id)}</td>
                   </tr>
                 ))}
               </tbody>
-            </table>
-          )}
+              </table>
+            )}
         </div>
+      ) : null}
 
+      {isObjectMode ? (
         <div className="card table-wrap">
           <div className="table-header">
             <h3>Object relations (reachable objects)</h3>
@@ -522,16 +697,16 @@ export function RelationsExplorer() {
                   <tr key={relation.id}>
                     <td>{relation.id}</td>
                     <td>{relation.name}</td>
-                    <td>{relation.hubuum_class_id}</td>
-                    <td>{relation.namespace_id}</td>
+                    <td>{renderClassById(relation.hubuum_class_id)}</td>
+                    <td>{renderNamespaceById(relation.namespace_id)}</td>
                     <td>{relation.path.length ? relation.path.join(" -> ") : "-"}</td>
                   </tr>
                 ))}
               </tbody>
-            </table>
-          )}
+              </table>
+            )}
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

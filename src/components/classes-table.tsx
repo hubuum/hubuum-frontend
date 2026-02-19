@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import {
   deleteApiV1ClassesByClassId,
@@ -10,8 +10,10 @@ import {
   getApiV1Namespaces,
   postApiV1Classes
 } from "@/lib/api/generated/client";
+import { CreateModal } from "@/components/create-modal";
 import type { HubuumClassExpanded, Namespace, NewHubuumClass } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
   const response = await getApiV1Classes({
@@ -49,6 +51,7 @@ export function ClassesTable() {
   const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
   const [tableError, setTableError] = useState<string | null>(null);
   const [tableSuccess, setTableSuccess] = useState<string | null>(null);
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
   const classesQuery = useQuery({
     queryKey: ["classes"],
@@ -87,6 +90,7 @@ export function ClassesTable() {
       setValidateSchema(false);
       setFormError(null);
       setFormSuccess("Class created.");
+      setCreateModalOpen(false);
     },
     onError: (error) => {
       setFormSuccess(null);
@@ -162,17 +166,6 @@ export function ClassesTable() {
     createMutation.mutate(payload);
   }
 
-  const namespaceHint = useMemo(() => {
-    if (namespacesQuery.isLoading) {
-      return "Loading namespaces...";
-    }
-    if (!canCreateClass) {
-      return "No writable namespace available. Create a namespace first.";
-    }
-
-    return `${namespaces.length} namespace option${namespaces.length === 1 ? "" : "s"} available`;
-  }, [canCreateClass, namespaces.length, namespacesQuery.isLoading]);
-
   const classes = classesQuery.data ?? [];
   const allSelected = classes.length > 0 && selectedClassIds.length === classes.length;
 
@@ -184,6 +177,20 @@ export function ClassesTable() {
     const existingIds = new Set(classes.map((item) => item.id));
     setSelectedClassIds((current) => current.filter((id) => existingIds.has(id)));
   }, [classes, selectedClassIds.length]);
+
+  useEffect(() => {
+    const onOpenCreate = (event: Event) => {
+      const customEvent = event as CustomEvent<OpenCreateEventDetail>;
+      if (customEvent.detail?.section !== "classes") {
+        return;
+      }
+
+      setCreateModalOpen(true);
+    };
+
+    window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
+    return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
+  }, []);
 
   if (classesQuery.isLoading) {
     return <div className="card">Loading classes...</div>;
@@ -231,14 +238,9 @@ export function ClassesTable() {
     deleteMutation.mutate([...selectedClassIds]);
   }
 
-  return (
-    <div className="stack">
-      <form className="card stack" onSubmit={onSubmit}>
-        <div className="table-header">
-          <h3>Create class</h3>
-          <span className="muted">{namespaceHint}</span>
-        </div>
-
+  function renderCreateClassForm() {
+    return (
+      <form className="stack" onSubmit={onSubmit}>
         <div className="form-grid">
           <label className="control-field">
             <span>Name</span>
@@ -306,6 +308,14 @@ export function ClassesTable() {
           </button>
         </div>
       </form>
+    );
+  }
+
+  return (
+    <div className="stack">
+      <CreateModal open={isCreateModalOpen} title="Create class" onClose={() => setCreateModalOpen(false)}>
+        {renderCreateClassForm()}
+      </CreateModal>
 
       <div className="card table-wrap">
         <div className="table-header">

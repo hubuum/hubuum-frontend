@@ -5,7 +5,12 @@ import { useState } from "react";
 
 import { getApiV0AuthLogout } from "@/lib/api/generated/client";
 
-export function LogoutButton() {
+type LogoutButtonProps = {
+  className?: string;
+  label?: string;
+};
+
+export function LogoutButton({ className, label = "Sign out" }: LogoutButtonProps) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
 
@@ -21,8 +26,8 @@ export function LogoutButton() {
   }
 
   return (
-    <button className="ghost" type="button" onClick={signOut} disabled={isPending}>
-      {isPending ? "Signing out..." : "Sign out"}
+    <button className={className ?? "ghost"} type="button" onClick={signOut} disabled={isPending}>
+      {isPending ? "Signing out..." : label}
     </button>
   );
 }

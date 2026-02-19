@@ -8,9 +8,10 @@ import {
   deleteApiV1ClassesByClassIdByObjectId,
   getApiV1Classes,
   getApiV1ClassesByClassIdByObjectId,
+  getApiV1Namespaces,
   patchApiV1ClassesByClassIdByObjectId
 } from "@/lib/api/generated/client";
-import type { HubuumClassExpanded, HubuumObject, UpdateHubuumObject } from "@/lib/api/generated/models";
+import type { HubuumClassExpanded, HubuumObject, Namespace, UpdateHubuumObject } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
 
 type ObjectDetailProps = {
@@ -42,6 +43,18 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
   return response.data;
 }
 
+async function fetchNamespaces(): Promise<Namespace[]> {
+  const response = await getApiV1Namespaces({
+    credentials: "include"
+  });
+
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(response.data, "Failed to load namespaces."));
+  }
+
+  return response.data;
+}
+
 export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -63,6 +76,10 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
     queryKey: ["classes", "object-detail"],
     queryFn: fetchClasses
   });
+  const namespacesQuery = useQuery({
+    queryKey: ["namespaces", "object-detail"],
+    queryFn: fetchNamespaces
+  });
 
   useEffect(() => {
     if (initialized || !objectQuery.data) {
@@ -83,14 +100,7 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
   }, [selectedClassId]);
 
   const selectedClass = (classesQuery.data ?? []).find((item) => item.id === parsedSelectedClassId);
-
-  useEffect(() => {
-    if (!selectedClass) {
-      return;
-    }
-
-    setNamespaceId(String(selectedClass.namespace.id));
-  }, [selectedClass]);
+  const namespaces = namespacesQuery.data ?? [];
 
   const updateMutation = useMutation({
     mutationFn: async (payload: UpdateHubuumObject) => {
@@ -175,7 +185,7 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
       description: description.trim(),
       data: parsedData,
       hubuum_class_id: selectedClass?.id ?? parsedSelectedClassId,
-      namespace_id: selectedClass?.namespace.id ?? parsedNamespaceId
+      namespace_id: parsedNamespaceId
     };
 
     updateMutation.mutate(payload);
@@ -210,6 +220,8 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
 
   const classes = classesQuery.data ?? [];
   const hasClassOptions = classes.length > 0;
+  const hasNamespaceOptions = namespaces.length > 0;
+  const hasNamespaceSelection = namespaces.some((namespace) => String(namespace.id) === namespaceId);
 
   return (
     <section className="stack">
@@ -256,17 +268,35 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
             )}
           </div>
 
-          <label className="control-field">
-            <span>Namespace</span>
-            <input
-              required
-              type="number"
-              min={1}
-              value={namespaceId}
-              onChange={(event) => setNamespaceId(event.target.value)}
-              disabled={Boolean(selectedClass)}
-            />
-          </label>
+          <div className="control-field">
+            <label htmlFor="object-detail-namespace">Namespace</label>
+            {hasNamespaceOptions ? (
+              <select
+                id="object-detail-namespace"
+                required
+                value={hasNamespaceSelection ? namespaceId : ""}
+                onChange={(event) => setNamespaceId(event.target.value)}
+              >
+                {!hasNamespaceSelection ? <option value="">Select a namespace...</option> : null}
+                {namespaces.map((namespace) => (
+                  <option key={namespace.id} value={namespace.id}>
+                    {namespace.name} (#{namespace.id})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id="object-detail-namespace"
+                required
+                type="number"
+                min={1}
+                value={namespaceId}
+                onChange={(event) => setNamespaceId(event.target.value)}
+                placeholder={namespacesQuery.isLoading ? "Loading namespaces..." : "Enter namespace ID"}
+                disabled={namespacesQuery.isLoading}
+              />
+            )}
+          </div>
 
           <label className="control-field control-field--wide">
             <span>Description</span>
@@ -284,15 +314,14 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
           </label>
         </div>
 
-        <div className="muted">
-          {selectedClass
-            ? `Namespace auto-selected from class: ${selectedClass.namespace.name} (#${selectedClass.namespace.id})`
-            : "Enter class and namespace IDs if class options are unavailable."}
-        </div>
+        <div className="muted">Classes and namespaces are selected independently.</div>
 
         {formError ? <div className="error-banner">{formError}</div> : null}
         {classesQuery.isError ? (
-          <div className="muted">Could not load classes automatically. Manual class and namespace IDs are enabled.</div>
+          <div className="muted">Could not load classes automatically. Manual class ID entry is enabled.</div>
+        ) : null}
+        {namespacesQuery.isError ? (
+          <div className="muted">Could not load namespaces automatically. Manual namespace ID entry is enabled.</div>
         ) : null}
         {formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
