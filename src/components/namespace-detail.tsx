@@ -14,7 +14,6 @@ import {
   getApiV1NamespacesByNamespaceIdPermissions,
   getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
   patchApiV1NamespacesByNamespaceId,
-  postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId
 } from "@/lib/api/generated/client";
 import { Permissions as PermissionValues } from "@/lib/api/generated/models/permissions";
 import type {
@@ -57,129 +56,105 @@ type PermissionFlagField =
 type PermissionDefinition = {
   value: PermissionName;
   label: string;
-  formLabel: string;
   field: PermissionFlagField;
   section: PermissionSection;
 };
 
 type PermissionSection = "namespace" | "class" | "object" | "class_relation" | "object_relation";
 
-const PERMISSION_SECTIONS: { key: PermissionSection; label: string }[] = [
-  { key: "namespace", label: "Namespace" },
-  { key: "class", label: "Class" },
-  { key: "object", label: "Object" },
-  { key: "class_relation", label: "Class relation" },
-  { key: "object_relation", label: "Object relation" }
-];
-
 const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   {
     value: PermissionValues.ReadCollection,
     label: "Read namespace",
-    formLabel: "Read",
     field: "has_read_namespace",
     section: "namespace"
   },
   {
     value: PermissionValues.UpdateCollection,
     label: "Update namespace",
-    formLabel: "Update",
     field: "has_update_namespace",
     section: "namespace"
   },
   {
     value: PermissionValues.DeleteCollection,
     label: "Delete namespace",
-    formLabel: "Delete",
     field: "has_delete_namespace",
     section: "namespace"
   },
   {
     value: PermissionValues.DelegateCollection,
     label: "Delegate namespace",
-    formLabel: "Delegate",
     field: "has_delegate_namespace",
     section: "namespace"
   },
-  { value: PermissionValues.CreateClass, label: "Create class", formLabel: "Create", field: "has_create_class", section: "class" },
-  { value: PermissionValues.ReadClass, label: "Read class", formLabel: "Read", field: "has_read_class", section: "class" },
-  { value: PermissionValues.UpdateClass, label: "Update class", formLabel: "Update", field: "has_update_class", section: "class" },
-  { value: PermissionValues.DeleteClass, label: "Delete class", formLabel: "Delete", field: "has_delete_class", section: "class" },
+  { value: PermissionValues.CreateClass, label: "Create class", field: "has_create_class", section: "class" },
+  { value: PermissionValues.ReadClass, label: "Read class", field: "has_read_class", section: "class" },
+  { value: PermissionValues.UpdateClass, label: "Update class", field: "has_update_class", section: "class" },
+  { value: PermissionValues.DeleteClass, label: "Delete class", field: "has_delete_class", section: "class" },
   {
     value: PermissionValues.CreateObject,
     label: "Create object",
-    formLabel: "Create",
     field: "has_create_object",
     section: "object"
   },
-  { value: PermissionValues.ReadObject, label: "Read object", formLabel: "Read", field: "has_read_object", section: "object" },
+  { value: PermissionValues.ReadObject, label: "Read object", field: "has_read_object", section: "object" },
   {
     value: PermissionValues.UpdateObject,
     label: "Update object",
-    formLabel: "Update",
     field: "has_update_object",
     section: "object"
   },
   {
     value: PermissionValues.DeleteObject,
     label: "Delete object",
-    formLabel: "Delete",
     field: "has_delete_object",
     section: "object"
   },
   {
     value: PermissionValues.CreateClassRelation,
     label: "Create class relation",
-    formLabel: "Create",
     field: "has_create_class_relation",
     section: "class_relation"
   },
   {
     value: PermissionValues.ReadClassRelation,
     label: "Read class relation",
-    formLabel: "Read",
     field: "has_read_class_relation",
     section: "class_relation"
   },
   {
     value: PermissionValues.UpdateClassRelation,
     label: "Update class relation",
-    formLabel: "Update",
     field: "has_update_class_relation",
     section: "class_relation"
   },
   {
     value: PermissionValues.DeleteClassRelation,
     label: "Delete class relation",
-    formLabel: "Delete",
     field: "has_delete_class_relation",
     section: "class_relation"
   },
   {
     value: PermissionValues.CreateObjectRelation,
     label: "Create object relation",
-    formLabel: "Create",
     field: "has_create_object_relation",
     section: "object_relation"
   },
   {
     value: PermissionValues.ReadObjectRelation,
     label: "Read object relation",
-    formLabel: "Read",
     field: "has_read_object_relation",
     section: "object_relation"
   },
   {
     value: PermissionValues.UpdateObjectRelation,
     label: "Update object relation",
-    formLabel: "Update",
     field: "has_update_object_relation",
     section: "object_relation"
   },
   {
     value: PermissionValues.DeleteObjectRelation,
     label: "Delete object relation",
-    formLabel: "Delete",
     field: "has_delete_object_relation",
     section: "object_relation"
   }
@@ -221,6 +196,32 @@ async function fetchNamespacePermissions(namespaceId: number): Promise<GroupPerm
   return response.data;
 }
 
+async function putNamespacePermissions(namespaceId: number, groupId: number, permissions: PermissionName[]): Promise<void> {
+  const response = await fetch(`/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(permissions)
+  });
+
+  if ([200, 201, 204].includes(response.status)) {
+    return;
+  }
+
+  const rawPayload = await response.text();
+  let payload: unknown = {};
+  if (rawPayload) {
+    try {
+      payload = JSON.parse(rawPayload) as unknown;
+    } catch {
+      payload = { message: rawPayload };
+    }
+  }
+  throw new Error(getApiErrorMessage(payload, "Failed to update namespace permissions."));
+}
+
 async function fetchCurrentUserGroups(username: string): Promise<Group[]> {
   try {
     const usersResponse = await getApiV1IamUsers({
@@ -249,7 +250,9 @@ async function fetchCurrentUserGroups(username: string): Promise<Group[]> {
 }
 
 function getEnabledPermissions(permissionRecord: Permission): PermissionName[] {
-  return PERMISSION_DEFINITIONS.filter((definition) => permissionRecord[definition.field]).map((definition) => definition.value);
+  return PERMISSION_DEFINITIONS.filter((definition) => isPermissionEnabled(permissionRecord, definition.field)).map(
+    (definition) => definition.value
+  );
 }
 
 type PermissionChip = {
@@ -260,8 +263,29 @@ type PermissionChip = {
 function getPermissionChips(permissionRecord: Permission): PermissionChip[] {
   return PERMISSION_DEFINITIONS.map((definition) => ({
     label: definition.label,
-    enabled: permissionRecord[definition.field]
+    enabled: isPermissionEnabled(permissionRecord, definition.field)
   }));
+}
+
+function normalizePermissionFlag(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return value === 1;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "t" || normalized === "1";
+  }
+
+  return false;
+}
+
+function isPermissionEnabled(permissionRecord: Permission, field: PermissionFlagField): boolean {
+  return normalizePermissionFlag(permissionRecord[field] as unknown);
 }
 
 function hasAllSubmittedPermissions(submitted: PermissionName[], persisted: PermissionName[]): boolean {
@@ -370,19 +394,12 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
     }
   });
   const upsertPermissionsMutation = useMutation({
-    mutationFn: async (payload: { groupId: number; permissions: PermissionName[]; mode: "create" | "edit" }) => {
-      const response = await postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId(
-        namespaceId,
-        payload.groupId,
-        payload.permissions,
-        {
-          credentials: "include"
-        }
-      );
-
-      if (response.status !== 201) {
-        throw new Error(getApiErrorMessage(response.data, "Failed to update namespace permissions."));
-      }
+    mutationFn: async (payload: {
+      groupId: number;
+      permissions: PermissionName[];
+      mode: "create" | "edit";
+    }) => {
+      await putNamespacePermissions(namespaceId, payload.groupId, payload.permissions);
 
       const verificationResponse = await getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId(namespaceId, payload.groupId, {
         credentials: "include"
@@ -585,27 +602,22 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
     onToggle: (permission: PermissionName, checked: boolean) => void
   ) {
     return (
-      <div className="permission-editor-grid">
-        {PERMISSION_SECTIONS.map((section) => (
-          <div key={section.key} className="permission-section">
-            <p className="permission-section-title">{section.label}</p>
-            <div className="permission-chip-list">
-              {PERMISSION_DEFINITIONS.filter((definition) => definition.section === section.key).map((definition) => {
-                const enabled = selectedPermissionSet.has(definition.value);
-                return (
-                  <button
-                    key={definition.value}
-                    type="button"
-                    className={`permission-chip permission-chip-button ${enabled ? "permission-chip--active" : "permission-chip--inactive"}`}
-                    onClick={() => onToggle(definition.value, !enabled)}
-                  >
-                    {definition.formLabel}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+      <div className="permission-chip-list permission-chip-list--editor">
+        {PERMISSION_DEFINITIONS.map((definition) => {
+          const enabled = selectedPermissionSet.has(definition.value);
+          return (
+            <button
+              key={definition.value}
+              type="button"
+              className={`permission-chip permission-chip-button permission-chip--editor ${
+                enabled ? "permission-chip--active" : "permission-chip--inactive"
+              }`}
+              onClick={() => onToggle(definition.value, !enabled)}
+            >
+              {definition.label}
+            </button>
+          );
+        })}
       </div>
     );
   }
@@ -625,7 +637,7 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
   const usingGroupSelect = groups.length > 0 && !groupsQuery.isError;
   const currentUserGroupIds = new Set((currentUserGroupsQuery.data ?? []).map((group) => group.id));
   const canManagePermissions = permissionEntries.some(
-    (entry) => entry.permission.has_delegate_namespace && currentUserGroupIds.has(entry.group.id)
+    (entry) => isPermissionEnabled(entry.permission, "has_delegate_namespace") && currentUserGroupIds.has(entry.group.id)
   );
   const newSelectedPermissionSet = new Set(newSelectedPermissions);
   const sortedPermissionEntries = [...permissionEntries].sort((left, right) =>
@@ -797,21 +809,28 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
                     <td>{renderPermissionEditor(newSelectedPermissionSet, toggleNewPermission)}</td>
                     <td>-</td>
                     <td>
-                      <div className="table-tools">
-                        <button
-                          type="button"
-                          onClick={onSaveNewPermissions}
-                          disabled={
-                            upsertPermissionsMutation.isPending ||
-                            newSelectedPermissions.length === 0 ||
-                            (usingGroupSelect && availableGroups.length === 0)
-                          }
-                        >
-                          {upsertPermissionsMutation.isPending ? "Saving..." : "Grant"}
-                        </button>
-                        <button type="button" className="ghost" onClick={onResetPermissionEditor} disabled={upsertPermissionsMutation.isPending}>
-                          Cancel
-                        </button>
+                      <div className="table-tools permission-table-tools">
+                        <div className="permission-action-stack">
+                          <button
+                            type="button"
+                            onClick={onSaveNewPermissions}
+                            disabled={
+                              upsertPermissionsMutation.isPending ||
+                              newSelectedPermissions.length === 0 ||
+                              (usingGroupSelect && availableGroups.length === 0)
+                            }
+                          >
+                            {upsertPermissionsMutation.isPending ? "Saving..." : "Grant"}
+                          </button>
+                          <button
+                            type="button"
+                            className="ghost"
+                            onClick={onResetPermissionEditor}
+                            disabled={upsertPermissionsMutation.isPending}
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -857,26 +876,28 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
                       <td>{new Date(entry.permission.updated_at).toLocaleString()}</td>
                       {canManagePermissions ? (
                         <td>
-                          <div className="table-tools">
-                            <button type="button" className="ghost" onClick={() => onSaveRowPermissions(entry)} disabled={actionDisabled}>
-                              {isSavingRow ? "Saving..." : isRowDirty ? "Save" : "Edit"}
-                            </button>
-                            {isRowDirty ? (
-                              <button
-                                type="button"
-                                className="ghost"
-                                onClick={() =>
-                                  setPermissionDrafts((current) => {
-                                    const next = { ...current };
-                                    delete next[entry.group.id];
-                                    return next;
-                                  })
-                                }
-                                disabled={upsertPermissionsMutation.isPending}
-                              >
-                                Cancel
+                          <div className="table-tools permission-table-tools">
+                            <div className="permission-action-stack">
+                              <button type="button" className="ghost" onClick={() => onSaveRowPermissions(entry)} disabled={actionDisabled}>
+                                {isSavingRow ? "Saving..." : isRowDirty ? "Save" : "Edit"}
                               </button>
-                            ) : null}
+                              {isRowDirty ? (
+                                <button
+                                  type="button"
+                                  className="ghost"
+                                  onClick={() =>
+                                    setPermissionDrafts((current) => {
+                                      const next = { ...current };
+                                      delete next[entry.group.id];
+                                      return next;
+                                    })
+                                  }
+                                  disabled={upsertPermissionsMutation.isPending}
+                                >
+                                  Cancel
+                                </button>
+                              ) : null}
+                            </div>
                             <button
                               type="button"
                               className="danger"

@@ -746,7 +746,8 @@ body.modal-open {
 .permission-chip--inactive {
   background: transparent;
   color: var(--muted);
-  opacity: 0.7;
+  border-color: color-mix(in oklab, var(--line) 75%, transparent);
+  opacity: 0.5;
 }
 
 .permission-chip-button {
@@ -756,6 +757,29 @@ body.modal-open {
   color: inherit;
   cursor: pointer;
   font: inherit;
+}
+
+.permission-chip-list--editor {
+  gap: 0.28rem;
+}
+
+.permission-chip--editor {
+  padding: 0.14rem 0.42rem;
+  font-size: 0.85rem;
+}
+
+.permission-table-tools {
+  align-items: flex-start;
+}
+
+.permission-action-stack {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 4.6rem;
+}
+
+.permission-action-stack button {
+  width: 100%;
 }
 
 .relation-create-grid {
