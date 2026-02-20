@@ -5,6 +5,7 @@ import { getValkeyClient } from "@/lib/valkey";
 
 export type SessionPayload = {
   token: string;
+  username?: string;
   createdAt: number;
   lastSeen: number;
 };
@@ -38,6 +39,7 @@ class InMemorySessionStore implements SessionStore {
 
     return {
       token: existing.token,
+      username: existing.username,
       createdAt: existing.createdAt,
       lastSeen: existing.lastSeen
     };

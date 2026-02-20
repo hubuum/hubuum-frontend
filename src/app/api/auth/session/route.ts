@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   console.info(`[hubuum-auth][cid=${correlationId}] session check: authenticated`);
   return NextResponse.json({
     authenticated: true,
+    username: session.username ?? null,
     createdAt: session.createdAt,
     lastSeen: session.lastSeen
   });

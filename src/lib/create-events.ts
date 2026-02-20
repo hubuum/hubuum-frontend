@@ -1,4 +1,10 @@
-export type CreateSection = "namespaces" | "classes" | "objects" | "relations";
+export type CreateSection =
+  | "namespaces"
+  | "classes"
+  | "objects"
+  | "relations"
+  | "admin-users"
+  | "admin-groups";
 
 export type OpenCreateEventDetail = {
   section: CreateSection;

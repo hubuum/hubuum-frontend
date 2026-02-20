@@ -98,8 +98,41 @@ function getCreateSection(pathname: string): CreateSection | null {
   if (pathname.startsWith("/relations")) {
     return "relations";
   }
+  if (pathname === "/admin/users") {
+    return "admin-users";
+  }
+  if (pathname === "/admin/groups") {
+    return "admin-groups";
+  }
 
   return null;
+}
+
+function getCreateAriaLabel(
+  createSection: CreateSection,
+  relationsView: "classes" | "objects" | null,
+  sectionLabel: string
+): string {
+  if (createSection === "relations") {
+    return `Add ${relationsView === "objects" ? "object relation" : "class relation"}`;
+  }
+  if (createSection === "admin-users") {
+    return "Add user";
+  }
+  if (createSection === "admin-groups") {
+    return "Add group";
+  }
+  if (createSection === "namespaces") {
+    return "Add namespace";
+  }
+  if (createSection === "classes") {
+    return "Add class";
+  }
+  if (createSection === "objects") {
+    return "Add object";
+  }
+
+  return `Add ${sectionLabel}`;
 }
 
 function getRelationsView(pathname: string): "classes" | "objects" | null {
@@ -545,11 +578,7 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
                     type="button"
                     className="ghost icon-button quick-add-button"
                     onClick={openCreateModal}
-                    aria-label={
-                      relationsView
-                        ? `Add ${relationsView === "classes" ? "class relation" : "object relation"}`
-                        : `Add ${sectionLabel}`
-                    }
+                    aria-label={getCreateAriaLabel(createSection, relationsView, sectionLabel)}
                   >
                     <IconPlus />
                   </button>

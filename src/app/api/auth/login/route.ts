@@ -110,9 +110,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sid = await createSession(token);
+  const sid = await createSession(token, credentials.username);
   const response = fromForm ? seeOther("/app") : NextResponse.json({ authenticated: true }, { status: 200 });
-  setSessionCookie(response, sid, request, token);
+  setSessionCookie(response, sid, request, token, credentials.username);
   console.info(
     `[hubuum-auth][cid=${correlationId}] login succeeded and session created (fromForm=${String(fromForm)})`
   );

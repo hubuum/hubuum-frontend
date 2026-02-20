@@ -19,7 +19,7 @@ function parseId(value: string): number | null {
 }
 
 export default async function NamespaceDetailPage({ params }: NamespaceDetailPageProps) {
-  await requireServerSession();
+  const session = await requireServerSession();
   const { namespaceId } = await params;
   const parsedNamespaceId = parseId(namespaceId);
 
@@ -29,7 +29,7 @@ export default async function NamespaceDetailPage({ params }: NamespaceDetailPag
 
   return (
     <section className="stack">
-      <NamespaceDetail namespaceId={parsedNamespaceId} />
+      <NamespaceDetail namespaceId={parsedNamespaceId} currentUsername={session.username ?? null} />
     </section>
   );
 }
