@@ -139,13 +139,15 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
     );
   }
 
-  const responseBody = await upstreamResponse.text();
+  const status = upstreamResponse.status;
+  const hasNoBody = status === 204 || status === 205 || status === 304;
+  const responseBody = hasNoBody ? null : await upstreamResponse.text();
   const response = new NextResponse(responseBody, {
-    status: upstreamResponse.status
+    status
   });
 
   const contentType = upstreamResponse.headers.get("content-type");
-  if (contentType) {
+  if (!hasNoBody && contentType) {
     response.headers.set("content-type", contentType);
   }
   response.headers.set(CORRELATION_ID_HEADER, correlationId);

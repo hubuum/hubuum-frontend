@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/generated/client";
 import type { HubuumClassExpanded, HubuumObject, Namespace, UpdateHubuumObject } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { readJsonFileAsPrettyText } from "@/lib/json-file";
 
 type ObjectDetailProps = {
   classId: number;
@@ -62,7 +63,6 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [dataInput, setDataInput] = useState("{}");
-  const [selectedClassId, setSelectedClassId] = useState("");
   const [namespaceId, setNamespaceId] = useState("");
   const [initialized, setInitialized] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -89,17 +89,9 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
     setName(objectQuery.data.name);
     setDescription(objectQuery.data.description ?? "");
     setDataInput(JSON.stringify(objectQuery.data.data, null, 2));
-    setSelectedClassId(String(objectQuery.data.hubuum_class_id));
     setNamespaceId(String(objectQuery.data.namespace_id));
     setInitialized(true);
   }, [initialized, objectQuery.data]);
-
-  const parsedSelectedClassId = useMemo(() => {
-    const parsed = Number.parseInt(selectedClassId, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-  }, [selectedClassId]);
-
-  const selectedClass = (classesQuery.data ?? []).find((item) => item.id === parsedSelectedClassId);
   const namespaces = namespacesQuery.data ?? [];
 
   const updateMutation = useMutation({
@@ -167,13 +159,6 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
       return;
     }
 
-    if (!selectedClass) {
-      if (parsedSelectedClassId === null) {
-        setFormError("Class ID is required.");
-        return;
-      }
-    }
-
     const parsedNamespaceId = Number.parseInt(namespaceId, 10);
     if (!Number.isFinite(parsedNamespaceId) || parsedNamespaceId < 1) {
       setFormError("Namespace ID is required.");
@@ -184,7 +169,7 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
       name: name.trim(),
       description: description.trim(),
       data: parsedData,
-      hubuum_class_id: selectedClass?.id ?? parsedSelectedClassId,
+      hubuum_class_id: classId,
       namespace_id: parsedNamespaceId
     };
 
@@ -199,6 +184,25 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
     }
 
     deleteMutation.mutate();
+  }
+
+  async function onDataFileChange(event: FormEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const jsonText = await readJsonFileAsPrettyText(file);
+      setDataInput(jsonText);
+      setFormError(null);
+    } catch (error) {
+      setFormSuccess(null);
+      setFormError(error instanceof Error ? error.message : "Failed to read object data file.");
+    }
   }
 
   if (objectQuery.isLoading) {
@@ -218,8 +222,7 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
     return <div className="card error-banner">Object data is unavailable.</div>;
   }
 
-  const classes = classesQuery.data ?? [];
-  const hasClassOptions = classes.length > 0;
+  const className = (classesQuery.data ?? []).find((item) => item.id === objectData.hubuum_class_id)?.name ?? null;
   const hasNamespaceOptions = namespaces.length > 0;
   const hasNamespaceSelection = namespaces.some((namespace) => String(namespace.id) === namespaceId);
 
@@ -239,34 +242,10 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
             <input required value={name} onChange={(event) => setName(event.target.value)} />
           </label>
 
-          <div className="control-field">
-            <label htmlFor="object-detail-class">Class</label>
-            {hasClassOptions ? (
-              <select
-                id="object-detail-class"
-                required
-                value={selectedClassId}
-                onChange={(event) => setSelectedClassId(event.target.value)}
-              >
-                {classes.map((hubuumClass) => (
-                  <option key={hubuumClass.id} value={hubuumClass.id}>
-                    {hubuumClass.name} (#{hubuumClass.id})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id="object-detail-class"
-                required
-                type="number"
-                min={1}
-                value={selectedClassId}
-                onChange={(event) => setSelectedClassId(event.target.value)}
-                placeholder={classesQuery.isLoading ? "Loading classes..." : "Enter class ID"}
-                disabled={classesQuery.isLoading}
-              />
-            )}
-          </div>
+          <label className="control-field">
+            <span>Class</span>
+            <input readOnly value={`${className ?? "Class"} (#${objectData.hubuum_class_id})`} />
+          </label>
 
           <div className="control-field">
             <label htmlFor="object-detail-namespace">Namespace</label>
@@ -311,15 +290,14 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
               onChange={(event) => setDataInput(event.target.value)}
               placeholder='{"hostname":"srv-web-01","env":"prod"}'
             />
+            <input type="file" accept=".json,application/json" onChange={onDataFileChange} />
           </label>
         </div>
 
-        <div className="muted">Classes and namespaces are selected independently.</div>
+        <div className="muted">Class is fixed for existing objects.</div>
 
         {formError ? <div className="error-banner">{formError}</div> : null}
-        {classesQuery.isError ? (
-          <div className="muted">Could not load classes automatically. Manual class ID entry is enabled.</div>
-        ) : null}
+        {classesQuery.isError ? <div className="muted">Could not load class names. Showing class ID only.</div> : null}
         {namespacesQuery.isError ? (
           <div className="muted">Could not load namespaces automatically. Manual namespace ID entry is enabled.</div>
         ) : null}

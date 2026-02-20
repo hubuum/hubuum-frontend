@@ -10,6 +10,7 @@ import { CreateModal } from "@/components/create-modal";
 import type { HubuumClassExpanded, HubuumObject, Namespace, NewHubuumObject } from "@/lib/api/generated/models";
 import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
+import { readJsonFileAsPrettyText } from "@/lib/json-file";
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
   const response = await getApiV1Classes({
@@ -346,6 +347,25 @@ export function ObjectsExplorer() {
   }
 
   function renderCreateObjectForm() {
+    async function onDataFileChange(event: FormEvent<HTMLInputElement>) {
+      const input = event.currentTarget;
+      const file = input.files?.[0];
+      input.value = "";
+
+      if (!file) {
+        return;
+      }
+
+      try {
+        const jsonText = await readJsonFileAsPrettyText(file);
+        setDataInput(jsonText);
+        setFormError(null);
+      } catch (error) {
+        setFormSuccess(null);
+        setFormError(error instanceof Error ? error.message : "Failed to read object data file.");
+      }
+    }
+
     return (
       <form className="stack" onSubmit={onSubmit}>
         <div className="form-grid">
@@ -406,6 +426,12 @@ export function ObjectsExplorer() {
               value={dataInput}
               onChange={(event) => setDataInput(event.target.value)}
               placeholder='{"hostname":"srv-web-01","env":"prod"}'
+              disabled={!selectedClass}
+            />
+            <input
+              type="file"
+              accept=".json,application/json"
+              onChange={onDataFileChange}
               disabled={!selectedClass}
             />
           </label>

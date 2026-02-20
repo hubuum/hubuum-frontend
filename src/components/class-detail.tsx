@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/generated/client";
 import type { HubuumClassExpanded, Namespace, UpdateHubuumClass } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { readJsonFileAsPrettyText } from "@/lib/json-file";
 
 type ClassDetailProps = {
   classId: number;
@@ -170,6 +171,25 @@ export function ClassDetail({ classId }: ClassDetailProps) {
     deleteMutation.mutate();
   }
 
+  async function onJsonSchemaFileChange(event: FormEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const jsonText = await readJsonFileAsPrettyText(file);
+      setJsonSchemaInput(jsonText);
+      setFormError(null);
+    } catch (error) {
+      setFormSuccess(null);
+      setFormError(error instanceof Error ? error.message : "Failed to read JSON schema file.");
+    }
+  }
+
   if (classQuery.isLoading) {
     return <div className="card">Loading class...</div>;
   }
@@ -248,6 +268,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
               onChange={(event) => setJsonSchemaInput(event.target.value)}
               placeholder='{"type":"object","properties":{"name":{"type":"string"}}}'
             />
+            <input type="file" accept=".json,application/json" onChange={onJsonSchemaFileChange} />
           </label>
 
           <label className="control-check">

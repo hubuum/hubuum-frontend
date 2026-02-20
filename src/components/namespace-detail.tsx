@@ -12,6 +12,7 @@ import {
   getApiV1IamUsersByUserIdGroups,
   getApiV1NamespacesByNamespaceId,
   getApiV1NamespacesByNamespaceIdPermissions,
+  getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
   patchApiV1NamespacesByNamespaceId,
   postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId
 } from "@/lib/api/generated/client";
@@ -56,41 +57,131 @@ type PermissionFlagField =
 type PermissionDefinition = {
   value: PermissionName;
   label: string;
+  formLabel: string;
   field: PermissionFlagField;
+  section: PermissionSection;
 };
 
+type PermissionSection = "namespace" | "class" | "object" | "class_relation" | "object_relation";
+
+const PERMISSION_SECTIONS: { key: PermissionSection; label: string }[] = [
+  { key: "namespace", label: "Namespace" },
+  { key: "class", label: "Class" },
+  { key: "object", label: "Object" },
+  { key: "class_relation", label: "Class relation" },
+  { key: "object_relation", label: "Object relation" }
+];
+
 const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
-  { value: PermissionValues.ReadCollection, label: "Read namespace", field: "has_read_namespace" },
-  { value: PermissionValues.UpdateCollection, label: "Update namespace", field: "has_update_namespace" },
-  { value: PermissionValues.DeleteCollection, label: "Delete namespace", field: "has_delete_namespace" },
-  { value: PermissionValues.DelegateCollection, label: "Delegate namespace", field: "has_delegate_namespace" },
-  { value: PermissionValues.CreateClass, label: "Create class", field: "has_create_class" },
-  { value: PermissionValues.ReadClass, label: "Read class", field: "has_read_class" },
-  { value: PermissionValues.UpdateClass, label: "Update class", field: "has_update_class" },
-  { value: PermissionValues.DeleteClass, label: "Delete class", field: "has_delete_class" },
-  { value: PermissionValues.CreateObject, label: "Create object", field: "has_create_object" },
-  { value: PermissionValues.ReadObject, label: "Read object", field: "has_read_object" },
-  { value: PermissionValues.UpdateObject, label: "Update object", field: "has_update_object" },
-  { value: PermissionValues.DeleteObject, label: "Delete object", field: "has_delete_object" },
-  { value: PermissionValues.CreateClassRelation, label: "Create class relation", field: "has_create_class_relation" },
-  { value: PermissionValues.ReadClassRelation, label: "Read class relation", field: "has_read_class_relation" },
-  { value: PermissionValues.UpdateClassRelation, label: "Update class relation", field: "has_update_class_relation" },
-  { value: PermissionValues.DeleteClassRelation, label: "Delete class relation", field: "has_delete_class_relation" },
+  {
+    value: PermissionValues.ReadCollection,
+    label: "Read namespace",
+    formLabel: "Read",
+    field: "has_read_namespace",
+    section: "namespace"
+  },
+  {
+    value: PermissionValues.UpdateCollection,
+    label: "Update namespace",
+    formLabel: "Update",
+    field: "has_update_namespace",
+    section: "namespace"
+  },
+  {
+    value: PermissionValues.DeleteCollection,
+    label: "Delete namespace",
+    formLabel: "Delete",
+    field: "has_delete_namespace",
+    section: "namespace"
+  },
+  {
+    value: PermissionValues.DelegateCollection,
+    label: "Delegate namespace",
+    formLabel: "Delegate",
+    field: "has_delegate_namespace",
+    section: "namespace"
+  },
+  { value: PermissionValues.CreateClass, label: "Create class", formLabel: "Create", field: "has_create_class", section: "class" },
+  { value: PermissionValues.ReadClass, label: "Read class", formLabel: "Read", field: "has_read_class", section: "class" },
+  { value: PermissionValues.UpdateClass, label: "Update class", formLabel: "Update", field: "has_update_class", section: "class" },
+  { value: PermissionValues.DeleteClass, label: "Delete class", formLabel: "Delete", field: "has_delete_class", section: "class" },
+  {
+    value: PermissionValues.CreateObject,
+    label: "Create object",
+    formLabel: "Create",
+    field: "has_create_object",
+    section: "object"
+  },
+  { value: PermissionValues.ReadObject, label: "Read object", formLabel: "Read", field: "has_read_object", section: "object" },
+  {
+    value: PermissionValues.UpdateObject,
+    label: "Update object",
+    formLabel: "Update",
+    field: "has_update_object",
+    section: "object"
+  },
+  {
+    value: PermissionValues.DeleteObject,
+    label: "Delete object",
+    formLabel: "Delete",
+    field: "has_delete_object",
+    section: "object"
+  },
+  {
+    value: PermissionValues.CreateClassRelation,
+    label: "Create class relation",
+    formLabel: "Create",
+    field: "has_create_class_relation",
+    section: "class_relation"
+  },
+  {
+    value: PermissionValues.ReadClassRelation,
+    label: "Read class relation",
+    formLabel: "Read",
+    field: "has_read_class_relation",
+    section: "class_relation"
+  },
+  {
+    value: PermissionValues.UpdateClassRelation,
+    label: "Update class relation",
+    formLabel: "Update",
+    field: "has_update_class_relation",
+    section: "class_relation"
+  },
+  {
+    value: PermissionValues.DeleteClassRelation,
+    label: "Delete class relation",
+    formLabel: "Delete",
+    field: "has_delete_class_relation",
+    section: "class_relation"
+  },
   {
     value: PermissionValues.CreateObjectRelation,
     label: "Create object relation",
-    field: "has_create_object_relation"
+    formLabel: "Create",
+    field: "has_create_object_relation",
+    section: "object_relation"
   },
-  { value: PermissionValues.ReadObjectRelation, label: "Read object relation", field: "has_read_object_relation" },
+  {
+    value: PermissionValues.ReadObjectRelation,
+    label: "Read object relation",
+    formLabel: "Read",
+    field: "has_read_object_relation",
+    section: "object_relation"
+  },
   {
     value: PermissionValues.UpdateObjectRelation,
     label: "Update object relation",
-    field: "has_update_object_relation"
+    formLabel: "Update",
+    field: "has_update_object_relation",
+    section: "object_relation"
   },
   {
     value: PermissionValues.DeleteObjectRelation,
     label: "Delete object relation",
-    field: "has_delete_object_relation"
+    formLabel: "Delete",
+    field: "has_delete_object_relation",
+    section: "object_relation"
   }
 ];
 
@@ -161,9 +252,42 @@ function getEnabledPermissions(permissionRecord: Permission): PermissionName[] {
   return PERMISSION_DEFINITIONS.filter((definition) => permissionRecord[definition.field]).map((definition) => definition.value);
 }
 
-function formatPermissionLabels(permissionRecord: Permission): string[] {
-  const active = new Set(getEnabledPermissions(permissionRecord));
-  return PERMISSION_DEFINITIONS.filter((definition) => active.has(definition.value)).map((definition) => definition.label);
+type PermissionChip = {
+  label: string;
+  enabled: boolean;
+};
+
+function getPermissionChips(permissionRecord: Permission): PermissionChip[] {
+  return PERMISSION_DEFINITIONS.map((definition) => ({
+    label: definition.label,
+    enabled: permissionRecord[definition.field]
+  }));
+}
+
+function hasAllSubmittedPermissions(submitted: PermissionName[], persisted: PermissionName[]): boolean {
+  const persistedSet = new Set(persisted);
+  for (const permission of submitted) {
+    if (!persistedSet.has(permission)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function arePermissionSetsEqual(left: PermissionName[], right: PermissionName[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  const rightSet = new Set(right);
+  for (const permission of left) {
+    if (!rightSet.has(permission)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetailProps) {
@@ -171,9 +295,10 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [permissionGroupId, setPermissionGroupId] = useState("");
-  const [selectedPermissions, setSelectedPermissions] = useState<PermissionName[]>([]);
-  const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
+  const [addingGroupPermissions, setAddingGroupPermissions] = useState(false);
+  const [newPermissionGroupId, setNewPermissionGroupId] = useState("");
+  const [newSelectedPermissions, setNewSelectedPermissions] = useState<PermissionName[]>([]);
+  const [permissionDrafts, setPermissionDrafts] = useState<Record<number, PermissionName[]>>({});
   const [permissionsError, setPermissionsError] = useState<string | null>(null);
   const [permissionsSuccess, setPermissionsSuccess] = useState<string | null>(null);
   const [pendingRevokeGroupId, setPendingRevokeGroupId] = useState<number | null>(null);
@@ -245,7 +370,7 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
     }
   });
   const upsertPermissionsMutation = useMutation({
-    mutationFn: async (payload: { groupId: number; permissions: PermissionName[] }) => {
+    mutationFn: async (payload: { groupId: number; permissions: PermissionName[]; mode: "create" | "edit" }) => {
       const response = await postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId(
         namespaceId,
         payload.groupId,
@@ -258,13 +383,34 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
       if (response.status !== 201) {
         throw new Error(getApiErrorMessage(response.data, "Failed to update namespace permissions."));
       }
+
+      const verificationResponse = await getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId(namespaceId, payload.groupId, {
+        credentials: "include"
+      });
+      if (verificationResponse.status !== 200) {
+        throw new Error(getApiErrorMessage(verificationResponse.data, "Permission update could not be verified."));
+      }
+
+      const persistedPermissions = getEnabledPermissions(verificationResponse.data);
+      if (!hasAllSubmittedPermissions(payload.permissions, persistedPermissions)) {
+        throw new Error("Permission update was accepted, but one or more submitted permissions are missing from the saved set.");
+      }
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["namespace", namespaceId, "permissions"] });
+    onSuccess: async (_, payload) => {
+      await queryClient.refetchQueries({ queryKey: ["namespace", namespaceId, "permissions"], exact: true, type: "active" });
       setPermissionsError(null);
-      setPermissionsSuccess(editingGroupId === null ? "Permissions granted." : "Permissions updated.");
-      setEditingGroupId(null);
-      setSelectedPermissions([]);
+      setPermissionsSuccess(payload.mode === "create" ? "Permissions granted." : "Permissions updated.");
+      if (payload.mode === "create") {
+        setAddingGroupPermissions(false);
+        setNewPermissionGroupId("");
+        setNewSelectedPermissions([]);
+      } else {
+        setPermissionDrafts((current) => {
+          const next = { ...current };
+          delete next[payload.groupId];
+          return next;
+        });
+      }
     },
     onError: (error) => {
       setPermissionsSuccess(null);
@@ -290,9 +436,12 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
       await queryClient.invalidateQueries({ queryKey: ["namespace", namespaceId, "permissions"] });
       setPermissionsError(null);
       setPermissionsSuccess("Permissions revoked.");
-      if (editingGroupId !== null && editingGroupId === pendingRevokeGroupId) {
-        setEditingGroupId(null);
-        setSelectedPermissions([]);
+      if (pendingRevokeGroupId !== null) {
+        setPermissionDrafts((current) => {
+          const next = { ...current };
+          delete next[pendingRevokeGroupId];
+          return next;
+        });
       }
     },
     onError: (error) => {
@@ -313,15 +462,6 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
     setDescription(namespaceQuery.data.description ?? "");
     setInitialized(true);
   }, [initialized, namespaceQuery.data]);
-
-  useEffect(() => {
-    const groups = groupsQuery.data ?? [];
-    if (permissionGroupId || groups.length === 0) {
-      return;
-    }
-
-    setPermissionGroupId(String(groups[0].id));
-  }, [permissionGroupId, groupsQuery.data]);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -344,54 +484,130 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
     deleteMutation.mutate();
   }
 
-  function togglePermission(permission: PermissionName, checked: boolean) {
-    setSelectedPermissions((current) => {
-      const currentSet = new Set(current);
-      if (checked) {
-        currentSet.add(permission);
-      } else {
-        currentSet.delete(permission);
-      }
+  function togglePermissionList(current: PermissionName[], permission: PermissionName, checked: boolean): PermissionName[] {
+    const currentSet = new Set(current);
+    if (checked) {
+      currentSet.add(permission);
+    } else {
+      currentSet.delete(permission);
+    }
 
-      return Array.from(currentSet);
+    return Array.from(currentSet);
+  }
+
+  function toggleNewPermission(permission: PermissionName, checked: boolean) {
+    setNewSelectedPermissions((current) => {
+      return togglePermissionList(current, permission, checked);
     });
   }
 
-  function onEditPermissionEntry(entry: GroupPermission) {
-    setEditingGroupId(entry.group.id);
-    setPermissionGroupId(String(entry.group.id));
-    setSelectedPermissions(getEnabledPermissions(entry.permission));
-    setPermissionsError(null);
-    setPermissionsSuccess(null);
+  function toggleRowPermission(entry: GroupPermission, permission: PermissionName, checked: boolean) {
+    const basePermissions = getEnabledPermissions(entry.permission);
+    setPermissionDrafts((current) => {
+      const currentPermissions = current[entry.group.id] ?? basePermissions;
+      const nextPermissions = togglePermissionList(currentPermissions, permission, checked);
+
+      if (arePermissionSetsEqual(nextPermissions, basePermissions)) {
+        const next = { ...current };
+        delete next[entry.group.id];
+        return next;
+      }
+
+      return {
+        ...current,
+        [entry.group.id]: nextPermissions
+      };
+    });
   }
 
   function onResetPermissionEditor() {
-    setEditingGroupId(null);
-    setSelectedPermissions([]);
+    setAddingGroupPermissions(false);
+    setNewPermissionGroupId("");
+    setNewSelectedPermissions([]);
+    setPermissionDrafts({});
     setPermissionsError(null);
     setPermissionsSuccess(null);
   }
 
-  function onSubmitPermissions(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function onStartAddPermissions() {
+    setPermissionsError(null);
+    setPermissionsSuccess(null);
+    setNewSelectedPermissions([]);
+    setAddingGroupPermissions(true);
+
+    const groups = groupsQuery.data ?? [];
+    const assignedGroupIds = new Set((permissionsQuery.data ?? []).map((entry) => entry.group.id));
+    const availableGroups = groups.filter((group) => !assignedGroupIds.has(group.id));
+    setNewPermissionGroupId(availableGroups.length > 0 ? String(availableGroups[0].id) : "");
+  }
+
+  function onSaveRowPermissions(entry: GroupPermission) {
     setPermissionsError(null);
     setPermissionsSuccess(null);
 
-    const parsedGroupId = Number.parseInt(permissionGroupId, 10);
+    const rowPermissions = permissionDrafts[entry.group.id] ?? getEnabledPermissions(entry.permission);
+    if (rowPermissions.length === 0) {
+      setPermissionsError("Select at least one permission, or use Revoke.");
+      return;
+    }
+
+    upsertPermissionsMutation.mutate({
+      groupId: entry.group.id,
+      permissions: rowPermissions,
+      mode: "edit"
+    });
+  }
+
+  function onSaveNewPermissions() {
+    setPermissionsError(null);
+    setPermissionsSuccess(null);
+
+    const parsedGroupId = Number.parseInt(newPermissionGroupId, 10);
     if (!Number.isFinite(parsedGroupId) || parsedGroupId < 1) {
       setPermissionsError("Group is required.");
       return;
     }
 
-    if (selectedPermissions.length === 0) {
+    if (newSelectedPermissions.length === 0) {
       setPermissionsError("Select at least one permission.");
       return;
     }
 
     upsertPermissionsMutation.mutate({
       groupId: parsedGroupId,
-      permissions: selectedPermissions
+      permissions: newSelectedPermissions,
+      mode: "create"
     });
+  }
+
+  function renderPermissionEditor(
+    selectedPermissionSet: Set<PermissionName>,
+    onToggle: (permission: PermissionName, checked: boolean) => void
+  ) {
+    return (
+      <div className="permission-editor-grid">
+        {PERMISSION_SECTIONS.map((section) => (
+          <div key={section.key} className="permission-section">
+            <p className="permission-section-title">{section.label}</p>
+            <div className="permission-chip-list">
+              {PERMISSION_DEFINITIONS.filter((definition) => definition.section === section.key).map((definition) => {
+                const enabled = selectedPermissionSet.has(definition.value);
+                return (
+                  <button
+                    key={definition.value}
+                    type="button"
+                    className={`permission-chip permission-chip-button ${enabled ? "permission-chip--active" : "permission-chip--inactive"}`}
+                    onClick={() => onToggle(definition.value, !enabled)}
+                  >
+                    {definition.formLabel}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   function onRevokePermissions(groupId: number) {
@@ -401,6 +617,40 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
 
     revokePermissionsMutation.mutate(groupId);
   }
+
+  const groups = groupsQuery.data ?? [];
+  const permissionEntries = permissionsQuery.data ?? [];
+  const assignedGroupIds = new Set(permissionEntries.map((entry) => entry.group.id));
+  const availableGroups = groups.filter((group) => !assignedGroupIds.has(group.id));
+  const usingGroupSelect = groups.length > 0 && !groupsQuery.isError;
+  const currentUserGroupIds = new Set((currentUserGroupsQuery.data ?? []).map((group) => group.id));
+  const canManagePermissions = permissionEntries.some(
+    (entry) => entry.permission.has_delegate_namespace && currentUserGroupIds.has(entry.group.id)
+  );
+  const newSelectedPermissionSet = new Set(newSelectedPermissions);
+  const sortedPermissionEntries = [...permissionEntries].sort((left, right) =>
+    left.group.groupname.localeCompare(right.group.groupname)
+  );
+  const canCheckPermissionMembership = Boolean(currentUsername);
+  const checkingPermissionMembership = canCheckPermissionMembership && (permissionsQuery.isLoading || currentUserGroupsQuery.isLoading);
+  const hasAnyPermissionRows = sortedPermissionEntries.length > 0 || (canManagePermissions && addingGroupPermissions);
+  const hasDirtyRowDrafts = Object.keys(permissionDrafts).length > 0;
+
+  useEffect(() => {
+    if (!addingGroupPermissions || !usingGroupSelect) {
+      return;
+    }
+
+    if (availableGroups.length === 0) {
+      setNewPermissionGroupId("");
+      return;
+    }
+
+    const currentGroupStillAvailable = availableGroups.some((group) => String(group.id) === newPermissionGroupId);
+    if (!currentGroupStillAvailable) {
+      setNewPermissionGroupId(String(availableGroups[0].id));
+    }
+  }, [addingGroupPermissions, availableGroups, newPermissionGroupId, usingGroupSelect]);
 
   if (namespaceQuery.isLoading) {
     return <div className="card">Loading namespace...</div>;
@@ -418,19 +668,6 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
   if (!namespaceData) {
     return <div className="card error-banner">Namespace data is unavailable.</div>;
   }
-
-  const groups = groupsQuery.data ?? [];
-  const permissionEntries = permissionsQuery.data ?? [];
-  const currentUserGroupIds = new Set((currentUserGroupsQuery.data ?? []).map((group) => group.id));
-  const canManagePermissions = permissionEntries.some(
-    (entry) => entry.permission.has_delegate_namespace && currentUserGroupIds.has(entry.group.id)
-  );
-  const selectedPermissionSet = new Set(selectedPermissions);
-  const sortedPermissionEntries = [...permissionEntries].sort((left, right) =>
-    left.group.groupname.localeCompare(right.group.groupname)
-  );
-  const canCheckPermissionMembership = Boolean(currentUsername);
-  const checkingPermissionMembership = canCheckPermissionMembership && (permissionsQuery.isLoading || currentUserGroupsQuery.isLoading);
 
   return (
     <section className="stack">
@@ -482,76 +719,28 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
         </header>
 
         {canManagePermissions ? (
-          <form className="stack" onSubmit={onSubmitPermissions}>
-            <div className="form-grid">
-              <div className="control-field">
-                <label htmlFor="namespace-permissions-group">Group</label>
-                {groups.length > 0 ? (
-                  <select
-                    id="namespace-permissions-group"
-                    value={permissionGroupId}
-                    onChange={(event) => setPermissionGroupId(event.target.value)}
-                    required
-                  >
-                    {groups.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.groupname} (#{group.id})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    id="namespace-permissions-group"
-                    type="number"
-                    min={1}
-                    value={permissionGroupId}
-                    onChange={(event) => setPermissionGroupId(event.target.value)}
-                    placeholder={groupsQuery.isLoading ? "Loading groups..." : "Enter group ID"}
-                    disabled={groupsQuery.isLoading}
-                    required
-                  />
-                )}
-              </div>
-
-              <div className="control-field control-field--wide">
-                <span>Permission set</span>
-                <div className="permissions-grid">
-                  {PERMISSION_DEFINITIONS.map((definition) => (
-                    <label key={definition.value} className="control-check permission-check">
-                      <input
-                        type="checkbox"
-                        checked={selectedPermissionSet.has(definition.value)}
-                        onChange={(event) => togglePermission(definition.value, event.target.checked)}
-                      />
-                      <span>{definition.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {permissionsError ? <div className="error-banner">{permissionsError}</div> : null}
-            {permissionsSuccess ? <div className="muted">{permissionsSuccess}</div> : null}
+          <div className="form-actions">
+            <button
+              type="button"
+              className="ghost"
+              onClick={onStartAddPermissions}
+              disabled={
+                addingGroupPermissions ||
+                hasDirtyRowDrafts ||
+                upsertPermissionsMutation.isPending ||
+                (usingGroupSelect && availableGroups.length === 0)
+              }
+            >
+              {usingGroupSelect && availableGroups.length === 0 ? "All groups assigned" : "Add group permissions"}
+            </button>
             {groupsQuery.isError ? (
-              <div className="muted">Could not load groups automatically. Manual group ID entry is enabled.</div>
+              <span className="muted">Could not load groups automatically. You can enter a group ID manually.</span>
             ) : null}
-
-            <div className="form-actions">
-              <button type="submit" disabled={upsertPermissionsMutation.isPending}>
-                {upsertPermissionsMutation.isPending
-                  ? "Saving permissions..."
-                  : editingGroupId === null
-                    ? "Grant permissions"
-                    : "Save permission set"}
-              </button>
-              {editingGroupId !== null ? (
-                <button type="button" className="ghost" onClick={onResetPermissionEditor} disabled={upsertPermissionsMutation.isPending}>
-                  Cancel edit
-                </button>
-              ) : null}
-            </div>
-          </form>
+          </div>
         ) : null}
+
+        {permissionsError ? <div className="error-banner">{permissionsError}</div> : null}
+        {permissionsSuccess ? <div className="muted">{permissionsSuccess}</div> : null}
 
         {permissionsQuery.isLoading ? (
           <div className="muted">Loading namespace permissions...</div>
@@ -560,7 +749,7 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
             Failed to load namespace permissions.{" "}
             {permissionsQuery.error instanceof Error ? permissionsQuery.error.message : "Unknown error"}
           </div>
-        ) : sortedPermissionEntries.length === 0 ? (
+        ) : !hasAnyPermissionRows ? (
           <div className="muted">No group permissions are currently assigned for this namespace.</div>
         ) : (
           <div className="table-wrap">
@@ -574,10 +763,71 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
                 </tr>
               </thead>
               <tbody>
+                {canManagePermissions && addingGroupPermissions ? (
+                  <tr>
+                    <td>
+                      {usingGroupSelect ? (
+                        availableGroups.length > 0 ? (
+                          <select
+                            value={newPermissionGroupId}
+                            onChange={(event) => setNewPermissionGroupId(event.target.value)}
+                            aria-label="Select group to grant permissions"
+                          >
+                            {availableGroups.map((group) => (
+                              <option key={group.id} value={group.id}>
+                                {group.groupname} (#{group.id})
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="muted">All groups already have permissions.</span>
+                        )
+                      ) : (
+                        <input
+                          type="number"
+                          min={1}
+                          value={newPermissionGroupId}
+                          onChange={(event) => setNewPermissionGroupId(event.target.value)}
+                          placeholder={groupsQuery.isLoading ? "Loading groups..." : "Enter group ID"}
+                          disabled={groupsQuery.isLoading}
+                          required
+                        />
+                      )}
+                    </td>
+                    <td>{renderPermissionEditor(newSelectedPermissionSet, toggleNewPermission)}</td>
+                    <td>-</td>
+                    <td>
+                      <div className="table-tools">
+                        <button
+                          type="button"
+                          onClick={onSaveNewPermissions}
+                          disabled={
+                            upsertPermissionsMutation.isPending ||
+                            newSelectedPermissions.length === 0 ||
+                            (usingGroupSelect && availableGroups.length === 0)
+                          }
+                        >
+                          {upsertPermissionsMutation.isPending ? "Saving..." : "Grant"}
+                        </button>
+                        <button type="button" className="ghost" onClick={onResetPermissionEditor} disabled={upsertPermissionsMutation.isPending}>
+                          Cancel
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
                 {sortedPermissionEntries.map((entry) => {
-                  const labels = formatPermissionLabels(entry.permission);
+                  const basePermissions = getEnabledPermissions(entry.permission);
+                  const draftPermissions = permissionDrafts[entry.group.id] ?? basePermissions;
+                  const draftPermissionSet = new Set(draftPermissions);
+                  const isRowDirty = Object.hasOwn(permissionDrafts, entry.group.id);
+                  const isSavingRow = upsertPermissionsMutation.isPending && isRowDirty;
+                  const chips = getPermissionChips(entry.permission);
                   const isRevokePending =
                     revokePermissionsMutation.isPending && pendingRevokeGroupId !== null && pendingRevokeGroupId === entry.group.id;
+                  const revokeDisabled =
+                    isRevokePending || upsertPermissionsMutation.isPending || addingGroupPermissions || isRowDirty;
+                  const actionDisabled = !isRowDirty || upsertPermissionsMutation.isPending || addingGroupPermissions;
 
                   return (
                     <tr key={entry.permission.id}>
@@ -585,11 +835,18 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
                         {entry.group.groupname} (#{entry.group.id})
                       </td>
                       <td>
-                        {labels.length > 0 ? (
+                        {canManagePermissions ? (
+                          renderPermissionEditor(draftPermissionSet, (permission, checked) =>
+                            toggleRowPermission(entry, permission, checked)
+                          )
+                        ) : chips.length > 0 ? (
                           <div className="permission-chip-list">
-                            {labels.map((label) => (
-                              <span key={label} className="permission-chip">
-                                {label}
+                            {chips.map((chip) => (
+                              <span
+                                key={chip.label}
+                                className={`permission-chip ${chip.enabled ? "permission-chip--active" : "permission-chip--inactive"}`}
+                              >
+                                {chip.label}
                               </span>
                             ))}
                           </div>
@@ -601,14 +858,30 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
                       {canManagePermissions ? (
                         <td>
                           <div className="table-tools">
-                            <button type="button" className="ghost" onClick={() => onEditPermissionEntry(entry)}>
-                              Edit
+                            <button type="button" className="ghost" onClick={() => onSaveRowPermissions(entry)} disabled={actionDisabled}>
+                              {isSavingRow ? "Saving..." : isRowDirty ? "Save" : "Edit"}
                             </button>
+                            {isRowDirty ? (
+                              <button
+                                type="button"
+                                className="ghost"
+                                onClick={() =>
+                                  setPermissionDrafts((current) => {
+                                    const next = { ...current };
+                                    delete next[entry.group.id];
+                                    return next;
+                                  })
+                                }
+                                disabled={upsertPermissionsMutation.isPending}
+                              >
+                                Cancel
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               className="danger"
                               onClick={() => onRevokePermissions(entry.group.id)}
-                              disabled={isRevokePending}
+                              disabled={revokeDisabled}
                             >
                               {isRevokePending ? "Revoking..." : "Revoke"}
                             </button>

@@ -685,12 +685,36 @@ body.modal-open {
 
 .permissions-grid {
   display: grid;
-  gap: 0.55rem;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: start;
   padding: 0.65rem;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--field-bg);
+}
+
+.permission-editor-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.permission-section {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  background: var(--bg-highlight);
+}
+
+.permission-section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .permission-check {
@@ -710,7 +734,28 @@ body.modal-open {
   border-radius: 999px;
   padding: 0.22rem 0.55rem;
   font-size: 0.82rem;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+.permission-chip--active {
   background: var(--accent-soft);
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
+  color: var(--ink);
+}
+
+.permission-chip--inactive {
+  background: transparent;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.permission-chip-button {
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--line);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
 }
 
 .relation-create-grid {
