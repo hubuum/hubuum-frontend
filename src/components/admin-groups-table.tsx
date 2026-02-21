@@ -2,8 +2,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 
-import { deleteApiV1IamGroupsByGroupId, getApiV1IamGroups, postApiV1IamGroups } from "@/lib/api/generated/client";
+import {
+  deleteApiV1IamGroupsByGroupId,
+  getApiV1IamGroups,
+  getApiV1IamGroupsByGroupIdMembers,
+  postApiV1IamGroups
+} from "@/lib/api/generated/client";
 import { CreateModal } from "@/components/create-modal";
 import type { Group, NewGroup } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -21,6 +27,18 @@ async function fetchGroups(): Promise<Group[]> {
   return response.data;
 }
 
+async function fetchGroupMemberCount(groupId: number): Promise<number> {
+  const response = await getApiV1IamGroupsByGroupIdMembers(groupId, {
+    credentials: "include"
+  });
+
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(response.data, `Failed to load members for group #${groupId}.`));
+  }
+
+  return response.data.length;
+}
+
 export function AdminGroupsTable() {
   const queryClient = useQueryClient();
   const [groupname, setGroupname] = useState("");
@@ -35,6 +53,21 @@ export function AdminGroupsTable() {
     queryKey: ["admin-groups"],
     queryFn: fetchGroups
   });
+  const groups = query.data ?? [];
+  const groupIdsKey = groups.map((group) => group.id).join(",");
+  const memberCountsQuery = useQuery({
+    queryKey: ["admin-group-member-counts", groupIdsKey],
+    queryFn: async () => {
+      const counts = await Promise.all(
+        groups.map(async (group) => {
+          const count = await fetchGroupMemberCount(group.id);
+          return [group.id, count] as const;
+        })
+      );
+      return Object.fromEntries(counts) as Record<number, number>;
+    },
+    enabled: groups.length > 0
+  });
   const createMutation = useMutation({
     mutationFn: async (payload: NewGroup) => {
       const response = await postApiV1IamGroups(payload, {
@@ -48,6 +81,7 @@ export function AdminGroupsTable() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin-groups"] });
       await queryClient.invalidateQueries({ queryKey: ["groups"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-group-member-counts"] });
       setGroupname("");
       setDescription("");
       setFormError(null);
@@ -80,6 +114,7 @@ export function AdminGroupsTable() {
     onSuccess: async (count) => {
       await queryClient.invalidateQueries({ queryKey: ["admin-groups"] });
       await queryClient.invalidateQueries({ queryKey: ["groups"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-group-member-counts"] });
       setSelectedGroupIds([]);
       setTableError(null);
       setTableSuccess(`${count} group${count === 1 ? "" : "s"} deleted.`);
@@ -89,7 +124,6 @@ export function AdminGroupsTable() {
       setTableError(error instanceof Error ? error.message : "Failed to delete selected groups.");
     }
   });
-
   useEffect(() => {
     const onOpenCreate = (event: Event) => {
       const customEvent = event as CustomEvent<OpenCreateEventDetail>;
@@ -105,8 +139,6 @@ export function AdminGroupsTable() {
     window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
     return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
   }, []);
-
-  const groups = query.data ?? [];
   const allSelected = groups.length > 0 && selectedGroupIds.length === groups.length;
 
   useEffect(() => {
@@ -251,6 +283,11 @@ export function AdminGroupsTable() {
         </div>
         {tableError ? <div className="error-banner">{tableError}</div> : null}
         {tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
+        {memberCountsQuery.isError ? (
+          <div className="muted">
+            Could not load member counts. {memberCountsQuery.error instanceof Error ? memberCountsQuery.error.message : ""}
+          </div>
+        ) : null}
 
         <table>
           <thead>
@@ -266,6 +303,7 @@ export function AdminGroupsTable() {
               <th>ID</th>
               <th>Group name</th>
               <th>Description</th>
+              <th>Members</th>
               <th>Created</th>
               <th>Updated</th>
             </tr>
@@ -282,8 +320,13 @@ export function AdminGroupsTable() {
                   />
                 </td>
                 <td>{group.id}</td>
-                <td>{group.groupname}</td>
+                <td>
+                  <Link className="row-link" href={`/admin/groups/${group.id}`}>
+                    {group.groupname}
+                  </Link>
+                </td>
                 <td>{group.description || "-"}</td>
+                <td>{memberCountsQuery.isLoading ? "…" : memberCountsQuery.data?.[group.id] ?? 0}</td>
                 <td>{new Date(group.created_at).toLocaleString()}</td>
                 <td>{new Date(group.updated_at).toLocaleString()}</td>
               </tr>

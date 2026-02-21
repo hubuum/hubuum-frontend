@@ -7,7 +7,7 @@ import { type ChangeEvent, ReactNode, useEffect, useMemo, useRef, useState } fro
 
 import { LogoutButton } from "@/components/logout-button";
 import { getApiV1Classes } from "@/lib/api/generated/client";
-import type { HubuumClassExpanded } from "@/lib/api/generated/models";
+import type { HubuumClassExpanded, HubuumObject } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { OPEN_CREATE_EVENT, type CreateSection } from "@/lib/create-events";
 
@@ -28,7 +28,7 @@ type NavItem = {
 const SIDEBAR_COLLAPSED_KEY = "hubuum.sidebar.collapsed";
 const THEME_PREFERENCE_KEY = "hubuum.theme";
 
-async function fetchObjectClassOptions(): Promise<HubuumClassExpanded[]> {
+async function fetchTopbarClassOptions(): Promise<HubuumClassExpanded[]> {
   const response = await getApiV1Classes({
     credentials: "include"
   });
@@ -38,6 +38,41 @@ async function fetchObjectClassOptions(): Promise<HubuumClassExpanded[]> {
   }
 
   return response.data;
+}
+
+async function parseJsonPayload(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchRelationsObjectOptions(classId: number): Promise<HubuumObject[]> {
+  const response = await fetch(`/api/classes/${classId}/objects`, {
+    credentials: "include"
+  });
+  const payload = await parseJsonPayload(response);
+
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(payload, "Failed to load objects."));
+  }
+
+  if (!Array.isArray(payload)) {
+    throw new Error("Unexpected objects payload.");
+  }
+
+  return payload as HubuumObject[];
+}
+
+function parseId(value: string): number | null {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 function resolveTheme(preference: ThemePreference): "light" | "dark" {
@@ -312,19 +347,44 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
   const sectionLabel = useMemo(() => getSectionLabel(pathname), [pathname]);
   const createSection = useMemo(() => getCreateSection(pathname), [pathname]);
   const relationsView = useMemo(() => getRelationsView(pathname), [pathname]);
+  const isRelationsRoute = relationsView !== null;
   const isObjectsListRoute = pathname === "/objects";
+  const selectedRelationsClassId = searchParams.get("classId") ?? "";
+  const selectedRelationsObjectId = searchParams.get("objectId") ?? "";
   const selectedObjectsClassId = searchParams.get("classId") ?? "";
-  const objectsClassOptionsQuery = useQuery({
-    queryKey: ["classes", "objects-topbar"],
-    queryFn: fetchObjectClassOptions,
-    enabled: isObjectsListRoute
+  const topbarClassOptionsQuery = useQuery({
+    queryKey: ["classes", "topbar-context"],
+    queryFn: fetchTopbarClassOptions,
+    enabled: isObjectsListRoute || isRelationsRoute
   });
-  const objectsClassOptions = objectsClassOptionsQuery.data ?? [];
+  const topbarClassOptions = topbarClassOptionsQuery.data ?? [];
   const resolvedObjectsClassId = useMemo(() => {
-    return objectsClassOptions.some((classItem) => String(classItem.id) === selectedObjectsClassId)
+    return topbarClassOptions.some((classItem) => String(classItem.id) === selectedObjectsClassId)
       ? selectedObjectsClassId
       : "";
-  }, [objectsClassOptions, selectedObjectsClassId]);
+  }, [selectedObjectsClassId, topbarClassOptions]);
+  const resolvedRelationsClassId = useMemo(() => {
+    return topbarClassOptions.some((classItem) => String(classItem.id) === selectedRelationsClassId)
+      ? selectedRelationsClassId
+      : topbarClassOptions.length
+        ? String(topbarClassOptions[0].id)
+        : "";
+  }, [selectedRelationsClassId, topbarClassOptions]);
+  const parsedResolvedRelationsClassId = useMemo(
+    () => parseId(resolvedRelationsClassId),
+    [resolvedRelationsClassId]
+  );
+  const relationsObjectOptionsQuery = useQuery({
+    queryKey: ["objects", "relations-topbar", parsedResolvedRelationsClassId],
+    queryFn: async () => fetchRelationsObjectOptions(parsedResolvedRelationsClassId ?? 0),
+    enabled: isRelationsRoute && parsedResolvedRelationsClassId !== null
+  });
+  const relationsObjectOptions = relationsObjectOptionsQuery.data ?? [];
+  const resolvedRelationsObjectId = useMemo(() => {
+    return relationsObjectOptions.some((objectItem) => String(objectItem.id) === selectedRelationsObjectId)
+      ? selectedRelationsObjectId
+      : "";
+  }, [relationsObjectOptions, selectedRelationsObjectId]);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
@@ -434,11 +494,6 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
     );
   }
 
-  function onRelationsViewChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextView = event.target.value === "objects" ? "objects" : "classes";
-    router.push(`/relations/${nextView}`);
-  }
-
   function onObjectsClassChange(event: ChangeEvent<HTMLSelectElement>) {
     const nextClassId = event.target.value;
     const params = new URLSearchParams(searchParams.toString());
@@ -451,6 +506,46 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 
     const query = params.toString();
     router.push(query ? `/objects?${query}` : "/objects");
+  }
+
+  function onRelationsClassChange(event: ChangeEvent<HTMLSelectElement>) {
+    const nextClassId = event.target.value;
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (nextClassId) {
+      params.set("classId", nextClassId);
+    } else {
+      params.delete("classId");
+    }
+
+    params.delete("objectId");
+    params.delete("objectView");
+
+    const query = params.toString();
+    router.push(query ? `/relations/classes?${query}` : "/relations/classes");
+  }
+
+  function onRelationsObjectChange(event: ChangeEvent<HTMLSelectElement>) {
+    const nextObjectId = event.target.value;
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (resolvedRelationsClassId) {
+      params.set("classId", resolvedRelationsClassId);
+    } else {
+      params.delete("classId");
+    }
+
+    if (nextObjectId) {
+      params.set("objectId", nextObjectId);
+      const query = params.toString();
+      router.push(query ? `/relations/objects?${query}` : "/relations/objects");
+      return;
+    }
+
+    params.delete("objectId");
+    params.delete("objectView");
+    const query = params.toString();
+    router.push(query ? `/relations/classes?${query}` : "/relations/classes");
   }
 
   return (
@@ -528,19 +623,72 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 
               <div className="topbar-title-row">
                 <p className="topbar-heading">{sectionLabel}</p>
-                {relationsView ? (
+                {isRelationsRoute ? (
                   <>
                     <span className="topbar-divider" aria-hidden="true">
                       /
                     </span>
                     <select
-                      aria-label="Relations view"
+                      aria-label="Relations class context"
                       className="topbar-inline-select"
-                      value={relationsView}
-                      onChange={onRelationsViewChange}
+                      value={resolvedRelationsClassId}
+                      onChange={onRelationsClassChange}
+                      disabled={
+                        topbarClassOptionsQuery.isLoading ||
+                        topbarClassOptionsQuery.isError ||
+                        topbarClassOptions.length === 0
+                      }
                     >
-                      <option value="classes">Classes</option>
-                      <option value="objects">Objects</option>
+                      {topbarClassOptionsQuery.isLoading ? <option value="">Loading classes...</option> : null}
+                      {topbarClassOptionsQuery.isError ? <option value="">Failed to load classes</option> : null}
+                      {!topbarClassOptionsQuery.isLoading &&
+                      !topbarClassOptionsQuery.isError &&
+                      topbarClassOptions.length === 0 ? (
+                        <option value="">No classes available</option>
+                      ) : null}
+                      {topbarClassOptions.map((hubuumClass) => (
+                        <option key={hubuumClass.id} value={hubuumClass.id}>
+                          {hubuumClass.name}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="topbar-divider" aria-hidden="true">
+                      /
+                    </span>
+                    <select
+                      aria-label="Relations object context"
+                      className="topbar-inline-select"
+                      value={resolvedRelationsObjectId}
+                      onChange={onRelationsObjectChange}
+                      disabled={
+                        !resolvedRelationsClassId ||
+                        relationsObjectOptionsQuery.isLoading ||
+                        relationsObjectOptionsQuery.isError
+                      }
+                    >
+                      <option value=""></option>
+                      {relationsObjectOptionsQuery.isLoading ? (
+                        <option value="" disabled>
+                          Loading objects...
+                        </option>
+                      ) : null}
+                      {relationsObjectOptionsQuery.isError ? (
+                        <option value="" disabled>
+                          Failed to load objects
+                        </option>
+                      ) : null}
+                      {!relationsObjectOptionsQuery.isLoading &&
+                      !relationsObjectOptionsQuery.isError &&
+                      relationsObjectOptions.length === 0 ? (
+                        <option value="" disabled>
+                          No objects available
+                        </option>
+                      ) : null}
+                      {relationsObjectOptions.map((objectItem) => (
+                        <option key={objectItem.id} value={objectItem.id}>
+                          {objectItem.name} (#{objectItem.id})
+                        </option>
+                      ))}
                     </select>
                   </>
                 ) : null}
@@ -553,19 +701,19 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
                       value={resolvedObjectsClassId}
                       onChange={onObjectsClassChange}
                       disabled={
-                        objectsClassOptionsQuery.isLoading ||
-                        objectsClassOptionsQuery.isError ||
-                        objectsClassOptions.length === 0
+                        topbarClassOptionsQuery.isLoading ||
+                        topbarClassOptionsQuery.isError ||
+                        topbarClassOptions.length === 0
                       }
                     >
-                      {objectsClassOptionsQuery.isLoading ? <option value="">Loading classes...</option> : null}
-                      {objectsClassOptionsQuery.isError ? <option value="">Failed to load classes</option> : null}
-                      {!objectsClassOptionsQuery.isLoading &&
-                      !objectsClassOptionsQuery.isError &&
-                      objectsClassOptions.length === 0 ? (
+                      {topbarClassOptionsQuery.isLoading ? <option value="">Loading classes...</option> : null}
+                      {topbarClassOptionsQuery.isError ? <option value="">Failed to load classes</option> : null}
+                      {!topbarClassOptionsQuery.isLoading &&
+                      !topbarClassOptionsQuery.isError &&
+                      topbarClassOptions.length === 0 ? (
                         <option value="">No classes available</option>
                       ) : null}
-                      {objectsClassOptions.map((hubuumClass) => (
+                      {topbarClassOptions.map((hubuumClass) => (
                         <option key={hubuumClass.id} value={hubuumClass.id}>
                           {hubuumClass.name}
                         </option>
