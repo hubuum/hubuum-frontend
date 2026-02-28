@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
 
@@ -296,7 +297,11 @@ export function AdminUsersTable() {
                   />
                 </td>
                 <td>{user.id}</td>
-                <td>{user.username}</td>
+                <td>
+                  <Link className="row-link" href={`/admin/users/${user.id}`}>
+                    {user.username}
+                  </Link>
+                </td>
                 <td>{user.email ?? "-"}</td>
                 <td>{new Date(user.created_at).toLocaleString()}</td>
                 <td>{new Date(user.updated_at).toLocaleString()}</td>

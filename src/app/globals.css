@@ -241,9 +241,17 @@ main {
   gap: 1rem;
 }
 
+.sidebar-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
 .sidebar-brand {
   display: grid;
   gap: 0.35rem;
+  min-width: 0;
 }
 
 .sidebar-title {
@@ -278,6 +286,14 @@ main {
   border: 1px solid transparent;
 }
 
+button.sidebar-link-button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .sidebar-link:hover {
   background: var(--accent-soft);
 }
@@ -308,6 +324,10 @@ main {
 .app-shell.sidebar-collapsed .sidebar-title,
 .app-shell.sidebar-collapsed .sidebar-text,
 .app-shell.sidebar-collapsed .sidebar-footer {
+  display: none;
+}
+
+.app-shell.sidebar-collapsed .sidebar-header {
   display: none;
 }
 
@@ -579,6 +599,30 @@ body.modal-open {
 
 .content .card {
   padding: 1rem;
+}
+
+.home-priority-card {
+  background:
+    linear-gradient(135deg, color-mix(in oklab, var(--accent-soft) 75%, var(--card)) 0%, var(--card) 55%),
+    var(--card);
+}
+
+.action-card {
+  align-content: space-between;
+}
+
+.action-card-header {
+  gap: 0.5rem;
+}
+
+.action-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.compact-stat-list {
+  gap: 0.35rem;
 }
 
 .stat-list {

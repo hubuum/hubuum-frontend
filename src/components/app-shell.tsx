@@ -96,6 +96,9 @@ function isLinkActive(pathname: string, href: string): boolean {
 }
 
 function getSectionLabel(pathname: string): string {
+  if (pathname.startsWith("/statistics")) {
+    return "Statistics";
+  }
   if (pathname.startsWith("/namespaces")) {
     return "Namespaces";
   }
@@ -117,7 +120,7 @@ function getSectionLabel(pathname: string): string {
   if (pathname.startsWith("/admin")) {
     return "Admin";
   }
-  return "Overview";
+  return "Home";
 }
 
 function getCreateSection(pathname: string): CreateSection | null {
@@ -179,6 +182,17 @@ function getRelationsView(pathname: string): "classes" | "objects" | null {
   }
 
   return null;
+}
+
+function IconHome() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 4.2 4 10.6V20h5.8v-5.2h4.4V20H20v-9.4zm8 7.1-8-6.4-8 6.4V8.8L12 2l8 6.8z"
+        fill="currentColor"
+      />
+    </svg>
+  );
 }
 
 function IconOverview() {
@@ -295,9 +309,9 @@ function IconPlus() {
 const workspaceLinks: NavItem[] = [
   {
     href: "/app",
-    label: "Overview",
-    icon: <IconOverview />,
-    hint: "Overview: system counts and database status"
+    label: "Home",
+    icon: <IconHome />,
+    hint: "Home: start from the task you want to complete"
   },
   {
     href: "/namespaces",
@@ -337,6 +351,15 @@ const adminLinks: NavItem[] = [
     label: "Groups",
     icon: <IconUsers />,
     hint: "Groups: manage role assignments"
+  }
+];
+
+const systemLinks: NavItem[] = [
+  {
+    href: "/statistics",
+    label: "Statistics",
+    icon: <IconOverview />,
+    hint: "Statistics: workspace counts and database status"
   }
 ];
 
@@ -553,14 +576,30 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
       <div className="app-layout">
         <aside className="sidebar card" aria-label="Primary navigation">
           <div className="sidebar-main">
-            <div className="sidebar-brand">
-              <p className="eyebrow sidebar-label">Hubuum</p>
-              <h1 className="sidebar-title">Console</h1>
+            <div className="sidebar-header">
+              <div className="sidebar-brand">
+                <p className="eyebrow sidebar-label">Hubuum</p>
+                <h1 className="sidebar-title">Console</h1>
+              </div>
             </div>
 
             <nav>
               <div className="sidebar-group">
                 <p className="sidebar-label">Workspace</p>
+                {isSidebarCollapsed ? (
+                  <button
+                    type="button"
+                    className="sidebar-link sidebar-link-button desktop-only"
+                    onClick={() => setSidebarCollapsed(false)}
+                    aria-label="Expand sidebar"
+                    data-tooltip="Expand sidebar"
+                  >
+                    <span className="sidebar-icon">
+                      <IconExpand />
+                    </span>
+                    <span className="sidebar-text">Expand sidebar</span>
+                  </button>
+                ) : null}
                 {workspaceLinks.map((item) => (
                   <Link
                     key={item.href}
@@ -592,6 +631,38 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
                   ))}
                 </div>
               ) : null}
+
+              <div className="sidebar-group">
+                {!isSidebarCollapsed ? <p className="sidebar-label">System</p> : null}
+                {systemLinks.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`sidebar-link ${isLinkActive(pathname, item.href) ? "active" : ""}`}
+                    aria-label={item.hint}
+                    data-tooltip={item.hint}
+                  >
+                    <span className="sidebar-icon">{item.icon}</span>
+                    <span className="sidebar-text">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+
+              {!isSidebarCollapsed ? (
+                <div className="sidebar-group desktop-only">
+                  <button
+                    type="button"
+                    className="sidebar-link sidebar-link-button"
+                    onClick={() => setSidebarCollapsed(true)}
+                    aria-label="Collapse sidebar"
+                  >
+                    <span className="sidebar-icon">
+                      <IconCollapse />
+                    </span>
+                    <span className="sidebar-text">Collapse sidebar</span>
+                  </button>
+                </div>
+              ) : null}
             </nav>
           </div>
 
@@ -610,15 +681,6 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
                 aria-label="Open navigation"
               >
                 <IconMenu />
-              </button>
-
-              <button
-                type="button"
-                className="ghost icon-button desktop-only"
-                onClick={() => setSidebarCollapsed((current) => !current)}
-                aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                {isSidebarCollapsed ? <IconExpand /> : <IconCollapse />}
               </button>
 
               <div className="topbar-title-row">

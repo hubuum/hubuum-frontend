@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
 
@@ -40,6 +41,9 @@ async function fetchGroups(): Promise<Group[]> {
 }
 
 export function NamespacesTable() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -133,6 +137,17 @@ export function NamespacesTable() {
   const groups = groupsQuery.data ?? [];
   const namespaces = query.data ?? [];
   const allSelected = namespaces.length > 0 && selectedNamespaceIds.length === namespaces.length;
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("create");
+    setCreateModalOpen(true);
+    router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
+  }, [pathname, router, searchParams]);
 
   useEffect(() => {
     if (groupId || groups.length === 0) {

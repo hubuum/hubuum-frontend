@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
 
@@ -41,6 +42,9 @@ async function fetchNamespaces(): Promise<Namespace[]> {
 }
 
 export function ClassesTable() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -64,6 +68,17 @@ export function ClassesTable() {
   });
   const namespaces = namespacesQuery.data ?? [];
   const canCreateClass = namespaces.length > 0;
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("create");
+    setCreateModalOpen(true);
+    router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
+  }, [pathname, router, searchParams]);
 
   useEffect(() => {
     if (namespaceId || !namespaces.length) {
@@ -308,6 +323,7 @@ export function ClassesTable() {
               placeholder='{"type":"object","properties":{"name":{"type":"string"}}}'
             />
             <input type="file" accept=".json,application/json" onChange={onJsonSchemaFileChange} />
+            <span className="muted">Load a JSON file to replace the schema field above.</span>
           </label>
 
           <label className="control-check">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 
 import {
@@ -152,6 +152,7 @@ type ObjectContext = {
 };
 
 export function RelationsExplorer({ mode }: RelationsExplorerProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -186,6 +187,17 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
   const [pendingClassRelationDeleteIds, setPendingClassRelationDeleteIds] = useState<number[]>([]);
   const [pendingObjectRelationDeleteIds, setPendingObjectRelationDeleteIds] = useState<number[]>([]);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("create");
+    setCreateModalOpen(true);
+    router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
+  }, [pathname, router, searchParams]);
 
   const classesQuery = useQuery({
     queryKey: ["classes", "relations-explorer"],

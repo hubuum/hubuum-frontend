@@ -93,6 +93,7 @@ export function ObjectsExplorer() {
     queryFn: fetchNamespaces
   });
   const selectedClassId = searchParams.get("classId") ?? "";
+  const [createClassId, setCreateClassId] = useState("");
   const [namespaceId, setNamespaceId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -103,6 +104,17 @@ export function ObjectsExplorer() {
   const [tableError, setTableError] = useState<string | null>(null);
   const [tableSuccess, setTableSuccess] = useState<string | null>(null);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("create");
+    setCreateModalOpen(true);
+    router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
+  }, [pathname, router, searchParams]);
 
   useEffect(() => {
     if (selectedClassId || !classesQuery.data?.length) {
@@ -134,6 +146,11 @@ export function ObjectsExplorer() {
     return map;
   }, [classes, namespaces]);
   const selectedClass = classes.find((item) => item.id === parsedClassId);
+  const parsedCreateClassId = useMemo(() => {
+    const value = Number.parseInt(createClassId, 10);
+    return Number.isFinite(value) ? value : null;
+  }, [createClassId]);
+  const createSelectedClass = classes.find((item) => item.id === parsedCreateClassId);
 
   const objectsQuery = useQuery({
     queryKey: ["objects", parsedClassId],
@@ -155,9 +172,11 @@ export function ObjectsExplorer() {
       if (response.status !== 201) {
         throw new Error(getApiErrorMessage(responsePayload, "Failed to create object."));
       }
+
+      return payload.hubuum_class_id;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["objects", parsedClassId] });
+    onSuccess: async (createdClassId) => {
+      await queryClient.invalidateQueries({ queryKey: ["objects", createdClassId] });
       setName("");
       setDescription("");
       setDataInput("{}");
@@ -198,6 +217,25 @@ export function ObjectsExplorer() {
   });
 
   useEffect(() => {
+    if (!classes.length) {
+      setCreateClassId("");
+      return;
+    }
+
+    const hasSelectedCreateClass = classes.some((classItem) => String(classItem.id) === createClassId);
+    if (hasSelectedCreateClass) {
+      return;
+    }
+
+    if (selectedClass) {
+      setCreateClassId(String(selectedClass.id));
+      return;
+    }
+
+    setCreateClassId(String(classes[0].id));
+  }, [classes, createClassId, selectedClass]);
+
+  useEffect(() => {
     if (!namespaces.length) {
       setNamespaceId("");
       return;
@@ -208,8 +246,8 @@ export function ObjectsExplorer() {
       return;
     }
 
-    if (selectedClass) {
-      const classNamespace = namespaces.find((namespace) => namespace.id === selectedClass.namespace.id);
+    if (createSelectedClass) {
+      const classNamespace = namespaces.find((namespace) => namespace.id === createSelectedClass.namespace.id);
       if (classNamespace) {
         setNamespaceId(String(classNamespace.id));
         return;
@@ -217,7 +255,7 @@ export function ObjectsExplorer() {
     }
 
     setNamespaceId(String(namespaces[0].id));
-  }, [namespaceId, namespaces, selectedClass]);
+  }, [createSelectedClass, namespaceId, namespaces]);
 
   useEffect(() => {
     if (!selectedClassId) {
@@ -251,19 +289,26 @@ export function ObjectsExplorer() {
         return;
       }
 
+      if (selectedClass) {
+        setCreateClassId(String(selectedClass.id));
+      } else if (classes.length) {
+        setCreateClassId(String(classes[0].id));
+      } else {
+        setCreateClassId("");
+      }
       setCreateModalOpen(true);
     };
 
     window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
     return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
-  }, []);
+  }, [classes, selectedClass]);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
     setFormSuccess(null);
 
-    if (!selectedClass || parsedClassId === null) {
+    if (!createSelectedClass || parsedCreateClassId === null) {
       setFormError("Select a class before creating an object.");
       return;
     }
@@ -286,7 +331,7 @@ export function ObjectsExplorer() {
       name: name.trim(),
       description: description.trim(),
       data: parsedData,
-      hubuum_class_id: selectedClass.id,
+      hubuum_class_id: createSelectedClass.id,
       namespace_id: parsedNamespaceId
     });
   }
@@ -370,14 +415,20 @@ export function ObjectsExplorer() {
       <form className="stack" onSubmit={onSubmit}>
         <div className="form-grid">
           <label className="control-field">
-            <span>Name</span>
-            <input
+            <span>Class</span>
+            <select
               required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="e.g. srv-web-01"
-              disabled={!selectedClass}
-            />
+              value={createClassId}
+              onChange={(event) => setCreateClassId(event.target.value)}
+              disabled={classes.length === 0}
+            >
+              {classes.length === 0 ? <option value="">No classes available</option> : null}
+              {classes.map((classItem) => (
+                <option key={classItem.id} value={classItem.id}>
+                  {classItem.namespace.name} / {classItem.name} (#{classItem.id})
+                </option>
+              ))}
+            </select>
           </label>
 
           <div className="control-field">
@@ -387,7 +438,7 @@ export function ObjectsExplorer() {
                 required
                 value={namespaceId}
                 onChange={(event) => setNamespaceId(event.target.value)}
-                disabled={!selectedClass}
+                disabled={!createSelectedClass}
               >
                 {namespaces.map((namespace) => (
                   <option key={namespace.id} value={namespace.id}>
@@ -403,10 +454,21 @@ export function ObjectsExplorer() {
                 value={namespaceId}
                 onChange={(event) => setNamespaceId(event.target.value)}
                 placeholder={namespacesQuery.isLoading ? "Loading namespaces..." : "Enter namespace id"}
-                disabled={!selectedClass || namespacesQuery.isLoading}
+                disabled={!createSelectedClass || namespacesQuery.isLoading}
               />
             )}
           </div>
+
+          <label className="control-field">
+            <span>Name</span>
+            <input
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="e.g. srv-web-01"
+              disabled={!createSelectedClass}
+            />
+          </label>
 
           <label className="control-field control-field--wide">
             <span>Description</span>
@@ -415,7 +477,7 @@ export function ObjectsExplorer() {
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="Object description"
-              disabled={!selectedClass}
+              disabled={!createSelectedClass}
             />
           </label>
 
@@ -426,14 +488,15 @@ export function ObjectsExplorer() {
               value={dataInput}
               onChange={(event) => setDataInput(event.target.value)}
               placeholder='{"hostname":"srv-web-01","env":"prod"}'
-              disabled={!selectedClass}
+              disabled={!createSelectedClass}
             />
             <input
               type="file"
               accept=".json,application/json"
               onChange={onDataFileChange}
-              disabled={!selectedClass}
+              disabled={!createSelectedClass}
             />
+            <span className="muted">Load a JSON file to replace the data field above.</span>
           </label>
         </div>
 
@@ -444,7 +507,7 @@ export function ObjectsExplorer() {
         {formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
         <div className="form-actions">
-          <button type="submit" disabled={createMutation.isPending || !selectedClass}>
+          <button type="submit" disabled={createMutation.isPending || !createSelectedClass}>
             {createMutation.isPending ? "Creating..." : "Create object"}
           </button>
         </div>
