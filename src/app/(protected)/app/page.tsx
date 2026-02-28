@@ -205,28 +205,6 @@ export default async function AppPage() {
           </article>
         ))}
       </div>
-
-      <article className="card stack">
-        <div className="stack action-card-header">
-          <h3>Workspace context</h3>
-          <p className="muted">Use this as a quick orientation only. The full snapshot is on the statistics page.</p>
-        </div>
-
-        <ul className="stat-list compact-stat-list">
-          <li>
-            <span>Total namespaces</span>
-            <strong>{totalNamespaces}</strong>
-          </li>
-          <li>
-            <span>Total classes</span>
-            <strong>{counts.total_classes}</strong>
-          </li>
-          <li>
-            <span>Total objects</span>
-            <strong>{counts.total_objects}</strong>
-          </li>
-        </ul>
-      </article>
     </section>
   );
 }
