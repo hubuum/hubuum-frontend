@@ -10,9 +10,9 @@ import {
   getApiV1Namespaces,
   patchApiV1ClassesByClassId
 } from "@/lib/api/generated/client";
+import { JsonEditor } from "@/components/json-editor";
 import type { HubuumClassExpanded, Namespace, UpdateHubuumClass } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { readJsonFileAsPrettyText } from "@/lib/json-file";
 
 type ClassDetailProps = {
   classId: number;
@@ -171,25 +171,6 @@ export function ClassDetail({ classId }: ClassDetailProps) {
     deleteMutation.mutate();
   }
 
-  async function onJsonSchemaFileChange(event: FormEvent<HTMLInputElement>) {
-    const input = event.currentTarget;
-    const file = input.files?.[0];
-    input.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    try {
-      const jsonText = await readJsonFileAsPrettyText(file);
-      setJsonSchemaInput(jsonText);
-      setFormError(null);
-    } catch (error) {
-      setFormSuccess(null);
-      setFormError(error instanceof Error ? error.message : "Failed to read JSON schema file.");
-    }
-  }
-
   if (classQuery.isLoading) {
     return <div className="card">Loading class...</div>;
   }
@@ -260,16 +241,18 @@ export function ClassDetail({ classId }: ClassDetailProps) {
             <input required value={description} onChange={(event) => setDescription(event.target.value)} />
           </label>
 
-          <label className="control-field control-field--wide">
-            <span>JSON schema (optional)</span>
-            <textarea
-              rows={7}
+          <div className="control-field control-field--wide">
+            <JsonEditor
+              id="class-detail-json-schema"
+              label="JSON schema (optional)"
               value={jsonSchemaInput}
-              onChange={(event) => setJsonSchemaInput(event.target.value)}
+              onChange={setJsonSchemaInput}
               placeholder='{"type":"object","properties":{"name":{"type":"string"}}}'
+              mode="schema"
+              rows={8}
+              helperText="Use a JSON Schema object for object validation preview and backend enforcement."
             />
-            <input type="file" accept=".json,application/json" onChange={onJsonSchemaFileChange} />
-          </label>
+          </div>
 
           <label className="control-check">
             <input

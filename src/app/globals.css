@@ -729,6 +729,65 @@ body.modal-open {
   flex-wrap: wrap;
 }
 
+.json-editor {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.json-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.json-editor-label {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.json-editor-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.json-editor-file {
+  display: none;
+}
+
+.json-editor-meta {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.json-editor-panel {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-highlight);
+}
+
+.json-editor-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.json-editor-list--errors {
+  color: var(--danger);
+}
+
+.json-editor-panel code,
+.json-editor-list code {
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+  font-size: 0.88em;
+}
+
 .table-tools {
   display: flex;
   align-items: center;

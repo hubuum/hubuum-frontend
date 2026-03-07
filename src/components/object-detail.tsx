@@ -11,9 +11,9 @@ import {
   getApiV1Namespaces,
   patchApiV1ClassesByClassIdByObjectId
 } from "@/lib/api/generated/client";
+import { JsonEditor } from "@/components/json-editor";
 import type { HubuumClassExpanded, HubuumObject, Namespace, UpdateHubuumObject } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { readJsonFileAsPrettyText } from "@/lib/json-file";
 
 type ObjectDetailProps = {
   classId: number;
@@ -186,25 +186,6 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
     deleteMutation.mutate();
   }
 
-  async function onDataFileChange(event: FormEvent<HTMLInputElement>) {
-    const input = event.currentTarget;
-    const file = input.files?.[0];
-    input.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    try {
-      const jsonText = await readJsonFileAsPrettyText(file);
-      setDataInput(jsonText);
-      setFormError(null);
-    } catch (error) {
-      setFormSuccess(null);
-      setFormError(error instanceof Error ? error.message : "Failed to read object data file.");
-    }
-  }
-
   if (objectQuery.isLoading) {
     return <div className="card">Loading object...</div>;
   }
@@ -222,7 +203,8 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
     return <div className="card error-banner">Object data is unavailable.</div>;
   }
 
-  const className = (classesQuery.data ?? []).find((item) => item.id === objectData.hubuum_class_id)?.name ?? null;
+  const currentClass = (classesQuery.data ?? []).find((item) => item.id === objectData.hubuum_class_id) ?? null;
+  const className = currentClass?.name ?? null;
   const hasNamespaceOptions = namespaces.length > 0;
   const hasNamespaceSelection = namespaces.some((namespace) => String(namespace.id) === namespaceId);
 
@@ -282,16 +264,24 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
             <input required value={description} onChange={(event) => setDescription(event.target.value)} />
           </label>
 
-          <label className="control-field control-field--wide">
-            <span>Data (JSON)</span>
-            <textarea
-              rows={8}
+          <div className="control-field control-field--wide">
+            <JsonEditor
+              id="object-detail-data"
+              label="Data (JSON)"
               value={dataInput}
-              onChange={(event) => setDataInput(event.target.value)}
+              onChange={setDataInput}
               placeholder='{"hostname":"srv-web-01","env":"prod"}'
+              mode="data"
+              rows={10}
+              validationEnabled={currentClass?.validate_schema ?? false}
+              validationSchema={currentClass?.json_schema}
+              helperText={
+                currentClass?.validate_schema
+                  ? "This class validates object data against its JSON schema."
+                  : "This class does not currently enforce JSON schema validation."
+              }
             />
-            <input type="file" accept=".json,application/json" onChange={onDataFileChange} />
-          </label>
+          </div>
         </div>
 
         <div className="muted">Class is fixed for existing objects.</div>

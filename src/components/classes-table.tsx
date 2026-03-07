@@ -12,10 +12,10 @@ import {
   postApiV1Classes
 } from "@/lib/api/generated/client";
 import { CreateModal } from "@/components/create-modal";
+import { JsonEditor } from "@/components/json-editor";
 import type { HubuumClassExpanded, Namespace, NewHubuumClass } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
-import { readJsonFileAsPrettyText } from "@/lib/json-file";
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
   const response = await getApiV1Classes({
@@ -182,25 +182,6 @@ export function ClassesTable() {
     createMutation.mutate(payload);
   }
 
-  async function onJsonSchemaFileChange(event: FormEvent<HTMLInputElement>) {
-    const input = event.currentTarget;
-    const file = input.files?.[0];
-    input.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    try {
-      const jsonText = await readJsonFileAsPrettyText(file);
-      setJsonSchemaInput(jsonText);
-      setFormError(null);
-    } catch (error) {
-      setFormSuccess(null);
-      setFormError(error instanceof Error ? error.message : "Failed to read JSON schema file.");
-    }
-  }
-
   const classes = classesQuery.data ?? [];
   const allSelected = classes.length > 0 && selectedClassIds.length === classes.length;
 
@@ -314,17 +295,18 @@ export function ClassesTable() {
             />
           </label>
 
-          <label className="control-field control-field--wide">
-            <span>JSON schema (optional)</span>
-            <textarea
-              rows={5}
+          <div className="control-field control-field--wide">
+            <JsonEditor
+              id="class-create-json-schema"
+              label="JSON schema (optional)"
               value={jsonSchemaInput}
-              onChange={(event) => setJsonSchemaInput(event.target.value)}
+              onChange={setJsonSchemaInput}
               placeholder='{"type":"object","properties":{"name":{"type":"string"}}}'
+              mode="schema"
+              rows={8}
+              helperText="Use a JSON Schema object for object validation preview and backend enforcement."
             />
-            <input type="file" accept=".json,application/json" onChange={onJsonSchemaFileChange} />
-            <span className="muted">Load a JSON file to replace the schema field above.</span>
-          </label>
+          </div>
 
           <label className="control-check">
             <input

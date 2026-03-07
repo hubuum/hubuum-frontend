@@ -7,10 +7,10 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { deleteApiV1ClassesByClassIdByObjectId, getApiV1Classes, getApiV1Namespaces } from "@/lib/api/generated/client";
 import { CreateModal } from "@/components/create-modal";
+import { JsonEditor } from "@/components/json-editor";
 import type { HubuumClassExpanded, HubuumObject, Namespace, NewHubuumObject } from "@/lib/api/generated/models";
 import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
-import { readJsonFileAsPrettyText } from "@/lib/json-file";
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
   const response = await getApiV1Classes({
@@ -392,25 +392,6 @@ export function ObjectsExplorer() {
   }
 
   function renderCreateObjectForm() {
-    async function onDataFileChange(event: FormEvent<HTMLInputElement>) {
-      const input = event.currentTarget;
-      const file = input.files?.[0];
-      input.value = "";
-
-      if (!file) {
-        return;
-      }
-
-      try {
-        const jsonText = await readJsonFileAsPrettyText(file);
-        setDataInput(jsonText);
-        setFormError(null);
-      } catch (error) {
-        setFormSuccess(null);
-        setFormError(error instanceof Error ? error.message : "Failed to read object data file.");
-      }
-    }
-
     return (
       <form className="stack" onSubmit={onSubmit}>
         <div className="form-grid">
@@ -481,23 +462,25 @@ export function ObjectsExplorer() {
             />
           </label>
 
-          <label className="control-field control-field--wide">
-            <span>Data (JSON)</span>
-            <textarea
-              rows={6}
+          <div className="control-field control-field--wide">
+            <JsonEditor
+              id="object-create-data"
+              label="Data (JSON)"
               value={dataInput}
-              onChange={(event) => setDataInput(event.target.value)}
+              onChange={setDataInput}
               placeholder='{"hostname":"srv-web-01","env":"prod"}'
+              mode="data"
+              rows={9}
               disabled={!createSelectedClass}
+              validationEnabled={createSelectedClass?.validate_schema ?? false}
+              validationSchema={createSelectedClass?.json_schema}
+              helperText={
+                createSelectedClass?.validate_schema
+                  ? "This class validates object data against its JSON schema."
+                  : "This class does not currently enforce JSON schema validation."
+              }
             />
-            <input
-              type="file"
-              accept=".json,application/json"
-              onChange={onDataFileChange}
-              disabled={!createSelectedClass}
-            />
-            <span className="muted">Load a JSON file to replace the data field above.</span>
-          </label>
+          </div>
         </div>
 
         {formError ? <div className="error-banner">{formError}</div> : null}
