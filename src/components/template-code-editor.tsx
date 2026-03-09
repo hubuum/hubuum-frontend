@@ -1,6 +1,8 @@
 "use client";
 
-import { ChangeEvent, Fragment, ReactNode } from "react";
+import Editor from "react-simple-code-editor";
+import Prism from "prismjs";
+import { useMemo } from "react";
 
 type TemplateCodeEditorProps = {
   label: string;
@@ -10,92 +12,107 @@ type TemplateCodeEditorProps = {
   disabled?: boolean;
 };
 
-function renderHighlightedLine(line: string, lineIndex: number): ReactNode {
-  const pattern = /\{\{#each\s+([^}]+)\}\}|\{\{\/each\}\}|\{\{([^}]+)\}\}/g;
-  const parts: ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null = pattern.exec(line);
+function analyzeTemplate(value: string) {
+  const openEach = (value.match(/\{\{#each\s+[^}]+\}\}/g) ?? []).length;
+  const closeEach = (value.match(/\{\{\/each\}\}/g) ?? []).length;
+  const expressionMatches = value.match(/\{\{([^}]+)\}\}/g) ?? [];
+  const expressions = Array.from(
+    new Set(
+      expressionMatches
+        .map((match) => match.replaceAll("{", "").replaceAll("}", "").trim())
+        .filter((match) => match !== "/each" && !match.startsWith("#each"))
+    )
+  );
 
-  while (match) {
-    if (match.index > lastIndex) {
-      parts.push(line.slice(lastIndex, match.index));
+  return {
+    openEach,
+    closeEach,
+    expressions
+  };
+}
+
+if (!Prism.languages.hubuumTemplate) {
+  Prism.languages.hubuumTemplate = {
+    block: {
+      pattern: /\{\{#each\s+[^}]+\}\}|\{\{\/each\}\}/,
+      inside: {
+        delimiter: {
+          pattern: /^\{\{|\}\}$/,
+          alias: "template-delimiter"
+        },
+        keyword: {
+          pattern: /#each|\/each/,
+          alias: "template-keyword"
+        },
+        path: {
+          pattern: /[A-Za-z_][\w.]*/,
+          alias: "template-path"
+        }
+      }
+    },
+    expression: {
+      pattern: /\{\{(?!#each|\/each)[^}]+\}\}/,
+      inside: {
+        delimiter: {
+          pattern: /^\{\{|\}\}$/,
+          alias: "template-delimiter"
+        },
+        path: {
+          pattern: /[A-Za-z_][\w.]*/,
+          alias: "template-path"
+        }
+      }
     }
-
-    if (match[1]) {
-      parts.push(
-        <Fragment key={`${lineIndex}-${match.index}`}>
-          <span className="code-token code-token--block">{"{{#each "}</span>
-          <span className="code-token code-token--path">{match[1]}</span>
-          <span className="code-token code-token--block">{"}}"}</span>
-        </Fragment>
-      );
-    } else if (match[0] === "{{/each}}") {
-      parts.push(
-        <span key={`${lineIndex}-${match.index}`} className="code-token code-token--block">
-          {match[0]}
-        </span>
-      );
-    } else if (match[2]) {
-      parts.push(
-        <Fragment key={`${lineIndex}-${match.index}`}>
-          <span className="code-token code-token--expression">{"{{"}</span>
-          <span className="code-token code-token--path">{match[2].trim()}</span>
-          <span className="code-token code-token--expression">{"}}"}</span>
-        </Fragment>
-      );
-    }
-
-    lastIndex = match.index + match[0].length;
-    match = pattern.exec(line);
-  }
-
-  if (lastIndex < line.length) {
-    parts.push(line.slice(lastIndex));
-  }
-
-  if (parts.length === 0) {
-    return "\u00A0";
-  }
-
-  return parts;
+  };
 }
 
 export function TemplateCodeEditor({ label, value, onChange, placeholder, disabled }: TemplateCodeEditorProps) {
-  function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
-    onChange(event.target.value);
-  }
+  const analysis = useMemo(() => analyzeTemplate(value), [value]);
 
-  const previewLines = value.split("\n");
+  const balanceMessage =
+    analysis.openEach === analysis.closeEach
+      ? "Loop blocks balanced"
+      : analysis.openEach > analysis.closeEach
+        ? `${analysis.openEach - analysis.closeEach} unclosed {{#each}} block(s)`
+        : `${analysis.closeEach - analysis.openEach} extra {{/each}} block(s)`;
 
   return (
     <div className="control-field control-field--wide">
       <span>{label}</span>
       <div className="template-editor">
-        <label className="template-editor-pane">
-          <span className="template-editor-title">Editor</span>
-          <textarea
-            className="code-input"
-            value={value}
-            onChange={handleChange}
-            placeholder={placeholder}
-            spellCheck={false}
-            disabled={disabled}
-          />
-        </label>
-        <div className="template-editor-pane">
-          <span className="template-editor-title">Syntax preview</span>
-          <pre className="code-preview" aria-hidden="true">
-            {value.trim() ? (
-              previewLines.map((line, index) => (
-                <Fragment key={`${index}-${line}`}>
-                  {renderHighlightedLine(line, index)}
-                  {index < previewLines.length - 1 ? "\n" : null}
-                </Fragment>
-              ))
-            ) : (
-              <span className="code-token code-token--muted">Template preview will appear here.</span>
-            )}
-          </pre>
+        <Editor
+          value={value}
+          onValueChange={onChange}
+          highlight={(code) => Prism.highlight(code, Prism.languages.hubuumTemplate, "hubuumTemplate")}
+          padding={16}
+          textareaClassName="code-input-textarea"
+          preClassName="code-input-pre"
+          className="code-input-shell"
+          tabSize={2}
+          insertSpaces
+          ignoreTabKey={false}
+          autoFocus={false}
+          disabled={disabled}
+          placeholder={placeholder}
+          aria-label={label}
+        />
+        <div className="template-editor-footer">
+          <span
+            className={`editor-status-chip ${
+              analysis.openEach === analysis.closeEach ? "editor-status-chip--ok" : "editor-status-chip--warn"
+            }`}
+          >
+            {balanceMessage}
+          </span>
+          {analysis.expressions.length ? (
+            analysis.expressions.slice(0, 6).map((expression) => (
+              <span key={expression} className="editor-token-chip">
+                {expression}
+              </span>
+            ))
+          ) : (
+            <span className="muted">Use expressions like `{"{{this.name}}"}` or `{"{{meta.count}}"}`.</span>
+          )}
         </div>
       </div>
     </div>

@@ -35,6 +35,27 @@ type TemplateEditorState = {
   templateBody: string;
 };
 
+type QueryFieldKind = "string" | "number" | "date" | "boolean" | "array" | "json";
+
+type QueryFieldDefinition = {
+  key: string;
+  kind: QueryFieldKind;
+  sortable: boolean;
+};
+
+type QueryBuilderFilter = {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+};
+
+type QueryBuilderSort = {
+  id: string;
+  field: string;
+  direction: "asc" | "desc";
+};
+
 const TEMPLATE_HELP = [
   "{{path.to.value}} interpolates a value.",
   "{{#each items}} ... {{/each}} loops arrays.",
@@ -52,6 +73,107 @@ const DEFAULT_TEMPLATE_EDITOR: TemplateEditorState = {
   templateBody: "{{#each items}}{{this.name}}\n{{/each}}"
 };
 
+const STRING_OPERATORS = [
+  "equals",
+  "iequals",
+  "contains",
+  "icontains",
+  "startswith",
+  "istartswith",
+  "endswith",
+  "iendswith",
+  "like",
+  "regex"
+] as const;
+const NUMBER_OPERATORS = ["equals", "gt", "gte", "lt", "lte", "between"] as const;
+const ARRAY_OPERATORS = ["equals", "contains"] as const;
+const BOOLEAN_OPERATORS = ["equals"] as const;
+const JSON_OPERATORS = ["equals", "contains", "gt", "gte", "lt", "lte", "between"] as const;
+
+const SCOPE_QUERY_FIELDS: Record<ReportScopeKind, QueryFieldDefinition[]> = {
+  namespaces: [
+    { key: "id", kind: "number", sortable: true },
+    { key: "name", kind: "string", sortable: true },
+    { key: "description", kind: "string", sortable: false },
+    { key: "created_at", kind: "date", sortable: true },
+    { key: "updated_at", kind: "date", sortable: true },
+    { key: "permissions", kind: "array", sortable: false }
+  ],
+  classes: [
+    { key: "id", kind: "number", sortable: true },
+    { key: "namespaces", kind: "number", sortable: true },
+    { key: "namespace_id", kind: "number", sortable: true },
+    { key: "name", kind: "string", sortable: true },
+    { key: "description", kind: "string", sortable: false },
+    { key: "validate_schema", kind: "boolean", sortable: false },
+    { key: "json_schema", kind: "json", sortable: false },
+    { key: "created_at", kind: "date", sortable: true },
+    { key: "updated_at", kind: "date", sortable: true },
+    { key: "permissions", kind: "array", sortable: false }
+  ],
+  objects_in_class: [
+    { key: "id", kind: "number", sortable: true },
+    { key: "name", kind: "string", sortable: true },
+    { key: "description", kind: "string", sortable: false },
+    { key: "namespaces", kind: "number", sortable: true },
+    { key: "namespace_id", kind: "number", sortable: true },
+    { key: "classes", kind: "number", sortable: true },
+    { key: "class_id", kind: "number", sortable: true },
+    { key: "json_data", kind: "json", sortable: false },
+    { key: "created_at", kind: "date", sortable: true },
+    { key: "updated_at", kind: "date", sortable: true },
+    { key: "permissions", kind: "array", sortable: false }
+  ],
+  class_relations: [
+    { key: "id", kind: "number", sortable: true },
+    { key: "from_classes", kind: "number", sortable: true },
+    { key: "to_classes", kind: "number", sortable: true },
+    { key: "from_class_name", kind: "string", sortable: false },
+    { key: "to_class_name", kind: "string", sortable: false },
+    { key: "created_at", kind: "date", sortable: true },
+    { key: "updated_at", kind: "date", sortable: true },
+    { key: "permissions", kind: "array", sortable: false }
+  ],
+  object_relations: [
+    { key: "id", kind: "number", sortable: true },
+    { key: "class_relation", kind: "number", sortable: true },
+    { key: "from_objects", kind: "number", sortable: true },
+    { key: "to_objects", kind: "number", sortable: true },
+    { key: "created_at", kind: "date", sortable: true },
+    { key: "updated_at", kind: "date", sortable: true },
+    { key: "permissions", kind: "array", sortable: false }
+  ],
+  related_objects: [
+    { key: "id", kind: "number", sortable: true },
+    { key: "name", kind: "string", sortable: true },
+    { key: "description", kind: "string", sortable: true },
+    { key: "namespace_id", kind: "number", sortable: true },
+    { key: "namespaces", kind: "number", sortable: true },
+    { key: "class_id", kind: "number", sortable: true },
+    { key: "classes", kind: "number", sortable: true },
+    { key: "created_at", kind: "date", sortable: true },
+    { key: "updated_at", kind: "date", sortable: true },
+    { key: "from_objects", kind: "number", sortable: true },
+    { key: "to_objects", kind: "number", sortable: true },
+    { key: "from_classes", kind: "number", sortable: true },
+    { key: "to_classes", kind: "number", sortable: true },
+    { key: "from_namespaces", kind: "number", sortable: true },
+    { key: "to_namespaces", kind: "number", sortable: true },
+    { key: "from_name", kind: "string", sortable: true },
+    { key: "to_name", kind: "string", sortable: true },
+    { key: "from_description", kind: "string", sortable: true },
+    { key: "to_description", kind: "string", sortable: true },
+    { key: "from_created_at", kind: "date", sortable: true },
+    { key: "to_created_at", kind: "date", sortable: true },
+    { key: "from_updated_at", kind: "date", sortable: true },
+    { key: "to_updated_at", kind: "date", sortable: true },
+    { key: "from_json_data", kind: "json", sortable: false },
+    { key: "to_json_data", kind: "json", sortable: false },
+    { key: "depth", kind: "number", sortable: true },
+    { key: "path", kind: "array", sortable: true }
+  ]
+};
+
 function formatTimestamp(value: string | null): string {
   if (!value) {
     return "n/a";
@@ -65,6 +187,99 @@ function formatTimestamp(value: string | null): string {
   } catch {
     return value;
   }
+}
+
+function parsePositiveInteger(value: string): number | null {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function createBuilderId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getOperatorsForField(kind: QueryFieldKind): readonly string[] {
+  if (kind === "number" || kind === "date") {
+    return NUMBER_OPERATORS;
+  }
+  if (kind === "boolean") {
+    return BOOLEAN_OPERATORS;
+  }
+  if (kind === "array") {
+    return ARRAY_OPERATORS;
+  }
+  if (kind === "json") {
+    return JSON_OPERATORS;
+  }
+  return STRING_OPERATORS;
+}
+
+function buildTemplateEditorState(template?: ReportTemplate | null): TemplateEditorState {
+  if (!template) {
+    return DEFAULT_TEMPLATE_EDITOR;
+  }
+
+  return {
+    mode: "edit",
+    templateId: template.id,
+    namespaceId: String(template.namespace_id),
+    name: template.name,
+    description: template.description,
+    contentType: template.content_type,
+    templateBody: template.template
+  };
+}
+
+function buildQueryString(filters: QueryBuilderFilter[], sorts: QueryBuilderSort[], advancedQueryText: string): string {
+  const params = new URLSearchParams();
+
+  filters.forEach((filter) => {
+    if (!filter.field || !filter.value.trim()) {
+      return;
+    }
+
+    const key = filter.operator === "equals" ? filter.field : `${filter.field}__${filter.operator}`;
+    params.append(key, filter.value.trim());
+  });
+
+  const sortValue = sorts
+    .filter((sort) => sort.field)
+    .map((sort) => `${sort.field}.${sort.direction}`)
+    .join(",");
+  if (sortValue) {
+    params.set("sort", sortValue);
+  }
+
+  const advancedQuery = new URLSearchParams(advancedQueryText.startsWith("?") ? advancedQueryText.slice(1) : advancedQueryText);
+  advancedQuery.forEach((value, key) => {
+    if (key === "cursor") {
+      return;
+    }
+    params.append(key, value);
+  });
+
+  return params.toString();
+}
+
+function downloadReportResult(result: ReportExecutionResult, scopeKind: ReportScopeKind) {
+  const extensionByType: Record<ReportContentType, string> = {
+    "application/json": "json",
+    "text/plain": "txt",
+    "text/html": "html",
+    "text/csv": "csv"
+  };
+  const mimeType = result.contentType === "application/json" ? "application/json;charset=utf-8" : `${result.contentType};charset=utf-8`;
+  const body = result.contentType === "application/json" ? JSON.stringify(result.json, null, 2) : result.text ?? "";
+  const blob = new Blob([body], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  const timestamp = new Date().toISOString().replaceAll(":", "-");
+  anchor.href = url;
+  anchor.download = `report-${scopeKind}-${timestamp}.${extensionByType[result.contentType]}`;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }
 
 async function fetchNamespaces(): Promise<Namespace[]> {
@@ -103,27 +318,6 @@ async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
   return Array.isArray(response.data) ? (response.data as HubuumObject[]) : [];
 }
 
-function parsePositiveInteger(value: string): number | null {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function buildTemplateEditorState(template?: ReportTemplate | null): TemplateEditorState {
-  if (!template) {
-    return DEFAULT_TEMPLATE_EDITOR;
-  }
-
-  return {
-    mode: "edit",
-    templateId: template.id,
-    namespaceId: String(template.namespace_id),
-    name: template.name,
-    description: template.description,
-    contentType: template.content_type,
-    templateBody: template.template
-  };
-}
-
 export function ReportsWorkspace() {
   const queryClient = useQueryClient();
   const [editorState, setEditorState] = useState<TemplateEditorState | null>(null);
@@ -133,12 +327,14 @@ export function ReportsWorkspace() {
   const [scopeKind, setScopeKind] = useState<ReportScopeKind>("namespaces");
   const [classId, setClassId] = useState("");
   const [objectId, setObjectId] = useState("");
-  const [queryText, setQueryText] = useState("");
+  const [advancedQueryText, setAdvancedQueryText] = useState("");
   const [missingDataPolicy, setMissingDataPolicy] = useState<ReportMissingDataPolicy>("strict");
   const [maxItems, setMaxItems] = useState("100");
   const [maxOutputBytes, setMaxOutputBytes] = useState("262144");
   const [runnerError, setRunnerError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ReportExecutionResult | null>(null);
+  const [builderFilters, setBuilderFilters] = useState<QueryBuilderFilter[]>([]);
+  const [builderSorts, setBuilderSorts] = useState<QueryBuilderSort[]>([]);
 
   const templatesQuery = useInfiniteQuery({
     queryKey: ["report-templates"],
@@ -165,23 +361,35 @@ export function ReportsWorkspace() {
     () => templatesQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [templatesQuery.data?.pages]
   );
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => String(template.id) === selectedTemplateId) ?? null,
+    [selectedTemplateId, templates]
+  );
+  const scopeFields = useMemo(() => SCOPE_QUERY_FIELDS[scopeKind], [scopeKind]);
+  const sortFields = useMemo(() => scopeFields.filter((field) => field.sortable), [scopeFields]);
+  const builtQuery = useMemo(
+    () => buildQueryString(builderFilters, builderSorts, advancedQueryText),
+    [advancedQueryText, builderFilters, builderSorts]
+  );
 
   useEffect(() => {
     if (!selectedTemplateId) {
       return;
     }
 
-    const exists = templates.some((template) => String(template.id) === selectedTemplateId);
-    if (!exists) {
+    if (!templates.some((template) => String(template.id) === selectedTemplateId)) {
       setSelectedTemplateId("");
       setOutputMode("json");
     }
   }, [selectedTemplateId, templates]);
 
-  const selectedTemplate = useMemo(
-    () => templates.find((template) => String(template.id) === selectedTemplateId) ?? null,
-    [selectedTemplateId, templates]
-  );
+  useEffect(() => {
+    const allowedFields = new Set(scopeFields.map((field) => field.key));
+    const allowedSortFields = new Set(sortFields.map((field) => field.key));
+
+    setBuilderFilters((current) => current.filter((filter) => allowedFields.has(filter.field)));
+    setBuilderSorts((current) => current.filter((sort) => allowedSortFields.has(sort.field)));
+  }, [scopeFields, sortFields]);
 
   const saveTemplateMutation = useMutation({
     mutationFn: async (draft: TemplateEditorState) => {
@@ -189,15 +397,12 @@ export function ReportsWorkspace() {
       if (!namespaceId) {
         throw new Error("Namespace is required.");
       }
-
       if (!draft.name.trim()) {
         throw new Error("Name is required.");
       }
-
       if (!draft.description.trim()) {
         throw new Error("Description is required.");
       }
-
       if (!draft.templateBody.trim()) {
         throw new Error("Template body is required.");
       }
@@ -278,14 +483,37 @@ export function ReportsWorkspace() {
     setEditorError(null);
   }
 
-  function handleEditorSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!editorState) {
+  function addFilter() {
+    const firstField = scopeFields[0];
+    if (!firstField) {
       return;
     }
 
-    setEditorError(null);
-    saveTemplateMutation.mutate(editorState);
+    setBuilderFilters((current) => [
+      ...current,
+      {
+        id: createBuilderId(),
+        field: firstField.key,
+        operator: getOperatorsForField(firstField.kind)[0],
+        value: ""
+      }
+    ]);
+  }
+
+  function addSort() {
+    const firstField = sortFields[0];
+    if (!firstField) {
+      return;
+    }
+
+    setBuilderSorts((current) => [
+      ...current,
+      {
+        id: createBuilderId(),
+        field: firstField.key,
+        direction: "asc"
+      }
+    ]);
   }
 
   function handleRunReport(event: FormEvent<HTMLFormElement>) {
@@ -330,7 +558,7 @@ export function ReportsWorkspace() {
       accept,
       body: {
         scope,
-        query: queryText.trim() || null,
+        query: builtQuery || null,
         output,
         missing_data_policy: missingDataPolicy,
         limits: {
@@ -370,28 +598,22 @@ export function ReportsWorkspace() {
               </button>
             </div>
 
-            <div className="template-help">
-              {TEMPLATE_HELP.map((item) => (
-                <p key={item} className="muted">
-                  {item}
-                </p>
-              ))}
-            </div>
-
             {templatesQuery.isLoading ? <div className="muted">Loading templates...</div> : null}
             {templatesQuery.isError ? (
               <div className="error-banner">
                 Failed to load templates. {templatesQuery.error instanceof Error ? templatesQuery.error.message : "Unknown error"}
               </div>
             ) : null}
-
             {!templatesQuery.isLoading && !templates.length ? (
               <div className="empty-state">No report templates available yet.</div>
             ) : null}
 
             <div className="template-list">
               {templates.map((template) => (
-                <article key={template.id} className="template-card">
+                <article
+                  key={template.id}
+                  className={`template-card ${selectedTemplateId === String(template.id) ? "template-card--selected" : ""}`}
+                >
                   <div className="template-card-header">
                     <div>
                       <h4>{template.name}</h4>
@@ -401,8 +623,8 @@ export function ReportsWorkspace() {
                     </div>
                     <span className="template-stamp">Updated {formatTimestamp(template.updated_at)}</span>
                   </div>
-                  <p>{template.description}</p>
-                  <pre className="template-snippet">{template.template}</pre>
+                  <p className="template-description">{template.description}</p>
+                  <pre className="template-snippet template-snippet--compact">{template.template}</pre>
                   <div className="action-row">
                     <button
                       type="button"
@@ -452,7 +674,7 @@ export function ReportsWorkspace() {
           <article className="card stack panel-card">
             <div className="stack action-card-header">
               <h3>Report runner</h3>
-              <p className="muted">Choose a scope and either return JSON or render a stored template.</p>
+              <p className="muted">Build a scope-aware query, then return JSON or render a stored template.</p>
             </div>
 
             <form className="stack" onSubmit={handleRunReport}>
@@ -527,15 +749,6 @@ export function ReportsWorkspace() {
                   </div>
                 ) : null}
 
-                <label className="control-field control-field--wide">
-                  <span>Query string</span>
-                  <input
-                    value={queryText}
-                    onChange={(event) => setQueryText(event.target.value)}
-                    placeholder="name__contains=server&sort=name"
-                  />
-                </label>
-
                 {outputMode === "template" ? (
                   <label className="control-field control-field--wide">
                     <span>Stored template</span>
@@ -549,6 +762,163 @@ export function ReportsWorkspace() {
                     </select>
                   </label>
                 ) : null}
+
+                <div className="query-builder-card control-field--wide">
+                  <div className="panel-header">
+                    <div className="stack action-card-header">
+                      <h4>Query builder</h4>
+                      <p className="muted">Available fields in the selectors below are limited to the current scope.</p>
+                    </div>
+                    <div className="action-row">
+                      <button type="button" className="ghost" onClick={addFilter}>
+                        Add filter
+                      </button>
+                      <button type="button" className="ghost" onClick={addSort}>
+                        Add sort
+                      </button>
+                    </div>
+                  </div>
+
+                  {builderFilters.length ? (
+                    <div className="stack">
+                      {builderFilters.map((filter) => {
+                        const fieldDefinition = scopeFields.find((field) => field.key === filter.field) ?? scopeFields[0];
+                        const operatorOptions = getOperatorsForField(fieldDefinition.kind);
+
+                        return (
+                          <div key={filter.id} className="query-row">
+                            <select
+                              value={filter.field}
+                              onChange={(event) => {
+                                const nextField = scopeFields.find((field) => field.key === event.target.value) ?? scopeFields[0];
+                                setBuilderFilters((current) =>
+                                  current.map((currentFilter) =>
+                                    currentFilter.id === filter.id
+                                      ? {
+                                          ...currentFilter,
+                                          field: nextField.key,
+                                          operator: getOperatorsForField(nextField.kind)[0]
+                                        }
+                                      : currentFilter
+                                  )
+                                );
+                              }}
+                            >
+                              {scopeFields.map((field) => (
+                                <option key={field.key} value={field.key}>
+                                  {field.key}
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              value={filter.operator}
+                              onChange={(event) =>
+                                setBuilderFilters((current) =>
+                                  current.map((currentFilter) =>
+                                    currentFilter.id === filter.id
+                                      ? { ...currentFilter, operator: event.target.value }
+                                      : currentFilter
+                                  )
+                                )
+                              }
+                            >
+                              {operatorOptions.map((operator) => (
+                                <option key={operator} value={operator}>
+                                  {operator}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              value={filter.value}
+                              onChange={(event) =>
+                                setBuilderFilters((current) =>
+                                  current.map((currentFilter) =>
+                                    currentFilter.id === filter.id
+                                      ? { ...currentFilter, value: event.target.value }
+                                      : currentFilter
+                                  )
+                                )
+                              }
+                              placeholder={filter.operator === "between" ? "min,max" : "value"}
+                            />
+                            <button
+                              type="button"
+                              className="ghost"
+                              onClick={() =>
+                                setBuilderFilters((current) => current.filter((currentFilter) => currentFilter.id !== filter.id))
+                              }
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="empty-state">No filters yet. Add a filter or use the advanced query input.</div>
+                  )}
+
+                  {builderSorts.length ? (
+                    <div className="stack">
+                      {builderSorts.map((sort) => (
+                        <div key={sort.id} className="query-row">
+                          <select
+                            value={sort.field}
+                            onChange={(event) =>
+                              setBuilderSorts((current) =>
+                                current.map((currentSort) =>
+                                  currentSort.id === sort.id ? { ...currentSort, field: event.target.value } : currentSort
+                                )
+                              )
+                            }
+                          >
+                            {sortFields.map((field) => (
+                              <option key={field.key} value={field.key}>
+                                {field.key}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={sort.direction}
+                            onChange={(event) =>
+                              setBuilderSorts((current) =>
+                                current.map((currentSort) =>
+                                  currentSort.id === sort.id
+                                    ? { ...currentSort, direction: event.target.value as "asc" | "desc" }
+                                    : currentSort
+                                )
+                              )
+                            }
+                          >
+                            <option value="asc">asc</option>
+                            <option value="desc">desc</option>
+                          </select>
+                          <button
+                            type="button"
+                            className="ghost"
+                            onClick={() => setBuilderSorts((current) => current.filter((currentSort) => currentSort.id !== sort.id))}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <label className="control-field control-field--wide">
+                    <span>Advanced query additions</span>
+                    <textarea
+                      value={advancedQueryText}
+                      onChange={(event) => setAdvancedQueryText(event.target.value)}
+                      placeholder="permissions__contains=ReadClass&created_at__gte=2026-03-01T00:00:00Z"
+                    />
+                  </label>
+
+                  <label className="control-field control-field--wide">
+                    <span>Generated query string</span>
+                    <textarea value={builtQuery} readOnly placeholder="Query string will appear here." />
+                  </label>
+                </div>
 
                 <label className="control-field">
                   <span>Missing data policy</span>
@@ -595,20 +965,27 @@ export function ReportsWorkspace() {
                 <h3>Report preview</h3>
                 <p className="muted">JSON stays structured. HTML is isolated in a sandboxed iframe.</p>
               </div>
-              {lastResult ? (
-                <div className="preview-meta">
-                  <span>{lastResult.contentType}</span>
-                  <span>{lastResult.warningCount} warning(s)</span>
-                  <span>{lastResult.truncated ? "Truncated" : "Complete"}</span>
-                </div>
-              ) : null}
+              <div className="action-row">
+                {lastResult ? (
+                  <div className="preview-meta">
+                    <span>{lastResult.contentType}</span>
+                    <span>{lastResult.warningCount} warning(s)</span>
+                    <span>{lastResult.truncated ? "Truncated" : "Complete"}</span>
+                  </div>
+                ) : null}
+                {lastResult ? (
+                  <button type="button" className="ghost" onClick={() => downloadReportResult(lastResult, scopeKind)}>
+                    Download
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {!lastResult ? <div className="empty-state">Run a report to inspect the response.</div> : null}
             {lastResult?.contentType === "application/json" ? (
               <pre className="response-preview">{JSON.stringify(lastResult.json, null, 2)}</pre>
             ) : null}
-            {lastResult?.contentType === "text/plain" || lastResult?.contentType === "text/csv" ? (
+            {(lastResult?.contentType === "text/plain" || lastResult?.contentType === "text/csv") && lastResult.text ? (
               <pre className="response-preview">{lastResult.text}</pre>
             ) : null}
             {lastResult?.contentType === "text/html" ? (
@@ -624,7 +1001,11 @@ export function ReportsWorkspace() {
         onClose={closeEditor}
       >
         {editorState ? (
-          <form className="stack" onSubmit={handleEditorSubmit}>
+          <form className="stack" onSubmit={(event) => {
+            event.preventDefault();
+            setEditorError(null);
+            saveTemplateMutation.mutate(editorState);
+          }}>
             <div className="form-grid">
               <div className="control-field">
                 <label htmlFor="report-template-namespace">Namespace</label>
@@ -698,6 +1079,14 @@ export function ReportsWorkspace() {
               placeholder="{{#each items}}{{this.name}}\n{{/each}}"
               disabled={saveTemplateMutation.isPending}
             />
+
+            <div className="template-help">
+              {TEMPLATE_HELP.map((item) => (
+                <p key={item} className="muted">
+                  {item}
+                </p>
+              ))}
+            </div>
 
             {editorError ? <div className="error-banner">{editorError}</div> : null}
 

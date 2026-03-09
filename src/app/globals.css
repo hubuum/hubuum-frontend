@@ -916,6 +916,7 @@ th:last-child {
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: start;
 }
 
 .panel-header {
@@ -941,11 +942,16 @@ th:last-child {
 
 .template-card {
   display: grid;
-  gap: 0.8rem;
-  padding: 1rem;
+  gap: 0.45rem;
+  padding: 0.85rem 0.95rem;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--bg-highlight);
+}
+
+.template-card--selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .template-card-header {
@@ -955,14 +961,25 @@ th:last-child {
   align-items: flex-start;
 }
 
+.template-card h4 {
+  font-size: 0.98rem;
+}
+
 .template-stamp {
   color: var(--muted);
   font-size: 0.88rem;
 }
 
+.template-description {
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
 .template-snippet,
-.response-preview,
-.code-preview {
+.response-preview {
   margin: 0;
   padding: 1rem;
   border-radius: 14px;
@@ -977,58 +994,125 @@ th:last-child {
   word-break: break-word;
 }
 
+.template-snippet--compact {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.8rem;
+  max-height: 4.8em;
+  overflow: hidden;
+}
+
 .template-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.8rem;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bg-highlight);
 }
 
-.template-editor-pane {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.template-editor-title {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-
-.code-input {
+.code-input-shell {
   min-height: 320px;
   font-family: "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
   font-size: 0.88rem;
   line-height: 1.5;
 }
 
-.code-token--block {
+.code-input-pre,
+.code-input-textarea {
+  min-height: 320px;
+  border: 0;
+  font-family: "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin: 0;
+  outline: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.code-input-pre {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-highlight) 88%, var(--card)), var(--bg-highlight));
+}
+
+.code-input-textarea {
+  background: transparent;
+  color: var(--ink);
+  caret-color: var(--accent);
+}
+
+.code-input-shell:focus-within {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+.template-editor-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-highlight) 84%, var(--card));
+}
+
+.editor-status-chip,
+.editor-token-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.82rem;
+  background: var(--card);
+}
+
+.editor-status-chip--ok {
+  background: var(--accent-soft);
+}
+
+.editor-status-chip--warn {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger-line);
+}
+
+.token.template-delimiter {
+  color: #7c3aed;
+}
+
+.token.template-keyword {
   color: #bf5f00;
   font-weight: 700;
 }
 
-.code-token--expression {
+.token.template-path {
   color: #0f766e;
 }
 
-.code-token--path {
-  color: #2563eb;
+html[data-theme="dark"] .token.template-delimiter {
+  color: #c4b5fd;
 }
 
-.code-token--muted {
-  color: var(--muted);
-}
-
-html[data-theme="dark"] .code-token--block {
+html[data-theme="dark"] .token.template-keyword {
   color: #f7b267;
 }
 
-html[data-theme="dark"] .code-token--expression {
+html[data-theme="dark"] .token.template-path {
   color: #74d5cb;
 }
 
-html[data-theme="dark"] .code-token--path {
-  color: #8db7ff;
+.query-builder-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-highlight);
+}
+
+.query-row {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1.2fr) auto;
+  align-items: center;
 }
 
 .preview-meta,
@@ -1246,5 +1330,9 @@ html[data-theme="dark"] .status-pill--accent {
 
   .panel-header {
     flex-direction: column;
+  }
+
+  .query-row {
+    grid-template-columns: 1fr;
   }
 }
