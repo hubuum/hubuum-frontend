@@ -96,6 +96,12 @@ function isLinkActive(pathname: string, href: string): boolean {
 }
 
 function getSectionLabel(pathname: string): string {
+  if (pathname.startsWith("/reports")) {
+    return "Reports";
+  }
+  if (pathname.startsWith("/imports")) {
+    return "Imports";
+  }
   if (pathname.startsWith("/statistics")) {
     return "Statistics";
   }
@@ -199,6 +205,28 @@ function IconOverview() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 13h7V4H4zm0 7h7v-5H4zm9 0h7V11h-7zm0-18v7h7V2z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function IconReport() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M6 3h8.8L20 8.2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2m8 1.8V9h4.2M8 12h8v1.8H8zm0 4h8v1.8H8z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconImport() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 3 6.7 8.3l1.3 1.4 3.1-3.1V16h2V6.6l3.1 3.1 1.4-1.4ZM5 18h14v3H5z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -336,6 +364,18 @@ const workspaceLinks: NavItem[] = [
     label: "Relations",
     icon: <IconRelation />,
     hint: "Relations: connect classes and objects"
+  },
+  {
+    href: "/reports",
+    label: "Reports",
+    icon: <IconReport />,
+    hint: "Reports: manage templates and render scoped output"
+  },
+  {
+    href: "/imports",
+    label: "Imports",
+    icon: <IconImport />,
+    hint: "Imports: submit JSON imports and monitor task execution"
   }
 ];
 

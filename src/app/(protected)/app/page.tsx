@@ -124,6 +124,21 @@ function getActionCards(
       secondaryLabel: "Open relations"
     },
     {
+      title: "Build reports",
+      description:
+        totalClasses === 0
+          ? "Reports become useful once you have real collections to query, but you can prepare templates ahead of time."
+          : "Create stored templates and run scoped reports without leaving the workspace.",
+      primaryHref: "/reports",
+      primaryLabel: "Open reports"
+    },
+    {
+      title: "Run imports",
+      description: "Submit JSON import jobs, then monitor queue state, lifecycle events, and per-item outcomes.",
+      primaryHref: "/imports",
+      primaryLabel: "Open imports"
+    },
+    {
       title: "Inspect system statistics",
       description: "Counts and database health still matter, but they no longer need to dominate the landing experience.",
       primaryHref: "/statistics",
