@@ -10,5 +10,6 @@ import type { ObjectsByClass } from './objectsByClass';
 export interface CountsResponse {
   objects_per_class: ObjectsByClass[];
   total_classes: number;
+  total_namespaces: number;
   total_objects: number;
 }

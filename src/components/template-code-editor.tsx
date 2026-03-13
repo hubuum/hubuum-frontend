@@ -83,7 +83,7 @@ export function TemplateCodeEditor({ label, value, onChange, placeholder, disabl
         <Editor
           value={value}
           onValueChange={onChange}
-          highlight={(code) => Prism.highlight(code, Prism.languages.hubuumTemplate, "hubuumTemplate")}
+          highlight={(code: string) => Prism.highlight(code, Prism.languages.hubuumTemplate, "hubuumTemplate")}
           padding={16}
           textareaClassName="code-input-textarea"
           preClassName="code-input-pre"

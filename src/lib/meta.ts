@@ -1,9 +1,8 @@
 import "server-only";
 
 import { backendFetchJson } from "@/lib/api/backend";
-import { getGetApiV0MetaCountsUrl, getGetApiV0MetaDbUrl } from "@/lib/api/generated/client";
-import type { CountsResponse, DbStateResponse } from "@/lib/api/generated/models";
-import type { TaskQueueStateResponse } from "@/lib/api/tasking";
+import { getGetApiV0MetaCountsUrl, getGetApiV0MetaDbUrl, getGetApiV0MetaTasksUrl } from "@/lib/api/generated/client";
+import type { CountsResponse, DbStateResponse, TaskQueueStateResponse } from "@/lib/api/generated/models";
 
 export type CountsWithOptionalNamespaces = CountsResponse & {
   total_namespaces?: number;
@@ -24,7 +23,7 @@ export async function fetchDbState(token: string, correlationId?: string): Promi
 }
 
 export async function fetchTaskQueueState(token: string, correlationId?: string): Promise<TaskQueueStateResponse> {
-  return backendFetchJson<TaskQueueStateResponse>("/api/v0/meta/tasks", {
+  return backendFetchJson<TaskQueueStateResponse>(getGetApiV0MetaTasksUrl(), {
     correlationId,
     token
   });

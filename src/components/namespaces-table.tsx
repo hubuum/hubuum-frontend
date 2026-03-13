@@ -17,7 +17,7 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 
 async function fetchNamespaces(): Promise<Namespace[]> {
-  const response = await getApiV1Namespaces({
+  const response = await getApiV1Namespaces(undefined, {
     credentials: "include"
   });
 
@@ -29,7 +29,7 @@ async function fetchNamespaces(): Promise<Namespace[]> {
 }
 
 async function fetchGroups(): Promise<Group[]> {
-  const response = await getApiV1IamGroups({
+  const response = await getApiV1IamGroups(undefined, {
     credentials: "include"
   });
 

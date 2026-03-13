@@ -56,6 +56,23 @@ type QueryBuilderSort = {
   direction: "asc" | "desc";
 };
 
+type ResultActionFeedback =
+  | {
+      tone: "success" | "danger";
+      message: string;
+    }
+  | null;
+
+type ReportResultView = {
+  fullText: string;
+  previewText: string;
+  totalBytes: number;
+  previewBytes: number;
+  previewCapped: boolean;
+  canCopyFull: boolean;
+  showInlineHtmlPreview: boolean;
+};
+
 const TEMPLATE_HELP = [
   "{{path.to.value}} interpolates a value.",
   "{{#each items}} ... {{/each}} loops arrays.",
@@ -89,6 +106,10 @@ const NUMBER_OPERATORS = ["equals", "gt", "gte", "lt", "lte", "between"] as cons
 const ARRAY_OPERATORS = ["equals", "contains"] as const;
 const BOOLEAN_OPERATORS = ["equals"] as const;
 const JSON_OPERATORS = ["equals", "contains", "gt", "gte", "lt", "lte", "between"] as const;
+const PREVIEW_BYTE_LIMIT = 64 * 1024;
+const FULL_COPY_BYTE_LIMIT = 1024 * 1024;
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
 const SCOPE_QUERY_FIELDS: Record<ReportScopeKind, QueryFieldDefinition[]> = {
   namespaces: [
@@ -225,7 +246,7 @@ function buildTemplateEditorState(template?: ReportTemplate | null): TemplateEdi
     namespaceId: String(template.namespace_id),
     name: template.name,
     description: template.description,
-    contentType: template.content_type,
+    contentType: template.content_type === "application/json" ? "text/plain" : template.content_type,
     templateBody: template.template
   };
 }
@@ -261,7 +282,70 @@ function buildQueryString(filters: QueryBuilderFilter[], sorts: QueryBuilderSort
   return params.toString();
 }
 
-function downloadReportResult(result: ReportExecutionResult, scopeKind: ReportScopeKind) {
+function getByteCount(text: string): number {
+  return textEncoder.encode(text).byteLength;
+}
+
+function clampTextByBytes(text: string, byteLimit: number): { text: string; byteCount: number; capped: boolean } {
+  const bytes = textEncoder.encode(text);
+  if (bytes.byteLength <= byteLimit) {
+    return {
+      text,
+      byteCount: bytes.byteLength,
+      capped: false
+    };
+  }
+
+  let end = byteLimit;
+  while (end > 0 && (bytes[end] & 0b1100_0000) === 0b1000_0000) {
+    end -= 1;
+  }
+
+  return {
+    text: textDecoder.decode(bytes.slice(0, end)).trimEnd(),
+    byteCount: end,
+    capped: true
+  };
+}
+
+function formatBytes(byteCount: number): string {
+  if (byteCount < 1024) {
+    return `${byteCount} B`;
+  }
+  if (byteCount < 1024 * 1024) {
+    return `${(byteCount / 1024).toFixed(1)} KiB`;
+  }
+
+  return `${(byteCount / (1024 * 1024)).toFixed(2)} MiB`;
+}
+
+function getResultText(result: ReportExecutionResult): string {
+  if (typeof result.text === "string") {
+    return result.text;
+  }
+
+  return result.json ? JSON.stringify(result.json, null, 2) : "";
+}
+
+function getReportResultView(result: ReportExecutionResult): ReportResultView {
+  const fullText = getResultText(result);
+  const totalBytes = getByteCount(fullText);
+  const preview = clampTextByBytes(fullText, PREVIEW_BYTE_LIMIT);
+  const showInlineHtmlPreview =
+    result.contentType === "text/html" && !result.truncated && !preview.capped && Boolean(fullText.trim());
+
+  return {
+    fullText,
+    previewText: preview.text,
+    totalBytes,
+    previewBytes: preview.byteCount,
+    previewCapped: preview.capped,
+    canCopyFull: totalBytes <= FULL_COPY_BYTE_LIMIT,
+    showInlineHtmlPreview
+  };
+}
+
+function downloadReportResult(result: ReportExecutionResult, scopeKind: ReportScopeKind, body: string) {
   const extensionByType: Record<ReportContentType, string> = {
     "application/json": "json",
     "text/plain": "txt",
@@ -269,7 +353,6 @@ function downloadReportResult(result: ReportExecutionResult, scopeKind: ReportSc
     "text/csv": "csv"
   };
   const mimeType = result.contentType === "application/json" ? "application/json;charset=utf-8" : `${result.contentType};charset=utf-8`;
-  const body = result.contentType === "application/json" ? JSON.stringify(result.json, null, 2) : result.text ?? "";
   const blob = new Blob([body], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -283,7 +366,7 @@ function downloadReportResult(result: ReportExecutionResult, scopeKind: ReportSc
 }
 
 async function fetchNamespaces(): Promise<Namespace[]> {
-  const response = await getApiV1Namespaces({
+  const response = await getApiV1Namespaces(undefined, {
     credentials: "include"
   });
 
@@ -295,7 +378,7 @@ async function fetchNamespaces(): Promise<Namespace[]> {
 }
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-  const response = await getApiV1Classes({
+  const response = await getApiV1Classes(undefined, {
     credentials: "include"
   });
 
@@ -307,7 +390,7 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 }
 
 async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
-  const response = await getApiV1ClassesByClassIdTrailing(classId, {
+  const response = await getApiV1ClassesByClassIdTrailing(classId, undefined, {
     credentials: "include"
   });
 
@@ -333,6 +416,7 @@ export function ReportsWorkspace() {
   const [maxOutputBytes, setMaxOutputBytes] = useState("262144");
   const [runnerError, setRunnerError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ReportExecutionResult | null>(null);
+  const [resultActionFeedback, setResultActionFeedback] = useState<ResultActionFeedback>(null);
   const [builderFilters, setBuilderFilters] = useState<QueryBuilderFilter[]>([]);
   const [builderSorts, setBuilderSorts] = useState<QueryBuilderSort[]>([]);
 
@@ -371,6 +455,7 @@ export function ReportsWorkspace() {
     () => buildQueryString(builderFilters, builderSorts, advancedQueryText),
     [advancedQueryText, builderFilters, builderSorts]
   );
+  const lastResultView = useMemo(() => (lastResult ? getReportResultView(lastResult) : null), [lastResult]);
 
   useEffect(() => {
     if (!selectedTemplateId) {
@@ -458,9 +543,11 @@ export function ReportsWorkspace() {
     onSuccess: (result) => {
       setRunnerError(null);
       setLastResult(result);
+      setResultActionFeedback(null);
     },
     onError: (error) => {
       setLastResult(null);
+      setResultActionFeedback(null);
       setRunnerError(error instanceof Error ? error.message : "Failed to run report.");
     }
   });
@@ -554,6 +641,7 @@ export function ReportsWorkspace() {
     }
 
     setRunnerError(null);
+    setResultActionFeedback(null);
     runReportMutation.mutate({
       accept,
       body: {
@@ -567,6 +655,25 @@ export function ReportsWorkspace() {
         }
       }
     });
+  }
+
+  async function copyReportText(text: string, label: string) {
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard access is unavailable in this browser.");
+      }
+
+      await navigator.clipboard.writeText(text);
+      setResultActionFeedback({
+        tone: "success",
+        message: `${label} copied to the clipboard.`
+      });
+    } catch (error) {
+      setResultActionFeedback({
+        tone: "danger",
+        message: error instanceof Error ? error.message : `Failed to copy ${label.toLowerCase()}.`
+      });
+    }
   }
 
   const namespaceOptions = namespacesQuery.data ?? [];
@@ -962,34 +1069,89 @@ export function ReportsWorkspace() {
           <article className="card stack panel-card">
             <div className="panel-header">
               <div className="stack action-card-header">
-                <h3>Report preview</h3>
-                <p className="muted">JSON stays structured. HTML is isolated in a sandboxed iframe.</p>
-              </div>
-              <div className="action-row">
-                {lastResult ? (
-                  <div className="preview-meta">
-                    <span>{lastResult.contentType}</span>
-                    <span>{lastResult.warningCount} warning(s)</span>
-                    <span>{lastResult.truncated ? "Truncated" : "Complete"}</span>
-                  </div>
-                ) : null}
-                {lastResult ? (
-                  <button type="button" className="ghost" onClick={() => downloadReportResult(lastResult, scopeKind)}>
-                    Download
-                  </button>
-                ) : null}
+                <h3>Result console</h3>
+                <p className="muted">Large responses stay manageable here: scan the metadata first, then preview, copy, or download deliberately.</p>
               </div>
             </div>
 
             {!lastResult ? <div className="empty-state">Run a report to inspect the response.</div> : null}
-            {lastResult?.contentType === "application/json" ? (
-              <pre className="response-preview">{JSON.stringify(lastResult.json, null, 2)}</pre>
-            ) : null}
-            {(lastResult?.contentType === "text/plain" || lastResult?.contentType === "text/csv") && lastResult.text ? (
-              <pre className="response-preview">{lastResult.text}</pre>
-            ) : null}
-            {lastResult?.contentType === "text/html" ? (
-              <iframe className="html-preview" sandbox="" srcDoc={lastResult.text ?? ""} title="Report HTML preview" />
+            {lastResult && lastResultView ? (
+              <div className="stack">
+                <div className="result-toolbar">
+                  <div className="preview-meta">
+                    <span>{lastResult.contentType}</span>
+                    <span>{formatBytes(lastResultView.totalBytes)}</span>
+                    <span>{lastResult.warningCount} warning(s)</span>
+                    <span>{lastResult.truncated ? "Truncated by backend" : "Backend complete"}</span>
+                    <span>{lastResultView.previewCapped ? `Preview capped at ${formatBytes(PREVIEW_BYTE_LIMIT)}` : "Full preview"}</span>
+                  </div>
+
+                  <div className="action-row">
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => downloadReportResult(lastResult, scopeKind, lastResultView.fullText)}
+                    >
+                      Download full result
+                    </button>
+                    {lastResult.contentType !== "text/html" || lastResultView.showInlineHtmlPreview ? (
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => copyReportText(lastResultView.previewText, "Preview")}
+                        disabled={!lastResultView.previewText}
+                      >
+                        Copy preview
+                      </button>
+                    ) : null}
+                    {lastResult.contentType !== "text/html" || lastResultView.showInlineHtmlPreview ? (
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => copyReportText(lastResultView.fullText, "Full result")}
+                        disabled={!lastResultView.canCopyFull}
+                      >
+                        Copy full result
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                {!lastResultView.canCopyFull ? (
+                  <div className="muted">
+                    Full copy is disabled above {formatBytes(FULL_COPY_BYTE_LIMIT)}. Download the full result instead.
+                  </div>
+                ) : null}
+
+                {resultActionFeedback ? (
+                  <div className={resultActionFeedback.tone === "danger" ? "error-banner" : "info-banner"}>
+                    {resultActionFeedback.message}
+                  </div>
+                ) : null}
+
+                {lastResult.contentType === "text/html" && !lastResultView.showInlineHtmlPreview ? (
+                  <div className="empty-state">
+                    HTML preview is hidden for large or incomplete output. Download the full result to inspect it safely.
+                  </div>
+                ) : null}
+
+                {lastResultView.previewCapped && lastResult.contentType !== "text/html" ? (
+                  <div className="empty-state">
+                    This inline preview only shows the first {formatBytes(lastResultView.previewBytes)}. Use download for the full payload.
+                  </div>
+                ) : null}
+
+                {(lastResult.contentType === "application/json" ||
+                  lastResult.contentType === "text/plain" ||
+                  lastResult.contentType === "text/csv") &&
+                lastResultView.previewText ? (
+                  <pre className="response-preview">{lastResultView.previewText}</pre>
+                ) : null}
+
+                {lastResult.contentType === "text/html" && lastResultView.showInlineHtmlPreview ? (
+                  <iframe className="html-preview" sandbox="" srcDoc={lastResultView.fullText} title="Report HTML preview" />
+                ) : null}
+              </div>
             ) : null}
           </article>
         </section>

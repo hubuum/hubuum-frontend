@@ -11,7 +11,7 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 
 async function fetchUsers(): Promise<User[]> {
-  const response = await getApiV1IamUsers({
+  const response = await getApiV1IamUsers(undefined, {
     credentials: "include"
   });
 

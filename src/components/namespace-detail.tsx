@@ -14,6 +14,7 @@ import {
   getApiV1NamespacesByNamespaceIdPermissions,
   getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
   patchApiV1NamespacesByNamespaceId,
+  putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
 } from "@/lib/api/generated/client";
 import { Permissions as PermissionValues } from "@/lib/api/generated/models/permissions";
 import type {
@@ -51,7 +52,11 @@ type PermissionFlagField =
   | "has_create_object_relation"
   | "has_read_object_relation"
   | "has_update_object_relation"
-  | "has_delete_object_relation";
+  | "has_delete_object_relation"
+  | "has_create_template"
+  | "has_read_template"
+  | "has_update_template"
+  | "has_delete_template";
 
 type PermissionDefinition = {
   value: PermissionName;
@@ -60,7 +65,7 @@ type PermissionDefinition = {
   section: PermissionSection;
 };
 
-type PermissionSection = "namespace" | "class" | "object" | "class_relation" | "object_relation";
+type PermissionSection = "namespace" | "class" | "object" | "class_relation" | "object_relation" | "template";
 
 const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   {
@@ -157,6 +162,30 @@ const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     label: "Delete object relation",
     field: "has_delete_object_relation",
     section: "object_relation"
+  },
+  {
+    value: PermissionValues.CreateTemplate,
+    label: "Create template",
+    field: "has_create_template",
+    section: "template"
+  },
+  {
+    value: PermissionValues.ReadTemplate,
+    label: "Read template",
+    field: "has_read_template",
+    section: "template"
+  },
+  {
+    value: PermissionValues.UpdateTemplate,
+    label: "Update template",
+    field: "has_update_template",
+    section: "template"
+  },
+  {
+    value: PermissionValues.DeleteTemplate,
+    label: "Delete template",
+    field: "has_delete_template",
+    section: "template"
   }
 ];
 
@@ -173,7 +202,7 @@ async function fetchNamespace(namespaceId: number): Promise<Namespace> {
 }
 
 async function fetchGroups(): Promise<Group[]> {
-  const response = await getApiV1IamGroups({
+  const response = await getApiV1IamGroups(undefined, {
     credentials: "include"
   });
 
@@ -185,7 +214,7 @@ async function fetchGroups(): Promise<Group[]> {
 }
 
 async function fetchNamespacePermissions(namespaceId: number): Promise<GroupPermission[]> {
-  const response = await getApiV1NamespacesByNamespaceIdPermissions(namespaceId, {
+  const response = await getApiV1NamespacesByNamespaceIdPermissions(namespaceId, undefined, {
     credentials: "include"
   });
 
@@ -197,34 +226,20 @@ async function fetchNamespacePermissions(namespaceId: number): Promise<GroupPerm
 }
 
 async function putNamespacePermissions(namespaceId: number, groupId: number, permissions: PermissionName[]): Promise<void> {
-  const response = await fetch(`/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`, {
-    method: "PUT",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(permissions)
+  const response = await putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId(namespaceId, groupId, permissions, {
+    credentials: "include"
   });
 
-  if ([200, 201, 204].includes(response.status)) {
+  if (response.status === 200) {
     return;
   }
 
-  const rawPayload = await response.text();
-  let payload: unknown = {};
-  if (rawPayload) {
-    try {
-      payload = JSON.parse(rawPayload) as unknown;
-    } catch {
-      payload = { message: rawPayload };
-    }
-  }
-  throw new Error(getApiErrorMessage(payload, "Failed to update namespace permissions."));
+  throw new Error(getApiErrorMessage(response.data, "Failed to update namespace permissions."));
 }
 
 async function fetchCurrentUserGroups(username: string): Promise<Group[]> {
   try {
-    const usersResponse = await getApiV1IamUsers({
+    const usersResponse = await getApiV1IamUsers(undefined, {
       credentials: "include"
     });
     if (usersResponse.status !== 200) {
@@ -236,7 +251,7 @@ async function fetchCurrentUserGroups(username: string): Promise<Group[]> {
       return [];
     }
 
-    const userGroupsResponse = await getApiV1IamUsersByUserIdGroups(matchedUser.id, {
+    const userGroupsResponse = await getApiV1IamUsersByUserIdGroups(matchedUser.id, undefined, {
       credentials: "include"
     });
     if (userGroupsResponse.status !== 200) {

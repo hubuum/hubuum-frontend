@@ -31,7 +31,7 @@ async function fetchUser(userId: number): Promise<User> {
 }
 
 async function fetchUserGroups(userId: number): Promise<Group[]> {
-  const response = await getApiV1IamUsersByUserIdGroups(userId, {
+  const response = await getApiV1IamUsersByUserIdGroups(userId, undefined, {
     credentials: "include"
   });
 

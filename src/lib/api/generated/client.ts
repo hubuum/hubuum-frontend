@@ -9,6 +9,25 @@ import type {
   ApiErrorResponse,
   CountsResponse,
   DbStateResponse,
+  GetApiV1ClassesByClassIdByFromObjectIdRelationsParams,
+  GetApiV1ClassesByClassIdPermissionsParams,
+  GetApiV1ClassesByClassIdRelationsParams,
+  GetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToParams,
+  GetApiV1ClassesByClassIdRelationsTransitiveTrailingParams,
+  GetApiV1ClassesByClassIdTrailingParams,
+  GetApiV1ClassesParams,
+  GetApiV1IamGroupsByGroupIdMembersParams,
+  GetApiV1IamGroupsParams,
+  GetApiV1IamUsersByUserIdGroupsParams,
+  GetApiV1IamUsersByUserIdTokensParams,
+  GetApiV1IamUsersParams,
+  GetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionParams,
+  GetApiV1NamespacesByNamespaceIdPermissionsParams,
+  GetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdParams,
+  GetApiV1NamespacesParams,
+  GetApiV1RelationsClassesParams,
+  GetApiV1RelationsObjectsParams,
+  GetApiV1TemplatesParams,
   Group,
   GroupPermission,
   HubuumClassExpanded,
@@ -17,6 +36,8 @@ import type {
   HubuumObject,
   HubuumObjectRelation,
   HubuumObjectWithPath,
+  ImportRequest,
+  ImportTaskResultResponse,
   LoginResponse,
   LoginUser,
   MessageResponse,
@@ -28,13 +49,21 @@ import type {
   NewHubuumObject,
   NewHubuumObjectRelation,
   NewNamespaceWithAssignee,
+  NewReportTemplate,
   NewUser,
   Permission,
   Permissions,
+  ReportJsonResponse,
+  ReportRequest,
+  ReportTemplate,
+  TaskEventResponse,
+  TaskQueueStateResponse,
+  TaskResponse,
   UpdateGroup,
   UpdateHubuumClass,
   UpdateHubuumObject,
   UpdateNamespace,
+  UpdateReportTemplate,
   UpdateUser,
   User,
   UserToken
@@ -478,7 +507,62 @@ export const getApiV0MetaDb = async ( options?: RequestInit): Promise<getApiV0Me
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes.
+ * Auto-generated documentation for GET /api/v0/meta/tasks.
+ * @summary Get Api V0 Meta Tasks
+ */
+export type getApiV0MetaTasksResponse200 = {
+  data: TaskQueueStateResponse
+  status: 200
+}
+
+export type getApiV0MetaTasksResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV0MetaTasksResponse500 = {
+  data: ApiErrorResponse
+  status: 500
+}
+
+export type getApiV0MetaTasksResponseSuccess = (getApiV0MetaTasksResponse200) & {
+  headers: Headers;
+};
+export type getApiV0MetaTasksResponseError = (getApiV0MetaTasksResponse401 | getApiV0MetaTasksResponse500) & {
+  headers: Headers;
+};
+
+export type getApiV0MetaTasksResponse = (getApiV0MetaTasksResponseSuccess | getApiV0MetaTasksResponseError)
+
+export const getGetApiV0MetaTasksUrl = () => {
+
+
+  
+
+  return `/api/v0/meta/tasks`
+}
+
+export const getApiV0MetaTasks = async ( options?: RequestInit): Promise<getApiV0MetaTasksResponse> => {
+  
+  const res = await fetch(getGetApiV0MetaTasksUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV0MetaTasksResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV0MetaTasksResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes
  */
 export type getApiV1ClassesResponse200 = {
@@ -505,17 +589,24 @@ export type getApiV1ClassesResponseError = (getApiV1ClassesResponse400 | getApiV
 
 export type getApiV1ClassesResponse = (getApiV1ClassesResponseSuccess | getApiV1ClassesResponseError)
 
-export const getGetApiV1ClassesUrl = () => {
+export const getGetApiV1ClassesUrl = (params?: GetApiV1ClassesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/classes`
+  return stringifiedParams.length > 0 ? `/api/v1/classes?${stringifiedParams}` : `/api/v1/classes`
 }
 
-export const getApiV1Classes = async ( options?: RequestInit): Promise<getApiV1ClassesResponse> => {
+export const getApiV1Classes = async (params?: GetApiV1ClassesParams, options?: RequestInit): Promise<getApiV1ClassesResponse> => {
   
-  const res = await fetch(getGetApiV1ClassesUrl(),
+  const res = await fetch(getGetApiV1ClassesUrl(params),
   {      
     ...options,
     method: 'GET'
@@ -766,7 +857,7 @@ export const patchApiV1ClassesByClassId = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Trailing
  */
 export type getApiV1ClassesByClassIdTrailingResponse200 = {
@@ -798,17 +889,26 @@ export type getApiV1ClassesByClassIdTrailingResponseError = (getApiV1ClassesByCl
 
 export type getApiV1ClassesByClassIdTrailingResponse = (getApiV1ClassesByClassIdTrailingResponseSuccess | getApiV1ClassesByClassIdTrailingResponseError)
 
-export const getGetApiV1ClassesByClassIdTrailingUrl = (classId: number,) => {
+export const getGetApiV1ClassesByClassIdTrailingUrl = (classId: number,
+    params?: GetApiV1ClassesByClassIdTrailingParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/classes/${classId}/`
+  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/?${stringifiedParams}` : `/api/v1/classes/${classId}/`
 }
 
-export const getApiV1ClassesByClassIdTrailing = async (classId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdTrailingResponse> => {
+export const getApiV1ClassesByClassIdTrailing = async (classId: number,
+    params?: GetApiV1ClassesByClassIdTrailingParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdTrailingResponse> => {
   
-  const res = await fetch(getGetApiV1ClassesByClassIdTrailingUrl(classId),
+  const res = await fetch(getGetApiV1ClassesByClassIdTrailingUrl(classId,params),
   {      
     ...options,
     method: 'GET'
@@ -888,7 +988,7 @@ export const postApiV1ClassesByClassIdTrailing = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/permissions.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Permissions
  */
 export type getApiV1ClassesByClassIdPermissionsResponse200 = {
@@ -915,17 +1015,26 @@ export type getApiV1ClassesByClassIdPermissionsResponseError = (getApiV1ClassesB
 
 export type getApiV1ClassesByClassIdPermissionsResponse = (getApiV1ClassesByClassIdPermissionsResponseSuccess | getApiV1ClassesByClassIdPermissionsResponseError)
 
-export const getGetApiV1ClassesByClassIdPermissionsUrl = (classId: number,) => {
+export const getGetApiV1ClassesByClassIdPermissionsUrl = (classId: number,
+    params?: GetApiV1ClassesByClassIdPermissionsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/classes/${classId}/permissions`
+  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/permissions?${stringifiedParams}` : `/api/v1/classes/${classId}/permissions`
 }
 
-export const getApiV1ClassesByClassIdPermissions = async (classId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdPermissionsResponse> => {
+export const getApiV1ClassesByClassIdPermissions = async (classId: number,
+    params?: GetApiV1ClassesByClassIdPermissionsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdPermissionsResponse> => {
   
-  const res = await fetch(getGetApiV1ClassesByClassIdPermissionsUrl(classId),
+  const res = await fetch(getGetApiV1ClassesByClassIdPermissionsUrl(classId,params),
   {      
     ...options,
     method: 'GET'
@@ -943,7 +1052,7 @@ export const getApiV1ClassesByClassIdPermissions = async (classId: number, optio
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/relations.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Relations
  */
 export type getApiV1ClassesByClassIdRelationsResponse200 = {
@@ -975,17 +1084,26 @@ export type getApiV1ClassesByClassIdRelationsResponseError = (getApiV1ClassesByC
 
 export type getApiV1ClassesByClassIdRelationsResponse = (getApiV1ClassesByClassIdRelationsResponseSuccess | getApiV1ClassesByClassIdRelationsResponseError)
 
-export const getGetApiV1ClassesByClassIdRelationsUrl = (classId: number,) => {
+export const getGetApiV1ClassesByClassIdRelationsUrl = (classId: number,
+    params?: GetApiV1ClassesByClassIdRelationsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/classes/${classId}/relations`
+  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/relations?${stringifiedParams}` : `/api/v1/classes/${classId}/relations`
 }
 
-export const getApiV1ClassesByClassIdRelations = async (classId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelationsResponse> => {
+export const getApiV1ClassesByClassIdRelations = async (classId: number,
+    params?: GetApiV1ClassesByClassIdRelationsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelationsResponse> => {
   
-  const res = await fetch(getGetApiV1ClassesByClassIdRelationsUrl(classId),
+  const res = await fetch(getGetApiV1ClassesByClassIdRelationsUrl(classId,params),
   {      
     ...options,
     method: 'GET'
@@ -1065,44 +1183,53 @@ export const postApiV1ClassesByClassIdRelations = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/relations/transitive.
- * @summary Get Api V1 Classes By Class Id Relations Transitive
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/relations/transitive/. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Classes By Class Id Relations Transitive Trailing
  */
-export type getApiV1ClassesByClassIdRelationsTransitiveResponse200 = {
+export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse200 = {
   data: HubuumClassRelationTransitive[]
   status: 200
 }
 
-export type getApiV1ClassesByClassIdRelationsTransitiveResponse401 = {
+export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type getApiV1ClassesByClassIdRelationsTransitiveResponse404 = {
+export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse404 = {
   data: ApiErrorResponse
   status: 404
 }
 
-export type getApiV1ClassesByClassIdRelationsTransitiveResponseSuccess = (getApiV1ClassesByClassIdRelationsTransitiveResponse200) & {
+export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponseSuccess = (getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse200) & {
   headers: Headers;
 };
-export type getApiV1ClassesByClassIdRelationsTransitiveResponseError = (getApiV1ClassesByClassIdRelationsTransitiveResponse401 | getApiV1ClassesByClassIdRelationsTransitiveResponse404) & {
+export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponseError = (getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse401 | getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse404) & {
   headers: Headers;
 };
 
-export type getApiV1ClassesByClassIdRelationsTransitiveResponse = (getApiV1ClassesByClassIdRelationsTransitiveResponseSuccess | getApiV1ClassesByClassIdRelationsTransitiveResponseError)
+export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse = (getApiV1ClassesByClassIdRelationsTransitiveTrailingResponseSuccess | getApiV1ClassesByClassIdRelationsTransitiveTrailingResponseError)
 
-export const getGetApiV1ClassesByClassIdRelationsTransitiveUrl = (classId: number,) => {
+export const getGetApiV1ClassesByClassIdRelationsTransitiveTrailingUrl = (classId: number,
+    params?: GetApiV1ClassesByClassIdRelationsTransitiveTrailingParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/classes/${classId}/relations/transitive`
+  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/relations/transitive/?${stringifiedParams}` : `/api/v1/classes/${classId}/relations/transitive/`
 }
 
-export const getApiV1ClassesByClassIdRelationsTransitive = async (classId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelationsTransitiveResponse> => {
+export const getApiV1ClassesByClassIdRelationsTransitiveTrailing = async (classId: number,
+    params?: GetApiV1ClassesByClassIdRelationsTransitiveTrailingParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse> => {
   
-  const res = await fetch(getGetApiV1ClassesByClassIdRelationsTransitiveUrl(classId),
+  const res = await fetch(getGetApiV1ClassesByClassIdRelationsTransitiveTrailingUrl(classId,params),
   {      
     ...options,
     method: 'GET'
@@ -1113,14 +1240,14 @@ export const getApiV1ClassesByClassIdRelationsTransitive = async (classId: numbe
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: getApiV1ClassesByClassIdRelationsTransitiveResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelationsTransitiveResponse
+  const data: getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse
 }
   
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/relations/transitive/class/{class_id_to}.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/relations/transitive/class/{class_id_to}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Relations Transitive Class By Class Id To
  */
 export type getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse200 = {
@@ -1148,18 +1275,27 @@ export type getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponseE
 export type getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse = (getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponseSuccess | getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponseError)
 
 export const getGetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToUrl = (classId: number,
-    classIdTo: number,) => {
+    classIdTo: number,
+    params?: GetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/classes/${classId}/relations/transitive/class/${classIdTo}`
+  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/relations/transitive/class/${classIdTo}?${stringifiedParams}` : `/api/v1/classes/${classId}/relations/transitive/class/${classIdTo}`
 }
 
 export const getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdTo = async (classId: number,
-    classIdTo: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse> => {
+    classIdTo: number,
+    params?: GetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse> => {
   
-  const res = await fetch(getGetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToUrl(classId,classIdTo),
+  const res = await fetch(getGetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToUrl(classId,classIdTo,params),
   {      
     ...options,
     method: 'GET'
@@ -1239,7 +1375,7 @@ export const deleteApiV1ClassesByClassIdRelationsByRelationId = async (classId: 
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/{from_object_id}/relations.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/{from_object_id}/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id By From Object Id Relations
  */
 export type getApiV1ClassesByClassIdByFromObjectIdRelationsResponse200 = {
@@ -1272,18 +1408,27 @@ export type getApiV1ClassesByClassIdByFromObjectIdRelationsResponseError = (getA
 export type getApiV1ClassesByClassIdByFromObjectIdRelationsResponse = (getApiV1ClassesByClassIdByFromObjectIdRelationsResponseSuccess | getApiV1ClassesByClassIdByFromObjectIdRelationsResponseError)
 
 export const getGetApiV1ClassesByClassIdByFromObjectIdRelationsUrl = (classId: number,
-    fromObjectId: number,) => {
+    fromObjectId: number,
+    params?: GetApiV1ClassesByClassIdByFromObjectIdRelationsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/classes/${classId}/${fromObjectId}/relations`
+  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/${fromObjectId}/relations?${stringifiedParams}` : `/api/v1/classes/${classId}/${fromObjectId}/relations`
 }
 
 export const getApiV1ClassesByClassIdByFromObjectIdRelations = async (classId: number,
-    fromObjectId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdByFromObjectIdRelationsResponse> => {
+    fromObjectId: number,
+    params?: GetApiV1ClassesByClassIdByFromObjectIdRelationsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdByFromObjectIdRelationsResponse> => {
   
-  const res = await fetch(getGetApiV1ClassesByClassIdByFromObjectIdRelationsUrl(classId,fromObjectId),
+  const res = await fetch(getGetApiV1ClassesByClassIdByFromObjectIdRelationsUrl(classId,fromObjectId,params),
   {      
     ...options,
     method: 'GET'
@@ -1667,7 +1812,7 @@ export const patchApiV1ClassesByClassIdByObjectId = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/groups.
+ * Auto-generated documentation for GET /api/v1/iam/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Groups
  */
 export type getApiV1IamGroupsResponse200 = {
@@ -1694,17 +1839,24 @@ export type getApiV1IamGroupsResponseError = (getApiV1IamGroupsResponse400 | get
 
 export type getApiV1IamGroupsResponse = (getApiV1IamGroupsResponseSuccess | getApiV1IamGroupsResponseError)
 
-export const getGetApiV1IamGroupsUrl = () => {
+export const getGetApiV1IamGroupsUrl = (params?: GetApiV1IamGroupsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/iam/groups`
+  return stringifiedParams.length > 0 ? `/api/v1/iam/groups?${stringifiedParams}` : `/api/v1/iam/groups`
 }
 
-export const getApiV1IamGroups = async ( options?: RequestInit): Promise<getApiV1IamGroupsResponse> => {
+export const getApiV1IamGroups = async (params?: GetApiV1IamGroupsParams, options?: RequestInit): Promise<getApiV1IamGroupsResponse> => {
   
-  const res = await fetch(getGetApiV1IamGroupsUrl(),
+  const res = await fetch(getGetApiV1IamGroupsUrl(params),
   {      
     ...options,
     method: 'GET'
@@ -1955,7 +2107,7 @@ export const patchApiV1IamGroupsByGroupId = async (groupId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/members.
+ * Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/members. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Groups By Group Id Members
  */
 export type getApiV1IamGroupsByGroupIdMembersResponse200 = {
@@ -1982,17 +2134,26 @@ export type getApiV1IamGroupsByGroupIdMembersResponseError = (getApiV1IamGroupsB
 
 export type getApiV1IamGroupsByGroupIdMembersResponse = (getApiV1IamGroupsByGroupIdMembersResponseSuccess | getApiV1IamGroupsByGroupIdMembersResponseError)
 
-export const getGetApiV1IamGroupsByGroupIdMembersUrl = (groupId: number,) => {
+export const getGetApiV1IamGroupsByGroupIdMembersUrl = (groupId: number,
+    params?: GetApiV1IamGroupsByGroupIdMembersParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/iam/groups/${groupId}/members`
+  return stringifiedParams.length > 0 ? `/api/v1/iam/groups/${groupId}/members?${stringifiedParams}` : `/api/v1/iam/groups/${groupId}/members`
 }
 
-export const getApiV1IamGroupsByGroupIdMembers = async (groupId: number, options?: RequestInit): Promise<getApiV1IamGroupsByGroupIdMembersResponse> => {
+export const getApiV1IamGroupsByGroupIdMembers = async (groupId: number,
+    params?: GetApiV1IamGroupsByGroupIdMembersParams, options?: RequestInit): Promise<getApiV1IamGroupsByGroupIdMembersResponse> => {
   
-  const res = await fetch(getGetApiV1IamGroupsByGroupIdMembersUrl(groupId),
+  const res = await fetch(getGetApiV1IamGroupsByGroupIdMembersUrl(groupId,params),
   {      
     ...options,
     method: 'GET'
@@ -2124,7 +2285,7 @@ export const deleteApiV1IamGroupsByGroupIdMembersByUserId = async (groupId: numb
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/users.
+ * Auto-generated documentation for GET /api/v1/iam/users. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Users
  */
 export type getApiV1IamUsersResponse200 = {
@@ -2151,17 +2312,24 @@ export type getApiV1IamUsersResponseError = (getApiV1IamUsersResponse400 | getAp
 
 export type getApiV1IamUsersResponse = (getApiV1IamUsersResponseSuccess | getApiV1IamUsersResponseError)
 
-export const getGetApiV1IamUsersUrl = () => {
+export const getGetApiV1IamUsersUrl = (params?: GetApiV1IamUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/iam/users`
+  return stringifiedParams.length > 0 ? `/api/v1/iam/users?${stringifiedParams}` : `/api/v1/iam/users`
 }
 
-export const getApiV1IamUsers = async ( options?: RequestInit): Promise<getApiV1IamUsersResponse> => {
+export const getApiV1IamUsers = async (params?: GetApiV1IamUsersParams, options?: RequestInit): Promise<getApiV1IamUsersResponse> => {
   
-  const res = await fetch(getGetApiV1IamUsersUrl(),
+  const res = await fetch(getGetApiV1IamUsersUrl(params),
   {      
     ...options,
     method: 'GET'
@@ -2412,7 +2580,7 @@ export const patchApiV1IamUsersByUserId = async (userId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/groups.
+ * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Users By User Id Groups
  */
 export type getApiV1IamUsersByUserIdGroupsResponse200 = {
@@ -2439,17 +2607,26 @@ export type getApiV1IamUsersByUserIdGroupsResponseError = (getApiV1IamUsersByUse
 
 export type getApiV1IamUsersByUserIdGroupsResponse = (getApiV1IamUsersByUserIdGroupsResponseSuccess | getApiV1IamUsersByUserIdGroupsResponseError)
 
-export const getGetApiV1IamUsersByUserIdGroupsUrl = (userId: number,) => {
+export const getGetApiV1IamUsersByUserIdGroupsUrl = (userId: number,
+    params?: GetApiV1IamUsersByUserIdGroupsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/iam/users/${userId}/groups`
+  return stringifiedParams.length > 0 ? `/api/v1/iam/users/${userId}/groups?${stringifiedParams}` : `/api/v1/iam/users/${userId}/groups`
 }
 
-export const getApiV1IamUsersByUserIdGroups = async (userId: number, options?: RequestInit): Promise<getApiV1IamUsersByUserIdGroupsResponse> => {
+export const getApiV1IamUsersByUserIdGroups = async (userId: number,
+    params?: GetApiV1IamUsersByUserIdGroupsParams, options?: RequestInit): Promise<getApiV1IamUsersByUserIdGroupsResponse> => {
   
-  const res = await fetch(getGetApiV1IamUsersByUserIdGroupsUrl(userId),
+  const res = await fetch(getGetApiV1IamUsersByUserIdGroupsUrl(userId,params),
   {      
     ...options,
     method: 'GET'
@@ -2467,7 +2644,7 @@ export const getApiV1IamUsersByUserIdGroups = async (userId: number, options?: R
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/tokens.
+ * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Users By User Id Tokens
  */
 export type getApiV1IamUsersByUserIdTokensResponse200 = {
@@ -2494,17 +2671,26 @@ export type getApiV1IamUsersByUserIdTokensResponseError = (getApiV1IamUsersByUse
 
 export type getApiV1IamUsersByUserIdTokensResponse = (getApiV1IamUsersByUserIdTokensResponseSuccess | getApiV1IamUsersByUserIdTokensResponseError)
 
-export const getGetApiV1IamUsersByUserIdTokensUrl = (userId: number,) => {
+export const getGetApiV1IamUsersByUserIdTokensUrl = (userId: number,
+    params?: GetApiV1IamUsersByUserIdTokensParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/iam/users/${userId}/tokens`
+  return stringifiedParams.length > 0 ? `/api/v1/iam/users/${userId}/tokens?${stringifiedParams}` : `/api/v1/iam/users/${userId}/tokens`
 }
 
-export const getApiV1IamUsersByUserIdTokens = async (userId: number, options?: RequestInit): Promise<getApiV1IamUsersByUserIdTokensResponse> => {
+export const getApiV1IamUsersByUserIdTokens = async (userId: number,
+    params?: GetApiV1IamUsersByUserIdTokensParams, options?: RequestInit): Promise<getApiV1IamUsersByUserIdTokensResponse> => {
   
-  const res = await fetch(getGetApiV1IamUsersByUserIdTokensUrl(userId),
+  const res = await fetch(getGetApiV1IamUsersByUserIdTokensUrl(userId,params),
   {      
     ...options,
     method: 'GET'
@@ -2522,7 +2708,188 @@ export const getApiV1IamUsersByUserIdTokens = async (userId: number, options?: R
 
 
 /**
- * Auto-generated documentation for GET /api/v1/namespaces.
+ * Auto-generated documentation for POST /api/v1/imports.
+ * @summary Post Api V1 Imports
+ */
+export type postApiV1ImportsResponse202 = {
+  data: TaskResponse
+  status: 202
+}
+
+export type postApiV1ImportsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ImportsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1ImportsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ImportsResponseSuccess = (postApiV1ImportsResponse202) & {
+  headers: Headers;
+};
+export type postApiV1ImportsResponseError = (postApiV1ImportsResponse400 | postApiV1ImportsResponse401 | postApiV1ImportsResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1ImportsResponse = (postApiV1ImportsResponseSuccess | postApiV1ImportsResponseError)
+
+export const getPostApiV1ImportsUrl = () => {
+
+
+  
+
+  return `/api/v1/imports`
+}
+
+export const postApiV1Imports = async (importRequest: ImportRequest, options?: RequestInit): Promise<postApiV1ImportsResponse> => {
+  
+  const res = await fetch(getPostApiV1ImportsUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      importRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: postApiV1ImportsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ImportsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/imports/{task_id}.
+ * @summary Get Api V1 Imports By Task Id
+ */
+export type getApiV1ImportsByTaskIdResponse200 = {
+  data: TaskResponse
+  status: 200
+}
+
+export type getApiV1ImportsByTaskIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ImportsByTaskIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ImportsByTaskIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ImportsByTaskIdResponseSuccess = (getApiV1ImportsByTaskIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ImportsByTaskIdResponseError = (getApiV1ImportsByTaskIdResponse401 | getApiV1ImportsByTaskIdResponse403 | getApiV1ImportsByTaskIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ImportsByTaskIdResponse = (getApiV1ImportsByTaskIdResponseSuccess | getApiV1ImportsByTaskIdResponseError)
+
+export const getGetApiV1ImportsByTaskIdUrl = (taskId: number,) => {
+
+
+  
+
+  return `/api/v1/imports/${taskId}`
+}
+
+export const getApiV1ImportsByTaskId = async (taskId: number, options?: RequestInit): Promise<getApiV1ImportsByTaskIdResponse> => {
+  
+  const res = await fetch(getGetApiV1ImportsByTaskIdUrl(taskId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1ImportsByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ImportsByTaskIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/imports/{task_id}/results.
+ * @summary Get Api V1 Imports By Task Id Results
+ */
+export type getApiV1ImportsByTaskIdResultsResponse200 = {
+  data: ImportTaskResultResponse[]
+  status: 200
+}
+
+export type getApiV1ImportsByTaskIdResultsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ImportsByTaskIdResultsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ImportsByTaskIdResultsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ImportsByTaskIdResultsResponseSuccess = (getApiV1ImportsByTaskIdResultsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ImportsByTaskIdResultsResponseError = (getApiV1ImportsByTaskIdResultsResponse401 | getApiV1ImportsByTaskIdResultsResponse403 | getApiV1ImportsByTaskIdResultsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ImportsByTaskIdResultsResponse = (getApiV1ImportsByTaskIdResultsResponseSuccess | getApiV1ImportsByTaskIdResultsResponseError)
+
+export const getGetApiV1ImportsByTaskIdResultsUrl = (taskId: number,) => {
+
+
+  
+
+  return `/api/v1/imports/${taskId}/results`
+}
+
+export const getApiV1ImportsByTaskIdResults = async (taskId: number, options?: RequestInit): Promise<getApiV1ImportsByTaskIdResultsResponse> => {
+  
+  const res = await fetch(getGetApiV1ImportsByTaskIdResultsUrl(taskId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1ImportsByTaskIdResultsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ImportsByTaskIdResultsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/namespaces. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Namespaces
  */
 export type getApiV1NamespacesResponse200 = {
@@ -2549,17 +2916,24 @@ export type getApiV1NamespacesResponseError = (getApiV1NamespacesResponse400 | g
 
 export type getApiV1NamespacesResponse = (getApiV1NamespacesResponseSuccess | getApiV1NamespacesResponseError)
 
-export const getGetApiV1NamespacesUrl = () => {
+export const getGetApiV1NamespacesUrl = (params?: GetApiV1NamespacesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/namespaces`
+  return stringifiedParams.length > 0 ? `/api/v1/namespaces?${stringifiedParams}` : `/api/v1/namespaces`
 }
 
-export const getApiV1Namespaces = async ( options?: RequestInit): Promise<getApiV1NamespacesResponse> => {
+export const getApiV1Namespaces = async (params?: GetApiV1NamespacesParams, options?: RequestInit): Promise<getApiV1NamespacesResponse> => {
   
-  const res = await fetch(getGetApiV1NamespacesUrl(),
+  const res = await fetch(getGetApiV1NamespacesUrl(params),
   {      
     ...options,
     method: 'GET'
@@ -2810,7 +3184,7 @@ export const patchApiV1NamespacesByNamespaceId = async (namespaceId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/has_permissions/{permission}.
+ * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/has_permissions/{permission}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List all groups that have any permissions on a namespace
  */
 export type getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse200 = {
@@ -2838,18 +3212,27 @@ export type getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponseErr
 export type getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse = (getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponseSuccess | getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponseError)
 
 export const getGetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionUrl = (namespaceId: number,
-    permission: Permissions,) => {
+    permission: Permissions,
+    params?: GetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/namespaces/${namespaceId}/has_permissions/${permission}`
+  return stringifiedParams.length > 0 ? `/api/v1/namespaces/${namespaceId}/has_permissions/${permission}?${stringifiedParams}` : `/api/v1/namespaces/${namespaceId}/has_permissions/${permission}`
 }
 
 export const getApiV1NamespacesByNamespaceIdHasPermissionsByPermission = async (namespaceId: number,
-    permission: Permissions, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse> => {
+    permission: Permissions,
+    params?: GetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse> => {
   
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionUrl(namespaceId,permission),
+  const res = await fetch(getGetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionUrl(namespaceId,permission,params),
   {      
     ...options,
     method: 'GET'
@@ -2867,7 +3250,7 @@ export const getApiV1NamespacesByNamespaceIdHasPermissionsByPermission = async (
 
 
 /**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions.
+ * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List all groups who have permissions for a namespace
  */
 export type getApiV1NamespacesByNamespaceIdPermissionsResponse200 = {
@@ -2894,17 +3277,26 @@ export type getApiV1NamespacesByNamespaceIdPermissionsResponseError = (getApiV1N
 
 export type getApiV1NamespacesByNamespaceIdPermissionsResponse = (getApiV1NamespacesByNamespaceIdPermissionsResponseSuccess | getApiV1NamespacesByNamespaceIdPermissionsResponseError)
 
-export const getGetApiV1NamespacesByNamespaceIdPermissionsUrl = (namespaceId: number,) => {
+export const getGetApiV1NamespacesByNamespaceIdPermissionsUrl = (namespaceId: number,
+    params?: GetApiV1NamespacesByNamespaceIdPermissionsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/namespaces/${namespaceId}/permissions`
+  return stringifiedParams.length > 0 ? `/api/v1/namespaces/${namespaceId}/permissions?${stringifiedParams}` : `/api/v1/namespaces/${namespaceId}/permissions`
 }
 
-export const getApiV1NamespacesByNamespaceIdPermissions = async (namespaceId: number, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdPermissionsResponse> => {
+export const getApiV1NamespacesByNamespaceIdPermissions = async (namespaceId: number,
+    params?: GetApiV1NamespacesByNamespaceIdPermissionsParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdPermissionsResponse> => {
   
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdPermissionsUrl(namespaceId),
+  const res = await fetch(getGetApiV1NamespacesByNamespaceIdPermissionsUrl(namespaceId,params),
   {      
     ...options,
     method: 'GET'
@@ -2979,10 +3371,75 @@ export const getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId = async (n
 
 
 /**
+ * Auto-generated documentation for PUT /api/v1/namespaces/{namespace_id}/permissions/group/{group_id}.
+ * @summary Replace all permissions for a group on a namespace
+This removes any existing permissions and applies the new set.
+ */
+export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse200 = {
+  data: void
+  status: 200
+}
+
+export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseSuccess = (putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse200) & {
+  headers: Headers;
+};
+export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseError = (putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse400 | putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse401 | putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse404) & {
+  headers: Headers;
+};
+
+export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse = (putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseSuccess | putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseError)
+
+export const getPutApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl = (namespaceId: number,
+    groupId: number,) => {
+
+
+  
+
+  return `/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
+}
+
+export const putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId = async (namespaceId: number,
+    groupId: number,
+    permissions: Permissions[], options?: RequestInit): Promise<putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse> => {
+  
+  const res = await fetch(getPutApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl(namespaceId,groupId),
+  {      
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      permissions,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse
+}
+  
+
+
+/**
  * Auto-generated documentation for POST /api/v1/namespaces/{namespace_id}/permissions/group/{group_id}.
  * @summary Post a permission set to a group on a namespace
 This will create a new entry if the group had no permissions,
-or update the existing entry if it did.
+or add to the existing entry if it did.
 The body should be a JSON array of permissions:
 ```json
 [
@@ -3282,7 +3739,7 @@ export const deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermis
 
 
 /**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions/user/{user_id}.
+ * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions/user/{user_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List all permissions for a user on a namespace
  */
 export type getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse200 = {
@@ -3310,18 +3767,27 @@ export type getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponseError 
 export type getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse = (getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponseSuccess | getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponseError)
 
 export const getGetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdUrl = (namespaceId: number,
-    userId: number,) => {
+    userId: number,
+    params?: GetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/namespaces/${namespaceId}/permissions/user/${userId}`
+  return stringifiedParams.length > 0 ? `/api/v1/namespaces/${namespaceId}/permissions/user/${userId}?${stringifiedParams}` : `/api/v1/namespaces/${namespaceId}/permissions/user/${userId}`
 }
 
 export const getApiV1NamespacesByNamespaceIdPermissionsUserByUserId = async (namespaceId: number,
-    userId: number, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse> => {
+    userId: number,
+    params?: GetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse> => {
   
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdUrl(namespaceId,userId),
+  const res = await fetch(getGetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdUrl(namespaceId,userId,params),
   {      
     ...options,
     method: 'GET'
@@ -3339,7 +3805,7 @@ export const getApiV1NamespacesByNamespaceIdPermissionsUserByUserId = async (nam
 
 
 /**
- * Auto-generated documentation for GET /api/v1/relations/classes.
+ * Auto-generated documentation for GET /api/v1/relations/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Relations Classes
  */
 export type getApiV1RelationsClassesResponse200 = {
@@ -3366,17 +3832,24 @@ export type getApiV1RelationsClassesResponseError = (getApiV1RelationsClassesRes
 
 export type getApiV1RelationsClassesResponse = (getApiV1RelationsClassesResponseSuccess | getApiV1RelationsClassesResponseError)
 
-export const getGetApiV1RelationsClassesUrl = () => {
+export const getGetApiV1RelationsClassesUrl = (params?: GetApiV1RelationsClassesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/relations/classes`
+  return stringifiedParams.length > 0 ? `/api/v1/relations/classes?${stringifiedParams}` : `/api/v1/relations/classes`
 }
 
-export const getApiV1RelationsClasses = async ( options?: RequestInit): Promise<getApiV1RelationsClassesResponse> => {
+export const getApiV1RelationsClasses = async (params?: GetApiV1RelationsClassesParams, options?: RequestInit): Promise<getApiV1RelationsClassesResponse> => {
   
-  const res = await fetch(getGetApiV1RelationsClassesUrl(),
+  const res = await fetch(getGetApiV1RelationsClassesUrl(params),
   {      
     ...options,
     method: 'GET'
@@ -3565,7 +4038,7 @@ export const deleteApiV1RelationsClassesByRelationId = async (relationId: number
 
 
 /**
- * Auto-generated documentation for GET /api/v1/relations/objects.
+ * Auto-generated documentation for GET /api/v1/relations/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Relations Objects
  */
 export type getApiV1RelationsObjectsResponse200 = {
@@ -3592,17 +4065,24 @@ export type getApiV1RelationsObjectsResponseError = (getApiV1RelationsObjectsRes
 
 export type getApiV1RelationsObjectsResponse = (getApiV1RelationsObjectsResponseSuccess | getApiV1RelationsObjectsResponseError)
 
-export const getGetApiV1RelationsObjectsUrl = () => {
+export const getGetApiV1RelationsObjectsUrl = (params?: GetApiV1RelationsObjectsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/v1/relations/objects`
+  return stringifiedParams.length > 0 ? `/api/v1/relations/objects?${stringifiedParams}` : `/api/v1/relations/objects`
 }
 
-export const getApiV1RelationsObjects = async ( options?: RequestInit): Promise<getApiV1RelationsObjectsResponse> => {
+export const getApiV1RelationsObjects = async (params?: GetApiV1RelationsObjectsParams, options?: RequestInit): Promise<getApiV1RelationsObjectsResponse> => {
   
-  const res = await fetch(getGetApiV1RelationsObjectsUrl(),
+  const res = await fetch(getGetApiV1RelationsObjectsUrl(params),
   {      
     ...options,
     method: 'GET'
@@ -3786,6 +4266,527 @@ export const deleteApiV1RelationsObjectsByRelationId = async (relationId: number
   
   const data: deleteApiV1RelationsObjectsByRelationIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1RelationsObjectsByRelationIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/reports.
+ * @summary Post Api V1 Reports
+ */
+export type postApiV1ReportsResponse200ApplicationJson = {
+  data: ReportJsonResponse
+  status: 200
+}
+
+export type postApiV1ReportsResponse200TextPlain = {
+  data: string
+  status: 200
+}
+
+export type postApiV1ReportsResponse200TextHtml = {
+  data: string
+  status: 200
+}
+
+export type postApiV1ReportsResponse200TextCsv = {
+  data: string
+  status: 200
+}
+
+export type postApiV1ReportsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ReportsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1ReportsResponse406 = {
+  data: ApiErrorResponse
+  status: 406
+}
+
+export type postApiV1ReportsResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type postApiV1ReportsResponseSuccess = (postApiV1ReportsResponse200ApplicationJson | postApiV1ReportsResponse200TextPlain | postApiV1ReportsResponse200TextHtml | postApiV1ReportsResponse200TextCsv) & {
+  headers: Headers;
+};
+export type postApiV1ReportsResponseError = (postApiV1ReportsResponse400 | postApiV1ReportsResponse401 | postApiV1ReportsResponse406 | postApiV1ReportsResponse413) & {
+  headers: Headers;
+};
+
+export type postApiV1ReportsResponse = (postApiV1ReportsResponseSuccess | postApiV1ReportsResponseError)
+
+export const getPostApiV1ReportsUrl = () => {
+
+
+  
+
+  return `/api/v1/reports`
+}
+
+export const postApiV1Reports = async (reportRequest: ReportRequest, options?: RequestInit): Promise<postApiV1ReportsResponse> => {
+  
+  const res = await fetch(getPostApiV1ReportsUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reportRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: postApiV1ReportsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ReportsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/tasks/{task_id}.
+ * @summary Get Api V1 Tasks By Task Id
+ */
+export type getApiV1TasksByTaskIdResponse200 = {
+  data: TaskResponse
+  status: 200
+}
+
+export type getApiV1TasksByTaskIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1TasksByTaskIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1TasksByTaskIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1TasksByTaskIdResponseSuccess = (getApiV1TasksByTaskIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1TasksByTaskIdResponseError = (getApiV1TasksByTaskIdResponse401 | getApiV1TasksByTaskIdResponse403 | getApiV1TasksByTaskIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1TasksByTaskIdResponse = (getApiV1TasksByTaskIdResponseSuccess | getApiV1TasksByTaskIdResponseError)
+
+export const getGetApiV1TasksByTaskIdUrl = (taskId: number,) => {
+
+
+  
+
+  return `/api/v1/tasks/${taskId}`
+}
+
+export const getApiV1TasksByTaskId = async (taskId: number, options?: RequestInit): Promise<getApiV1TasksByTaskIdResponse> => {
+  
+  const res = await fetch(getGetApiV1TasksByTaskIdUrl(taskId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1TasksByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1TasksByTaskIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/tasks/{task_id}/events.
+ * @summary Get Api V1 Tasks By Task Id Events
+ */
+export type getApiV1TasksByTaskIdEventsResponse200 = {
+  data: TaskEventResponse[]
+  status: 200
+}
+
+export type getApiV1TasksByTaskIdEventsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1TasksByTaskIdEventsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1TasksByTaskIdEventsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1TasksByTaskIdEventsResponseSuccess = (getApiV1TasksByTaskIdEventsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1TasksByTaskIdEventsResponseError = (getApiV1TasksByTaskIdEventsResponse401 | getApiV1TasksByTaskIdEventsResponse403 | getApiV1TasksByTaskIdEventsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1TasksByTaskIdEventsResponse = (getApiV1TasksByTaskIdEventsResponseSuccess | getApiV1TasksByTaskIdEventsResponseError)
+
+export const getGetApiV1TasksByTaskIdEventsUrl = (taskId: number,) => {
+
+
+  
+
+  return `/api/v1/tasks/${taskId}/events`
+}
+
+export const getApiV1TasksByTaskIdEvents = async (taskId: number, options?: RequestInit): Promise<getApiV1TasksByTaskIdEventsResponse> => {
+  
+  const res = await fetch(getGetApiV1TasksByTaskIdEventsUrl(taskId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1TasksByTaskIdEventsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1TasksByTaskIdEventsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/templates. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Templates
+ */
+export type getApiV1TemplatesResponse200 = {
+  data: ReportTemplate[]
+  status: 200
+}
+
+export type getApiV1TemplatesResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1TemplatesResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1TemplatesResponseSuccess = (getApiV1TemplatesResponse200) & {
+  headers: Headers;
+};
+export type getApiV1TemplatesResponseError = (getApiV1TemplatesResponse400 | getApiV1TemplatesResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1TemplatesResponse = (getApiV1TemplatesResponseSuccess | getApiV1TemplatesResponseError)
+
+export const getGetApiV1TemplatesUrl = (params?: GetApiV1TemplatesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/templates?${stringifiedParams}` : `/api/v1/templates`
+}
+
+export const getApiV1Templates = async (params?: GetApiV1TemplatesParams, options?: RequestInit): Promise<getApiV1TemplatesResponse> => {
+  
+  const res = await fetch(getGetApiV1TemplatesUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1TemplatesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1TemplatesResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/templates.
+ * @summary Post Api V1 Templates
+ */
+export type postApiV1TemplatesResponse201 = {
+  data: ReportTemplate
+  status: 201
+}
+
+export type postApiV1TemplatesResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1TemplatesResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1TemplatesResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1TemplatesResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1TemplatesResponseSuccess = (postApiV1TemplatesResponse201) & {
+  headers: Headers;
+};
+export type postApiV1TemplatesResponseError = (postApiV1TemplatesResponse400 | postApiV1TemplatesResponse401 | postApiV1TemplatesResponse403 | postApiV1TemplatesResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1TemplatesResponse = (postApiV1TemplatesResponseSuccess | postApiV1TemplatesResponseError)
+
+export const getPostApiV1TemplatesUrl = () => {
+
+
+  
+
+  return `/api/v1/templates`
+}
+
+export const postApiV1Templates = async (newReportTemplate: NewReportTemplate, options?: RequestInit): Promise<postApiV1TemplatesResponse> => {
+  
+  const res = await fetch(getPostApiV1TemplatesUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      newReportTemplate,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: postApiV1TemplatesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1TemplatesResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/templates/{template_id}.
+ * @summary Get Api V1 Templates By Template Id
+ */
+export type getApiV1TemplatesByTemplateIdResponse200 = {
+  data: ReportTemplate
+  status: 200
+}
+
+export type getApiV1TemplatesByTemplateIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1TemplatesByTemplateIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1TemplatesByTemplateIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1TemplatesByTemplateIdResponseSuccess = (getApiV1TemplatesByTemplateIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1TemplatesByTemplateIdResponseError = (getApiV1TemplatesByTemplateIdResponse401 | getApiV1TemplatesByTemplateIdResponse403 | getApiV1TemplatesByTemplateIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1TemplatesByTemplateIdResponse = (getApiV1TemplatesByTemplateIdResponseSuccess | getApiV1TemplatesByTemplateIdResponseError)
+
+export const getGetApiV1TemplatesByTemplateIdUrl = (templateId: number,) => {
+
+
+  
+
+  return `/api/v1/templates/${templateId}`
+}
+
+export const getApiV1TemplatesByTemplateId = async (templateId: number, options?: RequestInit): Promise<getApiV1TemplatesByTemplateIdResponse> => {
+  
+  const res = await fetch(getGetApiV1TemplatesByTemplateIdUrl(templateId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1TemplatesByTemplateIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1TemplatesByTemplateIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/templates/{template_id}.
+ * @summary Delete Api V1 Templates By Template Id
+ */
+export type deleteApiV1TemplatesByTemplateIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1TemplatesByTemplateIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1TemplatesByTemplateIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1TemplatesByTemplateIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1TemplatesByTemplateIdResponseSuccess = (deleteApiV1TemplatesByTemplateIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1TemplatesByTemplateIdResponseError = (deleteApiV1TemplatesByTemplateIdResponse401 | deleteApiV1TemplatesByTemplateIdResponse403 | deleteApiV1TemplatesByTemplateIdResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1TemplatesByTemplateIdResponse = (deleteApiV1TemplatesByTemplateIdResponseSuccess | deleteApiV1TemplatesByTemplateIdResponseError)
+
+export const getDeleteApiV1TemplatesByTemplateIdUrl = (templateId: number,) => {
+
+
+  
+
+  return `/api/v1/templates/${templateId}`
+}
+
+export const deleteApiV1TemplatesByTemplateId = async (templateId: number, options?: RequestInit): Promise<deleteApiV1TemplatesByTemplateIdResponse> => {
+  
+  const res = await fetch(getDeleteApiV1TemplatesByTemplateIdUrl(templateId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteApiV1TemplatesByTemplateIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1TemplatesByTemplateIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/templates/{template_id}.
+ * @summary Patch Api V1 Templates By Template Id
+ */
+export type patchApiV1TemplatesByTemplateIdResponse200 = {
+  data: ReportTemplate
+  status: 200
+}
+
+export type patchApiV1TemplatesByTemplateIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1TemplatesByTemplateIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1TemplatesByTemplateIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1TemplatesByTemplateIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1TemplatesByTemplateIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1TemplatesByTemplateIdResponseSuccess = (patchApiV1TemplatesByTemplateIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1TemplatesByTemplateIdResponseError = (patchApiV1TemplatesByTemplateIdResponse400 | patchApiV1TemplatesByTemplateIdResponse401 | patchApiV1TemplatesByTemplateIdResponse403 | patchApiV1TemplatesByTemplateIdResponse404 | patchApiV1TemplatesByTemplateIdResponse409) & {
+  headers: Headers;
+};
+
+export type patchApiV1TemplatesByTemplateIdResponse = (patchApiV1TemplatesByTemplateIdResponseSuccess | patchApiV1TemplatesByTemplateIdResponseError)
+
+export const getPatchApiV1TemplatesByTemplateIdUrl = (templateId: number,) => {
+
+
+  
+
+  return `/api/v1/templates/${templateId}`
+}
+
+export const patchApiV1TemplatesByTemplateId = async (templateId: number,
+    updateReportTemplate: UpdateReportTemplate, options?: RequestInit): Promise<patchApiV1TemplatesByTemplateIdResponse> => {
+  
+  const res = await fetch(getPatchApiV1TemplatesByTemplateIdUrl(templateId),
+  {      
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateReportTemplate,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: patchApiV1TemplatesByTemplateIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1TemplatesByTemplateIdResponse
 }
   
 

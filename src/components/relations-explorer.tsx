@@ -27,7 +27,7 @@ import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-even
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-  const response = await getApiV1Classes({
+  const response = await getApiV1Classes(undefined, {
     credentials: "include"
   });
 
@@ -110,7 +110,7 @@ async function fetchReachableObjectRelations(classId: number, fromObjectId: numb
 }
 
 async function fetchDirectObjectRelations(fromObjectId: number): Promise<HubuumObjectRelation[]> {
-  const response = await getApiV1RelationsObjects({
+  const response = await getApiV1RelationsObjects(undefined, {
     credentials: "include"
   });
 
@@ -122,7 +122,7 @@ async function fetchDirectObjectRelations(fromObjectId: number): Promise<HubuumO
 }
 
 async function fetchNamespaces(): Promise<Namespace[]> {
-  const response = await getApiV1Namespaces({
+  const response = await getApiV1Namespaces(undefined, {
     credentials: "include"
   });
 

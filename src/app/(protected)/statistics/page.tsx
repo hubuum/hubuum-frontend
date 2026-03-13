@@ -4,7 +4,7 @@ import { requireServerSession } from "@/lib/auth/guards";
 import { CORRELATION_ID_HEADER, normalizeCorrelationId } from "@/lib/correlation";
 import { fetchDbState, fetchMetaCounts, fetchTaskQueueState, getTotalNamespaces } from "@/lib/meta";
 
-function formatTimestamp(value: string | null): string {
+function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
     return "n/a";
   }

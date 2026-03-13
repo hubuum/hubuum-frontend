@@ -6,8 +6,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type ChangeEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { LogoutButton } from "@/components/logout-button";
-import { getApiV1Classes } from "@/lib/api/generated/client";
-import type { HubuumClassExpanded, HubuumObject } from "@/lib/api/generated/models";
+import { getApiV0MetaTasks, getApiV1Classes } from "@/lib/api/generated/client";
+import type { HubuumClassExpanded, HubuumObject, TaskQueueStateResponse } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { OPEN_CREATE_EVENT, type CreateSection } from "@/lib/create-events";
 
@@ -29,12 +29,24 @@ const SIDEBAR_COLLAPSED_KEY = "hubuum.sidebar.collapsed";
 const THEME_PREFERENCE_KEY = "hubuum.theme";
 
 async function fetchTopbarClassOptions(): Promise<HubuumClassExpanded[]> {
-  const response = await getApiV1Classes({
+  const response = await getApiV1Classes(undefined, {
     credentials: "include"
   });
 
   if (response.status !== 200) {
     throw new Error(getApiErrorMessage(response.data, "Failed to load classes."));
+  }
+
+  return response.data;
+}
+
+async function fetchTaskQueueState(): Promise<TaskQueueStateResponse> {
+  const response = await getApiV0MetaTasks({
+    credentials: "include"
+  });
+
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(response.data, "Failed to load task queue state."));
   }
 
   return response.data;
@@ -96,6 +108,9 @@ function isLinkActive(pathname: string, href: string): boolean {
 }
 
 function getSectionLabel(pathname: string): string {
+  if (pathname.startsWith("/tasks")) {
+    return "Tasks";
+  }
   if (pathname.startsWith("/reports")) {
     return "Reports";
   }
@@ -334,6 +349,17 @@ function IconPlus() {
   );
 }
 
+function IconTasks() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M7 4a2 2 0 1 1-2 2 2 2 0 0 1 2-2m0 7a2 2 0 1 1-2 2 2 2 0 0 1 2-2m0 7a2 2 0 1 1-2 2 2 2 0 0 1 2-2m4-13h8v2h-8zm0 7h8v2h-8zm0 7h8v2h-8z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 const workspaceLinks: NavItem[] = [
   {
     href: "/app",
@@ -376,6 +402,12 @@ const workspaceLinks: NavItem[] = [
     label: "Imports",
     icon: <IconImport />,
     hint: "Imports: submit JSON imports and monitor task execution"
+  },
+  {
+    href: "/tasks",
+    label: "Tasks",
+    icon: <IconTasks />,
+    hint: "Tasks: monitor active background work and resume task detail pages"
   }
 ];
 
@@ -442,6 +474,20 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
     queryFn: async () => fetchRelationsObjectOptions(parsedResolvedRelationsClassId ?? 0),
     enabled: isRelationsRoute && parsedResolvedRelationsClassId !== null
   });
+  const taskQueueQuery = useQuery({
+    queryKey: ["tasks", "shell-queue"],
+    queryFn: fetchTaskQueueState,
+    refetchInterval: (query) => {
+      const activeTasks = query.state.data?.active_tasks ?? 0;
+      const isHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+
+      if (isHidden) {
+        return activeTasks > 0 ? 15000 : 30000;
+      }
+
+      return activeTasks > 0 ? 5000 : 15000;
+    }
+  });
   const relationsObjectOptions = relationsObjectOptionsQuery.data ?? [];
   const resolvedRelationsObjectId = useMemo(() => {
     return relationsObjectOptions.some((objectItem) => String(objectItem.id) === selectedRelationsObjectId)
@@ -452,7 +498,9 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
   const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
+  const [recentFailureUntil, setRecentFailureUntil] = useState<number | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const previousFailedTasksRef = useRef<number | null>(null);
 
   useEffect(() => {
     const storedCollapsed = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
@@ -535,6 +583,38 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
     };
   }, [isUserMenuOpen]);
 
+  useEffect(() => {
+    const failedTasks = taskQueueQuery.data?.failed_tasks ?? null;
+    if (failedTasks === null) {
+      return;
+    }
+
+    const previousFailedTasks = previousFailedTasksRef.current;
+    previousFailedTasksRef.current = failedTasks;
+
+    if (previousFailedTasks !== null && failedTasks > previousFailedTasks) {
+      setRecentFailureUntil(Date.now() + 60_000);
+    }
+  }, [taskQueueQuery.data?.failed_tasks]);
+
+  useEffect(() => {
+    if (recentFailureUntil === null) {
+      return;
+    }
+
+    const remainingMs = recentFailureUntil - Date.now();
+    if (remainingMs <= 0) {
+      setRecentFailureUntil(null);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setRecentFailureUntil(null);
+    }, remainingMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [recentFailureUntil]);
+
   const shellClassName = [
     "app-shell",
     isSidebarCollapsed ? "sidebar-collapsed" : "",
@@ -542,6 +622,22 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
   ]
     .filter(Boolean)
     .join(" ");
+  const activeTaskCount = taskQueueQuery.data?.active_tasks ?? 0;
+  const hasRecentFailure = recentFailureUntil !== null && recentFailureUntil > Date.now();
+  const taskBadgeLabel = activeTaskCount > 0 ? String(activeTaskCount) : hasRecentFailure ? "!" : null;
+  const taskBadgeTone = hasRecentFailure ? "danger" : "accent";
+
+  function renderTaskBadge() {
+    if (!taskBadgeLabel) {
+      return null;
+    }
+
+    return (
+      <span className={`sidebar-badge sidebar-badge--${taskBadgeTone}`} aria-hidden="true">
+        {taskBadgeLabel}
+      </span>
+    );
+  }
 
   function openCreateModal() {
     if (!createSection) {
@@ -648,8 +744,16 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
                     aria-label={item.hint}
                     data-tooltip={item.hint}
                   >
-                    <span className="sidebar-icon">{item.icon}</span>
+                    <span
+                      className={`sidebar-icon ${
+                        item.href === "/tasks" && taskBadgeLabel && isSidebarCollapsed ? "sidebar-icon--badged" : ""
+                      }`}
+                    >
+                      {item.icon}
+                      {item.href === "/tasks" && isSidebarCollapsed ? renderTaskBadge() : null}
+                    </span>
                     <span className="sidebar-text">{item.label}</span>
+                    {item.href === "/tasks" && !isSidebarCollapsed ? renderTaskBadge() : null}
                   </Link>
                 ))}
               </div>

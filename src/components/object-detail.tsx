@@ -33,7 +33,7 @@ async function fetchObject(classId: number, objectId: number): Promise<HubuumObj
 }
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-  const response = await getApiV1Classes({
+  const response = await getApiV1Classes(undefined, {
     credentials: "include"
   });
 
@@ -45,7 +45,7 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 }
 
 async function fetchNamespaces(): Promise<Namespace[]> {
-  const response = await getApiV1Namespaces({
+  const response = await getApiV1Namespaces(undefined, {
     credentials: "include"
   });
 

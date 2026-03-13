@@ -16,7 +16,7 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 
 async function fetchGroups(): Promise<Group[]> {
-  const response = await getApiV1IamGroups({
+  const response = await getApiV1IamGroups(undefined, {
     credentials: "include"
   });
 
@@ -28,7 +28,7 @@ async function fetchGroups(): Promise<Group[]> {
 }
 
 async function fetchGroupMemberCount(groupId: number): Promise<number> {
-  const response = await getApiV1IamGroupsByGroupIdMembers(groupId, {
+  const response = await getApiV1IamGroupsByGroupIdMembers(groupId, undefined, {
     credentials: "include"
   });
 

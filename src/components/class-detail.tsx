@@ -31,7 +31,7 @@ async function fetchClass(classId: number): Promise<HubuumClassExpanded> {
 }
 
 async function fetchNamespaces(): Promise<Namespace[]> {
-  const response = await getApiV1Namespaces({
+  const response = await getApiV1Namespaces(undefined, {
     credentials: "include"
   });
 

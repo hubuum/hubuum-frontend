@@ -1,19 +1,10 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import {
-  createImportTask,
-  fetchImportProjection,
-  fetchImportResults,
-  fetchTask,
-  fetchTaskEvents,
-  isTerminalTaskStatus,
-  type ImportRequest,
-  type TaskRecord
-} from "@/lib/api/tasking";
+import { createImportTask, type ImportRequest } from "@/lib/api/tasking";
 
 type ImportSummary = {
   totalItems: number;
@@ -23,24 +14,11 @@ type ImportSummary = {
   }>;
 };
 
+type ImportFilePayload = ImportRequest & Record<string, unknown>;
+
 function parsePositiveInteger(value: string): number | null {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function formatTimestamp(value: string | null): string {
-  if (!value) {
-    return "n/a";
-  }
-
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short"
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
 }
 
 function summarizeImport(payload: ImportRequest): ImportSummary {
@@ -63,7 +41,7 @@ function summarizeImport(payload: ImportRequest): ImportSummary {
   };
 }
 
-function normalizeImportPayload(payload: unknown): ImportRequest {
+function normalizeImportPayload(payload: unknown): ImportFilePayload {
   if (!payload || typeof payload !== "object") {
     throw new Error("Import file must contain a JSON object.");
   }
@@ -76,30 +54,14 @@ function normalizeImportPayload(payload: unknown): ImportRequest {
     throw new Error("Import file must include a graph object.");
   }
 
-  return candidate as ImportRequest;
-}
-
-function getTaskStatusTone(task: TaskRecord | null | undefined): "neutral" | "success" | "danger" | "accent" {
-  if (!task) {
-    return "neutral";
-  }
-  if (task.status === "succeeded") {
-    return "success";
-  }
-  if (task.status === "failed" || task.status === "cancelled") {
-    return "danger";
-  }
-  if (task.status === "partially_succeeded") {
-    return "accent";
-  }
-  return "neutral";
+  return candidate as ImportFilePayload;
 }
 
 export function ImportsWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [fileName, setFileName] = useState("");
-  const [parsedImport, setParsedImport] = useState<ImportRequest | null>(null);
+  const [parsedImport, setParsedImport] = useState<ImportFilePayload | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [dryRun, setDryRun] = useState(false);
   const [atomicity, setAtomicity] = useState<"strict" | "best_effort">("strict");
@@ -107,38 +69,16 @@ export function ImportsWorkspace() {
   const [permissionPolicy, setPermissionPolicy] = useState<"abort" | "continue">("abort");
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [taskLookupInput, setTaskLookupInput] = useState(searchParams.get("taskId") ?? "");
+  const [taskLookupInput, setTaskLookupInput] = useState("");
 
-  const taskId = useMemo(() => parsePositiveInteger(searchParams.get("taskId") ?? ""), [searchParams]);
   const importSummary = useMemo(() => (parsedImport ? summarizeImport(parsedImport) : null), [parsedImport]);
 
   useEffect(() => {
-    setTaskLookupInput(searchParams.get("taskId") ?? "");
-  }, [searchParams]);
-
-  const taskQuery = useQuery({
-    queryKey: ["task", taskId],
-    queryFn: () => fetchTask(taskId ?? 0),
-    enabled: taskId !== null,
-    refetchInterval: (query) => (isTerminalTaskStatus(query.state.data?.status) ? false : 2000)
-  });
-  const importProjectionQuery = useQuery({
-    queryKey: ["import-task", taskId],
-    queryFn: () => fetchImportProjection(taskId ?? 0),
-    enabled: taskId !== null
-  });
-  const eventsQuery = useQuery({
-    queryKey: ["task-events", taskId],
-    queryFn: () => fetchTaskEvents(taskId ?? 0),
-    enabled: taskId !== null,
-    refetchInterval: () => (isTerminalTaskStatus(taskQuery.data?.status) ? false : 2500)
-  });
-  const resultsQuery = useQuery({
-    queryKey: ["import-results", taskId],
-    queryFn: () => fetchImportResults(taskId ?? 0),
-    enabled: taskId !== null,
-    refetchInterval: () => (isTerminalTaskStatus(taskQuery.data?.status) ? false : 2500)
-  });
+    const legacyTaskId = parsePositiveInteger(searchParams.get("taskId") ?? "");
+    if (legacyTaskId) {
+      router.replace(`/tasks/${legacyTaskId}`);
+    }
+  }, [router, searchParams]);
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -161,9 +101,7 @@ export function ImportsWorkspace() {
     },
     onSuccess: (task) => {
       setSubmitError(null);
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.set("taskId", String(task.id));
-      router.replace(`/imports?${nextParams.toString()}`);
+      router.push(`/tasks/${task.id}`);
     },
     onError: (error) => {
       setSubmitError(error instanceof Error ? error.message : "Failed to submit import.");
@@ -209,23 +147,19 @@ export function ImportsWorkspace() {
       return;
     }
 
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.set("taskId", String(parsed));
-    router.replace(`/imports?${nextParams.toString()}`);
+    router.push(`/tasks/${parsed}`);
   }
-
-  const activeTask = taskQuery.data ?? importProjectionQuery.data ?? null;
-  const taskTone = getTaskStatusTone(activeTask);
 
   return (
     <section className="stack">
       <header className="stack action-card-header">
         <div className="stack action-card-header">
           <p className="eyebrow">Imports</p>
-          <h2>Submit and monitor import tasks</h2>
+          <h2>Submit import tasks</h2>
         </div>
         <p className="muted">
-          Upload a JSON import document, choose execution mode, then follow task progress, events, and per-item outcomes.
+          Upload a JSON import document, choose execution mode, then continue on a dedicated task page for progress, events,
+          and per-item outcomes.
         </p>
       </header>
 
@@ -325,6 +259,7 @@ export function ImportsWorkspace() {
                 <button type="submit" disabled={submitMutation.isPending || !parsedImport}>
                   {submitMutation.isPending ? "Submitting..." : "Submit import"}
                 </button>
+                <span className="muted">Successful submissions open a dedicated task page so you can keep multiple imports in flight.</span>
               </div>
             </form>
           </article>
@@ -332,12 +267,9 @@ export function ImportsWorkspace() {
 
         <section className="stack">
           <article className="card stack panel-card">
-            <div className="panel-header">
-              <div className="stack action-card-header">
-                <h3>Task monitor</h3>
-                <p className="muted">Resume any known import task by task id, or follow the latest submission.</p>
-              </div>
-              {activeTask ? <span className={`status-pill status-pill--${taskTone}`}>{activeTask.status}</span> : null}
+            <div className="stack action-card-header">
+              <h3>Open an existing task</h3>
+              <p className="muted">Resume any known import task by ID without reloading an import file.</p>
             </div>
 
             <form className="action-row" onSubmit={handleLoadTask}>
@@ -349,145 +281,20 @@ export function ImportsWorkspace() {
                 placeholder="Task ID"
               />
               <button type="submit" className="ghost">
-                Load task
+                Open task
               </button>
             </form>
-
-            {taskQuery.isError ? (
-              <div className="error-banner">
-                Failed to load task. {taskQuery.error instanceof Error ? taskQuery.error.message : "Unknown error"}
-              </div>
-            ) : null}
-
-            {!taskId ? <div className="empty-state">Submit an import or enter a task ID to start monitoring.</div> : null}
-
-            {activeTask ? (
-              <div className="stack">
-                <div className="summary-grid">
-                  <div className="summary-pill">
-                    <span>Task ID</span>
-                    <strong>#{activeTask.id}</strong>
-                  </div>
-                  <div className="summary-pill">
-                    <span>Processed</span>
-                    <strong>
-                      {activeTask.progress.processed_items} / {activeTask.progress.total_items}
-                    </strong>
-                  </div>
-                  <div className="summary-pill">
-                    <span>Succeeded</span>
-                    <strong>{activeTask.progress.success_items}</strong>
-                  </div>
-                  <div className="summary-pill">
-                    <span>Failed</span>
-                    <strong>{activeTask.progress.failed_items}</strong>
-                  </div>
-                </div>
-
-                <div className="task-details-grid">
-                  <div>
-                    <strong>Created</strong>
-                    <p className="muted">{formatTimestamp(activeTask.created_at)}</p>
-                  </div>
-                  <div>
-                    <strong>Started</strong>
-                    <p className="muted">{formatTimestamp(activeTask.started_at)}</p>
-                  </div>
-                  <div>
-                    <strong>Finished</strong>
-                    <p className="muted">{formatTimestamp(activeTask.finished_at)}</p>
-                  </div>
-                  <div>
-                    <strong>Request redacted</strong>
-                    <p className="muted">{formatTimestamp(activeTask.request_redacted_at)}</p>
-                  </div>
-                </div>
-
-                {activeTask.summary ? <div className="info-banner">{activeTask.summary}</div> : null}
-              </div>
-            ) : null}
           </article>
 
           <article className="card stack panel-card">
             <div className="stack action-card-header">
-              <h3>Lifecycle events</h3>
-              <p className="muted">Append-only task history from the generic task system.</p>
+              <h3>What happens next</h3>
             </div>
-
-            {eventsQuery.isLoading && taskId ? <div className="muted">Loading events...</div> : null}
-            {eventsQuery.isError ? (
-              <div className="error-banner">
-                Failed to load events. {eventsQuery.error instanceof Error ? eventsQuery.error.message : "Unknown error"}
-              </div>
-            ) : null}
-            {!eventsQuery.isLoading && (eventsQuery.data?.length ?? 0) === 0 ? (
-              <div className="empty-state">No task events available yet.</div>
-            ) : null}
-            {eventsQuery.data?.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Time</th>
-                      <th>Event</th>
-                      <th>Message</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {eventsQuery.data.map((event) => (
-                      <tr key={event.id}>
-                        <td>{formatTimestamp(event.created_at)}</td>
-                        <td>{event.event_type}</td>
-                        <td>{event.message}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-          </article>
-
-          <article className="card stack panel-card">
-            <div className="stack action-card-header">
-              <h3>Import results</h3>
-              <p className="muted">Per-item outcomes are specific to the import domain endpoint.</p>
+            <div className="template-help">
+              <span>Submit an import here, then continue on `/tasks/[taskId]`.</span>
+              <span>The task page shows status, lifecycle events, and import-specific results.</span>
+              <span>Polling stops automatically when the task reaches a terminal state.</span>
             </div>
-
-            {resultsQuery.isLoading && taskId ? <div className="muted">Loading results...</div> : null}
-            {resultsQuery.isError ? (
-              <div className="error-banner">
-                Failed to load results. {resultsQuery.error instanceof Error ? resultsQuery.error.message : "Unknown error"}
-              </div>
-            ) : null}
-            {!resultsQuery.isLoading && (resultsQuery.data?.length ?? 0) === 0 ? (
-              <div className="empty-state">No per-item results available yet.</div>
-            ) : null}
-            {resultsQuery.data?.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Item</th>
-                      <th>Entity</th>
-                      <th>Action</th>
-                      <th>Outcome</th>
-                      <th>Error</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {resultsQuery.data.map((result) => (
-                      <tr key={result.id}>
-                        <td>{result.item_ref ?? result.identifier}</td>
-                        <td>{result.entity_kind}</td>
-                        <td>{result.action}</td>
-                        <td>{result.outcome}</td>
-                        <td>{result.error ?? "n/a"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
           </article>
         </section>
       </div>

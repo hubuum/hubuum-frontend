@@ -30,4 +30,8 @@ export const Permissions = {
   ReadObjectRelation: 'ReadObjectRelation',
   UpdateObjectRelation: 'UpdateObjectRelation',
   DeleteObjectRelation: 'DeleteObjectRelation',
+  ReadTemplate: 'ReadTemplate',
+  CreateTemplate: 'CreateTemplate',
+  UpdateTemplate: 'UpdateTemplate',
+  DeleteTemplate: 'DeleteTemplate',
 } as const;
