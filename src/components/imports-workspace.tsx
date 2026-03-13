@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { getApiV1IamGroups } from "@/lib/api/generated/client";
@@ -191,6 +191,7 @@ function applyDelegateGroupOverride(payload: ImportRequest, groupname: string): 
 export function ImportsWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [fileName, setFileName] = useState("");
   const [parsedImport, setParsedImport] = useState<ImportFilePayload | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -313,7 +314,21 @@ export function ImportsWorkspace() {
               <div className="form-grid">
                 <label className="control-field control-field--wide">
                   <span>Import file</span>
-                  <input type="file" accept=".json,application/json" onChange={handleFileChange} />
+                  <input
+                    ref={fileInputRef}
+                    className="json-editor-file"
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileChange}
+                  />
+                  <div className="file-picker">
+                    <button type="button" className="ghost" onClick={() => fileInputRef.current?.click()}>
+                      {fileName ? "Replace file" : "Choose file"}
+                    </button>
+                    <span className="muted file-picker-status" aria-live="polite">
+                      {fileName || "No file selected."}
+                    </span>
+                  </div>
                 </label>
 
                 <label className="control-field">
@@ -395,7 +410,7 @@ export function ImportsWorkspace() {
               <div className="file-summary">
                 <div>
                   <strong>Selected file</strong>
-                  <p className="muted">{fileName || "No file selected."}</p>
+                  <p className="muted">{fileName || "Choose a JSON import file to inspect it."}</p>
                 </div>
                 {importSummary ? (
                   <div className="summary-grid">

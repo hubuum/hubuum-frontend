@@ -790,7 +790,7 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
                     data-tooltip="Expand sidebar"
                   >
                     <span className="sidebar-icon">
-                      <IconExpand />
+                      <IconCollapse />
                     </span>
                     <span className="sidebar-text">Expand sidebar</span>
                   </button>
@@ -860,7 +860,7 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
                     aria-label="Collapse sidebar"
                   >
                     <span className="sidebar-icon">
-                      <IconCollapse />
+                      <IconExpand />
                     </span>
                     <span className="sidebar-text">Collapse sidebar</span>
                   </button>

@@ -1322,6 +1322,17 @@ html[data-theme="dark"] .token.template-path {
   gap: 0.9rem;
 }
 
+.file-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.file-picker-status {
+  min-width: 0;
+}
+
 .summary-grid {
   display: grid;
   gap: 0.75rem;

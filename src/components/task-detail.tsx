@@ -12,7 +12,24 @@ import {
   isTerminalTaskStatus,
   type TaskRecord
 } from "@/lib/api/tasking";
+import { getApiV1IamUsersByUserId } from "@/lib/api/generated/client";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { upsertRecentTask } from "@/lib/recent-tasks";
+
+async function fetchTaskSubmitter(userId: number): Promise<{ id: number; username: string }> {
+  const response = await getApiV1IamUsersByUserId(userId, {
+    credentials: "include"
+  });
+
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(response.data, "Failed to load submitting user."));
+  }
+
+  return {
+    id: response.data.id,
+    username: response.data.username
+  };
+}
 
 type TaskDetailProps = {
   taskId: number;
@@ -91,6 +108,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     enabled: taskQuery.data?.kind === "import",
     refetchInterval: () => (isTerminalTaskStatus(taskQuery.data?.status) ? false : 2500)
   });
+  const submittedByUserId = importProjectionQuery.data?.submitted_by ?? taskQuery.data?.submitted_by ?? null;
+  const submitterQuery = useQuery({
+    queryKey: ["task-submitter", submittedByUserId],
+    queryFn: () => fetchTaskSubmitter(submittedByUserId as number),
+    enabled: submittedByUserId != null
+  });
 
   useEffect(() => {
     if (!taskQuery.data) {
@@ -120,6 +143,17 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
   if (!activeTask) {
     return <div className="card error-banner">Task data is unavailable.</div>;
+  }
+
+  let submittedByLabel = "n/a";
+  if (submittedByUserId != null) {
+    submittedByLabel = `User #${submittedByUserId}`;
+
+    if (submitterQuery.isLoading) {
+      submittedByLabel = `Loading user #${submittedByUserId}...`;
+    } else if (submitterQuery.data) {
+      submittedByLabel = `${submitterQuery.data.username} (#${submitterQuery.data.id})`;
+    }
   }
 
   return (
@@ -186,7 +220,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
           </div>
           <div>
             <strong>Submitted by</strong>
-            <p className="muted">{activeTask.submitted_by ?? "n/a"}</p>
+            <p className="muted">{submittedByLabel}</p>
           </div>
           <div>
             <strong>Request redacted</strong>
