@@ -1,10 +1,14 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { getApiV1IamGroups } from "@/lib/api/generated/client";
+import { Permissions, type Group, type ImportNamespacePermissionInput } from "@/lib/api/generated/models";
 import { createImportTask, type ImportRequest } from "@/lib/api/tasking";
+import { getApiErrorMessage } from "@/lib/api/errors";
+import { upsertRecentTask } from "@/lib/recent-tasks";
 
 type ImportSummary = {
   totalItems: number;
@@ -15,6 +19,9 @@ type ImportSummary = {
 };
 
 type ImportFilePayload = ImportRequest & Record<string, unknown>;
+type NamespacePermissionSeed = Pick<ImportNamespacePermissionInput, "namespace_key" | "namespace_ref" | "ref">;
+
+const FULL_NAMESPACE_PERMISSIONS = Object.values(Permissions);
 
 function parsePositiveInteger(value: string): number | null {
   const parsed = Number.parseInt(value, 10);
@@ -57,6 +64,130 @@ function normalizeImportPayload(payload: unknown): ImportFilePayload {
   return candidate as ImportFilePayload;
 }
 
+async function fetchGroups(): Promise<Group[]> {
+  const response = await getApiV1IamGroups(undefined, {
+    credentials: "include"
+  });
+
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(response.data, "Failed to load groups."));
+  }
+
+  return response.data;
+}
+
+function buildNamespacePermissionIdentity(permission: Pick<ImportNamespacePermissionInput, "namespace_key" | "namespace_ref">, index: number): string {
+  const namespaceRef = permission.namespace_ref?.trim();
+  if (namespaceRef) {
+    return `ref:${namespaceRef}`;
+  }
+
+  const namespaceName = permission.namespace_key?.name?.trim();
+  if (namespaceName) {
+    return `name:${namespaceName}`;
+  }
+
+  return `index:${index}`;
+}
+
+function buildSeedNamespacePermissions(payload: ImportRequest, groupname: string): ImportNamespacePermissionInput[] {
+  const seeds = new Map<string, NamespacePermissionSeed>();
+  const classNamespaceByRef = new Map<string, NamespacePermissionSeed>();
+
+  function registerSeed(seed: NamespacePermissionSeed): void {
+    const key = buildNamespacePermissionIdentity(seed, seeds.size);
+    if (key.startsWith("index:")) {
+      return;
+    }
+
+    if (!seeds.has(key)) {
+      seeds.set(key, seed);
+    }
+  }
+
+  for (const namespaceItem of payload.graph.namespaces ?? []) {
+    const namespaceRef = namespaceItem.ref?.trim();
+    registerSeed({
+      namespace_key: namespaceRef ? undefined : { name: namespaceItem.name },
+      namespace_ref: namespaceRef || undefined,
+      ref: namespaceItem.ref ?? undefined
+    });
+  }
+
+  for (const classItem of payload.graph.classes ?? []) {
+    const seed = {
+      namespace_key: classItem.namespace_ref?.trim() ? undefined : classItem.namespace_key ?? undefined,
+      namespace_ref: classItem.namespace_ref?.trim() || undefined,
+      ref: classItem.ref ?? undefined
+    };
+
+    registerSeed(seed);
+
+    const classRef = classItem.ref?.trim();
+    if (classRef) {
+      classNamespaceByRef.set(classRef, seed);
+    }
+  }
+
+  for (const objectItem of payload.graph.objects ?? []) {
+    if (objectItem.class_key?.namespace_key || objectItem.class_key?.namespace_ref) {
+      registerSeed({
+        namespace_key: objectItem.class_key.namespace_ref?.trim() ? undefined : objectItem.class_key.namespace_key ?? undefined,
+        namespace_ref: objectItem.class_key.namespace_ref?.trim() || undefined
+      });
+      continue;
+    }
+
+    const classRef = objectItem.class_ref?.trim();
+    if (!classRef) {
+      continue;
+    }
+
+    const classNamespace = classNamespaceByRef.get(classRef);
+    if (classNamespace) {
+      registerSeed(classNamespace);
+    }
+  }
+
+  return Array.from(seeds.values()).map((seed) => ({
+    ...seed,
+    group_key: { groupname },
+    permissions: FULL_NAMESPACE_PERMISSIONS,
+    replace_existing: false
+  }));
+}
+
+function applyDelegateGroupOverride(payload: ImportRequest, groupname: string): ImportRequest {
+  const existingPermissions = payload.graph.namespace_permissions ?? [];
+  const seededPermissions = buildSeedNamespacePermissions(payload, groupname);
+  const mergedPermissions = new Map<string, ImportNamespacePermissionInput>();
+
+  [...existingPermissions, ...seededPermissions].forEach((permission, index) => {
+    const key = buildNamespacePermissionIdentity(permission, index);
+    const previous = mergedPermissions.get(key);
+    const permissionNames = new Set(previous?.permissions ?? []);
+
+    for (const permissionName of permission.permissions) {
+      permissionNames.add(permissionName);
+    }
+
+    mergedPermissions.set(key, {
+      ...permission,
+      group_key: { groupname },
+      permissions: Array.from(permissionNames),
+      replace_existing: previous?.replace_existing ?? permission.replace_existing ?? false
+    });
+  });
+
+  return {
+    ...payload,
+    graph: {
+      ...payload.graph,
+      namespace_permissions: Array.from(mergedPermissions.values())
+    }
+  };
+}
+
 export function ImportsWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -67,11 +198,16 @@ export function ImportsWorkspace() {
   const [atomicity, setAtomicity] = useState<"strict" | "best_effort">("strict");
   const [collisionPolicy, setCollisionPolicy] = useState<"abort" | "overwrite">("abort");
   const [permissionPolicy, setPermissionPolicy] = useState<"abort" | "continue">("abort");
+  const [delegateGroupName, setDelegateGroupName] = useState("");
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [taskLookupInput, setTaskLookupInput] = useState("");
 
   const importSummary = useMemo(() => (parsedImport ? summarizeImport(parsedImport) : null), [parsedImport]);
+  const groupsQuery = useQuery({
+    queryKey: ["groups", "imports-form"],
+    queryFn: fetchGroups
+  });
 
   useEffect(() => {
     const legacyTaskId = parsePositiveInteger(searchParams.get("taskId") ?? "");
@@ -97,10 +233,12 @@ export function ImportsWorkspace() {
         }
       };
 
-      return createImportTask(payload, idempotencyKey);
+      const effectivePayload = delegateGroupName.trim() ? applyDelegateGroupOverride(payload, delegateGroupName.trim()) : payload;
+      return createImportTask(effectivePayload, idempotencyKey);
     },
     onSuccess: (task) => {
       setSubmitError(null);
+      upsertRecentTask(task);
       router.push(`/tasks/${task.id}`);
     },
     onError: (error) => {
@@ -219,6 +357,31 @@ export function ImportsWorkspace() {
                   </select>
                 </label>
 
+                <div className="control-field">
+                  <span>Delegate group override</span>
+                  {groupsQuery.isError ? (
+                    <input
+                      aria-label="Delegate group override"
+                      value={delegateGroupName}
+                      onChange={(event) => setDelegateGroupName(event.target.value)}
+                      placeholder="Use file values unless you enter a group name"
+                    />
+                  ) : (
+                    <select
+                      aria-label="Delegate group override"
+                      value={delegateGroupName}
+                      onChange={(event) => setDelegateGroupName(event.target.value)}
+                    >
+                      <option value="">Use file values</option>
+                      {(groupsQuery.data ?? []).map((group) => (
+                        <option key={group.id} value={group.groupname}>
+                          {group.groupname} (#{group.id})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
                 <label className="control-field control-field--wide">
                   <span>Idempotency key</span>
                   <input
@@ -254,6 +417,9 @@ export function ImportsWorkspace() {
 
               {parseError ? <div className="error-banner">{parseError}</div> : null}
               {submitError ? <div className="error-banner">{submitError}</div> : null}
+              {groupsQuery.isError ? (
+                <div className="muted">Could not load groups automatically. You can still override delegation by entering a group name manually.</div>
+              ) : null}
 
               <div className="action-row">
                 <button type="submit" disabled={submitMutation.isPending || !parsedImport}>

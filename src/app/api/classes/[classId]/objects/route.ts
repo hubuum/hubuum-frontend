@@ -73,7 +73,8 @@ async function proxyClassObjects(request: NextRequest, context: RouteContext) {
   }
 
   const body = method === "POST" ? await request.text() : undefined;
-  const upstream = await backendFetchRaw(getGetApiV1ClassesByClassIdTrailingUrl(classId), {
+  const upstreamPath = `${getGetApiV1ClassesByClassIdTrailingUrl(classId)}${request.nextUrl.search}`;
+  const upstream = await backendFetchRaw(upstreamPath, {
     correlationId,
     method,
     token: session.token,

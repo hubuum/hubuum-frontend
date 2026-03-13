@@ -3,13 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type ChangeEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { LogoutButton } from "@/components/logout-button";
 import { getApiV0MetaTasks, getApiV1Classes } from "@/lib/api/generated/client";
 import type { HubuumClassExpanded, HubuumObject, TaskQueueStateResponse } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { OPEN_CREATE_EVENT, type CreateSection } from "@/lib/create-events";
+import { getSearchScopeFromPathname, normalizeSearchTerm } from "@/lib/resource-search";
 
 type AppShellProps = {
   canViewAdmin: boolean;
@@ -29,7 +30,7 @@ const SIDEBAR_COLLAPSED_KEY = "hubuum.sidebar.collapsed";
 const THEME_PREFERENCE_KEY = "hubuum.theme";
 
 async function fetchTopbarClassOptions(): Promise<HubuumClassExpanded[]> {
-  const response = await getApiV1Classes(undefined, {
+  const response = await getApiV1Classes({ limit: 250 }, {
     credentials: "include"
   });
 
@@ -349,6 +350,25 @@ function IconPlus() {
   );
 }
 
+function IconClose() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function IconSearch() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.42-1.42-4.44-4.43A6.5 6.5 0 0 0 10.5 4m0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function IconTasks() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -440,6 +460,7 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const sectionLabel = useMemo(() => getSectionLabel(pathname), [pathname]);
+  const activeSearchScope = useMemo(() => getSearchScopeFromPathname(pathname), [pathname]);
   const createSection = useMemo(() => getCreateSection(pathname), [pathname]);
   const relationsView = useMemo(() => getRelationsView(pathname), [pathname]);
   const isRelationsRoute = relationsView !== null;
@@ -499,6 +520,7 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [recentFailureUntil, setRecentFailureUntil] = useState<number | null>(null);
+  const [searchInput, setSearchInput] = useState("");
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const previousFailedTasksRef = useRef<number | null>(null);
 
@@ -554,6 +576,14 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
     setMobileSidebarOpen(false);
     setUserMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!activeSearchScope) {
+      return;
+    }
+
+    setSearchInput(searchParams.get("search") ?? "");
+  }, [activeSearchScope, searchParams]);
 
   useEffect(() => {
     if (!isUserMenuOpen) {
@@ -705,6 +735,35 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
     params.delete("objectView");
     const query = params.toString();
     router.push(query ? `/relations/classes?${query}` : "/relations/classes");
+  }
+
+  function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedSearchTerm = normalizeSearchTerm(searchInput);
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (trimmedSearchTerm) {
+      params.set("search", trimmedSearchTerm);
+    } else {
+      params.delete("search");
+    }
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
+
+  function clearSearch() {
+    if (!activeSearchScope) {
+      return;
+    }
+
+    setSearchInput("");
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("search");
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
   }
 
   return (
@@ -941,6 +1000,37 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
             </div>
 
             <div className="topbar-right" ref={userMenuRef}>
+              {activeSearchScope ? (
+                <form className="topbar-search-form" onSubmit={onSearchSubmit}>
+                  <div className="topbar-search-field">
+                    <input
+                      aria-label={`Search ${sectionLabel.toLowerCase()} by name or description`}
+                      className="topbar-search-input"
+                      value={searchInput}
+                      onChange={(event) => setSearchInput(event.target.value)}
+                      placeholder={`Search ${sectionLabel.toLowerCase()} name or description`}
+                    />
+                    {normalizeSearchTerm(searchInput) ? (
+                      <button
+                        type="button"
+                        className="ghost topbar-search-clear"
+                        onClick={clearSearch}
+                        aria-label="Clear search"
+                      >
+                        <IconClose />
+                      </button>
+                    ) : null}
+                  </div>
+                  <button
+                    type="submit"
+                    className="ghost icon-button topbar-search-submit"
+                    aria-label={`Search ${sectionLabel.toLowerCase()}`}
+                  >
+                    <IconSearch />
+                  </button>
+                </form>
+              ) : null}
+
               <button
                 type="button"
                 className="ghost user-trigger"

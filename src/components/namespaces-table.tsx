@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import {
   deleteApiV1NamespacesByNamespaceId,
@@ -15,9 +15,10 @@ import { CreateModal } from "@/components/create-modal";
 import type { Group, Namespace, NewNamespaceWithAssignee } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
+import { matchesFreeTextSearch, normalizeSearchTerm } from "@/lib/resource-search";
 
 async function fetchNamespaces(): Promise<Namespace[]> {
-  const response = await getApiV1Namespaces(undefined, {
+  const response = await getApiV1Namespaces({ limit: 250 }, {
     credentials: "include"
   });
 
@@ -136,7 +137,13 @@ export function NamespacesTable() {
 
   const groups = groupsQuery.data ?? [];
   const namespaces = query.data ?? [];
-  const allSelected = namespaces.length > 0 && selectedNamespaceIds.length === namespaces.length;
+  const searchTerm = normalizeSearchTerm(searchParams.get("search"));
+  const filteredNamespaces = useMemo(
+    () =>
+      namespaces.filter((namespace) => matchesFreeTextSearch(searchTerm, namespace.name, namespace.description)),
+    [namespaces, searchTerm]
+  );
+  const allSelected = filteredNamespaces.length > 0 && selectedNamespaceIds.length === filteredNamespaces.length;
 
   useEffect(() => {
     if (searchParams.get("create") !== "1") {
@@ -162,9 +169,12 @@ export function NamespacesTable() {
       return;
     }
 
-    const existingIds = new Set(namespaces.map((namespace) => namespace.id));
-    setSelectedNamespaceIds((current) => current.filter((namespaceId) => existingIds.has(namespaceId)));
-  }, [namespaces, selectedNamespaceIds.length]);
+    const existingIds = new Set(filteredNamespaces.map((namespace) => namespace.id));
+    setSelectedNamespaceIds((current) => {
+      const next = current.filter((namespaceId) => existingIds.has(namespaceId));
+      return next.length === current.length ? current : next;
+    });
+  }, [filteredNamespaces, selectedNamespaceIds]);
 
   useEffect(() => {
     const onOpenCreate = (event: Event) => {
@@ -194,7 +204,7 @@ export function NamespacesTable() {
 
   function toggleAllNamespaces(checked: boolean) {
     if (checked) {
-      setSelectedNamespaceIds(namespaces.map((namespace) => namespace.id));
+      setSelectedNamespaceIds(filteredNamespaces.map((namespace) => namespace.id));
       return;
     }
 
@@ -302,8 +312,8 @@ export function NamespacesTable() {
           <h3>Namespace catalog</h3>
           <div className="table-tools">
             <span className="muted">
-              {namespaces.length} loaded
-              {selectedNamespaceIds.length ? ` • ${selectedNamespaceIds.length} selected` : ""}
+              {searchTerm ? `${filteredNamespaces.length} shown of ${namespaces.length}` : `${namespaces.length} loaded`}
+              {selectedNamespaceIds.length ? ` - ${selectedNamespaceIds.length} selected` : ""}
             </span>
             <button
               type="button"
@@ -317,45 +327,50 @@ export function NamespacesTable() {
         </div>
         {tableError ? <div className="error-banner">{tableError}</div> : null}
         {tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
-
-        <table>
-          <thead>
-            <tr>
-              <th className="check-col">
-                <input
-                  type="checkbox"
-                  aria-label="Select all namespaces"
-                  checked={allSelected}
-                  onChange={(event) => toggleAllNamespaces(event.target.checked)}
-                />
-              </th>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            {namespaces.map((namespace) => (
-              <tr key={namespace.id}>
-                <td className="check-col">
+        {filteredNamespaces.length === 0 ? (
+          <div className="empty-state">
+            {searchTerm ? `No namespaces match "${searchTerm}".` : "No namespaces available."}
+          </div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th className="check-col">
                   <input
                     type="checkbox"
-                    aria-label={`Select namespace ${namespace.name}`}
-                    checked={selectedNamespaceIds.includes(namespace.id)}
-                    onChange={(event) => toggleNamespace(namespace.id, event.target.checked)}
+                    aria-label="Select all namespaces"
+                    checked={allSelected}
+                    onChange={(event) => toggleAllNamespaces(event.target.checked)}
                   />
-                </td>
-                <td>{namespace.id}</td>
-                <td>
-                  <Link href={`/namespaces/${namespace.id}`} className="row-link">
-                    {namespace.name}
-                  </Link>
-                </td>
-                <td>{namespace.description || "-"}</td>
+                </th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Description</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredNamespaces.map((namespace) => (
+                <tr key={namespace.id}>
+                  <td className="check-col">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select namespace ${namespace.name}`}
+                      checked={selectedNamespaceIds.includes(namespace.id)}
+                      onChange={(event) => toggleNamespace(namespace.id, event.target.checked)}
+                    />
+                  </td>
+                  <td>{namespace.id}</td>
+                  <td>
+                    <Link href={`/namespaces/${namespace.id}`} className="row-link">
+                      {namespace.name}
+                    </Link>
+                  </td>
+                  <td>{namespace.description || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

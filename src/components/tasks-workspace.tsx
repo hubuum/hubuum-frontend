@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { getApiV0MetaTasks } from "@/lib/api/generated/client";
 import type { TaskQueueStateResponse } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { loadRecentTasks, subscribeToRecentTasks, type RecentTaskEntry } from "@/lib/recent-tasks";
 
 function parsePositiveInteger(value: string): number | null {
   const parsed = Number.parseInt(value, 10);
@@ -29,6 +30,17 @@ function formatTimestamp(value: string | null | undefined): string {
   }
 }
 
+function getTaskLabel(task: RecentTaskEntry): string {
+  if (task.kind === "import") {
+    return "Import";
+  }
+  if (task.kind === "report") {
+    return "Report";
+  }
+
+  return `${task.kind[0].toUpperCase()}${task.kind.slice(1)}`;
+}
+
 async function fetchTaskQueueState(): Promise<TaskQueueStateResponse> {
   const response = await getApiV0MetaTasks({
     credentials: "include"
@@ -44,6 +56,7 @@ async function fetchTaskQueueState(): Promise<TaskQueueStateResponse> {
 export function TasksWorkspace() {
   const router = useRouter();
   const [taskLookupInput, setTaskLookupInput] = useState("");
+  const [recentTasks, setRecentTasks] = useState<RecentTaskEntry[]>([]);
   const taskQueueQuery = useQuery({
     queryKey: ["tasks", "workspace-queue"],
     queryFn: fetchTaskQueueState,
@@ -68,6 +81,11 @@ export function TasksWorkspace() {
 
     router.push(`/tasks/${parsed}`);
   }
+
+  useEffect(() => {
+    setRecentTasks(loadRecentTasks());
+    return subscribeToRecentTasks(() => setRecentTasks(loadRecentTasks()));
+  }, []);
 
   return (
     <section className="stack">
@@ -147,6 +165,46 @@ export function TasksWorkspace() {
         </section>
 
         <section className="stack">
+          <article className="card stack panel-card">
+            <div className="stack action-card-header">
+              <h3>Issued tasks</h3>
+              <p className="muted">Recent task submissions tracked in this browser. Click any row to reopen its detailed task page.</p>
+            </div>
+
+            {recentTasks.length === 0 ? (
+              <div className="empty-state">Submit an import to start building a quick-access list of issued tasks here.</div>
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Kind</th>
+                      <th>Status</th>
+                      <th>Created</th>
+                      <th>Summary</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentTasks.map((task) => (
+                      <tr key={task.id}>
+                        <td>
+                          <Link className="row-link" href={`/tasks/${task.id}`}>
+                            #{task.id}
+                          </Link>
+                        </td>
+                        <td>{getTaskLabel(task)}</td>
+                        <td>{task.status}</td>
+                        <td>{formatTimestamp(task.createdAt)}</td>
+                        <td>{task.summary ?? "n/a"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
+
           <article className="card stack panel-card">
             <div className="stack action-card-header">
               <h3>Open a task</h3>

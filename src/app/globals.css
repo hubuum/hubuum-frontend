@@ -481,6 +481,60 @@ button.sidebar-link-button {
 
 .topbar-right {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.topbar-search-form {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 20rem;
+  min-width: 0;
+  max-width: 32rem;
+}
+
+.topbar-search-field {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.topbar-search-input {
+  width: 100%;
+  padding-right: 2.6rem;
+}
+
+.topbar-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 999px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-search-clear svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.topbar-search-submit {
+  flex: 0 0 auto;
+}
+
+.user-trigger {
+  flex: 0 0 auto;
 }
 
 .icon-button {
@@ -1409,6 +1463,29 @@ html[data-theme="dark"] .status-pill--accent {
     position: sticky;
     top: 0.7rem;
     z-index: 30;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .topbar-right {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    flex: 1 1 100%;
+  }
+
+  .topbar-search-form {
+    flex: 1 1 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .topbar-search-field {
+    min-width: 0;
+  }
+
+  .topbar-search-input {
+    min-width: 0;
   }
 
   .app-shell.sidebar-collapsed .sidebar-label,

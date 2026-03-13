@@ -11,9 +11,10 @@ import { JsonEditor } from "@/components/json-editor";
 import type { HubuumClassExpanded, HubuumObject, Namespace, NewHubuumObject } from "@/lib/api/generated/models";
 import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
+import { matchesFreeTextSearch, normalizeSearchTerm } from "@/lib/resource-search";
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-  const response = await getApiV1Classes(undefined, {
+  const response = await getApiV1Classes({ limit: 250 }, {
     credentials: "include"
   });
 
@@ -38,7 +39,7 @@ async function parseJsonPayload(response: Response): Promise<unknown> {
 }
 
 async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
-  const response = await fetch(`/api/classes/${classId}/objects`, {
+  const response = await fetch(`/api/classes/${classId}/objects?limit=250`, {
     credentials: "include"
   });
   const payload = await parseJsonPayload(response);
@@ -51,7 +52,7 @@ async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
 }
 
 async function fetchNamespaces(): Promise<Namespace[]> {
-  const response = await getApiV1Namespaces(undefined, {
+  const response = await getApiV1Namespaces({ limit: 250 }, {
     credentials: "include"
   });
 
@@ -271,16 +272,24 @@ export function ObjectsExplorer() {
   }, [selectedClassId]);
 
   const objects = Array.isArray(objectsQuery.data) ? objectsQuery.data : [];
-  const allSelected = objects.length > 0 && selectedObjectIds.length === objects.length;
+  const searchTerm = normalizeSearchTerm(searchParams.get("search"));
+  const filteredObjects = useMemo(
+    () => objects.filter((objectItem) => matchesFreeTextSearch(searchTerm, objectItem.name, objectItem.description)),
+    [objects, searchTerm]
+  );
+  const allSelected = filteredObjects.length > 0 && selectedObjectIds.length === filteredObjects.length;
 
   useEffect(() => {
     if (!selectedObjectIds.length) {
       return;
     }
 
-    const existingIds = new Set(objects.map((objectItem) => objectItem.id));
-    setSelectedObjectIds((current) => current.filter((objectId) => existingIds.has(objectId)));
-  }, [objects, selectedObjectIds.length]);
+    const existingIds = new Set(filteredObjects.map((objectItem) => objectItem.id));
+    setSelectedObjectIds((current) => {
+      const next = current.filter((objectId) => existingIds.has(objectId));
+      return next.length === current.length ? current : next;
+    });
+  }, [filteredObjects, selectedObjectIds]);
 
   useEffect(() => {
     const onOpenCreate = (event: Event) => {
@@ -351,7 +360,7 @@ export function ObjectsExplorer() {
 
   function toggleAllObjects(checked: boolean) {
     if (checked) {
-      setSelectedObjectIds(objects.map((objectItem) => objectItem.id));
+      setSelectedObjectIds(filteredObjects.map((objectItem) => objectItem.id));
       return;
     }
 
@@ -509,8 +518,14 @@ export function ObjectsExplorer() {
           <h3>Objects</h3>
           <div className="table-tools">
             <span className="muted">
-              {objectsQuery.data ? `${objects.length} loaded` : parsedClassId ? "Waiting..." : "No class"}
-              {selectedObjectIds.length ? ` • ${selectedObjectIds.length} selected` : ""}
+              {objectsQuery.data
+                ? searchTerm
+                  ? `${filteredObjects.length} shown of ${objects.length}`
+                  : `${objects.length} loaded`
+                : parsedClassId
+                  ? "Waiting..."
+                  : "No class"}
+              {selectedObjectIds.length ? ` - ${selectedObjectIds.length} selected` : ""}
             </span>
             <button
               type="button"
@@ -524,6 +539,7 @@ export function ObjectsExplorer() {
         </div>
         {tableError ? <div className="error-banner">{tableError}</div> : null}
         {tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
+        {searchTerm ? <div className="muted">Search is currently scoped to the selected class.</div> : null}
 
         {parsedClassId === null ? (
           <div className="muted">Select a class to load its objects.</div>
@@ -532,6 +548,12 @@ export function ObjectsExplorer() {
         ) : objectsQuery.isError ? (
           <div className="error-banner">
             Failed to load objects. {objectsQuery.error instanceof Error ? objectsQuery.error.message : "Unknown error"}
+          </div>
+        ) : filteredObjects.length === 0 ? (
+          <div className="empty-state">
+            {searchTerm
+              ? `No objects in this class match "${searchTerm}".`
+              : "No objects available in the selected class."}
           </div>
         ) : (
           <table>
@@ -553,7 +575,7 @@ export function ObjectsExplorer() {
               </tr>
             </thead>
             <tbody>
-              {objects.map((objectItem) => (
+              {filteredObjects.map((objectItem) => (
                 <tr key={objectItem.id}>
                   <td className="check-col">
                     <input

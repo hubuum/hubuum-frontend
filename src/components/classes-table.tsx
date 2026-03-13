@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import {
   deleteApiV1ClassesByClassId,
@@ -16,9 +16,10 @@ import { JsonEditor } from "@/components/json-editor";
 import type { HubuumClassExpanded, Namespace, NewHubuumClass } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
+import { matchesFreeTextSearch, normalizeSearchTerm } from "@/lib/resource-search";
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-  const response = await getApiV1Classes(undefined, {
+  const response = await getApiV1Classes({ limit: 250 }, {
     credentials: "include"
   });
 
@@ -30,7 +31,7 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 }
 
 async function fetchNamespaces(): Promise<Namespace[]> {
-  const response = await getApiV1Namespaces(undefined, {
+  const response = await getApiV1Namespaces({ limit: 250 }, {
     credentials: "include"
   });
 
@@ -183,16 +184,24 @@ export function ClassesTable() {
   }
 
   const classes = classesQuery.data ?? [];
-  const allSelected = classes.length > 0 && selectedClassIds.length === classes.length;
+  const searchTerm = normalizeSearchTerm(searchParams.get("search"));
+  const filteredClasses = useMemo(
+    () => classes.filter((item) => matchesFreeTextSearch(searchTerm, item.name, item.description)),
+    [classes, searchTerm]
+  );
+  const allSelected = filteredClasses.length > 0 && selectedClassIds.length === filteredClasses.length;
 
   useEffect(() => {
     if (!selectedClassIds.length) {
       return;
     }
 
-    const existingIds = new Set(classes.map((item) => item.id));
-    setSelectedClassIds((current) => current.filter((id) => existingIds.has(id)));
-  }, [classes, selectedClassIds.length]);
+    const existingIds = new Set(filteredClasses.map((item) => item.id));
+    setSelectedClassIds((current) => {
+      const next = current.filter((id) => existingIds.has(id));
+      return next.length === current.length ? current : next;
+    });
+  }, [filteredClasses, selectedClassIds]);
 
   useEffect(() => {
     const onOpenCreate = (event: Event) => {
@@ -222,7 +231,7 @@ export function ClassesTable() {
 
   function toggleAllClasses(checked: boolean) {
     if (checked) {
-      setSelectedClassIds(classes.map((item) => item.id));
+      setSelectedClassIds(filteredClasses.map((item) => item.id));
       return;
     }
 
@@ -341,8 +350,8 @@ export function ClassesTable() {
           <h2>Classes</h2>
           <div className="table-tools">
             <span className="muted">
-              {classes.length} loaded
-              {selectedClassIds.length ? ` • ${selectedClassIds.length} selected` : ""}
+              {searchTerm ? `${filteredClasses.length} shown of ${classes.length}` : `${classes.length} loaded`}
+              {selectedClassIds.length ? ` - ${selectedClassIds.length} selected` : ""}
             </span>
             <button
               type="button"
@@ -356,48 +365,52 @@ export function ClassesTable() {
         </div>
         {tableError ? <div className="error-banner">{tableError}</div> : null}
         {tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
-        <table>
-          <thead>
-            <tr>
-              <th className="check-col">
-                <input
-                  type="checkbox"
-                  aria-label="Select all classes"
-                  checked={allSelected}
-                  onChange={(event) => toggleAllClasses(event.target.checked)}
-                />
-              </th>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Namespace</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            {classes.map((item) => (
-              <tr key={item.id}>
-                <td className="check-col">
+        {filteredClasses.length === 0 ? (
+          <div className="empty-state">{searchTerm ? `No classes match "${searchTerm}".` : "No classes available."}</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th className="check-col">
                   <input
                     type="checkbox"
-                    aria-label={`Select class ${item.name}`}
-                    checked={selectedClassIds.includes(item.id)}
-                    onChange={(event) => toggleClassSelection(item.id, event.target.checked)}
+                    aria-label="Select all classes"
+                    checked={allSelected}
+                    onChange={(event) => toggleAllClasses(event.target.checked)}
                   />
-                </td>
-                <td>{item.id}</td>
-                <td>
-                  <Link href={`/classes/${item.id}`} className="row-link">
-                    {item.name}
-                  </Link>
-                </td>
-                <td>
-                  {item.namespace.name} (#{item.namespace.id})
-                </td>
-                <td>{item.description || "-"}</td>
+                </th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Namespace</th>
+                <th>Description</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredClasses.map((item) => (
+                <tr key={item.id}>
+                  <td className="check-col">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select class ${item.name}`}
+                      checked={selectedClassIds.includes(item.id)}
+                      onChange={(event) => toggleClassSelection(item.id, event.target.checked)}
+                    />
+                  </td>
+                  <td>{item.id}</td>
+                  <td>
+                    <Link href={`/classes/${item.id}`} className="row-link">
+                      {item.name}
+                    </Link>
+                  </td>
+                  <td>
+                    {item.namespace.name} (#{item.namespace.id})
+                  </td>
+                  <td>{item.description || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

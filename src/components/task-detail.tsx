@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 import {
   fetchImportProjection,
@@ -11,6 +12,7 @@ import {
   isTerminalTaskStatus,
   type TaskRecord
 } from "@/lib/api/tasking";
+import { upsertRecentTask } from "@/lib/recent-tasks";
 
 type TaskDetailProps = {
   taskId: number;
@@ -89,6 +91,14 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     enabled: taskQuery.data?.kind === "import",
     refetchInterval: () => (isTerminalTaskStatus(taskQuery.data?.status) ? false : 2500)
   });
+
+  useEffect(() => {
+    if (!taskQuery.data) {
+      return;
+    }
+
+    upsertRecentTask(taskQuery.data, { onlyIfExists: true });
+  }, [taskQuery.data]);
 
   if (taskQuery.isLoading) {
     return <div className="card">Loading task...</div>;
