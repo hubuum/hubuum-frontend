@@ -105,6 +105,7 @@ export function ObjectsExplorer() {
   const [tableError, setTableError] = useState<string | null>(null);
   const [tableSuccess, setTableSuccess] = useState<string | null>(null);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
 
   useEffect(() => {
     if (searchParams.get("create") !== "1") {
@@ -116,6 +117,10 @@ export function ObjectsExplorer() {
     setCreateModalOpen(true);
     router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
   }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    setSearchInput(searchParams.get("search") ?? "");
+  }, [searchParams]);
 
   useEffect(() => {
     if (selectedClassId || !classesQuery.data?.length) {
@@ -395,6 +400,30 @@ export function ObjectsExplorer() {
     });
   }
 
+  function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedSearchTerm = normalizeSearchTerm(searchInput);
+    const params = new URLSearchParams(searchParams.toString());
+    if (trimmedSearchTerm) {
+      params.set("search", trimmedSearchTerm);
+    } else {
+      params.delete("search");
+    }
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
+
+  function clearFilter() {
+    setSearchInput("");
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("search");
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
+
   function renderNamespace(value: number): string {
     const namespaceName = namespaceNameById.get(value);
     return namespaceName ? `${namespaceName} (#${value})` : `#${value}`;
@@ -517,6 +546,30 @@ export function ObjectsExplorer() {
         <div className="table-header">
           <h3>Objects</h3>
           <div className="table-tools">
+            <form className="table-filter-form" onSubmit={onFilterSubmit}>
+              <div className="table-filter-field">
+                <input
+                  aria-label="Filter loaded objects"
+                  className="table-filter-input"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Filter loaded items"
+                />
+                {normalizeSearchTerm(searchInput) ? (
+                  <button
+                    type="button"
+                    className="ghost table-filter-clear"
+                    onClick={clearFilter}
+                    aria-label="Clear object filter"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+              <button type="submit" className="ghost">
+                Filter
+              </button>
+            </form>
             <span className="muted">
               {objectsQuery.data
                 ? searchTerm
@@ -539,7 +592,7 @@ export function ObjectsExplorer() {
         </div>
         {tableError ? <div className="error-banner">{tableError}</div> : null}
         {tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
-        {searchTerm ? <div className="muted">Search is currently scoped to the selected class.</div> : null}
+        {searchTerm ? <div className="muted">Filtering is currently scoped to the selected class.</div> : null}
 
         {parsedClassId === null ? (
           <div className="muted">Select a class to load its objects.</div>

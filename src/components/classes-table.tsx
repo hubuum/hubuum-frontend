@@ -58,6 +58,7 @@ export function ClassesTable() {
   const [tableError, setTableError] = useState<string | null>(null);
   const [tableSuccess, setTableSuccess] = useState<string | null>(null);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
 
   const classesQuery = useQuery({
     queryKey: ["classes"],
@@ -80,6 +81,10 @@ export function ClassesTable() {
     setCreateModalOpen(true);
     router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
   }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    setSearchInput(searchParams.get("search") ?? "");
+  }, [searchParams]);
 
   useEffect(() => {
     if (namespaceId || !namespaces.length) {
@@ -263,6 +268,30 @@ export function ClassesTable() {
     deleteMutation.mutate([...selectedClassIds]);
   }
 
+  function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedSearchTerm = normalizeSearchTerm(searchInput);
+    const params = new URLSearchParams(searchParams.toString());
+    if (trimmedSearchTerm) {
+      params.set("search", trimmedSearchTerm);
+    } else {
+      params.delete("search");
+    }
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
+
+  function clearFilter() {
+    setSearchInput("");
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("search");
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
+
   function renderCreateClassForm() {
     return (
       <form className="stack" onSubmit={onSubmit}>
@@ -349,6 +378,30 @@ export function ClassesTable() {
         <div className="table-header">
           <h2>Classes</h2>
           <div className="table-tools">
+            <form className="table-filter-form" onSubmit={onFilterSubmit}>
+              <div className="table-filter-field">
+                <input
+                  aria-label="Filter loaded classes"
+                  className="table-filter-input"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Filter loaded items"
+                />
+                {normalizeSearchTerm(searchInput) ? (
+                  <button
+                    type="button"
+                    className="ghost table-filter-clear"
+                    onClick={clearFilter}
+                    aria-label="Clear class filter"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+              <button type="submit" className="ghost">
+                Filter
+              </button>
+            </form>
             <span className="muted">
               {searchTerm ? `${filteredClasses.length} shown of ${classes.length}` : `${classes.length} loaded`}
               {selectedClassIds.length ? ` - ${selectedClassIds.length} selected` : ""}

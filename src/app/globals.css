@@ -895,6 +895,156 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.table-filter-form {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.table-filter-field {
+  position: relative;
+  min-width: min(280px, 100%);
+  flex: 1 1 280px;
+}
+
+.table-filter-input {
+  width: 100%;
+  padding-right: 4.8rem;
+}
+
+.table-filter-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.search-page {
+  gap: 0.9rem;
+}
+
+.search-page-header {
+  gap: 0.2rem;
+}
+
+.search-summary {
+  max-width: 70ch;
+  line-height: 1.4;
+}
+
+.search-toolbar {
+  padding: 0.7rem 0.9rem;
+}
+
+.search-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.search-toolbar-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.search-toggle-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.6rem;
+}
+
+.search-toggle-grid--inline {
+  flex: 1 1 auto;
+}
+
+.search-toggle {
+  display: inline-grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 0.4rem;
+  row-gap: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-highlight);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.search-toggle input {
+  margin: 0;
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.search-section {
+  padding: 0.75rem 0.9rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.search-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.search-section-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.search-section-heading h2 {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.search-load-more {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.84rem;
+}
+
+.search-load-more--inline {
+  padding: 0.22rem 0.5rem;
+  font-size: 0.76rem;
+  border-radius: 999px;
+}
+
+.search-table-wrap table {
+  min-width: 100%;
+}
+
+.search-data-cell {
+  max-width: 24rem;
+  white-space: normal;
+  word-break: break-word;
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+  font-size: 0.8rem;
+}
+
+.search-inline-note {
+  font-size: 0.86rem;
+}
+
+.search-empty-state--hero,
+.search-status-card {
+  padding: 1rem 1.1rem;
 }
 
 .permissions-grid {
@@ -1497,6 +1647,22 @@ html[data-theme="dark"] .status-pill--accent {
 
   .topbar-search-input {
     min-width: 0;
+  }
+
+  .table-filter-field {
+    min-width: 100%;
+  }
+
+  .search-toolbar {
+    padding: 0.8rem;
+  }
+
+  .search-toolbar-row {
+    align-items: flex-start;
+  }
+
+  .search-toggle {
+    max-width: 100%;
   }
 
   .app-shell.sidebar-collapsed .sidebar-label,

@@ -55,6 +55,7 @@ export function NamespacesTable() {
   const [tableError, setTableError] = useState<string | null>(null);
   const [tableSuccess, setTableSuccess] = useState<string | null>(null);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
   const query = useQuery({
     queryKey: ["namespaces"],
     queryFn: fetchNamespaces
@@ -157,6 +158,10 @@ export function NamespacesTable() {
   }, [pathname, router, searchParams]);
 
   useEffect(() => {
+    setSearchInput(searchParams.get("search") ?? "");
+  }, [searchParams]);
+
+  useEffect(() => {
     if (groupId || groups.length === 0) {
       return;
     }
@@ -236,6 +241,30 @@ export function NamespacesTable() {
     deleteMutation.mutate([...selectedNamespaceIds]);
   }
 
+  function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedSearchTerm = normalizeSearchTerm(searchInput);
+    const params = new URLSearchParams(searchParams.toString());
+    if (trimmedSearchTerm) {
+      params.set("search", trimmedSearchTerm);
+    } else {
+      params.delete("search");
+    }
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
+
+  function clearFilter() {
+    setSearchInput("");
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("search");
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
+
   function renderCreateNamespaceForm() {
     return (
       <form className="stack" onSubmit={onSubmit}>
@@ -311,6 +340,30 @@ export function NamespacesTable() {
         <div className="table-header">
           <h3>Namespace catalog</h3>
           <div className="table-tools">
+            <form className="table-filter-form" onSubmit={onFilterSubmit}>
+              <div className="table-filter-field">
+                <input
+                  aria-label="Filter loaded namespaces"
+                  className="table-filter-input"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Filter loaded items"
+                />
+                {normalizeSearchTerm(searchInput) ? (
+                  <button
+                    type="button"
+                    className="ghost table-filter-clear"
+                    onClick={clearFilter}
+                    aria-label="Clear namespace filter"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+              <button type="submit" className="ghost">
+                Filter
+              </button>
+            </form>
             <span className="muted">
               {searchTerm ? `${filteredNamespaces.length} shown of ${namespaces.length}` : `${namespaces.length} loaded`}
               {selectedNamespaceIds.length ? ` - ${selectedNamespaceIds.length} selected` : ""}

@@ -10,7 +10,7 @@ import { getApiV0MetaTasks, getApiV1Classes } from "@/lib/api/generated/client";
 import type { HubuumClassExpanded, HubuumObject, TaskQueueStateResponse } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { OPEN_CREATE_EVENT, type CreateSection } from "@/lib/create-events";
-import { getSearchScopeFromPathname, normalizeSearchTerm } from "@/lib/resource-search";
+import { normalizeSearchTerm } from "@/lib/resource-search";
 
 type AppShellProps = {
   canViewAdmin: boolean;
@@ -111,6 +111,9 @@ function isLinkActive(pathname: string, href: string): boolean {
 function getSectionLabel(pathname: string): string {
   if (pathname.startsWith("/tasks")) {
     return "Tasks";
+  }
+  if (pathname.startsWith("/search")) {
+    return "Search";
   }
   if (pathname.startsWith("/reports")) {
     return "Reports";
@@ -460,9 +463,9 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const sectionLabel = useMemo(() => getSectionLabel(pathname), [pathname]);
-  const activeSearchScope = useMemo(() => getSearchScopeFromPathname(pathname), [pathname]);
   const createSection = useMemo(() => getCreateSection(pathname), [pathname]);
   const relationsView = useMemo(() => getRelationsView(pathname), [pathname]);
+  const isSearchRoute = pathname.startsWith("/search");
   const isRelationsRoute = relationsView !== null;
   const isObjectsListRoute = pathname === "/objects";
   const selectedRelationsClassId = searchParams.get("classId") ?? "";
@@ -578,12 +581,8 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
   }, [pathname]);
 
   useEffect(() => {
-    if (!activeSearchScope) {
-      return;
-    }
-
-    setSearchInput(searchParams.get("search") ?? "");
-  }, [activeSearchScope, searchParams]);
+    setSearchInput(isSearchRoute ? searchParams.get("q") ?? "" : "");
+  }, [isSearchRoute, searchParams]);
 
   useEffect(() => {
     if (!isUserMenuOpen) {
@@ -741,29 +740,29 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
     event.preventDefault();
 
     const trimmedSearchTerm = normalizeSearchTerm(searchInput);
-    const params = new URLSearchParams(searchParams.toString());
+    const params = isSearchRoute ? new URLSearchParams(searchParams.toString()) : new URLSearchParams();
 
     if (trimmedSearchTerm) {
-      params.set("search", trimmedSearchTerm);
+      params.set("q", trimmedSearchTerm);
     } else {
-      params.delete("search");
+      params.delete("q");
     }
 
     const query = params.toString();
-    router.push(query ? `${pathname}?${query}` : pathname);
+    router.push(query ? `/search?${query}` : "/search");
   }
 
   function clearSearch() {
-    if (!activeSearchScope) {
+    setSearchInput("");
+    if (!isSearchRoute) {
       return;
     }
 
-    setSearchInput("");
     const params = new URLSearchParams(searchParams.toString());
-    params.delete("search");
+    params.delete("q");
 
     const query = params.toString();
-    router.push(query ? `${pathname}?${query}` : pathname);
+    router.push(query ? `/search?${query}` : "/search");
   }
 
   return (
@@ -1000,36 +999,30 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
             </div>
 
             <div className="topbar-right" ref={userMenuRef}>
-              {activeSearchScope ? (
-                <form className="topbar-search-form" onSubmit={onSearchSubmit}>
-                  <div className="topbar-search-field">
-                    <input
-                      aria-label={`Search ${sectionLabel.toLowerCase()} by name or description`}
-                      className="topbar-search-input"
-                      value={searchInput}
-                      onChange={(event) => setSearchInput(event.target.value)}
-                      placeholder={`Search ${sectionLabel.toLowerCase()} name or description`}
-                    />
-                    {normalizeSearchTerm(searchInput) ? (
-                      <button
-                        type="button"
-                        className="ghost topbar-search-clear"
-                        onClick={clearSearch}
-                        aria-label="Clear search"
-                      >
-                        <IconClose />
-                      </button>
-                    ) : null}
-                  </div>
-                  <button
-                    type="submit"
-                    className="ghost icon-button topbar-search-submit"
-                    aria-label={`Search ${sectionLabel.toLowerCase()}`}
-                  >
-                    <IconSearch />
-                  </button>
-                </form>
-              ) : null}
+              <form className="topbar-search-form" onSubmit={onSearchSubmit}>
+                <div className="topbar-search-field">
+                  <input
+                    aria-label="Search namespaces, classes, and objects"
+                    className="topbar-search-input"
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    placeholder="Search namespaces, classes, and objects"
+                  />
+                  {normalizeSearchTerm(searchInput) ? (
+                    <button
+                      type="button"
+                      className="ghost topbar-search-clear"
+                      onClick={clearSearch}
+                      aria-label="Clear search"
+                    >
+                      <IconClose />
+                    </button>
+                  ) : null}
+                </div>
+                <button type="submit" className="ghost icon-button topbar-search-submit" aria-label="Open search">
+                  <IconSearch />
+                </button>
+              </form>
 
               <button
                 type="button"
