@@ -948,34 +948,40 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
   function renderCreateClassRelationForm() {
     return (
       <form className="stack" onSubmit={onCreateClassRelation}>
-        <div className="relation-create-grid">
-          <div className="relation-create-pane">
-            <h4>From</h4>
-              <div className="muted">
+        <div className="object-detail-list">
+          <section className="object-detail-row">
+            <div className="object-detail-label">From</div>
+            <div className="object-detail-body">
+              <div className="object-detail-value">
                 {selectedClass
                   ? `${selectedClass.name} (#${selectedClass.id})`
                   : "Select a source class in the top bar first."}
               </div>
             </div>
+            <div className="object-detail-row-actions" />
+          </section>
 
-          <div className="relation-create-pane">
-            <h4>To</h4>
-            <label className="control-field">
-              <span>Class</span>
-              <select
-                value={classRelationTargetClassId}
-                onChange={(event) => setClassRelationTargetClassId(event.target.value)}
-                disabled={!classRelationTargetOptions.length}
-              >
-                {!classRelationTargetOptions.length ? <option value="">No eligible target classes</option> : null}
-                {classRelationTargetOptions.map((hubuumClass) => (
-                  <option key={hubuumClass.id} value={hubuumClass.id}>
-                    {hubuumClass.name} (#{hubuumClass.id})
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <section className="object-detail-row">
+            <div className="object-detail-label">To class</div>
+            <div className="object-detail-body">
+              <label className="control-field">
+                <span className="sr-only">Target class</span>
+                <select
+                  value={classRelationTargetClassId}
+                  onChange={(event) => setClassRelationTargetClassId(event.target.value)}
+                  disabled={!classRelationTargetOptions.length}
+                >
+                  {!classRelationTargetOptions.length ? <option value="">No eligible target classes</option> : null}
+                  {classRelationTargetOptions.map((hubuumClass) => (
+                    <option key={hubuumClass.id} value={hubuumClass.id}>
+                      {hubuumClass.name} (#{hubuumClass.id})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="object-detail-row-actions" />
+          </section>
         </div>
 
         {classRelationError ? <div className="error-banner">{classRelationError}</div> : null}
@@ -996,56 +1002,72 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
   function renderCreateObjectRelationForm() {
     return (
       <form className="stack" onSubmit={onCreateObjectRelation}>
-        <div className="relation-create-grid">
-          <div className="relation-create-pane">
-            <h4>From</h4>
-            <div className="stack">
-              <div className="muted">
-                Class: {selectedClass ? `${selectedClass.name} (#${selectedClass.id})` : "Select source class in the top bar"}
+        <div className="object-detail-list">
+          <section className="object-detail-row">
+            <div className="object-detail-label">From class</div>
+            <div className="object-detail-body">
+              <div className="object-detail-value">
+                {selectedClass ? `${selectedClass.name} (#${selectedClass.id})` : "Select source class in the top bar"}
               </div>
-              <div className="muted">
-                Object:{" "}
+            </div>
+            <div className="object-detail-row-actions" />
+          </section>
+
+          <section className="object-detail-row">
+            <div className="object-detail-label">From object</div>
+            <div className="object-detail-body">
+              <div className="object-detail-value">
                 {selectedSourceObject
                   ? `${selectedSourceObject.name} (#${selectedSourceObject.id})`
                   : "Select source object in the top bar"}
               </div>
             </div>
-          </div>
+            <div className="object-detail-row-actions" />
+          </section>
 
-          <div className="relation-create-pane">
-            <h4>To</h4>
-            <label className="control-field">
-              <span>Class</span>
-              <select
-                value={objectRelationTargetClassId}
-                onChange={(event) => setObjectRelationTargetClassId(event.target.value)}
-                disabled={!objectRelationTargetClassOptions.length}
-              >
-                {!objectRelationTargetClassOptions.length ? <option value="">No eligible target classes</option> : null}
-                {objectRelationTargetClassOptions.map((hubuumClass) => (
-                  <option key={hubuumClass.id} value={hubuumClass.id}>
-                    {hubuumClass.name} (#{hubuumClass.id})
-                  </option>
-                ))}
-              </select>
-            </label>
+          <section className="object-detail-row">
+            <div className="object-detail-label">To class</div>
+            <div className="object-detail-body">
+              <label className="control-field">
+                <span className="sr-only">Target class</span>
+                <select
+                  value={objectRelationTargetClassId}
+                  onChange={(event) => setObjectRelationTargetClassId(event.target.value)}
+                  disabled={!objectRelationTargetClassOptions.length}
+                >
+                  {!objectRelationTargetClassOptions.length ? <option value="">No eligible target classes</option> : null}
+                  {objectRelationTargetClassOptions.map((hubuumClass) => (
+                    <option key={hubuumClass.id} value={hubuumClass.id}>
+                      {hubuumClass.name} (#{hubuumClass.id})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="object-detail-row-actions" />
+          </section>
 
-            <label className="control-field">
-              <span>Object</span>
-              <select
-                value={objectRelationTargetObjectId}
-                onChange={(event) => setObjectRelationTargetObjectId(event.target.value)}
-                disabled={!targetObjects.length}
-              >
-                {!targetObjects.length ? <option value="">No objects available</option> : null}
-                {targetObjects.map((objectItem) => (
-                  <option key={objectItem.id} value={objectItem.id}>
-                    {objectItem.name} (#{objectItem.id})
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <section className="object-detail-row">
+            <div className="object-detail-label">To object</div>
+            <div className="object-detail-body">
+              <label className="control-field">
+                <span className="sr-only">Target object</span>
+                <select
+                  value={objectRelationTargetObjectId}
+                  onChange={(event) => setObjectRelationTargetObjectId(event.target.value)}
+                  disabled={!targetObjects.length}
+                >
+                  {!targetObjects.length ? <option value="">No objects available</option> : null}
+                  {targetObjects.map((objectItem) => (
+                    <option key={objectItem.id} value={objectItem.id}>
+                      {objectItem.name} (#{objectItem.id})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="object-detail-row-actions" />
+          </section>
         </div>
 
         {objectRelationError ? <div className="error-banner">{objectRelationError}</div> : null}

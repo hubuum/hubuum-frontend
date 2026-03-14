@@ -67,6 +67,8 @@ type PermissionDefinition = {
 
 type PermissionSection = "namespace" | "class" | "object" | "class_relation" | "object_relation" | "template";
 
+type EditableField = "name" | "description";
+
 const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   {
     value: PermissionValues.ReadCollection,
@@ -329,11 +331,36 @@ function arePermissionSetsEqual(left: PermissionName[], right: PermissionName[])
   return true;
 }
 
+function formatTimestamp(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString();
+}
+
+function renderFieldText(value: string): string {
+  return value.trim() ? value : "No value";
+}
+
+function InlineEditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="m4 16.8 8.9-8.9 3.2 3.2-8.9 8.9H4Zm10-10 1.8-1.8a1.8 1.8 0 0 1 2.5 0l.7.7a1.8 1.8 0 0 1 0 2.5l-1.8 1.8Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetailProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [editingFields, setEditingFields] = useState<EditableField[]>([]);
   const [addingGroupPermissions, setAddingGroupPermissions] = useState(false);
   const [newPermissionGroupId, setNewPermissionGroupId] = useState("");
   const [newSelectedPermissions, setNewSelectedPermissions] = useState<PermissionName[]>([]);
@@ -380,6 +407,7 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["namespace", namespaceId] });
       await queryClient.invalidateQueries({ queryKey: ["namespaces"] });
+      setEditingFields([]);
       setFormError(null);
       setFormSuccess("Namespace updated.");
     },
@@ -486,14 +514,38 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
   });
 
   useEffect(() => {
-    if (initialized || !namespaceQuery.data) {
+    if (!namespaceQuery.data) {
       return;
     }
 
-    setName(namespaceQuery.data.name);
-    setDescription(namespaceQuery.data.description ?? "");
-    setInitialized(true);
-  }, [initialized, namespaceQuery.data]);
+    if (!initialized || editingFields.length === 0) {
+      setName(namespaceQuery.data.name);
+      setDescription(namespaceQuery.data.description ?? "");
+      setInitialized(true);
+    }
+  }, [editingFields.length, initialized, namespaceQuery.data]);
+
+  function resetFieldDraft(field: EditableField, namespaceData: Namespace) {
+    if (field === "name") {
+      setName(namespaceData.name);
+      return;
+    }
+
+    setDescription(namespaceData.description ?? "");
+  }
+
+  function toggleFieldEditing(field: EditableField, namespaceData: Namespace) {
+    setFormError(null);
+    setFormSuccess(null);
+
+    if (editingFields.includes(field)) {
+      resetFieldDraft(field, namespaceData);
+      setEditingFields((current) => current.filter((currentField) => currentField !== field));
+      return;
+    }
+
+    setEditingFields((current) => [...current, field]);
+  }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -662,6 +714,7 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
   const checkingPermissionMembership = canCheckPermissionMembership && (permissionsQuery.isLoading || currentUserGroupsQuery.isLoading);
   const hasAnyPermissionRows = sortedPermissionEntries.length > 0 || (canManagePermissions && addingGroupPermissions);
   const hasDirtyRowDrafts = Object.keys(permissionDrafts).length > 0;
+  const hasActiveEdits = editingFields.length > 0;
 
   useEffect(() => {
     if (!addingGroupPermissions || !usingGroupSelect) {
@@ -706,25 +759,100 @@ export function NamespaceDetail({ namespaceId, currentUsername }: NamespaceDetai
       </header>
 
       <form className="card stack" onSubmit={onSubmit}>
-        <div className="form-grid">
-          <label className="control-field">
-            <span>Name</span>
-            <input required value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
+        <div className="object-meta-strip">
+          <div className="object-meta-item">
+            <span className="object-meta-label">Created</span>
+            <span className="object-meta-value">{formatTimestamp(namespaceData.created_at)}</span>
+          </div>
+          <div className="object-meta-item">
+            <span className="object-meta-label">Updated</span>
+            <span className="object-meta-value">{formatTimestamp(namespaceData.updated_at)}</span>
+          </div>
+          <div className="object-meta-item">
+            <span className="object-meta-label">Permission groups</span>
+            <span className="object-meta-value">
+              {permissionsQuery.isLoading ? "Loading..." : `${sortedPermissionEntries.length}`}
+            </span>
+          </div>
+        </div>
 
-          <label className="control-field control-field--wide">
-            <span>Description</span>
-            <input required value={description} onChange={(event) => setDescription(event.target.value)} />
-          </label>
+        <div className="object-detail-list">
+          <section className={`object-detail-row${editingFields.includes("name") ? " is-editing" : ""}`}>
+            <div className="object-detail-label">Name</div>
+            <div className="object-detail-body">
+              {editingFields.includes("name") ? (
+                <label className="control-field">
+                  <span className="sr-only">Namespace name</span>
+                  <input required value={name} onChange={(event) => setName(event.target.value)} />
+                </label>
+              ) : (
+                <button
+                  type="button"
+                  className="object-inline-edit"
+                  onClick={() => toggleFieldEditing("name", namespaceData)}
+                >
+                  <span className="object-detail-value">{renderFieldText(namespaceData.name)}</span>
+                  <span className="object-inline-edit-icon">
+                    <InlineEditIcon />
+                  </span>
+                </button>
+              )}
+            </div>
+            <div className="object-detail-row-actions">
+              {editingFields.includes("name") ? (
+                <button type="button" className="ghost" onClick={() => toggleFieldEditing("name", namespaceData)}>
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          </section>
+
+          <section className={`object-detail-row${editingFields.includes("description") ? " is-editing" : ""}`}>
+            <div className="object-detail-label">Description</div>
+            <div className="object-detail-body">
+              {editingFields.includes("description") ? (
+                <label className="control-field">
+                  <span className="sr-only">Namespace description</span>
+                  <input required value={description} onChange={(event) => setDescription(event.target.value)} />
+                </label>
+              ) : (
+                <button
+                  type="button"
+                  className="object-inline-edit"
+                  onClick={() => toggleFieldEditing("description", namespaceData)}
+                >
+                  <span className="object-detail-value">{renderFieldText(namespaceData.description ?? "")}</span>
+                  <span className="object-inline-edit-icon">
+                    <InlineEditIcon />
+                  </span>
+                </button>
+              )}
+            </div>
+            <div className="object-detail-row-actions">
+              {editingFields.includes("description") ? (
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => toggleFieldEditing("description", namespaceData)}
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          </section>
         </div>
 
         {formError ? <div className="error-banner">{formError}</div> : null}
         {formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
         <div className="form-actions form-actions--spread">
-          <button type="submit" disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? "Saving..." : "Save changes"}
-          </button>
+          {hasActiveEdits ? (
+            <button type="submit" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? "Saving..." : "Save changes"}
+            </button>
+          ) : (
+            <div />
+          )}
           <button type="button" className="danger" onClick={onDelete} disabled={deleteMutation.isPending}>
             {deleteMutation.isPending ? "Deleting..." : "Delete namespace"}
           </button>

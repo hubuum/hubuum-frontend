@@ -22,42 +22,41 @@ export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const contentType = request.headers.get("content-type") ?? "-";
   const accept = request.headers.get("accept") ?? "-";
+  const isApiRequest = path.startsWith("/api/");
   const headerCorrelationId = normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER));
   const cookieCorrelationId = normalizeCorrelationId(request.cookies.get(CORRELATION_ID_COOKIE)?.value);
-  const correlationId = headerCorrelationId ?? cookieCorrelationId ?? generateCorrelationId();
+  const correlationId = isApiRequest
+    ? headerCorrelationId ?? cookieCorrelationId ?? generateCorrelationId()
+    : generateCorrelationId();
 
   console.info(
     `[hubuum-http][cid=${correlationId}] ${request.method} ${path} ct=${contentType} accept=${accept}`
   );
 
-  const response = (() => {
-    if (!path.startsWith("/api/")) {
-      return NextResponse.next();
+  const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.set(CORRELATION_ID_HEADER, correlationId);
+  const response = NextResponse.next({
+    request: {
+      headers: forwardedHeaders
     }
+  });
 
-    const forwardedHeaders = new Headers(request.headers);
-    forwardedHeaders.set(CORRELATION_ID_HEADER, correlationId);
-    const nextResponse = NextResponse.next({
-      request: {
-        headers: forwardedHeaders
-      }
+  response.headers.set(CORRELATION_ID_HEADER, correlationId);
+
+  const shouldUpdateCookie = isApiRequest ? !headerCorrelationId && cookieCorrelationId !== correlationId : true;
+  if (shouldUpdateCookie) {
+    response.cookies.set(CORRELATION_ID_COOKIE, correlationId, {
+      httpOnly: true,
+      secure: requestIsHttps(request),
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 30
     });
-    nextResponse.headers.set(CORRELATION_ID_HEADER, correlationId);
-    if (cookieCorrelationId !== correlationId) {
-      nextResponse.cookies.set(CORRELATION_ID_COOKIE, correlationId, {
-        httpOnly: true,
-        secure: requestIsHttps(request),
-        sameSite: "lax",
-        path: "/",
-        maxAge: 60 * 30
-      });
-    }
-    return nextResponse;
-  })();
+  }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/api/:path*"]
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|theme-init.js).*)"]
 };

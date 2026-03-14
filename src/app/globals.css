@@ -162,6 +162,18 @@ main {
   color: var(--muted);
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .eyebrow {
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -889,6 +901,335 @@ body.modal-open {
 .json-editor-list code {
   font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
   font-size: 0.88em;
+}
+
+.object-meta-strip {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.object-meta-item {
+  display: flex;
+  gap: 0.45rem;
+  align-items: baseline;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-highlight);
+  min-width: 0;
+}
+
+.object-meta-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.object-meta-value {
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.object-detail-list {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.object-detail-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 140px) minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: start;
+  padding: 0.9rem 1rem;
+  background: var(--card);
+  border-top: 1px solid var(--line);
+}
+
+.object-detail-row:first-child {
+  border-top: 0;
+}
+
+.object-detail-row.is-editing {
+  background: color-mix(in oklab, var(--accent-soft) 40%, var(--card));
+}
+
+.object-detail-row--data {
+  align-items: start;
+}
+
+.object-detail-label {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.4;
+  padding-top: 0.1rem;
+}
+
+.object-detail-body {
+  min-width: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.object-detail-value {
+  min-width: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.object-inline-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.object-inline-edit:hover,
+.object-inline-edit:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  filter: none;
+}
+
+.object-inline-edit-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.object-inline-edit-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.object-detail-row-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.object-json-preview {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.json-viewer {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.json-viewer-tabs {
+  display: flex;
+  gap: 0.2rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.json-viewer-tab {
+  padding: 0.2rem 0.15rem 0.45rem;
+  border-radius: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.json-viewer-tab + .json-viewer-tab {
+  position: relative;
+  margin-left: 0.55rem;
+}
+
+.json-viewer-tab + .json-viewer-tab::before {
+  content: "";
+  position: absolute;
+  left: -0.4rem;
+  top: 50%;
+  width: 1px;
+  height: 0.9rem;
+  transform: translateY(-55%);
+  background: var(--line);
+}
+
+.json-viewer-tab.is-active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.json-viewer-tab:hover,
+.json-viewer-tab:focus-visible {
+  filter: none;
+  color: var(--ink);
+}
+
+.json-viewer-panel {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.json-overview-filter input {
+  width: min(280px, 100%);
+  padding-block: 0.55rem;
+}
+
+.json-overview-list-wrap {
+  max-height: 22rem;
+  overflow: auto;
+  border-radius: 14px;
+}
+
+.json-overview-list {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.json-overview-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border-top: 1px solid var(--line);
+  background: var(--bg-highlight);
+}
+
+.json-overview-row:first-child {
+  border-top: 0;
+}
+
+.json-overview-key,
+.json-tree-key {
+  color: var(--muted);
+  font-weight: 700;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.json-overview-value {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.json-tree-shell {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-highlight);
+}
+
+.json-tree-node,
+.json-tree-leaf {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.json-tree-node > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.json-tree-node > summary::-webkit-details-marker {
+  display: none;
+}
+
+.json-tree-meta {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.json-tree-children {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 1rem;
+  border-left: 1px solid var(--line);
+}
+
+.json-tree-leaf {
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+}
+
+.json-tree-leaf code {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.object-json-summary {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.25rem;
+  color: var(--muted);
+}
+
+.object-json-code {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg-strong);
+  color: var(--ink);
+  max-height: 12rem;
+  overflow: auto;
+  white-space: pre;
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.object-json-code.is-expanded {
+  max-height: 32rem;
+}
+
+@media (max-width: 720px) {
+  .object-detail-row {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .object-detail-row-actions {
+    justify-content: flex-start;
+  }
+
+  .object-meta-item {
+    flex-wrap: wrap;
+  }
+
+  .object-meta-value {
+    white-space: normal;
+  }
+
+  .json-overview-row,
+  .json-tree-leaf {
+    grid-template-columns: 1fr;
+  }
 }
 
 .table-tools {
