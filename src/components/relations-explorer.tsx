@@ -10,7 +10,6 @@ import {
   deleteApiV1RelationsObjectsByRelationId,
   getApiV1Classes,
   getApiV1Namespaces,
-  getApiV1RelationsObjects,
   postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectId
 } from "@/lib/api/generated/client";
 import { CreateModal } from "@/components/create-modal";
@@ -96,29 +95,28 @@ async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
   return expectArrayPayload<HubuumObject>(payload, "class objects");
 }
 
-async function fetchReachableObjectRelations(classId: number, fromObjectId: number): Promise<HubuumObjectWithPath[]> {
-  const response = await fetch(`/api/classes/${classId}/${fromObjectId}/relations`, {
+async function fetchRelatedObjects(classId: number, objectId: number): Promise<HubuumObjectWithPath[]> {
+  const response = await fetch(`/api/v1/classes/${classId}/objects/${objectId}/related/objects?limit=250`, {
     credentials: "include"
   });
   const payload = await parseJsonPayload(response);
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(payload, "Failed to load related objects."));
+  }
 
+  return expectArrayPayload<HubuumObjectWithPath>(payload, "related objects");
+}
+
+async function fetchDirectObjectRelations(classId: number, objectId: number): Promise<HubuumObjectRelation[]> {
+  const response = await fetch(`/api/v1/classes/${classId}/objects/${objectId}/related/relations?limit=250`, {
+    credentials: "include"
+  });
+  const payload = await parseJsonPayload(response);
   if (response.status !== 200) {
     throw new Error(getApiErrorMessage(payload, "Failed to load object relations."));
   }
 
-  return expectArrayPayload<HubuumObjectWithPath>(payload, "object relations");
-}
-
-async function fetchDirectObjectRelations(fromObjectId: number): Promise<HubuumObjectRelation[]> {
-  const response = await getApiV1RelationsObjects(undefined, {
-    credentials: "include"
-  });
-
-  if (response.status !== 200) {
-    throw new Error(getApiErrorMessage(response.data, "Failed to load object relations."));
-  }
-
-  return response.data.filter((relation) => relation.from_hubuum_object_id === fromObjectId);
+  return expectArrayPayload<HubuumObjectRelation>(payload, "object relations");
 }
 
 async function fetchNamespaces(): Promise<Namespace[]> {
@@ -285,6 +283,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     () => parseId(resolvedSourceObjectId),
     [resolvedSourceObjectId]
   );
+  const selectedSourceObject = sourceObjects.find((item) => item.id === parsedResolvedSourceObjectId);
 
   const classRelationTargetOptions = useMemo(
     () => classes.filter((classItem) => classItem.id !== parsedSourceClassId),
@@ -315,19 +314,19 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     queryFn: async () => fetchObjectsByClass(parsedObjectRelationTargetClassId ?? 0),
     enabled: isObjectMode && parsedObjectRelationTargetClassId !== null
   });
-  const objectReachabilityQuery = useQuery({
-    queryKey: ["object-relations-reachable", parsedSourceClassId, parsedResolvedSourceObjectId],
-    queryFn: async () => fetchReachableObjectRelations(parsedSourceClassId ?? 0, parsedResolvedSourceObjectId ?? 0),
-    enabled:
-      isObjectMode &&
-      objectRelationsView === "reachable" &&
-      parsedSourceClassId !== null &&
-      parsedResolvedSourceObjectId !== null
+  const relatedObjectsQuery = useQuery({
+    queryKey: ["object-related-objects", parsedSourceClassId, parsedResolvedSourceObjectId],
+    queryFn: async () => fetchRelatedObjects(parsedSourceClassId ?? 0, parsedResolvedSourceObjectId ?? 0),
+    enabled: isObjectMode && parsedSourceClassId !== null && parsedResolvedSourceObjectId !== null
   });
   const objectDirectRelationsQuery = useQuery({
-    queryKey: ["object-relations-direct", parsedResolvedSourceObjectId],
-    queryFn: async () => fetchDirectObjectRelations(parsedResolvedSourceObjectId ?? 0),
-    enabled: isObjectMode && objectRelationsView === "direct" && parsedResolvedSourceObjectId !== null
+    queryKey: ["object-relations-direct", parsedSourceClassId, parsedResolvedSourceObjectId],
+    queryFn: async () => fetchDirectObjectRelations(parsedSourceClassId ?? 0, parsedResolvedSourceObjectId ?? 0),
+    enabled:
+      isObjectMode &&
+      objectRelationsView === "direct" &&
+      parsedSourceClassId !== null &&
+      parsedResolvedSourceObjectId !== null
   });
 
   const targetObjects = targetObjectsQuery.data ?? [];
@@ -335,9 +334,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
   const classTransitiveRelations = Array.isArray(classTransitiveRelationsQuery.data)
     ? classTransitiveRelationsQuery.data
     : [];
-  const objectReachabilityRelations = Array.isArray(objectReachabilityQuery.data)
-    ? objectReachabilityQuery.data
-    : [];
+  const relatedObjects = Array.isArray(relatedObjectsQuery.data) ? relatedObjectsQuery.data : [];
   const objectDirectRelations = Array.isArray(objectDirectRelationsQuery.data)
     ? objectDirectRelationsQuery.data
     : [];
@@ -372,12 +369,15 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     for (const objectItem of targetObjects) {
       store(objectItem);
     }
-    for (const objectItem of objectReachabilityRelations) {
+    for (const objectItem of relatedObjects) {
       store(objectItem);
+    }
+    if (selectedSourceObject) {
+      store(selectedSourceObject);
     }
 
     return map;
-  }, [objectReachabilityRelations, sourceObjects, targetObjects]);
+  }, [relatedObjects, selectedSourceObject, sourceObjects, targetObjects]);
 
   const classRelationExists =
     parsedSourceClassId !== null &&
@@ -591,10 +591,10 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     onSuccess: async (_result, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["object-relations-reachable", variables.sourceClassId, variables.sourceObjectId]
+          queryKey: ["object-related-objects", variables.sourceClassId, variables.sourceObjectId]
         }),
         queryClient.invalidateQueries({
-          queryKey: ["object-relations-direct", variables.sourceObjectId]
+          queryKey: ["object-relations-direct", variables.sourceClassId, variables.sourceObjectId]
         })
       ]);
       setObjectRelationError(null);
@@ -634,7 +634,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["class-relations"] }),
         queryClient.invalidateQueries({ queryKey: ["class-relations-transitive"] }),
-        queryClient.invalidateQueries({ queryKey: ["object-relations-reachable"] }),
+        queryClient.invalidateQueries({ queryKey: ["object-related-objects"] }),
         queryClient.invalidateQueries({ queryKey: ["object-relations-direct"] })
       ]);
       setSelectedClassRelationIds([]);
@@ -675,7 +675,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     },
     onSuccess: async (count) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["object-relations-reachable"] }),
+        queryClient.invalidateQueries({ queryKey: ["object-related-objects"] }),
         queryClient.invalidateQueries({ queryKey: ["object-relations-direct"] })
       ]);
       setSelectedObjectRelationIds([]);
@@ -764,7 +764,6 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
   }
 
   const selectedClass = classes.find((item) => item.id === parsedSourceClassId);
-  const selectedSourceObject = sourceObjects.find((item) => item.id === parsedResolvedSourceObjectId);
   const canCreateClassRelation =
     parsedSourceClassId !== null &&
     parsedClassRelationTargetClassId !== null &&
@@ -785,30 +784,77 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 
   function renderClassById(classId: number): string {
     const className = classNameById.get(classId);
-    return className ? `${className} (#${classId})` : `#${classId}`;
+    return className ?? `Class #${classId}`;
   }
 
   function renderNamespaceById(namespaceId: number): string {
     const namespaceName = namespaceNameById.get(namespaceId);
-    return namespaceName ? `${namespaceName} (#${namespaceId})` : `#${namespaceId}`;
+    return namespaceName ?? `Namespace #${namespaceId}`;
   }
 
   function renderObjectById(objectId: number): string {
     const objectInfo = objectContextById.get(objectId);
     if (!objectInfo) {
-      return `#${objectId}`;
+      return `Object #${objectId}`;
     }
 
-    const className = classNameById.get(objectInfo.classId) ?? `Class #${objectInfo.classId}`;
-    return `${objectInfo.name} (${className}) #${objectId}`;
+    const className = classNameById.get(objectInfo.classId);
+    return className ? `${className} / ${objectInfo.name}` : objectInfo.name;
   }
 
-  function renderObjectPath(path: number[]): string {
-    if (!path.length) {
+  function renderObjectRelationLabel(relation: HubuumObjectRelation): string {
+    const sourceObject = objectContextById.get(relation.from_hubuum_object_id);
+    const targetObject = objectContextById.get(relation.to_hubuum_object_id);
+    if (sourceObject?.classId && targetObject?.classId) {
+      return `${renderClassById(sourceObject.classId)} -> ${renderClassById(targetObject.classId)}`;
+    }
+
+    const classRelation = classRelationById.get(relation.class_relation_id);
+    if (classRelation) {
+      return `${renderClassById(classRelation.from_hubuum_class_id)} -> ${renderClassById(classRelation.to_hubuum_class_id)}`;
+    }
+
+    return "Related object link";
+  }
+
+  function getDisplayObjectPath(path: number[], targetId?: number): number[] {
+    const normalizedPath = path.length ? [...path] : targetId ? [targetId] : [];
+    const trimmedPath =
+      normalizedPath[0] === parsedResolvedSourceObjectId ? normalizedPath.slice(1) : normalizedPath;
+    if (targetId && trimmedPath[trimmedPath.length - 1] !== targetId) {
+      trimmedPath.push(targetId);
+    }
+
+    return trimmedPath;
+  }
+
+  function renderObjectLink(objectId: number) {
+    const objectInfo = objectContextById.get(objectId);
+    return objectInfo ? (
+      <Link href={`/objects/${objectInfo.classId}/${objectId}`} className="row-link">
+        {renderObjectById(objectId)}
+      </Link>
+    ) : (
+      <span>{renderObjectById(objectId)}</span>
+    );
+  }
+
+  function renderObjectPath(path: number[], targetId?: number) {
+    const displayPath = getDisplayObjectPath(path, targetId);
+    if (!displayPath.length) {
       return "-";
     }
 
-    return path.map((objectId) => renderObjectById(objectId)).join(" -> ");
+    return (
+      <>
+        {displayPath.map((pathObjectId, index) => (
+          <span key={`${targetId ?? "path"}-${displayPath.slice(0, index + 1).join("-")}`}>
+            {index > 0 ? " -> " : null}
+            {renderObjectLink(pathObjectId)}
+          </span>
+        ))}
+      </>
+    );
   }
 
   function onClassRelationsViewChange(event: ChangeEvent<HTMLSelectElement>) {
@@ -1214,8 +1260,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                     : parsedResolvedSourceObjectId !== null
                       ? "Waiting..."
                       : "No source object"
-                  : objectReachabilityQuery.data
-                    ? `${objectReachabilityRelations.length} loaded`
+                  : relatedObjectsQuery.data
+                    ? `${relatedObjects.length} loaded`
                     : parsedResolvedSourceObjectId !== null
                       ? "Waiting..."
                       : "No source object"}
@@ -1245,7 +1291,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
           ) : parsedResolvedSourceObjectId === null ? (
             <div className="muted">Select a source object to load object-level relations.</div>
           ) : objectRelationsView === "direct" ? (
-            objectDirectRelationsQuery.isLoading ? (
+            objectDirectRelationsQuery.isLoading || relatedObjectsQuery.isLoading ? (
               <div>Loading direct object relations...</div>
             ) : objectDirectRelationsQuery.isError ? (
               <div className="error-banner">
@@ -1268,18 +1314,18 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                         onChange={(event) => toggleAllObjectRelations(event.target.checked)}
                       />
                     </th>
-                    <th>Relation ID</th>
-                    <th>To object</th>
-                    <th>To class</th>
-                    <th>Class relation ID</th>
+                    <th>Related object</th>
+                    <th>Relation</th>
                     <th>Updated</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {objectDirectRelations.map((relation) => {
-                    const targetClassId = classRelationById.get(relation.class_relation_id)?.to_hubuum_class_id;
-                    const toObjectLabel = renderObjectById(relation.to_hubuum_object_id);
+                    const relatedObjectId = relation.from_hubuum_object_id === parsedResolvedSourceObjectId
+                      ? relation.to_hubuum_object_id
+                      : relation.from_hubuum_object_id;
+                    const relatedObject = objectContextById.get(relatedObjectId);
                     const isRowDeleting = pendingObjectRelationDeleteIds.includes(relation.id);
 
                     return (
@@ -1292,23 +1338,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                             onChange={(event) => toggleObjectRelation(relation.id, event.target.checked)}
                           />
                         </td>
-                        <td>{relation.id}</td>
-                        <td>
-                          {targetClassId ? (
-                            <Link
-                              href={`/objects/${targetClassId}/${relation.to_hubuum_object_id}`}
-                              className="row-link"
-                            >
-                              {toObjectLabel}
-                            </Link>
-                          ) : (
-                            toObjectLabel
-                          )}
-                        </td>
-                        <td>
-                          {targetClassId ? renderClassById(targetClassId) : `Class relation #${relation.class_relation_id}`}
-                        </td>
-                        <td>{relation.class_relation_id}</td>
+                        <td>{relatedObject ? renderObjectLink(relatedObjectId) : renderObjectById(relatedObjectId)}</td>
+                        <td>{renderObjectRelationLabel(relation)}</td>
                         <td>{new Date(relation.updated_at).toLocaleString()}</td>
                         <td>
                           <button
@@ -1326,40 +1357,32 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                 </tbody>
               </table>
             )
-          ) : objectReachabilityQuery.isLoading ? (
+          ) : relatedObjectsQuery.isLoading ? (
             <div>Loading reachable objects...</div>
-          ) : objectReachabilityQuery.isError ? (
+          ) : relatedObjectsQuery.isError ? (
             <div className="error-banner">
               Failed to load object reachability. {" "}
-              {objectReachabilityQuery.error instanceof Error
-                ? objectReachabilityQuery.error.message
+              {relatedObjectsQuery.error instanceof Error
+                ? relatedObjectsQuery.error.message
                 : "Unknown error"}
             </div>
-          ) : objectReachabilityRelations.length === 0 ? (
+          ) : relatedObjects.length === 0 ? (
             <div className="muted">No reachable objects for this source object.</div>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Class</th>
+                  <th>Object</th>
                   <th>Namespace</th>
                   <th>Path</th>
                 </tr>
               </thead>
               <tbody>
-                {objectReachabilityRelations.map((relation) => (
+                {relatedObjects.map((relation) => (
                   <tr key={relation.id}>
-                    <td>{relation.id}</td>
-                    <td>
-                      <Link href={`/objects/${relation.hubuum_class_id}/${relation.id}`} className="row-link">
-                        {relation.name}
-                      </Link>
-                    </td>
-                    <td>{renderClassById(relation.hubuum_class_id)}</td>
+                    <td>{renderObjectLink(relation.id)}</td>
                     <td>{renderNamespaceById(relation.namespace_id)}</td>
-                    <td>{renderObjectPath(relation.path)}</td>
+                    <td>{renderObjectPath(relation.path, relation.id)}</td>
                   </tr>
                 ))}
               </tbody>

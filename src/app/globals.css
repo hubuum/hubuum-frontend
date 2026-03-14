@@ -1507,6 +1507,112 @@ html[data-theme="dark"] .token.template-path {
   font-size: 1.05rem;
 }
 
+.relations-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.relations-toolbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.relations-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.relations-count,
+.relations-depth-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+}
+
+.relations-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+}
+
+.relations-toggle input {
+  margin: 0;
+}
+
+.relations-count strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.relations-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.relations-stepper input {
+  width: 3.6rem;
+  padding: 0.45rem 0.55rem;
+  text-align: center;
+}
+
+.relations-filter-dropdown {
+  position: relative;
+}
+
+.relations-filter-trigger {
+  padding: 0.45rem 0.7rem;
+  color: var(--muted);
+}
+
+.relations-filter-trigger:hover {
+  background: var(--accent-soft);
+}
+
+.relations-filter-menu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  z-index: 5;
+  min-width: 13rem;
+  max-height: 16rem;
+  overflow: auto;
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+}
+
+.relations-filter-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--ink);
+}
+
+.relations-filter-option input {
+  margin: 0;
+}
+
+.relations-child-path {
+  padding-left: 1rem;
+}
+
+.relations-path-list li {
+  display: grid;
+  justify-content: start;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;

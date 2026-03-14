@@ -2,28 +2,25 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
   deleteApiV1ClassesByClassIdByObjectId,
   getApiV1Classes,
   getApiV1ClassesByClassIdByObjectId,
-  getApiV1RelationsClassesByRelationId,
-  getApiV1RelationsObjects,
   getApiV1Namespaces,
   patchApiV1ClassesByClassIdByObjectId
 } from "@/lib/api/generated/client";
 import { JsonEditor } from "@/components/json-editor";
 import type {
   HubuumClassExpanded,
-  HubuumClassRelation,
   HubuumObject,
-  HubuumObjectRelation,
+  HubuumObjectWithPath,
   Namespace,
   UpdateHubuumObject
 } from "@/lib/api/generated/models";
-import { getApiErrorMessage } from "@/lib/api/errors";
+import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 
 type ObjectDetailProps = {
   classId: number;
@@ -66,42 +63,55 @@ async function fetchNamespaces(): Promise<Namespace[]> {
   return response.data;
 }
 
-async function fetchDirectObjectRelations(objectId: number): Promise<HubuumObjectRelation[]> {
-  const response = await getApiV1RelationsObjects({ limit: 250 }, {
-    credentials: "include"
-  });
-
-  if (response.status !== 200) {
-    throw new Error(getApiErrorMessage(response.data, "Failed to load object relations."));
+async function parseJsonPayload(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) {
+    return null;
   }
 
-  return response.data.filter(
-    (relation) => relation.from_hubuum_object_id === objectId || relation.to_hubuum_object_id === objectId
-  );
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
-async function fetchClassRelationDetails(relationIds: number[]): Promise<HubuumClassRelation[]> {
-  const responses = await Promise.all(
-    relationIds.map(async (relationId) => {
-      const response = await getApiV1RelationsClassesByRelationId(relationId, {
-        credentials: "include"
-      });
+async function fetchRelatedObjects(
+  classId: number,
+  objectId: number,
+  depthLimit: number,
+  includeSelfClass: boolean,
+  ignoredClassIds: number[]
+): Promise<HubuumObjectWithPath[]> {
+  const params = new URLSearchParams({
+    limit: "250",
+    sort: "path.asc,id.asc",
+    depth__lte: String(depthLimit),
+    ignore_self_class: String(!includeSelfClass)
+  });
+  if (ignoredClassIds.length) {
+    params.set("ignore_classes", ignoredClassIds.join(","));
+  }
+  const response = await fetch(`/api/v1/classes/${classId}/objects/${objectId}/related/objects?${params.toString()}`, {
+    credentials: "include"
+  });
+  const payload = await parseJsonPayload(response);
+  if (response.status !== 200) {
+    throw new Error(getApiErrorMessage(payload, "Failed to load related objects."));
+  }
 
-      if (response.status !== 200) {
-        throw new Error(getApiErrorMessage(response.data, `Failed to load class relation #${relationId}.`));
-      }
-
-      return response.data;
-    })
-  );
-
-  return responses;
+  return expectArrayPayload<HubuumObjectWithPath>(payload, "related objects");
 }
 
 export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const ignoreClassesRef = useRef<HTMLDivElement | null>(null);
 
+  const [relationDepthLimit, setRelationDepthLimit] = useState(2);
+  const [includeSelfClass, setIncludeSelfClass] = useState(false);
+  const [ignoredClassIds, setIgnoredClassIds] = useState<number[]>([]);
+  const [isIgnoreClassesOpen, setIgnoreClassesOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [dataInput, setDataInput] = useState("{}");
@@ -122,9 +132,17 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
     queryKey: ["namespaces", "object-detail"],
     queryFn: fetchNamespaces
   });
-  const objectRelationsQuery = useQuery({
-    queryKey: ["object-relations", "detail", objectId],
-    queryFn: async () => fetchDirectObjectRelations(objectId)
+  const relatedObjectsQuery = useQuery({
+    queryKey: [
+      "object-related-objects",
+      "detail",
+      classId,
+      objectId,
+      relationDepthLimit,
+      includeSelfClass,
+      ignoredClassIds
+    ],
+    queryFn: async () => fetchRelatedObjects(classId, objectId, relationDepthLimit, includeSelfClass, ignoredClassIds)
   });
 
   useEffect(() => {
@@ -138,16 +156,32 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
     setNamespaceId(String(objectQuery.data.namespace_id));
     setInitialized(true);
   }, [initialized, objectQuery.data]);
+
+  useEffect(() => {
+    if (!isIgnoreClassesOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!ignoreClassesRef.current?.contains(event.target as Node)) {
+        setIgnoreClassesOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIgnoreClassesOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isIgnoreClassesOpen]);
   const namespaces = namespacesQuery.data ?? [];
-  const directObjectRelations = objectRelationsQuery.data ?? [];
-  const classRelationIds = Array.from(
-    new Set(directObjectRelations.map((relation) => relation.class_relation_id))
-  );
-  const classRelationDetailsQuery = useQuery({
-    queryKey: ["object-relations", "detail-class-relations", objectId, classRelationIds],
-    queryFn: async () => fetchClassRelationDetails(classRelationIds),
-    enabled: classRelationIds.length > 0
-  });
 
   const updateMutation = useMutation({
     mutationFn: async (payload: UpdateHubuumObject) => {
@@ -266,22 +300,137 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
   for (const item of classesQuery.data ?? []) {
     classNameById.set(item.id, item.name);
   }
-  const classRelationById = new Map<number, HubuumClassRelation>();
-  for (const relation of classRelationDetailsQuery.data ?? []) {
-    classRelationById.set(relation.id, relation);
+  const objectContextById = new Map<number, { classId: number; name: string }>();
+  objectContextById.set(objectData.id, {
+    classId: objectData.hubuum_class_id,
+    name: objectData.name
+  });
+  for (const relatedObject of relatedObjectsQuery.data ?? []) {
+    objectContextById.set(relatedObject.id, {
+      classId: relatedObject.hubuum_class_id,
+      name: relatedObject.name
+    });
   }
-  const outgoingObjectRelations = directObjectRelations.filter((relation) => relation.from_hubuum_object_id === objectId);
-  const incomingObjectRelations = directObjectRelations.filter((relation) => relation.to_hubuum_object_id === objectId);
-
-  function renderObjectLabel(relatedObjectId: number, relatedClassId: number | null) {
-    if (relatedClassId === null) {
-      return `Object #${relatedObjectId}`;
+  const relatedObjects = [...(relatedObjectsQuery.data ?? [])].sort((left, right) => {
+    const depthDelta = left.path.length - right.path.length;
+    if (depthDelta !== 0) {
+      return depthDelta;
     }
 
-    const relatedClassName = classNameById.get(relatedClassId);
-    return relatedClassName
-      ? `${relatedClassName} / Object #${relatedObjectId}`
-      : `Class #${relatedClassId} / Object #${relatedObjectId}`;
+    return left.name.localeCompare(right.name);
+  });
+  const ignoredClassSet = new Set(ignoredClassIds);
+  const ignoredClassOptions = (classesQuery.data ?? [])
+    .filter((item) => item.id !== objectData.hubuum_class_id)
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  function renderObjectLabel(relatedObjectId: number) {
+    const relatedObject = objectContextById.get(relatedObjectId);
+    if (!relatedObject) {
+      return `Unknown related object (#${relatedObjectId})`;
+    }
+
+    const relatedClassName = classNameById.get(relatedObject.classId);
+    return relatedClassName ? `${relatedClassName} / ${relatedObject.name}` : relatedObject.name;
+  }
+
+  function getDisplayPath(path: number[], targetId: number): number[] {
+    const normalizedPath = path.length ? [...path] : [targetId];
+    const trimmedPath = normalizedPath[0] === objectId ? normalizedPath.slice(1) : normalizedPath;
+    if (!trimmedPath.length) {
+      return [targetId];
+    }
+
+    if (trimmedPath[trimmedPath.length - 1] !== targetId) {
+      trimmedPath.push(targetId);
+    }
+
+    return trimmedPath;
+  }
+
+  function renderPathLink(objectPathId: number) {
+    const pathObject = objectContextById.get(objectPathId);
+    const label = renderObjectLabel(objectPathId);
+    return pathObject ? (
+      <Link href={`/objects/${pathObject.classId}/${objectPathId}`}>{label}</Link>
+    ) : (
+      <span>{label}</span>
+    );
+  }
+
+  function renderObjectPath(path: number[], keyPrefix: string) {
+    return (
+      <>
+        {path.map((pathObjectId, index) => (
+          <span key={`${keyPrefix}-${path.slice(0, index + 1).join("-")}`}>
+            {index > 0 ? " \u2192 " : null}
+            {renderPathLink(pathObjectId)}
+          </span>
+        ))}
+      </>
+    );
+  }
+
+  const relatedObjectGroups = (() => {
+    const groups = new Map<number, { rootPath: number[]; children: number[][] }>();
+    for (const relatedObject of relatedObjects) {
+      const displayPath = getDisplayPath(relatedObject.path, relatedObject.id);
+      const rootId = displayPath[0];
+      if (!rootId) {
+        continue;
+      }
+
+      const existingGroup = groups.get(rootId);
+      if (!existingGroup) {
+        groups.set(rootId, {
+          rootPath: [rootId],
+          children: displayPath.length > 1 ? [displayPath.slice(1)] : []
+        });
+        continue;
+      }
+
+      if (displayPath.length > 1) {
+        existingGroup.children.push(displayPath.slice(1));
+      }
+    }
+
+    return [...groups.entries()]
+      .map(([rootId, group]) => ({
+        rootId,
+        rootLabel: renderObjectLabel(rootId),
+        rootPath: group.rootPath,
+        children: [...group.children].sort((left, right) => {
+          const leftFirstHop = left[0];
+          const rightFirstHop = right[0];
+          const leftClassName =
+            leftFirstHop === undefined
+              ? ""
+              : classNameById.get(objectContextById.get(leftFirstHop)?.classId ?? -1) ?? "";
+          const rightClassName =
+            rightFirstHop === undefined
+              ? ""
+              : classNameById.get(objectContextById.get(rightFirstHop)?.classId ?? -1) ?? "";
+          const classCompare = leftClassName.localeCompare(rightClassName);
+          if (classCompare !== 0) {
+            return classCompare;
+          }
+
+          const leftLabel = left.map((objectPathId) => renderObjectLabel(objectPathId)).join(" -> ");
+          const rightLabel = right.map((objectPathId) => renderObjectLabel(objectPathId)).join(" -> ");
+          return leftLabel.localeCompare(rightLabel);
+        })
+      }))
+      .sort((left, right) => left.rootLabel.localeCompare(right.rootLabel));
+  })();
+
+  function toggleIgnoredClass(classToToggle: number, checked: boolean) {
+    setIgnoredClassIds((current) => {
+      if (checked) {
+        return current.includes(classToToggle) ? current : [...current, classToToggle].sort((left, right) => left - right);
+      }
+
+      return current.filter((classIdValue) => classIdValue !== classToToggle);
+    });
   }
 
   return (
@@ -292,114 +441,6 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
           {objectData.name} (#{objectData.id})
         </h2>
       </header>
-
-      <section className="card stack">
-        <div className="panel-header">
-          <div className="stack action-card-header">
-            <h3>Relations</h3>
-            <p className="muted">Direct object-to-object links connected to this object.</p>
-          </div>
-          <div className="action-row">
-            <Link
-              className="link-chip"
-              href={`/relations/objects?classId=${objectData.hubuum_class_id}&objectId=${objectId}&objectView=direct`}
-            >
-              Open relations
-            </Link>
-          </div>
-        </div>
-
-        {objectRelationsQuery.isLoading ? <div className="muted">Loading direct object relations...</div> : null}
-        {objectRelationsQuery.isError ? (
-          <div className="error-banner">
-            Failed to load object relations.{" "}
-            {objectRelationsQuery.error instanceof Error ? objectRelationsQuery.error.message : "Unknown error"}
-          </div>
-        ) : null}
-        {!objectRelationsQuery.isLoading && !objectRelationsQuery.isError ? (
-          <>
-            <div className="summary-grid">
-              <div className="summary-pill">
-                <span>Total</span>
-                <strong>{directObjectRelations.length}</strong>
-              </div>
-              <div className="summary-pill">
-                <span>Outgoing</span>
-                <strong>{outgoingObjectRelations.length}</strong>
-              </div>
-              <div className="summary-pill">
-                <span>Incoming</span>
-                <strong>{incomingObjectRelations.length}</strong>
-              </div>
-            </div>
-
-            {directObjectRelations.length === 0 ? (
-              <div className="empty-state">No direct relations for this object yet.</div>
-            ) : (
-              <div className="task-details-grid">
-                <div>
-                  <strong>Outgoing</strong>
-                  {outgoingObjectRelations.length ? (
-                    <ul className="stat-list compact-stat-list">
-                      {outgoingObjectRelations.map((relation) => {
-                        const classRelation = classRelationById.get(relation.class_relation_id);
-                        const targetClassId = classRelation?.to_hubuum_class_id ?? null;
-                        const objectLabel = renderObjectLabel(relation.to_hubuum_object_id, targetClassId);
-
-                        return (
-                          <li key={relation.id}>
-                            {targetClassId !== null ? (
-                              <Link href={`/objects/${targetClassId}/${relation.to_hubuum_object_id}`}>{objectLabel}</Link>
-                            ) : (
-                              <span>{objectLabel}</span>
-                            )}
-                            <span className="muted">Relation #{relation.id}</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="muted">No outgoing relations.</p>
-                  )}
-                </div>
-
-                <div>
-                  <strong>Incoming</strong>
-                  {incomingObjectRelations.length ? (
-                    <ul className="stat-list compact-stat-list">
-                      {incomingObjectRelations.map((relation) => {
-                        const classRelation = classRelationById.get(relation.class_relation_id);
-                        const sourceClassId = classRelation?.from_hubuum_class_id ?? null;
-                        const objectLabel = renderObjectLabel(relation.from_hubuum_object_id, sourceClassId);
-
-                        return (
-                          <li key={relation.id}>
-                            {sourceClassId !== null ? (
-                              <Link href={`/objects/${sourceClassId}/${relation.from_hubuum_object_id}`}>{objectLabel}</Link>
-                            ) : (
-                              <span>{objectLabel}</span>
-                            )}
-                            <span className="muted">Relation #{relation.id}</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="muted">No incoming relations.</p>
-                  )}
-                </div>
-              </div>
-            )}
-            {classRelationDetailsQuery.isLoading ? (
-              <div className="muted">Resolving related class links...</div>
-            ) : null}
-            {classRelationDetailsQuery.isError ? (
-              <div className="muted">Could not resolve all related class links automatically. Showing relation targets by ID.</div>
-            ) : null}
-            {classesQuery.isError ? <div className="muted">Could not load class names. Showing class IDs instead.</div> : null}
-          </>
-        ) : null}
-      </section>
 
       <form className="card stack" onSubmit={onSubmit}>
         <div className="form-grid">
@@ -486,6 +527,107 @@ export function ObjectDetail({ classId, objectId }: ObjectDetailProps) {
           </button>
         </div>
       </form>
+
+      <section className="card stack">
+        {relatedObjectsQuery.isLoading ? <div className="muted">Loading object relations...</div> : null}
+        {relatedObjectsQuery.isError ? (
+          <div className="error-banner">
+            Failed to load object relations.{" "}
+            {relatedObjectsQuery.error instanceof Error ? relatedObjectsQuery.error.message : "Unknown error"}
+          </div>
+        ) : null}
+        {!relatedObjectsQuery.isLoading && !relatedObjectsQuery.isError ? (
+          <>
+            <div className="relations-toolbar">
+              <div className="relations-toolbar-meta">
+                <h3 className="relations-title">Relations: {relatedObjects.length}</h3>
+                <div className="relations-depth-control">
+                  <span>Depth:</span>
+                  <div className="relations-stepper">
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={relationDepthLimit}
+                      onChange={(event) => {
+                        const parsed = Number.parseInt(event.target.value, 10);
+                        setRelationDepthLimit(Number.isFinite(parsed) && parsed > 0 ? parsed : 1);
+                      }}
+                      aria-label="Relationship depth"
+                    />
+                  </div>
+                </div>
+                <label className="relations-toggle">
+                  <input
+                    type="checkbox"
+                    checked={includeSelfClass}
+                    onChange={(event) => setIncludeSelfClass(event.target.checked)}
+                  />
+                  <span>Include self class</span>
+                </label>
+                <div className="relations-filter-dropdown" ref={ignoreClassesRef}>
+                  <button
+                    type="button"
+                    className="ghost relations-filter-trigger"
+                    onClick={() => setIgnoreClassesOpen((current) => !current)}
+                    aria-haspopup="menu"
+                    aria-expanded={isIgnoreClassesOpen}
+                  >
+                    Ignore classes
+                    {ignoredClassIds.length ? ` (${ignoredClassIds.length})` : ""}
+                  </button>
+                  {isIgnoreClassesOpen ? (
+                    <div className="relations-filter-menu" role="menu">
+                      {ignoredClassOptions.length ? (
+                        ignoredClassOptions.map((hubuumClass) => (
+                          <label key={hubuumClass.id} className="relations-filter-option">
+                            <input
+                              type="checkbox"
+                              checked={ignoredClassSet.has(hubuumClass.id)}
+                              onChange={(event) => toggleIgnoredClass(hubuumClass.id, event.target.checked)}
+                            />
+                            <span>{hubuumClass.name}</span>
+                          </label>
+                        ))
+                      ) : (
+                        <div className="muted">No other classes available.</div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <Link
+                className="link-chip"
+                href={`/relations/objects?classId=${objectData.hubuum_class_id}&objectId=${objectId}&objectView=reachable`}
+              >
+                Open relations
+              </Link>
+            </div>
+
+            {relatedObjects.length === 0 ? (
+              <div className="empty-state">No related objects for this object yet.</div>
+            ) : (
+              <ul className="stat-list compact-stat-list relations-path-list">
+                {relatedObjectGroups.map((group) => (
+                  <li key={group.rootId}>
+                    <div>{renderObjectPath(group.rootPath, `root-${group.rootId}`)}</div>
+                    {group.children.map((childPath) => (
+                      <div key={`child-${group.rootId}-${childPath.join("-")}`} className="relations-child-path">
+                        <span className="muted">{"\u2192 "}</span>
+                        {renderObjectPath(childPath, `child-${group.rootId}`)}
+                      </div>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {relatedObjectsQuery.isError ? (
+              <div className="muted">Could not resolve all related objects automatically. Showing IDs instead.</div>
+            ) : null}
+            {classesQuery.isError ? <div className="muted">Could not load class names. Showing class IDs instead.</div> : null}
+          </>
+        ) : null}
+      </section>
     </section>
   );
 }
