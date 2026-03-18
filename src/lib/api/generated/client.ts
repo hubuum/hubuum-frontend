@@ -40,6 +40,7 @@ import type {
   ImportTaskResultResponse,
   LoginResponse,
   LoginUser,
+  LogoutTokenRequest,
   MessageResponse,
   Namespace,
   NewGroup,
@@ -127,34 +128,34 @@ export const postApiV0AuthLogin = async (loginUser: LoginUser, options?: Request
 
 
 /**
- * Auto-generated documentation for GET /api/v0/auth/logout.
- * @summary Get Api V0 Auth Logout
+ * Auto-generated documentation for POST /api/v0/auth/logout.
+ * @summary Post Api V0 Auth Logout
  */
-export type getApiV0AuthLogoutResponse200 = {
+export type postApiV0AuthLogoutResponse200 = {
   data: MessageResponse
   status: 200
 }
 
-export type getApiV0AuthLogoutResponse401 = {
+export type postApiV0AuthLogoutResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type getApiV0AuthLogoutResponse500 = {
+export type postApiV0AuthLogoutResponse500 = {
   data: ApiErrorResponse
   status: 500
 }
 
-export type getApiV0AuthLogoutResponseSuccess = (getApiV0AuthLogoutResponse200) & {
+export type postApiV0AuthLogoutResponseSuccess = (postApiV0AuthLogoutResponse200) & {
   headers: Headers;
 };
-export type getApiV0AuthLogoutResponseError = (getApiV0AuthLogoutResponse401 | getApiV0AuthLogoutResponse500) & {
+export type postApiV0AuthLogoutResponseError = (postApiV0AuthLogoutResponse401 | postApiV0AuthLogoutResponse500) & {
   headers: Headers;
 };
 
-export type getApiV0AuthLogoutResponse = (getApiV0AuthLogoutResponseSuccess | getApiV0AuthLogoutResponseError)
+export type postApiV0AuthLogoutResponse = (postApiV0AuthLogoutResponseSuccess | postApiV0AuthLogoutResponseError)
 
-export const getGetApiV0AuthLogoutUrl = () => {
+export const getPostApiV0AuthLogoutUrl = () => {
 
 
   
@@ -162,12 +163,12 @@ export const getGetApiV0AuthLogoutUrl = () => {
   return `/api/v0/auth/logout`
 }
 
-export const getApiV0AuthLogout = async ( options?: RequestInit): Promise<getApiV0AuthLogoutResponse> => {
+export const postApiV0AuthLogout = async ( options?: RequestInit): Promise<postApiV0AuthLogoutResponse> => {
   
-  const res = await fetch(getGetApiV0AuthLogoutUrl(),
+  const res = await fetch(getPostApiV0AuthLogoutUrl(),
   {      
     ...options,
-    method: 'GET'
+    method: 'POST'
     
     
   }
@@ -175,96 +176,97 @@ export const getApiV0AuthLogout = async ( options?: RequestInit): Promise<getApi
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: getApiV0AuthLogoutResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV0AuthLogoutResponse
+  const data: postApiV0AuthLogoutResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV0AuthLogoutResponse
 }
   
 
 
 /**
- * Auto-generated documentation for GET /api/v0/auth/logout/token/{token}.
- * @summary Get Api V0 Auth Logout Token By Token
+ * Auto-generated documentation for POST /api/v0/auth/logout/token.
+ * @summary Post Api V0 Auth Logout Token
  */
-export type getApiV0AuthLogoutTokenByTokenResponse200 = {
+export type postApiV0AuthLogoutTokenResponse200 = {
   data: MessageResponse
   status: 200
 }
 
-export type getApiV0AuthLogoutTokenByTokenResponse401 = {
+export type postApiV0AuthLogoutTokenResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type getApiV0AuthLogoutTokenByTokenResponse500 = {
+export type postApiV0AuthLogoutTokenResponse500 = {
   data: ApiErrorResponse
   status: 500
 }
 
-export type getApiV0AuthLogoutTokenByTokenResponseSuccess = (getApiV0AuthLogoutTokenByTokenResponse200) & {
+export type postApiV0AuthLogoutTokenResponseSuccess = (postApiV0AuthLogoutTokenResponse200) & {
   headers: Headers;
 };
-export type getApiV0AuthLogoutTokenByTokenResponseError = (getApiV0AuthLogoutTokenByTokenResponse401 | getApiV0AuthLogoutTokenByTokenResponse500) & {
+export type postApiV0AuthLogoutTokenResponseError = (postApiV0AuthLogoutTokenResponse401 | postApiV0AuthLogoutTokenResponse500) & {
   headers: Headers;
 };
 
-export type getApiV0AuthLogoutTokenByTokenResponse = (getApiV0AuthLogoutTokenByTokenResponseSuccess | getApiV0AuthLogoutTokenByTokenResponseError)
+export type postApiV0AuthLogoutTokenResponse = (postApiV0AuthLogoutTokenResponseSuccess | postApiV0AuthLogoutTokenResponseError)
 
-export const getGetApiV0AuthLogoutTokenByTokenUrl = (token: string,) => {
+export const getPostApiV0AuthLogoutTokenUrl = () => {
 
 
   
 
-  return `/api/v0/auth/logout/token/${token}`
+  return `/api/v0/auth/logout/token`
 }
 
-export const getApiV0AuthLogoutTokenByToken = async (token: string, options?: RequestInit): Promise<getApiV0AuthLogoutTokenByTokenResponse> => {
+export const postApiV0AuthLogoutToken = async (logoutTokenRequest: LogoutTokenRequest, options?: RequestInit): Promise<postApiV0AuthLogoutTokenResponse> => {
   
-  const res = await fetch(getGetApiV0AuthLogoutTokenByTokenUrl(token),
+  const res = await fetch(getPostApiV0AuthLogoutTokenUrl(),
   {      
     ...options,
-    method: 'GET'
-    
-    
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      logoutTokenRequest,)
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: getApiV0AuthLogoutTokenByTokenResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV0AuthLogoutTokenByTokenResponse
+  const data: postApiV0AuthLogoutTokenResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV0AuthLogoutTokenResponse
 }
   
 
 
 /**
- * Auto-generated documentation for GET /api/v0/auth/logout/uid/{user_id}.
- * @summary Get Api V0 Auth Logout Uid By User Id
+ * Auto-generated documentation for POST /api/v0/auth/logout/uid/{user_id}.
+ * @summary Post Api V0 Auth Logout Uid By User Id
  */
-export type getApiV0AuthLogoutUidByUserIdResponse200 = {
+export type postApiV0AuthLogoutUidByUserIdResponse200 = {
   data: MessageResponse
   status: 200
 }
 
-export type getApiV0AuthLogoutUidByUserIdResponse401 = {
+export type postApiV0AuthLogoutUidByUserIdResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type getApiV0AuthLogoutUidByUserIdResponse500 = {
+export type postApiV0AuthLogoutUidByUserIdResponse500 = {
   data: ApiErrorResponse
   status: 500
 }
 
-export type getApiV0AuthLogoutUidByUserIdResponseSuccess = (getApiV0AuthLogoutUidByUserIdResponse200) & {
+export type postApiV0AuthLogoutUidByUserIdResponseSuccess = (postApiV0AuthLogoutUidByUserIdResponse200) & {
   headers: Headers;
 };
-export type getApiV0AuthLogoutUidByUserIdResponseError = (getApiV0AuthLogoutUidByUserIdResponse401 | getApiV0AuthLogoutUidByUserIdResponse500) & {
+export type postApiV0AuthLogoutUidByUserIdResponseError = (postApiV0AuthLogoutUidByUserIdResponse401 | postApiV0AuthLogoutUidByUserIdResponse500) & {
   headers: Headers;
 };
 
-export type getApiV0AuthLogoutUidByUserIdResponse = (getApiV0AuthLogoutUidByUserIdResponseSuccess | getApiV0AuthLogoutUidByUserIdResponseError)
+export type postApiV0AuthLogoutUidByUserIdResponse = (postApiV0AuthLogoutUidByUserIdResponseSuccess | postApiV0AuthLogoutUidByUserIdResponseError)
 
-export const getGetApiV0AuthLogoutUidByUserIdUrl = (userId: number,) => {
+export const getPostApiV0AuthLogoutUidByUserIdUrl = (userId: number,) => {
 
 
   
@@ -272,12 +274,12 @@ export const getGetApiV0AuthLogoutUidByUserIdUrl = (userId: number,) => {
   return `/api/v0/auth/logout/uid/${userId}`
 }
 
-export const getApiV0AuthLogoutUidByUserId = async (userId: number, options?: RequestInit): Promise<getApiV0AuthLogoutUidByUserIdResponse> => {
+export const postApiV0AuthLogoutUidByUserId = async (userId: number, options?: RequestInit): Promise<postApiV0AuthLogoutUidByUserIdResponse> => {
   
-  const res = await fetch(getGetApiV0AuthLogoutUidByUserIdUrl(userId),
+  const res = await fetch(getPostApiV0AuthLogoutUidByUserIdUrl(userId),
   {      
     ...options,
-    method: 'GET'
+    method: 'POST'
     
     
   }
@@ -285,41 +287,41 @@ export const getApiV0AuthLogoutUidByUserId = async (userId: number, options?: Re
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: getApiV0AuthLogoutUidByUserIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV0AuthLogoutUidByUserIdResponse
+  const data: postApiV0AuthLogoutUidByUserIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV0AuthLogoutUidByUserIdResponse
 }
   
 
 
 /**
- * Auto-generated documentation for GET /api/v0/auth/logout_all.
- * @summary Get Api V0 Auth Logout All
+ * Auto-generated documentation for POST /api/v0/auth/logout_all.
+ * @summary Post Api V0 Auth Logout All
  */
-export type getApiV0AuthLogoutAllResponse200 = {
+export type postApiV0AuthLogoutAllResponse200 = {
   data: MessageResponse
   status: 200
 }
 
-export type getApiV0AuthLogoutAllResponse401 = {
+export type postApiV0AuthLogoutAllResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type getApiV0AuthLogoutAllResponse500 = {
+export type postApiV0AuthLogoutAllResponse500 = {
   data: ApiErrorResponse
   status: 500
 }
 
-export type getApiV0AuthLogoutAllResponseSuccess = (getApiV0AuthLogoutAllResponse200) & {
+export type postApiV0AuthLogoutAllResponseSuccess = (postApiV0AuthLogoutAllResponse200) & {
   headers: Headers;
 };
-export type getApiV0AuthLogoutAllResponseError = (getApiV0AuthLogoutAllResponse401 | getApiV0AuthLogoutAllResponse500) & {
+export type postApiV0AuthLogoutAllResponseError = (postApiV0AuthLogoutAllResponse401 | postApiV0AuthLogoutAllResponse500) & {
   headers: Headers;
 };
 
-export type getApiV0AuthLogoutAllResponse = (getApiV0AuthLogoutAllResponseSuccess | getApiV0AuthLogoutAllResponseError)
+export type postApiV0AuthLogoutAllResponse = (postApiV0AuthLogoutAllResponseSuccess | postApiV0AuthLogoutAllResponseError)
 
-export const getGetApiV0AuthLogoutAllUrl = () => {
+export const getPostApiV0AuthLogoutAllUrl = () => {
 
 
   
@@ -327,12 +329,12 @@ export const getGetApiV0AuthLogoutAllUrl = () => {
   return `/api/v0/auth/logout_all`
 }
 
-export const getApiV0AuthLogoutAll = async ( options?: RequestInit): Promise<getApiV0AuthLogoutAllResponse> => {
+export const postApiV0AuthLogoutAll = async ( options?: RequestInit): Promise<postApiV0AuthLogoutAllResponse> => {
   
-  const res = await fetch(getGetApiV0AuthLogoutAllUrl(),
+  const res = await fetch(getPostApiV0AuthLogoutAllUrl(),
   {      
     ...options,
-    method: 'GET'
+    method: 'POST'
     
     
   }
@@ -340,8 +342,8 @@ export const getApiV0AuthLogoutAll = async ( options?: RequestInit): Promise<get
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: getApiV0AuthLogoutAllResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV0AuthLogoutAllResponse
+  const data: postApiV0AuthLogoutAllResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV0AuthLogoutAllResponse
 }
   
 
@@ -4789,5 +4791,4 @@ export const patchApiV1TemplatesByTemplateId = async (templateId: number,
   return { data, status: res.status, headers: res.headers } as patchApiV1TemplatesByTemplateIdResponse
 }
   
-
 

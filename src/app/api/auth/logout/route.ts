@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetchRaw } from "@/lib/api/backend";
-import { getGetApiV0AuthLogoutUrl } from "@/lib/api/generated/client";
 import {
   clearSessionCookie,
   destroySession,
@@ -9,6 +8,8 @@ import {
 } from "@/lib/auth/session";
 import { CORRELATION_ID_HEADER, normalizeCorrelationId } from "@/lib/correlation";
 import type { MessageResponse } from "@/lib/api/generated/models";
+
+const BACKEND_LOGOUT_PATH = "/api/v0/auth/logout";
 
 async function performLogout(request: NextRequest) {
   const correlationId = normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER)) ?? "-";
@@ -18,9 +19,9 @@ async function performLogout(request: NextRequest) {
   const session = await getSessionFromRequest(request);
 
   if (session) {
-    await backendFetchRaw(getGetApiV0AuthLogoutUrl(), {
+    await backendFetchRaw(BACKEND_LOGOUT_PATH, {
       correlationId,
-      method: "GET",
+      method: "POST",
       token: session.token
     }).catch(() => {
       // Continue local logout even if backend logout fails.

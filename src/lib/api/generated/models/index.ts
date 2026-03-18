@@ -57,6 +57,7 @@ export * from './importTaskDetails';
 export * from './importTaskResultResponse';
 export * from './loginResponse';
 export * from './loginUser';
+export * from './logoutTokenRequest';
 export * from './messageResponse';
 export * from './namespace';
 export * from './namespaceKey';
