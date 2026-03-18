@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { getApiV0MetaTasks } from "@/lib/api/generated/client";
 import type { TaskQueueStateResponse } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { loadRecentTasks, subscribeToRecentTasks, type RecentTaskEntry } from "@/lib/recent-tasks";
+import { fetchTasks, isTerminalTaskStatus, type TaskRecord } from "@/lib/api/tasking";
 
 function parsePositiveInteger(value: string): number | null {
   const parsed = Number.parseInt(value, 10);
@@ -30,7 +30,7 @@ function formatTimestamp(value: string | null | undefined): string {
   }
 }
 
-function getTaskLabel(task: RecentTaskEntry): string {
+function getTaskLabel(task: Pick<TaskRecord, "kind">): string {
   if (task.kind === "import") {
     return "Import";
   }
@@ -56,7 +56,6 @@ async function fetchTaskQueueState(): Promise<TaskQueueStateResponse> {
 export function TasksWorkspace() {
   const router = useRouter();
   const [taskLookupInput, setTaskLookupInput] = useState("");
-  const [recentTasks, setRecentTasks] = useState<RecentTaskEntry[]>([]);
   const taskQueueQuery = useQuery({
     queryKey: ["tasks", "workspace-queue"],
     queryFn: fetchTaskQueueState,
@@ -71,6 +70,26 @@ export function TasksWorkspace() {
       return activeTasks > 0 ? 5000 : 15000;
     }
   });
+  const issuedTasksQuery = useQuery({
+    queryKey: ["tasks", "workspace-list"],
+    queryFn: async () => {
+      const page = await fetchTasks({
+        limit: 20,
+        sort: "created_at.desc,id.desc"
+      });
+      return page.tasks;
+    },
+    refetchInterval: (query) => {
+      const hasActiveTasks = (query.state.data ?? []).some((task) => !isTerminalTaskStatus(task.status));
+      const isHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+
+      if (isHidden) {
+        return hasActiveTasks ? 15000 : 30000;
+      }
+
+      return hasActiveTasks ? 5000 : 15000;
+    }
+  });
 
   function handleLoadTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -81,11 +100,6 @@ export function TasksWorkspace() {
 
     router.push(`/tasks/${parsed}`);
   }
-
-  useEffect(() => {
-    setRecentTasks(loadRecentTasks());
-    return subscribeToRecentTasks(() => setRecentTasks(loadRecentTasks()));
-  }, []);
 
   return (
     <section className="stack">
@@ -168,12 +182,21 @@ export function TasksWorkspace() {
           <article className="card stack panel-card">
             <div className="stack action-card-header">
               <h3>Issued tasks</h3>
-              <p className="muted">Recent task submissions tracked in this browser. Click any row to reopen its detailed task page.</p>
+              <p className="muted">Recent task submissions loaded from the server. Click any row to reopen its detailed task page.</p>
             </div>
 
-            {recentTasks.length === 0 ? (
-              <div className="empty-state">Submit an import to start building a quick-access list of issued tasks here.</div>
-            ) : (
+            {issuedTasksQuery.isLoading ? <div className="muted">Loading recent tasks...</div> : null}
+            {issuedTasksQuery.isError ? (
+              <div className="error-banner">
+                Failed to load recent tasks. {issuedTasksQuery.error instanceof Error ? issuedTasksQuery.error.message : "Unknown error"}
+              </div>
+            ) : null}
+
+            {!issuedTasksQuery.isLoading && !issuedTasksQuery.isError && (issuedTasksQuery.data?.length ?? 0) === 0 ? (
+              <div className="empty-state">No recent tasks were returned by the server.</div>
+            ) : null}
+
+            {issuedTasksQuery.data?.length ? (
               <div className="table-wrap">
                 <table>
                   <thead>
@@ -186,7 +209,7 @@ export function TasksWorkspace() {
                     </tr>
                   </thead>
                   <tbody>
-                    {recentTasks.map((task) => (
+                    {issuedTasksQuery.data.map((task) => (
                       <tr key={task.id}>
                         <td>
                           <Link className="row-link" href={`/tasks/${task.id}`}>
@@ -195,14 +218,14 @@ export function TasksWorkspace() {
                         </td>
                         <td>{getTaskLabel(task)}</td>
                         <td>{task.status}</td>
-                        <td>{formatTimestamp(task.createdAt)}</td>
+                        <td>{formatTimestamp(task.created_at)}</td>
                         <td>{task.summary ?? "n/a"}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            )}
+            ) : null}
           </article>
 
           <article className="card stack panel-card">

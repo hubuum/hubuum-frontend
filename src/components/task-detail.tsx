@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 
 import {
   fetchImportProjection,
@@ -14,7 +13,6 @@ import {
 } from "@/lib/api/tasking";
 import { getApiV1IamUsersByUserId } from "@/lib/api/generated/client";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { upsertRecentTask } from "@/lib/recent-tasks";
 
 async function fetchTaskSubmitter(userId: number): Promise<{ id: number; username: string }> {
   const response = await getApiV1IamUsersByUserId(userId, {
@@ -114,14 +112,6 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     queryFn: () => fetchTaskSubmitter(submittedByUserId as number),
     enabled: submittedByUserId != null
   });
-
-  useEffect(() => {
-    if (!taskQuery.data) {
-      return;
-    }
-
-    upsertRecentTask(taskQuery.data, { onlyIfExists: true });
-  }, [taskQuery.data]);
 
   if (taskQuery.isLoading) {
     return <div className="card">Loading task...</div>;

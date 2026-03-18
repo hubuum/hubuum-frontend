@@ -9,23 +9,74 @@ import type {
   ImportRequest,
   ImportTaskResultResponse,
   TaskEventResponse,
+  TaskKind,
   TaskQueueStateResponse,
   TaskResponse,
   TaskStatus
 } from "@/lib/api/generated/models";
-import { getApiErrorMessage } from "@/lib/api/errors";
+import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 
 export type {
   ImportRequest,
   ImportTaskResultResponse as ImportResult,
   TaskEventResponse as TaskEvent,
+  TaskKind,
   TaskQueueStateResponse,
   TaskResponse as TaskRecord,
   TaskStatus
 };
 
+type FetchTasksOptions = {
+  cursor?: string;
+  kind?: TaskKind;
+  limit?: number;
+  sort?: string;
+  status?: TaskStatus;
+  submittedBy?: number;
+};
+
+export type TaskListPage = {
+  nextCursor: string | null;
+  tasks: TaskResponse[];
+};
+
 export function isTerminalTaskStatus(status: TaskStatus | null | undefined): boolean {
   return status === "succeeded" || status === "failed" || status === "partially_succeeded" || status === "cancelled";
+}
+
+export async function fetchTasks(options: FetchTasksOptions = {}): Promise<TaskListPage> {
+  const searchParams = new URLSearchParams();
+
+  if (options.kind) {
+    searchParams.set("kind", options.kind);
+  }
+  if (options.status) {
+    searchParams.set("status", options.status);
+  }
+  if (typeof options.submittedBy === "number") {
+    searchParams.set("submitted_by", String(options.submittedBy));
+  }
+
+  searchParams.set("limit", String(options.limit ?? 20));
+  searchParams.set("sort", options.sort ?? "created_at.desc,id.desc");
+
+  if (options.cursor?.trim()) {
+    searchParams.set("cursor", options.cursor.trim());
+  }
+
+  const response = await fetch(`/api/v1/tasks?${searchParams.toString()}`, {
+    credentials: "include"
+  });
+
+  const payload = response.status === 204 ? [] : await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(getApiErrorMessage(payload, "Failed to load tasks."));
+  }
+
+  return {
+    tasks: expectArrayPayload<TaskResponse>(payload, "tasks"),
+    nextCursor: response.headers.get("x-next-cursor")
+  };
 }
 
 export async function createImportTask(payload: ImportRequest, idempotencyKey?: string): Promise<TaskResponse> {

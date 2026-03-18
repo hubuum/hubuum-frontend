@@ -8,7 +8,6 @@ import { getApiV1IamGroups } from "@/lib/api/generated/client";
 import { Permissions, type Group, type ImportNamespacePermissionInput } from "@/lib/api/generated/models";
 import { createImportTask, type ImportRequest } from "@/lib/api/tasking";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { upsertRecentTask } from "@/lib/recent-tasks";
 
 type ImportSummary = {
   totalItems: number;
@@ -239,7 +238,6 @@ export function ImportsWorkspace() {
     },
     onSuccess: (task) => {
       setSubmitError(null);
-      upsertRecentTask(task);
       router.push(`/tasks/${task.id}`);
     },
     onError: (error) => {
