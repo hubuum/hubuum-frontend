@@ -138,6 +138,7 @@ export function JsonViewer({ value, defaultTab = "overview" }: JsonViewerProps) 
     ? value.map((item, index) => ({ label: `[${index}]`, value: summarizeValue(item) }))
     : isRecord(value)
       ? Object.entries(value)
+          .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
           .map(([entryKey, entryValue]) => ({ label: entryKey, value: summarizeValue(entryValue) }))
       : [];
   const normalizedOverviewFilter = deferredOverviewFilter.trim().toLowerCase();
@@ -152,35 +153,37 @@ export function JsonViewer({ value, defaultTab = "overview" }: JsonViewerProps) 
 
   return (
     <div className="json-viewer">
-      <div className="json-viewer-tabs" role="tablist" aria-label="JSON views">
-        {(["overview", "tree", "json"] as JsonViewerTab[]).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            role="tab"
-            className={`json-viewer-tab${activeTab === tab ? " is-active" : ""}`}
-            aria-selected={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === "json" ? "JSON" : tab[0].toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
+      <div className="json-viewer-header">
+        <div className="json-viewer-tabs" role="tablist" aria-label="JSON views">
+          {(["overview", "tree", "json"] as JsonViewerTab[]).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              className={`json-viewer-tab${activeTab === tab ? " is-active" : ""}`}
+              aria-selected={activeTab === tab}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab === "json" ? "JSON" : tab[0].toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "overview" && overviewEntries.length > 0 ? (
+          <label className="json-overview-filter">
+            <span className="sr-only">Filter overview fields</span>
+            <input
+              type="search"
+              value={overviewFilter}
+              onChange={(event) => setOverviewFilter(event.target.value)}
+              placeholder="Filter keys or values"
+            />
+          </label>
+        ) : null}
       </div>
 
       {activeTab === "overview" ? (
         <div className="json-viewer-panel" role="tabpanel">
-          {overviewEntries.length > 0 ? (
-            <label className="json-overview-filter">
-              <span className="sr-only">Filter overview fields</span>
-              <input
-                type="search"
-                value={overviewFilter}
-                onChange={(event) => setOverviewFilter(event.target.value)}
-                placeholder="Filter keys or values"
-              />
-            </label>
-          ) : null}
-
           {overviewEntries.length > 0 ? (
             <div className="json-overview-list-wrap">
               <div className="json-overview-list">

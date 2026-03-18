@@ -1036,6 +1036,14 @@ body.modal-open {
   gap: 0.65rem;
 }
 
+.json-viewer-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
 .json-viewer-tabs {
   display: flex;
   gap: 0.2rem;
@@ -1043,6 +1051,7 @@ body.modal-open {
   align-items: center;
   padding-bottom: 0.15rem;
   border-bottom: 1px solid var(--line);
+  flex: 1 1 auto;
 }
 
 .json-viewer-tab {
@@ -1229,6 +1238,18 @@ body.modal-open {
   .json-overview-row,
   .json-tree-leaf {
     grid-template-columns: 1fr;
+  }
+
+  .json-viewer-header {
+    align-items: stretch;
+  }
+
+  .json-overview-filter {
+    width: 100%;
+  }
+
+  .json-overview-filter input {
+    width: 100%;
   }
 }
 

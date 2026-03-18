@@ -68,7 +68,9 @@ async function proxyClassRelations(request: NextRequest, context: RouteContext) 
   }
 
   const body = method === "POST" ? await request.text() : undefined;
-  const upstream = await backendFetchRaw(`/api/v1/classes/${classId}/relations/`, {
+  const upstreamPath =
+    method === "GET" ? `/api/v1/classes/${classId}/related/relations/` : `/api/v1/classes/${classId}/relations/`;
+  const upstream = await backendFetchRaw(upstreamPath, {
     correlationId,
     method,
     token: session.token,

@@ -16,7 +16,6 @@ import { CreateModal } from "@/components/create-modal";
 import type {
   HubuumClassExpanded,
   HubuumClassRelation,
-  HubuumClassRelationTransitive,
   HubuumObject,
   HubuumObjectRelation,
   HubuumObjectWithPath,
@@ -63,23 +62,29 @@ async function fetchClassRelations(classId: number): Promise<HubuumClassRelation
   return expectArrayPayload<HubuumClassRelation>(payload, "class relations");
 }
 
-async function fetchTransitiveClassRelations(classId: number): Promise<HubuumClassRelationTransitive[]> {
-  const response = await fetch(`/api/v1/classes/${classId}/relations/transitive/`, {
+type HubuumClassWithPath = {
+  created_at: string;
+  description: string;
+  id: number;
+  json_schema?: unknown;
+  name: string;
+  namespace_id: number;
+  path: number[];
+  updated_at: string;
+  validate_schema: boolean;
+};
+
+async function fetchConnectedClasses(classId: number): Promise<HubuumClassWithPath[]> {
+  const response = await fetch(`/api/v1/classes/${classId}/related/classes?limit=250&sort=path.asc,id.asc`, {
     credentials: "include"
   });
   const payload = await parseJsonPayload(response);
 
-  // Some backend versions do not expose transitive class relations yet.
-  // Treat 404 as "feature unavailable/empty" instead of surfacing an error loop.
-  if (response.status === 404) {
-    return [];
-  }
-
   if (response.status !== 200) {
-    throw new Error(getApiErrorMessage(payload, "Failed to load transitive class relations."));
+    throw new Error(getApiErrorMessage(payload, "Failed to load connected classes."));
   }
 
-  return expectArrayPayload<HubuumClassRelationTransitive>(payload, "transitive class relations");
+  return expectArrayPayload<HubuumClassWithPath>(payload, "connected classes");
 }
 
 async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
@@ -140,7 +145,7 @@ type RelationsExplorerProps = {
   mode: "classes" | "objects";
 };
 
-type ClassRelationsView = "direct" | "transitive";
+type ClassRelationsView = "direct" | "connected";
 type ObjectRelationsView = "direct" | "reachable";
 
 type ObjectContext = {
@@ -163,7 +168,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
   const initialObjectView = searchParams.get("objectView");
 
   const [classRelationsView, setClassRelationsView] = useState<ClassRelationsView>(
-    initialClassView === "transitive" ? "transitive" : "direct"
+    initialClassView === "connected" || initialClassView === "transitive" ? "connected" : "direct"
   );
   const [objectRelationsView, setObjectRelationsView] = useState<ObjectRelationsView>(
     initialObjectView === "direct" ? "direct" : "reachable"
@@ -256,10 +261,10 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     queryFn: async () => fetchClassRelations(parsedSourceClassId ?? 0),
     enabled: parsedSourceClassId !== null
   });
-  const classTransitiveRelationsQuery = useQuery({
-    queryKey: ["class-relations-transitive", parsedSourceClassId],
-    queryFn: async () => fetchTransitiveClassRelations(parsedSourceClassId ?? 0),
-    enabled: isClassMode && classRelationsView === "transitive" && parsedSourceClassId !== null
+  const classConnectedClassesQuery = useQuery({
+    queryKey: ["class-related-classes", parsedSourceClassId],
+    queryFn: async () => fetchConnectedClasses(parsedSourceClassId ?? 0),
+    enabled: isClassMode && classRelationsView === "connected" && parsedSourceClassId !== null
   });
   const sourceObjectsQuery = useQuery({
     queryKey: ["objects", "relations-source", parsedSourceClassId],
@@ -299,6 +304,11 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     for (const relation of directClassRelations) {
       if (relation.from_hubuum_class_id === parsedSourceClassId) {
         ids.add(relation.to_hubuum_class_id);
+        continue;
+      }
+
+      if (relation.to_hubuum_class_id === parsedSourceClassId) {
+        ids.add(relation.from_hubuum_class_id);
       }
     }
 
@@ -331,8 +341,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 
   const targetObjects = targetObjectsQuery.data ?? [];
   const classDirectRelations = Array.isArray(classRelationsQuery.data) ? classRelationsQuery.data : [];
-  const classTransitiveRelations = Array.isArray(classTransitiveRelationsQuery.data)
-    ? classTransitiveRelationsQuery.data
+  const connectedClasses = Array.isArray(classConnectedClassesQuery.data)
+    ? classConnectedClassesQuery.data.filter((classItem) => classItem.id !== parsedSourceClassId)
     : [];
   const relatedObjects = Array.isArray(relatedObjectsQuery.data) ? relatedObjectsQuery.data : [];
   const objectDirectRelations = Array.isArray(objectDirectRelationsQuery.data)
@@ -384,8 +394,10 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     parsedClassRelationTargetClassId !== null &&
     classDirectRelations.some(
       (relation) =>
-        relation.from_hubuum_class_id === parsedSourceClassId &&
-        relation.to_hubuum_class_id === parsedClassRelationTargetClassId
+        (relation.from_hubuum_class_id === parsedSourceClassId &&
+          relation.to_hubuum_class_id === parsedClassRelationTargetClassId) ||
+        (relation.to_hubuum_class_id === parsedSourceClassId &&
+          relation.from_hubuum_class_id === parsedClassRelationTargetClassId)
     );
 
   useEffect(() => {
@@ -500,7 +512,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 
   useEffect(() => {
     if (
-      (classRelationsView === "direct" || classRelationsView === "transitive") &&
+      (classRelationsView === "direct" || classRelationsView === "connected") &&
       (parsedSourceClassId === null || parsedSourceClassId > 0)
     ) {
       setSelectedClassRelationIds([]);
@@ -555,7 +567,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     onSuccess: async (_result, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["class-relations", variables.sourceClassId] }),
-        queryClient.invalidateQueries({ queryKey: ["class-relations-transitive", variables.sourceClassId] })
+        queryClient.invalidateQueries({ queryKey: ["class-related-classes", variables.sourceClassId] })
       ]);
       setClassRelationError(null);
       setClassRelationSuccess("Class relation created.");
@@ -633,7 +645,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     onSuccess: async (count) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["class-relations"] }),
-        queryClient.invalidateQueries({ queryKey: ["class-relations-transitive"] }),
+        queryClient.invalidateQueries({ queryKey: ["class-related-classes"] }),
         queryClient.invalidateQueries({ queryKey: ["object-related-objects"] }),
         queryClient.invalidateQueries({ queryKey: ["object-relations-direct"] })
       ]);
@@ -857,8 +869,44 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     );
   }
 
+  function getDisplayClassPath(path: number[], targetId: number): number[] {
+    const normalizedPath = path.length ? [...path] : [targetId];
+    const trimmedPath = normalizedPath[0] === parsedSourceClassId ? normalizedPath.slice(1) : normalizedPath;
+    if (trimmedPath[trimmedPath.length - 1] !== targetId) {
+      trimmedPath.push(targetId);
+    }
+
+    return trimmedPath;
+  }
+
+  function renderClassLink(classId: number) {
+    return (
+      <Link href={`/classes/${classId}`} className="row-link">
+        {renderClassById(classId)}
+      </Link>
+    );
+  }
+
+  function renderClassPath(path: number[], targetId: number) {
+    const displayPath = getDisplayClassPath(path, targetId);
+    if (!displayPath.length) {
+      return "-";
+    }
+
+    return (
+      <>
+        {displayPath.map((pathClassId, index) => (
+          <span key={`${targetId}-${displayPath.slice(0, index + 1).join("-")}`}>
+            {index > 0 ? " -> " : null}
+            {renderClassLink(pathClassId)}
+          </span>
+        ))}
+      </>
+    );
+  }
+
   function onClassRelationsViewChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextView = event.target.value === "transitive" ? "transitive" : "direct";
+    const nextView = event.target.value === "connected" ? "connected" : "direct";
     setClassRelationsView(nextView);
   }
 
@@ -1109,7 +1157,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                 onChange={onClassRelationsViewChange}
               >
                 <option value="direct">Direct relations</option>
-                <option value="transitive">Transitive reachability</option>
+                <option value="connected">Connected classes</option>
               </select>
               <span className="muted">
                 {classRelationsView === "direct"
@@ -1118,8 +1166,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                     : parsedSourceClassId
                       ? "Waiting..."
                       : "No class"
-                  : classTransitiveRelationsQuery.data
-                    ? `${classTransitiveRelations.length} loaded`
+                  : classConnectedClassesQuery.data
+                    ? `${connectedClasses.length} loaded`
                     : parsedSourceClassId
                       ? "Waiting..."
                       : "No class"}
@@ -1216,44 +1264,34 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                 </tbody>
               </table>
             )
-          ) : classTransitiveRelationsQuery.isLoading ? (
-            <div>Loading transitive class relations...</div>
-          ) : classTransitiveRelationsQuery.isError ? (
+          ) : classConnectedClassesQuery.isLoading ? (
+            <div>Loading connected classes...</div>
+          ) : classConnectedClassesQuery.isError ? (
             <div className="error-banner">
-              Failed to load transitive class relations. {" "}
-              {classTransitiveRelationsQuery.error instanceof Error
-                ? classTransitiveRelationsQuery.error.message
+              Failed to load connected classes. {" "}
+              {classConnectedClassesQuery.error instanceof Error
+                ? classConnectedClassesQuery.error.message
                 : "Unknown error"}
             </div>
-          ) : classTransitiveRelations.length === 0 ? (
-            <div className="muted">No transitive class paths for this class.</div>
+          ) : connectedClasses.length === 0 ? (
+            <div className="muted">No connected classes for this class.</div>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Ancestor class</th>
-                  <th>Descendant class</th>
-                  <th>Depth</th>
+                  <th>Class</th>
+                  <th>Namespace</th>
+                  <th>Hops</th>
                   <th>Path</th>
                 </tr>
               </thead>
               <tbody>
-                {classTransitiveRelations.map((relation, index) => (
-                  <tr
-                    key={`${relation.ancestor_class_id}-${relation.descendant_class_id}-${relation.depth}-${index}`}
-                  >
-                    <td>{renderClassById(relation.ancestor_class_id)}</td>
-                    <td>{renderClassById(relation.descendant_class_id)}</td>
-                    <td>{relation.depth}</td>
-                    <td>
-                      {relation.path.length
-                        ? relation.path
-                            .map((pathClassId) =>
-                              pathClassId === null ? "?" : renderClassById(pathClassId)
-                            )
-                            .join(" -> ")
-                        : "-"}
-                    </td>
+                {connectedClasses.map((connectedClass) => (
+                  <tr key={`${connectedClass.id}-${connectedClass.path.join("-")}`}>
+                    <td>{renderClassLink(connectedClass.id)}</td>
+                    <td>{renderNamespaceById(connectedClass.namespace_id)}</td>
+                    <td>{Math.max(getDisplayClassPath(connectedClass.path, connectedClass.id).length - 1, 0)}</td>
+                    <td>{renderClassPath(connectedClass.path, connectedClass.id)}</td>
                   </tr>
                 ))}
               </tbody>
