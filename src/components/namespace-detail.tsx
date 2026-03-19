@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { NamespaceDetailTracker } from "@/components/namespace-detail-tracker";
+import { PinButton } from "@/components/pin-button";
 import {
 	deleteApiV1NamespacesByNamespaceId,
 	deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
@@ -959,6 +960,11 @@ export function NamespaceDetail({
 				<p className="eyebrow">Namespace</p>
 				<h2>
 					{namespaceData.name} (#{namespaceData.id})
+					<PinButton
+						type="namespace"
+						id={namespaceId}
+						name={namespaceData.name}
+					/>
 				</h2>
 			</header>
 
