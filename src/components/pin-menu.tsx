@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { ClassPinAction } from "@/types/quick-access";
 
 interface PinMenuProps {
 	isOpen: boolean;
