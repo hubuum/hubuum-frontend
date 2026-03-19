@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import type { PinnedItem, RecentItem } from "@/types/quick-access";
@@ -136,7 +135,6 @@ function getPinItemBadge(item: PinnedItem): string | undefined {
 }
 
 export function QuickAccessPanel() {
-	const router = useRouter();
 	const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
 	const [pinnedItems, setPinnedItems] = useState<PinnedItem[]>([]);
 
@@ -225,7 +223,7 @@ export function QuickAccessPanel() {
 					</div>
 				) : (
 					<ul className="pinned-shortcuts-list">
-						{pinnedItems.map((item, index) => {
+						{pinnedItems.map((item) => {
 							const tooltip = getPinItemTooltip(item);
 							const badge = getPinItemBadge(item);
 							const key = item.type === "class"
