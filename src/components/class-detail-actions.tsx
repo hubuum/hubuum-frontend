@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { trackRecentItem } from "@/lib/recent-items";
-import { getPinnedClasses, isPinned, pinClass, unpinClass } from "@/lib/pinned-classes";
+import { isPinned, pinClass, unpinClass } from "@/lib/pinned-classes";
 
 interface ClassDetailActionsProps {
 	classId: number;
