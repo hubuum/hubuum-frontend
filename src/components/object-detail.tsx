@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { JsonEditor } from "@/components/json-editor";
 import { JsonViewer } from "@/components/json-viewer";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
+import { PinButton } from "@/components/pin-button";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
@@ -762,6 +763,15 @@ export function ObjectDetail({
 				<p className="eyebrow">Object</p>
 				<h2>
 					{objectData.name} (#{objectData.id})
+					<PinButton
+						type="object"
+						id={objectId}
+						name={objectData.name}
+						namespaceId={objectData.namespace_id}
+						namespaceName={namespaceLabel}
+						classId={classId}
+						className={className ?? undefined}
+					/>
 				</h2>
 			</header>
 
