@@ -74,7 +74,7 @@ export function pinItem(item: Omit<PinnedItem, "timestamp">): boolean {
 				return false;
 			}
 			// For classes, check action too (same class can be pinned twice with different actions)
-			if (item.type === "class") {
+			if (item.type === "class" && existingItem.type === "class") {
 				return existingItem.action === item.action;
 			}
 			return true;
@@ -144,7 +144,7 @@ export function isPinned(
 			return false;
 		}
 		// For classes, check action too
-		if (type === "class" && action !== undefined) {
+		if (type === "class" && item.type === "class" && action !== undefined) {
 			return item.action === action;
 		}
 		return true;
