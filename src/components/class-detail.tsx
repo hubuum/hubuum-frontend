@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { ClassDetailActions } from "@/components/class-detail-actions";
 import { JsonEditor } from "@/components/json-editor";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -404,9 +405,17 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		<section className="stack">
 			<header>
 				<p className="eyebrow">Class</p>
-				<h2>
-					{classData.name} (#{classData.id})
-				</h2>
+				<div className="header-with-actions">
+					<h2>
+						{classData.name} (#{classData.id})
+					</h2>
+					<ClassDetailActions
+						classId={classId}
+						className={classData.name}
+						namespaceName={classData.namespace.name}
+						namespaceId={classData.namespace.id}
+					/>
+				</div>
 			</header>
 
 			<form className="card stack" onSubmit={onSubmit}>
