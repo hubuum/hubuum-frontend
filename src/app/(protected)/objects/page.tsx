@@ -2,7 +2,7 @@ import { ObjectsExplorer } from "@/components/objects-explorer";
 import { requireServerSession } from "@/lib/auth/guards";
 
 export default async function ObjectsPage() {
-  await requireServerSession();
+	await requireServerSession();
 
-  return <ObjectsExplorer />;
+	return <ObjectsExplorer />;
 }

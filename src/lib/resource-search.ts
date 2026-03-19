@@ -1,50 +1,58 @@
 export type SearchScope = "namespaces" | "classes" | "objects";
 
-export const SEARCH_SCOPE_OPTIONS: Array<{ value: SearchScope; label: string }> = [
-  { value: "namespaces", label: "Namespaces" },
-  { value: "classes", label: "Classes" },
-  { value: "objects", label: "Objects" }
+export const SEARCH_SCOPE_OPTIONS: Array<{
+	value: SearchScope;
+	label: string;
+}> = [
+	{ value: "namespaces", label: "Namespaces" },
+	{ value: "classes", label: "Classes" },
+	{ value: "objects", label: "Objects" },
 ];
 
 export function getSearchPath(scope: SearchScope): string {
-  switch (scope) {
-    case "namespaces":
-      return "/namespaces";
-    case "classes":
-      return "/classes";
-    case "objects":
-      return "/objects";
-  }
+	switch (scope) {
+		case "namespaces":
+			return "/namespaces";
+		case "classes":
+			return "/classes";
+		case "objects":
+			return "/objects";
+	}
 }
 
-export function getSearchScopeFromPathname(pathname: string): SearchScope | null {
-  if (pathname === "/namespaces") {
-    return "namespaces";
-  }
+export function getSearchScopeFromPathname(
+	pathname: string,
+): SearchScope | null {
+	if (pathname === "/namespaces") {
+		return "namespaces";
+	}
 
-  if (pathname === "/classes") {
-    return "classes";
-  }
+	if (pathname === "/classes") {
+		return "classes";
+	}
 
-  if (pathname === "/objects") {
-    return "objects";
-  }
+	if (pathname === "/objects") {
+		return "objects";
+	}
 
-  return null;
+	return null;
 }
 
 export function normalizeSearchTerm(value: string | null | undefined): string {
-  return value?.trim() ?? "";
+	return value?.trim() ?? "";
 }
 
 export function matchesFreeTextSearch(
-  searchTerm: string,
-  ...values: Array<string | null | undefined>
+	searchTerm: string,
+	...values: Array<string | null | undefined>
 ): boolean {
-  const normalizedSearchTerm = normalizeSearchTerm(searchTerm).toLocaleLowerCase();
-  if (!normalizedSearchTerm) {
-    return true;
-  }
+	const normalizedSearchTerm =
+		normalizeSearchTerm(searchTerm).toLocaleLowerCase();
+	if (!normalizedSearchTerm) {
+		return true;
+	}
 
-  return values.some((value) => value?.toLocaleLowerCase().includes(normalizedSearchTerm));
+	return values.some((value) =>
+		value?.toLocaleLowerCase().includes(normalizedSearchTerm),
+	);
 }

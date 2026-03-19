@@ -1,18 +1,18 @@
 export type CreateSection =
-  | "namespaces"
-  | "classes"
-  | "objects"
-  | "relations"
-  | "admin-users"
-  | "admin-groups";
+	| "namespaces"
+	| "classes"
+	| "objects"
+	| "relations"
+	| "admin-users"
+	| "admin-groups";
 
 export type OpenCreateEventDetail = {
-  section: CreateSection;
+	section: CreateSection;
 };
 
 export type SelectionStateEventDetail = {
-  count: number;
-  deleteHandler: (() => void) | null;
+	count: number;
+	deleteHandler: (() => void) | null;
 };
 
 export const OPEN_CREATE_EVENT = "hubuum:open-create";

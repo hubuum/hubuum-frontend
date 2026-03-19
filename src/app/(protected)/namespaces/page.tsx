@@ -2,7 +2,7 @@ import { NamespacesTable } from "@/components/namespaces-table";
 import { requireServerSession } from "@/lib/auth/guards";
 
 export default async function NamespacesPage() {
-  await requireServerSession();
+	await requireServerSession();
 
-  return <NamespacesTable />;
+	return <NamespacesTable />;
 }

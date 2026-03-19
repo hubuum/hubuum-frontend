@@ -7,16 +7,16 @@ import { ClientCorrelation } from "@/components/client-correlation";
 import { makeQueryClient } from "@/lib/query-client";
 
 type QueryProviderProps = {
-  children: ReactNode;
+	children: ReactNode;
 };
 
 export function QueryProvider({ children }: QueryProviderProps) {
-  const [queryClient] = useState(() => makeQueryClient());
+	const [queryClient] = useState(() => makeQueryClient());
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ClientCorrelation />
-      {children}
-    </QueryClientProvider>
-  );
+	return (
+		<QueryClientProvider client={queryClient}>
+			<ClientCorrelation />
+			{children}
+		</QueryClientProvider>
+	);
 }
