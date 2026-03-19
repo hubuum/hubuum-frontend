@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import type { PinnedClass, RecentItem } from "@/types/quick-access";
+import type { PinnedItem, RecentItem } from "@/types/quick-access";
 import {
 	clearRecentItems,
 	getRecentItems,
 } from "@/lib/recent-items";
-import { getPinnedClasses, unpinClass } from "@/lib/pinned-classes";
+import { getPinnedItems, unpinItem } from "@/lib/pinned-items";
 
 function IconNamespace() {
 	return (
@@ -96,14 +96,53 @@ function formatTimestamp(timestamp: number): string {
 	return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
+function getPinItemIcon(type: PinnedItem["type"]) {
+	switch (type) {
+		case "namespace":
+			return <IconNamespace />;
+		case "class":
+			return <IconClass />;
+		case "object":
+			return <IconObject />;
+	}
+}
+
+function getPinItemHref(item: PinnedItem): string {
+	switch (item.type) {
+		case "namespace":
+			return `/namespaces/${item.id}`;
+		case "class":
+			if (item.action === "view") {
+				return `/objects?classId=${item.id}`;
+			}
+			return `/objects?create=1&classId=${item.id}`;
+		case "object":
+			return `/objects/${item.classId}/${item.id}`;
+	}
+}
+
+function getPinItemTooltip(item: PinnedItem): string | undefined {
+	if (item.type === "namespace") {
+		return undefined;
+	}
+	if (item.type === "class") {
+		return item.namespaceName;
+	}
+	return `${item.namespaceName} > ${item.className}`;
+}
+
+function getPinItemBadge(item: PinnedItem): string | undefined {
+	return item.type === "class" ? item.action : undefined;
+}
+
 export function QuickAccessPanel() {
 	const router = useRouter();
 	const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
-	const [pinnedClasses, setPinnedClasses] = useState<PinnedClass[]>([]);
+	const [pinnedItems, setPinnedItems] = useState<PinnedItem[]>([]);
 
 	useEffect(() => {
 		setRecentItems(getRecentItems().slice(0, 10));
-		setPinnedClasses(getPinnedClasses());
+		setPinnedItems(getPinnedItems());
 	}, []);
 
 	function handleClearRecent() {
@@ -117,13 +156,13 @@ export function QuickAccessPanel() {
 		}
 	}
 
-	function handleUnpin(classId: number) {
-		unpinClass(classId);
-		setPinnedClasses(getPinnedClasses());
-	}
-
-	function handlePinnedClick(classId: number) {
-		router.push(`/objects?create=1&classId=${classId}`);
+	function handleUnpin(item: PinnedItem) {
+		if (item.type === "class") {
+			unpinItem("class", item.id, item.action);
+		} else {
+			unpinItem(item.type, item.id);
+		}
+		setPinnedItems(getPinnedItems());
 	}
 
 	return (
@@ -177,44 +216,52 @@ export function QuickAccessPanel() {
 			<section className="stack">
 				<h2 className="eyebrow">Pinned Shortcuts</h2>
 
-				{pinnedClasses.length === 0 ? (
+				{pinnedItems.length === 0 ? (
 					<div className="quick-access-empty">
-						<p className="muted">No pinned classes yet</p>
+						<p className="muted">No pinned items yet</p>
 						<p className="muted quick-access-empty-subtext">
-							Pin your favorite classes for quick object creation
+							Pin your favorite namespaces, classes, and objects for quick access
 						</p>
 					</div>
 				) : (
 					<ul className="pinned-shortcuts-list">
-						{pinnedClasses.map((item) => (
-							<li key={item.classId}>
-								<button
-									type="button"
-									className="pinned-item-link"
-									onClick={() => handlePinnedClick(item.classId)}
-								>
-									<span className="pinned-item-icon">
-										<IconClass />
-									</span>
-									<span className="pinned-item-content">
-										<span className="pinned-item-name">
-											{item.className}
+						{pinnedItems.map((item, index) => {
+							const tooltip = getPinItemTooltip(item);
+							const badge = getPinItemBadge(item);
+							const key = item.type === "class"
+								? `${item.type}-${item.id}-${item.action}`
+								: `${item.type}-${item.id}`;
+
+							return (
+								<li key={key}>
+									<Link
+										href={getPinItemHref(item)}
+										className="pinned-item-link"
+										title={tooltip}
+									>
+										<span className="pinned-item-icon">
+											{getPinItemIcon(item.type)}
 										</span>
-										<span className="pinned-item-meta">
-											{item.namespaceName}
+										<span className="pinned-item-content">
+											<span className="pinned-item-name">
+												{item.name}
+												{badge ? (
+													<span className="pinned-item-badge">{badge}</span>
+												) : null}
+											</span>
 										</span>
-									</span>
-								</button>
-								<button
-									type="button"
-									className="ghost icon-button pinned-item-unpin"
-									onClick={() => handleUnpin(item.classId)}
-									aria-label={`Unpin ${item.className}`}
-								>
-									<IconClose />
-								</button>
-							</li>
-						))}
+									</Link>
+									<button
+										type="button"
+										className="ghost icon-button pinned-item-unpin"
+										onClick={() => handleUnpin(item)}
+										aria-label={`Unpin ${item.name}`}
+									>
+										<IconClose />
+									</button>
+								</li>
+							);
+						})}
 					</ul>
 				)}
 			</section>
