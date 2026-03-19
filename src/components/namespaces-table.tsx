@@ -14,8 +14,22 @@ import {
 import { CreateModal } from "@/components/create-modal";
 import type { Group, Namespace, NewNamespaceWithAssignee } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
+import { DESELECT_ALL_EVENT, OPEN_CREATE_EVENT, SELECT_ALL_EVENT, SELECTION_STATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 import { matchesFreeTextSearch, normalizeSearchTerm } from "@/lib/resource-search";
+import { useResizableTable } from "@/lib/use-resizable-table";
+import { useShiftSelect } from "@/lib/use-shift-select";
+import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
+
+function IconSearch() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.42-1.42-4.44-4.43A6.5 6.5 0 0 0 10.5 4m0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
 async function fetchNamespaces(): Promise<Namespace[]> {
   const response = await getApiV1Namespaces({ limit: 250 }, {
@@ -56,6 +70,9 @@ export function NamespacesTable() {
   const [tableSuccess, setTableSuccess] = useState<string | null>(null);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
+
+  useResizableTable({ tableId: "namespaces-table", storageKey: "namespaces" });
+
   const query = useQuery({
     queryKey: ["namespaces"],
     queryFn: fetchNamespaces
@@ -146,6 +163,19 @@ export function NamespacesTable() {
   );
   const allSelected = filteredNamespaces.length > 0 && selectedNamespaceIds.length === filteredNamespaces.length;
 
+  const shiftSelect = useShiftSelect({
+    items: filteredNamespaces,
+    selectedIds: selectedNamespaceIds,
+    setSelectedIds: setSelectedNamespaceIds,
+    getId: (namespace) => namespace.id
+  });
+
+  const keyboardNav = useTableKeyboardNav({
+    items: filteredNamespaces,
+    getId: (namespace) => namespace.id,
+    onOpen: (namespace) => router.push(`/namespaces/${namespace.id}`)
+  });
+
   useEffect(() => {
     if (searchParams.get("create") !== "1") {
       return;
@@ -195,6 +225,34 @@ export function NamespacesTable() {
     return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
   }, []);
 
+  useEffect(() => {
+    const onDeselectAll = () => {
+      setSelectedNamespaceIds([]);
+    };
+
+    const onSelectAll = () => {
+      setSelectedNamespaceIds(filteredNamespaces.map((namespace) => namespace.id));
+    };
+
+    window.addEventListener(DESELECT_ALL_EVENT, onDeselectAll);
+    window.addEventListener(SELECT_ALL_EVENT, onSelectAll);
+    return () => {
+      window.removeEventListener(DESELECT_ALL_EVENT, onDeselectAll);
+      window.removeEventListener(SELECT_ALL_EVENT, onSelectAll);
+    };
+  }, [filteredNamespaces]);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent(SELECTION_STATE_EVENT, {
+        detail: {
+          count: selectedNamespaceIds.length,
+          deleteHandler: selectedNamespaceIds.length > 0 ? deleteSelectedNamespaces : null
+        }
+      })
+    );
+  }, [selectedNamespaceIds.length]);
+
   if (query.isLoading) {
     return <div className="card">Loading namespaces...</div>;
   }
@@ -205,24 +263,6 @@ export function NamespacesTable() {
         Failed to load namespaces. {query.error instanceof Error ? query.error.message : "Unknown error"}
       </div>
     );
-  }
-
-  function toggleAllNamespaces(checked: boolean) {
-    if (checked) {
-      setSelectedNamespaceIds(filteredNamespaces.map((namespace) => namespace.id));
-      return;
-    }
-
-    setSelectedNamespaceIds([]);
-  }
-
-  function toggleNamespace(namespaceId: number, checked: boolean) {
-    setSelectedNamespaceIds((current) => {
-      if (checked) {
-        return current.includes(namespaceId) ? current : [...current, namespaceId];
-      }
-      return current.filter((id) => id !== namespaceId);
-    });
   }
 
   function deleteSelectedNamespaces() {
@@ -338,7 +378,13 @@ export function NamespacesTable() {
 
       <div className="card table-wrap">
         <div className="table-header">
-          <h3>Namespace catalog</h3>
+          <div className="table-title-row">
+            <h3>Namespace catalog</h3>
+            <span className="muted table-count">
+              {searchTerm ? `${filteredNamespaces.length} shown of ${namespaces.length}` : `${namespaces.length} loaded`}
+              {selectedNamespaceIds.length ? ` · ${selectedNamespaceIds.length} selected` : ""}
+            </span>
+          </div>
           <div className="table-tools">
             <form className="table-filter-form" onSubmit={onFilterSubmit}>
               <div className="table-filter-field">
@@ -360,22 +406,10 @@ export function NamespacesTable() {
                   </button>
                 ) : null}
               </div>
-              <button type="submit" className="ghost">
-                Filter
+              <button type="submit" className="ghost icon-button" aria-label="Filter namespaces">
+                <IconSearch />
               </button>
             </form>
-            <span className="muted">
-              {searchTerm ? `${filteredNamespaces.length} shown of ${namespaces.length}` : `${namespaces.length} loaded`}
-              {selectedNamespaceIds.length ? ` - ${selectedNamespaceIds.length} selected` : ""}
-            </span>
-            <button
-              type="button"
-              className="danger"
-              onClick={deleteSelectedNamespaces}
-              disabled={deleteMutation.isPending || selectedNamespaceIds.length === 0}
-            >
-              {deleteMutation.isPending ? "Deleting..." : "Delete selected"}
-            </button>
           </div>
         </div>
         {tableError ? <div className="error-banner">{tableError}</div> : null}
@@ -385,7 +419,7 @@ export function NamespacesTable() {
             {searchTerm ? `No namespaces match "${searchTerm}".` : "No namespaces available."}
           </div>
         ) : (
-          <table>
+          <table id="namespaces-table">
             <thead>
               <tr>
                 <th className="check-col">
@@ -393,7 +427,7 @@ export function NamespacesTable() {
                     type="checkbox"
                     aria-label="Select all namespaces"
                     checked={allSelected}
-                    onChange={(event) => toggleAllNamespaces(event.target.checked)}
+                    onChange={(event) => shiftSelect.handleSelectAll(event.target.checked)}
                   />
                 </th>
                 <th>ID</th>
@@ -402,25 +436,36 @@ export function NamespacesTable() {
               </tr>
             </thead>
             <tbody>
-              {filteredNamespaces.map((namespace) => (
-                <tr key={namespace.id}>
-                  <td className="check-col">
-                    <input
-                      type="checkbox"
-                      aria-label={`Select namespace ${namespace.name}`}
-                      checked={selectedNamespaceIds.includes(namespace.id)}
-                      onChange={(event) => toggleNamespace(namespace.id, event.target.checked)}
-                    />
-                  </td>
-                  <td>{namespace.id}</td>
-                  <td>
-                    <Link href={`/namespaces/${namespace.id}`} className="row-link">
-                      {namespace.name}
-                    </Link>
-                  </td>
-                  <td>{namespace.description || "-"}</td>
-                </tr>
-              ))}
+              {filteredNamespaces.map((namespace, index) => {
+                const isSelected = selectedNamespaceIds.includes(namespace.id);
+                const isFocused = keyboardNav.focusedId === namespace.id;
+                const rowClassName = [
+                  isSelected ? "table-row-selected" : "",
+                  isFocused ? "table-row-focused" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+
+                return (
+                  <tr key={namespace.id} className={rowClassName} data-table-row-index={index}>
+                    <td className="check-col">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select namespace ${namespace.name}`}
+                        checked={isSelected}
+                        onChange={(event) => shiftSelect.handleClick(namespace.id, event.target.checked, event.nativeEvent.shiftKey)}
+                      />
+                    </td>
+                    <td>{namespace.id}</td>
+                    <td>
+                      <Link href={`/namespaces/${namespace.id}`} className="row-link">
+                        {namespace.name}
+                      </Link>
+                    </td>
+                    <td>{namespace.description || "-"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

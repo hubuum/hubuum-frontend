@@ -15,8 +15,22 @@ import { CreateModal } from "@/components/create-modal";
 import { JsonEditor } from "@/components/json-editor";
 import type { HubuumClassExpanded, Namespace, NewHubuumClass } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
+import { DESELECT_ALL_EVENT, OPEN_CREATE_EVENT, SELECT_ALL_EVENT, SELECTION_STATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 import { matchesFreeTextSearch, normalizeSearchTerm } from "@/lib/resource-search";
+import { useResizableTable } from "@/lib/use-resizable-table";
+import { useShiftSelect } from "@/lib/use-shift-select";
+import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
+
+function IconSearch() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.42-1.42-4.44-4.43A6.5 6.5 0 0 0 10.5 4m0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
   const response = await getApiV1Classes({ limit: 250 }, {
@@ -59,6 +73,8 @@ export function ClassesTable() {
   const [tableSuccess, setTableSuccess] = useState<string | null>(null);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
+
+  useResizableTable({ tableId: "classes-table", storageKey: "classes" });
 
   const classesQuery = useQuery({
     queryKey: ["classes"],
@@ -196,6 +212,19 @@ export function ClassesTable() {
   );
   const allSelected = filteredClasses.length > 0 && selectedClassIds.length === filteredClasses.length;
 
+  const shiftSelect = useShiftSelect({
+    items: filteredClasses,
+    selectedIds: selectedClassIds,
+    setSelectedIds: setSelectedClassIds,
+    getId: (classItem) => classItem.id
+  });
+
+  const keyboardNav = useTableKeyboardNav({
+    items: filteredClasses,
+    getId: (classItem) => classItem.id,
+    onOpen: (classItem) => router.push(`/classes/${classItem.id}`)
+  });
+
   useEffect(() => {
     if (!selectedClassIds.length) {
       return;
@@ -222,6 +251,34 @@ export function ClassesTable() {
     return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
   }, []);
 
+  useEffect(() => {
+    const onDeselectAll = () => {
+      setSelectedClassIds([]);
+    };
+
+    const onSelectAll = () => {
+      setSelectedClassIds(filteredClasses.map((classItem) => classItem.id));
+    };
+
+    window.addEventListener(DESELECT_ALL_EVENT, onDeselectAll);
+    window.addEventListener(SELECT_ALL_EVENT, onSelectAll);
+    return () => {
+      window.removeEventListener(DESELECT_ALL_EVENT, onDeselectAll);
+      window.removeEventListener(SELECT_ALL_EVENT, onSelectAll);
+    };
+  }, [filteredClasses]);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent(SELECTION_STATE_EVENT, {
+        detail: {
+          count: selectedClassIds.length,
+          deleteHandler: selectedClassIds.length > 0 ? deleteSelectedClasses : null
+        }
+      })
+    );
+  }, [selectedClassIds.length]);
+
   if (classesQuery.isLoading) {
     return <div className="card">Loading classes...</div>;
   }
@@ -232,24 +289,6 @@ export function ClassesTable() {
         Failed to load classes. {classesQuery.error instanceof Error ? classesQuery.error.message : "Unknown error"}
       </div>
     );
-  }
-
-  function toggleAllClasses(checked: boolean) {
-    if (checked) {
-      setSelectedClassIds(filteredClasses.map((item) => item.id));
-      return;
-    }
-
-    setSelectedClassIds([]);
-  }
-
-  function toggleClassSelection(classId: number, checked: boolean) {
-    setSelectedClassIds((current) => {
-      if (checked) {
-        return current.includes(classId) ? current : [...current, classId];
-      }
-      return current.filter((id) => id !== classId);
-    });
   }
 
   function deleteSelectedClasses() {
@@ -376,7 +415,13 @@ export function ClassesTable() {
 
       <div className="card table-wrap">
         <div className="table-header">
-          <h2>Classes</h2>
+          <div className="table-title-row">
+            <h2>Classes</h2>
+            <span className="muted table-count">
+              {searchTerm ? `${filteredClasses.length} shown of ${classes.length}` : `${classes.length} loaded`}
+              {selectedClassIds.length ? ` · ${selectedClassIds.length} selected` : ""}
+            </span>
+          </div>
           <div className="table-tools">
             <form className="table-filter-form" onSubmit={onFilterSubmit}>
               <div className="table-filter-field">
@@ -398,22 +443,10 @@ export function ClassesTable() {
                   </button>
                 ) : null}
               </div>
-              <button type="submit" className="ghost">
-                Filter
+              <button type="submit" className="ghost icon-button" aria-label="Filter classes">
+                <IconSearch />
               </button>
             </form>
-            <span className="muted">
-              {searchTerm ? `${filteredClasses.length} shown of ${classes.length}` : `${classes.length} loaded`}
-              {selectedClassIds.length ? ` - ${selectedClassIds.length} selected` : ""}
-            </span>
-            <button
-              type="button"
-              className="danger"
-              onClick={deleteSelectedClasses}
-              disabled={deleteMutation.isPending || selectedClassIds.length === 0}
-            >
-              {deleteMutation.isPending ? "Deleting..." : "Delete selected"}
-            </button>
           </div>
         </div>
         {tableError ? <div className="error-banner">{tableError}</div> : null}
@@ -421,7 +454,7 @@ export function ClassesTable() {
         {filteredClasses.length === 0 ? (
           <div className="empty-state">{searchTerm ? `No classes match "${searchTerm}".` : "No classes available."}</div>
         ) : (
-          <table>
+          <table id="classes-table">
             <thead>
               <tr>
                 <th className="check-col">
@@ -429,7 +462,7 @@ export function ClassesTable() {
                     type="checkbox"
                     aria-label="Select all classes"
                     checked={allSelected}
-                    onChange={(event) => toggleAllClasses(event.target.checked)}
+                    onChange={(event) => shiftSelect.handleSelectAll(event.target.checked)}
                   />
                 </th>
                 <th>ID</th>
@@ -439,28 +472,39 @@ export function ClassesTable() {
               </tr>
             </thead>
             <tbody>
-              {filteredClasses.map((item) => (
-                <tr key={item.id}>
-                  <td className="check-col">
-                    <input
-                      type="checkbox"
-                      aria-label={`Select class ${item.name}`}
-                      checked={selectedClassIds.includes(item.id)}
-                      onChange={(event) => toggleClassSelection(item.id, event.target.checked)}
-                    />
-                  </td>
-                  <td>{item.id}</td>
-                  <td>
-                    <Link href={`/classes/${item.id}`} className="row-link">
-                      {item.name}
-                    </Link>
-                  </td>
-                  <td>
-                    {item.namespace.name} (#{item.namespace.id})
-                  </td>
-                  <td>{item.description || "-"}</td>
-                </tr>
-              ))}
+              {filteredClasses.map((item, index) => {
+                const isSelected = selectedClassIds.includes(item.id);
+                const isFocused = keyboardNav.focusedId === item.id;
+                const rowClassName = [
+                  isSelected ? "table-row-selected" : "",
+                  isFocused ? "table-row-focused" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+
+                return (
+                  <tr key={item.id} className={rowClassName} data-table-row-index={index}>
+                    <td className="check-col">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select class ${item.name}`}
+                        checked={isSelected}
+                        onChange={(event) => shiftSelect.handleClick(item.id, event.target.checked, event.nativeEvent.shiftKey)}
+                      />
+                    </td>
+                    <td>{item.id}</td>
+                    <td>
+                      <Link href={`/classes/${item.id}`} className="row-link">
+                        {item.name}
+                      </Link>
+                    </td>
+                    <td>
+                      {item.namespace.name} (#{item.namespace.id})
+                    </td>
+                    <td>{item.description || "-"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

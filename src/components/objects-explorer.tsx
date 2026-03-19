@@ -9,9 +9,22 @@ import { deleteApiV1ClassesByClassIdByObjectId, getApiV1Classes, getApiV1Namespa
 import { CreateModal } from "@/components/create-modal";
 import { JsonEditor } from "@/components/json-editor";
 import type { HubuumClassExpanded, HubuumObject, Namespace, NewHubuumObject } from "@/lib/api/generated/models";
-import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
+import { DESELECT_ALL_EVENT, OPEN_CREATE_EVENT, SELECT_ALL_EVENT, SELECTION_STATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import { matchesFreeTextSearch, normalizeSearchTerm } from "@/lib/resource-search";
+import { useResizableTable } from "@/lib/use-resizable-table";
+import { useShiftSelect } from "@/lib/use-shift-select";
+
+function IconSearch() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.42-1.42-4.44-4.43A6.5 6.5 0 0 0 10.5 4m0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
   const response = await getApiV1Classes({ limit: 250 }, {
@@ -69,12 +82,12 @@ function stringifyData(data: unknown): string {
   }
 
   if (typeof data === "string") {
-    return data.length > 96 ? `${data.slice(0, 96)}...` : data;
+    return data.length > 40 ? `${data.slice(0, 40)}...` : data;
   }
 
   try {
     const json = JSON.stringify(data);
-    return json.length > 96 ? `${json.slice(0, 96)}...` : json;
+    return json.length > 40 ? `${json.slice(0, 40)}...` : json;
   } catch {
     return "[unserializable]";
   }
@@ -106,6 +119,8 @@ export function ObjectsExplorer() {
   const [tableSuccess, setTableSuccess] = useState<string | null>(null);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
+
+  useResizableTable({ tableId: "objects-table", storageKey: "objects" });
 
   useEffect(() => {
     if (searchParams.get("create") !== "1") {
@@ -284,6 +299,13 @@ export function ObjectsExplorer() {
   );
   const allSelected = filteredObjects.length > 0 && selectedObjectIds.length === filteredObjects.length;
 
+  const shiftSelect = useShiftSelect({
+    items: filteredObjects,
+    selectedIds: selectedObjectIds,
+    setSelectedIds: setSelectedObjectIds,
+    getId: (objectItem) => objectItem.id
+  });
+
   useEffect(() => {
     if (!selectedObjectIds.length) {
       return;
@@ -316,6 +338,34 @@ export function ObjectsExplorer() {
     window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
     return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
   }, [classes, selectedClass]);
+
+  useEffect(() => {
+    const onDeselectAll = () => {
+      setSelectedObjectIds([]);
+    };
+
+    const onSelectAll = () => {
+      setSelectedObjectIds(filteredObjects.map((obj) => obj.id));
+    };
+
+    window.addEventListener(DESELECT_ALL_EVENT, onDeselectAll);
+    window.addEventListener(SELECT_ALL_EVENT, onSelectAll);
+    return () => {
+      window.removeEventListener(DESELECT_ALL_EVENT, onDeselectAll);
+      window.removeEventListener(SELECT_ALL_EVENT, onSelectAll);
+    };
+  }, [filteredObjects]);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent(SELECTION_STATE_EVENT, {
+        detail: {
+          count: selectedObjectIds.length,
+          deleteHandler: selectedObjectIds.length > 0 && parsedClassId !== null ? deleteSelectedObjects : null
+        }
+      })
+    );
+  }, [selectedObjectIds.length, parsedClassId]);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -361,24 +411,6 @@ export function ObjectsExplorer() {
         {classesQuery.error instanceof Error ? classesQuery.error.message : "Unknown error"}
       </div>
     );
-  }
-
-  function toggleAllObjects(checked: boolean) {
-    if (checked) {
-      setSelectedObjectIds(filteredObjects.map((objectItem) => objectItem.id));
-      return;
-    }
-
-    setSelectedObjectIds([]);
-  }
-
-  function toggleObject(objectId: number, checked: boolean) {
-    setSelectedObjectIds((current) => {
-      if (checked) {
-        return current.includes(objectId) ? current : [...current, objectId];
-      }
-      return current.filter((id) => id !== objectId);
-    });
   }
 
   function deleteSelectedObjects() {
@@ -544,7 +576,19 @@ export function ObjectsExplorer() {
 
       <div className="card table-wrap">
         <div className="table-header">
-          <h3>Objects</h3>
+          <div className="table-title-row">
+            <h3>Objects</h3>
+            <span className="muted table-count">
+              {objectsQuery.data
+                ? searchTerm
+                  ? `${filteredObjects.length} shown of ${objects.length}`
+                  : `${objects.length} loaded`
+                : parsedClassId
+                  ? "Waiting..."
+                  : "No class"}
+              {selectedObjectIds.length ? ` · ${selectedObjectIds.length} selected` : ""}
+            </span>
+          </div>
           <div className="table-tools">
             <form className="table-filter-form" onSubmit={onFilterSubmit}>
               <div className="table-filter-field">
@@ -566,28 +610,10 @@ export function ObjectsExplorer() {
                   </button>
                 ) : null}
               </div>
-              <button type="submit" className="ghost">
-                Filter
+              <button type="submit" className="ghost icon-button" aria-label="Filter objects">
+                <IconSearch />
               </button>
             </form>
-            <span className="muted">
-              {objectsQuery.data
-                ? searchTerm
-                  ? `${filteredObjects.length} shown of ${objects.length}`
-                  : `${objects.length} loaded`
-                : parsedClassId
-                  ? "Waiting..."
-                  : "No class"}
-              {selectedObjectIds.length ? ` - ${selectedObjectIds.length} selected` : ""}
-            </span>
-            <button
-              type="button"
-              className="danger"
-              onClick={deleteSelectedObjects}
-              disabled={deleteMutation.isPending || selectedObjectIds.length === 0 || parsedClassId === null}
-            >
-              {deleteMutation.isPending ? "Deleting..." : "Delete selected"}
-            </button>
           </div>
         </div>
         {tableError ? <div className="error-banner">{tableError}</div> : null}
@@ -609,7 +635,7 @@ export function ObjectsExplorer() {
               : "No objects available in the selected class."}
           </div>
         ) : (
-          <table>
+          <table id="objects-table">
             <thead>
               <tr>
                 <th className="check-col">
@@ -617,7 +643,7 @@ export function ObjectsExplorer() {
                     type="checkbox"
                     aria-label="Select all objects"
                     checked={allSelected}
-                    onChange={(event) => toggleAllObjects(event.target.checked)}
+                    onChange={(event) => shiftSelect.handleSelectAll(event.target.checked)}
                   />
                 </th>
                 <th>ID</th>
@@ -635,7 +661,7 @@ export function ObjectsExplorer() {
                       type="checkbox"
                       aria-label={`Select object ${objectItem.name}`}
                       checked={selectedObjectIds.includes(objectItem.id)}
-                      onChange={(event) => toggleObject(objectItem.id, event.target.checked)}
+                      onChange={(event) => shiftSelect.handleClick(objectItem.id, event.target.checked, event.nativeEvent.shiftKey)}
                     />
                   </td>
                   <td>{objectItem.id}</td>
@@ -646,7 +672,7 @@ export function ObjectsExplorer() {
                   </td>
                   <td>{renderNamespace(objectItem.namespace_id)}</td>
                   <td>{objectItem.description || "-"}</td>
-                  <td>{stringifyData(objectItem.data)}</td>
+                  <td className="data-cell">{stringifyData(objectItem.data)}</td>
                 </tr>
               ))}
             </tbody>

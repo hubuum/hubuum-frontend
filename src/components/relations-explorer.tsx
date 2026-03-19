@@ -21,8 +21,21 @@ import type {
   HubuumObjectWithPath,
   Namespace
 } from "@/lib/api/generated/models";
-import { OPEN_CREATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
+import { DESELECT_ALL_EVENT, OPEN_CREATE_EVENT, SELECT_ALL_EVENT, SELECTION_STATE_EVENT, type OpenCreateEventDetail } from "@/lib/create-events";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
+import { useResizableTable } from "@/lib/use-resizable-table";
+import { useShiftSelect } from "@/lib/use-shift-select";
+
+function IconSearch() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.42-1.42-4.44-4.43A6.5 6.5 0 0 0 10.5 4m0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
   const response = await getApiV1Classes(undefined, {
@@ -191,6 +204,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
   const [pendingObjectRelationDeleteIds, setPendingObjectRelationDeleteIds] = useState<number[]>([]);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
+  useResizableTable({ tableId: "class-relations-table", storageKey: "class-relations" });
+  useResizableTable({ tableId: "object-relations-table", storageKey: "object-relations" });
+
   useEffect(() => {
     if (searchParams.get("create") !== "1") {
       return;
@@ -348,6 +364,20 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
   const objectDirectRelations = Array.isArray(objectDirectRelationsQuery.data)
     ? objectDirectRelationsQuery.data
     : [];
+
+  const classRelationsShiftSelect = useShiftSelect({
+    items: classDirectRelations,
+    selectedIds: selectedClassRelationIds,
+    setSelectedIds: setSelectedClassRelationIds,
+    getId: (relation) => relation.id
+  });
+
+  const objectRelationsShiftSelect = useShiftSelect({
+    items: objectDirectRelations,
+    selectedIds: selectedObjectRelationIds,
+    setSelectedIds: setSelectedObjectRelationIds,
+    getId: (relation) => relation.id
+  });
 
   const classRelationById = useMemo(() => {
     const map = new Map<number, HubuumClassRelation>();
@@ -545,6 +575,60 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
     return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
   }, []);
+
+  useEffect(() => {
+    const onDeselectAll = () => {
+      setSelectedClassRelationIds([]);
+      setSelectedObjectRelationIds([]);
+    };
+
+    const onSelectAll = () => {
+      if (isClassMode && classRelationsView === "direct") {
+        setSelectedClassRelationIds(classDirectRelations.map((rel) => rel.id));
+      } else if (isObjectMode && objectRelationsView === "direct") {
+        setSelectedObjectRelationIds(objectDirectRelations.map((rel) => rel.id));
+      }
+    };
+
+    window.addEventListener(DESELECT_ALL_EVENT, onDeselectAll);
+    window.addEventListener(SELECT_ALL_EVENT, onSelectAll);
+    return () => {
+      window.removeEventListener(DESELECT_ALL_EVENT, onDeselectAll);
+      window.removeEventListener(SELECT_ALL_EVENT, onSelectAll);
+    };
+  }, [isClassMode, isObjectMode, classRelationsView, objectRelationsView, classDirectRelations, objectDirectRelations]);
+
+  useEffect(() => {
+    if (isClassMode && classRelationsView === "direct") {
+      window.dispatchEvent(
+        new CustomEvent(SELECTION_STATE_EVENT, {
+          detail: {
+            count: selectedClassRelationIds.length,
+            deleteHandler: selectedClassRelationIds.length > 0 ? deleteSelectedClassRelations : null
+          }
+        })
+      );
+    } else if (isObjectMode && objectRelationsView === "direct") {
+      window.dispatchEvent(
+        new CustomEvent(SELECTION_STATE_EVENT, {
+          detail: {
+            count: selectedObjectRelationIds.length,
+            deleteHandler: selectedObjectRelationIds.length > 0 ? deleteSelectedObjectRelations : null
+          }
+        })
+      );
+    } else {
+      // Clear FAB when in non-direct views
+      window.dispatchEvent(
+        new CustomEvent(SELECTION_STATE_EVENT, {
+          detail: {
+            count: 0,
+            deleteHandler: null
+          }
+        })
+      );
+    }
+  }, [isClassMode, isObjectMode, classRelationsView, objectRelationsView, selectedClassRelationIds.length, selectedObjectRelationIds.length]);
 
   const createClassRelationMutation = useMutation({
     mutationFn: async (payload: { sourceClassId: number; targetClassId: number }) => {
@@ -915,44 +999,6 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
     setObjectRelationsView(nextView);
   }
 
-  function toggleAllClassRelations(checked: boolean) {
-    if (checked) {
-      setSelectedClassRelationIds(classDirectRelations.map((relation) => relation.id));
-      return;
-    }
-
-    setSelectedClassRelationIds([]);
-  }
-
-  function toggleClassRelation(relationId: number, checked: boolean) {
-    setSelectedClassRelationIds((current) => {
-      if (checked) {
-        return current.includes(relationId) ? current : [...current, relationId];
-      }
-
-      return current.filter((id) => id !== relationId);
-    });
-  }
-
-  function toggleAllObjectRelations(checked: boolean) {
-    if (checked) {
-      setSelectedObjectRelationIds(objectDirectRelations.map((relation) => relation.id));
-      return;
-    }
-
-    setSelectedObjectRelationIds([]);
-  }
-
-  function toggleObjectRelation(relationId: number, checked: boolean) {
-    setSelectedObjectRelationIds((current) => {
-      if (checked) {
-        return current.includes(relationId) ? current : [...current, relationId];
-      }
-
-      return current.filter((id) => id !== relationId);
-    });
-  }
-
   function deleteClassRelation(relationId: number) {
     if (!window.confirm(`Delete class relation #${relationId}?`)) {
       return;
@@ -1149,17 +1195,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
       {isClassMode ? (
         <div className="card table-wrap">
           <div className="table-header">
-            <h3>Class relations</h3>
-            <div className="table-tools">
-              <select
-                aria-label="Class relations view"
-                value={classRelationsView}
-                onChange={onClassRelationsViewChange}
-              >
-                <option value="direct">Direct relations</option>
-                <option value="connected">Connected classes</option>
-              </select>
-              <span className="muted">
+            <div className="table-title-row">
+              <h3>Class relations</h3>
+              <span className="muted table-count">
                 {classRelationsView === "direct"
                   ? classRelationsQuery.data
                     ? `${classDirectRelations.length} loaded`
@@ -1172,19 +1210,19 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                       ? "Waiting..."
                       : "No class"}
                 {classRelationsView === "direct" && selectedClassRelationIds.length
-                  ? ` • ${selectedClassRelationIds.length} selected`
+                  ? ` · ${selectedClassRelationIds.length} selected`
                   : ""}
               </span>
-              {classRelationsView === "direct" ? (
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={deleteSelectedClassRelations}
-                  disabled={deleteClassRelationsMutation.isPending || selectedClassRelationIds.length === 0}
-                >
-                  {deleteClassRelationsMutation.isPending ? "Deleting..." : "Delete selected"}
-                </button>
-              ) : null}
+            </div>
+            <div className="table-tools">
+              <select
+                aria-label="Class relations view"
+                value={classRelationsView}
+                onChange={onClassRelationsViewChange}
+              >
+                <option value="direct">Direct relations</option>
+                <option value="connected">Connected classes</option>
+              </select>
             </div>
           </div>
 
@@ -1205,7 +1243,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
             ) : classDirectRelations.length === 0 ? (
               <div className="muted">No direct class relations for this class.</div>
             ) : (
-              <table>
+              <table id="class-relations-table">
                 <thead>
                   <tr>
                     <th className="check-col">
@@ -1213,54 +1251,38 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                         type="checkbox"
                         aria-label="Select all class relations"
                         checked={allClassRelationsSelected}
-                        onChange={(event) => toggleAllClassRelations(event.target.checked)}
+                        onChange={(event) => classRelationsShiftSelect.handleSelectAll(event.target.checked)}
                       />
                     </th>
                     <th>ID</th>
                     <th>From class</th>
                     <th>To class</th>
-                    <th>Updated</th>
-                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {classDirectRelations.map((relation) => {
-                    const isRowDeleting = pendingClassRelationDeleteIds.includes(relation.id);
-                    return (
-                      <tr key={relation.id}>
-                        <td className="check-col">
-                          <input
-                            type="checkbox"
-                            aria-label={`Select class relation ${relation.id}`}
-                            checked={selectedClassRelationIds.includes(relation.id)}
-                            onChange={(event) => toggleClassRelation(relation.id, event.target.checked)}
-                          />
-                        </td>
-                        <td>{relation.id}</td>
-                        <td>
-                          <Link href={`/classes/${relation.from_hubuum_class_id}`} className="row-link">
-                            {renderClassById(relation.from_hubuum_class_id)}
-                          </Link>
-                        </td>
-                        <td>
-                          <Link href={`/classes/${relation.to_hubuum_class_id}`} className="row-link">
-                            {renderClassById(relation.to_hubuum_class_id)}
-                          </Link>
-                        </td>
-                        <td>{new Date(relation.updated_at).toLocaleString()}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="danger"
-                            onClick={() => deleteClassRelation(relation.id)}
-                            disabled={deleteClassRelationsMutation.isPending}
-                          >
-                            {isRowDeleting ? "Deleting..." : "Delete"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {classDirectRelations.map((relation) => (
+                    <tr key={relation.id}>
+                      <td className="check-col">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select class relation ${relation.id}`}
+                          checked={selectedClassRelationIds.includes(relation.id)}
+                          onChange={(event) => classRelationsShiftSelect.handleClick(relation.id, event.target.checked, event.nativeEvent.shiftKey)}
+                        />
+                      </td>
+                      <td>{relation.id}</td>
+                      <td>
+                        <Link href={`/classes/${relation.from_hubuum_class_id}`} className="row-link">
+                          {renderClassById(relation.from_hubuum_class_id)}
+                        </Link>
+                      </td>
+                      <td>
+                        <Link href={`/classes/${relation.to_hubuum_class_id}`} className="row-link">
+                          {renderClassById(relation.to_hubuum_class_id)}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )
@@ -1303,17 +1325,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
       {isObjectMode ? (
         <div className="card table-wrap">
           <div className="table-header">
-            <h3>Object relations</h3>
-            <div className="table-tools">
-              <select
-                aria-label="Object relations view"
-                value={objectRelationsView}
-                onChange={onObjectRelationsViewChange}
-              >
-                <option value="direct">Direct relations</option>
-                <option value="reachable">Reachability</option>
-              </select>
-              <span className="muted">
+            <div className="table-title-row">
+              <h3>Object relations</h3>
+              <span className="muted table-count">
                 {objectRelationsView === "direct"
                   ? objectDirectRelationsQuery.data
                     ? `${objectDirectRelations.length} loaded`
@@ -1326,19 +1340,19 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                       ? "Waiting..."
                       : "No source object"}
                 {objectRelationsView === "direct" && selectedObjectRelationIds.length
-                  ? ` • ${selectedObjectRelationIds.length} selected`
+                  ? ` · ${selectedObjectRelationIds.length} selected`
                   : ""}
               </span>
-              {objectRelationsView === "direct" ? (
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={deleteSelectedObjectRelations}
-                  disabled={deleteObjectRelationsMutation.isPending || selectedObjectRelationIds.length === 0}
-                >
-                  {deleteObjectRelationsMutation.isPending ? "Deleting..." : "Delete selected"}
-                </button>
-              ) : null}
+            </div>
+            <div className="table-tools">
+              <select
+                aria-label="Object relations view"
+                value={objectRelationsView}
+                onChange={onObjectRelationsViewChange}
+              >
+                <option value="direct">Direct relations</option>
+                <option value="reachable">Reachability</option>
+              </select>
             </div>
           </div>
 
@@ -1363,7 +1377,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
             ) : objectDirectRelations.length === 0 ? (
               <div className="muted">No direct object relations for this object.</div>
             ) : (
-              <table>
+              <table id="object-relations-table">
                 <thead>
                   <tr>
                     <th className="check-col">
@@ -1371,13 +1385,11 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                         type="checkbox"
                         aria-label="Select all object relations"
                         checked={allObjectRelationsSelected}
-                        onChange={(event) => toggleAllObjectRelations(event.target.checked)}
+                        onChange={(event) => objectRelationsShiftSelect.handleSelectAll(event.target.checked)}
                       />
                     </th>
                     <th>Related object</th>
                     <th>Relation</th>
-                    <th>Updated</th>
-                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1386,7 +1398,6 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                       ? relation.to_hubuum_object_id
                       : relation.from_hubuum_object_id;
                     const relatedObject = objectContextById.get(relatedObjectId);
-                    const isRowDeleting = pendingObjectRelationDeleteIds.includes(relation.id);
 
                     return (
                       <tr key={relation.id}>
@@ -1395,22 +1406,11 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
                             type="checkbox"
                             aria-label={`Select object relation ${relation.id}`}
                             checked={selectedObjectRelationIds.includes(relation.id)}
-                            onChange={(event) => toggleObjectRelation(relation.id, event.target.checked)}
+                            onChange={(event) => objectRelationsShiftSelect.handleClick(relation.id, event.target.checked, event.nativeEvent.shiftKey)}
                           />
                         </td>
                         <td>{relatedObject ? renderObjectLink(relatedObjectId) : renderObjectById(relatedObjectId)}</td>
                         <td>{renderObjectRelationLabel(relation)}</td>
-                        <td>{new Date(relation.updated_at).toLocaleString()}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="danger"
-                            onClick={() => deleteObjectRelation(relation.id)}
-                            disabled={deleteObjectRelationsMutation.isPending}
-                          >
-                            {isRowDeleting ? "Deleting..." : "Delete"}
-                          </button>
-                        </td>
                       </tr>
                     );
                   })}

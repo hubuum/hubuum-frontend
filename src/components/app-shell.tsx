@@ -5,11 +5,12 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type ChangeEvent, type FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { KeyboardHelp } from "@/components/keyboard-help";
 import { LogoutButton } from "@/components/logout-button";
 import { getApiV0MetaTasks, getApiV1Classes } from "@/lib/api/generated/client";
 import type { HubuumClassExpanded, HubuumObject, TaskQueueStateResponse } from "@/lib/api/generated/models";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { OPEN_CREATE_EVENT, type CreateSection } from "@/lib/create-events";
+import { DESELECT_ALL_EVENT, OPEN_CREATE_EVENT, SELECT_ALL_EVENT, SELECTION_STATE_EVENT, type CreateSection, type SelectionStateEventDetail } from "@/lib/create-events";
 import { normalizeSearchTerm } from "@/lib/resource-search";
 
 type AppShellProps = {
@@ -383,6 +384,17 @@ function IconTasks() {
   );
 }
 
+function IconDelete() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM8 9h8v10H8zm7.5-5-1-1h-5l-1 1H5v2h14V4z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 const workspaceLinks: NavItem[] = [
   {
     href: "/app",
@@ -524,6 +536,9 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [recentFailureUntil, setRecentFailureUntil] = useState<number | null>(null);
   const [searchInput, setSearchInput] = useState("");
+  const [selectionCount, setSelectionCount] = useState(0);
+  const [deleteHandler, setDeleteHandler] = useState<(() => void) | null>(null);
+  const [isKeyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const previousFailedTasksRef = useRef<number | null>(null);
 
@@ -643,6 +658,85 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 
     return () => window.clearTimeout(timeoutId);
   }, [recentFailureUntil]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const isTyping = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.contentEditable === "true";
+
+      // Esc to deselect all (works anywhere)
+      if (event.key === "Escape" && selectionCount > 0) {
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent(DESELECT_ALL_EVENT));
+        return;
+      }
+
+      // Ctrl/Cmd+A to select all (works anywhere except when typing)
+      if ((event.ctrlKey || event.metaKey) && event.key === "a" && !isTyping) {
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent(SELECT_ALL_EVENT));
+        return;
+      }
+
+      // "/" to focus search (works anywhere except when typing)
+      if (event.key === "/" && !isTyping) {
+        event.preventDefault();
+        const searchInput = document.querySelector(".topbar-search-input") as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+        return;
+      }
+
+      // "?" to show keyboard help (works anywhere except when typing)
+      if (event.key === "?" && !isTyping) {
+        event.preventDefault();
+        setKeyboardHelpOpen(true);
+        return;
+      }
+
+      // Ignore other shortcuts if typing or if certain modifier keys are pressed
+      if (isTyping || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      // "C" to open create modal
+      if (event.key === "c" || event.key === "C") {
+        event.preventDefault();
+        openCreateModal();
+      }
+
+      // "D" to delete selected items
+      if ((event.key === "d" || event.key === "D") && selectionCount > 0 && deleteHandler) {
+        event.preventDefault();
+        deleteHandler();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [createSection, selectionCount, deleteHandler]);
+
+  useEffect(() => {
+    const onSelectionStateChange = (event: Event) => {
+      const customEvent = event as CustomEvent<SelectionStateEventDetail>;
+      const count = customEvent.detail?.count ?? 0;
+      const handler = customEvent.detail?.deleteHandler;
+
+      setSelectionCount(count);
+
+      if (handler) {
+        // To store a function in state, wrap it in another function
+        setDeleteHandler(() => handler);
+      } else {
+        setDeleteHandler(null);
+      }
+    };
+
+    window.addEventListener(SELECTION_STATE_EVENT, onSelectionStateChange);
+    return () => window.removeEventListener(SELECTION_STATE_EVENT, onSelectionStateChange);
+  }, []);
 
   const shellClassName = [
     "app-shell",
@@ -1087,6 +1181,31 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
           onClick={() => setMobileSidebarOpen(false)}
         />
       ) : null}
+
+      {selectionCount > 0 && deleteHandler ? (
+        <button
+          type="button"
+          className="fab fab--delete"
+          onClick={deleteHandler}
+          aria-label={`Delete ${selectionCount} selected item${selectionCount === 1 ? "" : "s"}`}
+          title={`Delete ${selectionCount} selected`}
+        >
+          <IconDelete />
+          {selectionCount > 1 ? <span className="fab-badge">{selectionCount}</span> : null}
+        </button>
+      ) : createSection ? (
+        <button
+          type="button"
+          className="fab"
+          onClick={openCreateModal}
+          aria-label={getCreateAriaLabel(createSection, relationsView, sectionLabel)}
+          title={`${getCreateAriaLabel(createSection, relationsView, sectionLabel)} (C)`}
+        >
+          <IconPlus />
+        </button>
+      ) : null}
+
+      <KeyboardHelp open={isKeyboardHelpOpen} onClose={() => setKeyboardHelpOpen(false)} />
     </div>
   );
 }
