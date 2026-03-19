@@ -15,6 +15,7 @@ import {
 
 import { KeyboardHelp } from "@/components/keyboard-help";
 import { LogoutButton } from "@/components/logout-button";
+import { ToastContainer } from "@/components/toast-container";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV0MetaTasks, getApiV1Classes } from "@/lib/api/generated/client";
 import type {
@@ -1326,6 +1327,8 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 				open={isKeyboardHelpOpen}
 				onClose={() => setKeyboardHelpOpen(false)}
 			/>
+
+			<ToastContainer />
 		</div>
 	);
 }

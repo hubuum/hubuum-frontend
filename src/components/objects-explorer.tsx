@@ -34,6 +34,7 @@ import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableSort } from "@/lib/use-table-sort";
+import { useToast } from "@/lib/toast-context";
 
 function IconSearch() {
 	return (
@@ -168,15 +169,13 @@ export function ObjectsExplorer() {
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [dataInput, setDataInput] = useState("{}");
-	const [formError, setFormError] = useState<string | null>(null);
-	const [formSuccess, setFormSuccess] = useState<string | null>(null);
 	const [selectedObjectIds, setSelectedObjectIds] = useState<number[]>([]);
-	const [tableError, setTableError] = useState<string | null>(null);
-	const [tableSuccess, setTableSuccess] = useState<string | null>(null);
 	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 	const [searchInput, setSearchInput] = useState(
 		searchParams.get("search") ?? "",
 	);
+
+	const { showToast } = useToast();
 
 	useResizableTable({ tableId: "objects-table", storageKey: "objects" });
 
@@ -285,14 +284,13 @@ export function ObjectsExplorer() {
 			setName("");
 			setDescription("");
 			setDataInput("{}");
-			setFormError(null);
-			setFormSuccess("Object created.");
+			showToast("Object created.", "success");
 			setCreateModalOpen(false);
 		},
 		onError: (error) => {
-			setFormSuccess(null);
-			setFormError(
+			showToast(
 				error instanceof Error ? error.message : "Failed to create object.",
+				"error",
 			);
 		},
 	});
@@ -322,15 +320,14 @@ export function ObjectsExplorer() {
 				queryKey: ["objects", deletedClassId],
 			});
 			setSelectedObjectIds([]);
-			setTableError(null);
-			setTableSuccess(`${count} object${count === 1 ? "" : "s"} deleted.`);
+			showToast(`${count} object${count === 1 ? "" : "s"} deleted.`, "success");
 		},
 		onError: (error) => {
-			setTableSuccess(null);
-			setTableError(
+			showToast(
 				error instanceof Error
 					? error.message
 					: "Failed to delete selected objects.",
+				"error",
 			);
 		},
 	});
@@ -385,14 +382,10 @@ export function ObjectsExplorer() {
 	useEffect(() => {
 		if (!selectedClassId) {
 			setSelectedObjectIds([]);
-			setTableError(null);
-			setTableSuccess(null);
 			return;
 		}
 
 		setSelectedObjectIds([]);
-		setTableError(null);
-		setTableSuccess(null);
 	}, [selectedClassId]);
 
 	const pageData = objectsQuery.data;
@@ -500,17 +493,15 @@ export function ObjectsExplorer() {
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		setFormError(null);
-		setFormSuccess(null);
 
 		if (!createSelectedClass || parsedCreateClassId === null) {
-			setFormError("Select a class before creating an object.");
+			showToast("Select a class before creating an object.", "error");
 			return;
 		}
 
 		const parsedNamespaceId = Number.parseInt(namespaceId, 10);
 		if (!Number.isFinite(parsedNamespaceId) || parsedNamespaceId < 1) {
-			setFormError("Namespace is required.");
+			showToast("Namespace is required.", "error");
 			return;
 		}
 
@@ -518,7 +509,7 @@ export function ObjectsExplorer() {
 		try {
 			parsedData = JSON.parse(dataInput);
 		} catch {
-			setFormError("Object data must be valid JSON.");
+			showToast("Object data must be valid JSON.", "error");
 			return;
 		}
 
@@ -550,9 +541,6 @@ export function ObjectsExplorer() {
 		if (parsedClassId === null || !selectedObjectIds.length) {
 			return;
 		}
-
-		setTableError(null);
-		setTableSuccess(null);
 
 		const confirmed = window.confirm(
 			`Delete ${selectedObjectIds.length} selected object(s)?`,
@@ -695,14 +683,12 @@ export function ObjectsExplorer() {
 					</div>
 				</div>
 
-				{formError ? <div className="error-banner">{formError}</div> : null}
 				{namespacesQuery.isError ? (
 					<div className="muted">
 						Could not load namespaces automatically. Falling back to manual
 						namespace ID entry.
 					</div>
 				) : null}
-				{formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
 				<div className="form-actions">
 					<button
@@ -774,8 +760,6 @@ export function ObjectsExplorer() {
 						</form>
 					</div>
 				</div>
-				{tableError ? <div className="error-banner">{tableError}</div> : null}
-				{tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
 				{searchTerm ? (
 					<div className="muted">
 						Filtering is currently scoped to the selected class.
