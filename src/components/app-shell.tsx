@@ -1056,10 +1056,6 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 							) : null}
 						</nav>
 					</div>
-
-					<div className="sidebar-footer">
-						<LogoutButton className="ghost sidebar-signout" />
-					</div>
 				</aside>
 
 				<div className="app-main">
