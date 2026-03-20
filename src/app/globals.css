@@ -2958,9 +2958,17 @@ h2.with-pin-button {
 	list-style: none;
 }
 
+.pinned-shortcuts-list li {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
 .pinned-item-link {
 	display: flex;
 	align-items: center;
+	flex: 1 1 auto;
+	min-width: 0;
 	gap: 0.6rem;
 	padding: 0.55rem 0.7rem;
 	border-radius: 10px;
@@ -2973,6 +2981,10 @@ h2.with-pin-button {
 .pinned-item-link:hover {
 	background: var(--accent-soft);
 	border-color: var(--line);
+}
+
+.pinned-item-unpin {
+	flex: 0 0 auto;
 }
 
 .pinned-item-icon {
