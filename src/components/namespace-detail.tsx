@@ -958,7 +958,7 @@ export function NamespaceDetail({
 			<section className="stack">
 			<header>
 				<p className="eyebrow">Namespace</p>
-				<h2>
+				<h2 className="with-pin-button">
 					{namespaceData.name} (#{namespaceData.id})
 					<PinButton
 						type="namespace"

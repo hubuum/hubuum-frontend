@@ -2687,11 +2687,10 @@ html[data-theme="dark"] .status-pill--accent {
 }
 
 /* Adjust h2 to accommodate inline button */
-h2 {
+h2.with-pin-button {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 0;
 }
 
 /* ========================================

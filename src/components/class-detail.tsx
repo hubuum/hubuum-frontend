@@ -405,7 +405,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		<section className="stack">
 			<header>
 				<p className="eyebrow">Class</p>
-				<h2>
+				<h2 className="with-pin-button">
 					{classData.name} (#{classData.id})
 					<PinButton
 						type="class"

@@ -761,7 +761,7 @@ export function ObjectDetail({
 			/>
 			<header>
 				<p className="eyebrow">Object</p>
-				<h2>
+				<h2 className="with-pin-button">
 					{objectData.name} (#{objectData.id})
 					<PinButton
 						type="object"
