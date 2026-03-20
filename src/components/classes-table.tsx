@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { JsonEditor } from "@/components/json-editor";
 import { TablePagination } from "@/components/table-pagination";
@@ -228,6 +228,24 @@ export function ClassesTable() {
 		},
 	});
 
+	const deleteSelectedClasses = useCallback(() => {
+		if (!selectedClassIds.length) {
+			return;
+		}
+
+		setTableError(null);
+		setTableSuccess(null);
+
+		const confirmed = window.confirm(
+			`Delete ${selectedClassIds.length} selected class(es)?`,
+		);
+		if (!confirmed) {
+			return;
+		}
+
+		deleteMutation.mutate([...selectedClassIds]);
+	}, [selectedClassIds, deleteMutation]);
+
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setFormError(null);
@@ -350,7 +368,7 @@ export function ClassesTable() {
 				},
 			}),
 		);
-	}, [selectedClassIds.length]);
+	}, [selectedClassIds.length, deleteSelectedClasses]);
 
 	if (classesQuery.isLoading) {
 		return <div className="card">Loading classes...</div>;
@@ -367,23 +385,6 @@ export function ClassesTable() {
 		);
 	}
 
-	function deleteSelectedClasses() {
-		if (!selectedClassIds.length) {
-			return;
-		}
-
-		setTableError(null);
-		setTableSuccess(null);
-
-		const confirmed = window.confirm(
-			`Delete ${selectedClassIds.length} selected class(es)?`,
-		);
-		if (!confirmed) {
-			return;
-		}
-
-		deleteMutation.mutate([...selectedClassIds]);
-	}
 
 	function renderSortIndicator(column: string) {
 		if (sortState.column !== column) {
@@ -644,21 +645,19 @@ export function ClassesTable() {
 						</tbody>
 					</table>
 				)}
-				{pageData && (pageData.nextCursor || pageData.prevCursor) ? (
+				{pageData && (pageData.nextCursor || pageData.prevCursor || pagination.hasPrevPage) ? (
 					<TablePagination
 						hasNextPage={!!pageData.nextCursor}
-						hasPrevPage={!!pageData.prevCursor}
+						hasPrevPage={pagination.hasPrevPage || !!pageData.prevCursor}
 						onNextPage={() =>
 							pageData.nextCursor &&
 							pagination.goToNextPage(pageData.nextCursor)
 						}
 						onPrevPage={() =>
-							pageData.prevCursor &&
-							pagination.goToPrevPage(pageData.prevCursor)
+							pagination.goToPrevPage(pageData.prevCursor ?? undefined)
 						}
 						onFirstPage={pagination.goToFirstPage}
 						currentCount={classes.length}
-						limit={pagination.limit}
 					/>
 				) : null}
 			</div>

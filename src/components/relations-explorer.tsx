@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -31,7 +31,7 @@ import {
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 
-function IconSearch() {
+function _IconSearch() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
 			<path
@@ -259,9 +259,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	const [selectedObjectRelationIds, setSelectedObjectRelationIds] = useState<
 		number[]
 	>([]);
-	const [pendingClassRelationDeleteIds, setPendingClassRelationDeleteIds] =
+	const [_pendingClassRelationDeleteIds, setPendingClassRelationDeleteIds] =
 		useState<number[]>([]);
-	const [pendingObjectRelationDeleteIds, setPendingObjectRelationDeleteIds] =
+	const [_pendingObjectRelationDeleteIds, setPendingObjectRelationDeleteIds] =
 		useState<number[]>([]);
 	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
@@ -737,6 +737,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		objectDirectRelations,
 	]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: deleteSelectedClassRelations and deleteSelectedObjectRelations are stable closures
 	useEffect(() => {
 		if (isClassMode && classRelationsView === "direct") {
 			window.dispatchEvent(
@@ -998,6 +999,38 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		},
 	});
 
+	const deleteSelectedClassRelations = useCallback(() => {
+		if (!selectedClassRelationIds.length) {
+			return;
+		}
+
+		if (
+			!window.confirm(
+				`Delete ${selectedClassRelationIds.length} selected class relation(s)?`,
+			)
+		) {
+			return;
+		}
+
+		deleteClassRelationsMutation.mutate([...selectedClassRelationIds]);
+	}, [selectedClassRelationIds, deleteClassRelationsMutation]);
+
+	const deleteSelectedObjectRelations = useCallback(() => {
+		if (!selectedObjectRelationIds.length) {
+			return;
+		}
+
+		if (
+			!window.confirm(
+				`Delete ${selectedObjectRelationIds.length} selected object relation(s)?`,
+			)
+		) {
+			return;
+		}
+
+		deleteObjectRelationsMutation.mutate([...selectedObjectRelationIds]);
+	}, [selectedObjectRelationIds, deleteObjectRelationsMutation]);
+
 	function onCreateClassRelation(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setClassRelationError(null);
@@ -1238,7 +1271,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		setObjectRelationsView(nextView);
 	}
 
-	function deleteClassRelation(relationId: number) {
+	function _deleteClassRelation(relationId: number) {
 		if (!window.confirm(`Delete class relation #${relationId}?`)) {
 			return;
 		}
@@ -1246,44 +1279,12 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		deleteClassRelationsMutation.mutate([relationId]);
 	}
 
-	function deleteSelectedClassRelations() {
-		if (!selectedClassRelationIds.length) {
-			return;
-		}
-
-		if (
-			!window.confirm(
-				`Delete ${selectedClassRelationIds.length} selected class relation(s)?`,
-			)
-		) {
-			return;
-		}
-
-		deleteClassRelationsMutation.mutate([...selectedClassRelationIds]);
-	}
-
-	function deleteObjectRelation(relationId: number) {
+	function _deleteObjectRelation(relationId: number) {
 		if (!window.confirm(`Delete object relation #${relationId}?`)) {
 			return;
 		}
 
 		deleteObjectRelationsMutation.mutate([relationId]);
-	}
-
-	function deleteSelectedObjectRelations() {
-		if (!selectedObjectRelationIds.length) {
-			return;
-		}
-
-		if (
-			!window.confirm(
-				`Delete ${selectedObjectRelationIds.length} selected object relation(s)?`,
-			)
-		) {
-			return;
-		}
-
-		deleteObjectRelationsMutation.mutate([...selectedObjectRelationIds]);
 	}
 
 	function renderCreateClassRelationForm() {

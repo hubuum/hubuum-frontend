@@ -7,6 +7,7 @@ import {
 	type ChangeEvent,
 	type FormEvent,
 	ReactNode,
+	useCallback,
 	useEffect,
 	useMemo,
 	useRef,
@@ -31,6 +32,10 @@ import {
 	SELECTION_STATE_EVENT,
 	type SelectionStateEventDetail,
 } from "@/lib/create-events";
+import {
+	triggerActivePaginationNextPage,
+	triggerActivePaginationPrevPage,
+} from "@/lib/pagination-shortcuts";
 import { normalizeSearchTerm } from "@/lib/resource-search";
 
 type AppShellProps = {
@@ -600,6 +605,20 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 	const userMenuRef = useRef<HTMLDivElement | null>(null);
 	const previousFailedTasksRef = useRef<number | null>(null);
 
+	const openCreateModal = useCallback(() => {
+		if (!createSection) {
+			return;
+		}
+
+		window.dispatchEvent(
+			new CustomEvent(OPEN_CREATE_EVENT, {
+				detail: {
+					section: createSection,
+				},
+			}),
+		);
+	}, [createSection]);
+
 	useEffect(() => {
 		const storedCollapsed = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
 		if (storedCollapsed === "1") {
@@ -730,7 +749,8 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 			const isTyping =
 				target.tagName === "INPUT" ||
 				target.tagName === "TEXTAREA" ||
-				target.contentEditable === "true";
+				target.contentEditable === "true" ||
+				target.closest(".cm-editor") !== null;
 
 			// Esc to deselect all (works anywhere)
 			if (event.key === "Escape" && selectionCount > 0) {
@@ -771,6 +791,20 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 				return;
 			}
 
+			if (event.key === "n" || event.key === "N") {
+				if (triggerActivePaginationNextPage()) {
+					event.preventDefault();
+				}
+				return;
+			}
+
+			if (event.key === "p" || event.key === "P") {
+				if (triggerActivePaginationPrevPage()) {
+					event.preventDefault();
+				}
+				return;
+			}
+
 			// "C" to open create modal
 			if (event.key === "c" || event.key === "C") {
 				event.preventDefault();
@@ -790,7 +824,7 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [createSection, selectionCount, deleteHandler]);
+	}, [selectionCount, deleteHandler, openCreateModal]);
 
 	useEffect(() => {
 		const onSelectionStateChange = (event: Event) => {
@@ -843,20 +877,6 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 			>
 				{taskBadgeLabel}
 			</span>
-		);
-	}
-
-	function openCreateModal() {
-		if (!createSection) {
-			return;
-		}
-
-		window.dispatchEvent(
-			new CustomEvent(OPEN_CREATE_EVENT, {
-				detail: {
-					section: createSection,
-				},
-			}),
 		);
 	}
 

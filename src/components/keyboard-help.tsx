@@ -21,6 +21,8 @@ const shortcuts: Shortcut[] = [
 	{ keys: ["?"], description: "Show this help" },
 	{ keys: ["↑", "↓"], description: "Navigate table rows" },
 	{ keys: ["Enter"], description: "Open focused row" },
+	{ keys: ["N"], description: "Go to the next page in the active paged view" },
+	{ keys: ["P"], description: "Go to the previous page in the active paged view" },
 ];
 
 export function KeyboardHelp({ open, onClose }: KeyboardHelpProps) {
@@ -79,11 +81,11 @@ export function KeyboardHelp({ open, onClose }: KeyboardHelpProps) {
 					</button>
 				</div>
 				<div className="keyboard-help-content">
-					{shortcuts.map((shortcut, index) => (
-						<div key={index} className="keyboard-shortcut-row">
+					{shortcuts.map((shortcut) => (
+						<div key={shortcut.description} className="keyboard-shortcut-row">
 							<div className="keyboard-shortcut-keys">
 								{shortcut.keys.map((key, keyIndex) => (
-									<span key={keyIndex}>
+									<span key={`${shortcut.description}-${keyIndex}`}>
 										<kbd className="keyboard-key">{key}</kbd>
 										{keyIndex < shortcut.keys.length - 1 ? (
 											<span className="keyboard-plus">+</span>

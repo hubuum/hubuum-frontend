@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { NamespaceDetailTracker } from "@/components/namespace-detail-tracker";
+import { PinButton } from "@/components/pin-button";
 import {
 	deleteApiV1NamespacesByNamespaceId,
 	deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
@@ -948,11 +950,21 @@ export function NamespaceDetail({
 	}
 
 	return (
-		<section className="stack">
+		<>
+			<NamespaceDetailTracker
+				namespaceId={namespaceId}
+				namespaceName={namespaceData.name}
+			/>
+			<section className="stack">
 			<header>
 				<p className="eyebrow">Namespace</p>
-				<h2>
+				<h2 className="with-pin-button">
 					{namespaceData.name} (#{namespaceData.id})
+					<PinButton
+						type="namespace"
+						id={namespaceId}
+						name={namespaceData.name}
+					/>
 				</h2>
 			</header>
 
@@ -1354,5 +1366,6 @@ export function NamespaceDetail({
 				)}
 			</section>
 		</section>
+		</>
 	);
 }

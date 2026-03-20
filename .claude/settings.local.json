@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm run:*)",
+      "Bash(npx biome:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(for class:*)",
+      "Bash(do echo:*)",
+      "Bash(grep -n \"\\\\.$class\" /Users/terjekv/projects/private/hubuum-frontend/src/app/globals.css)",
+      "Bash(done)",
+      "Bash(/Users/terjekv/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.5/scripts/start-server.sh --project-dir /Users/terjekv/projects/private/hubuum-frontend)",
+      "Bash(grep -r ClassPinAction src/ --include=*.tsx --include=*.ts)",
+      "Bash(npx tsc:*)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(pkill:*)",
+      "Bash(grep -n '<h2' src/components/*.tsx)"
+    ]
+  }
+}

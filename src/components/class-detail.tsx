@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { PinButton } from "@/components/pin-button";
 import { JsonEditor } from "@/components/json-editor";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -404,8 +405,15 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		<section className="stack">
 			<header>
 				<p className="eyebrow">Class</p>
-				<h2>
+				<h2 className="with-pin-button">
 					{classData.name} (#{classData.id})
+					<PinButton
+						type="class"
+						id={classId}
+						name={classData.name}
+						namespaceId={classData.namespace.id}
+						namespaceName={classData.namespace.name}
+					/>
 				</h2>
 			</header>
 

@@ -12,10 +12,9 @@ export function ToastContainer() {
 	return (
 		<div className="toast-container">
 			{toasts.map((toast) => (
-				<div
+				<output
 					key={toast.id}
 					className={`toast toast--${toast.type}`}
-					role="status"
 					aria-live="polite"
 				>
 					<div className="toast-message">{toast.message}</div>
@@ -32,7 +31,7 @@ export function ToastContainer() {
 							/>
 						</svg>
 					</button>
-				</div>
+				</output>
 			))}
 		</div>
 	);

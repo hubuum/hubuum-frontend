@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { TablePagination } from "@/components/table-pagination";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -202,6 +202,24 @@ export function NamespacesTable() {
 		},
 	});
 
+	const deleteSelectedNamespaces = useCallback(() => {
+		if (!selectedNamespaceIds.length) {
+			return;
+		}
+
+		setTableError(null);
+		setTableSuccess(null);
+
+		const confirmed = window.confirm(
+			`Delete ${selectedNamespaceIds.length} selected namespace(s)?`,
+		);
+		if (!confirmed) {
+			return;
+		}
+
+		deleteMutation.mutate([...selectedNamespaceIds]);
+	}, [selectedNamespaceIds, deleteMutation]);
+
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setFormError(null);
@@ -336,7 +354,7 @@ export function NamespacesTable() {
 				},
 			}),
 		);
-	}, [selectedNamespaceIds.length]);
+	}, [selectedNamespaceIds.length, deleteSelectedNamespaces]);
 
 	if (query.isLoading) {
 		return <div className="card">Loading namespaces...</div>;
@@ -351,23 +369,6 @@ export function NamespacesTable() {
 		);
 	}
 
-	function deleteSelectedNamespaces() {
-		if (!selectedNamespaceIds.length) {
-			return;
-		}
-
-		setTableError(null);
-		setTableSuccess(null);
-
-		const confirmed = window.confirm(
-			`Delete ${selectedNamespaceIds.length} selected namespace(s)?`,
-		);
-		if (!confirmed) {
-			return;
-		}
-
-		deleteMutation.mutate([...selectedNamespaceIds]);
-	}
 
 	function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -611,21 +612,19 @@ export function NamespacesTable() {
 						</tbody>
 					</table>
 				)}
-				{pageData && (pageData.nextCursor || pageData.prevCursor) ? (
+				{pageData && (pageData.nextCursor || pageData.prevCursor || pagination.hasPrevPage) ? (
 					<TablePagination
 						hasNextPage={!!pageData.nextCursor}
-						hasPrevPage={!!pageData.prevCursor}
+						hasPrevPage={pagination.hasPrevPage || !!pageData.prevCursor}
 						onNextPage={() =>
 							pageData.nextCursor &&
 							pagination.goToNextPage(pageData.nextCursor)
 						}
 						onPrevPage={() =>
-							pageData.prevCursor &&
-							pagination.goToPrevPage(pageData.prevCursor)
+							pagination.goToPrevPage(pageData.prevCursor ?? undefined)
 						}
 						onFirstPage={pagination.goToFirstPage}
 						currentCount={namespaces.length}
-						limit={pagination.limit}
 					/>
 				) : null}
 			</div>
