@@ -2590,6 +2590,111 @@ html[data-theme="dark"] .status-pill--accent {
 }
 
 /* ========================================
+   Pin Button Styles
+   ======================================== */
+
+/* Pin Button - Inline */
+.pin-button-inline {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	margin-left: 8px;
+	background: none;
+	border: none;
+	cursor: pointer;
+	opacity: 0.6;
+	transition: opacity 0.2s ease;
+	vertical-align: middle;
+}
+
+.pin-button-inline:hover {
+	opacity: 1;
+}
+
+.pin-button-inline .pin-icon {
+	width: 16px;
+	height: 16px;
+	display: block;
+}
+
+.pin-button-wrapper {
+	display: inline-block;
+	position: relative;
+	vertical-align: middle;
+}
+
+/* Pin Menu - Dropdown */
+.pin-menu {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	margin-top: 4px;
+	background: var(--card);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	box-shadow: var(--shadow);
+	min-width: 220px;
+	z-index: 100;
+	padding: 4px;
+}
+
+.pin-menu-option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 8px 12px;
+	background: none;
+	border: none;
+	border-radius: 10px;
+	cursor: pointer;
+	text-align: left;
+	font-size: 0.9rem;
+	color: var(--ink);
+	transition: background-color 0.15s ease;
+}
+
+.pin-menu-option:hover {
+	background: var(--accent-soft);
+}
+
+.pin-menu-option--checked {
+	background: var(--accent-soft);
+}
+
+.pin-menu-check {
+	width: 16px;
+	text-align: center;
+	font-weight: bold;
+	color: var(--accent);
+}
+
+/* Pinned Item Badge */
+.pinned-item-badge {
+	display: inline-block;
+	margin-left: 6px;
+	padding: 2px 6px;
+	background: var(--accent-soft);
+	color: var(--accent);
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 500;
+	text-transform: lowercase;
+	vertical-align: middle;
+}
+
+/* Adjust h2 to accommodate inline button */
+h2 {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0;
+}
+
+/* ========================================
    Quick Access Hub Styles
    ======================================== */
 
