@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { PinMenu } from "@/components/pin-menu";
 import { isPinned, pinItem, unpinItem } from "@/lib/pinned-items";
-import type { PinnedItemType, ClassPinAction } from "@/types/quick-access";
+import type { PinnedItemType } from "@/types/quick-access";
 
 interface PinButtonProps {
 	type: PinnedItemType;

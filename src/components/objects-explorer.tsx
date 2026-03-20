@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { JsonEditor } from "@/components/json-editor";
 import { TablePagination } from "@/components/table-pagination";
@@ -332,6 +332,24 @@ export function ObjectsExplorer() {
 		},
 	});
 
+	const deleteSelectedObjects = useCallback(() => {
+		if (!selectedObjectIds.length || parsedClassId === null) {
+			return;
+		}
+
+		const confirmed = window.confirm(
+			`Delete ${selectedObjectIds.length} selected object(s)?`,
+		);
+		if (!confirmed) {
+			return;
+		}
+
+		deleteMutation.mutate({
+			classId: parsedClassId,
+			objectIds: [...selectedObjectIds],
+		});
+	}, [selectedObjectIds, parsedClassId, deleteMutation]);
+
 	useEffect(() => {
 		if (!classes.length) {
 			setCreateClassId("");
@@ -477,7 +495,7 @@ export function ObjectsExplorer() {
 				},
 			}),
 		);
-	}, [selectedObjectIds.length, parsedClassId]);
+	}, [selectedObjectIds.length, parsedClassId, deleteSelectedObjects]);
 
 	function renderSortIndicator(column: string) {
 		if (sortState.column !== column) {
@@ -537,23 +555,6 @@ export function ObjectsExplorer() {
 		);
 	}
 
-	function deleteSelectedObjects() {
-		if (parsedClassId === null || !selectedObjectIds.length) {
-			return;
-		}
-
-		const confirmed = window.confirm(
-			`Delete ${selectedObjectIds.length} selected object(s)?`,
-		);
-		if (!confirmed) {
-			return;
-		}
-
-		deleteMutation.mutate({
-			classId: parsedClassId,
-			objectIds: [...selectedObjectIds],
-		});
-	}
 
 	function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -865,7 +866,6 @@ export function ObjectsExplorer() {
 						}
 						onFirstPage={pagination.goToFirstPage}
 						currentCount={objects.length}
-						limit={pagination.limit}
 					/>
 				) : null}
 			</div>

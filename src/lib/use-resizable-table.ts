@@ -108,7 +108,9 @@ export function useResizableTable({
 				const element = th as HTMLElement;
 				element.classList.remove("resizable");
 				const handles = th.querySelectorAll(".resize-handle");
-				handles.forEach((handle) => handle.remove());
+				handles.forEach((handle) => {
+					handle.remove();
+				});
 			});
 		};
 	}, [tableId, storageKey]);

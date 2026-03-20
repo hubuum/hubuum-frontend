@@ -86,7 +86,7 @@ export function useTableKeyboardNav<T>({
 	// Reset focus when items change
 	useEffect(() => {
 		setFocusedIndex(null);
-	}, [items.length]);
+	}, []);
 
 	return {
 		focusedIndex,

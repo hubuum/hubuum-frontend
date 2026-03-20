@@ -7,7 +7,6 @@ type TablePaginationProps = {
 	onPrevPage: () => void;
 	onFirstPage: () => void;
 	currentCount: number;
-	limit: number;
 };
 
 export function TablePagination({
@@ -17,7 +16,6 @@ export function TablePagination({
 	onPrevPage,
 	onFirstPage,
 	currentCount,
-	limit,
 }: TablePaginationProps) {
 	if (!hasNextPage && !hasPrevPage) {
 		return null;
