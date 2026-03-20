@@ -3,6 +3,7 @@
 import type { ChangeEvent } from "react";
 import { useMemo, useRef } from "react";
 
+import { CodeEditor } from "@/components/code-editor";
 import { readJsonFileAsPrettyText } from "@/lib/json-file";
 import {
 	analyzeJsonSchema,
@@ -11,6 +12,7 @@ import {
 	summarizeJsonDocument,
 	validateJsonAgainstSchema,
 } from "@/lib/json-inspector";
+import { json } from "@codemirror/lang-json";
 
 type JsonEditorProps = {
 	id: string;
@@ -52,6 +54,7 @@ export function JsonEditor({
 	validationEnabled = false,
 }: JsonEditorProps) {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
+	const jsonExtensions = useMemo(() => [json()], []);
 	const parsed = useMemo(() => parseJsonText(value), [value]);
 	const formattedValue = useMemo(() => formatJsonText(value), [value]);
 
@@ -114,9 +117,9 @@ export function JsonEditor({
 	return (
 		<div className="json-editor">
 			<div className="json-editor-header">
-				<label className="json-editor-label" htmlFor={id}>
+				<div className="json-editor-label">
 					<span>{label}</span>
-				</label>
+				</div>
 
 				<div className="json-editor-actions">
 					<button
@@ -138,13 +141,16 @@ export function JsonEditor({
 				</div>
 			</div>
 
-			<textarea
-				id={id}
-				rows={rows}
+			<CodeEditor
 				value={value}
-				onChange={(event) => onChange(event.target.value)}
+				onChange={onChange}
 				placeholder={placeholder}
 				disabled={disabled}
+				rows={rows}
+				extensions={jsonExtensions}
+				className="json-code-surface"
+				inputId={id}
+				ariaLabel={label}
 			/>
 			<input
 				ref={fileInputRef}

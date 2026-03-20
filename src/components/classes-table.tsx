@@ -645,17 +645,16 @@ export function ClassesTable() {
 						</tbody>
 					</table>
 				)}
-				{pageData && (pageData.nextCursor || pageData.prevCursor) ? (
+				{pageData && (pageData.nextCursor || pageData.prevCursor || pagination.hasPrevPage) ? (
 					<TablePagination
 						hasNextPage={!!pageData.nextCursor}
-						hasPrevPage={!!pageData.prevCursor}
+						hasPrevPage={pagination.hasPrevPage || !!pageData.prevCursor}
 						onNextPage={() =>
 							pageData.nextCursor &&
 							pagination.goToNextPage(pageData.nextCursor)
 						}
 						onPrevPage={() =>
-							pageData.prevCursor &&
-							pagination.goToPrevPage(pageData.prevCursor)
+							pagination.goToPrevPage(pageData.prevCursor ?? undefined)
 						}
 						onFirstPage={pagination.goToFirstPage}
 						currentCount={classes.length}

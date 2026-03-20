@@ -21,6 +21,8 @@ const shortcuts: Shortcut[] = [
 	{ keys: ["?"], description: "Show this help" },
 	{ keys: ["↑", "↓"], description: "Navigate table rows" },
 	{ keys: ["Enter"], description: "Open focused row" },
+	{ keys: ["N"], description: "Go to the next page in the active paged view" },
+	{ keys: ["P"], description: "Go to the previous page in the active paged view" },
 ];
 
 export function KeyboardHelp({ open, onClose }: KeyboardHelpProps) {

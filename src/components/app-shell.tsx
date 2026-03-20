@@ -32,6 +32,10 @@ import {
 	SELECTION_STATE_EVENT,
 	type SelectionStateEventDetail,
 } from "@/lib/create-events";
+import {
+	triggerActivePaginationNextPage,
+	triggerActivePaginationPrevPage,
+} from "@/lib/pagination-shortcuts";
 import { normalizeSearchTerm } from "@/lib/resource-search";
 
 type AppShellProps = {
@@ -745,7 +749,8 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 			const isTyping =
 				target.tagName === "INPUT" ||
 				target.tagName === "TEXTAREA" ||
-				target.contentEditable === "true";
+				target.contentEditable === "true" ||
+				target.closest(".cm-editor") !== null;
 
 			// Esc to deselect all (works anywhere)
 			if (event.key === "Escape" && selectionCount > 0) {
@@ -783,6 +788,20 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 
 			// Ignore other shortcuts if typing or if certain modifier keys are pressed
 			if (isTyping || event.ctrlKey || event.metaKey || event.altKey) {
+				return;
+			}
+
+			if (event.key === "n" || event.key === "N") {
+				if (triggerActivePaginationNextPage()) {
+					event.preventDefault();
+				}
+				return;
+			}
+
+			if (event.key === "p" || event.key === "P") {
+				if (triggerActivePaginationPrevPage()) {
+					event.preventDefault();
+				}
 				return;
 			}
 
