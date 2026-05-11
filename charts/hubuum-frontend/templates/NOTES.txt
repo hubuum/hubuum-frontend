@@ -1,0 +1,16 @@
+Hubuum frontend has been installed.
+
+Image:
+  {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+
+Service:
+  {{ include "hubuum-frontend.fullname" . }}:{{ .Values.service.port }}
+
+Set BACKEND_BASE_URL with:
+  --set env.BACKEND_BASE_URL=https://hubuum-api.example.com
+
+For multiple replicas, configure Valkey with either:
+  --set valkeyUrl=redis://valkey:6379/0
+
+or:
+  --set existingSecret.name=hubuum-frontend

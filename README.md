@@ -94,6 +94,38 @@ The generator runs via `npx orval@8.4.1`, so network access is required when gen
 - Do not rely on in-memory sessions in production.
 - TLS terminate at ingress; keep secure cookies enabled in production.
 
+## Container and Helm publishing
+
+Commits to `main` publish a moving container image:
+
+```text
+ghcr.io/hubuum/hubuum-frontend:main
+```
+
+The workflow also publishes an immutable SHA tag for each commit.
+
+The Helm chart lives in `charts/hubuum-frontend` and is published to GHCR as
+an OCI chart with a unique prerelease chart version per `main` build. The chart
+defaults to the moving `main` image tag.
+
+Install from the published OCI chart:
+
+```bash
+helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
+  --version 0.0.1-main.<run-number> \
+  --set env.BACKEND_BASE_URL=https://hubuum-api.example.com \
+  --set existingSecret.name=hubuum-frontend
+```
+
+For OKD Routes, enable the chart route resource:
+
+```bash
+helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
+  --version 0.0.1-main.<run-number> \
+  --set route.enabled=true \
+  --set route.host=hubuum.example.com
+```
+
 ## Important caveat
 
 The current Hubuum OpenAPI spec has many list endpoints that return arrays without explicit pagination/filter query params. For large datasets, frontend UX and backend load will benefit from adding pagination, filtering, and sort parameters to those endpoints.
