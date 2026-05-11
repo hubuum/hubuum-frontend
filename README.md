@@ -28,6 +28,46 @@ Browser clients never receive backend tokens directly.
 
 This keeps pods stateless and horizontally scalable. Any pod can serve any authenticated request as long as it can read the same Valkey instance.
 
+## BFF route layout
+
+The frontend owns only routes under `/api/frontend/...`.
+
+| Frontend route | Purpose |
+| --- | --- |
+| `/api/frontend/auth/login` | Accepts browser login payloads, calls backend `/api/v0/auth/login`, and creates the frontend session cookie. |
+| `/api/frontend/auth/logout` | Logs out locally and asks the backend to revoke the current token. |
+| `/api/frontend/auth/session` | Readiness-friendly session check for the browser session. |
+| `/api/frontend/hubuum/<backend-path>` | Generic authenticated BFF proxy. For example, `/api/frontend/hubuum/api/v1/classes` calls backend `/api/v1/classes` with the server-side bearer token. |
+| `/api/frontend/classes/...` | Frontend helper BFF routes that normalize a few class/object workflows before calling backend APIs. |
+
+The frontend deliberately does not own `/api/v0/...` or `/api/v1/...`. This
+lets a colocated reverse proxy route those paths directly to the backend while
+sending browser/app traffic and `/api/frontend/...` to the Next.js frontend.
+
+Example edge routing shape:
+
+```text
+/api/v0/*        -> hubuum backend
+/api/v1/*        -> hubuum backend
+/api/frontend/*  -> hubuum frontend
+/*               -> hubuum frontend
+```
+
+The internal BFF prefix is intentionally fixed at `/api/frontend`. Making it an
+environment variable would have some upside, but the tradeoff is not attractive
+for this app:
+
+- **Pros:** deployments could choose a different external prefix without edge
+  rewrite rules.
+- **Cons:** Next.js App Router routes are filesystem-defined, so runtime env
+  cannot actually move the server route files; client code, generated API URLs,
+  route docs, CSP/proxy rules, health checks, and tests would all need to agree
+  on one mutable value; misconfiguration could accidentally put BFF routes back
+  under backend-looking paths.
+
+If a site needs a different public prefix, prefer an edge/proxy rewrite from the
+public prefix to the frontend's fixed `/api/frontend/...` routes.
+
 ## Quick start
 
 1. Install dependencies:
