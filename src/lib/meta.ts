@@ -1,6 +1,6 @@
 import "server-only";
 
-import { backendFetchJson } from "@/lib/api/backend";
+import { BackendError, backendFetchJson } from "@/lib/api/backend";
 import type {
 	CountsResponse,
 	DbStateResponse,
@@ -19,6 +19,20 @@ export async function fetchMetaCounts(
 		correlationId,
 		token,
 	});
+}
+
+export async function tryFetchMetaCounts(
+	token: string,
+	correlationId?: string,
+): Promise<CountsWithOptionalNamespaces | null> {
+	try {
+		return await fetchMetaCounts(token, correlationId);
+	} catch (error) {
+		if (error instanceof BackendError && error.status === 403) {
+			return null;
+		}
+		throw error;
+	}
 }
 
 export async function fetchDbState(

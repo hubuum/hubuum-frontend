@@ -8,7 +8,11 @@ import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
-import { fetchMetaCounts, getTotalNamespaces } from "@/lib/meta";
+import {
+	type CountsWithOptionalNamespaces,
+	getTotalNamespaces,
+	tryFetchMetaCounts,
+} from "@/lib/meta";
 
 type ActionCard = {
 	title: string;
@@ -200,10 +204,24 @@ function IconUser({ className }: { className?: string }) {
 }
 
 function getRecommendedAction(
-	totalNamespaces: number,
-	totalClasses: number,
-	totalObjects: number,
+	counts: CountsWithOptionalNamespaces | null,
 ): RecommendedAction {
+	if (!counts) {
+		return {
+			title: "Continue exploring the workspace",
+			description:
+				"Pick the area you want to work in. Live counts aren't available for your account, but every workspace area is still reachable below.",
+			primaryHref: "/objects",
+			primaryLabel: "Open objects",
+			secondaryHref: "/namespaces",
+			secondaryLabel: "Open namespaces",
+		};
+	}
+
+	const totalNamespaces = getTotalNamespaces(counts);
+	const totalClasses = counts.total_classes;
+	const totalObjects = counts.total_objects;
+
 	if (totalNamespaces === 0) {
 		return {
 			title: "Start by creating a namespace",
@@ -252,16 +270,19 @@ function getRecommendedAction(
 }
 
 function getActionCards(
-	totalNamespaces: number,
-	totalClasses: number,
-	totalObjects: number,
+	counts: CountsWithOptionalNamespaces | null,
 	canViewAdmin: boolean,
 ): ActionCard[] {
+	const totalNamespaces = counts ? getTotalNamespaces(counts) : 0;
+	const totalClasses = counts?.total_classes ?? 0;
+	const totalObjects = counts?.total_objects ?? 0;
+
 	const cards: ActionCard[] = [
 		{
 			title: "Namespaces",
-			description:
-				totalNamespaces === 0
+			description: !counts
+				? "Organize ownership and permissions through namespaces."
+				: totalNamespaces === 0
 					? "No namespaces exist yet. Start here to establish ownership and permissions."
 					: `${totalNamespaces} namespace${totalNamespaces === 1 ? "" : "s"} available for organizing classes and access.`,
 			primaryHref: "/namespaces?create=1",
@@ -269,12 +290,13 @@ function getActionCards(
 			secondaryHref: "/namespaces",
 			secondaryLabel: "Browse namespaces",
 			icon: <IconNamespace className="action-card-icon" />,
-			count: totalNamespaces > 0 ? totalNamespaces : undefined,
+			count: counts && totalNamespaces > 0 ? totalNamespaces : undefined,
 		},
 		{
 			title: "Classes",
-			description:
-				totalNamespaces === 0
+			description: !counts
+				? "Classes give your objects a schema and a place to live."
+				: totalNamespaces === 0
 					? "Classes depend on namespaces, so create a namespace first."
 					: totalClasses === 0
 						? "No classes yet. Define one to describe the objects your team will manage."
@@ -284,12 +306,13 @@ function getActionCards(
 			secondaryHref: "/classes",
 			secondaryLabel: "Browse classes",
 			icon: <IconClass className="action-card-icon" />,
-			count: totalClasses > 0 ? totalClasses : undefined,
+			count: counts && totalClasses > 0 ? totalClasses : undefined,
 		},
 		{
 			title: "Objects",
-			description:
-				totalClasses === 0
+			description: !counts
+				? "Inspect and update the records that live inside your classes."
+				: totalClasses === 0
 					? "Objects depend on classes. Once a class exists, this becomes the main operational area."
 					: totalObjects === 0
 						? "No objects yet. Add the first object to start using the model."
@@ -299,12 +322,12 @@ function getActionCards(
 			secondaryHref: "/objects",
 			secondaryLabel: "Open objects",
 			icon: <IconObject className="action-card-icon" />,
-			count: totalObjects > 0 ? totalObjects : undefined,
+			count: counts && totalObjects > 0 ? totalObjects : undefined,
 		},
 		{
 			title: "Relations",
 			description:
-				totalClasses < 2
+				counts && totalClasses < 2
 					? "Relations become useful once you have at least two classes or established object records."
 					: "Map how classes and objects relate so navigation and reachability become meaningful.",
 			primaryHref: "/relations/classes?create=1",
@@ -316,7 +339,7 @@ function getActionCards(
 		{
 			title: "Reports",
 			description:
-				totalClasses === 0
+				counts && totalClasses === 0
 					? "Reports become useful once you have real collections to query, but you can prepare templates ahead of time."
 					: "Create stored templates and run scoped reports without leaving the workspace.",
 			primaryHref: "/reports",
@@ -364,21 +387,11 @@ export default async function AppPage() {
 		undefined;
 	const session = await requireServerSession();
 	const [counts, canViewAdmin] = await Promise.all([
-		fetchMetaCounts(session.token, correlationId),
+		tryFetchMetaCounts(session.token, correlationId),
 		hasAdminAccess(session.token, correlationId),
 	]);
-	const totalNamespaces = getTotalNamespaces(counts);
-	const recommendedAction = getRecommendedAction(
-		totalNamespaces,
-		counts.total_classes,
-		counts.total_objects,
-	);
-	const actionCards = getActionCards(
-		totalNamespaces,
-		counts.total_classes,
-		counts.total_objects,
-		canViewAdmin,
-	);
+	const recommendedAction = getRecommendedAction(counts);
+	const actionCards = getActionCards(counts, canViewAdmin);
 
 	return (
 		<div className="landing-layout">
