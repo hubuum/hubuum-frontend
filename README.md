@@ -103,10 +103,12 @@ ghcr.io/hubuum/hubuum-frontend:main
 ```
 
 The workflow also publishes an immutable SHA tag for each commit.
+Both tags are multi-architecture images for `linux/amd64` and `linux/arm64`.
 
 The Helm chart lives in `charts/hubuum-frontend` and is published to GHCR as
 an OCI chart with a unique prerelease chart version per `main` build. The chart
-defaults to the moving `main` image tag.
+defaults to the moving `main` image tag, so Kubernetes pulls the matching image
+architecture for each node.
 
 Install from the published OCI chart:
 
