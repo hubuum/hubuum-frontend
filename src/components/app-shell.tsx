@@ -102,7 +102,7 @@ async function parseJsonPayload(response: Response): Promise<unknown> {
 async function fetchRelationsObjectOptions(
 	classId: number,
 ): Promise<HubuumObject[]> {
-	const response = await fetch(`/api/classes/${classId}/objects`, {
+	const response = await fetch(`/api/frontend/classes/${classId}/objects`, {
 		credentials: "include",
 	});
 	const payload = await parseJsonPayload(response);

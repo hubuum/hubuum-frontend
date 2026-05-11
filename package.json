@@ -10,8 +10,8 @@
 		"build": "next build",
 		"start": "node scripts/start-standalone.mjs",
 		"lint": "biome lint .",
-		"typecheck": "tsc --noEmit",
-		"gen:api": "npx --yes orval@8.4.1 --config orval.config.mjs",
+		"typecheck": "next typegen && rm -rf .next/dev && tsc --noEmit",
+		"gen:api": "npx --yes orval@8.4.1 --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
 		"audit:prod": "npm audit --omit=dev"
 	},
 	"dependencies": {

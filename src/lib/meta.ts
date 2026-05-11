@@ -1,11 +1,6 @@
 import "server-only";
 
 import { backendFetchJson } from "@/lib/api/backend";
-import {
-	getGetApiV0MetaCountsUrl,
-	getGetApiV0MetaDbUrl,
-	getGetApiV0MetaTasksUrl,
-} from "@/lib/api/generated/client";
 import type {
 	CountsResponse,
 	DbStateResponse,
@@ -20,20 +15,17 @@ export async function fetchMetaCounts(
 	token: string,
 	correlationId?: string,
 ): Promise<CountsWithOptionalNamespaces> {
-	return backendFetchJson<CountsWithOptionalNamespaces>(
-		getGetApiV0MetaCountsUrl(),
-		{
-			correlationId,
-			token,
-		},
-	);
+	return backendFetchJson<CountsWithOptionalNamespaces>("/api/v0/meta/counts", {
+		correlationId,
+		token,
+	});
 }
 
 export async function fetchDbState(
 	token: string,
 	correlationId?: string,
 ): Promise<DbStateResponse> {
-	return backendFetchJson<DbStateResponse>(getGetApiV0MetaDbUrl(), {
+	return backendFetchJson<DbStateResponse>("/api/v0/meta/db", {
 		correlationId,
 		token,
 	});
@@ -43,7 +35,7 @@ export async function fetchTaskQueueState(
 	token: string,
 	correlationId?: string,
 ): Promise<TaskQueueStateResponse> {
-	return backendFetchJson<TaskQueueStateResponse>(getGetApiV0MetaTasksUrl(), {
+	return backendFetchJson<TaskQueueStateResponse>("/api/v0/meta/tasks", {
 		correlationId,
 		token,
 	});

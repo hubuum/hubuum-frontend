@@ -73,7 +73,7 @@ export async function fetchTasks(
 		searchParams.set("cursor", options.cursor.trim());
 	}
 
-	const response = await fetch(`/api/v1/tasks?${searchParams.toString()}`, {
+	const response = await fetch(`/api/frontend/hubuum/api/v1/tasks?${searchParams.toString()}`, {
 		credentials: "include",
 	});
 

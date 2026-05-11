@@ -35,26 +35,6 @@ const csp = [
 const nextConfig: NextConfig = {
 	output: "standalone",
 	poweredByHeader: false,
-	async rewrites() {
-		return [
-			{
-				source: "/api/v0/auth/login",
-				destination: "/api/auth/login",
-			},
-			{
-				source: "/api/v0/auth/logout",
-				destination: "/api/auth/logout",
-			},
-			{
-				source: "/api/v0/meta/:path*",
-				destination: "/api/hubuum/api/v0/meta/:path*",
-			},
-			{
-				source: "/api/v1/:path*",
-				destination: "/api/hubuum/api/v1/:path*",
-			},
-		];
-	},
 	async headers() {
 		return [
 			{

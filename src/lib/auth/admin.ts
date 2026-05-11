@@ -1,14 +1,13 @@
 import "server-only";
 
 import { backendFetchRaw } from "@/lib/api/backend";
-import { getGetApiV1IamGroupsUrl } from "@/lib/api/generated/client";
 
 export async function hasAdminAccess(
 	token: string,
 	correlationId?: string,
 ): Promise<boolean> {
 	try {
-		const response = await backendFetchRaw(getGetApiV1IamGroupsUrl(), {
+		const response = await backendFetchRaw("/api/v1/iam/groups", {
 			correlationId,
 			method: "GET",
 			token,

@@ -169,7 +169,7 @@ async function fetchRelatedObjects(
 		params.set("ignore_classes", ignoredClassIds.join(","));
 	}
 	const response = await fetch(
-		`/api/v1/classes/${classId}/objects/${objectId}/related/objects?${params.toString()}`,
+		`/api/frontend/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/objects?${params.toString()}`,
 		{
 			credentials: "include",
 		},

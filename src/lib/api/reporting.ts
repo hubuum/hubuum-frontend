@@ -152,7 +152,7 @@ export async function runReport(
 	request: ReportRequest,
 	preferredContentType: ReportContentType,
 ): Promise<ReportExecutionResult> {
-	const response = await fetch("/api/v1/reports", {
+	const response = await fetch("/api/frontend/hubuum/api/v1/reports", {
 		credentials: "include",
 		method: "POST",
 		headers: {

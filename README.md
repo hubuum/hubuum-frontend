@@ -19,11 +19,11 @@ Next.js frontend scaffold for the Hubuum REST API, built for secure horizontal s
 
 Browser clients never receive backend tokens directly.
 
-1. `POST /api/auth/login` forwards credentials to Hubuum `/api/v0/auth/login`.
+1. `POST /api/frontend/auth/login` forwards credentials to Hubuum `/api/v0/auth/login`.
 2. Hubuum returns an opaque token.
 3. Frontend creates a session id (`hubuum.sid`) and stores token in Valkey under that key.
 4. Browser gets only the `HttpOnly` session cookie.
-5. Browser data requests go via `/api/hubuum/<path>`.
+5. Browser data requests go via `/api/frontend/hubuum/<path>`.
 6. Proxy reads session from Valkey and injects bearer token for upstream Hubuum request.
 
 This keeps pods stateless and horizontally scalable. Any pod can serve any authenticated request as long as it can read the same Valkey instance.
@@ -90,7 +90,9 @@ The generator runs via `npx orval@8.4.1`, so network access is required when gen
 
 - Use at least 2 frontend replicas.
 - Set `VALKEY_URL` in a Secret and mount as env var.
-- Use readiness/liveness probes on `/login` or `/api/auth/session`.
+- Use readiness/liveness probes on `/login` or `/api/frontend/auth/session`.
+- Frontend-owned BFF routes live under `/api/frontend/...`; `/api/v0/...`
+  and `/api/v1/...` remain available for direct backend routing at the edge.
 - Do not rely on in-memory sessions in production.
 - TLS terminate at ingress; keep secure cookies enabled in production.
 

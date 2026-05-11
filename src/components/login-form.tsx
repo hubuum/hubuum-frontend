@@ -22,7 +22,7 @@ export function LoginForm() {
 
 		try {
 			const payload: LoginUser = { username, password };
-			const response = await fetch("/api/auth/login", {
+			const response = await fetch("/api/frontend/auth/login", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -51,7 +51,7 @@ export function LoginForm() {
 
 	return (
 		<form
-			action="/api/auth/login"
+			action="/api/frontend/auth/login"
 			aria-label="Login form"
 			className="card login-card"
 			method="post"

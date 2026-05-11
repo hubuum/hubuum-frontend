@@ -95,7 +95,7 @@ async function fetchObjectsByClass(
 	if (sort) params.set("sort", sort);
 
 	const response = await fetch(
-		`/api/classes/${classId}/objects?${params.toString()}`,
+		`/api/frontend/classes/${classId}/objects?${params.toString()}`,
 		{
 			credentials: "include",
 		},
@@ -257,7 +257,7 @@ export function ObjectsExplorer() {
 	const createMutation = useMutation({
 		mutationFn: async (payload: NewHubuumObject) => {
 			const response = await fetch(
-				`/api/classes/${payload.hubuum_class_id}/objects`,
+				`/api/frontend/classes/${payload.hubuum_class_id}/objects`,
 				{
 					method: "POST",
 					headers: {

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetchRaw } from "@/lib/api/backend";
-import { getGetApiV1ClassesByClassIdTrailingUrl } from "@/lib/api/generated/client";
 import {
 	clearSessionCookie,
 	destroySession,
@@ -77,7 +76,7 @@ async function proxyClassObjects(request: NextRequest, context: RouteContext) {
 	}
 
 	const body = method === "POST" ? await request.text() : undefined;
-	const upstreamPath = `${getGetApiV1ClassesByClassIdTrailingUrl(classId)}${request.nextUrl.search}`;
+	const upstreamPath = `/api/v1/classes/${classId}/${request.nextUrl.search}`;
 	const upstream = await backendFetchRaw(upstreamPath, {
 		correlationId,
 		method,

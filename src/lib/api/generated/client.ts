@@ -69,6 +69,8 @@ import type {
   User,
   UserToken
 } from './models';
+import { HUBUUM_BFF_PREFIX } from '@/lib/api/frontend';
+
 
 
 /**
@@ -104,7 +106,7 @@ export const getPostApiV0AuthLoginUrl = () => {
 
   
 
-  return `/api/v0/auth/login`
+  return `${HUBUUM_BFF_PREFIX}/api/v0/auth/login`
 }
 
 export const postApiV0AuthLogin = async (loginUser: LoginUser, options?: RequestInit): Promise<postApiV0AuthLoginResponse> => {
@@ -160,7 +162,7 @@ export const getPostApiV0AuthLogoutUrl = () => {
 
   
 
-  return `/api/v0/auth/logout`
+  return `${HUBUUM_BFF_PREFIX}/api/v0/auth/logout`
 }
 
 export const postApiV0AuthLogout = async ( options?: RequestInit): Promise<postApiV0AuthLogoutResponse> => {
@@ -215,7 +217,7 @@ export const getPostApiV0AuthLogoutTokenUrl = () => {
 
   
 
-  return `/api/v0/auth/logout/token`
+  return `${HUBUUM_BFF_PREFIX}/api/v0/auth/logout/token`
 }
 
 export const postApiV0AuthLogoutToken = async (logoutTokenRequest: LogoutTokenRequest, options?: RequestInit): Promise<postApiV0AuthLogoutTokenResponse> => {
@@ -271,7 +273,7 @@ export const getPostApiV0AuthLogoutUidByUserIdUrl = (userId: number,) => {
 
   
 
-  return `/api/v0/auth/logout/uid/${userId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v0/auth/logout/uid/${userId}`
 }
 
 export const postApiV0AuthLogoutUidByUserId = async (userId: number, options?: RequestInit): Promise<postApiV0AuthLogoutUidByUserIdResponse> => {
@@ -326,7 +328,7 @@ export const getPostApiV0AuthLogoutAllUrl = () => {
 
   
 
-  return `/api/v0/auth/logout_all`
+  return `${HUBUUM_BFF_PREFIX}/api/v0/auth/logout_all`
 }
 
 export const postApiV0AuthLogoutAll = async ( options?: RequestInit): Promise<postApiV0AuthLogoutAllResponse> => {
@@ -376,7 +378,7 @@ export const getGetApiV0AuthValidateUrl = () => {
 
   
 
-  return `/api/v0/auth/validate`
+  return `${HUBUUM_BFF_PREFIX}/api/v0/auth/validate`
 }
 
 export const getApiV0AuthValidate = async ( options?: RequestInit): Promise<getApiV0AuthValidateResponse> => {
@@ -431,7 +433,7 @@ export const getGetApiV0MetaCountsUrl = () => {
 
   
 
-  return `/api/v0/meta/counts`
+  return `${HUBUUM_BFF_PREFIX}/api/v0/meta/counts`
 }
 
 export const getApiV0MetaCounts = async ( options?: RequestInit): Promise<getApiV0MetaCountsResponse> => {
@@ -486,7 +488,7 @@ export const getGetApiV0MetaDbUrl = () => {
 
   
 
-  return `/api/v0/meta/db`
+  return `${HUBUUM_BFF_PREFIX}/api/v0/meta/db`
 }
 
 export const getApiV0MetaDb = async ( options?: RequestInit): Promise<getApiV0MetaDbResponse> => {
@@ -541,7 +543,7 @@ export const getGetApiV0MetaTasksUrl = () => {
 
   
 
-  return `/api/v0/meta/tasks`
+  return `${HUBUUM_BFF_PREFIX}/api/v0/meta/tasks`
 }
 
 export const getApiV0MetaTasks = async ( options?: RequestInit): Promise<getApiV0MetaTasksResponse> => {
@@ -603,7 +605,7 @@ export const getGetApiV1ClassesUrl = (params?: GetApiV1ClassesParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/classes?${stringifiedParams}` : `/api/v1/classes`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes`
 }
 
 export const getApiV1Classes = async (params?: GetApiV1ClassesParams, options?: RequestInit): Promise<getApiV1ClassesResponse> => {
@@ -663,7 +665,7 @@ export const getPostApiV1ClassesUrl = () => {
 
   
 
-  return `/api/v1/classes`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes`
 }
 
 export const postApiV1Classes = async (newHubuumClass: NewHubuumClass, options?: RequestInit): Promise<postApiV1ClassesResponse> => {
@@ -719,7 +721,7 @@ export const getGetApiV1ClassesByClassIdUrl = (classId: number,) => {
 
   
 
-  return `/api/v1/classes/${classId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}`
 }
 
 export const getApiV1ClassesByClassId = async (classId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdResponse> => {
@@ -774,7 +776,7 @@ export const getDeleteApiV1ClassesByClassIdUrl = (classId: number,) => {
 
   
 
-  return `/api/v1/classes/${classId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}`
 }
 
 export const deleteApiV1ClassesByClassId = async (classId: number, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdResponse> => {
@@ -834,7 +836,7 @@ export const getPatchApiV1ClassesByClassIdUrl = (classId: number,) => {
 
   
 
-  return `/api/v1/classes/${classId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}`
 }
 
 export const patchApiV1ClassesByClassId = async (classId: number,
@@ -904,7 +906,7 @@ export const getGetApiV1ClassesByClassIdTrailingUrl = (classId: number,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/?${stringifiedParams}` : `/api/v1/classes/${classId}/`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/`
 }
 
 export const getApiV1ClassesByClassIdTrailing = async (classId: number,
@@ -965,7 +967,7 @@ export const getPostApiV1ClassesByClassIdTrailingUrl = (classId: number,) => {
 
   
 
-  return `/api/v1/classes/${classId}/`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/`
 }
 
 export const postApiV1ClassesByClassIdTrailing = async (classId: number,
@@ -1030,7 +1032,7 @@ export const getGetApiV1ClassesByClassIdPermissionsUrl = (classId: number,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/permissions?${stringifiedParams}` : `/api/v1/classes/${classId}/permissions`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/permissions?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/permissions`
 }
 
 export const getApiV1ClassesByClassIdPermissions = async (classId: number,
@@ -1099,7 +1101,7 @@ export const getGetApiV1ClassesByClassIdRelationsUrl = (classId: number,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/relations?${stringifiedParams}` : `/api/v1/classes/${classId}/relations`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations`
 }
 
 export const getApiV1ClassesByClassIdRelations = async (classId: number,
@@ -1160,7 +1162,7 @@ export const getPostApiV1ClassesByClassIdRelationsUrl = (classId: number,) => {
 
   
 
-  return `/api/v1/classes/${classId}/relations`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations`
 }
 
 export const postApiV1ClassesByClassIdRelations = async (classId: number,
@@ -1225,7 +1227,7 @@ export const getGetApiV1ClassesByClassIdRelationsTransitiveTrailingUrl = (classI
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/relations/transitive/?${stringifiedParams}` : `/api/v1/classes/${classId}/relations/transitive/`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/transitive/?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/transitive/`
 }
 
 export const getApiV1ClassesByClassIdRelationsTransitiveTrailing = async (classId: number,
@@ -1290,7 +1292,7 @@ export const getGetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToUrl =
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/relations/transitive/class/${classIdTo}?${stringifiedParams}` : `/api/v1/classes/${classId}/relations/transitive/class/${classIdTo}`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/transitive/class/${classIdTo}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/transitive/class/${classIdTo}`
 }
 
 export const getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdTo = async (classId: number,
@@ -1353,7 +1355,7 @@ export const getDeleteApiV1ClassesByClassIdRelationsByRelationIdUrl = (classId: 
 
   
 
-  return `/api/v1/classes/${classId}/relations/${relationId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/${relationId}`
 }
 
 export const deleteApiV1ClassesByClassIdRelationsByRelationId = async (classId: number,
@@ -1423,7 +1425,7 @@ export const getGetApiV1ClassesByClassIdByFromObjectIdRelationsUrl = (classId: n
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/classes/${classId}/${fromObjectId}/relations?${stringifiedParams}` : `/api/v1/classes/${classId}/${fromObjectId}/relations`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${fromObjectId}/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${fromObjectId}/relations`
 }
 
 export const getApiV1ClassesByClassIdByFromObjectIdRelations = async (classId: number,
@@ -1483,7 +1485,7 @@ export const getGetApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToOb
 
   
 
-  return `/api/v1/classes/${classId}/${fromObjectId}/relations/${toClassId}/${toObjectId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${fromObjectId}/relations/${toClassId}/${toObjectId}`
 }
 
 export const getApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectId = async (classId: number,
@@ -1549,7 +1551,7 @@ export const getPostApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToO
 
   
 
-  return `/api/v1/classes/${classId}/${fromObjectId}/relations/${toClassId}/${toObjectId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${fromObjectId}/relations/${toClassId}/${toObjectId}`
 }
 
 export const postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectId = async (classId: number,
@@ -1610,7 +1612,7 @@ export const getDeleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByT
 
   
 
-  return `/api/v1/classes/${classId}/${fromObjectId}/relations/${toClassId}/${toObjectId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${fromObjectId}/relations/${toClassId}/${toObjectId}`
 }
 
 export const deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectId = async (classId: number,
@@ -1669,7 +1671,7 @@ export const getGetApiV1ClassesByClassIdByObjectIdUrl = (classId: number,
 
   
 
-  return `/api/v1/classes/${classId}/${objectId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${objectId}`
 }
 
 export const getApiV1ClassesByClassIdByObjectId = async (classId: number,
@@ -1726,7 +1728,7 @@ export const getDeleteApiV1ClassesByClassIdByObjectIdUrl = (classId: number,
 
   
 
-  return `/api/v1/classes/${classId}/${objectId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${objectId}`
 }
 
 export const deleteApiV1ClassesByClassIdByObjectId = async (classId: number,
@@ -1788,7 +1790,7 @@ export const getPatchApiV1ClassesByClassIdByObjectIdUrl = (classId: number,
 
   
 
-  return `/api/v1/classes/${classId}/${objectId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${objectId}`
 }
 
 export const patchApiV1ClassesByClassIdByObjectId = async (classId: number,
@@ -1853,7 +1855,7 @@ export const getGetApiV1IamGroupsUrl = (params?: GetApiV1IamGroupsParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/iam/groups?${stringifiedParams}` : `/api/v1/iam/groups`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups`
 }
 
 export const getApiV1IamGroups = async (params?: GetApiV1IamGroupsParams, options?: RequestInit): Promise<getApiV1IamGroupsResponse> => {
@@ -1913,7 +1915,7 @@ export const getPostApiV1IamGroupsUrl = () => {
 
   
 
-  return `/api/v1/iam/groups`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups`
 }
 
 export const postApiV1IamGroups = async (newGroup: NewGroup, options?: RequestInit): Promise<postApiV1IamGroupsResponse> => {
@@ -1969,7 +1971,7 @@ export const getGetApiV1IamGroupsByGroupIdUrl = (groupId: number,) => {
 
   
 
-  return `/api/v1/iam/groups/${groupId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}`
 }
 
 export const getApiV1IamGroupsByGroupId = async (groupId: number, options?: RequestInit): Promise<getApiV1IamGroupsByGroupIdResponse> => {
@@ -2024,7 +2026,7 @@ export const getDeleteApiV1IamGroupsByGroupIdUrl = (groupId: number,) => {
 
   
 
-  return `/api/v1/iam/groups/${groupId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}`
 }
 
 export const deleteApiV1IamGroupsByGroupId = async (groupId: number, options?: RequestInit): Promise<deleteApiV1IamGroupsByGroupIdResponse> => {
@@ -2084,7 +2086,7 @@ export const getPatchApiV1IamGroupsByGroupIdUrl = (groupId: number,) => {
 
   
 
-  return `/api/v1/iam/groups/${groupId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}`
 }
 
 export const patchApiV1IamGroupsByGroupId = async (groupId: number,
@@ -2149,7 +2151,7 @@ export const getGetApiV1IamGroupsByGroupIdMembersUrl = (groupId: number,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/iam/groups/${groupId}/members?${stringifiedParams}` : `/api/v1/iam/groups/${groupId}/members`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members`
 }
 
 export const getApiV1IamGroupsByGroupIdMembers = async (groupId: number,
@@ -2206,7 +2208,7 @@ export const getPostApiV1IamGroupsByGroupIdMembersByUserIdUrl = (groupId: number
 
   
 
-  return `/api/v1/iam/groups/${groupId}/members/${userId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members/${userId}`
 }
 
 export const postApiV1IamGroupsByGroupIdMembersByUserId = async (groupId: number,
@@ -2263,7 +2265,7 @@ export const getDeleteApiV1IamGroupsByGroupIdMembersByUserIdUrl = (groupId: numb
 
   
 
-  return `/api/v1/iam/groups/${groupId}/members/${userId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members/${userId}`
 }
 
 export const deleteApiV1IamGroupsByGroupIdMembersByUserId = async (groupId: number,
@@ -2326,7 +2328,7 @@ export const getGetApiV1IamUsersUrl = (params?: GetApiV1IamUsersParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/iam/users?${stringifiedParams}` : `/api/v1/iam/users`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/users?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/users`
 }
 
 export const getApiV1IamUsers = async (params?: GetApiV1IamUsersParams, options?: RequestInit): Promise<getApiV1IamUsersResponse> => {
@@ -2386,7 +2388,7 @@ export const getPostApiV1IamUsersUrl = () => {
 
   
 
-  return `/api/v1/iam/users`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/users`
 }
 
 export const postApiV1IamUsers = async (newUser: NewUser, options?: RequestInit): Promise<postApiV1IamUsersResponse> => {
@@ -2442,7 +2444,7 @@ export const getGetApiV1IamUsersByUserIdUrl = (userId: number,) => {
 
   
 
-  return `/api/v1/iam/users/${userId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}`
 }
 
 export const getApiV1IamUsersByUserId = async (userId: number, options?: RequestInit): Promise<getApiV1IamUsersByUserIdResponse> => {
@@ -2497,7 +2499,7 @@ export const getDeleteApiV1IamUsersByUserIdUrl = (userId: number,) => {
 
   
 
-  return `/api/v1/iam/users/${userId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}`
 }
 
 export const deleteApiV1IamUsersByUserId = async (userId: number, options?: RequestInit): Promise<deleteApiV1IamUsersByUserIdResponse> => {
@@ -2557,7 +2559,7 @@ export const getPatchApiV1IamUsersByUserIdUrl = (userId: number,) => {
 
   
 
-  return `/api/v1/iam/users/${userId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}`
 }
 
 export const patchApiV1IamUsersByUserId = async (userId: number,
@@ -2622,7 +2624,7 @@ export const getGetApiV1IamUsersByUserIdGroupsUrl = (userId: number,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/iam/users/${userId}/groups?${stringifiedParams}` : `/api/v1/iam/users/${userId}/groups`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}/groups?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}/groups`
 }
 
 export const getApiV1IamUsersByUserIdGroups = async (userId: number,
@@ -2686,7 +2688,7 @@ export const getGetApiV1IamUsersByUserIdTokensUrl = (userId: number,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/iam/users/${userId}/tokens?${stringifiedParams}` : `/api/v1/iam/users/${userId}/tokens`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}/tokens?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}/tokens`
 }
 
 export const getApiV1IamUsersByUserIdTokens = async (userId: number,
@@ -2747,7 +2749,7 @@ export const getPostApiV1ImportsUrl = () => {
 
   
 
-  return `/api/v1/imports`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/imports`
 }
 
 export const postApiV1Imports = async (importRequest: ImportRequest, options?: RequestInit): Promise<postApiV1ImportsResponse> => {
@@ -2808,7 +2810,7 @@ export const getGetApiV1ImportsByTaskIdUrl = (taskId: number,) => {
 
   
 
-  return `/api/v1/imports/${taskId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/imports/${taskId}`
 }
 
 export const getApiV1ImportsByTaskId = async (taskId: number, options?: RequestInit): Promise<getApiV1ImportsByTaskIdResponse> => {
@@ -2868,7 +2870,7 @@ export const getGetApiV1ImportsByTaskIdResultsUrl = (taskId: number,) => {
 
   
 
-  return `/api/v1/imports/${taskId}/results`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/imports/${taskId}/results`
 }
 
 export const getApiV1ImportsByTaskIdResults = async (taskId: number, options?: RequestInit): Promise<getApiV1ImportsByTaskIdResultsResponse> => {
@@ -2930,7 +2932,7 @@ export const getGetApiV1NamespacesUrl = (params?: GetApiV1NamespacesParams,) => 
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/namespaces?${stringifiedParams}` : `/api/v1/namespaces`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces`
 }
 
 export const getApiV1Namespaces = async (params?: GetApiV1NamespacesParams, options?: RequestInit): Promise<getApiV1NamespacesResponse> => {
@@ -2990,7 +2992,7 @@ export const getPostApiV1NamespacesUrl = () => {
 
   
 
-  return `/api/v1/namespaces`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces`
 }
 
 export const postApiV1Namespaces = async (newNamespaceWithAssignee: NewNamespaceWithAssignee, options?: RequestInit): Promise<postApiV1NamespacesResponse> => {
@@ -3046,7 +3048,7 @@ export const getGetApiV1NamespacesByNamespaceIdUrl = (namespaceId: number,) => {
 
   
 
-  return `/api/v1/namespaces/${namespaceId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}`
 }
 
 export const getApiV1NamespacesByNamespaceId = async (namespaceId: number, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdResponse> => {
@@ -3101,7 +3103,7 @@ export const getDeleteApiV1NamespacesByNamespaceIdUrl = (namespaceId: number,) =
 
   
 
-  return `/api/v1/namespaces/${namespaceId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}`
 }
 
 export const deleteApiV1NamespacesByNamespaceId = async (namespaceId: number, options?: RequestInit): Promise<deleteApiV1NamespacesByNamespaceIdResponse> => {
@@ -3161,7 +3163,7 @@ export const getPatchApiV1NamespacesByNamespaceIdUrl = (namespaceId: number,) =>
 
   
 
-  return `/api/v1/namespaces/${namespaceId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}`
 }
 
 export const patchApiV1NamespacesByNamespaceId = async (namespaceId: number,
@@ -3227,7 +3229,7 @@ export const getGetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionUrl = (
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/namespaces/${namespaceId}/has_permissions/${permission}?${stringifiedParams}` : `/api/v1/namespaces/${namespaceId}/has_permissions/${permission}`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/has_permissions/${permission}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/has_permissions/${permission}`
 }
 
 export const getApiV1NamespacesByNamespaceIdHasPermissionsByPermission = async (namespaceId: number,
@@ -3292,7 +3294,7 @@ export const getGetApiV1NamespacesByNamespaceIdPermissionsUrl = (namespaceId: nu
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/namespaces/${namespaceId}/permissions?${stringifiedParams}` : `/api/v1/namespaces/${namespaceId}/permissions`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions`
 }
 
 export const getApiV1NamespacesByNamespaceIdPermissions = async (namespaceId: number,
@@ -3349,7 +3351,7 @@ export const getGetApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl = (n
 
   
 
-  return `/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
 }
 
 export const getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId = async (namespaceId: number,
@@ -3412,7 +3414,7 @@ export const getPutApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl = (n
 
   
 
-  return `/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
 }
 
 export const putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId = async (namespaceId: number,
@@ -3485,7 +3487,7 @@ export const getPostApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl = (
 
   
 
-  return `/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
 }
 
 export const postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId = async (namespaceId: number,
@@ -3544,7 +3546,7 @@ export const getDeleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl =
 
   
 
-  return `/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
 }
 
 export const deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId = async (namespaceId: number,
@@ -3597,7 +3599,7 @@ export const getGetApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermis
 
   
 
-  return `/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}/${permission}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}/${permission}`
 }
 
 export const getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermission = async (namespaceId: number,
@@ -3657,7 +3659,7 @@ export const getPostApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermi
 
   
 
-  return `/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}/${permission}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}/${permission}`
 }
 
 export const postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermission = async (namespaceId: number,
@@ -3716,7 +3718,7 @@ export const getDeleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPer
 
   
 
-  return `/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}/${permission}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}/${permission}`
 }
 
 export const deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermission = async (namespaceId: number,
@@ -3782,7 +3784,7 @@ export const getGetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdUrl = (nam
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/namespaces/${namespaceId}/permissions/user/${userId}?${stringifiedParams}` : `/api/v1/namespaces/${namespaceId}/permissions/user/${userId}`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/user/${userId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/user/${userId}`
 }
 
 export const getApiV1NamespacesByNamespaceIdPermissionsUserByUserId = async (namespaceId: number,
@@ -3846,7 +3848,7 @@ export const getGetApiV1RelationsClassesUrl = (params?: GetApiV1RelationsClasses
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/relations/classes?${stringifiedParams}` : `/api/v1/relations/classes`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/relations/classes?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/relations/classes`
 }
 
 export const getApiV1RelationsClasses = async (params?: GetApiV1RelationsClassesParams, options?: RequestInit): Promise<getApiV1RelationsClassesResponse> => {
@@ -3906,7 +3908,7 @@ export const getPostApiV1RelationsClassesUrl = () => {
 
   
 
-  return `/api/v1/relations/classes`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/relations/classes`
 }
 
 export const postApiV1RelationsClasses = async (newHubuumClassRelation: NewHubuumClassRelation, options?: RequestInit): Promise<postApiV1RelationsClassesResponse> => {
@@ -3962,7 +3964,7 @@ export const getGetApiV1RelationsClassesByRelationIdUrl = (relationId: number,) 
 
   
 
-  return `/api/v1/relations/classes/${relationId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/relations/classes/${relationId}`
 }
 
 export const getApiV1RelationsClassesByRelationId = async (relationId: number, options?: RequestInit): Promise<getApiV1RelationsClassesByRelationIdResponse> => {
@@ -4017,7 +4019,7 @@ export const getDeleteApiV1RelationsClassesByRelationIdUrl = (relationId: number
 
   
 
-  return `/api/v1/relations/classes/${relationId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/relations/classes/${relationId}`
 }
 
 export const deleteApiV1RelationsClassesByRelationId = async (relationId: number, options?: RequestInit): Promise<deleteApiV1RelationsClassesByRelationIdResponse> => {
@@ -4079,7 +4081,7 @@ export const getGetApiV1RelationsObjectsUrl = (params?: GetApiV1RelationsObjects
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/relations/objects?${stringifiedParams}` : `/api/v1/relations/objects`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/relations/objects?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/relations/objects`
 }
 
 export const getApiV1RelationsObjects = async (params?: GetApiV1RelationsObjectsParams, options?: RequestInit): Promise<getApiV1RelationsObjectsResponse> => {
@@ -4139,7 +4141,7 @@ export const getPostApiV1RelationsObjectsUrl = () => {
 
   
 
-  return `/api/v1/relations/objects`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/relations/objects`
 }
 
 export const postApiV1RelationsObjects = async (newHubuumObjectRelation: NewHubuumObjectRelation, options?: RequestInit): Promise<postApiV1RelationsObjectsResponse> => {
@@ -4195,7 +4197,7 @@ export const getGetApiV1RelationsObjectsByRelationIdUrl = (relationId: number,) 
 
   
 
-  return `/api/v1/relations/objects/${relationId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/relations/objects/${relationId}`
 }
 
 export const getApiV1RelationsObjectsByRelationId = async (relationId: number, options?: RequestInit): Promise<getApiV1RelationsObjectsByRelationIdResponse> => {
@@ -4250,7 +4252,7 @@ export const getDeleteApiV1RelationsObjectsByRelationIdUrl = (relationId: number
 
   
 
-  return `/api/v1/relations/objects/${relationId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/relations/objects/${relationId}`
 }
 
 export const deleteApiV1RelationsObjectsByRelationId = async (relationId: number, options?: RequestInit): Promise<deleteApiV1RelationsObjectsByRelationIdResponse> => {
@@ -4330,7 +4332,7 @@ export const getPostApiV1ReportsUrl = () => {
 
   
 
-  return `/api/v1/reports`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/reports`
 }
 
 export const postApiV1Reports = async (reportRequest: ReportRequest, options?: RequestInit): Promise<postApiV1ReportsResponse> => {
@@ -4391,7 +4393,7 @@ export const getGetApiV1TasksByTaskIdUrl = (taskId: number,) => {
 
   
 
-  return `/api/v1/tasks/${taskId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/tasks/${taskId}`
 }
 
 export const getApiV1TasksByTaskId = async (taskId: number, options?: RequestInit): Promise<getApiV1TasksByTaskIdResponse> => {
@@ -4451,7 +4453,7 @@ export const getGetApiV1TasksByTaskIdEventsUrl = (taskId: number,) => {
 
   
 
-  return `/api/v1/tasks/${taskId}/events`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/tasks/${taskId}/events`
 }
 
 export const getApiV1TasksByTaskIdEvents = async (taskId: number, options?: RequestInit): Promise<getApiV1TasksByTaskIdEventsResponse> => {
@@ -4513,7 +4515,7 @@ export const getGetApiV1TemplatesUrl = (params?: GetApiV1TemplatesParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/templates?${stringifiedParams}` : `/api/v1/templates`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/templates?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/templates`
 }
 
 export const getApiV1Templates = async (params?: GetApiV1TemplatesParams, options?: RequestInit): Promise<getApiV1TemplatesResponse> => {
@@ -4578,7 +4580,7 @@ export const getPostApiV1TemplatesUrl = () => {
 
   
 
-  return `/api/v1/templates`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/templates`
 }
 
 export const postApiV1Templates = async (newReportTemplate: NewReportTemplate, options?: RequestInit): Promise<postApiV1TemplatesResponse> => {
@@ -4639,7 +4641,7 @@ export const getGetApiV1TemplatesByTemplateIdUrl = (templateId: number,) => {
 
   
 
-  return `/api/v1/templates/${templateId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}`
 }
 
 export const getApiV1TemplatesByTemplateId = async (templateId: number, options?: RequestInit): Promise<getApiV1TemplatesByTemplateIdResponse> => {
@@ -4699,7 +4701,7 @@ export const getDeleteApiV1TemplatesByTemplateIdUrl = (templateId: number,) => {
 
   
 
-  return `/api/v1/templates/${templateId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}`
 }
 
 export const deleteApiV1TemplatesByTemplateId = async (templateId: number, options?: RequestInit): Promise<deleteApiV1TemplatesByTemplateIdResponse> => {
@@ -4769,7 +4771,7 @@ export const getPatchApiV1TemplatesByTemplateIdUrl = (templateId: number,) => {
 
   
 
-  return `/api/v1/templates/${templateId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}`
 }
 
 export const patchApiV1TemplatesByTemplateId = async (templateId: number,

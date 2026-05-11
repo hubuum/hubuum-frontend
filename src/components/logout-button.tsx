@@ -19,7 +19,7 @@ export function LogoutButton({
 		setIsPending(true);
 
 		try {
-			await fetch("/api/auth/logout", {
+			await fetch("/api/frontend/auth/logout", {
 				method: "POST",
 				credentials: "include",
 			});

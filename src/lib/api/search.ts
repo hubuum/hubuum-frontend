@@ -169,7 +169,7 @@ export function getUnifiedSearchUrl(params: UnifiedSearchParams): string {
 	}
 
 	const query = normalizedParams.toString();
-	return query ? `/api/v1/search?${query}` : "/api/v1/search";
+	return query ? `/api/frontend/hubuum/api/v1/search?${query}` : "/api/frontend/hubuum/api/v1/search";
 }
 
 export async function fetchUnifiedSearch(

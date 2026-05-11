@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { backendFetchRaw } from "@/lib/api/backend";
-import { getPostApiV0AuthLoginUrl } from "@/lib/api/generated/client";
 import type {
 	ApiErrorResponse,
 	LoginResponse,
@@ -18,6 +17,8 @@ const loginSchema = z.object({
 	username: z.string().min(1),
 	password: z.string().min(1),
 });
+
+const BACKEND_LOGIN_PATH = "/api/v0/auth/login";
 
 type ParsedCredentials =
 	| { credentials: LoginUser; fromForm: boolean }
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
-	const upstream = await backendFetchRaw(getPostApiV0AuthLoginUrl(), {
+	const upstream = await backendFetchRaw(BACKEND_LOGIN_PATH, {
 		correlationId,
 		method: "POST",
 		headers: {

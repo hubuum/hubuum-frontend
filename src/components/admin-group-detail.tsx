@@ -83,7 +83,7 @@ async function updateGroup(
 	groupId: number,
 	payload: UpdateGroupPayload,
 ): Promise<UpdateGroupResult> {
-	const response = await fetch(`/api/v1/iam/groups/${groupId}`, {
+	const response = await fetch(`/api/frontend/hubuum/api/v1/iam/groups/${groupId}`, {
 		method: "PATCH",
 		credentials: "include",
 		headers: {
@@ -102,7 +102,7 @@ async function updateGroup(
 	}
 
 	if (payload.description !== undefined) {
-		const fallbackResponse = await fetch(`/api/v1/iam/groups/${groupId}`, {
+		const fallbackResponse = await fetch(`/api/frontend/hubuum/api/v1/iam/groups/${groupId}`, {
 			method: "PATCH",
 			credentials: "include",
 			headers: {
