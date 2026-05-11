@@ -72,7 +72,7 @@ async function parseJsonPayload(response: Response): Promise<unknown> {
 async function fetchClassRelations(
 	classId: number,
 ): Promise<HubuumClassRelation[]> {
-	const response = await fetch(`/api/frontend/classes/${classId}/relations`, {
+	const response = await fetch(`/_hubuum-bff/classes/${classId}/relations`, {
 		credentials: "include",
 	});
 	const payload = await parseJsonPayload(response);
@@ -102,7 +102,7 @@ async function fetchConnectedClasses(
 	classId: number,
 ): Promise<HubuumClassWithPath[]> {
 	const response = await fetch(
-		`/api/frontend/hubuum/api/v1/classes/${classId}/related/classes?limit=250&sort=path.asc,id.asc`,
+		`/_hubuum-bff/hubuum/api/v1/classes/${classId}/related/classes?limit=250&sort=path.asc,id.asc`,
 		{
 			credentials: "include",
 		},
@@ -119,7 +119,7 @@ async function fetchConnectedClasses(
 }
 
 async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
-	const response = await fetch(`/api/frontend/classes/${classId}/objects`, {
+	const response = await fetch(`/_hubuum-bff/classes/${classId}/objects`, {
 		credentials: "include",
 	});
 	const payload = await parseJsonPayload(response);
@@ -136,7 +136,7 @@ async function fetchRelatedObjects(
 	objectId: number,
 ): Promise<HubuumObjectWithPath[]> {
 	const response = await fetch(
-		`/api/frontend/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/objects?limit=250`,
+		`/_hubuum-bff/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/objects?limit=250`,
 		{
 			credentials: "include",
 		},
@@ -156,7 +156,7 @@ async function fetchDirectObjectRelations(
 	objectId: number,
 ): Promise<HubuumObjectRelation[]> {
 	const response = await fetch(
-		`/api/frontend/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/relations?limit=250`,
+		`/_hubuum-bff/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/relations?limit=250`,
 		{
 			credentials: "include",
 		},
@@ -789,7 +789,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			targetClassId: number;
 		}) => {
 			const response = await fetch(
-				`/api/frontend/classes/${payload.sourceClassId}/relations`,
+				`/_hubuum-bff/classes/${payload.sourceClassId}/relations`,
 				{
 					method: "POST",
 					headers: {

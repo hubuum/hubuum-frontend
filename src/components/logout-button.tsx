@@ -19,7 +19,7 @@ export function LogoutButton({
 		setIsPending(true);
 
 		try {
-			await fetch("/api/frontend/auth/logout", {
+			await fetch("/_hubuum-bff/auth/logout", {
 				method: "POST",
 				credentials: "include",
 			});

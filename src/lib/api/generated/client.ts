@@ -4793,4 +4793,3 @@ export const patchApiV1TemplatesByTemplateId = async (templateId: number,
   return { data, status: res.status, headers: res.headers } as patchApiV1TemplatesByTemplateIdResponse
 }
   
-

@@ -6,7 +6,7 @@ const prefixImport = "import { HUBUUM_BFF_PREFIX } from '@/lib/api/frontend';";
 let source = readFileSync(clientPath, "utf8");
 
 source = source.replace(
-	'\nconst HUBUUM_BFF_PREFIX = "/api/frontend/hubuum";\n',
+	'\nconst HUBUUM_BFF_PREFIX = "/_hubuum-bff/hubuum";\n',
 	"\n",
 );
 

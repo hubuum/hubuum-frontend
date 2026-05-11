@@ -19,41 +19,41 @@ Next.js frontend scaffold for the Hubuum REST API, built for secure horizontal s
 
 Browser clients never receive backend tokens directly.
 
-1. `POST /api/frontend/auth/login` forwards credentials to Hubuum `/api/v0/auth/login`.
+1. `POST /_hubuum-bff/auth/login` forwards credentials to Hubuum `/api/v0/auth/login`.
 2. Hubuum returns an opaque token.
 3. Frontend creates a session id (`hubuum.sid`) and stores token in Valkey under that key.
 4. Browser gets only the `HttpOnly` session cookie.
-5. Browser data requests go via `/api/frontend/hubuum/<path>`.
+5. Browser data requests go via `/_hubuum-bff/hubuum/<path>`.
 6. Proxy reads session from Valkey and injects bearer token for upstream Hubuum request.
 
 This keeps pods stateless and horizontally scalable. Any pod can serve any authenticated request as long as it can read the same Valkey instance.
 
 ## BFF route layout
 
-The frontend owns only routes under `/api/frontend/...`.
+The frontend owns only routes under `/_hubuum-bff/...`.
 
 | Frontend route | Purpose |
 | --- | --- |
-| `/api/frontend/auth/login` | Accepts browser login payloads, calls backend `/api/v0/auth/login`, and creates the frontend session cookie. |
-| `/api/frontend/auth/logout` | Logs out locally and asks the backend to revoke the current token. |
-| `/api/frontend/auth/session` | Readiness-friendly session check for the browser session. |
-| `/api/frontend/hubuum/<backend-path>` | Generic authenticated BFF proxy. For example, `/api/frontend/hubuum/api/v1/classes` calls backend `/api/v1/classes` with the server-side bearer token. |
-| `/api/frontend/classes/...` | Frontend helper BFF routes that normalize a few class/object workflows before calling backend APIs. |
+| `/_hubuum-bff/auth/login` | Accepts browser login payloads, calls backend `/api/v0/auth/login`, and creates the frontend session cookie. |
+| `/_hubuum-bff/auth/logout` | Logs out locally and asks the backend to revoke the current token. |
+| `/_hubuum-bff/auth/session` | Readiness-friendly session check for the browser session. |
+| `/_hubuum-bff/hubuum/<backend-path>` | Generic authenticated BFF proxy. For example, `/_hubuum-bff/hubuum/api/v1/classes` calls backend `/api/v1/classes` with the server-side bearer token. |
+| `/_hubuum-bff/classes/...` | Frontend helper BFF routes that normalize a few class/object workflows before calling backend APIs. |
 
 The frontend deliberately does not own `/api/v0/...` or `/api/v1/...`. This
 lets a colocated reverse proxy route those paths directly to the backend while
-sending browser/app traffic and `/api/frontend/...` to the Next.js frontend.
+sending browser/app traffic and `/_hubuum-bff/...` to the Next.js frontend.
 
 Example edge routing shape:
 
 ```text
 /api/v0/*        -> hubuum backend
 /api/v1/*        -> hubuum backend
-/api/frontend/*  -> hubuum frontend
+/_hubuum-bff/*  -> hubuum frontend
 /*               -> hubuum frontend
 ```
 
-The internal BFF prefix is intentionally fixed at `/api/frontend`. Making it an
+The internal BFF prefix is intentionally fixed at `/_hubuum-bff`. Making it an
 environment variable would have some upside, but the tradeoff is not attractive
 for this app:
 
@@ -66,7 +66,7 @@ for this app:
   under backend-looking paths.
 
 If a site needs a different public prefix, prefer an edge/proxy rewrite from the
-public prefix to the frontend's fixed `/api/frontend/...` routes.
+public prefix to the frontend's fixed `/_hubuum-bff/...` routes.
 
 ## Quick start
 
@@ -130,8 +130,8 @@ The generator runs via `npx orval@8.4.1`, so network access is required when gen
 
 - Use at least 2 frontend replicas.
 - Set `VALKEY_URL` in a Secret and mount as env var.
-- Use readiness/liveness probes on `/login` or `/api/frontend/auth/session`.
-- Frontend-owned BFF routes live under `/api/frontend/...`; `/api/v0/...`
+- Use readiness/liveness probes on `/login` or `/_hubuum-bff/auth/session`.
+- Frontend-owned BFF routes live under `/_hubuum-bff/...`; `/api/v0/...`
   and `/api/v1/...` remain available for direct backend routing at the edge.
 - Do not rely on in-memory sessions in production.
 - TLS terminate at ingress; keep secure cookies enabled in production.

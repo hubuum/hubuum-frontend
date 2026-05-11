@@ -22,7 +22,7 @@ export function LoginForm() {
 
 		try {
 			const payload: LoginUser = { username, password };
-			const response = await fetch("/api/frontend/auth/login", {
+			const response = await fetch("/_hubuum-bff/auth/login", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -51,7 +51,7 @@ export function LoginForm() {
 
 	return (
 		<form
-			action="/api/frontend/auth/login"
+			action="/_hubuum-bff/auth/login"
 			aria-label="Login form"
 			className="card login-card"
 			method="post"
