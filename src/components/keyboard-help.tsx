@@ -85,7 +85,7 @@ export function KeyboardHelp({ open, onClose }: KeyboardHelpProps) {
 						<div key={shortcut.description} className="keyboard-shortcut-row">
 							<div className="keyboard-shortcut-keys">
 								{shortcut.keys.map((key, keyIndex) => (
-									<span key={`${shortcut.description}-${keyIndex}`}>
+									<span key={`${shortcut.description}-${key}`}>
 										<kbd className="keyboard-key">{key}</kbd>
 										{keyIndex < shortcut.keys.length - 1 ? (
 											<span className="keyboard-plus">+</span>

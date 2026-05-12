@@ -15,32 +15,32 @@
 		"audit:prod": "npm audit --omit=dev"
 	},
 	"dependencies": {
-		"@codemirror/autocomplete": "^6.20.1",
+		"@codemirror/autocomplete": "^6.20.2",
 		"@codemirror/lang-json": "^6.0.2",
-		"@codemirror/language": "^6.12.2",
-		"@codemirror/lint": "^6.9.5",
+		"@codemirror/language": "^6.12.3",
+		"@codemirror/lint": "^6.9.6",
 		"@codemirror/state": "^6.6.0",
-		"@codemirror/view": "^6.40.0",
+		"@codemirror/view": "^6.42.1",
 		"@lezer/highlight": "^1.2.3",
-		"@tanstack/react-query": "^5.91",
+		"@tanstack/react-query": "^5.100.10",
 		"@types/prismjs": "^1.26.6",
 		"codemirror": "^6.0.2",
-		"ioredis": "^5.10",
-		"next": "^16.2",
+		"ioredis": "^5.10.1",
+		"next": "^16.2.6",
 		"prismjs": "^1.30.0",
-		"react": "^19.0.0",
-		"react-dom": "^19.0.0",
+		"react": "^19.2.6",
+		"react-dom": "^19.2.6",
 		"react-simple-code-editor": "^0.14.1",
-		"zod": "^4.3.6"
+		"zod": "^4.4.3"
 	},
 	"overrides": {
 		"postcss": "8.5.10"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4",
-		"@types/node": "^25.5",
-		"@types/react": "^19.0.2",
-		"@types/react-dom": "^19.0.2",
-		"typescript": "^5.7.2"
+		"@biomejs/biome": "^2.4.15",
+		"@types/node": "^25.7.0",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"typescript": "^6.0.3"
 	}
 }
