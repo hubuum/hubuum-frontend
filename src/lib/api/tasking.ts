@@ -11,7 +11,6 @@ import type {
 	ImportTaskResultResponse,
 	TaskEventResponse,
 	TaskKind,
-	TaskQueueStateResponse,
 	TaskResponse,
 	TaskStatus,
 } from "@/lib/api/generated/models";
@@ -21,7 +20,6 @@ export type {
 	ImportTaskResultResponse as ImportResult,
 	TaskEventResponse as TaskEvent,
 	TaskKind,
-	TaskQueueStateResponse,
 	TaskResponse as TaskRecord,
 	TaskStatus,
 };
@@ -40,6 +38,18 @@ export type TaskListPage = {
 	tasks: TaskResponse[];
 };
 
+export type TaskActivitySummary = {
+	activeTasks: number;
+	failedTasks: number;
+	oldestActiveAt: string | null;
+	oldestQueuedAt: string | null;
+	partiallySucceededTasks: number;
+	queuedTasks: number;
+	runningTasks: number;
+	totalLoaded: number;
+	validatingTasks: number;
+};
+
 export function isTerminalTaskStatus(
 	status: TaskStatus | null | undefined,
 ): boolean {
@@ -49,6 +59,78 @@ export function isTerminalTaskStatus(
 		status === "partially_succeeded" ||
 		status === "cancelled"
 	);
+}
+
+function earlierTimestamp(
+	current: string | null,
+	candidate: string | null | undefined,
+): string | null {
+	if (!candidate) {
+		return current;
+	}
+	if (!current) {
+		return candidate;
+	}
+
+	const currentTime = Date.parse(current);
+	const candidateTime = Date.parse(candidate);
+
+	if (Number.isNaN(currentTime) || Number.isNaN(candidateTime)) {
+		return candidate < current ? candidate : current;
+	}
+
+	return candidateTime < currentTime ? candidate : current;
+}
+
+export function summarizeTaskActivity(
+	tasks: readonly Pick<
+		TaskResponse,
+		"created_at" | "started_at" | "status"
+	>[],
+): TaskActivitySummary {
+	const summary: TaskActivitySummary = {
+		activeTasks: 0,
+		failedTasks: 0,
+		oldestActiveAt: null,
+		oldestQueuedAt: null,
+		partiallySucceededTasks: 0,
+		queuedTasks: 0,
+		runningTasks: 0,
+		totalLoaded: tasks.length,
+		validatingTasks: 0,
+	};
+
+	for (const task of tasks) {
+		if (!isTerminalTaskStatus(task.status)) {
+			summary.activeTasks += 1;
+			summary.oldestActiveAt = earlierTimestamp(
+				summary.oldestActiveAt,
+				task.started_at ?? task.created_at,
+			);
+		}
+
+		if (task.status === "queued") {
+			summary.queuedTasks += 1;
+			summary.oldestQueuedAt = earlierTimestamp(
+				summary.oldestQueuedAt,
+				task.created_at,
+			);
+		}
+		if (task.status === "validating") {
+			summary.validatingTasks += 1;
+		}
+		if (task.status === "running") {
+			summary.runningTasks += 1;
+		}
+		if (task.status === "failed") {
+			summary.failedTasks += 1;
+		}
+		if (task.status === "partially_succeeded") {
+			summary.partiallySucceededTasks += 1;
+		}
+	}
+
+	return summary;
 }
 
 export async function fetchTasks(

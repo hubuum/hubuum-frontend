@@ -354,17 +354,17 @@ function getActionCards(
 			primaryLabel: "Open imports",
 			icon: <IconImport className="action-card-icon" />,
 		},
-		{
-			title: "Statistics",
-			description:
-				"Counts and database health still matter, but they no longer need to dominate the landing experience.",
-			primaryHref: "/statistics",
-			primaryLabel: "Open statistics",
-			icon: <IconStatistics className="action-card-icon" />,
-		},
 	];
 
 	if (canViewAdmin) {
+		cards.push({
+			title: "Statistics",
+			description:
+				"Review workspace counts, database health, and global task system state.",
+			primaryHref: "/statistics",
+			primaryLabel: "Open statistics",
+			icon: <IconStatistics className="action-card-icon" />,
+		});
 		cards.push({
 			title: "Access Management",
 			description:
@@ -386,10 +386,10 @@ export default async function AppPage() {
 		normalizeCorrelationId(requestHeaders.get(CORRELATION_ID_HEADER)) ??
 		undefined;
 	const session = await requireServerSession();
-	const [counts, canViewAdmin] = await Promise.all([
-		tryFetchMetaCounts(session.token, correlationId),
-		hasAdminAccess(session.token, correlationId),
-	]);
+	const canViewAdmin = await hasAdminAccess(session.token, correlationId);
+	const counts = canViewAdmin
+		? await tryFetchMetaCounts(session.token, correlationId)
+		: null;
 	const recommendedAction = getRecommendedAction(counts);
 	const actionCards = getActionCards(counts, canViewAdmin);
 

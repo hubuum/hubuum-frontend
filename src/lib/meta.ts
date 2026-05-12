@@ -55,6 +55,35 @@ export async function fetchTaskQueueState(
 	});
 }
 
+export type SystemMetaSnapshot = {
+	counts: CountsWithOptionalNamespaces;
+	db: DbStateResponse;
+	tasks: TaskQueueStateResponse;
+};
+
+export async function tryFetchSystemMetaSnapshot(
+	token: string,
+	correlationId?: string,
+): Promise<SystemMetaSnapshot | null> {
+	try {
+		const [counts, db, tasks] = await Promise.all([
+			fetchMetaCounts(token, correlationId),
+			fetchDbState(token, correlationId),
+			fetchTaskQueueState(token, correlationId),
+		]);
+
+		return { counts, db, tasks };
+	} catch (error) {
+		if (
+			error instanceof BackendError &&
+			(error.status === 401 || error.status === 403)
+		) {
+			return null;
+		}
+		throw error;
+	}
+}
+
 export function getTotalNamespaces(
 	counts: CountsWithOptionalNamespaces,
 ): number {

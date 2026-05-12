@@ -7,7 +7,7 @@ export async function hasAdminAccess(
 	correlationId?: string,
 ): Promise<boolean> {
 	try {
-		const response = await backendFetchRaw("/api/v1/iam/groups", {
+		const response = await backendFetchRaw("/api/v0/meta/db", {
 			correlationId,
 			method: "GET",
 			token,

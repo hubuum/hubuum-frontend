@@ -3,13 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
-import { getApiErrorMessage } from "@/lib/api/errors";
-import { getApiV0MetaTasks } from "@/lib/api/generated/client";
-import type { TaskQueueStateResponse } from "@/lib/api/generated/models";
+import { FormEvent, useMemo, useState } from "react";
 import {
 	fetchTasks,
 	isTerminalTaskStatus,
+	summarizeTaskActivity,
 	type TaskRecord,
 } from "@/lib/api/tasking";
 
@@ -44,44 +42,14 @@ function getTaskLabel(task: Pick<TaskRecord, "kind">): string {
 	return `${task.kind[0].toUpperCase()}${task.kind.slice(1)}`;
 }
 
-async function fetchTaskQueueState(): Promise<TaskQueueStateResponse> {
-	const response = await getApiV0MetaTasks({
-		credentials: "include",
-	});
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load task queue state."),
-		);
-	}
-
-	return response.data;
-}
-
 export function TasksWorkspace() {
 	const router = useRouter();
 	const [taskLookupInput, setTaskLookupInput] = useState("");
-	const taskQueueQuery = useQuery({
-		queryKey: ["tasks", "workspace-queue"],
-		queryFn: fetchTaskQueueState,
-		refetchInterval: (query) => {
-			const activeTasks = query.state.data?.active_tasks ?? 0;
-			const isHidden =
-				typeof document !== "undefined" &&
-				document.visibilityState === "hidden";
-
-			if (isHidden) {
-				return activeTasks > 0 ? 15000 : 30000;
-			}
-
-			return activeTasks > 0 ? 5000 : 15000;
-		},
-	});
 	const issuedTasksQuery = useQuery({
 		queryKey: ["tasks", "workspace-list"],
 		queryFn: async () => {
 			const page = await fetchTasks({
-				limit: 20,
+				limit: 50,
 				sort: "created_at.desc,id.desc",
 			});
 			return page.tasks;
@@ -101,6 +69,10 @@ export function TasksWorkspace() {
 			return hasActiveTasks ? 5000 : 15000;
 		},
 	});
+	const taskSummary = useMemo(
+		() => summarizeTaskActivity(issuedTasksQuery.data ?? []),
+		[issuedTasksQuery.data],
+	);
 
 	function handleLoadTask(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -120,8 +92,8 @@ export function TasksWorkspace() {
 					<h2>Background task overview</h2>
 				</div>
 				<p className="muted">
-					Watch current queue activity, then jump into a specific task page for
-					detailed progress, events, and results.
+					Watch task activity available to your account, then jump into a
+					specific task page for detailed progress, events, and results.
 				</p>
 			</header>
 
@@ -129,53 +101,51 @@ export function TasksWorkspace() {
 				<section className="stack">
 					<article className="card stack panel-card">
 						<div className="stack action-card-header">
-							<h3>Queue snapshot</h3>
+							<h3>Recent task activity</h3>
 							<p className="muted">
-								This panel polls automatically. The sidebar badge uses the same
-								queue signal and highlights recent failures.
+								This panel polls the v1 task list automatically. Counts are based
+								on the recent tasks returned for your account.
 							</p>
 						</div>
 
-						{taskQueueQuery.isLoading ? (
-							<div className="muted">Loading task queue state...</div>
+						{issuedTasksQuery.isLoading ? (
+							<div className="muted">Loading recent task activity...</div>
 						) : null}
-						{taskQueueQuery.isError ? (
+						{issuedTasksQuery.isError ? (
 							<div className="error-banner">
-								Failed to load task queue state.{" "}
-								{taskQueueQuery.error instanceof Error
-									? taskQueueQuery.error.message
+								Failed to load recent task activity.{" "}
+								{issuedTasksQuery.error instanceof Error
+									? issuedTasksQuery.error.message
 									: "Unknown error"}
 							</div>
 						) : null}
 
-						{taskQueueQuery.data ? (
+						{!issuedTasksQuery.isLoading && !issuedTasksQuery.isError ? (
 							<>
 								<div className="summary-grid">
 									<div className="summary-pill">
-										<span>Active</span>
-										<strong>{taskQueueQuery.data.active_tasks}</strong>
+										<span>Recent active</span>
+										<strong>{taskSummary.activeTasks}</strong>
 									</div>
 									<div className="summary-pill">
-										<span>Queued</span>
-										<strong>{taskQueueQuery.data.queued_tasks}</strong>
+										<span>Recent queued</span>
+										<strong>{taskSummary.queuedTasks}</strong>
 									</div>
 									<div className="summary-pill">
-										<span>Running</span>
-										<strong>{taskQueueQuery.data.running_tasks}</strong>
+										<span>Recent running</span>
+										<strong>{taskSummary.runningTasks}</strong>
 									</div>
 									<div className="summary-pill">
-										<span>Validating</span>
-										<strong>{taskQueueQuery.data.validating_tasks}</strong>
+										<span>Recent validating</span>
+										<strong>{taskSummary.validatingTasks}</strong>
 									</div>
 									<div className="summary-pill">
-										<span>Failed total</span>
-										<strong>{taskQueueQuery.data.failed_tasks}</strong>
+										<span>Recent failed</span>
+										<strong>{taskSummary.failedTasks}</strong>
 									</div>
 									<div className="summary-pill">
-										<span>Partial total</span>
-										<strong>
-											{taskQueueQuery.data.partially_succeeded_tasks}
-										</strong>
+										<span>Recent partial</span>
+										<strong>{taskSummary.partiallySucceededTasks}</strong>
 									</div>
 								</div>
 
@@ -183,26 +153,22 @@ export function TasksWorkspace() {
 									<div>
 										<strong>Oldest queued</strong>
 										<p className="muted">
-											{formatTimestamp(taskQueueQuery.data.oldest_queued_at)}
+											{formatTimestamp(taskSummary.oldestQueuedAt)}
 										</p>
 									</div>
 									<div>
 										<strong>Oldest active</strong>
 										<p className="muted">
-											{formatTimestamp(taskQueueQuery.data.oldest_active_at)}
+											{formatTimestamp(taskSummary.oldestActiveAt)}
 										</p>
 									</div>
 									<div>
-										<strong>Total task events</strong>
-										<p className="muted">
-											{taskQueueQuery.data.total_task_events}
-										</p>
+										<strong>Loaded tasks</strong>
+										<p className="muted">{taskSummary.totalLoaded}</p>
 									</div>
 									<div>
-										<strong>Import result rows</strong>
-										<p className="muted">
-											{taskQueueQuery.data.total_import_result_rows}
-										</p>
+										<strong>Scope</strong>
+										<p className="muted">Your visible tasks</p>
 									</div>
 								</div>
 							</>

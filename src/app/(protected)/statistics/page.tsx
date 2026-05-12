@@ -1,15 +1,15 @@
 import { headers } from "next/headers";
+import Link from "next/link";
 
+import { hasAdminAccess } from "@/lib/auth/admin";
 import { requireServerSession } from "@/lib/auth/guards";
 import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
 import {
-	fetchDbState,
-	fetchMetaCounts,
-	fetchTaskQueueState,
 	getTotalNamespaces,
+	tryFetchSystemMetaSnapshot,
 } from "@/lib/meta";
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -33,12 +33,72 @@ export default async function StatisticsPage() {
 		normalizeCorrelationId(requestHeaders.get(CORRELATION_ID_HEADER)) ??
 		undefined;
 	const session = await requireServerSession();
+	const canViewAdmin = await hasAdminAccess(session.token, correlationId);
 
-	const [counts, db, tasks] = await Promise.all([
-		fetchMetaCounts(session.token, correlationId),
-		fetchDbState(session.token, correlationId),
-		fetchTaskQueueState(session.token, correlationId),
-	]);
+	if (!canViewAdmin) {
+		return (
+			<section className="stack">
+				<header className="stack action-card-header">
+					<div className="stack action-card-header">
+						<p className="eyebrow">Statistics</p>
+						<h2>Administrator access required</h2>
+					</div>
+					<p className="muted">
+						System counts, database status, and global task state are only
+						available to administrators.
+					</p>
+				</header>
+
+				<article className="card stack panel-card">
+					<p className="muted">
+						Use the tasks workspace for task activity available to your account.
+					</p>
+					<div className="action-card-actions">
+						<Link className="link-chip" href="/tasks">
+							Open tasks
+						</Link>
+						<Link className="link-chip" href="/app">
+							Back home
+						</Link>
+					</div>
+				</article>
+			</section>
+		);
+	}
+
+	const snapshot = await tryFetchSystemMetaSnapshot(session.token, correlationId);
+
+	if (!snapshot) {
+		return (
+			<section className="stack">
+				<header className="stack action-card-header">
+					<div className="stack action-card-header">
+						<p className="eyebrow">Statistics</p>
+						<h2>Administrator access required</h2>
+					</div>
+					<p className="muted">
+						The backend denied access to system metadata for this account.
+					</p>
+				</header>
+
+				<article className="card stack panel-card">
+					<p className="muted">
+						Use the tasks workspace for task activity available to your account.
+					</p>
+					<div className="action-card-actions">
+						<Link className="link-chip" href="/tasks">
+							Open tasks
+						</Link>
+						<Link className="link-chip" href="/app">
+							Back home
+						</Link>
+					</div>
+				</article>
+			</section>
+		);
+	}
+
+	const { counts, db, tasks } = snapshot;
 	const totalNamespaces = getTotalNamespaces(counts);
 
 	return (

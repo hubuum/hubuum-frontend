@@ -68,6 +68,16 @@ for this app:
 If a site needs a different public prefix, prefer an edge/proxy rewrite from the
 public prefix to the frontend's fixed `/_hubuum-bff/...` routes.
 
+## Backend API access assumptions
+
+Hubuum `/api/v0/meta/...` endpoints are admin-only. The frontend must only call
+them after an admin access check, and current meta usage is limited to the
+admin statistics surface and admin-only landing-page counts.
+
+Task activity shown to regular users comes from `/api/v1/tasks` through the BFF
+proxy, so users can see the task records available to their account without
+requiring global meta access.
+
 ## Quick start
 
 1. Install dependencies:

@@ -18,12 +18,13 @@ import { KeyboardHelp } from "@/components/keyboard-help";
 import { LogoutButton } from "@/components/logout-button";
 import { ToastContainer } from "@/components/toast-container";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { getApiV0MetaTasks, getApiV1Classes } from "@/lib/api/generated/client";
-import type {
-	HubuumClassExpanded,
-	HubuumObject,
-	TaskQueueStateResponse,
-} from "@/lib/api/generated/models";
+import { getApiV1Classes } from "@/lib/api/generated/client";
+import type { HubuumClassExpanded, HubuumObject } from "@/lib/api/generated/models";
+import {
+	fetchTasks,
+	summarizeTaskActivity,
+	type TaskActivitySummary,
+} from "@/lib/api/tasking";
 import {
 	type CreateSection,
 	DESELECT_ALL_EVENT,
@@ -72,18 +73,13 @@ async function fetchTopbarClassOptions(): Promise<HubuumClassExpanded[]> {
 	return response.data;
 }
 
-async function fetchTaskQueueState(): Promise<TaskQueueStateResponse> {
-	const response = await getApiV0MetaTasks({
-		credentials: "include",
+async function fetchRecentTaskSummary(): Promise<TaskActivitySummary> {
+	const page = await fetchTasks({
+		limit: 50,
+		sort: "created_at.desc,id.desc",
 	});
 
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load task queue state."),
-		);
-	}
-
-	return response.data;
+	return summarizeTaskActivity(page.tasks);
 }
 
 async function parseJsonPayload(response: Response): Promise<unknown> {
@@ -566,11 +562,11 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 			fetchRelationsObjectOptions(parsedResolvedRelationsClassId ?? 0),
 		enabled: isRelationsRoute && parsedResolvedRelationsClassId !== null,
 	});
-	const taskQueueQuery = useQuery({
-		queryKey: ["tasks", "shell-queue"],
-		queryFn: fetchTaskQueueState,
+	const taskSummaryQuery = useQuery({
+		queryKey: ["tasks", "shell-summary"],
+		queryFn: fetchRecentTaskSummary,
 		refetchInterval: (query) => {
-			const activeTasks = query.state.data?.active_tasks ?? 0;
+			const activeTasks = query.state.data?.activeTasks ?? 0;
 			const isHidden =
 				typeof document !== "undefined" &&
 				document.visibilityState === "hidden";
@@ -712,7 +708,7 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 	}, [isUserMenuOpen]);
 
 	useEffect(() => {
-		const failedTasks = taskQueueQuery.data?.failed_tasks ?? null;
+		const failedTasks = taskSummaryQuery.data?.failedTasks ?? null;
 		if (failedTasks === null) {
 			return;
 		}
@@ -723,7 +719,7 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 		if (previousFailedTasks !== null && failedTasks > previousFailedTasks) {
 			setRecentFailureUntil(Date.now() + 60_000);
 		}
-	}, [taskQueueQuery.data?.failed_tasks]);
+	}, [taskSummaryQuery.data?.failedTasks]);
 
 	useEffect(() => {
 		if (recentFailureUntil === null) {
@@ -854,7 +850,7 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 	]
 		.filter(Boolean)
 		.join(" ");
-	const activeTaskCount = taskQueueQuery.data?.active_tasks ?? 0;
+	const activeTaskCount = taskSummaryQuery.data?.activeTasks ?? 0;
 	const hasRecentFailure =
 		recentFailureUntil !== null && recentFailureUntil > Date.now();
 	const taskBadgeLabel =
@@ -1042,23 +1038,25 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 								</div>
 							) : null}
 
-							<div className="sidebar-group">
-								{!isSidebarCollapsed ? (
-									<p className="sidebar-label">System</p>
-								) : null}
-								{systemLinks.map((item) => (
-									<Link
-										key={item.href}
-										href={item.href}
-										className={`sidebar-link ${isLinkActive(pathname, item.href) ? "active" : ""}`}
-										aria-label={item.hint}
-										data-tooltip={item.hint}
-									>
-										<span className="sidebar-icon">{item.icon}</span>
-										<span className="sidebar-text">{item.label}</span>
-									</Link>
-								))}
-							</div>
+							{canViewAdmin ? (
+								<div className="sidebar-group">
+									{!isSidebarCollapsed ? (
+										<p className="sidebar-label">System</p>
+									) : null}
+									{systemLinks.map((item) => (
+										<Link
+											key={item.href}
+											href={item.href}
+											className={`sidebar-link ${isLinkActive(pathname, item.href) ? "active" : ""}`}
+											aria-label={item.hint}
+											data-tooltip={item.hint}
+										>
+											<span className="sidebar-icon">{item.icon}</span>
+											<span className="sidebar-text">{item.label}</span>
+										</Link>
+									))}
+								</div>
+							) : null}
 
 							{!isSidebarCollapsed ? (
 								<div className="sidebar-group desktop-only">
