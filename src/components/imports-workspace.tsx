@@ -2,15 +2,26 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { getApiErrorMessage } from "@/lib/api/errors";
-import { getApiV1IamGroups } from "@/lib/api/generated/client";
 import {
-	type Group,
-	type ImportNamespacePermissionInput,
-	Permissions,
-} from "@/lib/api/generated/models";
+	FormEvent,
+	type ReactNode,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import { getApiErrorMessage } from "@/lib/api/errors";
+import {
+	getApiV1IamGroups,
+	getApiV1Namespaces,
+} from "@/lib/api/generated/client";
+import type { Group, Namespace } from "@/lib/api/generated/models";
 import { createImportTask, type ImportRequest } from "@/lib/api/tasking";
+import {
+	buildImportSubmissionPayload,
+	getImportNamespaceSuggestion,
+	type NamespaceMode,
+} from "@/lib/import-payload";
 
 type ImportSummary = {
 	totalItems: number;
@@ -21,12 +32,27 @@ type ImportSummary = {
 };
 
 type ImportFilePayload = ImportRequest & Record<string, unknown>;
-type NamespacePermissionSeed = Pick<
-	ImportNamespacePermissionInput,
-	"namespace_key" | "namespace_ref" | "ref"
->;
 
-const FULL_NAMESPACE_PERMISSIONS = Object.values(Permissions);
+type ImportsWorkspaceProps = {
+	canCreateNamespaces: boolean;
+};
+
+type HintKey =
+	| "import-file"
+	| "dry-run"
+	| "atomicity"
+	| "collision-policy"
+	| "namespace-handling"
+	| "target-namespace"
+	| "namespace-description"
+	| "permission-policy"
+	| "delegate-group"
+	| "idempotency-key";
+
+type FilePermissionGroupValidation =
+	| { kind: "valid"; groupNames: string[] }
+	| { kind: "missing"; groupNames: string[] }
+	| { kind: "unchecked"; reason: string };
 
 function parsePositiveInteger(value: string): number | null {
 	const parsed = Number.parseInt(value, 10);
@@ -75,6 +101,19 @@ function normalizeImportPayload(payload: unknown): ImportFilePayload {
 	return candidate as ImportFilePayload;
 }
 
+function getFilePermissionGroupNames(payload: ImportRequest): string[] {
+	const groupNames = new Set<string>();
+
+	for (const permission of payload.graph.namespace_permissions ?? []) {
+		const groupname = permission.group_key.groupname?.trim();
+		if (groupname) {
+			groupNames.add(groupname);
+		}
+	}
+
+	return Array.from(groupNames).sort((left, right) => left.localeCompare(right));
+}
+
 async function fetchGroups(): Promise<Group[]> {
 	const response = await getApiV1IamGroups(undefined, {
 		credentials: "include",
@@ -89,141 +128,23 @@ async function fetchGroups(): Promise<Group[]> {
 	return response.data;
 }
 
-function buildNamespacePermissionIdentity(
-	permission: Pick<
-		ImportNamespacePermissionInput,
-		"namespace_key" | "namespace_ref"
-	>,
-	index: number,
-): string {
-	const namespaceRef = permission.namespace_ref?.trim();
-	if (namespaceRef) {
-		return `ref:${namespaceRef}`;
+async function fetchNamespaces(): Promise<Namespace[]> {
+	const response = await getApiV1Namespaces({ limit: 250 }, {
+		credentials: "include",
+	});
+
+	if (response.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to load namespaces."),
+		);
 	}
 
-	const namespaceName = permission.namespace_key?.name?.trim();
-	if (namespaceName) {
-		return `name:${namespaceName}`;
-	}
-
-	return `index:${index}`;
+	return response.data;
 }
 
-function buildSeedNamespacePermissions(
-	payload: ImportRequest,
-	groupname: string,
-): ImportNamespacePermissionInput[] {
-	const seeds = new Map<string, NamespacePermissionSeed>();
-	const classNamespaceByRef = new Map<string, NamespacePermissionSeed>();
-
-	function registerSeed(seed: NamespacePermissionSeed): void {
-		const key = buildNamespacePermissionIdentity(seed, seeds.size);
-		if (key.startsWith("index:")) {
-			return;
-		}
-
-		if (!seeds.has(key)) {
-			seeds.set(key, seed);
-		}
-	}
-
-	for (const namespaceItem of payload.graph.namespaces ?? []) {
-		const namespaceRef = namespaceItem.ref?.trim();
-		registerSeed({
-			namespace_key: namespaceRef ? undefined : { name: namespaceItem.name },
-			namespace_ref: namespaceRef || undefined,
-			ref: namespaceItem.ref ?? undefined,
-		});
-	}
-
-	for (const classItem of payload.graph.classes ?? []) {
-		const seed = {
-			namespace_key: classItem.namespace_ref?.trim()
-				? undefined
-				: (classItem.namespace_key ?? undefined),
-			namespace_ref: classItem.namespace_ref?.trim() || undefined,
-			ref: classItem.ref ?? undefined,
-		};
-
-		registerSeed(seed);
-
-		const classRef = classItem.ref?.trim();
-		if (classRef) {
-			classNamespaceByRef.set(classRef, seed);
-		}
-	}
-
-	for (const objectItem of payload.graph.objects ?? []) {
-		if (
-			objectItem.class_key?.namespace_key ||
-			objectItem.class_key?.namespace_ref
-		) {
-			registerSeed({
-				namespace_key: objectItem.class_key.namespace_ref?.trim()
-					? undefined
-					: (objectItem.class_key.namespace_key ?? undefined),
-				namespace_ref: objectItem.class_key.namespace_ref?.trim() || undefined,
-			});
-			continue;
-		}
-
-		const classRef = objectItem.class_ref?.trim();
-		if (!classRef) {
-			continue;
-		}
-
-		const classNamespace = classNamespaceByRef.get(classRef);
-		if (classNamespace) {
-			registerSeed(classNamespace);
-		}
-	}
-
-	return Array.from(seeds.values()).map((seed) => ({
-		...seed,
-		group_key: { groupname },
-		permissions: FULL_NAMESPACE_PERMISSIONS,
-		replace_existing: false,
-	}));
-}
-
-function applyDelegateGroupOverride(
-	payload: ImportRequest,
-	groupname: string,
-): ImportRequest {
-	const existingPermissions = payload.graph.namespace_permissions ?? [];
-	const seededPermissions = buildSeedNamespacePermissions(payload, groupname);
-	const mergedPermissions = new Map<string, ImportNamespacePermissionInput>();
-
-	[...existingPermissions, ...seededPermissions].forEach(
-		(permission, index) => {
-			const key = buildNamespacePermissionIdentity(permission, index);
-			const previous = mergedPermissions.get(key);
-			const permissionNames = new Set(previous?.permissions ?? []);
-
-			for (const permissionName of permission.permissions) {
-				permissionNames.add(permissionName);
-			}
-
-			mergedPermissions.set(key, {
-				...permission,
-				group_key: { groupname },
-				permissions: Array.from(permissionNames),
-				replace_existing:
-					previous?.replace_existing ?? permission.replace_existing ?? false,
-			});
-		},
-	);
-
-	return {
-		...payload,
-		graph: {
-			...payload.graph,
-			namespace_permissions: Array.from(mergedPermissions.values()),
-		},
-	};
-}
-
-export function ImportsWorkspace() {
+export function ImportsWorkspace({
+	canCreateNamespaces,
+}: ImportsWorkspaceProps) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -242,10 +163,17 @@ export function ImportsWorkspace() {
 	const [permissionPolicy, setPermissionPolicy] = useState<
 		"abort" | "continue"
 	>("abort");
+	const [namespaceMode, setNamespaceMode] = useState<NamespaceMode>(
+		canCreateNamespaces ? "file" : "existing_override",
+	);
+	const [targetNamespaceName, setTargetNamespaceName] = useState("");
+	const [targetNamespaceDescription, setTargetNamespaceDescription] =
+		useState("");
 	const [delegateGroupName, setDelegateGroupName] = useState("");
 	const [idempotencyKey, setIdempotencyKey] = useState("");
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [taskLookupInput, setTaskLookupInput] = useState("");
+	const [activeHint, setActiveHint] = useState<HintKey | null>(null);
 
 	const importSummary = useMemo(
 		() => (parsedImport ? summarizeImport(parsedImport) : null),
@@ -254,7 +182,70 @@ export function ImportsWorkspace() {
 	const groupsQuery = useQuery({
 		queryKey: ["groups", "imports-form"],
 		queryFn: fetchGroups,
+		enabled: canCreateNamespaces && namespaceMode !== "existing_override",
 	});
+	const namespacesQuery = useQuery({
+		queryKey: ["namespaces", "imports-form"],
+		queryFn: fetchNamespaces,
+	});
+	const namespaceOptions = namespacesQuery.data ?? [];
+	const isExistingNamespaceMode = namespaceMode === "existing_override";
+	const requiresTargetNamespace = namespaceMode !== "file";
+	const requiresNamespaceDescription = namespaceMode === "create_override";
+	const canUsePermissionControls =
+		canCreateNamespaces && !isExistingNamespaceMode;
+	const hasVisibleTargetNamespace =
+		namespaceMode !== "existing_override" ||
+		namespaceOptions.some((namespace) => namespace.name === targetNamespaceName);
+	const canSubmitNamespaceOptions =
+		!requiresTargetNamespace ||
+		(targetNamespaceName.trim() !== "" &&
+			hasVisibleTargetNamespace &&
+			(!requiresNamespaceDescription ||
+				targetNamespaceDescription.trim() !== ""));
+	const filePermissionGroupValidation = useMemo(
+		(): FilePermissionGroupValidation | null => {
+			if (!parsedImport || !canUsePermissionControls || delegateGroupName.trim()) {
+				return null;
+			}
+
+			const fileGroupNames = getFilePermissionGroupNames(parsedImport);
+			if (fileGroupNames.length === 0) {
+				return null;
+			}
+
+			if (groupsQuery.isError) {
+				return {
+					kind: "unchecked",
+					reason:
+						"Could not verify file permission groups because groups failed to load.",
+				};
+			}
+
+			if (groupsQuery.isLoading || !groupsQuery.data) {
+				return {
+					kind: "unchecked",
+					reason: "Verifying file permission groups...",
+				};
+			}
+
+			const existingGroupNames = new Set(
+				groupsQuery.data.map((group) => group.groupname),
+			);
+			const missingGroupNames = fileGroupNames.filter(
+				(groupname) => !existingGroupNames.has(groupname),
+			);
+
+			if (missingGroupNames.length > 0) {
+				return { kind: "missing", groupNames: missingGroupNames };
+			}
+
+			return { kind: "valid", groupNames: fileGroupNames };
+		},
+		[canUsePermissionControls, delegateGroupName, groupsQuery, parsedImport],
+	);
+	const canSubmitFilePermissionGroups =
+		filePermissionGroupValidation?.kind !== "missing";
 
 	useEffect(() => {
 		const legacyTaskId = parsePositiveInteger(searchParams.get("taskId") ?? "");
@@ -263,26 +254,50 @@ export function ImportsWorkspace() {
 		}
 	}, [router, searchParams]);
 
+	useEffect(() => {
+		if (!parsedImport || namespaceOptions.length === 0) {
+			return;
+		}
+
+		const hasSelectedOption = namespaceOptions.some(
+			(namespace) => namespace.name === targetNamespaceName,
+		);
+		if (hasSelectedOption) {
+			return;
+		}
+
+		const namespaceSuggestion = getImportNamespaceSuggestion(
+			parsedImport,
+			namespaceOptions.map((namespace) => namespace.name),
+		);
+		if (
+			namespaceSuggestion.namespaceName &&
+			namespaceOptions.some(
+				(namespace) => namespace.name === namespaceSuggestion.namespaceName,
+			)
+		) {
+			setTargetNamespaceName(namespaceSuggestion.namespaceName);
+		}
+	}, [namespaceOptions, parsedImport, targetNamespaceName]);
+
 	const submitMutation = useMutation({
 		mutationFn: async () => {
 			if (!parsedImport) {
 				throw new Error("Select a valid JSON import file before submitting.");
 			}
 
-			const payload: ImportRequest = {
-				...parsedImport,
-				dry_run: dryRun,
-				mode: {
-					...parsedImport.mode,
-					atomicity,
-					collision_policy: collisionPolicy,
-					permission_policy: permissionPolicy,
-				},
-			};
-
-			const effectivePayload = delegateGroupName.trim()
-				? applyDelegateGroupOverride(payload, delegateGroupName.trim())
-				: payload;
+			const effectivePayload = buildImportSubmissionPayload(parsedImport, {
+				atomicity,
+				collisionPolicy,
+				delegateGroupName: canUsePermissionControls
+					? delegateGroupName
+					: undefined,
+				dryRun,
+				namespaceDescription: targetNamespaceDescription,
+				namespaceMode,
+				namespaceName: targetNamespaceName,
+				permissionPolicy,
+			});
 			return createImportTask(effectivePayload, idempotencyKey);
 		},
 		onSuccess: (task) => {
@@ -313,6 +328,18 @@ export function ImportsWorkspace() {
 			setAtomicity(payload.mode?.atomicity ?? "strict");
 			setCollisionPolicy(payload.mode?.collision_policy ?? "abort");
 			setPermissionPolicy(payload.mode?.permission_policy ?? "abort");
+			const namespaceSuggestion = getImportNamespaceSuggestion(
+				payload,
+				namespaceOptions.map((namespace) => namespace.name),
+			);
+			setNamespaceMode(
+				canCreateNamespaces && !namespaceSuggestion.isExistingNamespacePayload
+					? "file"
+					: "existing_override",
+			);
+			setTargetNamespaceName(namespaceSuggestion.namespaceName);
+			setTargetNamespaceDescription(namespaceSuggestion.description);
+			setDelegateGroupName("");
 			setParseError(null);
 			setSubmitError(null);
 		} catch (error) {
@@ -342,6 +369,158 @@ export function ImportsWorkspace() {
 		router.push(`/tasks/${parsed}`);
 	}
 
+	function renderFieldLabel(
+		label: string,
+		hintKey: HintKey,
+		hint: ReactNode,
+	) {
+		const isOpen = activeHint === hintKey;
+
+		return (
+			<span className="control-label">
+				<span>{label}</span>
+				<span className="field-hint">
+					<button
+						type="button"
+						className="field-hint-button"
+						aria-label={`${label} help`}
+						aria-expanded={isOpen}
+						onClick={(event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							setActiveHint(isOpen ? null : hintKey);
+						}}
+					>
+						?
+					</button>
+					{isOpen ? <span className="field-hint-popover">{hint}</span> : null}
+				</span>
+			</span>
+		);
+	}
+
+	function renderTargetNamespaceControl() {
+		if (!requiresTargetNamespace) {
+			return null;
+		}
+
+		if (namespaceMode === "create_override") {
+			return (
+				<label className="control-field">
+					{renderFieldLabel(
+						"Target namespace",
+						"target-namespace",
+						"All namespace references in the submitted import will be rewritten to this namespace.",
+					)}
+					<input
+						required
+						value={targetNamespaceName}
+						onChange={(event) => setTargetNamespaceName(event.target.value)}
+						placeholder="Shared Import"
+					/>
+				</label>
+			);
+		}
+
+		const hasSelectedOption = namespaceOptions.some(
+			(namespace) => namespace.name === targetNamespaceName,
+		);
+
+		return (
+			<label className="control-field">
+				{renderFieldLabel(
+					"Target namespace",
+					"target-namespace",
+					"All namespace references in the submitted import will be rewritten to this existing namespace.",
+				)}
+				<select
+					required
+					value={targetNamespaceName}
+					onChange={(event) => setTargetNamespaceName(event.target.value)}
+					disabled={
+						namespacesQuery.isLoading ||
+						namespacesQuery.isError ||
+						namespaceOptions.length === 0
+					}
+				>
+					<option value="">
+						{namespacesQuery.isLoading
+							? "Loading namespaces..."
+							: namespacesQuery.isError
+								? "Failed to load namespaces"
+								: "Select namespace"}
+					</option>
+					{namespaceOptions.map((namespace) => (
+						<option key={namespace.id} value={namespace.name}>
+							{namespace.name} (#{namespace.id})
+						</option>
+					))}
+				</select>
+				{targetNamespaceName && !hasSelectedOption ? (
+					<span className="field-note field-note--warning">
+						The import references {targetNamespaceName}, but that namespace is
+						not visible to your account.
+					</span>
+				) : null}
+			</label>
+		);
+	}
+
+	function renderDelegateGroupOverrideControl() {
+		if (!canUsePermissionControls) {
+			return null;
+		}
+
+		return (
+			<div className="control-field">
+				{renderFieldLabel(
+					"Delegate group override",
+					"delegate-group",
+					"Use file values keeps permission groups declared in the JSON. Choosing a group replaces those grants with full permissions for that group.",
+				)}
+				{groupsQuery.isError ? (
+					<input
+						aria-label="Delegate group override"
+						value={delegateGroupName}
+						onChange={(event) => setDelegateGroupName(event.target.value)}
+						placeholder="Use file values unless you enter a group name"
+					/>
+				) : (
+					<select
+						aria-label="Delegate group override"
+						value={delegateGroupName}
+						onChange={(event) => setDelegateGroupName(event.target.value)}
+					>
+						<option value="">Use file values</option>
+						{(groupsQuery.data ?? []).map((group) => (
+							<option key={group.id} value={group.groupname}>
+								{group.groupname} (#{group.id})
+							</option>
+						))}
+					</select>
+				)}
+				{filePermissionGroupValidation?.kind === "valid" ? (
+					<span className="field-note">
+						File groups verified:{" "}
+						{filePermissionGroupValidation.groupNames.join(", ")}
+					</span>
+				) : null}
+				{filePermissionGroupValidation?.kind === "missing" ? (
+					<span className="field-note field-note--warning">
+						File references missing group
+						{filePermissionGroupValidation.groupNames.length === 1
+							? ""
+							: "s"}
+						: {filePermissionGroupValidation.groupNames.join(", ")}
+					</span>
+				) : null}
+				{filePermissionGroupValidation?.kind === "unchecked" ? (
+					<span className="field-note">{filePermissionGroupValidation.reason}</span>
+				) : null}
+			</div>
+		);
+	}
+
 	return (
 		<section className="stack">
 			<header className="stack action-card-header">
@@ -369,7 +548,11 @@ export function ImportsWorkspace() {
 						<form className="stack" onSubmit={handleSubmit}>
 							<div className="form-grid">
 								<label className="control-field control-field--wide">
-									<span>Import file</span>
+									{renderFieldLabel(
+										"Import file",
+										"import-file",
+										"Choose a Hubuum import JSON file. The file is parsed locally before submission.",
+									)}
 									<input
 										ref={fileInputRef}
 										className="json-editor-file"
@@ -395,7 +578,11 @@ export function ImportsWorkspace() {
 								</label>
 
 								<label className="control-field">
-									<span>Dry run</span>
+									{renderFieldLabel(
+										"Dry run",
+										"dry-run",
+										"Validate the transformed import request without applying changes.",
+									)}
 									<select
 										value={dryRun ? "true" : "false"}
 										onChange={(event) =>
@@ -408,7 +595,11 @@ export function ImportsWorkspace() {
 								</label>
 
 								<label className="control-field">
-									<span>Atomicity</span>
+									{renderFieldLabel(
+										"Atomicity",
+										"atomicity",
+										"Strict aborts the import as a unit; best effort allows independent items to continue where possible.",
+									)}
 									<select
 										value={atomicity}
 										onChange={(event) =>
@@ -423,7 +614,11 @@ export function ImportsWorkspace() {
 								</label>
 
 								<label className="control-field">
-									<span>Collision policy</span>
+									{renderFieldLabel(
+										"Collision policy",
+										"collision-policy",
+										"Choose whether existing matching records abort the import or are overwritten.",
+									)}
 									<select
 										value={collisionPolicy}
 										onChange={(event) =>
@@ -438,9 +633,64 @@ export function ImportsWorkspace() {
 								</label>
 
 								<label className="control-field">
-									<span>Permission policy</span>
+									{renderFieldLabel(
+										"Namespace handling",
+										"namespace-handling",
+										canCreateNamespaces
+											? "Use file namespace keeps the JSON as-is. Use existing rewrites the import to an existing namespace without permission changes. Create namespace rewrites the import and includes namespace creation and grants."
+											: "Your account can only import into an existing namespace, so namespace creation and permission changes are not submitted.",
+									)}
+									<select
+										value={namespaceMode}
+										onChange={(event) => {
+											setNamespaceMode(event.target.value as NamespaceMode);
+											setDelegateGroupName("");
+										}}
+										disabled={!canCreateNamespaces}
+									>
+										{canCreateNamespaces ? (
+											<option value="file">Use file namespace</option>
+										) : null}
+										<option value="existing_override">
+											Use existing namespace
+										</option>
+										{canCreateNamespaces ? (
+											<option value="create_override">Create namespace</option>
+										) : null}
+									</select>
+								</label>
+
+								{requiresTargetNamespace
+									? renderTargetNamespaceControl()
+									: renderDelegateGroupOverrideControl()}
+
+								{requiresNamespaceDescription ? (
+									<label className="control-field control-field--wide">
+										{renderFieldLabel(
+											"Namespace description",
+											"namespace-description",
+											"Description used for the namespace declaration added to the import request.",
+										)}
+										<input
+											required
+											value={targetNamespaceDescription}
+											onChange={(event) =>
+												setTargetNamespaceDescription(event.target.value)
+											}
+											placeholder="Namespace purpose"
+										/>
+									</label>
+								) : null}
+
+								<label className="control-field">
+									{renderFieldLabel(
+										"Permission policy",
+										"permission-policy",
+										"Choose whether namespace permission errors abort the import or allow the remaining import to continue.",
+									)}
 									<select
 										value={permissionPolicy}
+										disabled={!canUsePermissionControls}
 										onChange={(event) =>
 											setPermissionPolicy(
 												event.target.value as "abort" | "continue",
@@ -452,37 +702,16 @@ export function ImportsWorkspace() {
 									</select>
 								</label>
 
-								<div className="control-field">
-									<span>Delegate group override</span>
-									{groupsQuery.isError ? (
-										<input
-											aria-label="Delegate group override"
-											value={delegateGroupName}
-											onChange={(event) =>
-												setDelegateGroupName(event.target.value)
-											}
-											placeholder="Use file values unless you enter a group name"
-										/>
-									) : (
-										<select
-											aria-label="Delegate group override"
-											value={delegateGroupName}
-											onChange={(event) =>
-												setDelegateGroupName(event.target.value)
-											}
-										>
-											<option value="">Use file values</option>
-											{(groupsQuery.data ?? []).map((group) => (
-												<option key={group.id} value={group.groupname}>
-													{group.groupname} (#{group.id})
-												</option>
-											))}
-										</select>
-									)}
-								</div>
+								{requiresTargetNamespace
+									? renderDelegateGroupOverrideControl()
+									: null}
 
 								<label className="control-field control-field--wide">
-									<span>Idempotency key</span>
+									{renderFieldLabel(
+										"Idempotency key",
+										"idempotency-key",
+										"Optional key used by the backend to deduplicate repeated submissions of the same import.",
+									)}
 									<input
 										value={idempotencyKey}
 										onChange={(event) => setIdempotencyKey(event.target.value)}
@@ -524,7 +753,13 @@ export function ImportsWorkspace() {
 							{submitError ? (
 								<div className="error-banner">{submitError}</div>
 							) : null}
-							{groupsQuery.isError ? (
+							{namespacesQuery.isError && isExistingNamespaceMode ? (
+								<div className="muted">
+									Could not load namespaces. Reload the page before submitting
+									an import into an existing namespace.
+								</div>
+							) : null}
+							{canUsePermissionControls && groupsQuery.isError ? (
 								<div className="muted">
 									Could not load groups automatically. You can still override
 									delegation by entering a group name manually.
@@ -534,7 +769,12 @@ export function ImportsWorkspace() {
 							<div className="action-row">
 								<button
 									type="submit"
-									disabled={submitMutation.isPending || !parsedImport}
+									disabled={
+										submitMutation.isPending ||
+										!parsedImport ||
+										!canSubmitNamespaceOptions ||
+										!canSubmitFilePermissionGroups
+									}
 								>
 									{submitMutation.isPending ? "Submitting..." : "Submit import"}
 								</button>
