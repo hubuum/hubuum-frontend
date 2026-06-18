@@ -66,7 +66,6 @@ type Kind =
 	| { type: "listObject" } // a list whose elements are objects
 	| { type: "relatedMap" } // related.* — relation/include aliases
 	| { type: "classMap" } // reachable.* / paths.* — class aliases
-	| { type: "pathsEntry" } // an element of a paths.* group (object + path/path_objects)
 	| { type: "unknown" };
 
 type Segment = { name: string; indexed: boolean };
@@ -332,8 +331,9 @@ export function createTemplateCompletionSource(
 		// Resolve the prefix path to a kind.
 		const [first, ...restSegments] = parsed.segments;
 		let kind = resolveRoot(first.name, options, loopVars);
-		if (first.indexed) {
-			kind = step({ type: "listObject" }, { name: first.name, indexed: true }, options);
+		if (first.indexed && kind.type === "listObject") {
+			// An indexed root list (e.g. items[0]) unwraps to its element object.
+			kind = { type: "object" };
 		}
 		for (const segment of restSegments) {
 			kind = step(kind, segment, options);
