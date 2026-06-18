@@ -2211,31 +2211,6 @@ th.sortable:hover {
 	);
 }
 
-.template-code-surface .cm-template-delimiter {
-	color: #7c3aed;
-}
-
-.template-code-surface .cm-template-keyword {
-	color: #bf5f00;
-	font-weight: 700;
-}
-
-.template-code-surface .cm-template-path {
-	color: #0f766e;
-}
-
-html[data-theme="dark"] .template-code-surface .cm-template-delimiter {
-	color: #c4b5fd;
-}
-
-html[data-theme="dark"] .template-code-surface .cm-template-keyword {
-	color: #f7b267;
-}
-
-html[data-theme="dark"] .template-code-surface .cm-template-path {
-	color: #74d5cb;
-}
-
 .template-code-surface .cm-tooltip.cm-tooltip-autocomplete,
 .template-completion-tooltip {
 	border: 1px solid color-mix(in srgb, var(--line) 95%, transparent);
