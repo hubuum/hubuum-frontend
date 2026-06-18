@@ -85,10 +85,12 @@ type ReportResultView = {
 };
 
 const TEMPLATE_HELP = [
-	"{{ item.name }} interpolates a value.",
-	"{% for item in items %} ... {% endfor %} loops arrays.",
-	"Root fields include items, meta.*, and warnings.",
-	"Use item.name and other base fields inside item loops.",
+	"{{ item.name }} interpolates a value; {% for item in items %} ... {% endfor %} loops arrays.",
+	"Root context: items, meta.*, warnings, request.*, and source (related_objects).",
+	"Relations: item.related.<alias> (includes), item.reachable.*/paths.* (when hydrated) — each is a list, e.g. item.related.room[0].name.",
+	"Helpers: coalesce(...), | tojson, | csv_cell, | default(...), | default_if_empty(...), | format_datetime(...), | join_nonempty(...).",
+	"HTML templates are autoescaped; use | tojson or | csv_cell for sensitive values in text/CSV.",
+	"include/import/extends resolve within the same namespace (e.g. layout.*, macros.*, partial.*, report.*).",
 	"Stored templates support text/plain, text/html, and text/csv.",
 ] as const;
 
@@ -99,7 +101,8 @@ const DEFAULT_TEMPLATE_EDITOR: TemplateEditorState = {
 	name: "",
 	description: "",
 	contentType: "text/plain",
-	templateBody: "{% for item in items %}{{ item.name }}\n{% endfor %}",
+	templateBody: `{% for item in items %}{{ item.name }}
+{% endfor %}`,
 };
 
 const STRING_OPERATORS = [
@@ -1575,7 +1578,8 @@ export function ReportsWorkspace() {
 							onChange={(templateBody) =>
 								setEditorState({ ...editorState, templateBody })
 							}
-							placeholder="{% for item in items %}{{ item.name }}\n{% endfor %}"
+							placeholder={`{% for item in items %}{{ item.name }}
+{% endfor %}`}
 							disabled={saveTemplateMutation.isPending}
 							scopeKind={scopeKind}
 						/>
