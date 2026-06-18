@@ -106,10 +106,11 @@ Complete and correct the migration across four areas:
   - `paths` — like `reachable` (grouped by the reachable object's **class
     alias**) but preserves multiple routes; each entry exposes `path` (number[])
     and `path_objects` (object[]), e.g. `person.path_objects[1].name`.
-- Traversal is bidirectional. Hydration requires `relation_context` (for
-  `objects_in_class`) or the `related_objects` scope; without it, `items` is a
-  plain list with no `related.*`/`reachable.*`. `relation_context.depth` is `1`
-  or `2`; default depth 2.
+- Traversal is bidirectional. For `objects_in_class`, hydration is **off by
+  default** and `relation_context` **enables** it (without it, `items` is a plain
+  list with no `related.*`/`reachable.*`). For `related_objects`, hydration is
+  **automatic** at default depth 2, and `relation_context.depth` **overrides**
+  it. `relation_context.depth` is `1` or `2`; default depth 2.
 - Relation/class aliases are derived from
   `forward_template_alias`/`reverse_template_alias`, else inferred plural
   (Room→rooms, Person→persons, "Access Policy"→access_policies) — i.e. **not
@@ -216,17 +217,24 @@ valid at logical path P?":
   promoted to universal.
 - `related`/`reachable`/`paths` offered on any object value **only** when
   hydration is possible (`related_objects`, or `objects_in_class` with
-  `relation_context`). **Alias domains differ — handle separately:**
+  `relation_context`). **Each alias resolves to a list-of-object, not an object**
+  — included/grouped values are arrays even when `limit` is 1, so object fields
+  are only reachable after indexing (`[n]`) or via a `for` loop binding
+  (`{% for room in host.related.rooms %}`). The completion must NOT offer object
+  fields directly on `related.<alias>` (i.e. never suggest
+  `item.related.room.name`; the valid form is `item.related.room[0].name`).
+  **Alias domains differ — handle separately:**
   - After `related.`: relation/include aliases. Offer `knownAliases` (the
     configured `include.related_objects` aliases from D) when provided; else no
-    concrete labels (free-form). Resolves to an object (an include entry; it is
-    an array, so `related.<alias>[n].<field>`).
+    concrete labels (free-form). Each alias is a **list-of-object**.
   - After `reachable.` / `paths.`: grouped by the reachable object's **class
     alias**, which is not statically known → offer no concrete labels (generic
-    fallback). Do **not** offer `knownAliases` here.
-  - After an alias segment (any of the three): generic object completion. For
-    `paths` entries additionally surface usable `path` (number[]) and
-    `path_objects` (object[]); `path_objects[n]` unwraps to an object.
+    fallback). Each alias is a **list-of-object**.
+  - After indexing or loop-binding an alias to an element (e.g.
+    `related.<alias>[n].`, or the loop var of `{% for x in <alias> %}`): generic
+    **object** completion. For `paths` entries additionally surface usable `path`
+    (number[]) and `path_objects` (object[]); `path_objects[n]` unwraps to an
+    object.
 - `meta.*` / `request.*`: keep only fields confirmed against the contract.
   - `meta`: keep `meta.count`, `meta.truncated`, `meta.content_type`, and
     `meta.scope.{kind,class_id,object_id}` — all present in the documented JSON
@@ -282,11 +290,17 @@ Jinja tags if theming is desired — deferred unless visuals look off.
 - Submit errors: special-case `429` ("too many active report tasks — try again
   later") in `reporting.ts` `submitReportTask` / surfaced by the workspace.
   `413` surfaced via the failed-task summary path (task fails server-side).
-- `relation_context.depth` control: render **only** for
-  `scopeKind === 'objects_in_class'` (per docs, `relation_context.depth` is `1`
-  or `2` and only applies there). Validate to the integer range `1..2` in
-  `handleRunReport` (not just the input `max` attribute), and only send
-  `relation_context` for that scope.
+- `relation_context.depth` control: render for the scopes where it applies —
+  `objects_in_class` **and** `related_objects` (per docs, the default depth is 2
+  and "you can override it with `relation_context: { depth: 1 }`", shown in the
+  `related_objects` section). Semantics differ and the UI should reflect it:
+  - `objects_in_class`: `relation_context` **enables** hydration (off by
+    default); setting depth turns on `related.*`/`reachable.*`/`paths.*`.
+  - `related_objects`: hydration is automatic at default depth 2; the control
+    **overrides/lowers** it (e.g. to 1).
+  Validate to the integer range `1..2` in `handleRunReport` (not just the input
+  `max` attribute), and send `relation_context` only for these two scopes. Do
+  **not** render the control for other scopes.
 
 ### D. `include.related_objects` builder (`reports-workspace.tsx`, `reporting.ts`)
 
