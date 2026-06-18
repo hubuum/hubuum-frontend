@@ -81,26 +81,43 @@ Complete and correct the migration across four areas:
 - `missing_data_policy`: `strict | null | omit`.
 
 ### Relations in templates
+- `include.related_objects` is supported **only by `objects_in_class` reports**
+  ("objects_in_class reports can include related objects for every returned
+  object"). For `related_objects` scope, relation hydration is **automatic via
+  the scope** — no include rows.
 - `include.related_objects.<alias>` hydration: the alias becomes a key under each
   item's `related` map → `item.related.<alias>` in templates (and
   `related.<alias>` in JSON). Included values are **always arrays** (even when
   `limit` is 1); each related object has normal object fields **plus** `path`.
-  Up to **8 aliases**. The top-level `related` item field is reserved for these
+  At most **8 aliases**. The top-level `related` item field is reserved for these
   includes.
-- `related` — map of adjacent objects grouped by relation alias; direct
-  neighbors only; preserves hop-by-hop shape.
-- `reachable` — flattened companion; direct + transitive within depth budget;
-  grouped by reachable object's class alias; deduped by id; shortest path.
-  `reachable.<classAlias>` appears only when ≥1 visible object exists (guard with
-  `is defined`).
-- `paths` — like `reachable` but preserves multiple routes; each entry exposes
-  `path` (number[]) and `path_objects` (object[]), e.g.
-  `person.path_objects[1].name`.
+- Alias name **must match `[A-Za-z_][A-Za-z0-9_]*`** (a request can include at
+  most 8 aliases). Per-include `limit` defaults to 1 and must be **1..50**
+  (applied per root object and per alias); `max_depth` defaults to 1 and must be
+  **1..10**. `direction` ∈ {any (default), outgoing, incoming}; `sort` ∈ {path
+  (default), name, created_at}.
+- **Three maps use different alias domains:**
+  - `related` — adjacent objects grouped by **relation alias** (and the include
+    aliases above); direct neighbors only; preserves hop-by-hop shape.
+  - `reachable` — flattened companion; direct + transitive within depth budget;
+    grouped by the reachable object's **class alias**; deduped by id; shortest
+    path. `reachable.<classAlias>` appears only when ≥1 visible object exists
+    (guard with `is defined`).
+  - `paths` — like `reachable` (grouped by the reachable object's **class
+    alias**) but preserves multiple routes; each entry exposes `path` (number[])
+    and `path_objects` (object[]), e.g. `person.path_objects[1].name`.
 - Traversal is bidirectional. Hydration requires `relation_context` (for
-  `objects_in_class`) or `related_objects` scope; without it, `items` is a plain
-  list with no `related.*`/`reachable.*`. Depth `<= 2`; default depth 2.
-- Alias naming: from `forward_template_alias`/`reverse_template_alias`, else
-  inferred plural (Room→rooms, Person→persons, "Access Policy"→access_policies).
+  `objects_in_class`) or the `related_objects` scope; without it, `items` is a
+  plain list with no `related.*`/`reachable.*`. `relation_context.depth` is `1`
+  or `2`; default depth 2.
+- Relation/class aliases are derived from
+  `forward_template_alias`/`reverse_template_alias`, else inferred plural
+  (Room→rooms, Person→persons, "Access Policy"→access_policies) — i.e. **not
+  statically known to the frontend** except for the user-configured include
+  aliases (which populate `related` only).
+- Loop variables are arbitrary (`{% for host in items %}`,
+  `{% for person in room.related.persons %}`), so completion must bind loop
+  variables rather than assume `item`.
 - `source`: for templated `related_objects` reports, equals the hydrated root
   object (== `items[0]`).
 
@@ -125,8 +142,10 @@ Complete and correct the migration across four areas:
   - `ReportInclude { related_objects?: { [alias]: ReportIncludeRelatedObject } | null }`
   - `ReportIncludeRelatedObject { class_id: number (required); class_relation_id?: number|null; direction?: 'any'|'outgoing'|'incoming'; limit?: number|null; max_depth?: number|null; sort?: 'path'|'name'|'created_at' }`
   - `ReportRelationContext { depth?: number|null }`
-  - The `depth ≤ 2` and `≤ 8 aliases` limits are **runtime** rules, not in the
-    OpenAPI schema → enforce as soft client-side validation.
+  - The numeric/count rules — `relation_context.depth ∈ 1..2`, include `limit ∈
+    1..50` (default 1), include `max_depth ∈ 1..10` (default 1), `≤ 8 aliases`,
+    alias regex `[A-Za-z_][A-Za-z0-9_]*` — are **runtime** rules documented in
+    prose, not encoded in the OpenAPI schema → enforce as client-side validation.
 
 ## Architecture & approach
 
@@ -168,20 +187,46 @@ Refactor the suggestion data into a single resolver that, given
 valid at logical path P?":
 
 - Roots: `items`, `meta`, `warnings`, `request`, plus `source` only when
-  `scopeKind === 'related_objects'`, plus loop var `item`.
-- Universal per-item fields available at any `item.`/`source.`/related-entry
-  level: `id, name, description, namespace_id, hubuum_class_id, data,
-  created_at, updated_at, path, path_objects`.
+  `scopeKind === 'related_objects'`. **Loop variables are bound dynamically**
+  (see below), not hardcoded to `item`.
+- **Loop-variable binding (required for canonical patterns).** The docs use
+  arbitrary loop names: `{% for host in items %}`, `{% for room in host.related.rooms %}`,
+  `{% for person in room.related.persons %}`. The completion resolver must scan
+  the enclosing `{% for X in <expr> %}` blocks at the cursor, bind each `X` to
+  the **element type** of `<expr>`, and resolve completions through those
+  bindings. Element-type resolution: iterating a list-of-objects (e.g. `items`,
+  `host.related.rooms`, `host.reachable.persons`, `host.paths.persons`) yields an
+  **object**; iterating a relation/class-alias map is not a typical pattern but
+  resolves to unknown. Practically: any loop variable bound over an
+  object-valued iterable gets the full object completion set (universal fields +
+  scope extras + relation maps when hydrated). `item` is just the conventional
+  name, handled by the same mechanism — no special case.
+- Resolver value "kinds": **object** (universal fields + scope extras + relation
+  maps when hydrated), **relation-alias map** (`related`), **class-alias map**
+  (`reachable`, `paths`), **list-of-object**, and **unknown**. The tree walk
+  resolves a path/loop-binding expression to one of these kinds; subscripting a
+  list/map unwraps to its element.
+- Universal per-object fields available on any object value (loop var,
+  `source`, related/reachable/paths entry): `id, name, description,
+  namespace_id, hubuum_class_id, data, created_at, updated_at, path,
+  path_objects`.
 - Scope-specific item fields kept per scope (e.g. `classes`:
   `validate_schema`, `json_schema`, `namespace.*`; relation scopes: their FK
   fields). Reuse the existing `MANUAL_SCOPE_EXTRAS` content, minus anything now
   promoted to universal.
-- `related`/`reachable`/`paths` offered on `item`/`source`/related-entry **only**
-  when hydration is possible (`related_objects`, or `objects_in_class` with
-  relation context). After `related.`/`reachable.`/`paths.`: offer
-  `knownAliases` when provided, else no concrete labels (free-form); after an
-  alias segment: generic hydrated-object fields (+ `path`/`path_objects` for
-  `paths`).
+- `related`/`reachable`/`paths` offered on any object value **only** when
+  hydration is possible (`related_objects`, or `objects_in_class` with
+  `relation_context`). **Alias domains differ — handle separately:**
+  - After `related.`: relation/include aliases. Offer `knownAliases` (the
+    configured `include.related_objects` aliases from D) when provided; else no
+    concrete labels (free-form). Resolves to an object (an include entry; it is
+    an array, so `related.<alias>[n].<field>`).
+  - After `reachable.` / `paths.`: grouped by the reachable object's **class
+    alias**, which is not statically known → offer no concrete labels (generic
+    fallback). Do **not** offer `knownAliases` here.
+  - After an alias segment (any of the three): generic object completion. For
+    `paths` entries additionally surface usable `path` (number[]) and
+    `path_objects` (object[]); `path_objects[n]` unwraps to an object.
 - `meta.*` / `request.*`: keep only fields confirmed against the contract.
   - `meta`: keep `meta.count`, `meta.truncated`, `meta.content_type`, and
     `meta.scope.{kind,class_id,object_id}` — all present in the documented JSON
@@ -207,8 +252,10 @@ the custom source after `|` (filters) and where a callable is valid (functions
 The editor already receives `scopeKind`. Extend its props to also accept:
 
 - `hydrationEnabled: boolean` — whether `related/reachable/paths` apply.
-- `relationAliases?: string[]` — known include aliases (from D), used to offer
-  concrete alias names; optional, falls back to generic.
+- `relationAliases?: string[]` — known `include.related_objects` aliases (from
+  D). Used to offer concrete alias names **only at `related.`** (not
+  `reachable.`/`paths.`, which use class aliases). Optional; falls back to
+  generic free-form when absent.
 
 These thread the scope-aware model into the custom completion source.
 
@@ -236,37 +283,47 @@ Jinja tags if theming is desired — deferred unless visuals look off.
   later") in `reporting.ts` `submitReportTask` / surfaced by the workspace.
   `413` surfaced via the failed-task summary path (task fails server-side).
 - `relation_context.depth` control: render **only** for
-  `scopeKind === 'objects_in_class'`; validate to soft max `2` in
+  `scopeKind === 'objects_in_class'` (per docs, `relation_context.depth` is `1`
+  or `2` and only applies there). Validate to the integer range `1..2` in
   `handleRunReport` (not just the input `max` attribute), and only send
   `relation_context` for that scope.
 
 ### D. `include.related_objects` builder (`reports-workspace.tsx`, `reporting.ts`)
 
-- New "Related includes" section in the report builder, shown only for hydrated
-  scopes (`objects_in_class`, `related_objects`).
+- New "Related includes" section in the report builder, shown **only for
+  `scopeKind === 'objects_in_class'`**. Per the docs, "objects_in_class reports
+  can include related objects"; for `related_objects` scope, relation hydration
+  is **automatic via the scope** (`items` becomes `[source]`, `source` is the
+  hydrated root) — so no include UI is shown there. (Do not offer the include
+  builder for any other scope.)
 - A list of include rows; each row:
-  - `alias` (text, required, unique, no `/` or `::`).
+  - `alias` (text, required, unique) — must match the backend regex
+    `^[A-Za-z_][A-Za-z0-9_]*$`. Reject leading digits, dashes, dots, spaces.
   - `class_id` (required) — class selector consistent with existing class
     pickers in the workspace.
   - `direction` (`any` default / `outgoing` / `incoming`).
-  - `sort` (`path` / `name` / `created_at`, optional).
-  - `limit` (positive int, optional).
-  - `max_depth` (positive int ≤ 2, optional).
+  - `sort` (`path` default / `name` / `created_at`, optional).
+  - `limit` (integer `1..50`, optional; backend default 1).
+  - `max_depth` (integer `1..10`, optional; backend default 1).
   - `class_relation_id` (optional; advanced — include only if a simple selector
     exists, otherwise omit from v1 and document).
-- Soft validation: ≤ 8 aliases; unique, non-empty alias names.
+- Client-side validation: at most **8** aliases; aliases unique and matching the
+  regex; `limit ∈ 1..50`; `max_depth ∈ 1..10`. These limits are backend runtime
+  rules (not in the OpenAPI schema), enforced client-side to avoid valid-looking
+  requests the server will reject.
 - `handleRunReport` builds `include.related_objects` as
   `{ [alias]: { class_id, direction?, sort?, limit?, max_depth?, class_relation_id? } }`
   and sets `ReportRequest.include` (omit when empty).
 - The configured alias names are passed to `TemplateCodeEditor` via
-  `relationAliases` so B can autocomplete real alias names at `item.related.`.
+  `relationAliases` so B can autocomplete them **at `item.related.<alias>`**
+  (the domain where include aliases live).
 
 ## Components / units of change
 
 | Unit | File | Change |
 |------|------|--------|
 | Suggestion model + helpers data | `src/lib/template-suggestions.ts` | Scope-aware resolver; promote universal item fields; gate `source`/relation maps; add helper/filter/test data; delete `validateTemplateExpression`, `getValidTemplatePaths`, `ROOT_TEMPLATE_SUGGESTIONS`; prune speculative paths. |
-| Custom completion source | `src/components/template-code-editor.tsx` (or a new `src/lib/template-completion.ts`) | Tree-walking completion source handling deep paths + subscripts + filters; new `hydrationEnabled`/`relationAliases` props. |
+| Custom completion source | `src/components/template-code-editor.tsx` (or a new `src/lib/template-completion.ts`) | Tree-walking completion source handling deep paths + subscripts + filters; loop-variable binding (`{% for X in expr %}`); domain-aware `related` vs `reachable`/`paths` aliases; new `hydrationEnabled`/`relationAliases` props. |
 | Editor help text | `src/components/reports-workspace.tsx` (`TEMPLATE_HELP`, placeholder, default body) | Mention helpers, HTML autoescape, composition naming; fix literal `\n`. |
 | Orphaned CSS | `src/app/globals.css` | Remove `.cm-template-*` rules. |
 | Report error UX | `src/components/reports-workspace.tsx`, `src/lib/api/reporting.ts` | Status-branched banners + summary; `output_expires_at`; 404/410/429 handling; depth control gating. |
