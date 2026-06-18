@@ -506,6 +506,7 @@ export function ReportsWorkspace() {
 		activeReportTask != null &&
 		(activeReportTask.status === "failed" ||
 			activeReportTask.status === "cancelled");
+	const reportPartial = activeReportTask?.status === "partially_succeeded";
 	const reportOutputQuery = useQuery({
 		queryKey: ["report-output", activeReportTask?.id ?? null],
 		queryFn: () =>
@@ -1597,8 +1598,20 @@ export function ReportsWorkspace() {
 							</div>
 						) : null}
 
+						{reportPartial &&
+						reportDetails?.output_available !== true &&
+						!lastResult ? (
+							<div className="info-banner">
+								Report partially succeeded.{" "}
+								{activeReportTask?.summary?.trim()
+									? activeReportTask.summary
+									: "Some items failed and no full output is available."}
+							</div>
+						) : null}
+
 						{reportTerminal &&
 						!reportFailed &&
+						!reportPartial &&
 						reportDetails?.output_available !== true &&
 						!lastResult ? (
 							<div className="empty-state">

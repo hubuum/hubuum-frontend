@@ -66,6 +66,8 @@ type Kind =
 	| { type: "listObject" } // a list whose elements are objects
 	| { type: "relatedMap" } // related.* — relation/include aliases
 	| { type: "classMap" } // reachable.* / paths.* — class aliases
+	| { type: "pathsMap" } // item.paths — class-alias map whose entries carry path + path_objects
+	| { type: "pathsEntry" } // an element of paths.<alias>: object fields + path + path_objects
 	| { type: "unknown" };
 
 type Segment = { name: string; indexed: boolean };
@@ -166,16 +168,17 @@ function step(kind: Kind, segment: Segment, options: TemplateCompletionOptions):
 	switch (kind.type) {
 		case "listObject":
 			return segment.indexed ? { type: "object" } : { type: "unknown" };
+		case "pathsEntry":
 		case "object": {
 			if (segment.name === "related" && allowRelations("relatedMap")) {
 				return { type: "relatedMap" };
 			}
-			if ((segment.name === "reachable" || segment.name === "paths") && allowRelations("classMap")) {
+			if (segment.name === "reachable" && allowRelations("classMap")) {
 				return { type: "classMap" };
 			}
-			// Track whether we came from a paths-group earlier? Simplify: paths
-			// entries are produced by stepping classMap from a `paths` map; we
-			// approximate by treating reachable/paths entries as plain objects.
+			if (segment.name === "paths" && allowRelations("classMap")) {
+				return { type: "pathsMap" };
+			}
 			const field = getScopeObjectFields(options.scopeKind).find((f) => f.name === segment.name);
 			if (field?.nested === "namespace") {
 				return { type: "namespace" };
@@ -189,6 +192,8 @@ function step(kind: Kind, segment: Segment, options: TemplateCompletionOptions):
 		case "classMap":
 			// alias -> list of objects; index/loop unwraps to object.
 			return segment.indexed ? { type: "object" } : { type: "listObject" };
+		case "pathsMap":
+			return segment.indexed ? { type: "pathsEntry" } : { type: "listObject" };
 		case "meta":
 			return segment.name === "scope" ? { type: "scope" } : { type: "unknown" };
 		case "request":
@@ -204,6 +209,12 @@ function completionsForKind(kind: Kind, options: TemplateCompletionOptions): Com
 			return [
 				...getScopeObjectFields(options.scopeKind).map(fieldCompletion),
 				...RELATION_MAP_PROPS(options.relationHydrated),
+			];
+		case "pathsEntry":
+			return [
+				...getScopeObjectFields(options.scopeKind).map(fieldCompletion),
+				...RELATION_MAP_PROPS(options.relationHydrated),
+				{ label: "path", detail: "Traversal path (id list)", type: "property" },
 				{ label: "path_objects", detail: "Objects along the traversal path (list)", type: "property" },
 			];
 		case "namespace":
@@ -233,7 +244,7 @@ function completionsForKind(kind: Kind, options: TemplateCompletionOptions): Com
 				type: "property",
 				boost: 2,
 			}));
-		// classMap (reachable/paths) class aliases are not statically known.
+		// classMap/pathsMap class aliases are not statically known.
 		default:
 			return [];
 	}
