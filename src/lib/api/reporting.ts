@@ -167,6 +167,12 @@ export async function submitReportTask(
 		headers,
 	});
 
+	if ((response.status as number) === 429) {
+		throw new Error(
+			"Too many active report tasks. Wait for one to finish, then try again.",
+		);
+	}
+
 	if (response.status !== 202) {
 		throw new Error(
 			getApiErrorMessage(response.data, "Failed to submit report."),
@@ -215,6 +221,12 @@ export async function fetchReportOutput(
 		) || 0;
 	const truncated =
 		response.headers.get("x-hubuum-report-truncated") === "true";
+
+	if (response.status === 404 || response.status === 410) {
+		throw new Error(
+			"This report output has expired or was cleaned up. Re-run the report to generate it again.",
+		);
+	}
 
 	if (!response.ok) {
 		const payload = await parseBody(response);
