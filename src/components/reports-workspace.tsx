@@ -469,6 +469,12 @@ export function ReportsWorkspace() {
 	);
 	const activeReportTask = reportTaskQuery.data ?? lastReportTask;
 	const reportDetails = activeReportTask?.details?.report ?? null;
+	const reportTerminal =
+		activeReportTask != null && isTerminalTaskStatus(activeReportTask.status);
+	const reportFailed =
+		activeReportTask != null &&
+		(activeReportTask.status === "failed" ||
+			activeReportTask.status === "cancelled");
 	const reportOutputQuery = useQuery({
 		queryKey: ["report-output", activeReportTask?.id ?? null],
 		queryFn: () =>
@@ -704,12 +710,16 @@ export function ReportsWorkspace() {
 			};
 		}
 
-		const parsedRelationDepth = relationDepth.trim()
-			? parsePositiveInteger(relationDepth)
-			: null;
-		if (relationDepth.trim() && !parsedRelationDepth) {
-			setRunnerError("Relation hydration depth must be a positive integer.");
-			return;
+		const depthApplies =
+			scopeKind === "objects_in_class" || scopeKind === "related_objects";
+		let relationContext: ReportRequest["relation_context"] = null;
+		if (depthApplies && relationDepth.trim()) {
+			const parsedDepth = parsePositiveInteger(relationDepth);
+			if (!parsedDepth || parsedDepth < 1 || parsedDepth > 2) {
+				setRunnerError("Relation hydration depth must be 1 or 2.");
+				return;
+			}
+			relationContext = { depth: parsedDepth };
 		}
 
 		setRunnerError(null);
@@ -721,9 +731,7 @@ export function ReportsWorkspace() {
 				scope,
 				query: builtQuery || null,
 				output,
-				relation_context: parsedRelationDepth
-					? { depth: parsedRelationDepth }
-					: null,
+				relation_context: relationContext,
 				missing_data_policy: missingDataPolicy,
 				limits: {
 					max_items: parsePositiveInteger(maxItems),
@@ -1230,17 +1238,22 @@ export function ReportsWorkspace() {
 									</select>
 								</label>
 
-								<label className="control-field">
-									<span>Relation hydration depth</span>
-									<input
-										type="number"
-										min={1}
-										max={2}
-										value={relationDepth}
-										onChange={(event) => setRelationDepth(event.target.value)}
-										placeholder="Off"
-									/>
-								</label>
+								{scopeKind === "objects_in_class" ||
+								scopeKind === "related_objects" ? (
+									<label className="control-field">
+										<span>Relation hydration depth</span>
+										<input
+											type="number"
+											min={1}
+											max={2}
+											value={relationDepth}
+											onChange={(event) => setRelationDepth(event.target.value)}
+											placeholder={
+												scopeKind === "related_objects" ? "2 (default)" : "Off"
+											}
+										/>
+									</label>
+								) : null}
 
 								<label className="control-field">
 									<span>Max items</span>
@@ -1314,6 +1327,11 @@ export function ReportsWorkspace() {
 											: "Backend complete"}
 									</span>
 								) : null}
+								{reportDetails?.output_expires_at ? (
+									<span>
+										Output expires {formatTimestamp(reportDetails.output_expires_at)}
+									</span>
+								) : null}
 							</div>
 						) : null}
 
@@ -1325,8 +1343,17 @@ export function ReportsWorkspace() {
 							</div>
 						) : null}
 
-						{activeReportTask &&
-						isTerminalTaskStatus(activeReportTask.status) &&
+						{reportFailed ? (
+							<div className="error-banner">
+								Report {activeReportTask?.status}.{" "}
+								{activeReportTask?.summary?.trim()
+									? activeReportTask.summary
+									: "The task did not produce output."}
+							</div>
+						) : null}
+
+						{reportTerminal &&
+						!reportFailed &&
 						reportDetails?.output_available !== true &&
 						!lastResult ? (
 							<div className="empty-state">
