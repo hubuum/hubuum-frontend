@@ -184,7 +184,7 @@ scope-aware field model. It returns `Completion[]` for the current segment.
 ### Scope-aware field model (`template-suggestions.ts`)
 
 Refactor the suggestion data into a single resolver that, given
-`(scopeKind, hydrationEnabled, knownAliases)`, can answer "what completions are
+`(scopeKind, relationHydrated, knownAliases)`, can answer "what completions are
 valid at logical path P?":
 
 - Roots: `items`, `meta`, `warnings`, `request`, plus `source` only when
@@ -215,15 +215,26 @@ valid at logical path P?":
   `validate_schema`, `json_schema`, `namespace.*`; relation scopes: their FK
   fields). Reuse the existing `MANUAL_SCOPE_EXTRAS` content, minus anything now
   promoted to universal.
-- `related`/`reachable`/`paths` offered on any object value **only** when
-  hydration is possible (`related_objects`, or `objects_in_class` with
-  `relation_context`). **Each alias resolves to a list-of-object, not an object**
-  — included/grouped values are arrays even when `limit` is 1, so object fields
-  are only reachable after indexing (`[n]`) or via a `for` loop binding
+- **Two independent mechanisms populate relation maps — gate them separately:**
+  - `include.related_objects` (objects_in_class) populates `item.related.<alias>`
+    on **root items** with the user-configured include aliases, **without**
+    requiring `relation_context`. So `related` must be offered on root items, and
+    `knownAliases` offered under `related.`, **whenever include aliases are
+    configured** — even when relation hydration is off.
+  - `relation_context` (objects_in_class) / the `related_objects` scope enables
+    the broader traversal: `related.*` (relation aliases), `reachable.*`,
+    `paths.*`, on hydrated objects.
+  Concretely: offer `related` on the root item when (`relationHydrated` OR
+  include aliases exist); offer `reachable`/`paths` **only** when
+  `relationHydrated`. (Both include- and traversal-based values surface under the
+  same `related` key per the docs.)
+- **Each alias resolves to a list-of-object, not an object** — included/grouped
+  values are arrays even when `limit` is 1, so object fields are only reachable
+  after indexing (`[n]`) or via a `for` loop binding
   (`{% for room in host.related.rooms %}`). The completion must NOT offer object
-  fields directly on `related.<alias>` (i.e. never suggest
-  `item.related.room.name`; the valid form is `item.related.room[0].name`).
-  **Alias domains differ — handle separately:**
+  fields directly on `related.<alias>` (never suggest `item.related.room.name`;
+  the valid form is `item.related.room[0].name`).
+- **Alias domains differ — handle separately:**
   - After `related.`: relation/include aliases. Offer `knownAliases` (the
     configured `include.related_objects` aliases from D) when provided; else no
     concrete labels (free-form). Each alias is a **list-of-object**.
@@ -259,13 +270,19 @@ the custom source after `|` (filters) and where a callable is valid (functions
 
 The editor already receives `scopeKind`. Extend its props to also accept:
 
-- `hydrationEnabled: boolean` — whether `related/reachable/paths` apply.
+- `relationHydrated: boolean` — whether traversal hydration is active
+  (`related_objects` scope, or `objects_in_class` with `relation_context` set).
+  Gates `reachable`/`paths` and the free-form (relation-alias) part of `related`.
 - `relationAliases?: string[]` — known `include.related_objects` aliases (from
-  D). Used to offer concrete alias names **only at `related.`** (not
-  `reachable.`/`paths.`, which use class aliases). Optional; falls back to
-  generic free-form when absent.
+  D). Offered as concrete alias names **only at `related.`** (not
+  `reachable.`/`paths.`, which use class aliases). Their presence **also enables
+  `related` on root items independently of `relationHydrated`** (include
+  hydration needs no `relation_context`). Optional; falls back to generic
+  free-form when absent.
 
-These thread the scope-aware model into the custom completion source.
+These thread the scope-aware model into the custom completion source. Note the
+two gates are independent: `related` is offered when `relationHydrated` **or**
+`relationAliases` is non-empty; `reachable`/`paths` only when `relationHydrated`.
 
 ### Coloring
 
@@ -337,7 +354,7 @@ Jinja tags if theming is desired — deferred unless visuals look off.
 | Unit | File | Change |
 |------|------|--------|
 | Suggestion model + helpers data | `src/lib/template-suggestions.ts` | Scope-aware resolver; promote universal item fields; gate `source`/relation maps; add helper/filter/test data; delete `validateTemplateExpression`, `getValidTemplatePaths`, `ROOT_TEMPLATE_SUGGESTIONS`; prune speculative paths. |
-| Custom completion source | `src/components/template-code-editor.tsx` (or a new `src/lib/template-completion.ts`) | Tree-walking completion source handling deep paths + subscripts + filters; loop-variable binding (`{% for X in expr %}`); domain-aware `related` vs `reachable`/`paths` aliases; new `hydrationEnabled`/`relationAliases` props. |
+| Custom completion source | `src/components/template-code-editor.tsx` (or a new `src/lib/template-completion.ts`) | Tree-walking completion source handling deep paths + subscripts + filters; loop-variable binding (`{% for X in expr %}`); domain-aware `related` vs `reachable`/`paths` aliases; independent gating of `related` (include aliases or hydration) vs `reachable`/`paths` (hydration only); new `relationHydrated`/`relationAliases` props. |
 | Editor help text | `src/components/reports-workspace.tsx` (`TEMPLATE_HELP`, placeholder, default body) | Mention helpers, HTML autoescape, composition naming; fix literal `\n`. |
 | Orphaned CSS | `src/app/globals.css` | Remove `.cm-template-*` rules. |
 | Report error UX | `src/components/reports-workspace.tsx`, `src/lib/api/reporting.ts` | Status-branched banners + summary; `output_expires_at`; 404/410/429 handling; depth control gating. |
