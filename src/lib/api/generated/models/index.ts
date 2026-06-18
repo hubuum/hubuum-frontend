@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.0.1
  */
 
 export * from './apiErrorResponse';
@@ -12,7 +12,11 @@ export * from './countsResponse';
 export * from './dbStateResponse';
 export * from './dbStateResponseLastVacuumTime';
 export * from './getApiV1ClassesByClassIdByFromObjectIdRelationsParams';
+export * from './getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsParams';
+export * from './getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsParams';
 export * from './getApiV1ClassesByClassIdPermissionsParams';
+export * from './getApiV1ClassesByClassIdRelatedClassesParams';
+export * from './getApiV1ClassesByClassIdRelatedRelationsParams';
 export * from './getApiV1ClassesByClassIdRelationsParams';
 export * from './getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToParams';
 export * from './getApiV1ClassesByClassIdRelationsTransitiveTrailingParams';
@@ -29,6 +33,9 @@ export * from './getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdParams';
 export * from './getApiV1NamespacesParams';
 export * from './getApiV1RelationsClassesParams';
 export * from './getApiV1RelationsObjectsParams';
+export * from './getApiV1SearchParams';
+export * from './getApiV1SearchStreamParams';
+export * from './getApiV1TasksParams';
 export * from './getApiV1TemplatesParams';
 export * from './group';
 export * from './groupKey';
@@ -38,6 +45,7 @@ export * from './hubuumClassExpanded';
 export * from './hubuumClassRelation';
 export * from './hubuumClassRelationTransitive';
 export * from './hubuumClassRelationTransitivePathItem';
+export * from './hubuumClassWithPath';
 export * from './hubuumObject';
 export * from './hubuumObjectRelation';
 export * from './hubuumObjectWithPath';
@@ -77,15 +85,24 @@ export * from './objectKey';
 export * from './objectsByClass';
 export * from './permission';
 export * from './permissions';
+export * from './relatedClassGraph';
+export * from './relatedObjectGraph';
 export * from './reportContentType';
+export * from './reportInclude';
+export * from './reportIncludeRelatedDirection';
+export * from './reportIncludeRelatedObject';
+export * from './reportIncludeRelatedObjects';
+export * from './reportIncludeRelatedSort';
 export * from './reportJsonResponse';
 export * from './reportLimits';
 export * from './reportMeta';
 export * from './reportMissingDataPolicy';
 export * from './reportOutputRequest';
+export * from './reportRelationContext';
 export * from './reportRequest';
 export * from './reportScope';
 export * from './reportScopeKind';
+export * from './reportTaskDetails';
 export * from './reportTemplate';
 export * from './reportTemplateID';
 export * from './reportWarning';
@@ -97,6 +114,14 @@ export * from './taskProgress';
 export * from './taskQueueStateResponse';
 export * from './taskResponse';
 export * from './taskStatus';
+export * from './unifiedSearchBatchResponse';
+export * from './unifiedSearchDoneEvent';
+export * from './unifiedSearchErrorEvent';
+export * from './unifiedSearchKind';
+export * from './unifiedSearchNext';
+export * from './unifiedSearchResponse';
+export * from './unifiedSearchResults';
+export * from './unifiedSearchStartedEvent';
 export * from './updateGroup';
 export * from './updateGroupGroupname';
 export * from './updateHubuumClass';
@@ -120,3 +145,4 @@ export * from './updateUserUsername';
 export * from './user';
 export * from './userEmail';
 export * from './userToken';
+export * from './userTokenMetadata';

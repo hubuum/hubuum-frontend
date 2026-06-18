@@ -3,17 +3,17 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.0.1
  */
 import type {
   ApiErrorResponse,
   CountsResponse,
   DbStateResponse,
-  GetApiV1ClassesByClassIdByFromObjectIdRelationsParams,
+  GetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsParams,
+  GetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsParams,
   GetApiV1ClassesByClassIdPermissionsParams,
-  GetApiV1ClassesByClassIdRelationsParams,
-  GetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToParams,
-  GetApiV1ClassesByClassIdRelationsTransitiveTrailingParams,
+  GetApiV1ClassesByClassIdRelatedClassesParams,
+  GetApiV1ClassesByClassIdRelatedRelationsParams,
   GetApiV1ClassesByClassIdTrailingParams,
   GetApiV1ClassesParams,
   GetApiV1IamGroupsByGroupIdMembersParams,
@@ -27,12 +27,15 @@ import type {
   GetApiV1NamespacesParams,
   GetApiV1RelationsClassesParams,
   GetApiV1RelationsObjectsParams,
+  GetApiV1SearchParams,
+  GetApiV1SearchStreamParams,
+  GetApiV1TasksParams,
   GetApiV1TemplatesParams,
   Group,
   GroupPermission,
   HubuumClassExpanded,
   HubuumClassRelation,
-  HubuumClassRelationTransitive,
+  HubuumClassWithPath,
   HubuumObject,
   HubuumObjectRelation,
   HubuumObjectWithPath,
@@ -54,12 +57,15 @@ import type {
   NewUser,
   Permission,
   Permissions,
+  RelatedClassGraph,
+  RelatedObjectGraph,
   ReportJsonResponse,
   ReportRequest,
   ReportTemplate,
   TaskEventResponse,
   TaskQueueStateResponse,
   TaskResponse,
+  UnifiedSearchResponse,
   UpdateGroup,
   UpdateHubuumClass,
   UpdateHubuumObject,
@@ -67,10 +73,9 @@ import type {
   UpdateReportTemplate,
   UpdateUser,
   User,
-  UserToken
+  UserTokenMetadata
 } from './models';
 import { HUBUUM_BFF_PREFIX } from '@/lib/api/frontend';
-
 
 
 /**
@@ -87,6 +92,11 @@ export type postApiV0AuthLoginResponse401 = {
   status: 401
 }
 
+export type postApiV0AuthLoginResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
 export type postApiV0AuthLoginResponse500 = {
   data: ApiErrorResponse
   status: 500
@@ -95,7 +105,7 @@ export type postApiV0AuthLoginResponse500 = {
 export type postApiV0AuthLoginResponseSuccess = (postApiV0AuthLoginResponse200) & {
   headers: Headers;
 };
-export type postApiV0AuthLoginResponseError = (postApiV0AuthLoginResponse401 | postApiV0AuthLoginResponse500) & {
+export type postApiV0AuthLoginResponseError = (postApiV0AuthLoginResponse401 | postApiV0AuthLoginResponse429 | postApiV0AuthLoginResponse500) & {
   headers: Headers;
 };
 
@@ -566,7 +576,7 @@ export const getApiV0MetaTasks = async ( options?: RequestInit): Promise<getApiV
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes
  */
 export type getApiV1ClassesResponse200 = {
@@ -861,7 +871,7 @@ export const patchApiV1ClassesByClassId = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Trailing
  */
 export type getApiV1ClassesByClassIdTrailingResponse200 = {
@@ -992,7 +1002,211 @@ export const postApiV1ClassesByClassIdTrailing = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/graph.
+ * @summary Get Api V1 Classes By Class Id Objects By Object Id Related Graph
+ */
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse200 = {
+  data: RelatedObjectGraph
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponseSuccess = (getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponseError = (getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse400 | getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse401 | getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse = (getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponseSuccess | getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponseError)
+
+export const getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphUrl = (classId: number,
+    objectId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/objects/${objectId}/related/graph`
+}
+
+export const getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraph = async (classId: number,
+    objectId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse> => {
+  
+  const res = await fetch(getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphUrl(classId,objectId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Classes By Class Id Objects By Object Id Related Objects
+ */
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse200 = {
+  data: HubuumObjectWithPath[]
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponseSuccess = (getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponseError = (getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse400 | getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse401 | getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse = (getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponseSuccess | getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponseError)
+
+export const getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsUrl = (classId: number,
+    objectId: number,
+    params?: GetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/objects/${objectId}/related/objects?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/objects/${objectId}/related/objects`
+}
+
+export const getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjects = async (classId: number,
+    objectId: number,
+    params?: GetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse> => {
+  
+  const res = await fetch(getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsUrl(classId,objectId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Classes By Class Id Objects By Object Id Related Relations
+ */
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse200 = {
+  data: HubuumObjectRelation[]
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponseSuccess = (getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponseError = (getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse400 | getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse401 | getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse = (getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponseSuccess | getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponseError)
+
+export const getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsUrl = (classId: number,
+    objectId: number,
+    params?: GetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/objects/${objectId}/related/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/objects/${objectId}/related/relations`
+}
+
+export const getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelations = async (classId: number,
+    objectId: number,
+    params?: GetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse> => {
+  
+  const res = await fetch(getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsUrl(classId,objectId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Permissions
  */
 export type getApiV1ClassesByClassIdPermissionsResponse200 = {
@@ -1056,40 +1270,40 @@ export const getApiV1ClassesByClassIdPermissions = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary Get Api V1 Classes By Class Id Relations
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/related/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Classes By Class Id Related Classes
  */
-export type getApiV1ClassesByClassIdRelationsResponse200 = {
-  data: HubuumClassRelation[]
+export type getApiV1ClassesByClassIdRelatedClassesResponse200 = {
+  data: HubuumClassWithPath[]
   status: 200
 }
 
-export type getApiV1ClassesByClassIdRelationsResponse400 = {
+export type getApiV1ClassesByClassIdRelatedClassesResponse400 = {
   data: ApiErrorResponse
   status: 400
 }
 
-export type getApiV1ClassesByClassIdRelationsResponse401 = {
+export type getApiV1ClassesByClassIdRelatedClassesResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type getApiV1ClassesByClassIdRelationsResponse404 = {
+export type getApiV1ClassesByClassIdRelatedClassesResponse404 = {
   data: ApiErrorResponse
   status: 404
 }
 
-export type getApiV1ClassesByClassIdRelationsResponseSuccess = (getApiV1ClassesByClassIdRelationsResponse200) & {
+export type getApiV1ClassesByClassIdRelatedClassesResponseSuccess = (getApiV1ClassesByClassIdRelatedClassesResponse200) & {
   headers: Headers;
 };
-export type getApiV1ClassesByClassIdRelationsResponseError = (getApiV1ClassesByClassIdRelationsResponse400 | getApiV1ClassesByClassIdRelationsResponse401 | getApiV1ClassesByClassIdRelationsResponse404) & {
+export type getApiV1ClassesByClassIdRelatedClassesResponseError = (getApiV1ClassesByClassIdRelatedClassesResponse400 | getApiV1ClassesByClassIdRelatedClassesResponse401 | getApiV1ClassesByClassIdRelatedClassesResponse404) & {
   headers: Headers;
 };
 
-export type getApiV1ClassesByClassIdRelationsResponse = (getApiV1ClassesByClassIdRelationsResponseSuccess | getApiV1ClassesByClassIdRelationsResponseError)
+export type getApiV1ClassesByClassIdRelatedClassesResponse = (getApiV1ClassesByClassIdRelatedClassesResponseSuccess | getApiV1ClassesByClassIdRelatedClassesResponseError)
 
-export const getGetApiV1ClassesByClassIdRelationsUrl = (classId: number,
-    params?: GetApiV1ClassesByClassIdRelationsParams,) => {
+export const getGetApiV1ClassesByClassIdRelatedClassesUrl = (classId: number,
+    params?: GetApiV1ClassesByClassIdRelatedClassesParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1101,13 +1315,13 @@ export const getGetApiV1ClassesByClassIdRelationsUrl = (classId: number,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/related/classes?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/related/classes`
 }
 
-export const getApiV1ClassesByClassIdRelations = async (classId: number,
-    params?: GetApiV1ClassesByClassIdRelationsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelationsResponse> => {
+export const getApiV1ClassesByClassIdRelatedClasses = async (classId: number,
+    params?: GetApiV1ClassesByClassIdRelatedClassesParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelatedClassesResponse> => {
   
-  const res = await fetch(getGetApiV1ClassesByClassIdRelationsUrl(classId,params),
+  const res = await fetch(getGetApiV1ClassesByClassIdRelatedClassesUrl(classId,params),
   {      
     ...options,
     method: 'GET'
@@ -1118,8 +1332,137 @@ export const getApiV1ClassesByClassIdRelations = async (classId: number,
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: getApiV1ClassesByClassIdRelationsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelationsResponse
+  const data: getApiV1ClassesByClassIdRelatedClassesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelatedClassesResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/related/graph.
+ * @summary Get Api V1 Classes By Class Id Related Graph
+ */
+export type getApiV1ClassesByClassIdRelatedGraphResponse200 = {
+  data: RelatedClassGraph
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdRelatedGraphResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdRelatedGraphResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdRelatedGraphResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdRelatedGraphResponseSuccess = (getApiV1ClassesByClassIdRelatedGraphResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdRelatedGraphResponseError = (getApiV1ClassesByClassIdRelatedGraphResponse400 | getApiV1ClassesByClassIdRelatedGraphResponse401 | getApiV1ClassesByClassIdRelatedGraphResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdRelatedGraphResponse = (getApiV1ClassesByClassIdRelatedGraphResponseSuccess | getApiV1ClassesByClassIdRelatedGraphResponseError)
+
+export const getGetApiV1ClassesByClassIdRelatedGraphUrl = (classId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/related/graph`
+}
+
+export const getApiV1ClassesByClassIdRelatedGraph = async (classId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelatedGraphResponse> => {
+  
+  const res = await fetch(getGetApiV1ClassesByClassIdRelatedGraphUrl(classId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1ClassesByClassIdRelatedGraphResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelatedGraphResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Classes By Class Id Related Relations
+ */
+export type getApiV1ClassesByClassIdRelatedRelationsResponse200 = {
+  data: HubuumClassRelation[]
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdRelatedRelationsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdRelatedRelationsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdRelatedRelationsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdRelatedRelationsResponseSuccess = (getApiV1ClassesByClassIdRelatedRelationsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdRelatedRelationsResponseError = (getApiV1ClassesByClassIdRelatedRelationsResponse400 | getApiV1ClassesByClassIdRelatedRelationsResponse401 | getApiV1ClassesByClassIdRelatedRelationsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdRelatedRelationsResponse = (getApiV1ClassesByClassIdRelatedRelationsResponseSuccess | getApiV1ClassesByClassIdRelatedRelationsResponseError)
+
+export const getGetApiV1ClassesByClassIdRelatedRelationsUrl = (classId: number,
+    params?: GetApiV1ClassesByClassIdRelatedRelationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/related/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/related/relations`
+}
+
+export const getApiV1ClassesByClassIdRelatedRelations = async (classId: number,
+    params?: GetApiV1ClassesByClassIdRelatedRelationsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelatedRelationsResponse> => {
+  
+  const res = await fetch(getGetApiV1ClassesByClassIdRelatedRelationsUrl(classId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1ClassesByClassIdRelatedRelationsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelatedRelationsResponse
 }
   
 
@@ -1187,136 +1530,6 @@ export const postApiV1ClassesByClassIdRelations = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/relations/transitive/. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary Get Api V1 Classes By Class Id Relations Transitive Trailing
- */
-export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse200 = {
-  data: HubuumClassRelationTransitive[]
-  status: 200
-}
-
-export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponseSuccess = (getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse200) & {
-  headers: Headers;
-};
-export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponseError = (getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse401 | getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse = (getApiV1ClassesByClassIdRelationsTransitiveTrailingResponseSuccess | getApiV1ClassesByClassIdRelationsTransitiveTrailingResponseError)
-
-export const getGetApiV1ClassesByClassIdRelationsTransitiveTrailingUrl = (classId: number,
-    params?: GetApiV1ClassesByClassIdRelationsTransitiveTrailingParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/transitive/?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/transitive/`
-}
-
-export const getApiV1ClassesByClassIdRelationsTransitiveTrailing = async (classId: number,
-    params?: GetApiV1ClassesByClassIdRelationsTransitiveTrailingParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse> => {
-  
-  const res = await fetch(getGetApiV1ClassesByClassIdRelationsTransitiveTrailingUrl(classId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelationsTransitiveTrailingResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/relations/transitive/class/{class_id_to}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary Get Api V1 Classes By Class Id Relations Transitive Class By Class Id To
- */
-export type getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse200 = {
-  data: HubuumClassRelationTransitive[]
-  status: 200
-}
-
-export type getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponseSuccess = (getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse200) & {
-  headers: Headers;
-};
-export type getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponseError = (getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse401 | getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse = (getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponseSuccess | getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponseError)
-
-export const getGetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToUrl = (classId: number,
-    classIdTo: number,
-    params?: GetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/transitive/class/${classIdTo}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/transitive/class/${classIdTo}`
-}
-
-export const getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdTo = async (classId: number,
-    classIdTo: number,
-    params?: GetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse> => {
-  
-  const res = await fetch(getGetApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToUrl(classId,classIdTo,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelationsTransitiveClassByClassIdToResponse
-}
-  
-
-
-/**
  * Auto-generated documentation for DELETE /api/v1/classes/{class_id}/relations/{relation_id}.
  * @summary Delete Api V1 Classes By Class Id Relations By Relation Id
  */
@@ -1374,77 +1587,6 @@ export const deleteApiV1ClassesByClassIdRelationsByRelationId = async (classId: 
   
   const data: deleteApiV1ClassesByClassIdRelationsByRelationIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdRelationsByRelationIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/{from_object_id}/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary Get Api V1 Classes By Class Id By From Object Id Relations
- */
-export type getApiV1ClassesByClassIdByFromObjectIdRelationsResponse200 = {
-  data: HubuumObjectWithPath[]
-  status: 200
-}
-
-export type getApiV1ClassesByClassIdByFromObjectIdRelationsResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type getApiV1ClassesByClassIdByFromObjectIdRelationsResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1ClassesByClassIdByFromObjectIdRelationsResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1ClassesByClassIdByFromObjectIdRelationsResponseSuccess = (getApiV1ClassesByClassIdByFromObjectIdRelationsResponse200) & {
-  headers: Headers;
-};
-export type getApiV1ClassesByClassIdByFromObjectIdRelationsResponseError = (getApiV1ClassesByClassIdByFromObjectIdRelationsResponse400 | getApiV1ClassesByClassIdByFromObjectIdRelationsResponse401 | getApiV1ClassesByClassIdByFromObjectIdRelationsResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1ClassesByClassIdByFromObjectIdRelationsResponse = (getApiV1ClassesByClassIdByFromObjectIdRelationsResponseSuccess | getApiV1ClassesByClassIdByFromObjectIdRelationsResponseError)
-
-export const getGetApiV1ClassesByClassIdByFromObjectIdRelationsUrl = (classId: number,
-    fromObjectId: number,
-    params?: GetApiV1ClassesByClassIdByFromObjectIdRelationsParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${fromObjectId}/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${fromObjectId}/relations`
-}
-
-export const getApiV1ClassesByClassIdByFromObjectIdRelations = async (classId: number,
-    fromObjectId: number,
-    params?: GetApiV1ClassesByClassIdByFromObjectIdRelationsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdByFromObjectIdRelationsResponse> => {
-  
-  const res = await fetch(getGetApiV1ClassesByClassIdByFromObjectIdRelationsUrl(classId,fromObjectId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1ClassesByClassIdByFromObjectIdRelationsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdByFromObjectIdRelationsResponse
 }
   
 
@@ -1534,10 +1676,15 @@ export type postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjec
   status: 404
 }
 
+export type postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
 export type postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponseSuccess = (postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse201) & {
   headers: Headers;
 };
-export type postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponseError = (postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse400 | postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse401 | postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse404) & {
+export type postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponseError = (postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse400 | postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse401 | postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse404 | postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse409) & {
   headers: Headers;
 };
 
@@ -1816,7 +1963,7 @@ export const patchApiV1ClassesByClassIdByObjectId = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Groups
  */
 export type getApiV1IamGroupsResponse200 = {
@@ -2111,7 +2258,7 @@ export const patchApiV1IamGroupsByGroupId = async (groupId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/members. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/members. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Groups By Group Id Members
  */
 export type getApiV1IamGroupsByGroupIdMembersResponse200 = {
@@ -2289,7 +2436,7 @@ export const deleteApiV1IamGroupsByGroupIdMembersByUserId = async (groupId: numb
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/users. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/users. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Users
  */
 export type getApiV1IamUsersResponse200 = {
@@ -2584,7 +2731,7 @@ export const patchApiV1IamUsersByUserId = async (userId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Users By User Id Groups
  */
 export type getApiV1IamUsersByUserIdGroupsResponse200 = {
@@ -2648,11 +2795,11 @@ export const getApiV1IamUsersByUserIdGroups = async (userId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Users By User Id Tokens
  */
 export type getApiV1IamUsersByUserIdTokensResponse200 = {
-  data: UserToken[]
+  data: UserTokenMetadata[]
   status: 200
 }
 
@@ -2893,7 +3040,7 @@ export const getApiV1ImportsByTaskIdResults = async (taskId: number, options?: R
 
 
 /**
- * Auto-generated documentation for GET /api/v1/namespaces. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/namespaces. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Namespaces
  */
 export type getApiV1NamespacesResponse200 = {
@@ -3188,7 +3335,7 @@ export const patchApiV1NamespacesByNamespaceId = async (namespaceId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/has_permissions/{permission}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/has_permissions/{permission}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List all groups that have any permissions on a namespace
  */
 export type getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse200 = {
@@ -3254,7 +3401,7 @@ export const getApiV1NamespacesByNamespaceIdHasPermissionsByPermission = async (
 
 
 /**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List all groups who have permissions for a namespace
  */
 export type getApiV1NamespacesByNamespaceIdPermissionsResponse200 = {
@@ -3743,7 +3890,7 @@ export const deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermis
 
 
 /**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions/user/{user_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions/user/{user_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List all permissions for a user on a namespace
  */
 export type getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse200 = {
@@ -3809,7 +3956,7 @@ export const getApiV1NamespacesByNamespaceIdPermissionsUserByUserId = async (nam
 
 
 /**
- * Auto-generated documentation for GET /api/v1/relations/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/relations/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Relations Classes
  */
 export type getApiV1RelationsClassesResponse200 = {
@@ -4042,7 +4189,7 @@ export const deleteApiV1RelationsClassesByRelationId = async (relationId: number
 
 
 /**
- * Auto-generated documentation for GET /api/v1/relations/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/relations/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Relations Objects
  */
 export type getApiV1RelationsObjectsResponse200 = {
@@ -4278,24 +4425,9 @@ export const deleteApiV1RelationsObjectsByRelationId = async (relationId: number
  * Auto-generated documentation for POST /api/v1/reports.
  * @summary Post Api V1 Reports
  */
-export type postApiV1ReportsResponse200ApplicationJson = {
-  data: ReportJsonResponse
-  status: 200
-}
-
-export type postApiV1ReportsResponse200TextPlain = {
-  data: string
-  status: 200
-}
-
-export type postApiV1ReportsResponse200TextHtml = {
-  data: string
-  status: 200
-}
-
-export type postApiV1ReportsResponse200TextCsv = {
-  data: string
-  status: 200
+export type postApiV1ReportsResponse202 = {
+  data: TaskResponse
+  status: 202
 }
 
 export type postApiV1ReportsResponse400 = {
@@ -4308,20 +4440,15 @@ export type postApiV1ReportsResponse401 = {
   status: 401
 }
 
-export type postApiV1ReportsResponse406 = {
+export type postApiV1ReportsResponse409 = {
   data: ApiErrorResponse
-  status: 406
+  status: 409
 }
 
-export type postApiV1ReportsResponse413 = {
-  data: ApiErrorResponse
-  status: 413
-}
-
-export type postApiV1ReportsResponseSuccess = (postApiV1ReportsResponse200ApplicationJson | postApiV1ReportsResponse200TextPlain | postApiV1ReportsResponse200TextHtml | postApiV1ReportsResponse200TextCsv) & {
+export type postApiV1ReportsResponseSuccess = (postApiV1ReportsResponse202) & {
   headers: Headers;
 };
-export type postApiV1ReportsResponseError = (postApiV1ReportsResponse400 | postApiV1ReportsResponse401 | postApiV1ReportsResponse406 | postApiV1ReportsResponse413) & {
+export type postApiV1ReportsResponseError = (postApiV1ReportsResponse400 | postApiV1ReportsResponse401 | postApiV1ReportsResponse409) & {
   headers: Headers;
 };
 
@@ -4351,6 +4478,317 @@ export const postApiV1Reports = async (reportRequest: ReportRequest, options?: R
   
   const data: postApiV1ReportsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1ReportsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/reports/{task_id}.
+ * @summary Get Api V1 Reports By Task Id
+ */
+export type getApiV1ReportsByTaskIdResponse200 = {
+  data: TaskResponse
+  status: 200
+}
+
+export type getApiV1ReportsByTaskIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ReportsByTaskIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ReportsByTaskIdResponseSuccess = (getApiV1ReportsByTaskIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ReportsByTaskIdResponseError = (getApiV1ReportsByTaskIdResponse401 | getApiV1ReportsByTaskIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ReportsByTaskIdResponse = (getApiV1ReportsByTaskIdResponseSuccess | getApiV1ReportsByTaskIdResponseError)
+
+export const getGetApiV1ReportsByTaskIdUrl = (taskId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/reports/${taskId}`
+}
+
+export const getApiV1ReportsByTaskId = async (taskId: number, options?: RequestInit): Promise<getApiV1ReportsByTaskIdResponse> => {
+  
+  const res = await fetch(getGetApiV1ReportsByTaskIdUrl(taskId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1ReportsByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ReportsByTaskIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/reports/{task_id}/output.
+ * @summary Get Api V1 Reports By Task Id Output
+ */
+export type getApiV1ReportsByTaskIdOutputResponse200ApplicationJson = {
+  data: ReportJsonResponse
+  status: 200
+}
+
+export type getApiV1ReportsByTaskIdOutputResponse200TextPlain = {
+  data: string
+  status: 200
+}
+
+export type getApiV1ReportsByTaskIdOutputResponse200TextHtml = {
+  data: string
+  status: 200
+}
+
+export type getApiV1ReportsByTaskIdOutputResponse200TextCsv = {
+  data: string
+  status: 200
+}
+
+export type getApiV1ReportsByTaskIdOutputResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ReportsByTaskIdOutputResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ReportsByTaskIdOutputResponseSuccess = (getApiV1ReportsByTaskIdOutputResponse200ApplicationJson | getApiV1ReportsByTaskIdOutputResponse200TextPlain | getApiV1ReportsByTaskIdOutputResponse200TextHtml | getApiV1ReportsByTaskIdOutputResponse200TextCsv) & {
+  headers: Headers;
+};
+export type getApiV1ReportsByTaskIdOutputResponseError = (getApiV1ReportsByTaskIdOutputResponse401 | getApiV1ReportsByTaskIdOutputResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ReportsByTaskIdOutputResponse = (getApiV1ReportsByTaskIdOutputResponseSuccess | getApiV1ReportsByTaskIdOutputResponseError)
+
+export const getGetApiV1ReportsByTaskIdOutputUrl = (taskId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/reports/${taskId}/output`
+}
+
+export const getApiV1ReportsByTaskIdOutput = async (taskId: number, options?: RequestInit): Promise<getApiV1ReportsByTaskIdOutputResponse> => {
+  
+  const res = await fetch(getGetApiV1ReportsByTaskIdOutputUrl(taskId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1ReportsByTaskIdOutputResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ReportsByTaskIdOutputResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/search.
+ * @summary Get Api V1 Search
+ */
+export type getApiV1SearchResponse200 = {
+  data: UnifiedSearchResponse
+  status: 200
+}
+
+export type getApiV1SearchResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1SearchResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1SearchResponseSuccess = (getApiV1SearchResponse200) & {
+  headers: Headers;
+};
+export type getApiV1SearchResponseError = (getApiV1SearchResponse400 | getApiV1SearchResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1SearchResponse = (getApiV1SearchResponseSuccess | getApiV1SearchResponseError)
+
+export const getGetApiV1SearchUrl = (params: GetApiV1SearchParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/search?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/search`
+}
+
+export const getApiV1Search = async (params: GetApiV1SearchParams, options?: RequestInit): Promise<getApiV1SearchResponse> => {
+  
+  const res = await fetch(getGetApiV1SearchUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1SearchResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1SearchResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/search/stream.
+ * @summary Get Api V1 Search Stream
+ */
+export type getApiV1SearchStreamResponse200 = {
+  data: void
+  status: 200
+}
+
+export type getApiV1SearchStreamResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1SearchStreamResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1SearchStreamResponseSuccess = (getApiV1SearchStreamResponse200) & {
+  headers: Headers;
+};
+export type getApiV1SearchStreamResponseError = (getApiV1SearchStreamResponse400 | getApiV1SearchStreamResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1SearchStreamResponse = (getApiV1SearchStreamResponseSuccess | getApiV1SearchStreamResponseError)
+
+export const getGetApiV1SearchStreamUrl = (params: GetApiV1SearchStreamParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/search/stream?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/search/stream`
+}
+
+export const getApiV1SearchStream = async (params: GetApiV1SearchStreamParams, options?: RequestInit): Promise<getApiV1SearchStreamResponse> => {
+  
+  const res = await fetch(getGetApiV1SearchStreamUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1SearchStreamResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1SearchStreamResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/tasks. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Tasks
+ */
+export type getApiV1TasksResponse200 = {
+  data: TaskResponse[]
+  status: 200
+}
+
+export type getApiV1TasksResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1TasksResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1TasksResponseSuccess = (getApiV1TasksResponse200) & {
+  headers: Headers;
+};
+export type getApiV1TasksResponseError = (getApiV1TasksResponse400 | getApiV1TasksResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1TasksResponse = (getApiV1TasksResponseSuccess | getApiV1TasksResponseError)
+
+export const getGetApiV1TasksUrl = (params: GetApiV1TasksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/tasks?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/tasks`
+}
+
+export const getApiV1Tasks = async (params: GetApiV1TasksParams, options?: RequestInit): Promise<getApiV1TasksResponse> => {
+  
+  const res = await fetch(getGetApiV1TasksUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1TasksResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1TasksResponse
 }
   
 
@@ -4476,7 +4914,7 @@ export const getApiV1TasksByTaskIdEvents = async (taskId: number, options?: Requ
 
 
 /**
- * Auto-generated documentation for GET /api/v1/templates. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/templates. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Templates
  */
 export type getApiV1TemplatesResponse200 = {
@@ -4793,3 +5231,5 @@ export const patchApiV1TemplatesByTemplateId = async (templateId: number,
   return { data, status: res.status, headers: res.headers } as patchApiV1TemplatesByTemplateIdResponse
 }
   
+
+

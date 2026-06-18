@@ -24,6 +24,8 @@ import type {
 import {
 	createReportTemplate,
 	deleteReportTemplate,
+	fetchReportOutput,
+	fetchReportTask,
 	listReportTemplates,
 	type NewReportTemplate,
 	type ReportContentType,
@@ -32,11 +34,13 @@ import {
 	type ReportRequest,
 	type ReportScopeKind,
 	type ReportTemplate,
-	runReport,
+	submitReportTask,
 	type StoredReportContentType,
+	type TaskResponse,
 	type UpdateReportTemplate,
 	updateReportTemplate,
 } from "@/lib/api/reporting";
+import { isTerminalTaskStatus } from "@/lib/api/tasking";
 import {
 	type QueryFieldKind,
 	SCOPE_QUERY_FIELDS,
@@ -81,10 +85,10 @@ type ReportResultView = {
 };
 
 const TEMPLATE_HELP = [
-	"{{path.to.value}} interpolates a value.",
-	"{{#each items}} ... {{/each}} loops arrays.",
+	"{{ item.name }} interpolates a value.",
+	"{% for item in items %} ... {% endfor %} loops arrays.",
 	"Root fields include items, meta.*, and warnings.",
-	"Use this.name and other base fields inside {{#each items}} loops.",
+	"Use item.name and other base fields inside item loops.",
 	"Stored templates support text/plain, text/html, and text/csv.",
 ] as const;
 
@@ -95,7 +99,7 @@ const DEFAULT_TEMPLATE_EDITOR: TemplateEditorState = {
 	name: "",
 	description: "",
 	contentType: "text/plain",
-	templateBody: "{{#each items}}{{this.name}}\n{{/each}}",
+	templateBody: "{% for item in items %}{{ item.name }}\n{% endfor %}",
 };
 
 const STRING_OPERATORS = [
@@ -389,9 +393,13 @@ export function ReportsWorkspace() {
 	const [advancedQueryText, setAdvancedQueryText] = useState("");
 	const [missingDataPolicy, setMissingDataPolicy] =
 		useState<ReportMissingDataPolicy>("strict");
+	const [relationDepth, setRelationDepth] = useState("");
 	const [maxItems, setMaxItems] = useState("100");
 	const [maxOutputBytes, setMaxOutputBytes] = useState("262144");
 	const [runnerError, setRunnerError] = useState<string | null>(null);
+	const [lastReportTask, setLastReportTask] = useState<TaskResponse | null>(
+		null,
+	);
 	const [lastResult, setLastResult] = useState<ReportExecutionResult | null>(
 		null,
 	);
@@ -422,6 +430,15 @@ export function ReportsWorkspace() {
 		queryFn: () => fetchObjectsByClass(parsedClassId ?? 0),
 		enabled: parsedClassId !== null,
 	});
+	const reportTaskQuery = useQuery({
+		queryKey: ["report-task", lastReportTask?.id ?? null],
+		queryFn: () => fetchReportTask(lastReportTask?.id ?? 0),
+		enabled: lastReportTask !== null,
+		refetchInterval: (query) =>
+			isTerminalTaskStatus(query.state.data?.status ?? lastReportTask?.status)
+				? false
+				: 2000,
+	});
 
 	const templates = useMemo(
 		() => templatesQuery.data?.pages.flatMap((page) => page.items) ?? [],
@@ -447,6 +464,20 @@ export function ReportsWorkspace() {
 		() => (lastResult ? getReportResultView(lastResult) : null),
 		[lastResult],
 	);
+	const activeReportTask = reportTaskQuery.data ?? lastReportTask;
+	const reportDetails = activeReportTask?.details?.report ?? null;
+	const reportOutputQuery = useQuery({
+		queryKey: ["report-output", activeReportTask?.id ?? null],
+		queryFn: () =>
+			fetchReportOutput(
+				activeReportTask?.id ?? 0,
+				reportDetails?.output_content_type,
+			),
+		enabled:
+			activeReportTask != null &&
+			isTerminalTaskStatus(activeReportTask.status) &&
+			reportDetails?.output_available === true,
+	});
 
 	useEffect(() => {
 		if (!selectedTemplateId) {
@@ -460,6 +491,30 @@ export function ReportsWorkspace() {
 			setOutputMode("json");
 		}
 	}, [selectedTemplateId, templates]);
+
+	useEffect(() => {
+		if (reportTaskQuery.data) {
+			setLastReportTask(reportTaskQuery.data);
+		}
+	}, [reportTaskQuery.data]);
+
+	useEffect(() => {
+		if (reportOutputQuery.data) {
+			setLastResult(reportOutputQuery.data);
+			setRunnerError(null);
+		}
+	}, [reportOutputQuery.data]);
+
+	useEffect(() => {
+		if (reportOutputQuery.isError) {
+			setLastResult(null);
+			setRunnerError(
+				reportOutputQuery.error instanceof Error
+					? reportOutputQuery.error.message
+					: "Failed to fetch report output.",
+			);
+		}
+	}, [reportOutputQuery.error, reportOutputQuery.isError]);
 
 	useEffect(() => {
 		const allowedFields = new Set(scopeFields.map((field) => field.key));
@@ -540,20 +595,20 @@ export function ReportsWorkspace() {
 	});
 
 	const runReportMutation = useMutation({
-		mutationFn: async (request: {
-			body: ReportRequest;
-			accept: ReportContentType;
-		}) => runReport(request.body, request.accept),
-		onSuccess: (result) => {
+		mutationFn: async (request: { body: ReportRequest }) =>
+			submitReportTask(request.body),
+		onSuccess: (task) => {
 			setRunnerError(null);
-			setLastResult(result);
+			setLastReportTask(task);
+			setLastResult(null);
 			setResultActionFeedback(null);
 		},
 		onError: (error) => {
 			setLastResult(null);
+			setLastReportTask(null);
 			setResultActionFeedback(null);
 			setRunnerError(
-				error instanceof Error ? error.message : "Failed to run report.",
+				error instanceof Error ? error.message : "Failed to submit report.",
 			);
 		},
 	});
@@ -635,27 +690,37 @@ export function ReportsWorkspace() {
 			scope.object_id = parsed;
 		}
 
-		let accept: ReportContentType = "application/json";
 		let output: ReportRequest["output"] = null;
 		if (outputMode === "template") {
 			if (!selectedTemplate) {
 				setRunnerError("Select a stored template to run a text report.");
 				return;
 			}
-			accept = selectedTemplate.content_type;
 			output = {
 				template_id: selectedTemplate.id,
 			};
 		}
 
+		const parsedRelationDepth = relationDepth.trim()
+			? parsePositiveInteger(relationDepth)
+			: null;
+		if (relationDepth.trim() && !parsedRelationDepth) {
+			setRunnerError("Relation hydration depth must be a positive integer.");
+			return;
+		}
+
 		setRunnerError(null);
 		setResultActionFeedback(null);
+		setLastResult(null);
+		setLastReportTask(null);
 		runReportMutation.mutate({
-			accept,
 			body: {
 				scope,
 				query: builtQuery || null,
 				output,
+				relation_context: parsedRelationDepth
+					? { depth: parsedRelationDepth }
+					: null,
 				missing_data_policy: missingDataPolicy,
 				limits: {
 					max_items: parsePositiveInteger(maxItems),
@@ -1163,6 +1228,18 @@ export function ReportsWorkspace() {
 								</label>
 
 								<label className="control-field">
+									<span>Relation hydration depth</span>
+									<input
+										type="number"
+										min={1}
+										max={2}
+										value={relationDepth}
+										onChange={(event) => setRelationDepth(event.target.value)}
+										placeholder="Off"
+									/>
+								</label>
+
+								<label className="control-field">
 									<span>Max items</span>
 									<input
 										type="number"
@@ -1189,7 +1266,9 @@ export function ReportsWorkspace() {
 
 							<div className="action-row">
 								<button type="submit" disabled={runReportMutation.isPending}>
-									{runReportMutation.isPending ? "Running..." : "Run report"}
+									{runReportMutation.isPending
+										? "Submitting..."
+										: "Run report"}
 								</button>
 								{selectedTemplate ? (
 									<span className="muted">
@@ -1205,13 +1284,58 @@ export function ReportsWorkspace() {
 							<div className="stack action-card-header">
 								<h3>Result console</h3>
 								<p className="muted">
-									Large responses stay manageable here: scan the metadata first,
-									then preview, copy, or download deliberately.
+									Reports run as background tasks. When the task finishes, the
+									stored output is fetched here for preview, copy, or download.
 								</p>
 							</div>
 						</div>
 
-						{!lastResult ? (
+						{activeReportTask ? (
+							<div className="preview-meta">
+								<span>Task #{activeReportTask.id}</span>
+								<span>{activeReportTask.status}</span>
+								<span>
+									{activeReportTask.progress.processed_items} /{" "}
+									{activeReportTask.progress.total_items} processed
+								</span>
+								{reportDetails?.output_content_type ? (
+									<span>{reportDetails.output_content_type}</span>
+								) : null}
+								{reportDetails?.warning_count != null ? (
+									<span>{reportDetails.warning_count} warning(s)</span>
+								) : null}
+								{reportDetails?.truncated != null ? (
+									<span>
+										{reportDetails.truncated
+											? "Truncated by backend"
+											: "Backend complete"}
+									</span>
+								) : null}
+							</div>
+						) : null}
+
+						{activeReportTask &&
+						!isTerminalTaskStatus(activeReportTask.status) ? (
+							<div className="info-banner">
+								Report task is {activeReportTask.status}. This page is polling
+								for completion.
+							</div>
+						) : null}
+
+						{activeReportTask &&
+						isTerminalTaskStatus(activeReportTask.status) &&
+						reportDetails?.output_available !== true &&
+						!lastResult ? (
+							<div className="empty-state">
+								No stored report output is available for this task.
+							</div>
+						) : null}
+
+						{reportOutputQuery.isLoading ? (
+							<div className="muted">Loading stored output...</div>
+						) : null}
+
+						{!activeReportTask && !lastResult ? (
 							<div className="empty-state">
 								Run a report to inspect the response.
 							</div>
@@ -1451,7 +1575,7 @@ export function ReportsWorkspace() {
 							onChange={(templateBody) =>
 								setEditorState({ ...editorState, templateBody })
 							}
-							placeholder="{{#each items}}{{this.name}}\n{{/each}}"
+							placeholder="{% for item in items %}{{ item.name }}\n{% endfor %}"
 							disabled={saveTemplateMutation.isPending}
 							scopeKind={scopeKind}
 						/>

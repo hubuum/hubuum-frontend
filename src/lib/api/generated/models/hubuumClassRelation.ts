@@ -3,13 +3,17 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.0.1
  */
 
 export interface HubuumClassRelation {
   created_at: string;
+  /** @nullable */
+  forward_template_alias?: string | null;
   from_hubuum_class_id: number;
   id: number;
+  /** @nullable */
+  reverse_template_alias?: string | null;
   to_hubuum_class_id: number;
   updated_at: string;
 }

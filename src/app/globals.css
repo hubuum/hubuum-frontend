@@ -377,6 +377,10 @@ button.sidebar-link-button {
 	white-space: nowrap;
 }
 
+.sidebar-footer {
+	margin-top: auto;
+}
+
 .app-shell.sidebar-collapsed .sidebar-label,
 .app-shell.sidebar-collapsed .sidebar-title,
 .app-shell.sidebar-collapsed .sidebar-text,
@@ -671,10 +675,6 @@ button.menu-item-danger {
 	border-color: var(--danger-line);
 }
 
-.sidebar-footer {
-	margin-top: auto;
-}
-
 .sidebar-signout {
 	width: 100%;
 }
@@ -819,6 +819,12 @@ body.modal-open {
 	gap: 0.8rem;
 }
 
+.control-field {
+	display: grid;
+	gap: 0.25rem;
+	min-width: min(320px, 100%);
+}
+
 .controls-row .control-field {
 	min-width: min(260px, 100%);
 	max-width: 360px;
@@ -845,12 +851,6 @@ body.modal-open {
 	display: grid;
 	gap: 0.6rem;
 	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.control-field {
-	display: grid;
-	gap: 0.25rem;
-	min-width: min(320px, 100%);
 }
 
 .control-label {
@@ -1495,6 +1495,11 @@ body.modal-open {
 	border-radius: 999px;
 }
 
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
 .search-table-wrap table {
 	min-width: 100%;
 }
@@ -1667,11 +1672,6 @@ body.modal-open {
 
 .link-chip:hover {
 	background: var(--accent-soft);
-}
-
-table {
-	width: 100%;
-	border-collapse: collapse;
 }
 
 th,
@@ -2266,12 +2266,12 @@ html[data-theme="dark"] .template-code-surface .cm-template-path {
 	color: var(--ink);
 }
 
-.template-code-surface .cm-tooltip-autocomplete ul li[aria-selected] .cm-completionLabel {
-	color: var(--ink);
-}
-
 .template-code-surface .cm-tooltip-autocomplete .cm-completionLabel {
 	font-weight: 600;
+}
+
+.template-code-surface .cm-tooltip-autocomplete ul li[aria-selected] .cm-completionLabel {
+	color: var(--ink);
 }
 
 .template-code-surface .cm-tooltip-autocomplete .cm-completionDetail {

@@ -3,16 +3,20 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.0.1
  */
 import type { ClassKey } from './classKey';
 
 export interface ImportClassRelationInput {
+  /** @nullable */
+  forward_template_alias?: string | null;
   from_class_key?: null | ClassKey;
   /** @nullable */
   from_class_ref?: string | null;
   /** @nullable */
   ref?: string | null;
+  /** @nullable */
+  reverse_template_alias?: string | null;
   to_class_key?: null | ClassKey;
   /** @nullable */
   to_class_ref?: string | null;
