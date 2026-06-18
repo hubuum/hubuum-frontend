@@ -12,12 +12,8 @@ import { useMemo } from "react";
 
 import { CodeEditor } from "@/components/code-editor";
 import type { ReportScopeKind } from "@/lib/api/reporting";
-import {
-	analyzeTemplate,
-	getJinjaProperties,
-	getJinjaTags,
-	getJinjaVariables,
-} from "@/lib/template-suggestions";
+import { createTemplateCompletionSource } from "@/lib/template-completion";
+import { analyzeTemplate } from "@/lib/template-suggestions";
 
 type TemplateCodeEditorProps = {
 	label: string;
@@ -26,6 +22,8 @@ type TemplateCodeEditorProps = {
 	placeholder?: string;
 	disabled?: boolean;
 	scopeKind?: ReportScopeKind;
+	relationHydrated?: boolean;
+	relationAliases?: string[];
 };
 
 export function TemplateCodeEditor({
@@ -35,16 +33,16 @@ export function TemplateCodeEditor({
 	placeholder,
 	disabled,
 	scopeKind,
+	relationHydrated = false,
+	relationAliases,
 }: TemplateCodeEditorProps) {
 	const analysis = useMemo(() => analyzeTemplate(value), [value]);
 
+	const relationAliasesKey = (relationAliases ?? []).join(",");
+	// biome-ignore lint/correctness/useExhaustiveDependencies: relationAliasesKey is a stable proxy for the array
 	const extensions = useMemo<Extension[]>(
 		() => [
-			jinja({
-				tags: getJinjaTags(),
-				variables: getJinjaVariables(),
-				properties: (path) => getJinjaProperties(path, scopeKind),
-			}),
+			jinja(),
 			closePercentBrace,
 			keymap.of([
 				{
@@ -60,9 +58,17 @@ export function TemplateCodeEditor({
 				maxRenderedOptions: 14,
 				tooltipClass: () => "template-completion-tooltip",
 				optionClass: () => "template-completion-option",
+				override: [
+					createTemplateCompletionSource({
+						scopeKind,
+						relationHydrated,
+						relationAliases,
+					}),
+				],
 			}),
 		],
-		[scopeKind],
+		// relationAliasesKey is a stable string proxy for the array identity.
+		[scopeKind, relationHydrated, relationAliasesKey],
 	);
 
 	const balanceMessage =
