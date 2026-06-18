@@ -30,6 +30,10 @@ import {
 	type NewReportTemplate,
 	type ReportContentType,
 	type ReportExecutionResult,
+	type ReportInclude,
+	type ReportIncludeRelatedDirection,
+	type ReportIncludeRelatedObject,
+	type ReportIncludeRelatedSort,
 	type ReportMissingDataPolicy,
 	type ReportRequest,
 	type ReportScopeKind,
@@ -68,6 +72,25 @@ type QueryBuilderSort = {
 	field: string;
 	direction: "asc" | "desc";
 };
+
+type IncludeBuilderRow = {
+	id: string;
+	alias: string;
+	classId: string;
+	direction: ReportIncludeRelatedDirection;
+	sort: ReportIncludeRelatedSort;
+	limit: string;
+	maxDepth: string;
+};
+
+const INCLUDE_ALIAS_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const MAX_INCLUDE_ALIASES = 8;
+const INCLUDE_DIRECTIONS: ReportIncludeRelatedDirection[] = [
+	"any",
+	"outgoing",
+	"incoming",
+];
+const INCLUDE_SORTS: ReportIncludeRelatedSort[] = ["path", "name", "created_at"];
 
 type ResultActionFeedback = {
 	tone: "success" | "danger";
@@ -412,6 +435,7 @@ export function ReportsWorkspace() {
 		[],
 	);
 	const [builderSorts, setBuilderSorts] = useState<QueryBuilderSort[]>([]);
+	const [includeRows, setIncludeRows] = useState<IncludeBuilderRow[]>([]);
 
 	const templatesQuery = useInfiniteQuery({
 		queryKey: ["report-templates"],
@@ -462,6 +486,13 @@ export function ReportsWorkspace() {
 	const builtQuery = useMemo(
 		() => buildQueryString(builderFilters, builderSorts, advancedQueryText),
 		[advancedQueryText, builderFilters, builderSorts],
+	);
+	const includeAliases = useMemo(
+		() =>
+			includeRows
+				.map((row) => row.alias.trim())
+				.filter((alias) => INCLUDE_ALIAS_PATTERN.test(alias)),
+		[includeRows],
 	);
 	const lastResultView = useMemo(
 		() => (lastResult ? getReportResultView(lastResult) : null),
@@ -536,6 +567,12 @@ export function ReportsWorkspace() {
 			current.filter((sort) => allowedSortFields.has(sort.field)),
 		);
 	}, [scopeFields, sortFields]);
+
+	useEffect(() => {
+		if (scopeKind !== "objects_in_class") {
+			setIncludeRows([]);
+		}
+	}, [scopeKind]);
 
 	const saveTemplateMutation = useMutation({
 		mutationFn: async (draft: TemplateEditorState) => {
@@ -675,6 +712,31 @@ export function ReportsWorkspace() {
 		]);
 	}
 
+	function addIncludeRow() {
+		setIncludeRows((current) => [
+			...current,
+			{
+				id: createBuilderId(),
+				alias: "",
+				classId: "",
+				direction: "any",
+				sort: "path",
+				limit: "",
+				maxDepth: "",
+			},
+		]);
+	}
+
+	function updateIncludeRow(id: string, patch: Partial<IncludeBuilderRow>) {
+		setIncludeRows((current) =>
+			current.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+		);
+	}
+
+	function removeIncludeRow(id: string) {
+		setIncludeRows((current) => current.filter((row) => row.id !== id));
+	}
+
 	function handleRunReport(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const scope: ReportRequest["scope"] = {
@@ -722,6 +784,56 @@ export function ReportsWorkspace() {
 			relationContext = { depth: parsedDepth };
 		}
 
+		let include: ReportInclude | null = null;
+		if (scopeKind === "objects_in_class" && includeRows.length) {
+			if (includeRows.length > MAX_INCLUDE_ALIASES) {
+				setRunnerError(`At most ${MAX_INCLUDE_ALIASES} related includes are allowed.`);
+				return;
+			}
+			const relatedObjects: Record<string, ReportIncludeRelatedObject> = {};
+			for (const row of includeRows) {
+				const alias = row.alias.trim();
+				if (!INCLUDE_ALIAS_PATTERN.test(alias)) {
+					setRunnerError(
+						`Include alias "${alias || "(empty)"}" must match [A-Za-z_][A-Za-z0-9_]*.`,
+					);
+					return;
+				}
+				if (relatedObjects[alias]) {
+					setRunnerError(`Duplicate include alias "${alias}".`);
+					return;
+				}
+				const includeClassId = parsePositiveInteger(row.classId);
+				if (!includeClassId) {
+					setRunnerError(`Include "${alias}" needs a class.`);
+					return;
+				}
+				const entry: ReportIncludeRelatedObject = {
+					class_id: includeClassId,
+					direction: row.direction,
+					sort: row.sort,
+				};
+				if (row.limit.trim()) {
+					const limit = parsePositiveInteger(row.limit);
+					if (!limit || limit > 50) {
+						setRunnerError(`Include "${alias}" limit must be 1..50.`);
+						return;
+					}
+					entry.limit = limit;
+				}
+				if (row.maxDepth.trim()) {
+					const maxDepth = parsePositiveInteger(row.maxDepth);
+					if (!maxDepth || maxDepth > 10) {
+						setRunnerError(`Include "${alias}" max depth must be 1..10.`);
+						return;
+					}
+					entry.max_depth = maxDepth;
+				}
+				relatedObjects[alias] = entry;
+			}
+			include = { related_objects: relatedObjects };
+		}
+
 		setRunnerError(null);
 		setResultActionFeedback(null);
 		setLastResult(null);
@@ -729,6 +841,7 @@ export function ReportsWorkspace() {
 		runReportMutation.mutate({
 			body: {
 				scope,
+				include,
 				query: builtQuery || null,
 				output,
 				relation_context: relationContext,
@@ -1222,6 +1335,138 @@ export function ReportsWorkspace() {
 									</label>
 								</div>
 
+								{scopeKind === "objects_in_class" ? (
+									<div className="query-builder-card control-field--wide">
+										<div className="panel-header">
+											<div className="stack action-card-header">
+												<h4>Related includes</h4>
+												<p className="muted">
+													Hydrate related objects under item.related.&lt;alias&gt;
+													(up to {MAX_INCLUDE_ALIASES}). Each alias is a list.
+												</p>
+											</div>
+											<div className="action-row">
+												<button
+													type="button"
+													className="ghost"
+													onClick={addIncludeRow}
+													disabled={includeRows.length >= MAX_INCLUDE_ALIASES}
+												>
+													Add include
+												</button>
+											</div>
+										</div>
+
+										{includeRows.length ? (
+											<div className="stack">
+												{includeRows.map((row) => (
+													<div key={row.id} className="query-row">
+														<input
+															value={row.alias}
+															onChange={(event) =>
+																updateIncludeRow(row.id, { alias: event.target.value })
+															}
+															placeholder="alias (e.g. rooms)"
+														/>
+														{classOptions.length > 0 ? (
+															<select
+																value={row.classId}
+																onChange={(event) =>
+																	updateIncludeRow(row.id, {
+																		classId: event.target.value,
+																	})
+																}
+															>
+																<option value="">Select class</option>
+																{classOptions.map((classItem) => (
+																	<option key={classItem.id} value={classItem.id}>
+																		{classItem.name} (#{classItem.id})
+																	</option>
+																))}
+															</select>
+														) : (
+															<input
+																type="number"
+																min={1}
+																value={row.classId}
+																onChange={(event) =>
+																	updateIncludeRow(row.id, {
+																		classId: event.target.value,
+																	})
+																}
+																placeholder="class ID"
+															/>
+														)}
+														<select
+															value={row.direction}
+															onChange={(event) =>
+																updateIncludeRow(row.id, {
+																	direction: event.target
+																		.value as ReportIncludeRelatedDirection,
+																})
+															}
+														>
+															{INCLUDE_DIRECTIONS.map((direction) => (
+																<option key={direction} value={direction}>
+																	{direction}
+																</option>
+															))}
+														</select>
+														<select
+															value={row.sort}
+															onChange={(event) =>
+																updateIncludeRow(row.id, {
+																	sort: event.target
+																		.value as ReportIncludeRelatedSort,
+																})
+															}
+														>
+															{INCLUDE_SORTS.map((sort) => (
+																<option key={sort} value={sort}>
+																	{sort}
+																</option>
+															))}
+														</select>
+														<input
+															type="number"
+															min={1}
+															max={50}
+															value={row.limit}
+															onChange={(event) =>
+																updateIncludeRow(row.id, { limit: event.target.value })
+															}
+															placeholder="limit 1..50"
+														/>
+														<input
+															type="number"
+															min={1}
+															max={10}
+															value={row.maxDepth}
+															onChange={(event) =>
+																updateIncludeRow(row.id, {
+																	maxDepth: event.target.value,
+																})
+															}
+															placeholder="depth 1..10"
+														/>
+														<button
+															type="button"
+															className="ghost"
+															onClick={() => removeIncludeRow(row.id)}
+														>
+															Remove
+														</button>
+													</div>
+												))}
+											</div>
+										) : (
+											<div className="empty-state">
+												No related includes. Add one to hydrate item.related.&lt;alias&gt;.
+											</div>
+										)}
+									</div>
+								) : null}
+
 								<label className="control-field">
 									<span>Missing data policy</span>
 									<select
@@ -1609,6 +1854,11 @@ export function ReportsWorkspace() {
 {% endfor %}`}
 							disabled={saveTemplateMutation.isPending}
 							scopeKind={scopeKind}
+							relationHydrated={
+								scopeKind === "related_objects" ||
+								(scopeKind === "objects_in_class" && relationDepth.trim() !== "")
+							}
+							relationAliases={includeAliases}
 						/>
 
 						<div className="template-help">
