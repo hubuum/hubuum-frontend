@@ -6,6 +6,7 @@ import {
 	patchApiV1TemplatesByTemplateId,
 	postApiV1Reports,
 	postApiV1Templates,
+	postApiV1TemplatesByTemplateIdReports,
 } from "@/lib/api/generated/client";
 import type {
 	GetApiV1TemplatesParams,
@@ -16,10 +17,14 @@ import type {
 	ReportIncludeRelatedObject,
 	ReportIncludeRelatedSort,
 	ReportJsonResponse,
+	ReportLimits,
 	ReportMissingDataPolicy,
+	ReportRelationContext,
 	ReportRequest,
 	ReportScopeKind,
 	ReportTemplate,
+	ReportTemplateKind,
+	ReportTemplateRunRequest,
 	TaskResponse,
 	UpdateReportTemplate,
 } from "@/lib/api/generated/models";
@@ -32,10 +37,14 @@ export type {
 	ReportIncludeRelatedObject,
 	ReportIncludeRelatedSort,
 	ReportJsonResponse,
+	ReportLimits,
 	ReportMissingDataPolicy,
+	ReportRelationContext,
 	ReportRequest,
 	ReportScopeKind,
 	ReportTemplate,
+	ReportTemplateKind,
+	ReportTemplateRunRequest,
 	TaskResponse,
 	UpdateReportTemplate,
 };
@@ -160,12 +169,11 @@ export async function deleteReportTemplate(templateId: number): Promise<void> {
 	}
 }
 
-export async function submitReportTask(
+export async function submitJsonReportTask(
 	request: ReportRequest,
 	idempotencyKey?: string,
 ): Promise<TaskResponse> {
 	const headers = new Headers();
-
 	if (idempotencyKey?.trim()) {
 		headers.set("Idempotency-Key", idempotencyKey.trim());
 	}
@@ -180,13 +188,40 @@ export async function submitReportTask(
 			"Too many active report tasks. Wait for one to finish, then try again.",
 		);
 	}
-
 	if (response.status !== 202) {
 		throw new Error(
 			getApiErrorMessage(response.data, "Failed to submit report."),
 		);
 	}
+	return response.data;
+}
 
+export async function runTemplateReport(
+	templateId: number,
+	overrides: ReportTemplateRunRequest,
+	idempotencyKey?: string,
+): Promise<TaskResponse> {
+	const headers = new Headers();
+	if (idempotencyKey?.trim()) {
+		headers.set("Idempotency-Key", idempotencyKey.trim());
+	}
+
+	const response = await postApiV1TemplatesByTemplateIdReports(
+		templateId,
+		overrides,
+		{ credentials: "include", headers },
+	);
+
+	if ((response.status as number) === 429) {
+		throw new Error(
+			"Too many active report tasks. Wait for one to finish, then try again.",
+		);
+	}
+	if (response.status !== 202) {
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to run template report."),
+		);
+	}
 	return response.data;
 }
 
