@@ -9,6 +9,7 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { CreateModal } from "@/components/create-modal";
+import { IncludeRows } from "@/components/include-rows";
 import { TemplateCodeEditor } from "@/components/template-code-editor";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -38,6 +39,9 @@ import {
 	type ReportRequest,
 	type ReportScopeKind,
 	type ReportTemplate,
+	type ReportTemplateKind,
+	runTemplateReport,
+	submitJsonReportTask,
 	submitReportTask,
 	type StoredReportContentType,
 	type TaskResponse,
@@ -45,6 +49,13 @@ import {
 	updateReportTemplate,
 } from "@/lib/api/reporting";
 import { isTerminalTaskStatus } from "@/lib/api/tasking";
+import {
+	buildIncludeFromRows,
+	includeAliasesOf,
+	includeRowsFromTemplate,
+	type IncludeBuilderRow,
+	newIncludeRow,
+} from "@/lib/report-include";
 import {
 	type QueryFieldKind,
 	SCOPE_QUERY_FIELDS,
@@ -58,6 +69,15 @@ type TemplateEditorState = {
 	description: string;
 	contentType: StoredReportContentType;
 	templateBody: string;
+	kind: ReportTemplateKind;
+	scopeKind: ReportScopeKind;
+	classId: string;
+	defaultQuery: string;
+	includeRows: IncludeBuilderRow[];
+	depth: string;
+	missingDataPolicy: ReportMissingDataPolicy;
+	maxItems: string;
+	maxOutputBytes: string;
 };
 
 type QueryBuilderFilter = {
@@ -71,16 +91,6 @@ type QueryBuilderSort = {
 	id: string;
 	field: string;
 	direction: "asc" | "desc";
-};
-
-type IncludeBuilderRow = {
-	id: string;
-	alias: string;
-	classId: string;
-	direction: ReportIncludeRelatedDirection;
-	sort: ReportIncludeRelatedSort;
-	limit: string;
-	maxDepth: string;
 };
 
 const INCLUDE_ALIAS_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -126,6 +136,15 @@ const DEFAULT_TEMPLATE_EDITOR: TemplateEditorState = {
 	contentType: "text/plain",
 	templateBody: `{% for item in items %}{{ item.name }}
 {% endfor %}`,
+	kind: "report",
+	scopeKind: "objects_in_class",
+	classId: "",
+	defaultQuery: "",
+	includeRows: [],
+	depth: "",
+	missingDataPolicy: "strict",
+	maxItems: "",
+	maxOutputBytes: "",
 };
 
 const STRING_OPERATORS = [
@@ -222,6 +241,24 @@ function buildTemplateEditorState(
 				? "text/plain"
 				: template.content_type,
 		templateBody: template.template,
+		kind: template.kind,
+		scopeKind: template.scope_kind ?? "objects_in_class",
+		classId: template.class_id != null ? String(template.class_id) : "",
+		defaultQuery: template.default_query ?? "",
+		includeRows: includeRowsFromTemplate(template.include, createBuilderId),
+		depth:
+			template.relation_context?.depth != null
+				? String(template.relation_context.depth)
+				: "",
+		missingDataPolicy: template.default_missing_data_policy ?? "strict",
+		maxItems:
+			template.default_limits?.max_items != null
+				? String(template.default_limits.max_items)
+				: "",
+		maxOutputBytes:
+			template.default_limits?.max_output_bytes != null
+				? String(template.default_limits.max_output_bytes)
+				: "",
 	};
 }
 
@@ -578,46 +615,76 @@ export function ReportsWorkspace() {
 	const saveTemplateMutation = useMutation({
 		mutationFn: async (draft: TemplateEditorState) => {
 			const namespaceId = parsePositiveInteger(draft.namespaceId);
-			if (!namespaceId) {
-				throw new Error("Namespace is required.");
-			}
-			if (!draft.name.trim()) {
-				throw new Error("Name is required.");
-			}
-			if (!draft.description.trim()) {
-				throw new Error("Description is required.");
-			}
-			if (!draft.templateBody.trim()) {
-				throw new Error("Template body is required.");
-			}
+			if (!namespaceId) throw new Error("Namespace is required.");
+			if (!draft.name.trim()) throw new Error("Name is required.");
+			if (!draft.description.trim()) throw new Error("Description is required.");
+			if (!draft.templateBody.trim()) throw new Error("Template body is required.");
 
-			if (draft.mode === "create") {
-				const payload: NewReportTemplate = {
-					namespace_id: namespaceId,
-					name: draft.name.trim(),
-					description: draft.description.trim(),
-					content_type: draft.contentType,
-					template: draft.templateBody,
-				};
-				return createReportTemplate(payload);
-			}
-
-			if (!draft.templateId) {
-				throw new Error("Template id is missing.");
-			}
-
-			const payload: UpdateReportTemplate = {
+			const base = {
 				namespace_id: namespaceId,
 				name: draft.name.trim(),
 				description: draft.description.trim(),
+				content_type: draft.contentType,
 				template: draft.templateBody,
+				kind: draft.kind,
 			};
-			return updateReportTemplate(draft.templateId, payload);
+
+			let reportFields: Partial<NewReportTemplate> = {};
+			if (draft.kind === "report") {
+				const scopeNeedsClass =
+					draft.scopeKind === "objects_in_class" ||
+					draft.scopeKind === "related_objects";
+				const classId = parsePositiveInteger(draft.classId);
+				if (scopeNeedsClass && !classId) {
+					throw new Error("Class is required for the selected scope.");
+				}
+				let include = null;
+				if (draft.scopeKind === "objects_in_class") {
+					const built = buildIncludeFromRows(draft.includeRows);
+					if ("error" in built) throw new Error(built.error);
+					include = built.include;
+				}
+				let relationContext = null;
+				if (draft.depth.trim()) {
+					const depth = parsePositiveInteger(draft.depth);
+					if (!depth || depth < 1 || depth > 2) {
+						throw new Error("Relation depth must be 1 or 2.");
+					}
+					relationContext = { depth };
+				}
+				const maxItems = draft.maxItems.trim()
+					? parsePositiveInteger(draft.maxItems)
+					: null;
+				const maxOutputBytes = draft.maxOutputBytes.trim()
+					? parsePositiveInteger(draft.maxOutputBytes)
+					: null;
+				const defaultLimits =
+					maxItems != null || maxOutputBytes != null
+						? { max_items: maxItems, max_output_bytes: maxOutputBytes }
+						: null;
+				reportFields = {
+					scope_kind: draft.scopeKind,
+					class_id: scopeNeedsClass ? classId : null,
+					default_query: draft.defaultQuery.trim() || null,
+					include,
+					relation_context: relationContext,
+					default_missing_data_policy: draft.missingDataPolicy,
+					default_limits: defaultLimits,
+				};
+			}
+
+			if (draft.mode === "create") {
+				return createReportTemplate({ ...base, ...reportFields } as NewReportTemplate);
+			}
+			if (!draft.templateId) throw new Error("Template id is missing.");
+			return updateReportTemplate(
+				draft.templateId,
+				{ ...base, ...reportFields } as UpdateReportTemplate,
+			);
 		},
 		onSuccess: async (template) => {
 			await queryClient.invalidateQueries({ queryKey: ["report-templates"] });
 			setSelectedTemplateId(String(template.id));
-			setOutputMode("template");
 			setEditorState(null);
 			setEditorError(null);
 		},
@@ -678,6 +745,33 @@ export function ReportsWorkspace() {
 	function closeEditor() {
 		setEditorState(null);
 		setEditorError(null);
+	}
+
+	function addEditorIncludeRow() {
+		setEditorState((current) =>
+			current
+				? { ...current, includeRows: [...current.includeRows, newIncludeRow(createBuilderId())] }
+				: current,
+		);
+	}
+	function updateEditorIncludeRow(id: string, patch: Partial<IncludeBuilderRow>) {
+		setEditorState((current) =>
+			current
+				? {
+						...current,
+						includeRows: current.includeRows.map((row) =>
+							row.id === id ? { ...row, ...patch } : row,
+						),
+					}
+				: current,
+		);
+	}
+	function removeEditorIncludeRow(id: string) {
+		setEditorState((current) =>
+			current
+				? { ...current, includeRows: current.includeRows.filter((row) => row.id !== id) }
+				: current,
+		);
 	}
 
 	function addFilter() {
@@ -1855,6 +1949,163 @@ export function ReportsWorkspace() {
 									<input value={editorState.contentType} readOnly />
 								</label>
 							)}
+
+							<label className="control-field">
+								<span>Kind</span>
+								<select
+									value={editorState.kind}
+									onChange={(event) =>
+										setEditorState({
+											...editorState,
+											kind: event.target.value as ReportTemplateKind,
+										})
+									}
+								>
+									<option value="report">report (executable)</option>
+									<option value="fragment">fragment (include/import/extends)</option>
+								</select>
+							</label>
+
+							{editorState.kind === "report" ? (
+								<>
+									<label className="control-field">
+										<span>Scope</span>
+										<select
+											value={editorState.scopeKind}
+											onChange={(event) =>
+												setEditorState({
+													...editorState,
+													scopeKind: event.target.value as ReportScopeKind,
+												})
+											}
+										>
+											<option value="namespaces">Namespaces</option>
+											<option value="classes">Classes</option>
+											<option value="objects_in_class">Objects in class</option>
+											<option value="class_relations">Class relations</option>
+											<option value="object_relations">Object relations</option>
+											<option value="related_objects">Related objects</option>
+										</select>
+									</label>
+
+									{editorState.scopeKind === "objects_in_class" ||
+									editorState.scopeKind === "related_objects" ? (
+										<div className="control-field">
+											<label htmlFor="template-class">Class</label>
+											{classOptions.length > 0 ? (
+												<select
+													id="template-class"
+													value={editorState.classId}
+													onChange={(event) =>
+														setEditorState({ ...editorState, classId: event.target.value })
+													}
+												>
+													<option value="">Select class</option>
+													{classOptions.map((classItem) => (
+														<option key={classItem.id} value={classItem.id}>
+															{classItem.name} (#{classItem.id})
+														</option>
+													))}
+												</select>
+											) : (
+												<input
+													id="template-class"
+													type="number"
+													min={1}
+													value={editorState.classId}
+													onChange={(event) =>
+														setEditorState({ ...editorState, classId: event.target.value })
+													}
+													placeholder="Enter class ID"
+												/>
+											)}
+										</div>
+									) : null}
+
+									<label className="control-field control-field--wide">
+										<span>Default query</span>
+										<input
+											value={editorState.defaultQuery}
+											onChange={(event) =>
+												setEditorState({ ...editorState, defaultQuery: event.target.value })
+											}
+											placeholder="name__contains=srv-&sort=name"
+										/>
+									</label>
+
+									{editorState.scopeKind === "objects_in_class" ? (
+										<IncludeRows
+											rows={editorState.includeRows}
+											classOptions={classOptions}
+											onAdd={addEditorIncludeRow}
+											onUpdate={updateEditorIncludeRow}
+											onRemove={removeEditorIncludeRow}
+										/>
+									) : null}
+
+									{editorState.scopeKind === "objects_in_class" ||
+									editorState.scopeKind === "related_objects" ? (
+										<label className="control-field">
+											<span>Relation hydration depth</span>
+											<input
+												type="number"
+												min={1}
+												max={2}
+												value={editorState.depth}
+												onChange={(event) =>
+													setEditorState({ ...editorState, depth: event.target.value })
+												}
+												placeholder={
+													editorState.scopeKind === "related_objects" ? "2 (default)" : "Off"
+												}
+											/>
+										</label>
+									) : null}
+
+									<label className="control-field">
+										<span>Default missing data policy</span>
+										<select
+											value={editorState.missingDataPolicy}
+											onChange={(event) =>
+												setEditorState({
+													...editorState,
+													missingDataPolicy: event.target.value as ReportMissingDataPolicy,
+												})
+											}
+										>
+											<option value="strict">Strict</option>
+											<option value="null">Null</option>
+											<option value="omit">Omit</option>
+										</select>
+									</label>
+
+									<label className="control-field">
+										<span>Default max items</span>
+										<input
+											type="number"
+											min={1}
+											value={editorState.maxItems}
+											onChange={(event) =>
+												setEditorState({ ...editorState, maxItems: event.target.value })
+											}
+											placeholder="optional"
+										/>
+									</label>
+
+									<label className="control-field">
+										<span>Default max output bytes</span>
+										<input
+											type="number"
+											min={1}
+											value={editorState.maxOutputBytes}
+											onChange={(event) =>
+												setEditorState({ ...editorState, maxOutputBytes: event.target.value })
+											}
+											placeholder="optional"
+										/>
+									</label>
+								</>
+							) : null}
 						</div>
 
 						<TemplateCodeEditor
@@ -1866,12 +2117,14 @@ export function ReportsWorkspace() {
 							placeholder={`{% for item in items %}{{ item.name }}
 {% endfor %}`}
 							disabled={saveTemplateMutation.isPending}
-							scopeKind={scopeKind}
+							scopeKind={editorState.kind === "report" ? editorState.scopeKind : undefined}
 							relationHydrated={
-								scopeKind === "related_objects" ||
-								(scopeKind === "objects_in_class" && relationDepth.trim() !== "")
+								editorState.kind === "report" &&
+								(editorState.scopeKind === "related_objects" ||
+									(editorState.scopeKind === "objects_in_class" &&
+										editorState.depth.trim() !== ""))
 							}
-							relationAliases={includeAliases}
+							relationAliases={includeAliasesOf(editorState.includeRows)}
 						/>
 
 						<div className="template-help">
