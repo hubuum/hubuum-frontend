@@ -7,8 +7,10 @@
  */
 import type {
   ApiErrorResponse,
+  ClearRateLimitResponse,
   CountsResponse,
   DbStateResponse,
+  GetApiV0MetaLoginRateLimitParams,
   GetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsParams,
   GetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsParams,
   GetApiV1ClassesByClassIdPermissionsParams,
@@ -41,6 +43,7 @@ import type {
   HubuumObjectWithPath,
   ImportRequest,
   ImportTaskResultResponse,
+  LoginRateLimitStateResponse,
   LoginResponse,
   LoginUser,
   LogoutTokenRequest,
@@ -59,9 +62,11 @@ import type {
   Permissions,
   RelatedClassGraph,
   RelatedObjectGraph,
+  ReleaseRateLimitResponse,
   ReportJsonResponse,
   ReportRequest,
   ReportTemplate,
+  ReportTemplateRunRequest,
   TaskEventResponse,
   TaskQueueStateResponse,
   TaskResponse,
@@ -516,6 +521,188 @@ export const getApiV0MetaDb = async ( options?: RequestInit): Promise<getApiV0Me
   
   const data: getApiV0MetaDbResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV0MetaDbResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v0/meta/login-rate-limit.
+ * @summary Get Api V0 Meta Login Rate Limit
+ */
+export type getApiV0MetaLoginRateLimitResponse200 = {
+  data: LoginRateLimitStateResponse
+  status: 200
+}
+
+export type getApiV0MetaLoginRateLimitResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV0MetaLoginRateLimitResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV0MetaLoginRateLimitResponseSuccess = (getApiV0MetaLoginRateLimitResponse200) & {
+  headers: Headers;
+};
+export type getApiV0MetaLoginRateLimitResponseError = (getApiV0MetaLoginRateLimitResponse401 | getApiV0MetaLoginRateLimitResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV0MetaLoginRateLimitResponse = (getApiV0MetaLoginRateLimitResponseSuccess | getApiV0MetaLoginRateLimitResponseError)
+
+export const getGetApiV0MetaLoginRateLimitUrl = (params?: GetApiV0MetaLoginRateLimitParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v0/meta/login-rate-limit?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v0/meta/login-rate-limit`
+}
+
+export const getApiV0MetaLoginRateLimit = async (params?: GetApiV0MetaLoginRateLimitParams, options?: RequestInit): Promise<getApiV0MetaLoginRateLimitResponse> => {
+  
+  const res = await fetch(getGetApiV0MetaLoginRateLimitUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV0MetaLoginRateLimitResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV0MetaLoginRateLimitResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v0/meta/login-rate-limit.
+ * @summary Delete Api V0 Meta Login Rate Limit
+ */
+export type deleteApiV0MetaLoginRateLimitResponse200 = {
+  data: ClearRateLimitResponse
+  status: 200
+}
+
+export type deleteApiV0MetaLoginRateLimitResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV0MetaLoginRateLimitResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV0MetaLoginRateLimitResponseSuccess = (deleteApiV0MetaLoginRateLimitResponse200) & {
+  headers: Headers;
+};
+export type deleteApiV0MetaLoginRateLimitResponseError = (deleteApiV0MetaLoginRateLimitResponse401 | deleteApiV0MetaLoginRateLimitResponse403) & {
+  headers: Headers;
+};
+
+export type deleteApiV0MetaLoginRateLimitResponse = (deleteApiV0MetaLoginRateLimitResponseSuccess | deleteApiV0MetaLoginRateLimitResponseError)
+
+export const getDeleteApiV0MetaLoginRateLimitUrl = () => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v0/meta/login-rate-limit`
+}
+
+export const deleteApiV0MetaLoginRateLimit = async ( options?: RequestInit): Promise<deleteApiV0MetaLoginRateLimitResponse> => {
+  
+  const res = await fetch(getDeleteApiV0MetaLoginRateLimitUrl(),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteApiV0MetaLoginRateLimitResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV0MetaLoginRateLimitResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v0/meta/login-rate-limit/{id}.
+ * @summary Delete Api V0 Meta Login Rate Limit By Id
+ */
+export type deleteApiV0MetaLoginRateLimitByIdResponse200 = {
+  data: ReleaseRateLimitResponse
+  status: 200
+}
+
+export type deleteApiV0MetaLoginRateLimitByIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type deleteApiV0MetaLoginRateLimitByIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV0MetaLoginRateLimitByIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV0MetaLoginRateLimitByIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV0MetaLoginRateLimitByIdResponseSuccess = (deleteApiV0MetaLoginRateLimitByIdResponse200) & {
+  headers: Headers;
+};
+export type deleteApiV0MetaLoginRateLimitByIdResponseError = (deleteApiV0MetaLoginRateLimitByIdResponse400 | deleteApiV0MetaLoginRateLimitByIdResponse401 | deleteApiV0MetaLoginRateLimitByIdResponse403 | deleteApiV0MetaLoginRateLimitByIdResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV0MetaLoginRateLimitByIdResponse = (deleteApiV0MetaLoginRateLimitByIdResponseSuccess | deleteApiV0MetaLoginRateLimitByIdResponseError)
+
+export const getDeleteApiV0MetaLoginRateLimitByIdUrl = (id: string,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v0/meta/login-rate-limit/${id}`
+}
+
+export const deleteApiV0MetaLoginRateLimitById = async (id: string, options?: RequestInit): Promise<deleteApiV0MetaLoginRateLimitByIdResponse> => {
+  
+  const res = await fetch(getDeleteApiV0MetaLoginRateLimitByIdUrl(id),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteApiV0MetaLoginRateLimitByIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV0MetaLoginRateLimitByIdResponse
 }
   
 
@@ -4445,10 +4632,15 @@ export type postApiV1ReportsResponse409 = {
   status: 409
 }
 
+export type postApiV1ReportsResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
 export type postApiV1ReportsResponseSuccess = (postApiV1ReportsResponse202) & {
   headers: Headers;
 };
-export type postApiV1ReportsResponseError = (postApiV1ReportsResponse400 | postApiV1ReportsResponse401 | postApiV1ReportsResponse409) & {
+export type postApiV1ReportsResponseError = (postApiV1ReportsResponse400 | postApiV1ReportsResponse401 | postApiV1ReportsResponse409 | postApiV1ReportsResponse429) & {
   headers: Headers;
 };
 
@@ -5229,6 +5421,83 @@ export const patchApiV1TemplatesByTemplateId = async (templateId: number,
   
   const data: patchApiV1TemplatesByTemplateIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1TemplatesByTemplateIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/templates/{template_id}/reports.
+ * @summary Post Api V1 Templates By Template Id Reports
+ */
+export type postApiV1TemplatesByTemplateIdReportsResponse202 = {
+  data: TaskResponse
+  status: 202
+}
+
+export type postApiV1TemplatesByTemplateIdReportsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1TemplatesByTemplateIdReportsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1TemplatesByTemplateIdReportsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1TemplatesByTemplateIdReportsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1TemplatesByTemplateIdReportsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1TemplatesByTemplateIdReportsResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1TemplatesByTemplateIdReportsResponseSuccess = (postApiV1TemplatesByTemplateIdReportsResponse202) & {
+  headers: Headers;
+};
+export type postApiV1TemplatesByTemplateIdReportsResponseError = (postApiV1TemplatesByTemplateIdReportsResponse400 | postApiV1TemplatesByTemplateIdReportsResponse401 | postApiV1TemplatesByTemplateIdReportsResponse403 | postApiV1TemplatesByTemplateIdReportsResponse404 | postApiV1TemplatesByTemplateIdReportsResponse409 | postApiV1TemplatesByTemplateIdReportsResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1TemplatesByTemplateIdReportsResponse = (postApiV1TemplatesByTemplateIdReportsResponseSuccess | postApiV1TemplatesByTemplateIdReportsResponseError)
+
+export const getPostApiV1TemplatesByTemplateIdReportsUrl = (templateId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}/reports`
+}
+
+export const postApiV1TemplatesByTemplateIdReports = async (templateId: number,
+    reportTemplateRunRequest: ReportTemplateRunRequest, options?: RequestInit): Promise<postApiV1TemplatesByTemplateIdReportsResponse> => {
+  
+  const res = await fetch(getPostApiV1TemplatesByTemplateIdReportsUrl(templateId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reportTemplateRunRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: postApiV1TemplatesByTemplateIdReportsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1TemplatesByTemplateIdReportsResponse
 }
   
 

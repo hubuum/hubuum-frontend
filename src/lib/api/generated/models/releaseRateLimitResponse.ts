@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface ReportOutputRequest {
-  /** @nullable */
-  template_id?: number | null;
+export interface ReleaseRateLimitResponse {
+  released: boolean;
 }
