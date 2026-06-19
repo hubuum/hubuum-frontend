@@ -16,6 +16,7 @@ export type TemplateCompletionOptions = {
 	scopeKind?: ReportScopeKind;
 	relationHydrated: boolean;
 	relationAliases?: string[];
+	templateNames?: string[];
 };
 
 const TAGS: Completion[] = [
@@ -304,6 +305,23 @@ export function createTemplateCompletionSource(
 		const inStatement = openStmt > openExpr;
 		const region = before.slice(openPos + 2);
 		const loopVars = collectLoopVars(before.slice(0, openPos));
+
+		// Inside a string after include/import/extends → offer template names.
+		const nameMatch = region.match(
+			/\b(?:include|import|extends)\s+("|')([A-Za-z0-9_.\-/]*)$/,
+		);
+		if (nameMatch) {
+			const names = options.templateNames ?? [];
+			if (!names.length) {
+				return null;
+			}
+			const word = context.matchBefore(/[A-Za-z0-9_.\-/]*$/);
+			return result(word ? word.from : context.pos, names.map((name) => ({
+				label: name,
+				detail: "Stored template",
+				type: "text",
+			})));
+		}
 
 		// Tag keyword position: `{%` then only an optional leading word.
 		if (inStatement) {

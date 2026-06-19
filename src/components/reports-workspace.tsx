@@ -500,6 +500,13 @@ export function ReportsWorkspace() {
 		() => templates.filter((template) => template.kind === "report"),
 		[templates],
 	);
+	const editorTemplateNames = useMemo(() => {
+		if (!editorState) return [];
+		const ns = parsePositiveInteger(editorState.namespaceId);
+		return templates
+			.filter((t) => t.namespace_id === ns && t.id !== editorState.templateId)
+			.map((t) => t.name);
+	}, [editorState, templates]);
 	const selectedTemplate = useMemo(
 		() =>
 			runnableTemplates.find(
@@ -2046,6 +2053,7 @@ export function ReportsWorkspace() {
 										editorState.depth.trim() !== ""))
 							}
 							relationAliases={includeAliasesOf(editorState.includeRows)}
+							templateNames={editorTemplateNames}
 						/>
 
 						<div className="template-help">

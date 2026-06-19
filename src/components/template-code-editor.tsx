@@ -24,6 +24,7 @@ type TemplateCodeEditorProps = {
 	scopeKind?: ReportScopeKind;
 	relationHydrated?: boolean;
 	relationAliases?: string[];
+	templateNames?: string[];
 };
 
 export function TemplateCodeEditor({
@@ -35,10 +36,12 @@ export function TemplateCodeEditor({
 	scopeKind,
 	relationHydrated = false,
 	relationAliases,
+	templateNames,
 }: TemplateCodeEditorProps) {
 	const analysis = useMemo(() => analyzeTemplate(value), [value]);
 
 	const relationAliasesKey = (relationAliases ?? []).join(",");
+	const templateNamesKey = (templateNames ?? []).join(",");
 	// biome-ignore lint/correctness/useExhaustiveDependencies: relationAliasesKey is a stable proxy for the array
 	const extensions = useMemo<Extension[]>(
 		() => [
@@ -63,12 +66,13 @@ export function TemplateCodeEditor({
 						scopeKind,
 						relationHydrated,
 						relationAliases,
+						templateNames,
 					}),
 				],
 			}),
 		],
 		// relationAliasesKey is a stable string proxy for the array identity.
-		[scopeKind, relationHydrated, relationAliasesKey],
+		[scopeKind, relationHydrated, relationAliasesKey, templateNamesKey],
 	);
 
 	const balanceMessage =
