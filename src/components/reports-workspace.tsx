@@ -32,17 +32,14 @@ import {
 	type ReportContentType,
 	type ReportExecutionResult,
 	type ReportInclude,
-	type ReportIncludeRelatedDirection,
-	type ReportIncludeRelatedObject,
-	type ReportIncludeRelatedSort,
 	type ReportMissingDataPolicy,
 	type ReportRequest,
 	type ReportScopeKind,
 	type ReportTemplate,
 	type ReportTemplateKind,
+	type ReportTemplateRunRequest,
 	runTemplateReport,
 	submitJsonReportTask,
-	submitReportTask,
 	type StoredReportContentType,
 	type TaskResponse,
 	type UpdateReportTemplate,
@@ -92,15 +89,6 @@ type QueryBuilderSort = {
 	field: string;
 	direction: "asc" | "desc";
 };
-
-const INCLUDE_ALIAS_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const MAX_INCLUDE_ALIASES = 8;
-const INCLUDE_DIRECTIONS: ReportIncludeRelatedDirection[] = [
-	"any",
-	"outgoing",
-	"incoming",
-];
-const INCLUDE_SORTS: ReportIncludeRelatedSort[] = ["path", "name", "created_at"];
 
 type ResultActionFeedback = {
 	tone: "success" | "danger";
@@ -449,7 +437,7 @@ export function ReportsWorkspace() {
 	);
 	const [editorError, setEditorError] = useState<string | null>(null);
 	const [selectedTemplateId, setSelectedTemplateId] = useState("");
-	const [outputMode, setOutputMode] = useState<"json" | "template">("json");
+	const [runMode, setRunMode] = useState<"json" | "template">("json");
 	const [scopeKind, setScopeKind] = useState<ReportScopeKind>("namespaces");
 	const [classId, setClassId] = useState("");
 	const [objectId, setObjectId] = useState("");
@@ -459,18 +447,18 @@ export function ReportsWorkspace() {
 	const [relationDepth, setRelationDepth] = useState("");
 	const [maxItems, setMaxItems] = useState("100");
 	const [maxOutputBytes, setMaxOutputBytes] = useState("262144");
+	// run-template overrides
+	const [overrideQuery, setOverrideQuery] = useState("");
+	const [overrideObjectId, setOverrideObjectId] = useState("");
+	const [overridePolicy, setOverridePolicy] = useState<ReportMissingDataPolicy | "">("");
+	const [overrideMaxItems, setOverrideMaxItems] = useState("");
+	const [overrideMaxOutputBytes, setOverrideMaxOutputBytes] = useState("");
 	const [runnerError, setRunnerError] = useState<string | null>(null);
-	const [lastReportTask, setLastReportTask] = useState<TaskResponse | null>(
-		null,
-	);
-	const [lastResult, setLastResult] = useState<ReportExecutionResult | null>(
-		null,
-	);
+	const [lastReportTask, setLastReportTask] = useState<TaskResponse | null>(null);
+	const [lastResult, setLastResult] = useState<ReportExecutionResult | null>(null);
 	const [resultActionFeedback, setResultActionFeedback] =
 		useState<ResultActionFeedback>(null);
-	const [builderFilters, setBuilderFilters] = useState<QueryBuilderFilter[]>(
-		[],
-	);
+	const [builderFilters, setBuilderFilters] = useState<QueryBuilderFilter[]>([]);
 	const [builderSorts, setBuilderSorts] = useState<QueryBuilderSort[]>([]);
 	const [includeRows, setIncludeRows] = useState<IncludeBuilderRow[]>([]);
 
@@ -508,12 +496,16 @@ export function ReportsWorkspace() {
 		() => templatesQuery.data?.pages.flatMap((page) => page.items) ?? [],
 		[templatesQuery.data?.pages],
 	);
+	const runnableTemplates = useMemo(
+		() => templates.filter((template) => template.kind === "report"),
+		[templates],
+	);
 	const selectedTemplate = useMemo(
 		() =>
-			templates.find(
+			runnableTemplates.find(
 				(template) => String(template.id) === selectedTemplateId,
 			) ?? null,
-		[selectedTemplateId, templates],
+		[selectedTemplateId, runnableTemplates],
 	);
 	const scopeFields = useMemo(() => SCOPE_QUERY_FIELDS[scopeKind], [scopeKind]);
 	const sortFields = useMemo(
@@ -523,13 +515,6 @@ export function ReportsWorkspace() {
 	const builtQuery = useMemo(
 		() => buildQueryString(builderFilters, builderSorts, advancedQueryText),
 		[advancedQueryText, builderFilters, builderSorts],
-	);
-	const includeAliases = useMemo(
-		() =>
-			includeRows
-				.map((row) => row.alias.trim())
-				.filter((alias) => INCLUDE_ALIAS_PATTERN.test(alias)),
-		[includeRows],
 	);
 	const lastResultView = useMemo(
 		() => (lastResult ? getReportResultView(lastResult) : null),
@@ -558,17 +543,11 @@ export function ReportsWorkspace() {
 	});
 
 	useEffect(() => {
-		if (!selectedTemplateId) {
-			return;
-		}
-
-		if (
-			!templates.some((template) => String(template.id) === selectedTemplateId)
-		) {
+		if (!selectedTemplateId) return;
+		if (!runnableTemplates.some((t) => String(t.id) === selectedTemplateId)) {
 			setSelectedTemplateId("");
-			setOutputMode("json");
 		}
-	}, [selectedTemplateId, templates]);
+	}, [selectedTemplateId, runnableTemplates]);
 
 	useEffect(() => {
 		if (reportTaskQuery.data) {
@@ -703,14 +682,12 @@ export function ReportsWorkspace() {
 			await queryClient.invalidateQueries({ queryKey: ["report-templates"] });
 			if (selectedTemplateId === String(templateId)) {
 				setSelectedTemplateId("");
-				setOutputMode("json");
 			}
 		},
 	});
 
 	const runReportMutation = useMutation({
-		mutationFn: async (request: { body: ReportRequest }) =>
-			submitReportTask(request.body),
+		mutationFn: async (request: ReportRequest) => submitJsonReportTask(request),
 		onSuccess: (task) => {
 			setRunnerError(null);
 			setLastReportTask(task);
@@ -721,9 +698,24 @@ export function ReportsWorkspace() {
 			setLastResult(null);
 			setLastReportTask(null);
 			setResultActionFeedback(null);
-			setRunnerError(
-				error instanceof Error ? error.message : "Failed to submit report.",
-			);
+			setRunnerError(error instanceof Error ? error.message : "Failed to submit report.");
+		},
+	});
+
+	const runTemplateMutation = useMutation({
+		mutationFn: async (vars: { templateId: number; overrides: ReportTemplateRunRequest }) =>
+			runTemplateReport(vars.templateId, vars.overrides),
+		onSuccess: (task) => {
+			setRunnerError(null);
+			setLastReportTask(task);
+			setLastResult(null);
+			setResultActionFeedback(null);
+		},
+		onError: (error) => {
+			setLastResult(null);
+			setLastReportTask(null);
+			setResultActionFeedback(null);
+			setRunnerError(error instanceof Error ? error.message : "Failed to run template report.");
 		},
 	});
 
@@ -808,18 +800,7 @@ export function ReportsWorkspace() {
 	}
 
 	function addIncludeRow() {
-		setIncludeRows((current) => [
-			...current,
-			{
-				id: createBuilderId(),
-				alias: "",
-				classId: "",
-				direction: "any",
-				sort: "path",
-				limit: "",
-				maxDepth: "",
-			},
-		]);
+		setIncludeRows((current) => [...current, newIncludeRow(createBuilderId())]);
 	}
 
 	function updateIncludeRow(id: string, patch: Partial<IncludeBuilderRow>) {
@@ -834,10 +815,7 @@ export function ReportsWorkspace() {
 
 	function handleRunReport(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		const scope: ReportRequest["scope"] = {
-			kind: scopeKind,
-		};
-
+		const scope: ReportRequest["scope"] = { kind: scopeKind };
 		if (scopeKind === "objects_in_class" || scopeKind === "related_objects") {
 			const parsed = parsePositiveInteger(classId);
 			if (!parsed) {
@@ -846,7 +824,6 @@ export function ReportsWorkspace() {
 			}
 			scope.class_id = parsed;
 		}
-
 		if (scopeKind === "related_objects") {
 			const parsed = parsePositiveInteger(objectId);
 			if (!parsed) {
@@ -854,17 +831,6 @@ export function ReportsWorkspace() {
 				return;
 			}
 			scope.object_id = parsed;
-		}
-
-		let output: ReportRequest["output"] = null;
-		if (outputMode === "template") {
-			if (!selectedTemplate) {
-				setRunnerError("Select a stored template to run a text report.");
-				return;
-			}
-			output = {
-				template_id: selectedTemplate.id,
-			};
 		}
 
 		const depthApplies =
@@ -880,53 +846,13 @@ export function ReportsWorkspace() {
 		}
 
 		let include: ReportInclude | null = null;
-		if (scopeKind === "objects_in_class" && includeRows.length) {
-			if (includeRows.length > MAX_INCLUDE_ALIASES) {
-				setRunnerError(`At most ${MAX_INCLUDE_ALIASES} related includes are allowed.`);
+		if (scopeKind === "objects_in_class") {
+			const built = buildIncludeFromRows(includeRows);
+			if ("error" in built) {
+				setRunnerError(built.error);
 				return;
 			}
-			const relatedObjects: Record<string, ReportIncludeRelatedObject> = {};
-			for (const row of includeRows) {
-				const alias = row.alias.trim();
-				if (!INCLUDE_ALIAS_PATTERN.test(alias)) {
-					setRunnerError(
-						`Include alias "${alias || "(empty)"}" must match [A-Za-z_][A-Za-z0-9_]*.`,
-					);
-					return;
-				}
-				if (relatedObjects[alias]) {
-					setRunnerError(`Duplicate include alias "${alias}".`);
-					return;
-				}
-				const includeClassId = parsePositiveInteger(row.classId);
-				if (!includeClassId) {
-					setRunnerError(`Include "${alias}" needs a class.`);
-					return;
-				}
-				const entry: ReportIncludeRelatedObject = {
-					class_id: includeClassId,
-					direction: row.direction,
-					sort: row.sort,
-				};
-				if (row.limit.trim()) {
-					const limit = parsePositiveInteger(row.limit);
-					if (!limit || limit > 50) {
-						setRunnerError(`Include "${alias}" limit must be 1..50.`);
-						return;
-					}
-					entry.limit = limit;
-				}
-				if (row.maxDepth.trim()) {
-					const maxDepth = parsePositiveInteger(row.maxDepth);
-					if (!maxDepth || maxDepth > 10) {
-						setRunnerError(`Include "${alias}" max depth must be 1..10.`);
-						return;
-					}
-					entry.max_depth = maxDepth;
-				}
-				relatedObjects[alias] = entry;
-			}
-			include = { related_objects: relatedObjects };
+			include = built.include;
 		}
 
 		setRunnerError(null);
@@ -934,19 +860,48 @@ export function ReportsWorkspace() {
 		setLastResult(null);
 		setLastReportTask(null);
 		runReportMutation.mutate({
-			body: {
-				scope,
-				include,
-				query: builtQuery || null,
-				output,
-				relation_context: relationContext,
-				missing_data_policy: missingDataPolicy,
-				limits: {
-					max_items: parsePositiveInteger(maxItems),
-					max_output_bytes: parsePositiveInteger(maxOutputBytes),
-				},
+			scope,
+			include,
+			query: builtQuery || null,
+			relation_context: relationContext,
+			missing_data_policy: missingDataPolicy,
+			limits: {
+				max_items: parsePositiveInteger(maxItems),
+				max_output_bytes: parsePositiveInteger(maxOutputBytes),
 			},
 		});
+	}
+
+	function handleRunTemplate(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		if (!selectedTemplate) {
+			setRunnerError("Select a template to run.");
+			return;
+		}
+		const overrides: ReportTemplateRunRequest = {};
+		if (overrideQuery.trim()) overrides.query = overrideQuery.trim();
+		if (selectedTemplate.scope_kind === "related_objects") {
+			const parsed = parsePositiveInteger(overrideObjectId);
+			if (!parsed) {
+				setRunnerError("This template is related_objects-scoped; an object id is required.");
+				return;
+			}
+			overrides.object_id = parsed;
+		}
+		if (overridePolicy) overrides.missing_data_policy = overridePolicy;
+		const oMaxItems = overrideMaxItems.trim() ? parsePositiveInteger(overrideMaxItems) : null;
+		const oMaxBytes = overrideMaxOutputBytes.trim()
+			? parsePositiveInteger(overrideMaxOutputBytes)
+			: null;
+		if (oMaxItems != null || oMaxBytes != null) {
+			overrides.limits = { max_items: oMaxItems, max_output_bytes: oMaxBytes };
+		}
+
+		setRunnerError(null);
+		setResultActionFeedback(null);
+		setLastResult(null);
+		setLastReportTask(null);
+		runTemplateMutation.mutate({ templateId: selectedTemplate.id, overrides });
 	}
 
 	async function copyReportText(text: string, label: string) {
@@ -1049,7 +1004,7 @@ export function ReportsWorkspace() {
 											className="ghost"
 											onClick={() => {
 												setSelectedTemplateId(String(template.id));
-												setOutputMode("template");
+												setRunMode("template");
 											}}
 										>
 											Use in runner
@@ -1106,8 +1061,26 @@ export function ReportsWorkspace() {
 							</p>
 						</div>
 
-						<form className="stack" onSubmit={handleRunReport}>
-							<div className="form-grid">
+						<div className="action-row">
+							<button
+								type="button"
+								className={runMode === "json" ? "" : "ghost"}
+								onClick={() => setRunMode("json")}
+							>
+								JSON report
+							</button>
+							<button
+								type="button"
+								className={runMode === "template" ? "" : "ghost"}
+								onClick={() => setRunMode("template")}
+							>
+								Run template
+							</button>
+						</div>
+
+						{runMode === "json" ? (
+							<form className="stack" onSubmit={handleRunReport}>
+								<div className="form-grid">
 								<label className="control-field">
 									<span>Scope</span>
 									<select
@@ -1122,19 +1095,6 @@ export function ReportsWorkspace() {
 										<option value="class_relations">Class relations</option>
 										<option value="object_relations">Object relations</option>
 										<option value="related_objects">Related objects</option>
-									</select>
-								</label>
-
-								<label className="control-field">
-									<span>Output mode</span>
-									<select
-										value={outputMode}
-										onChange={(event) =>
-											setOutputMode(event.target.value as "json" | "template")
-										}
-									>
-										<option value="json">JSON</option>
-										<option value="template">Stored template</option>
 									</select>
 								</label>
 
@@ -1195,25 +1155,6 @@ export function ReportsWorkspace() {
 											/>
 										)}
 									</div>
-								) : null}
-
-								{outputMode === "template" ? (
-									<label className="control-field control-field--wide">
-										<span>Stored template</span>
-										<select
-											value={selectedTemplateId}
-											onChange={(event) =>
-												setSelectedTemplateId(event.target.value)
-											}
-										>
-											<option value="">Select template</option>
-											{templates.map((template) => (
-												<option key={template.id} value={template.id}>
-													{template.name} ({template.content_type})
-												</option>
-											))}
-										</select>
-									</label>
 								) : null}
 
 								<div className="query-builder-card control-field--wide">
@@ -1431,135 +1372,13 @@ export function ReportsWorkspace() {
 								</div>
 
 								{scopeKind === "objects_in_class" ? (
-									<div className="query-builder-card control-field--wide">
-										<div className="panel-header">
-											<div className="stack action-card-header">
-												<h4>Related includes</h4>
-												<p className="muted">
-													Hydrate related objects under item.related.&lt;alias&gt;
-													(up to {MAX_INCLUDE_ALIASES}). Each alias is a list.
-												</p>
-											</div>
-											<div className="action-row">
-												<button
-													type="button"
-													className="ghost"
-													onClick={addIncludeRow}
-													disabled={includeRows.length >= MAX_INCLUDE_ALIASES}
-												>
-													Add include
-												</button>
-											</div>
-										</div>
-
-										{includeRows.length ? (
-											<div className="stack">
-												{includeRows.map((row) => (
-													<div key={row.id} className="query-row">
-														<input
-															value={row.alias}
-															onChange={(event) =>
-																updateIncludeRow(row.id, { alias: event.target.value })
-															}
-															placeholder="alias (e.g. rooms)"
-														/>
-														{classOptions.length > 0 ? (
-															<select
-																value={row.classId}
-																onChange={(event) =>
-																	updateIncludeRow(row.id, {
-																		classId: event.target.value,
-																	})
-																}
-															>
-																<option value="">Select class</option>
-																{classOptions.map((classItem) => (
-																	<option key={classItem.id} value={classItem.id}>
-																		{classItem.name} (#{classItem.id})
-																	</option>
-																))}
-															</select>
-														) : (
-															<input
-																type="number"
-																min={1}
-																value={row.classId}
-																onChange={(event) =>
-																	updateIncludeRow(row.id, {
-																		classId: event.target.value,
-																	})
-																}
-																placeholder="class ID"
-															/>
-														)}
-														<select
-															value={row.direction}
-															onChange={(event) =>
-																updateIncludeRow(row.id, {
-																	direction: event.target
-																		.value as ReportIncludeRelatedDirection,
-																})
-															}
-														>
-															{INCLUDE_DIRECTIONS.map((direction) => (
-																<option key={direction} value={direction}>
-																	{direction}
-																</option>
-															))}
-														</select>
-														<select
-															value={row.sort}
-															onChange={(event) =>
-																updateIncludeRow(row.id, {
-																	sort: event.target
-																		.value as ReportIncludeRelatedSort,
-																})
-															}
-														>
-															{INCLUDE_SORTS.map((sort) => (
-																<option key={sort} value={sort}>
-																	{sort}
-																</option>
-															))}
-														</select>
-														<input
-															type="number"
-															min={1}
-															max={50}
-															value={row.limit}
-															onChange={(event) =>
-																updateIncludeRow(row.id, { limit: event.target.value })
-															}
-															placeholder="limit 1..50"
-														/>
-														<input
-															type="number"
-															min={1}
-															max={10}
-															value={row.maxDepth}
-															onChange={(event) =>
-																updateIncludeRow(row.id, {
-																	maxDepth: event.target.value,
-																})
-															}
-															placeholder="depth 1..10"
-														/>
-														<button
-															type="button"
-															className="ghost"
-															onClick={() => removeIncludeRow(row.id)}
-														>
-															Remove
-														</button>
-													</div>
-												))}
-											</div>
-										) : (
-											<div className="empty-state">
-												No related includes. Add one to hydrate item.related.&lt;alias&gt;.
-											</div>
-										)}
-									</div>
+									<IncludeRows
+										rows={includeRows}
+										classOptions={classOptions}
+										onAdd={addIncludeRow}
+										onUpdate={updateIncludeRow}
+										onRemove={removeIncludeRow}
+									/>
 								) : null}
 
 								<label className="control-field">
@@ -1626,13 +1445,115 @@ export function ReportsWorkspace() {
 										? "Submitting..."
 										: "Run report"}
 								</button>
-								{selectedTemplate ? (
-									<span className="muted">
-										Template output type: {selectedTemplate.content_type}
-									</span>
-								) : null}
 							</div>
 						</form>
+					) : null}
+
+					{runMode === "template" ? (
+						<form className="stack" onSubmit={handleRunTemplate}>
+							<label className="control-field control-field--wide">
+								<span>Template</span>
+								<select
+									value={selectedTemplateId}
+									onChange={(event) => setSelectedTemplateId(event.target.value)}
+								>
+									<option value="">Select a report template</option>
+									{runnableTemplates.map((template) => (
+										<option key={template.id} value={template.id}>
+											{template.name} ({template.content_type})
+										</option>
+									))}
+								</select>
+							</label>
+
+							{selectedTemplate ? (
+								<div className="preview-meta">
+									<span>scope: {selectedTemplate.scope_kind ?? "n/a"}</span>
+									{selectedTemplate.class_id != null ? (
+										<span>class #{selectedTemplate.class_id}</span>
+									) : null}
+									{selectedTemplate.default_query ? (
+										<span>default query: {selectedTemplate.default_query}</span>
+									) : null}
+									{selectedTemplate.relation_context?.depth != null ? (
+										<span>depth {selectedTemplate.relation_context.depth}</span>
+									) : null}
+									<span>{selectedTemplate.content_type}</span>
+								</div>
+							) : null}
+
+							<div className="form-grid">
+								<label className="control-field control-field--wide">
+									<span>Override query (optional)</span>
+									<input
+										value={overrideQuery}
+										onChange={(event) => setOverrideQuery(event.target.value)}
+										placeholder={selectedTemplate?.default_query ?? "name__contains=srv-"}
+									/>
+								</label>
+
+								{selectedTemplate?.scope_kind === "related_objects" ? (
+									<label className="control-field">
+										<span>Object id</span>
+										<input
+											type="number"
+											min={1}
+											value={overrideObjectId}
+											onChange={(event) => setOverrideObjectId(event.target.value)}
+											placeholder="root object id"
+										/>
+									</label>
+								) : null}
+
+								<label className="control-field">
+									<span>Override missing data policy</span>
+									<select
+										value={overridePolicy}
+										onChange={(event) =>
+											setOverridePolicy(
+												event.target.value as ReportMissingDataPolicy | "",
+											)
+										}
+									>
+										<option value="">Use template default</option>
+										<option value="strict">Strict</option>
+										<option value="null">Null</option>
+										<option value="omit">Omit</option>
+									</select>
+								</label>
+
+								<label className="control-field">
+									<span>Override max items</span>
+									<input
+										type="number"
+										min={1}
+										value={overrideMaxItems}
+										onChange={(event) => setOverrideMaxItems(event.target.value)}
+										placeholder="template default"
+									/>
+								</label>
+
+								<label className="control-field">
+									<span>Override max output bytes</span>
+									<input
+										type="number"
+										min={1}
+										value={overrideMaxOutputBytes}
+										onChange={(event) => setOverrideMaxOutputBytes(event.target.value)}
+										placeholder="template default"
+									/>
+								</label>
+							</div>
+
+							{runnerError ? <div className="error-banner">{runnerError}</div> : null}
+
+							<div className="action-row">
+								<button type="submit" disabled={runTemplateMutation.isPending || !selectedTemplate}>
+									{runTemplateMutation.isPending ? "Submitting..." : "Run template"}
+								</button>
+							</div>
+						</form>
+					) : null}
 					</article>
 
 					<article className="card stack panel-card">
