@@ -1012,6 +1012,7 @@ export function ReportsWorkspace() {
 											onClick={() => {
 												setSelectedTemplateId(String(template.id));
 												setRunMode("template");
+												setRunnerError(null);
 											}}
 										>
 											Use in runner
@@ -1072,14 +1073,14 @@ export function ReportsWorkspace() {
 							<button
 								type="button"
 								className={runMode === "json" ? "" : "ghost"}
-								onClick={() => setRunMode("json")}
+								onClick={() => { setRunMode("json"); setRunnerError(null); }}
 							>
 								JSON report
 							</button>
 							<button
 								type="button"
 								className={runMode === "template" ? "" : "ghost"}
-								onClick={() => setRunMode("template")}
+								onClick={() => { setRunMode("template"); setRunnerError(null); }}
 							>
 								Run template
 							</button>

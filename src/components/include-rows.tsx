@@ -3,6 +3,7 @@
 import {
 	INCLUDE_DIRECTIONS,
 	INCLUDE_SORTS,
+	MAX_INCLUDE_ALIASES,
 	type IncludeBuilderRow,
 } from "@/lib/report-include";
 import type {
@@ -31,7 +32,7 @@ export function IncludeRows({
 				<div className="stack action-card-header">
 					<h4>Related includes</h4>
 					<p className="muted">
-						Hydrate related objects under item.related.&lt;alias&gt; (up to 8).
+						Hydrate related objects under item.related.&lt;alias&gt; (up to {MAX_INCLUDE_ALIASES}).
 						Each alias is a list.
 					</p>
 				</div>
@@ -40,7 +41,7 @@ export function IncludeRows({
 						type="button"
 						className="ghost"
 						onClick={onAdd}
-						disabled={rows.length >= 8}
+						disabled={rows.length >= MAX_INCLUDE_ALIASES}
 					>
 						Add include
 					</button>
