@@ -593,7 +593,7 @@ export function ReportsWorkspace() {
 	}, [scopeFields, sortFields]);
 
 	useEffect(() => {
-		if (scopeKind !== "objects_in_class") {
+		if (scopeKind !== "objects_in_class" && scopeKind !== "related_objects") {
 			setIncludeRows([]);
 		}
 	}, [scopeKind]);
@@ -625,7 +625,7 @@ export function ReportsWorkspace() {
 					throw new Error("Class is required for the selected scope.");
 				}
 				let include = null;
-				if (draft.scopeKind === "objects_in_class") {
+				if (scopeNeedsClass) {
 					const built = buildIncludeFromRows(draft.includeRows);
 					if ("error" in built) throw new Error(built.error);
 					include = built.include;
@@ -656,6 +656,19 @@ export function ReportsWorkspace() {
 					relation_context: relationContext,
 					default_missing_data_policy: draft.missingDataPolicy,
 					default_limits: defaultLimits,
+				};
+			} else if (draft.mode === "edit") {
+				// Switching an existing template to a fragment: clear the report-only
+				// fields on the record (PATCH null) so it satisfies backend scoping
+				// constraints. On create, these are simply omitted.
+				reportFields = {
+					scope_kind: null,
+					class_id: null,
+					default_query: null,
+					include: null,
+					relation_context: null,
+					default_missing_data_policy: null,
+					default_limits: null,
 				};
 			}
 
@@ -853,7 +866,7 @@ export function ReportsWorkspace() {
 		}
 
 		let include: ReportInclude | null = null;
-		if (scopeKind === "objects_in_class") {
+		if (scopeKind === "objects_in_class" || scopeKind === "related_objects") {
 			const built = buildIncludeFromRows(includeRows);
 			if ("error" in built) {
 				setRunnerError(built.error);
@@ -1379,7 +1392,8 @@ export function ReportsWorkspace() {
 									</label>
 								</div>
 
-								{scopeKind === "objects_in_class" ? (
+								{scopeKind === "objects_in_class" ||
+								scopeKind === "related_objects" ? (
 									<IncludeRows
 										rows={includeRows}
 										classOptions={classOptions}
@@ -1962,7 +1976,8 @@ export function ReportsWorkspace() {
 										/>
 									</label>
 
-									{editorState.scopeKind === "objects_in_class" ? (
+									{editorState.scopeKind === "objects_in_class" ||
+									editorState.scopeKind === "related_objects" ? (
 										<IncludeRows
 											rows={editorState.includeRows}
 											classOptions={classOptions}
