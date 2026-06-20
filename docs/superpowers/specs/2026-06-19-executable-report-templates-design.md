@@ -96,12 +96,26 @@ Adapt the frontend (on PR #2's branch) to the PR #55 contract:
 ### Runtime rules (prose; not in schema — enforce client-side)
 - Template `content_type` ∈ `text/plain | text/html | text/csv`
   (`application/json` does not use stored templates).
-- `include`: ≤ 8 aliases; alias regex `^[A-Za-z_][A-Za-z0-9_]*$`; per-include
-  `limit ∈ 1..50` (default 1), `max_depth ∈ 1..10` (default 1).
+- **Scope coverage (per #55 commit `f2c83368a`): executable templates support
+  every scope kind** — `namespaces`, `classes`, `objects_in_class`,
+  `class_relations`, `object_relations`, `related_objects`. Of these:
+  - `objects_in_class` and `related_objects` are **class-bound** — they require
+    the template's `class_id`, and `include`/`relation_context` apply **only to
+    these two scopes**.
+  - `namespaces`, `classes`, `class_relations`, `object_relations` are
+    **class-agnostic** — they must **not** set `class_id`, `include`, or
+    `relation_context`.
+- `include`: applies to `objects_in_class` and `related_objects`; ≤ 8 aliases;
+  alias regex `^[A-Za-z_][A-Za-z0-9_]*$`; per-include `limit ∈ 1..50`
+  (default 1), `max_depth ∈ 1..10` (default 1).
 - `relation_context.depth ∈ 1..2` (default 2). For `objects_in_class` it
   enables hydration; for `related_objects` it overrides the default.
-- `related_objects` run requires an `object_id` (stored on template or supplied
-  as a run override); backend verifies `object_id` belongs to `class_id`.
+- `object_id` is accepted at run time **only** for `related_objects` templates;
+  supplying it for any other scope is rejected with `400`. A `related_objects`
+  run requires an `object_id` (stored on the template or supplied as a run
+  override); backend verifies `object_id` belongs to `class_id`.
+- Clearing a nullable template default via PATCH is done by sending the field as
+  `null` (per #55 commit `d19d27cb2`).
 - Errors: `429` too many active tasks; `400` if `cursor` in query; `413` if
   output exceeds `max_output_bytes`.
 
@@ -141,10 +155,13 @@ Form layout:
 - Always: namespace, name, description, content_type (text/* only), `kind`
   selector (`report` | `fragment`), template body editor.
 - **`kind === "fragment"`**: hide all scope/run config (fragments are
-  composition partials referenced by `include`/`import`/`extends`).
-- **`kind === "report"`**: show `scope_kind` selector; `class_id` (for
-  `objects_in_class`/`related_objects`); `default_query`; the **include builder**
-  (relocated from the runner — `objects_in_class` only); `relation_context.depth`
+  composition partials referenced by `include`/`import`/`extends`). On **edit**,
+  saving a fragment clears the report-only fields on the record (PATCH `null`)
+  so it satisfies the backend scoping constraints; on create they are omitted.
+- **`kind === "report"`**: show `scope_kind` selector (all six scope kinds);
+  `class_id` (for `objects_in_class`/`related_objects` only); `default_query`;
+  the **include builder** (relocated from the runner — shown for
+  `objects_in_class` **and** `related_objects`); `relation_context.depth`
   (1..2; shown for `objects_in_class`/`related_objects`);
   `default_missing_data_policy`; `default_limits` (max_items/max_output_bytes).
 
@@ -165,7 +182,8 @@ name/description/content_type/template. Assemble `NewReportTemplate`/
 Replace the `outputMode: json|template` dropdown with a segmented control:
 - **JSON report**: the existing scope/query/include/relation_context/limits/
   policy builder, assembling `ReportRequest` (no `output`) →
-  `submitJsonReportTask`. (Per-run include stays here for JSON reports.)
+  `submitJsonReportTask`. (Per-run include stays here for JSON reports; the
+  include builder shows for `objects_in_class` and `related_objects`.)
 - **Run template**: select a `kind === "report"` template (fragments excluded);
   display its stored config read-only (scope_kind, class_id, default_query,
   include aliases, depth, content_type); allow run-time overrides — `query`,
@@ -222,10 +240,14 @@ The regeneration step is verified by a clean typecheck after fixing consumers.
   `relation_context`, so the UI does **not** offer a depth override when running
   a template (depth is fixed on the template). The #55 docs example shows one;
   we follow the schema. Revisit if #55's schema adds it before merge.
-- **`scope_kind` breadth**: the enum allows all six scopes; the #55 docs
-  emphasize `objects_in_class`/`related_objects` for executable templates. The
-  UI offers all six but only wires class_id/include/object_id semantics where
-  they apply; other scopes get scope_kind + default_query + defaults only.
+- **`scope_kind` breadth** (resolved by #55 commit `f2c83368a`): executable
+  templates support **all six** scope kinds. The UI offers all six and wires the
+  per-scope semantics accordingly — `class_id`/`include`/`relation_context` for
+  the two class-bound scopes (`objects_in_class`, `related_objects`), `object_id`
+  run override for `related_objects` only; class-agnostic scopes
+  (`namespaces`/`classes`/`class_relations`/`object_relations`) get
+  scope_kind + default_query + defaults only and must not set class_id/include/
+  relation_context.
 - **#55 is unmerged**: regenerating may surface unrelated diffs vs. our baseline
   `openapi.json`; we adopt #55's spec wholesale and fix breaks. A re-regeneration
   may be needed when #55 finalizes.
