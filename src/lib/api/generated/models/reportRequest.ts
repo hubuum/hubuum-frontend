@@ -3,18 +3,20 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.0.1
  */
+import type { ReportInclude } from './reportInclude';
 import type { ReportLimits } from './reportLimits';
 import type { ReportMissingDataPolicy } from './reportMissingDataPolicy';
-import type { ReportOutputRequest } from './reportOutputRequest';
+import type { ReportRelationContext } from './reportRelationContext';
 import type { ReportScope } from './reportScope';
 
 export interface ReportRequest {
+  include?: null | ReportInclude;
   limits?: null | ReportLimits;
   missing_data_policy?: null | ReportMissingDataPolicy;
-  output?: null | ReportOutputRequest;
   /** @nullable */
   query?: string | null;
+  relation_context?: null | ReportRelationContext;
   scope: ReportScope;
 }

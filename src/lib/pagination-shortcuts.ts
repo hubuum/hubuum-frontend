@@ -74,7 +74,7 @@ export function triggerActivePaginationPrevPage(): boolean {
 	}
 
 	const entry = paginationEntries.get(activePaginationId);
-	if (!entry || !entry.canGoPrev()) {
+	if (!entry?.canGoPrev()) {
 		return false;
 	}
 

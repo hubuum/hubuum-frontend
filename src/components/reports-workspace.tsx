@@ -9,6 +9,7 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { CreateModal } from "@/components/create-modal";
+import { IncludeRows } from "@/components/include-rows";
 import { TemplateCodeEditor } from "@/components/template-code-editor";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -24,19 +25,34 @@ import type {
 import {
 	createReportTemplate,
 	deleteReportTemplate,
+	fetchReportOutput,
+	fetchReportTask,
 	listReportTemplates,
 	type NewReportTemplate,
 	type ReportContentType,
 	type ReportExecutionResult,
+	type ReportInclude,
 	type ReportMissingDataPolicy,
 	type ReportRequest,
 	type ReportScopeKind,
 	type ReportTemplate,
-	runReport,
+	type ReportTemplateKind,
+	type ReportTemplateRunRequest,
+	runTemplateReport,
+	submitJsonReportTask,
 	type StoredReportContentType,
+	type TaskResponse,
 	type UpdateReportTemplate,
 	updateReportTemplate,
 } from "@/lib/api/reporting";
+import { isTerminalTaskStatus } from "@/lib/api/tasking";
+import {
+	buildIncludeFromRows,
+	includeAliasesOf,
+	includeRowsFromTemplate,
+	type IncludeBuilderRow,
+	newIncludeRow,
+} from "@/lib/report-include";
 import {
 	type QueryFieldKind,
 	SCOPE_QUERY_FIELDS,
@@ -50,6 +66,15 @@ type TemplateEditorState = {
 	description: string;
 	contentType: StoredReportContentType;
 	templateBody: string;
+	kind: ReportTemplateKind;
+	scopeKind: ReportScopeKind;
+	classId: string;
+	defaultQuery: string;
+	includeRows: IncludeBuilderRow[];
+	depth: string;
+	missingDataPolicy: ReportMissingDataPolicy;
+	maxItems: string;
+	maxOutputBytes: string;
 };
 
 type QueryBuilderFilter = {
@@ -81,10 +106,12 @@ type ReportResultView = {
 };
 
 const TEMPLATE_HELP = [
-	"{{path.to.value}} interpolates a value.",
-	"{{#each items}} ... {{/each}} loops arrays.",
-	"Root fields include items, meta.*, and warnings.",
-	"Use this.name and other base fields inside {{#each items}} loops.",
+	"{{ item.name }} interpolates a value; {% for item in items %} ... {% endfor %} loops arrays.",
+	"Root context: items, meta.*, warnings, request.*, and source (related_objects).",
+	"Relations: item.related.<alias> (includes), item.reachable.*/paths.* (when hydrated) — each is a list, e.g. item.related.room[0].name.",
+	"Helpers: coalesce(...), | tojson, | csv_cell, | default(...), | default_if_empty(...), | format_datetime(...), | join_nonempty(...).",
+	"HTML templates are autoescaped; use | tojson or | csv_cell for sensitive values in text/CSV.",
+	"include/import/extends resolve within the same namespace (e.g. layout.*, macros.*, partial.*, report.*).",
 	"Stored templates support text/plain, text/html, and text/csv.",
 ] as const;
 
@@ -95,7 +122,17 @@ const DEFAULT_TEMPLATE_EDITOR: TemplateEditorState = {
 	name: "",
 	description: "",
 	contentType: "text/plain",
-	templateBody: "{{#each items}}{{this.name}}\n{{/each}}",
+	templateBody: `{% for item in items %}{{ item.name }}
+{% endfor %}`,
+	kind: "report",
+	scopeKind: "objects_in_class",
+	classId: "",
+	defaultQuery: "",
+	includeRows: [],
+	depth: "",
+	missingDataPolicy: "strict",
+	maxItems: "",
+	maxOutputBytes: "",
 };
 
 const STRING_OPERATORS = [
@@ -192,6 +229,24 @@ function buildTemplateEditorState(
 				? "text/plain"
 				: template.content_type,
 		templateBody: template.template,
+		kind: template.kind,
+		scopeKind: template.scope_kind ?? "objects_in_class",
+		classId: template.class_id != null ? String(template.class_id) : "",
+		defaultQuery: template.default_query ?? "",
+		includeRows: includeRowsFromTemplate(template.include, createBuilderId),
+		depth:
+			template.relation_context?.depth != null
+				? String(template.relation_context.depth)
+				: "",
+		missingDataPolicy: template.default_missing_data_policy ?? "strict",
+		maxItems:
+			template.default_limits?.max_items != null
+				? String(template.default_limits.max_items)
+				: "",
+		maxOutputBytes:
+			template.default_limits?.max_output_bytes != null
+				? String(template.default_limits.max_output_bytes)
+				: "",
 	};
 }
 
@@ -382,25 +437,30 @@ export function ReportsWorkspace() {
 	);
 	const [editorError, setEditorError] = useState<string | null>(null);
 	const [selectedTemplateId, setSelectedTemplateId] = useState("");
-	const [outputMode, setOutputMode] = useState<"json" | "template">("json");
+	const [runMode, setRunMode] = useState<"json" | "template">("json");
 	const [scopeKind, setScopeKind] = useState<ReportScopeKind>("namespaces");
 	const [classId, setClassId] = useState("");
 	const [objectId, setObjectId] = useState("");
 	const [advancedQueryText, setAdvancedQueryText] = useState("");
 	const [missingDataPolicy, setMissingDataPolicy] =
 		useState<ReportMissingDataPolicy>("strict");
+	const [relationDepth, setRelationDepth] = useState("");
 	const [maxItems, setMaxItems] = useState("100");
 	const [maxOutputBytes, setMaxOutputBytes] = useState("262144");
+	// run-template overrides
+	const [overrideQuery, setOverrideQuery] = useState("");
+	const [overrideObjectId, setOverrideObjectId] = useState("");
+	const [overridePolicy, setOverridePolicy] = useState<ReportMissingDataPolicy | "">("");
+	const [overrideMaxItems, setOverrideMaxItems] = useState("");
+	const [overrideMaxOutputBytes, setOverrideMaxOutputBytes] = useState("");
 	const [runnerError, setRunnerError] = useState<string | null>(null);
-	const [lastResult, setLastResult] = useState<ReportExecutionResult | null>(
-		null,
-	);
+	const [lastReportTask, setLastReportTask] = useState<TaskResponse | null>(null);
+	const [lastResult, setLastResult] = useState<ReportExecutionResult | null>(null);
 	const [resultActionFeedback, setResultActionFeedback] =
 		useState<ResultActionFeedback>(null);
-	const [builderFilters, setBuilderFilters] = useState<QueryBuilderFilter[]>(
-		[],
-	);
+	const [builderFilters, setBuilderFilters] = useState<QueryBuilderFilter[]>([]);
 	const [builderSorts, setBuilderSorts] = useState<QueryBuilderSort[]>([]);
+	const [includeRows, setIncludeRows] = useState<IncludeBuilderRow[]>([]);
 
 	const templatesQuery = useInfiniteQuery({
 		queryKey: ["report-templates"],
@@ -422,17 +482,37 @@ export function ReportsWorkspace() {
 		queryFn: () => fetchObjectsByClass(parsedClassId ?? 0),
 		enabled: parsedClassId !== null,
 	});
+	const reportTaskQuery = useQuery({
+		queryKey: ["report-task", lastReportTask?.id ?? null],
+		queryFn: () => fetchReportTask(lastReportTask?.id ?? 0),
+		enabled: lastReportTask !== null,
+		refetchInterval: (query) =>
+			isTerminalTaskStatus(query.state.data?.status ?? lastReportTask?.status)
+				? false
+				: 2000,
+	});
 
 	const templates = useMemo(
 		() => templatesQuery.data?.pages.flatMap((page) => page.items) ?? [],
 		[templatesQuery.data?.pages],
 	);
+	const runnableTemplates = useMemo(
+		() => templates.filter((template) => template.kind === "report"),
+		[templates],
+	);
+	const editorTemplateNames = useMemo(() => {
+		if (!editorState) return [];
+		const ns = parsePositiveInteger(editorState.namespaceId);
+		return templates
+			.filter((t) => t.namespace_id === ns && t.id !== editorState.templateId)
+			.map((t) => t.name);
+	}, [editorState, templates]);
 	const selectedTemplate = useMemo(
 		() =>
-			templates.find(
+			runnableTemplates.find(
 				(template) => String(template.id) === selectedTemplateId,
 			) ?? null,
-		[selectedTemplateId, templates],
+		[selectedTemplateId, runnableTemplates],
 	);
 	const scopeFields = useMemo(() => SCOPE_QUERY_FIELDS[scopeKind], [scopeKind]);
 	const sortFields = useMemo(
@@ -447,19 +527,58 @@ export function ReportsWorkspace() {
 		() => (lastResult ? getReportResultView(lastResult) : null),
 		[lastResult],
 	);
+	const activeReportTask = reportTaskQuery.data ?? lastReportTask;
+	const reportDetails = activeReportTask?.details?.report ?? null;
+	const reportTerminal =
+		activeReportTask != null && isTerminalTaskStatus(activeReportTask.status);
+	const reportFailed =
+		activeReportTask != null &&
+		(activeReportTask.status === "failed" ||
+			activeReportTask.status === "cancelled");
+	const reportPartial = activeReportTask?.status === "partially_succeeded";
+	const reportOutputQuery = useQuery({
+		queryKey: ["report-output", activeReportTask?.id ?? null],
+		queryFn: () =>
+			fetchReportOutput(
+				activeReportTask?.id ?? 0,
+				reportDetails?.output_content_type,
+			),
+		enabled:
+			activeReportTask != null &&
+			isTerminalTaskStatus(activeReportTask.status) &&
+			reportDetails?.output_available === true,
+	});
 
 	useEffect(() => {
-		if (!selectedTemplateId) {
-			return;
-		}
-
-		if (
-			!templates.some((template) => String(template.id) === selectedTemplateId)
-		) {
+		if (!selectedTemplateId) return;
+		if (!runnableTemplates.some((t) => String(t.id) === selectedTemplateId)) {
 			setSelectedTemplateId("");
-			setOutputMode("json");
 		}
-	}, [selectedTemplateId, templates]);
+	}, [selectedTemplateId, runnableTemplates]);
+
+	useEffect(() => {
+		if (reportTaskQuery.data) {
+			setLastReportTask(reportTaskQuery.data);
+		}
+	}, [reportTaskQuery.data]);
+
+	useEffect(() => {
+		if (reportOutputQuery.data) {
+			setLastResult(reportOutputQuery.data);
+			setRunnerError(null);
+		}
+	}, [reportOutputQuery.data]);
+
+	useEffect(() => {
+		if (reportOutputQuery.isError) {
+			setLastResult(null);
+			setRunnerError(
+				reportOutputQuery.error instanceof Error
+					? reportOutputQuery.error.message
+					: "Failed to fetch report output.",
+			);
+		}
+	}, [reportOutputQuery.error, reportOutputQuery.isError]);
 
 	useEffect(() => {
 		const allowedFields = new Set(scopeFields.map((field) => field.key));
@@ -473,49 +592,98 @@ export function ReportsWorkspace() {
 		);
 	}, [scopeFields, sortFields]);
 
+	useEffect(() => {
+		if (scopeKind !== "objects_in_class" && scopeKind !== "related_objects") {
+			setIncludeRows([]);
+		}
+	}, [scopeKind]);
+
 	const saveTemplateMutation = useMutation({
 		mutationFn: async (draft: TemplateEditorState) => {
 			const namespaceId = parsePositiveInteger(draft.namespaceId);
-			if (!namespaceId) {
-				throw new Error("Namespace is required.");
-			}
-			if (!draft.name.trim()) {
-				throw new Error("Name is required.");
-			}
-			if (!draft.description.trim()) {
-				throw new Error("Description is required.");
-			}
-			if (!draft.templateBody.trim()) {
-				throw new Error("Template body is required.");
-			}
+			if (!namespaceId) throw new Error("Namespace is required.");
+			if (!draft.name.trim()) throw new Error("Name is required.");
+			if (!draft.description.trim()) throw new Error("Description is required.");
+			if (!draft.templateBody.trim()) throw new Error("Template body is required.");
 
-			if (draft.mode === "create") {
-				const payload: NewReportTemplate = {
-					namespace_id: namespaceId,
-					name: draft.name.trim(),
-					description: draft.description.trim(),
-					content_type: draft.contentType,
-					template: draft.templateBody,
-				};
-				return createReportTemplate(payload);
-			}
-
-			if (!draft.templateId) {
-				throw new Error("Template id is missing.");
-			}
-
-			const payload: UpdateReportTemplate = {
+			const base = {
 				namespace_id: namespaceId,
 				name: draft.name.trim(),
 				description: draft.description.trim(),
+				content_type: draft.contentType,
 				template: draft.templateBody,
+				kind: draft.kind,
 			};
-			return updateReportTemplate(draft.templateId, payload);
+
+			let reportFields: Partial<NewReportTemplate> = {};
+			if (draft.kind === "report") {
+				const scopeNeedsClass =
+					draft.scopeKind === "objects_in_class" ||
+					draft.scopeKind === "related_objects";
+				const classId = parsePositiveInteger(draft.classId);
+				if (scopeNeedsClass && !classId) {
+					throw new Error("Class is required for the selected scope.");
+				}
+				let include = null;
+				if (scopeNeedsClass) {
+					const built = buildIncludeFromRows(draft.includeRows);
+					if ("error" in built) throw new Error(built.error);
+					include = built.include;
+				}
+				let relationContext = null;
+				if (draft.depth.trim()) {
+					const depth = parsePositiveInteger(draft.depth);
+					if (!depth || depth < 1 || depth > 2) {
+						throw new Error("Relation depth must be 1 or 2.");
+					}
+					relationContext = { depth };
+				}
+				const maxItems = draft.maxItems.trim()
+					? parsePositiveInteger(draft.maxItems)
+					: null;
+				const maxOutputBytes = draft.maxOutputBytes.trim()
+					? parsePositiveInteger(draft.maxOutputBytes)
+					: null;
+				const defaultLimits =
+					maxItems != null || maxOutputBytes != null
+						? { max_items: maxItems, max_output_bytes: maxOutputBytes }
+						: null;
+				reportFields = {
+					scope_kind: draft.scopeKind,
+					class_id: scopeNeedsClass ? classId : null,
+					default_query: draft.defaultQuery.trim() || null,
+					include,
+					relation_context: relationContext,
+					default_missing_data_policy: draft.missingDataPolicy,
+					default_limits: defaultLimits,
+				};
+			} else if (draft.mode === "edit") {
+				// Switching an existing template to a fragment: clear the report-only
+				// fields on the record (PATCH null) so it satisfies backend scoping
+				// constraints. On create, these are simply omitted.
+				reportFields = {
+					scope_kind: null,
+					class_id: null,
+					default_query: null,
+					include: null,
+					relation_context: null,
+					default_missing_data_policy: null,
+					default_limits: null,
+				};
+			}
+
+			if (draft.mode === "create") {
+				return createReportTemplate({ ...base, ...reportFields } as NewReportTemplate);
+			}
+			if (!draft.templateId) throw new Error("Template id is missing.");
+			return updateReportTemplate(
+				draft.templateId,
+				{ ...base, ...reportFields } as UpdateReportTemplate,
+			);
 		},
 		onSuccess: async (template) => {
 			await queryClient.invalidateQueries({ queryKey: ["report-templates"] });
 			setSelectedTemplateId(String(template.id));
-			setOutputMode("template");
 			setEditorState(null);
 			setEditorError(null);
 		},
@@ -534,27 +702,40 @@ export function ReportsWorkspace() {
 			await queryClient.invalidateQueries({ queryKey: ["report-templates"] });
 			if (selectedTemplateId === String(templateId)) {
 				setSelectedTemplateId("");
-				setOutputMode("json");
 			}
 		},
 	});
 
 	const runReportMutation = useMutation({
-		mutationFn: async (request: {
-			body: ReportRequest;
-			accept: ReportContentType;
-		}) => runReport(request.body, request.accept),
-		onSuccess: (result) => {
+		mutationFn: async (request: ReportRequest) => submitJsonReportTask(request),
+		onSuccess: (task) => {
 			setRunnerError(null);
-			setLastResult(result);
+			setLastReportTask(task);
+			setLastResult(null);
 			setResultActionFeedback(null);
 		},
 		onError: (error) => {
 			setLastResult(null);
+			setLastReportTask(null);
 			setResultActionFeedback(null);
-			setRunnerError(
-				error instanceof Error ? error.message : "Failed to run report.",
-			);
+			setRunnerError(error instanceof Error ? error.message : "Failed to submit report.");
+		},
+	});
+
+	const runTemplateMutation = useMutation({
+		mutationFn: async (vars: { templateId: number; overrides: ReportTemplateRunRequest }) =>
+			runTemplateReport(vars.templateId, vars.overrides),
+		onSuccess: (task) => {
+			setRunnerError(null);
+			setLastReportTask(task);
+			setLastResult(null);
+			setResultActionFeedback(null);
+		},
+		onError: (error) => {
+			setLastResult(null);
+			setLastReportTask(null);
+			setResultActionFeedback(null);
+			setRunnerError(error instanceof Error ? error.message : "Failed to run template report.");
 		},
 	});
 
@@ -576,6 +757,33 @@ export function ReportsWorkspace() {
 	function closeEditor() {
 		setEditorState(null);
 		setEditorError(null);
+	}
+
+	function addEditorIncludeRow() {
+		setEditorState((current) =>
+			current
+				? { ...current, includeRows: [...current.includeRows, newIncludeRow(createBuilderId())] }
+				: current,
+		);
+	}
+	function updateEditorIncludeRow(id: string, patch: Partial<IncludeBuilderRow>) {
+		setEditorState((current) =>
+			current
+				? {
+						...current,
+						includeRows: current.includeRows.map((row) =>
+							row.id === id ? { ...row, ...patch } : row,
+						),
+					}
+				: current,
+		);
+	}
+	function removeEditorIncludeRow(id: string) {
+		setEditorState((current) =>
+			current
+				? { ...current, includeRows: current.includeRows.filter((row) => row.id !== id) }
+				: current,
+		);
 	}
 
 	function addFilter() {
@@ -611,12 +819,23 @@ export function ReportsWorkspace() {
 		]);
 	}
 
+	function addIncludeRow() {
+		setIncludeRows((current) => [...current, newIncludeRow(createBuilderId())]);
+	}
+
+	function updateIncludeRow(id: string, patch: Partial<IncludeBuilderRow>) {
+		setIncludeRows((current) =>
+			current.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+		);
+	}
+
+	function removeIncludeRow(id: string) {
+		setIncludeRows((current) => current.filter((row) => row.id !== id));
+	}
+
 	function handleRunReport(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		const scope: ReportRequest["scope"] = {
-			kind: scopeKind,
-		};
-
+		const scope: ReportRequest["scope"] = { kind: scopeKind };
 		if (scopeKind === "objects_in_class" || scopeKind === "related_objects") {
 			const parsed = parsePositiveInteger(classId);
 			if (!parsed) {
@@ -625,7 +844,6 @@ export function ReportsWorkspace() {
 			}
 			scope.class_id = parsed;
 		}
-
 		if (scopeKind === "related_objects") {
 			const parsed = parsePositiveInteger(objectId);
 			if (!parsed) {
@@ -635,34 +853,75 @@ export function ReportsWorkspace() {
 			scope.object_id = parsed;
 		}
 
-		let accept: ReportContentType = "application/json";
-		let output: ReportRequest["output"] = null;
-		if (outputMode === "template") {
-			if (!selectedTemplate) {
-				setRunnerError("Select a stored template to run a text report.");
+		const depthApplies =
+			scopeKind === "objects_in_class" || scopeKind === "related_objects";
+		let relationContext: ReportRequest["relation_context"] = null;
+		if (depthApplies && relationDepth.trim()) {
+			const parsedDepth = parsePositiveInteger(relationDepth);
+			if (!parsedDepth || parsedDepth < 1 || parsedDepth > 2) {
+				setRunnerError("Relation hydration depth must be 1 or 2.");
 				return;
 			}
-			accept = selectedTemplate.content_type;
-			output = {
-				template_id: selectedTemplate.id,
-			};
+			relationContext = { depth: parsedDepth };
+		}
+
+		let include: ReportInclude | null = null;
+		if (scopeKind === "objects_in_class" || scopeKind === "related_objects") {
+			const built = buildIncludeFromRows(includeRows);
+			if ("error" in built) {
+				setRunnerError(built.error);
+				return;
+			}
+			include = built.include;
 		}
 
 		setRunnerError(null);
 		setResultActionFeedback(null);
+		setLastResult(null);
+		setLastReportTask(null);
 		runReportMutation.mutate({
-			accept,
-			body: {
-				scope,
-				query: builtQuery || null,
-				output,
-				missing_data_policy: missingDataPolicy,
-				limits: {
-					max_items: parsePositiveInteger(maxItems),
-					max_output_bytes: parsePositiveInteger(maxOutputBytes),
-				},
+			scope,
+			include,
+			query: builtQuery || null,
+			relation_context: relationContext,
+			missing_data_policy: missingDataPolicy,
+			limits: {
+				max_items: parsePositiveInteger(maxItems),
+				max_output_bytes: parsePositiveInteger(maxOutputBytes),
 			},
 		});
+	}
+
+	function handleRunTemplate(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		if (!selectedTemplate) {
+			setRunnerError("Select a template to run.");
+			return;
+		}
+		const overrides: ReportTemplateRunRequest = {};
+		if (overrideQuery.trim()) overrides.query = overrideQuery.trim();
+		if (selectedTemplate.scope_kind === "related_objects") {
+			const parsed = parsePositiveInteger(overrideObjectId);
+			if (!parsed) {
+				setRunnerError("This template is related_objects-scoped; an object id is required.");
+				return;
+			}
+			overrides.object_id = parsed;
+		}
+		if (overridePolicy) overrides.missing_data_policy = overridePolicy;
+		const oMaxItems = overrideMaxItems.trim() ? parsePositiveInteger(overrideMaxItems) : null;
+		const oMaxBytes = overrideMaxOutputBytes.trim()
+			? parsePositiveInteger(overrideMaxOutputBytes)
+			: null;
+		if (oMaxItems != null || oMaxBytes != null) {
+			overrides.limits = { max_items: oMaxItems, max_output_bytes: oMaxBytes };
+		}
+
+		setRunnerError(null);
+		setResultActionFeedback(null);
+		setLastResult(null);
+		setLastReportTask(null);
+		runTemplateMutation.mutate({ templateId: selectedTemplate.id, overrides });
 	}
 
 	async function copyReportText(text: string, label: string) {
@@ -765,7 +1024,8 @@ export function ReportsWorkspace() {
 											className="ghost"
 											onClick={() => {
 												setSelectedTemplateId(String(template.id));
-												setOutputMode("template");
+												setRunMode("template");
+												setRunnerError(null);
 											}}
 										>
 											Use in runner
@@ -822,8 +1082,26 @@ export function ReportsWorkspace() {
 							</p>
 						</div>
 
-						<form className="stack" onSubmit={handleRunReport}>
-							<div className="form-grid">
+						<div className="action-row">
+							<button
+								type="button"
+								className={runMode === "json" ? "" : "ghost"}
+								onClick={() => { setRunMode("json"); setRunnerError(null); }}
+							>
+								JSON report
+							</button>
+							<button
+								type="button"
+								className={runMode === "template" ? "" : "ghost"}
+								onClick={() => { setRunMode("template"); setRunnerError(null); }}
+							>
+								Run template
+							</button>
+						</div>
+
+						{runMode === "json" ? (
+							<form className="stack" onSubmit={handleRunReport}>
+								<div className="form-grid">
 								<label className="control-field">
 									<span>Scope</span>
 									<select
@@ -838,19 +1116,6 @@ export function ReportsWorkspace() {
 										<option value="class_relations">Class relations</option>
 										<option value="object_relations">Object relations</option>
 										<option value="related_objects">Related objects</option>
-									</select>
-								</label>
-
-								<label className="control-field">
-									<span>Output mode</span>
-									<select
-										value={outputMode}
-										onChange={(event) =>
-											setOutputMode(event.target.value as "json" | "template")
-										}
-									>
-										<option value="json">JSON</option>
-										<option value="template">Stored template</option>
 									</select>
 								</label>
 
@@ -911,25 +1176,6 @@ export function ReportsWorkspace() {
 											/>
 										)}
 									</div>
-								) : null}
-
-								{outputMode === "template" ? (
-									<label className="control-field control-field--wide">
-										<span>Stored template</span>
-										<select
-											value={selectedTemplateId}
-											onChange={(event) =>
-												setSelectedTemplateId(event.target.value)
-											}
-										>
-											<option value="">Select template</option>
-											{templates.map((template) => (
-												<option key={template.id} value={template.id}>
-													{template.name} ({template.content_type})
-												</option>
-											))}
-										</select>
-									</label>
 								) : null}
 
 								<div className="query-builder-card control-field--wide">
@@ -1146,6 +1392,17 @@ export function ReportsWorkspace() {
 									</label>
 								</div>
 
+								{scopeKind === "objects_in_class" ||
+								scopeKind === "related_objects" ? (
+									<IncludeRows
+										rows={includeRows}
+										classOptions={classOptions}
+										onAdd={addIncludeRow}
+										onUpdate={updateIncludeRow}
+										onRemove={removeIncludeRow}
+									/>
+								) : null}
+
 								<label className="control-field">
 									<span>Missing data policy</span>
 									<select
@@ -1161,6 +1418,23 @@ export function ReportsWorkspace() {
 										<option value="omit">Omit</option>
 									</select>
 								</label>
+
+								{scopeKind === "objects_in_class" ||
+								scopeKind === "related_objects" ? (
+									<label className="control-field">
+										<span>Relation hydration depth</span>
+										<input
+											type="number"
+											min={1}
+											max={2}
+											value={relationDepth}
+											onChange={(event) => setRelationDepth(event.target.value)}
+											placeholder={
+												scopeKind === "related_objects" ? "2 (default)" : "Off"
+											}
+										/>
+									</label>
+								) : null}
 
 								<label className="control-field">
 									<span>Max items</span>
@@ -1189,15 +1463,119 @@ export function ReportsWorkspace() {
 
 							<div className="action-row">
 								<button type="submit" disabled={runReportMutation.isPending}>
-									{runReportMutation.isPending ? "Running..." : "Run report"}
+									{runReportMutation.isPending
+										? "Submitting..."
+										: "Run report"}
 								</button>
-								{selectedTemplate ? (
-									<span className="muted">
-										Template output type: {selectedTemplate.content_type}
-									</span>
-								) : null}
 							</div>
 						</form>
+					) : null}
+
+					{runMode === "template" ? (
+						<form className="stack" onSubmit={handleRunTemplate}>
+							<label className="control-field control-field--wide">
+								<span>Template</span>
+								<select
+									value={selectedTemplateId}
+									onChange={(event) => setSelectedTemplateId(event.target.value)}
+								>
+									<option value="">Select a report template</option>
+									{runnableTemplates.map((template) => (
+										<option key={template.id} value={template.id}>
+											{template.name} ({template.content_type})
+										</option>
+									))}
+								</select>
+							</label>
+
+							{selectedTemplate ? (
+								<div className="preview-meta">
+									<span>scope: {selectedTemplate.scope_kind ?? "n/a"}</span>
+									{selectedTemplate.class_id != null ? (
+										<span>class #{selectedTemplate.class_id}</span>
+									) : null}
+									{selectedTemplate.default_query ? (
+										<span>default query: {selectedTemplate.default_query}</span>
+									) : null}
+									{selectedTemplate.relation_context?.depth != null ? (
+										<span>depth {selectedTemplate.relation_context.depth}</span>
+									) : null}
+									<span>{selectedTemplate.content_type}</span>
+								</div>
+							) : null}
+
+							<div className="form-grid">
+								<label className="control-field control-field--wide">
+									<span>Override query (optional)</span>
+									<input
+										value={overrideQuery}
+										onChange={(event) => setOverrideQuery(event.target.value)}
+										placeholder={selectedTemplate?.default_query ?? "name__contains=srv-"}
+									/>
+								</label>
+
+								{selectedTemplate?.scope_kind === "related_objects" ? (
+									<label className="control-field">
+										<span>Object id</span>
+										<input
+											type="number"
+											min={1}
+											value={overrideObjectId}
+											onChange={(event) => setOverrideObjectId(event.target.value)}
+											placeholder="root object id"
+										/>
+									</label>
+								) : null}
+
+								<label className="control-field">
+									<span>Override missing data policy</span>
+									<select
+										value={overridePolicy}
+										onChange={(event) =>
+											setOverridePolicy(
+												event.target.value as ReportMissingDataPolicy | "",
+											)
+										}
+									>
+										<option value="">Use template default</option>
+										<option value="strict">Strict</option>
+										<option value="null">Null</option>
+										<option value="omit">Omit</option>
+									</select>
+								</label>
+
+								<label className="control-field">
+									<span>Override max items</span>
+									<input
+										type="number"
+										min={1}
+										value={overrideMaxItems}
+										onChange={(event) => setOverrideMaxItems(event.target.value)}
+										placeholder="template default"
+									/>
+								</label>
+
+								<label className="control-field">
+									<span>Override max output bytes</span>
+									<input
+										type="number"
+										min={1}
+										value={overrideMaxOutputBytes}
+										onChange={(event) => setOverrideMaxOutputBytes(event.target.value)}
+										placeholder="template default"
+									/>
+								</label>
+							</div>
+
+							{runnerError ? <div className="error-banner">{runnerError}</div> : null}
+
+							<div className="action-row">
+								<button type="submit" disabled={runTemplateMutation.isPending || !selectedTemplate}>
+									{runTemplateMutation.isPending ? "Submitting..." : "Run template"}
+								</button>
+							</div>
+						</form>
+					) : null}
 					</article>
 
 					<article className="card stack panel-card">
@@ -1205,13 +1583,84 @@ export function ReportsWorkspace() {
 							<div className="stack action-card-header">
 								<h3>Result console</h3>
 								<p className="muted">
-									Large responses stay manageable here: scan the metadata first,
-									then preview, copy, or download deliberately.
+									Reports run as background tasks. When the task finishes, the
+									stored output is fetched here for preview, copy, or download.
 								</p>
 							</div>
 						</div>
 
-						{!lastResult ? (
+						{activeReportTask ? (
+							<div className="preview-meta">
+								<span>Task #{activeReportTask.id}</span>
+								<span>{activeReportTask.status}</span>
+								<span>
+									{activeReportTask.progress.processed_items} /{" "}
+									{activeReportTask.progress.total_items} processed
+								</span>
+								{reportDetails?.output_content_type ? (
+									<span>{reportDetails.output_content_type}</span>
+								) : null}
+								{reportDetails?.warning_count != null ? (
+									<span>{reportDetails.warning_count} warning(s)</span>
+								) : null}
+								{reportDetails?.truncated != null ? (
+									<span>
+										{reportDetails.truncated
+											? "Truncated by backend"
+											: "Backend complete"}
+									</span>
+								) : null}
+								{reportDetails?.output_expires_at ? (
+									<span>
+										Output expires {formatTimestamp(reportDetails.output_expires_at)}
+									</span>
+								) : null}
+							</div>
+						) : null}
+
+						{activeReportTask &&
+						!isTerminalTaskStatus(activeReportTask.status) ? (
+							<div className="info-banner">
+								Report task is {activeReportTask.status}. This page is polling
+								for completion.
+							</div>
+						) : null}
+
+						{reportFailed ? (
+							<div className="error-banner">
+								Report {activeReportTask?.status}.{" "}
+								{activeReportTask?.summary?.trim()
+									? activeReportTask.summary
+									: "The task did not produce output."}
+							</div>
+						) : null}
+
+						{reportPartial &&
+						reportDetails?.output_available !== true &&
+						!lastResult ? (
+							<div className="info-banner">
+								Report partially succeeded.{" "}
+								{activeReportTask?.summary?.trim()
+									? activeReportTask.summary
+									: "Some items failed and no full output is available."}
+							</div>
+						) : null}
+
+						{reportTerminal &&
+						!reportFailed &&
+						!reportPartial &&
+						reportDetails?.output_available !== true &&
+						!lastResult ? (
+							<div className="empty-state">
+								No stored report output is available for this task.
+							</div>
+						) : null}
+
+						{reportOutputQuery.isLoading ? (
+							<div className="muted">Loading stored output...</div>
+						) : null}
+
+						{!activeReportTask && !lastResult ? (
 							<div className="empty-state">
 								Run a report to inspect the response.
 							</div>
@@ -1443,6 +1892,164 @@ export function ReportsWorkspace() {
 									<input value={editorState.contentType} readOnly />
 								</label>
 							)}
+
+							<label className="control-field">
+								<span>Kind</span>
+								<select
+									value={editorState.kind}
+									onChange={(event) =>
+										setEditorState({
+											...editorState,
+											kind: event.target.value as ReportTemplateKind,
+										})
+									}
+								>
+									<option value="report">report (executable)</option>
+									<option value="fragment">fragment (include/import/extends)</option>
+								</select>
+							</label>
+
+							{editorState.kind === "report" ? (
+								<>
+									<label className="control-field">
+										<span>Scope</span>
+										<select
+											value={editorState.scopeKind}
+											onChange={(event) =>
+												setEditorState({
+													...editorState,
+													scopeKind: event.target.value as ReportScopeKind,
+												})
+											}
+										>
+											<option value="namespaces">Namespaces</option>
+											<option value="classes">Classes</option>
+											<option value="objects_in_class">Objects in class</option>
+											<option value="class_relations">Class relations</option>
+											<option value="object_relations">Object relations</option>
+											<option value="related_objects">Related objects</option>
+										</select>
+									</label>
+
+									{editorState.scopeKind === "objects_in_class" ||
+									editorState.scopeKind === "related_objects" ? (
+										<div className="control-field">
+											<label htmlFor="template-class">Class</label>
+											{classOptions.length > 0 ? (
+												<select
+													id="template-class"
+													value={editorState.classId}
+													onChange={(event) =>
+														setEditorState({ ...editorState, classId: event.target.value })
+													}
+												>
+													<option value="">Select class</option>
+													{classOptions.map((classItem) => (
+														<option key={classItem.id} value={classItem.id}>
+															{classItem.name} (#{classItem.id})
+														</option>
+													))}
+												</select>
+											) : (
+												<input
+													id="template-class"
+													type="number"
+													min={1}
+													value={editorState.classId}
+													onChange={(event) =>
+														setEditorState({ ...editorState, classId: event.target.value })
+													}
+													placeholder="Enter class ID"
+												/>
+											)}
+										</div>
+									) : null}
+
+									<label className="control-field control-field--wide">
+										<span>Default query</span>
+										<input
+											value={editorState.defaultQuery}
+											onChange={(event) =>
+												setEditorState({ ...editorState, defaultQuery: event.target.value })
+											}
+											placeholder="name__contains=srv-&sort=name"
+										/>
+									</label>
+
+									{editorState.scopeKind === "objects_in_class" ||
+									editorState.scopeKind === "related_objects" ? (
+										<IncludeRows
+											rows={editorState.includeRows}
+											classOptions={classOptions}
+											onAdd={addEditorIncludeRow}
+											onUpdate={updateEditorIncludeRow}
+											onRemove={removeEditorIncludeRow}
+										/>
+									) : null}
+
+									{editorState.scopeKind === "objects_in_class" ||
+									editorState.scopeKind === "related_objects" ? (
+										<label className="control-field">
+											<span>Relation hydration depth</span>
+											<input
+												type="number"
+												min={1}
+												max={2}
+												value={editorState.depth}
+												onChange={(event) =>
+													setEditorState({ ...editorState, depth: event.target.value })
+												}
+												placeholder={
+													editorState.scopeKind === "related_objects" ? "2 (default)" : "Off"
+												}
+											/>
+										</label>
+									) : null}
+
+									<label className="control-field">
+										<span>Default missing data policy</span>
+										<select
+											value={editorState.missingDataPolicy}
+											onChange={(event) =>
+												setEditorState({
+													...editorState,
+													missingDataPolicy: event.target.value as ReportMissingDataPolicy,
+												})
+											}
+										>
+											<option value="strict">Strict</option>
+											<option value="null">Null</option>
+											<option value="omit">Omit</option>
+										</select>
+									</label>
+
+									<label className="control-field">
+										<span>Default max items</span>
+										<input
+											type="number"
+											min={1}
+											value={editorState.maxItems}
+											onChange={(event) =>
+												setEditorState({ ...editorState, maxItems: event.target.value })
+											}
+											placeholder="optional"
+										/>
+									</label>
+
+									<label className="control-field">
+										<span>Default max output bytes</span>
+										<input
+											type="number"
+											min={1}
+											value={editorState.maxOutputBytes}
+											onChange={(event) =>
+												setEditorState({ ...editorState, maxOutputBytes: event.target.value })
+											}
+											placeholder="optional"
+										/>
+									</label>
+								</>
+							) : null}
 						</div>
 
 						<TemplateCodeEditor
@@ -1451,9 +2058,18 @@ export function ReportsWorkspace() {
 							onChange={(templateBody) =>
 								setEditorState({ ...editorState, templateBody })
 							}
-							placeholder="{{#each items}}{{this.name}}\n{{/each}}"
+							placeholder={`{% for item in items %}{{ item.name }}
+{% endfor %}`}
 							disabled={saveTemplateMutation.isPending}
-							scopeKind={scopeKind}
+							scopeKind={editorState.kind === "report" ? editorState.scopeKind : undefined}
+							relationHydrated={
+								editorState.kind === "report" &&
+								(editorState.scopeKind === "related_objects" ||
+									(editorState.scopeKind === "objects_in_class" &&
+										editorState.depth.trim() !== ""))
+							}
+							relationAliases={includeAliasesOf(editorState.includeRows)}
+							templateNames={editorTemplateNames}
 						/>
 
 						<div className="template-help">

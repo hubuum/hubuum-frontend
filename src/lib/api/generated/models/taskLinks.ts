@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.0.1
  */
 
 export interface TaskLinks {
@@ -12,5 +12,9 @@ export interface TaskLinks {
   import?: string | null;
   /** @nullable */
   import_results?: string | null;
+  /** @nullable */
+  report?: string | null;
+  /** @nullable */
+  report_output?: string | null;
   task: string;
 }
