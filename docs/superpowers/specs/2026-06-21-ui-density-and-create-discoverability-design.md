@@ -133,12 +133,18 @@ Replace the icon-only `quick-add-button` in the topbar title row
 - **Crowding / responsive.** The title row already holds context `<select>`s on
   `/objects` and `/relations/objects` (class, and for relations also object), plus the
   topbar carries search + the user menu. The label must not squeeze those.
-  - Collapse the header button to **icon-only based on available space, not a single
-    720px breakpoint** — the label needs to drop earlier on the select-heavy routes
-    than on plain list routes. Preferred mechanism: a container query on the topbar /
-    title row (or, if simpler, hide the label below ~1024px whenever context selects
-    are present and below 720px otherwise). The text span uses the existing
-    `.sidebar-text`-style "hide when narrow" pattern.
+  - Collapse the header button to **icon-only based on available space, via a
+    container query** (not a flat viewport breakpoint) — the label needs to drop
+    earlier on the select-heavy routes than on plain list routes, and a container
+    query measures the actual space the title row has rather than the whole viewport.
+  - Mechanism: set `container-type: inline-size` (+ a `container-name`, e.g.
+    `topbar`) on the topbar's left region (`.topbar-left`, which holds the title row
+    and context selects). Wrap the create button's text in a span (e.g.
+    `.create-button-text`) that is hidden by default-visible and collapsed via
+    `@container topbar (max-width: <threshold>) { .create-button-text { display:
+    none } }`. The icon stays, so the button shrinks to an icon-only square.
+  - This is the codebase's first `@container` usage; threshold to be tuned during
+    manual review against `/objects` and `/relations/objects`.
   - The extended FAB is always labeled, so an icon-only header button never leaves the
     user without a worded affordance.
   - If manual testing still shows crowding on `/objects` or `/relations/objects` at
@@ -180,8 +186,8 @@ standard checks:
   common **laptop** widths (e.g. 1280, 1366, 1440px), not just mobile — the labeled
   create button competes with the class/object selectors, search field, and user menu
   for horizontal space. Test `/objects` and `/relations/objects` specifically, where
-  the title row is most crowded. Verify the header button collapses to icon-only
-  before it forces overflow, and the FAB stays labeled.
+  the title row is most crowded. Verify the container query collapses the header
+  button to icon-only before it forces overflow, and the FAB stays labeled.
 
 ## Files touched
 
