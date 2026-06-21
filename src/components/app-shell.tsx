@@ -1374,12 +1374,13 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 			) : createSection ? (
 				<button
 					type="button"
-					className="fab"
+					className="fab fab--extended"
 					onClick={openCreateModal}
 					aria-label={getCreateLabel(createSection, relationsView)}
 					title={`${getCreateLabel(createSection, relationsView)} (C)`}
 				>
 					<IconPlus />
+					<span className="fab-text">{getCreateLabel(createSection, relationsView)}</span>
 				</button>
 			) : null}
 
