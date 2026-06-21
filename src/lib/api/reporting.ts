@@ -1,30 +1,51 @@
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1TemplatesByTemplateId,
+	getApiV1ReportsByTaskId,
 	getApiV1Templates,
 	patchApiV1TemplatesByTemplateId,
+	postApiV1Reports,
 	postApiV1Templates,
+	postApiV1TemplatesByTemplateIdReports,
 } from "@/lib/api/generated/client";
 import type {
 	GetApiV1TemplatesParams,
 	NewReportTemplate,
 	ReportContentType,
+	ReportInclude,
+	ReportIncludeRelatedDirection,
+	ReportIncludeRelatedObject,
+	ReportIncludeRelatedSort,
 	ReportJsonResponse,
+	ReportLimits,
 	ReportMissingDataPolicy,
+	ReportRelationContext,
 	ReportRequest,
 	ReportScopeKind,
 	ReportTemplate,
+	ReportTemplateKind,
+	ReportTemplateRunRequest,
+	TaskResponse,
 	UpdateReportTemplate,
 } from "@/lib/api/generated/models";
 
 export type {
 	NewReportTemplate,
 	ReportContentType,
+	ReportInclude,
+	ReportIncludeRelatedDirection,
+	ReportIncludeRelatedObject,
+	ReportIncludeRelatedSort,
 	ReportJsonResponse,
+	ReportLimits,
 	ReportMissingDataPolicy,
+	ReportRelationContext,
 	ReportRequest,
 	ReportScopeKind,
 	ReportTemplate,
+	ReportTemplateKind,
+	ReportTemplateRunRequest,
+	TaskResponse,
 	UpdateReportTemplate,
 };
 
@@ -148,19 +169,92 @@ export async function deleteReportTemplate(templateId: number): Promise<void> {
 	}
 }
 
-export async function runReport(
+export async function submitJsonReportTask(
 	request: ReportRequest,
-	preferredContentType: ReportContentType,
-): Promise<ReportExecutionResult> {
-	const response = await fetch("/_hubuum-bff/hubuum/api/v1/reports", {
+	idempotencyKey?: string,
+): Promise<TaskResponse> {
+	const headers = new Headers();
+	if (idempotencyKey?.trim()) {
+		headers.set("Idempotency-Key", idempotencyKey.trim());
+	}
+
+	const response = await postApiV1Reports(request, {
 		credentials: "include",
-		method: "POST",
-		headers: {
-			Accept: preferredContentType,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(request),
+		headers,
 	});
+
+	if ((response.status as number) === 429) {
+		throw new Error(
+			"Too many active report tasks. Wait for one to finish, then try again.",
+		);
+	}
+	if (response.status !== 202) {
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to submit report."),
+		);
+	}
+	return response.data;
+}
+
+export async function runTemplateReport(
+	templateId: number,
+	overrides: ReportTemplateRunRequest,
+	idempotencyKey?: string,
+): Promise<TaskResponse> {
+	const headers = new Headers();
+	if (idempotencyKey?.trim()) {
+		headers.set("Idempotency-Key", idempotencyKey.trim());
+	}
+
+	const response = await postApiV1TemplatesByTemplateIdReports(
+		templateId,
+		overrides,
+		{ credentials: "include", headers },
+	);
+
+	if ((response.status as number) === 429) {
+		throw new Error(
+			"Too many active report tasks. Wait for one to finish, then try again.",
+		);
+	}
+	if (response.status !== 202) {
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to run template report."),
+		);
+	}
+	return response.data;
+}
+
+export async function fetchReportTask(taskId: number): Promise<TaskResponse> {
+	const response = await getApiV1ReportsByTaskId(taskId, {
+		credentials: "include",
+	});
+
+	if (response.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to load report task."),
+		);
+	}
+
+	return response.data;
+}
+
+export async function fetchReportOutput(
+	taskId: number,
+	preferredContentType?: ReportContentType | string | null,
+): Promise<ReportExecutionResult> {
+	const headers = new Headers();
+	if (preferredContentType?.trim()) {
+		headers.set("Accept", preferredContentType.trim());
+	}
+
+	const response = await fetch(
+		`/_hubuum-bff/hubuum/api/v1/reports/${taskId}/output`,
+		{
+			credentials: "include",
+			headers,
+		},
+	);
 
 	const contentType = toReportContentType(response.headers.get("content-type"));
 	const warningCount =
@@ -171,9 +265,15 @@ export async function runReport(
 	const truncated =
 		response.headers.get("x-hubuum-report-truncated") === "true";
 
+	if (response.status === 404 || response.status === 410) {
+		throw new Error(
+			"This report output has expired or was cleaned up. Re-run the report to generate it again.",
+		);
+	}
+
 	if (!response.ok) {
 		const payload = await parseBody(response);
-		throw new Error(getApiErrorMessage(payload, "Failed to run report."));
+		throw new Error(getApiErrorMessage(payload, "Failed to fetch report output."));
 	}
 
 	if (contentType === "application/json") {
@@ -181,7 +281,7 @@ export async function runReport(
 		return {
 			contentType,
 			warningCount,
-			truncated,
+			truncated: payload?.meta.truncated ?? truncated,
 			json: payload,
 			text: payload ? JSON.stringify(payload, null, 2) : null,
 		};

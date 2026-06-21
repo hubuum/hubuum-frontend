@@ -780,7 +780,9 @@ export function ObjectDetail({
 					<div className="object-meta-item">
 						<span className="object-meta-label">Class</span>
 						<span className="object-meta-value">
-							{className ?? `Class #${objectData.hubuum_class_id}`}
+							<Link href={`/classes/${classId}`}>
+								{className ?? `Class #${objectData.hubuum_class_id}`}
+							</Link>
 						</span>
 					</div>
 					<div className="object-meta-item">

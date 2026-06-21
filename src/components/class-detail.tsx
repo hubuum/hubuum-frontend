@@ -433,6 +433,14 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 						</span>
 					</div>
 					<div className="object-meta-item">
+						<span className="object-meta-label">Objects</span>
+						<span className="object-meta-value">
+							<Link href={`/objects?classId=${classId}`}>
+								View objects →
+							</Link>
+						</span>
+					</div>
+					<div className="object-meta-item">
 						<span className="object-meta-label">Created</span>
 						<span className="object-meta-value">
 							{formatTimestamp(classData.created_at)}
