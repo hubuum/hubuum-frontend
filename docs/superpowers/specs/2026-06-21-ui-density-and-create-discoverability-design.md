@@ -39,6 +39,8 @@ CTAs, a command palette, and a forced denser baseline. These can be revisited la
 - Extend `public/theme-init.js` (loaded before paint in `src/app/layout.tsx:18`) to
   also read `hubuum.density` and set `data-density` so there is no flash of the
   comfortable layout on load. Default to `"comfortable"` on any error / missing value.
+  - **Use two independent `try/catch` blocks** (one for theme, one for density). A
+    failure initializing one must not prevent the other from applying.
 
 ### AppShell wiring (`src/components/app-shell.tsx`)
 
@@ -56,7 +58,7 @@ Comfortable = current values (no change). Add a Compact override block:
 
 ```css
 html[data-density="compact"] {
-  font-size: 13.5px;            /* ~84% of the 16px default; everything in rem scales */
+  font-size: 14.25px;           /* ~89% of the 16px default; conservative start */
 }
 
 /* Targeted trims that go beyond proportional scaling */
@@ -66,18 +68,33 @@ html[data-density="compact"] textarea {
   padding: 0.5rem 0.65rem;
   border-radius: 10px;
 }
-html[data-density="compact"] button {
+
+/* Only normal content/menu/form buttons — NOT fixed-size icon buttons.
+   Exclude every fixed-size / padding:0 button class explicitly. */
+html[data-density="compact"]
+  button:not(.icon-button):not(.fab):not(.sidebar-link-button):not(.topbar-search-clear):not(.topbar-search-submit) {
   padding: 0.55rem 0.8rem;
 }
+
 html[data-density="compact"] .content { gap: 0.7rem; }
-html[data-density="compact"] .content .card { padding: 0.75rem; }
+
+/* Narrow to data-table surfaces only. Do NOT use `.content .card` — it would also
+   catch `.modal-panel.card` and nested cards. */
+html[data-density="compact"] .card.table-wrap { padding: 0.75rem; }
+
 html[data-density="compact"] th,
 html[data-density="compact"] td { padding: 0.3rem 0.5rem; }
 ```
 
 Notes:
-- Because all spacing is already authored in `rem`, the root font-size change does
-  most of the work; the targeted overrides squeeze the chunkiest controls further.
+- Start conservative on the root font-size (14.25px ≈ 89%) since it shrinks *all* rem
+  text, not just spacing. The density win comes mostly from the targeted padding
+  trims; the root scale can be nudged down later if it still feels too large.
+- The `button` override is scoped with `:not(...)` to avoid distorting fixed-size
+  icon buttons, FABs, sidebar buttons, and the search clear/submit buttons.
+- Card padding is trimmed only on `.card.table-wrap` (the dense data tables).
+  General cards rely on proportional rem scaling, and modal panels / nested cards are
+  left untouched.
 - CodeMirror / code editors set their own font-size, so they are unaffected.
 - Exact numbers are starting points and may be nudged during manual review.
 
@@ -98,8 +115,11 @@ Add `getCreateLabel(createSection, relationsView)` returning the "New …" noun 
 | admin-users    | New user             |
 | admin-groups   | New group            |
 
-The existing `getCreateAriaLabel` ("Add …") stays for `aria-label`, or is folded into
-the new helper — either is fine as long as the visible text reads "New X".
+**One vocabulary everywhere.** The visible button text, the `aria-label`, and the
+`title`/tooltip all use this same "New X" string. The current `getCreateAriaLabel`
+("Add …") is replaced by `getCreateLabel` so the UI never says "Add class" in one
+place and "New class" in another. (Tooltip on the FAB appends the shortcut: "New
+class (C)".)
 
 ### Header button
 
@@ -110,9 +130,20 @@ Replace the icon-only `quick-add-button` in the topbar title row
   `create-button` with icon + text span.
 - Stays in the title row so it sits right next to the section heading, matching the
   approved mockup.
-- **Responsive:** show the text label at ≥ 720px; collapse to icon-only below 720px
-  (reuse the `.desktop-only` / media-query pattern). The extended FAB remains the
-  labeled affordance on small screens.
+- **Crowding / responsive.** The title row already holds context `<select>`s on
+  `/objects` and `/relations/objects` (class, and for relations also object), plus the
+  topbar carries search + the user menu. The label must not squeeze those.
+  - Collapse the header button to **icon-only based on available space, not a single
+    720px breakpoint** — the label needs to drop earlier on the select-heavy routes
+    than on plain list routes. Preferred mechanism: a container query on the topbar /
+    title row (or, if simpler, hide the label below ~1024px whenever context selects
+    are present and below 720px otherwise). The text span uses the existing
+    `.sidebar-text`-style "hide when narrow" pattern.
+  - The extended FAB is always labeled, so an icon-only header button never leaves the
+    user without a worded affordance.
+  - If manual testing still shows crowding on `/objects` or `/relations/objects` at
+    common laptop widths, fall back to moving the header create button to the right
+    edge of the title row (or just below it) rather than inline after the selects.
 
 ### Extended FAB
 
@@ -145,7 +176,12 @@ standard checks:
 - Create: on each of namespaces / classes / objects / relations (both views) /
   admin users / admin groups, confirm the header button and FAB both read the correct
   "New X" label, both open the right modal, and the `C` shortcut still works.
-- Responsive: header button collapses to icon-only under 720px; FAB stays labeled.
+- Responsive / overflow: confirm the topbar does not overflow or wrap awkwardly at
+  common **laptop** widths (e.g. 1280, 1366, 1440px), not just mobile — the labeled
+  create button competes with the class/object selectors, search field, and user menu
+  for horizontal space. Test `/objects` and `/relations/objects` specifically, where
+  the title row is most crowded. Verify the header button collapses to icon-only
+  before it forces overflow, and the FAB stays labeled.
 
 ## Files touched
 
