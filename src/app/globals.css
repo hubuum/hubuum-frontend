@@ -453,15 +453,20 @@ button.sidebar-link-button {
 	align-items: center;
 	justify-content: space-between;
 	gap: 0.6rem;
-	container-type: inline-size;
-	container-name: topbar;
 }
 
+/* Query container for the create-button label collapse. flex:1 1 auto gives
+   topbar-left a layout-determined width (the space left after the search/user
+   cluster) so inline-size containment doesn't collapse it, and so its width
+   reflects available space — narrower on select-heavy routes. */
 .topbar-left {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
 	min-width: 0;
+	flex: 1 1 auto;
+	container-type: inline-size;
+	container-name: topbar;
 }
 
 .topbar-title-row {
@@ -611,9 +616,13 @@ button.sidebar-link-button {
 	white-space: nowrap;
 }
 
-/* Collapse the header create label when the topbar is tight.
-   The extended FAB remains the always-labeled affordance. */
-@container topbar (max-width: 560px) {
+/* Collapse the header create label when the topbar-left region is tight.
+   Container is .topbar-left (the heading + context-selects + create cluster), so
+   this fires earlier on select-heavy routes (/objects, /relations/objects) than on
+   plain list routes. The extended FAB remains the always-labeled affordance.
+   Threshold is a starting point — tune against /objects and /relations/objects at
+   1280/1366/1440px in a real browser. */
+@container topbar (max-width: 640px) {
 	.create-button-text {
 		display: none;
 	}
