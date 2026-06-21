@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useToast } from "@/lib/toast-context";
 
 export function ToastContainer() {
@@ -17,7 +18,19 @@ export function ToastContainer() {
 					className={`toast toast--${toast.type}`}
 					aria-live="polite"
 				>
-					<div className="toast-message">{toast.message}</div>
+					<div className="toast-message">
+						{toast.action ? (
+							<Link
+								href={toast.action.href}
+								className="toast-link"
+								onClick={() => removeToast(toast.id)}
+							>
+								{toast.message}
+							</Link>
+						) : (
+							toast.message
+						)}
+					</div>
 					<button
 						type="button"
 						className="toast-close"
