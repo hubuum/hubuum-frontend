@@ -86,18 +86,24 @@ No React, no I/O. Unit-tested with Vitest.
   function runs.
 - `diffNewlyTerminal(prev, next)` → returns tasks in `next` whose status is terminal
   but whose matching task (by `id`) in `prev` was non-terminal. Both inputs are the
-  "my" lists from consecutive polls (sorted `created_at.desc`). A finishing task is
-  recent-by-creation and therefore already present in `prev` as non-terminal, so its
-  completion is caught reliably. Tasks absent from `prev` are not transitions (avoids
-  toasting the load-time backlog). The caller skips the first poll (`prev` null).
+  "my" lists from consecutive polls (sorted `created_at.desc`). In the common case a
+  finishing task is recent and still inside the newest-50 window, so it was present in
+  `prev` as non-terminal and its completion is caught; the bounded-window limitation
+  (Edge handling) applies if I created 50+ newer tasks while it ran. Tasks absent from
+  `prev` are not transitions (avoids toasting the load-time backlog). The caller skips
+  the first poll (`prev` null).
 - `countUnread(myTasks, lastSeenAt, pageFull)` → `{ unreadCount, hasUnreadFailure,
-  isSaturated }` over the terminal tasks in the (`created_at.desc`) list: unread =
-  terminal with `finished_at` strictly after `lastSeenAt`; `hasUnreadFailure` true if
-  any unread task is `failed` or `partially_succeeded`. `isSaturated` = `pageFull && the
-  oldest task in the window (the last element) is terminal and unread` — i.e. the unread
-  run reaches the end of the fetched window, so older unread tasks may exist beyond it.
-  `pageFull` is supplied by the caller as `page.tasks.length === limit` (50). The badge
-  renders `${unreadCount}+` when `isSaturated`, else `${unreadCount}`.
+  isSaturated }` over the terminal tasks in the list: unread = terminal with
+  `finished_at` strictly after `lastSeenAt`; `hasUnreadFailure` true if any unread task
+  is `failed` or `partially_succeeded`. `isSaturated = pageFull`, supplied by the caller
+  as `page.tasks.length === limit` (50). Rationale: when the page is full there are
+  tasks beyond the newest-50 window that we never examined, so `unreadCount` is a
+  **lower bound** — the window is `created_at`-ordered while unread is by `finished_at`,
+  so an older task outside the window can be unread regardless of the visible tasks'
+  states; we cannot cheaply infer exactness. When the page is not full we have fetched
+  *all* of my tasks, so the count is exact. The badge renders `${unreadCount}+` when
+  `isSaturated`, else `${unreadCount}`; the `+` is a conservative "at least, possibly
+  more" hint, not an exact overflow flag.
 - `toastForTransition(task)` → `{ message, type }` where `type` is `success`
   (succeeded), `error` (failed), or `info` (partially_succeeded / cancelled), and the
   message reads e.g. `Import #42 succeeded` / `Report #41 failed` (kind capitalized +
@@ -233,9 +239,8 @@ poll: fetchTasks(submittedBy=myId, limit 50, sort created_at.desc)   every 5–3
   `filterMine` (drops foreign `submitted_by`), `diffNewlyTerminal` (non-terminal→
   terminal detected; terminal→terminal ignored; non-terminal→non-terminal ignored;
   absent-in-prev ignored; baseline/empty prev), `countUnread` (boundary on `lastSeenAt`,
-  failure flag, missing `finished_at` fallback, and `isSaturated`: true when
-  `pageFull` and the oldest window task is terminal+unread; false when not `pageFull`,
-  and false when `pageFull` but the oldest window task is read/non-terminal), and
+  failure flag, missing `finished_at` fallback, and `isSaturated`: equals `pageFull`
+  (true when `pageFull`, false otherwise — independent of the visible tasks' state), and
   `toastForTransition` (type + message per status).
 - Wire `npm test` into `.github/workflows/ci.yml`.
 - Static: `npm run typecheck`, `npm run lint`, `npm run build` pass.
