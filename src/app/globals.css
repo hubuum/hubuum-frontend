@@ -3198,7 +3198,7 @@ html[data-density="compact"] textarea {
 
 /* Normal content/menu/form buttons only — exclude fixed-size icon buttons. */
 html[data-density="compact"]
-	button:not(.icon-button):not(.fab):not(.sidebar-link-button):not(.topbar-search-clear):not(.topbar-search-submit) {
+	button:not(.icon-button):not(.fab):not(.sidebar-link-button):not(.topbar-search-clear):not(.topbar-search-submit):not(.field-hint-button):not(.pin-button-inline):not(.toast-close):not(.permission-chip-button):not(.table-filter-clear) {
 	padding: 0.55rem 0.8rem;
 }
 
