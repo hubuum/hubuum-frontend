@@ -32,29 +32,44 @@ more code and drift; C — backend-backed notifications, no endpoint exists, YAG
   my id`).
 - Terminal statuses (from `isTerminalTaskStatus`): `succeeded`, `failed`,
   `partially_succeeded`, `cancelled`.
-- No topbar bell, no dropdown. The inbox is the existing `/tasks` page (no markup
-  changes to that page in v1; row-level "new" highlighting is a possible follow-up).
+- No topbar bell, no dropdown. The inbox is the existing `/tasks` page, **scoped to my
+  tasks** so it always matches the badge's window. Row-level "new" highlighting is a
+  possible follow-up.
 
 ### "My tasks" must be filtered client-side (do not trust the server param)
 
 The list endpoint documents `submitted_by` as **"effective only for admins"**
 (`src/lib/api/generated/models/getApiV1TasksParams.ts`). The assumed backend contract
 is that non-admins are already scoped to their own tasks (which is why the filter is
-admin-only), while admins see all tasks and can narrow with `submitted_by`. The design
-does **not depend on that assumption**:
+admin-only), while admins see all tasks and can narrow with `submitted_by`.
 
-- Always pass `submitted_by: myId` (server-side narrowing for admins; a harmless no-op
-  for non-admins).
-- **Always also filter the fetched list client-side to `task.submitted_by === myId`.**
-  This is the correctness guarantee: even if a non-admin backend returns a broader set,
-  no other user's task can produce a toast, an unread count, or an active count.
+There are two distinct guarantees here, with different dependencies — do not conflate
+them:
 
-All logic functions below operate on the already-client-filtered "my" list.
+- **Safety (no foreign notifications) — unconditional.** Always filter the fetched list
+  client-side to `task.submitted_by === myId` (`filterMine`). No other user's task can
+  ever produce a toast, unread count, or active count, regardless of backend behavior.
+  We also pass `submitted_by: myId` to the request.
+- **Completeness (all of *my* tasks appear in the window) — conditional.** This depends
+  on the backend scoping the list to me *before* applying `limit`. For admins,
+  `submitted_by: myId` does this server-side (works). For non-admins it is a no-op and
+  we rely on the documented self-scoping. If a non-admin backend instead returned a
+  broad list and applied `limit: 50` before scoping, other users' tasks could fill the
+  window and one of my tasks could be missed. That is the same *class* of limitation as
+  the documented window bound (Edge handling) — a completeness gap, **not** a safety
+  hole. This dependency is explicit and should be confirmed against the backend; if it
+  does not hold, a server-side "my tasks" query (API change) would be required for
+  full completeness.
+
+All logic functions below operate on the already-`filterMine`d "my" list.
 
 ### Intentional behavior changes (call-outs)
 
 - The Tasks sidebar badge becomes **personal** — it reflects the current user's tasks,
   not all visible tasks.
+- The `/tasks` page becomes **personal too** — it lists only the current user's tasks
+  (previously it showed all tasks visible to the account, i.e. all tasks for admins).
+  Any task remains reachable by id via the existing task lookup on that page.
 - The failure indication **persists until you visit `/tasks`**, replacing the current
   `recentFailureUntil` 60-second flash.
 
@@ -91,12 +106,20 @@ Types reuse `TaskRecord`/`TaskStatus`/`TaskKind` and `isTerminalTaskStatus` from
 
 A cached React Query resolving the current user's numeric id by reusing the account
 page's approach: call `getApiV1IamUsers(...)` and match the row whose `username`
-equals the session username (the username is already passed into the shell tree — the
-protected layout has `session.username`; plumb it to `AppShell` as a prop, mirroring
-`canViewAdmin`). Returns `number | null`.
+equals the session username. Returns `number | null`.
 
-- If id resolution fails or returns null, the feature **degrades gracefully**: no
-  completion toasts, and the badge falls back to today's all-tasks active behavior.
+Expose it as a reusable hook `useCurrentUserId(currentUsername)` (e.g.
+`src/lib/use-current-user-id.ts`) consumed by **both** `AppShell` and `TasksWorkspace`,
+so the badge and the now-scoped `/tasks` page resolve the same id. The session username
+is plumbed in from the server components that already have it: `AppShell` via a new prop
+from `(protected)/layout.tsx` (mirroring `canViewAdmin`), and `TasksWorkspace` via a new
+prop from `(protected)/tasks/page.tsx` (which has `session.username`).
+
+- If id resolution fails or returns null, the feature **is disabled** (this is the
+  single, authoritative fallback — matches Edge handling): the poll is not enabled, no
+  toasts fire, and the Tasks badge shows nothing task-related. We do **not** fall back
+  to an all-tasks view, since that could surface other users' tasks and contradicts the
+  personal scoping.
 
 ### 3. Shell wiring — `src/components/app-shell.tsx`
 
@@ -177,10 +200,15 @@ poll: fetchTasks(submittedBy=myId, limit 50, sort created_at.desc)   every 5–3
   happens, that task never toasts and isn't counted as unread; it is still reachable on
   its own `/tasks/<id>` detail page. `unreadCount` saturates at `50+`. Documented rather
   than paginated (YAGNI).
-- **`/tasks` as record:** the shell poll and the `/tasks` list use the same
-  `created_at.desc, limit 50` window (the shell additionally scoped to me), so badge and
-  page stay consistent. The toast's deep-link to `/tasks/<id>` is the authoritative
-  per-task record; we do **not** claim `/tasks` is an exhaustive history.
+- **`/tasks` consistency:** the `/tasks` list is now scoped to my tasks with the same
+  `submitted_by=myId, created_at.desc, limit 50` window as the shell poll, so the badge
+  and the page show the same set — visiting `/tasks` never clears unread for a task it
+  doesn't display. The toast's deep-link to `/tasks/<id>` remains the authoritative
+  per-task record; `/tasks` is not an exhaustive history.
+- **`/tasks` when id is unresolved:** the page falls back to today's unscoped fetch
+  (safe — it is an explicit page view, not a notification surface, and non-admins remain
+  self-scoped by the backend). With no resolved id there is no badge/unread anyway, so
+  no clear-without-showing inconsistency arises.
 - **Tab hidden:** existing interval backs off; toasts appear on next foreground poll.
 - **On `/tasks` when a task finishes:** a toast may still fire (harmless); `lastSeenAt`
   keeps the badge at zero.
@@ -202,9 +230,11 @@ poll: fetchTasks(submittedBy=myId, limit 50, sort created_at.desc)   every 5–3
 ## Files
 
 - Create: `src/lib/task-notifications.ts`, `src/lib/task-notifications.test.ts`,
-  `vitest.config.ts`.
+  `src/lib/use-current-user-id.ts`, `vitest.config.ts`.
 - Modify: `src/components/app-shell.tsx` (poll mine, transitions, badge, lastSeen;
-  remove `recentFailureUntil`); `src/app/(protected)/layout.tsx` +
-  `AppShell` props (pass `currentUsername`); `src/lib/toast-context.tsx` +
-  `src/components/toast-container.tsx` (optional action/href); `package.json`
-  (vitest dep + test script); `.github/workflows/ci.yml` (run tests).
+  remove `recentFailureUntil`); `src/app/(protected)/layout.tsx` + `AppShell` props
+  (pass `currentUsername`); `src/components/tasks-workspace.tsx` (scope to my tasks via
+  `useCurrentUserId` + `filterMine`); `src/app/(protected)/tasks/page.tsx` (pass
+  `currentUsername` to `TasksWorkspace`); `src/lib/toast-context.tsx` +
+  `src/components/toast-container.tsx` (optional action/href); `package.json` (vitest
+  dep + test script); `.github/workflows/ci.yml` (run tests).
