@@ -3126,3 +3126,36 @@ h2.with-pin-button {
 		order: 1;
 	}
 }
+
+/* ---------- Compact density (opt-in) ---------- */
+/* Comfortable = default values above. Compact is strictly additive. */
+html[data-density="compact"] {
+	font-size: 14.25px; /* ~89% of 16px; all rem spacing scales. Conservative start. */
+}
+
+html[data-density="compact"] input,
+html[data-density="compact"] select,
+html[data-density="compact"] textarea {
+	padding: 0.5rem 0.65rem;
+	border-radius: 10px;
+}
+
+/* Normal content/menu/form buttons only — exclude fixed-size icon buttons. */
+html[data-density="compact"]
+	button:not(.icon-button):not(.fab):not(.sidebar-link-button):not(.topbar-search-clear):not(.topbar-search-submit) {
+	padding: 0.55rem 0.8rem;
+}
+
+html[data-density="compact"] .content {
+	gap: 0.7rem;
+}
+
+/* Data-table surfaces only — never `.content .card` (catches modal panels). */
+html[data-density="compact"] .card.table-wrap {
+	padding: 0.75rem;
+}
+
+html[data-density="compact"] th,
+html[data-density="compact"] td {
+	padding: 0.3rem 0.5rem;
+}
