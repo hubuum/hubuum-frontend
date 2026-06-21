@@ -20,11 +20,15 @@ import { ToastContainer } from "@/components/toast-container";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV1Classes } from "@/lib/api/generated/client";
 import type { HubuumClassExpanded, HubuumObject } from "@/lib/api/generated/models";
+import { fetchTasks, isTerminalTaskStatus, type TaskRecord } from "@/lib/api/tasking";
 import {
-	fetchTasks,
-	summarizeTaskActivity,
-	type TaskActivitySummary,
-} from "@/lib/api/tasking";
+	countUnread,
+	diffNewlyTerminal,
+	filterMine,
+	toastForTransition,
+} from "@/lib/task-notifications";
+import { useToast } from "@/lib/toast-context";
+import { useCurrentUserId } from "@/lib/use-current-user-id";
 import {
 	type CreateSection,
 	DESELECT_ALL_EVENT,
@@ -41,6 +45,7 @@ import { normalizeSearchTerm } from "@/lib/resource-search";
 
 type AppShellProps = {
 	canViewAdmin: boolean;
+	currentUsername: string | null;
 	children: ReactNode;
 };
 
@@ -74,15 +79,6 @@ async function fetchTopbarClassOptions(): Promise<HubuumClassExpanded[]> {
 	}
 
 	return response.data;
-}
-
-async function fetchRecentTaskSummary(): Promise<TaskActivitySummary> {
-	const page = await fetchTasks({
-		limit: 50,
-		sort: "created_at.desc,id.desc",
-	});
-
-	return summarizeTaskActivity(page.tasks);
 }
 
 async function parseJsonPayload(response: Response): Promise<unknown> {
@@ -522,10 +518,42 @@ const systemLinks: NavItem[] = [
 	},
 ];
 
-export function AppShell({ canViewAdmin, children }: AppShellProps) {
+export function AppShell({ canViewAdmin, currentUsername, children }: AppShellProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
+	const { showToast } = useToast();
+	const currentUserId = useCurrentUserId(currentUsername);
+	const prevMyTasksRef = useRef<TaskRecord[] | null>(null);
+	const [lastSeenAt, setLastSeenAt] = useState<number | null>(null);
+
+	const myTasksQuery = useQuery({
+		queryKey: ["tasks", "shell-mine", currentUserId],
+		queryFn: async () => {
+			const page = await fetchTasks({
+				submittedBy: currentUserId ?? undefined,
+				limit: 50,
+				sort: "created_at.desc,id.desc",
+			});
+			const mine = filterMine(page.tasks, currentUserId as number);
+			return { mine, pageFull: page.tasks.length === 50 };
+		},
+		enabled: currentUserId != null,
+		refetchInterval: (query) => {
+			const mine = query.state.data?.mine ?? [];
+			const hasActive = mine.some((task) => !isTerminalTaskStatus(task.status));
+			const isHidden =
+				typeof document !== "undefined" &&
+				document.visibilityState === "hidden";
+
+			if (isHidden) {
+				return hasActive ? 15000 : 30000;
+			}
+
+			return hasActive ? 5000 : 15000;
+		},
+	});
+
 	const sectionLabel = useMemo(() => getSectionLabel(pathname), [pathname]);
 	const createSection = useMemo(() => getCreateSection(pathname), [pathname]);
 	const relationsView = useMemo(() => getRelationsView(pathname), [pathname]);
@@ -567,22 +595,6 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 			fetchRelationsObjectOptions(parsedResolvedRelationsClassId ?? 0),
 		enabled: isRelationsRoute && parsedResolvedRelationsClassId !== null,
 	});
-	const taskSummaryQuery = useQuery({
-		queryKey: ["tasks", "shell-summary"],
-		queryFn: fetchRecentTaskSummary,
-		refetchInterval: (query) => {
-			const activeTasks = query.state.data?.activeTasks ?? 0;
-			const isHidden =
-				typeof document !== "undefined" &&
-				document.visibilityState === "hidden";
-
-			if (isHidden) {
-				return activeTasks > 0 ? 15000 : 30000;
-			}
-
-			return activeTasks > 0 ? 5000 : 15000;
-		},
-	});
 	const relationsObjectOptions = relationsObjectOptionsQuery.data ?? [];
 	const resolvedRelationsObjectId = useMemo(() => {
 		return relationsObjectOptions.some(
@@ -598,15 +610,11 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 		useState<ThemePreference>("system");
 	const [densityPreference, setDensityPreference] =
 		useState<DensityPreference>("comfortable");
-	const [recentFailureUntil, setRecentFailureUntil] = useState<number | null>(
-		null,
-	);
 	const [searchInput, setSearchInput] = useState("");
 	const [selectionCount, setSelectionCount] = useState(0);
 	const [deleteHandler, setDeleteHandler] = useState<(() => void) | null>(null);
 	const [isKeyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
 	const userMenuRef = useRef<HTMLDivElement | null>(null);
-	const previousFailedTasksRef = useRef<number | null>(null);
 
 	const openCreateModal = useCallback(() => {
 		if (!createSection) {
@@ -725,38 +733,6 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 	}, [isUserMenuOpen]);
 
 	useEffect(() => {
-		const failedTasks = taskSummaryQuery.data?.failedTasks ?? null;
-		if (failedTasks === null) {
-			return;
-		}
-
-		const previousFailedTasks = previousFailedTasksRef.current;
-		previousFailedTasksRef.current = failedTasks;
-
-		if (previousFailedTasks !== null && failedTasks > previousFailedTasks) {
-			setRecentFailureUntil(Date.now() + 60_000);
-		}
-	}, [taskSummaryQuery.data?.failedTasks]);
-
-	useEffect(() => {
-		if (recentFailureUntil === null) {
-			return;
-		}
-
-		const remainingMs = recentFailureUntil - Date.now();
-		if (remainingMs <= 0) {
-			setRecentFailureUntil(null);
-			return;
-		}
-
-		const timeoutId = window.setTimeout(() => {
-			setRecentFailureUntil(null);
-		}, remainingMs);
-
-		return () => window.clearTimeout(timeoutId);
-	}, [recentFailureUntil]);
-
-	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement;
 			const isTyping =
@@ -860,6 +836,51 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 			window.removeEventListener(SELECTION_STATE_EVENT, onSelectionStateChange);
 	}, []);
 
+	useEffect(() => {
+		if (currentUserId == null) {
+			return;
+		}
+
+		const key = `hubuum.tasks.lastSeenAt.${currentUserId}`;
+		const stored = window.localStorage.getItem(key);
+		if (stored == null) {
+			const now = Date.now();
+			window.localStorage.setItem(key, String(now));
+			setLastSeenAt(now);
+			return;
+		}
+
+		const parsed = Number.parseInt(stored, 10);
+		setLastSeenAt(Number.isNaN(parsed) ? 0 : parsed);
+	}, [currentUserId]);
+
+	useEffect(() => {
+		if (currentUserId == null || !pathname.startsWith("/tasks")) {
+			return;
+		}
+
+		const now = Date.now();
+		window.localStorage.setItem(
+			`hubuum.tasks.lastSeenAt.${currentUserId}`,
+			String(now),
+		);
+		setLastSeenAt(now);
+	}, [pathname, currentUserId]);
+
+	useEffect(() => {
+		const data = myTasksQuery.data;
+		if (!data) {
+			return;
+		}
+
+		for (const task of diffNewlyTerminal(prevMyTasksRef.current, data.mine)) {
+			const { message, type } = toastForTransition(task);
+			showToast(message, type, { href: `/tasks/${task.id}` });
+		}
+
+		prevMyTasksRef.current = data.mine;
+	}, [myTasksQuery.data, showToast]);
+
 	const shellClassName = [
 		"app-shell",
 		isSidebarCollapsed ? "sidebar-collapsed" : "",
@@ -867,16 +888,27 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 	]
 		.filter(Boolean)
 		.join(" ");
-	const activeTaskCount = taskSummaryQuery.data?.activeTasks ?? 0;
-	const hasRecentFailure =
-		recentFailureUntil !== null && recentFailureUntil > Date.now();
-	const taskBadgeLabel =
-		activeTaskCount > 0
-			? String(activeTaskCount)
-			: hasRecentFailure
-				? "!"
-				: null;
-	const taskBadgeTone = hasRecentFailure ? "danger" : "accent";
+	const myTasks = myTasksQuery.data?.mine ?? [];
+	const pageFull = myTasksQuery.data?.pageFull ?? false;
+	const activeTaskCount = myTasks.filter(
+		(task) => !isTerminalTaskStatus(task.status),
+	).length;
+	const unread =
+		lastSeenAt == null
+			? { unreadCount: 0, hasUnreadFailure: false, isSaturated: false }
+			: countUnread(myTasks, lastSeenAt, pageFull);
+
+	let taskBadgeLabel: string | null = null;
+	let taskBadgeTone: "accent" | "danger" = "accent";
+	if (unread.unreadCount > 0) {
+		taskBadgeLabel = unread.isSaturated
+			? `${unread.unreadCount}+`
+			: String(unread.unreadCount);
+		taskBadgeTone = unread.hasUnreadFailure ? "danger" : "accent";
+	} else if (activeTaskCount > 0) {
+		taskBadgeLabel = String(activeTaskCount);
+		taskBadgeTone = "accent";
+	}
 
 	function renderTaskBadge() {
 		if (!taskBadgeLabel) {
