@@ -17,4 +17,13 @@
 	} catch {
 		// Ignore theme init errors and keep CSS defaults.
 	}
+
+	try {
+		const key = "hubuum.density";
+		const stored = window.localStorage.getItem(key);
+		const density = stored === "compact" ? "compact" : "comfortable";
+		document.documentElement.setAttribute("data-density", density);
+	} catch {
+		// Ignore density init errors and keep CSS defaults.
+	}
 })();
