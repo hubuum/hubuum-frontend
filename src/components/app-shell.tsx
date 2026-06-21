@@ -530,12 +530,15 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 	const myTasksQuery = useQuery({
 		queryKey: ["tasks", "shell-mine", currentUserId],
 		queryFn: async () => {
+			if (currentUserId == null) {
+				return { mine: [] as TaskRecord[], pageFull: false };
+			}
 			const page = await fetchTasks({
-				submittedBy: currentUserId ?? undefined,
+				submittedBy: currentUserId,
 				limit: 50,
 				sort: "created_at.desc,id.desc",
 			});
-			const mine = filterMine(page.tasks, currentUserId as number);
+			const mine = filterMine(page.tasks, currentUserId);
 			return { mine, pageFull: page.tasks.length === 50 };
 		},
 		enabled: currentUserId != null,
@@ -851,7 +854,13 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		}
 
 		const parsed = Number.parseInt(stored, 10);
-		setLastSeenAt(Number.isNaN(parsed) ? 0 : parsed);
+		if (Number.isNaN(parsed)) {
+			const now = Date.now();
+			window.localStorage.setItem(key, String(now));
+			setLastSeenAt(now);
+			return;
+		}
+		setLastSeenAt(parsed);
 	}, [currentUserId]);
 
 	useEffect(() => {
