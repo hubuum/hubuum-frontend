@@ -157,6 +157,9 @@ function getSectionLabel(pathname: string): string {
 	if (pathname.startsWith("/statistics")) {
 		return "Statistics";
 	}
+	if (pathname.startsWith("/account")) {
+		return "Account";
+	}
 	if (pathname.startsWith("/namespaces")) {
 		return "Namespaces";
 	}
@@ -1289,6 +1292,17 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 										>
 											Dark
 										</button>
+									</div>
+
+									<div className="menu-group">
+										<Link
+											className="menu-item"
+											href="/account"
+											role="menuitem"
+											onClick={() => setUserMenuOpen(false)}
+										>
+											Account
+										</Link>
 									</div>
 
 									<div className="menu-group">

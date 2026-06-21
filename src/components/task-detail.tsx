@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV1IamUsersByUserId } from "@/lib/api/generated/client";
 import {
 	fetchImportProjection,
@@ -15,15 +14,13 @@ import {
 
 async function fetchTaskSubmitter(
 	userId: number,
-): Promise<{ id: number; username: string }> {
+): Promise<{ id: number; username: string } | null> {
 	const response = await getApiV1IamUsersByUserId(userId, {
 		credentials: "include",
 	});
 
 	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load submitting user."),
-		);
+		return null;
 	}
 
 	return {
