@@ -67,20 +67,18 @@ All logic functions below operate on the already-client-filtered "my" list.
 No React, no I/O. Unit-tested with Vitest.
 
 - `filterMine(tasks, myId)` → tasks where `submitted_by === myId`. The single
-  client-side guarantee from Finding 1; applied to every fetched list before any other
+  client-side guarantee from Finding 1; applied to the fetched list before any other
   function runs.
-- `diffNewlyFinished(prevFinished, nextFinished)` → returns the terminal tasks present
-  in `nextFinished` but absent (by `id`) from `prevFinished`. Both inputs are the "my +
-  terminal" lists sorted `finished_at.desc` from consecutive polls, so a task absent
-  from `prev` but present in `next` is one that **just finished** — regardless of how
-  old it is (this is what makes long-running tasks reliable, see Finding 2 below). The
-  caller skips the very first poll (`prev` is null) so the load-time backlog never
-  toasts.
-- `countUnread(finishedTasks, lastSeenAt)` → `{ unreadCount, hasUnreadFailure }` where
-  unread = terminal tasks with `finished_at` strictly after `lastSeenAt`;
-  `hasUnreadFailure` is true if any unread task is `failed` or `partially_succeeded`.
-  `unreadCount` is capped at the fetched window (see cap note); expose it as e.g. `50+`
-  if the window is full and all are unread.
+- `diffNewlyTerminal(prev, next)` → returns tasks in `next` whose status is terminal
+  but whose matching task (by `id`) in `prev` was non-terminal. Both inputs are the
+  "my" lists from consecutive polls (sorted `created_at.desc`). A finishing task is
+  recent-by-creation and therefore already present in `prev` as non-terminal, so its
+  completion is caught reliably. Tasks absent from `prev` are not transitions (avoids
+  toasting the load-time backlog). The caller skips the first poll (`prev` null).
+- `countUnread(myTasks, lastSeenAt)` → `{ unreadCount, hasUnreadFailure }` over the
+  terminal tasks in the list: unread = terminal with `finished_at` strictly after
+  `lastSeenAt`; `hasUnreadFailure` true if any unread task is `failed` or
+  `partially_succeeded`. `unreadCount` saturates at the window size (`50+`).
 - `toastForTransition(task)` → `{ message, type }` where `type` is `success`
   (succeeded), `error` (failed), or `info` (partially_succeeded / cancelled), and the
   message reads e.g. `Import #42 succeeded` / `Report #41 failed` (kind capitalized +
@@ -102,28 +100,26 @@ protected layout has `session.username`; plumb it to `AppShell` as a prop, mirro
 
 ### 3. Shell wiring — `src/components/app-shell.tsx`
 
-Two purpose-built polls replace `fetchRecentTaskSummary`, both enabled once `myId` is
-known, both passing `submittedBy: myId`, both client-filtered to `submitted_by ===
-myId`, and both sharing the existing adaptive `refetchInterval` (active → 5s/15s,
-hidden → 15s/30s):
+A single poll replaces `fetchRecentTaskSummary`, enabled once `myId` is known:
+`fetchTasks({ submittedBy: myId, limit: 50, sort: "created_at.desc,id.desc" })` then
+`filterMine(...)`. It keeps the existing adaptive `refetchInterval` (active → 5s/15s,
+hidden → 15s/30s). One poll (not two) keeps request volume identical to today.
 
-1. **Finished poll** — `fetchTasks({ submittedBy: myId, limit: 50, sort:
-   "finished_at.desc,id.desc" })`, then keep only terminal tasks. Drives completion
-   toasts and the unread count. Sorting by `finished_at` (not `created_at`) is what
-   makes a long-running, old task surface the moment it finishes.
-2. **Active poll** — `fetchTasks({ submittedBy: myId, limit: 50, sort:
-   "created_at.desc,id.desc" })`, then count non-terminal tasks. Drives the
-   in-progress count for the badge fallback. (Acceptable limitation: a non-terminal
-   task older than the newest 50-by-creation is not counted; this only affects the
-   secondary active count, never completions/unread.)
+Why `created_at.desc`, not `finished_at.desc`: the window is now 50 of **my** tasks, so
+a running task only leaves it if I personally create 50+ newer tasks while it runs —
+rare for one user. `created_at` is always present, so this avoids depending on the
+backend's unspecified NULL-`finished_at` sort ordering (if nulls sorted first under
+`finished_at.desc`, active tasks would fill the window and starve completions). The
+cost is a documented bound (see Edge handling).
 
-On each successful **finished** poll:
-- Run `diffNewlyFinished(prevFinishedRef.current, finished)`; for each result call
-  `showToast(message, type, { href: "/tasks/<id>" })`. Skip when
-  `prevFinishedRef.current` is null (baseline / first poll).
-- Update `prevFinishedRef.current = finished`.
+On each successful poll (with `mine = filterMine(page.tasks, myId)`):
+- Run `diffNewlyTerminal(prevRef.current, mine)`; for each result call
+  `showToast(message, type, { href: "/tasks/<id>" })`. Skip when `prevRef.current` is
+  null (baseline / first poll).
+- Update `prevRef.current = mine`.
 
-Badge derivation from `countUnread(finished, lastSeenAt)` and the active count:
+Badge derivation from `countUnread(mine, lastSeenAt)` and the active count
+(`mine.filter((t) => !isTerminalTaskStatus(t.status)).length`):
 - `unreadCount > 0` → label = `unreadCount` (or `50+`), tone = `danger` if
   `hasUnreadFailure` else `accent`.
 - else `activeCount > 0` → label = `activeCount`, tone `accent` (preserves today's
@@ -154,47 +150,49 @@ is present and dismisses on click. Existing call sites are unaffected (optional 
 ```
 resolve myId (username→id, cached)
    │
-   ├─ finished poll: fetchTasks(submittedBy=myId, sort finished_at.desc) ─┐
-   │     client-filter submitted_by===myId, keep terminal                 │ finished[]
-   │                                                                       ▼
-   │   diffNewlyFinished(prevFinishedRef, finished) ─> showToast(..., {href:/tasks/id})
-   │   countUnread(finished, lastSeenAt) ─> {unreadCount, hasUnreadFailure} ┐
-   │                                                                        ▼
-   └─ active poll: fetchTasks(submittedBy=myId, sort created_at.desc) ─> activeCount
-                                                                            │
-                              badge: unread>0 ? unread(danger if fail) : active
+   ▼
+poll: fetchTasks(submittedBy=myId, limit 50, sort created_at.desc)   every 5–30s
+   │  mine = filterMine(page.tasks, myId)
+   ├─ diffNewlyTerminal(prevRef, mine) ─> per transition: showToast(..., {href:/tasks/id})
+   ├─ countUnread(mine, lastSeenAt) ─> {unreadCount, hasUnreadFailure} ┐
+   └─ activeCount = mine.filter(non-terminal).length                   │
+                                                                       ▼
+                       badge: unread>0 ? unread(danger if fail) : activeCount
    lastSeenAt (localStorage hubuum.tasks.lastSeenAt.<myId>)
         ◄── set to now on mount-if-missing and on /tasks visit
 ```
 
 ## Error / edge handling
 
-- **First load:** `prevFinishedRef` null → no toasts; `lastSeenAt` initialized to now →
-  no unread backlog.
-- **Id unresolved:** graceful fallback — neither poll is enabled, no toasts, and the
+- **First load:** `prevRef` null → no toasts; `lastSeenAt` initialized to now → no
+  unread backlog.
+- **Id unresolved:** graceful fallback — the poll is not enabled, no toasts, and the
   badge shows nothing task-related (we never fetch an unfiltered list, so we never show
-  another user's tasks). This is a deliberate, safe degradation.
-- **`finished_at` missing:** terminal tasks normally carry `finished_at`; if absent,
-  fall back to `started_at`/`created_at` for the unread comparison so such a task isn't
-  silently dropped.
-- **Window cap (> 50 between polls):** if more than 50 of my tasks finish within one
-  poll interval, completions beyond the newest 50 are not toasted, and `unreadCount`
-  saturates at `50+`. Given the 5–15s interval this is a rare tail; documented rather
-  than paginated (YAGNI). The `/tasks` page remains the complete record.
-- **Tab hidden:** existing interval already backs off; toasts appear on next foreground
-  poll.
+  another user's tasks). Deliberate, safe degradation.
+- **`finished_at` missing:** such terminal tasks are still in the window (it sorts by
+  `created_at`, which they have), so unread falls back to `started_at`/`created_at` for
+  the comparison and the task is not dropped.
+- **Window bound (50 of my newest-by-creation):** a task is only missed if I personally
+  have 50+ tasks created after it while it is still running — rare for one user. When it
+  happens, that task never toasts and isn't counted as unread; it is still reachable on
+  its own `/tasks/<id>` detail page. `unreadCount` saturates at `50+`. Documented rather
+  than paginated (YAGNI).
+- **`/tasks` as record:** the shell poll and the `/tasks` list use the same
+  `created_at.desc, limit 50` window (the shell additionally scoped to me), so badge and
+  page stay consistent. The toast's deep-link to `/tasks/<id>` is the authoritative
+  per-task record; we do **not** claim `/tasks` is an exhaustive history.
+- **Tab hidden:** existing interval backs off; toasts appear on next foreground poll.
 - **On `/tasks` when a task finishes:** a toast may still fire (harmless); `lastSeenAt`
   keeps the badge at zero.
 
 ## Testing
 
 - **Vitest** added (minimal config + `"test": "vitest run"` script). Unit tests for
-  `diffNewlyFinished` (newly-finished detected; present-in-both ignored; baseline/empty
-  prev; a task dropping out of the window produces no false positive), `countUnread`
-  (boundary on `lastSeenAt`, failure flag, missing `finished_at` fallback, `50+`
-  saturation), and `toastForTransition` (type + message per status). Pure functions, so
-  the client-side `submitted_by === myId` filtering is exercised by passing pre-filtered
-  lists plus one test asserting the filter helper drops foreign tasks.
+  `filterMine` (drops foreign `submitted_by`), `diffNewlyTerminal` (non-terminal→
+  terminal detected; terminal→terminal ignored; non-terminal→non-terminal ignored;
+  absent-in-prev ignored; baseline/empty prev), `countUnread` (boundary on `lastSeenAt`,
+  failure flag, missing `finished_at` fallback, `50+` saturation), and
+  `toastForTransition` (type + message per status).
 - Wire `npm test` into `.github/workflows/ci.yml`.
 - Static: `npm run typecheck`, `npm run lint`, `npm run build` pass.
 - Manual: kick off an import; navigate away; confirm a clickable toast on completion
