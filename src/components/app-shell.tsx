@@ -210,31 +210,30 @@ function getCreateSection(pathname: string): CreateSection | null {
 	return null;
 }
 
-function getCreateAriaLabel(
+function getCreateLabel(
 	createSection: CreateSection,
 	relationsView: "classes" | "objects" | null,
-	sectionLabel: string,
 ): string {
 	if (createSection === "relations") {
-		return `Add ${relationsView === "objects" ? "object relation" : "class relation"}`;
+		return `New ${relationsView === "objects" ? "object relation" : "class relation"}`;
 	}
 	if (createSection === "admin-users") {
-		return "Add user";
+		return "New user";
 	}
 	if (createSection === "admin-groups") {
-		return "Add group";
+		return "New group";
 	}
 	if (createSection === "namespaces") {
-		return "Add namespace";
+		return "New namespace";
 	}
 	if (createSection === "classes") {
-		return "Add class";
+		return "New class";
 	}
 	if (createSection === "objects") {
-		return "Add object";
+		return "New object";
 	}
 
-	return `Add ${sectionLabel}`;
+	return "New item";
 }
 
 function getRelationsView(pathname: string): "classes" | "objects" | null {
@@ -1218,15 +1217,15 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 								{createSection ? (
 									<button
 										type="button"
-										className="ghost icon-button quick-add-button"
+										className="create-button"
 										onClick={openCreateModal}
-										aria-label={getCreateAriaLabel(
-											createSection,
-											relationsView,
-											sectionLabel,
-										)}
+										aria-label={getCreateLabel(createSection, relationsView)}
+										title={getCreateLabel(createSection, relationsView)}
 									>
 										<IconPlus />
+										<span className="create-button-text">
+											{getCreateLabel(createSection, relationsView)}
+										</span>
 									</button>
 								) : null}
 							</div>
@@ -1377,12 +1376,8 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 					type="button"
 					className="fab"
 					onClick={openCreateModal}
-					aria-label={getCreateAriaLabel(
-						createSection,
-						relationsView,
-						sectionLabel,
-					)}
-					title={`${getCreateAriaLabel(createSection, relationsView, sectionLabel)} (C)`}
+					aria-label={getCreateLabel(createSection, relationsView)}
+					title={`${getCreateLabel(createSection, relationsView)} (C)`}
 				>
 					<IconPlus />
 				</button>

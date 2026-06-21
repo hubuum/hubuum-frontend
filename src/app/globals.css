@@ -453,6 +453,8 @@ button.sidebar-link-button {
 	align-items: center;
 	justify-content: space-between;
 	gap: 0.6rem;
+	container-type: inline-size;
+	container-name: topbar;
 }
 
 .topbar-left {
@@ -586,9 +588,38 @@ button.sidebar-link-button {
 	height: 1.1rem;
 }
 
-.quick-add-button {
-	width: 1.9rem;
-	height: 1.9rem;
+.create-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.4rem 0.7rem;
+	border-radius: 10px;
+	background: var(--accent);
+	color: #fff;
+	font-weight: 600;
+	font-size: 0.9rem;
+	white-space: nowrap;
+	flex: 0 0 auto;
+}
+
+.create-button svg {
+	width: 1.05rem;
+	height: 1.05rem;
+}
+
+.create-button-text {
+	white-space: nowrap;
+}
+
+/* Collapse the header create label when the topbar is tight.
+   The extended FAB remains the always-labeled affordance. */
+@container topbar (max-width: 560px) {
+	.create-button-text {
+		display: none;
+	}
+	.create-button {
+		padding: 0.4rem 0.5rem;
+	}
 }
 
 .mobile-only {
