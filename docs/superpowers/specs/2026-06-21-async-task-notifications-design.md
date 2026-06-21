@@ -90,10 +90,14 @@ No React, no I/O. Unit-tested with Vitest.
   recent-by-creation and therefore already present in `prev` as non-terminal, so its
   completion is caught reliably. Tasks absent from `prev` are not transitions (avoids
   toasting the load-time backlog). The caller skips the first poll (`prev` null).
-- `countUnread(myTasks, lastSeenAt)` → `{ unreadCount, hasUnreadFailure }` over the
-  terminal tasks in the list: unread = terminal with `finished_at` strictly after
-  `lastSeenAt`; `hasUnreadFailure` true if any unread task is `failed` or
-  `partially_succeeded`. `unreadCount` saturates at the window size (`50+`).
+- `countUnread(myTasks, lastSeenAt, pageFull)` → `{ unreadCount, hasUnreadFailure,
+  isSaturated }` over the terminal tasks in the (`created_at.desc`) list: unread =
+  terminal with `finished_at` strictly after `lastSeenAt`; `hasUnreadFailure` true if
+  any unread task is `failed` or `partially_succeeded`. `isSaturated` = `pageFull && the
+  oldest task in the window (the last element) is terminal and unread` — i.e. the unread
+  run reaches the end of the fetched window, so older unread tasks may exist beyond it.
+  `pageFull` is supplied by the caller as `page.tasks.length === limit` (50). The badge
+  renders `${unreadCount}+` when `isSaturated`, else `${unreadCount}`.
 - `toastForTransition(task)` → `{ message, type }` where `type` is `success`
   (succeeded), `error` (failed), or `info` (partially_succeeded / cancelled), and the
   message reads e.g. `Import #42 succeeded` / `Report #41 failed` (kind capitalized +
@@ -104,9 +108,18 @@ Types reuse `TaskRecord`/`TaskStatus`/`TaskKind` and `isTerminalTaskStatus` from
 
 ### 2. Current-user id resolution
 
-A cached React Query resolving the current user's numeric id by reusing the account
-page's approach: call `getApiV1IamUsers(...)` and match the row whose `username`
-equals the session username. Returns `number | null`.
+A cached React Query resolving the current user's numeric id: call
+`getApiV1IamUsers({ limit: 250 })` and match the row whose `username` equals the session
+username. Non-admins receive a **self-only** list (the endpoint is self-scoped for them
+— the account page already relies on this via its `users.length === 1` fallback), so the
+match is on the first page. Admins receive the full user list (default 100, **max
+250**); if the username is not found in the first page, **follow the `X-Next-Cursor`
+header and keep fetching until the username matches or pages are exhausted**. There is
+no `/me` endpoint and no username filter on `/iam/users` (confirmed against
+`openapi.json`), so cursor pagination is the only reliable lookup — this is a
+deliberate improvement over the account page's first-page-only match, which silently
+fails for admins beyond page 1. The resolved id is cached for the session (resolved
+once). Returns `number | null`; null → feature disabled (see Edge handling).
 
 Expose it as a reusable hook `useCurrentUserId(currentUsername)` (e.g.
 `src/lib/use-current-user-id.ts`) consumed by **both** `AppShell` and `TasksWorkspace`,
@@ -141,10 +154,11 @@ On each successful poll (with `mine = filterMine(page.tasks, myId)`):
   null (baseline / first poll).
 - Update `prevRef.current = mine`.
 
-Badge derivation from `countUnread(mine, lastSeenAt)` and the active count
+Badge derivation from `countUnread(mine, lastSeenAt, pageFull)` (with `pageFull =
+page.tasks.length === 50`) and the active count
 (`mine.filter((t) => !isTerminalTaskStatus(t.status)).length`):
-- `unreadCount > 0` → label = `unreadCount` (or `50+`), tone = `danger` if
-  `hasUnreadFailure` else `accent`.
+- `unreadCount > 0` → label = `isSaturated ? unreadCount + "+" : String(unreadCount)`,
+  tone = `danger` if `hasUnreadFailure` else `accent`.
 - else `activeCount > 0` → label = `activeCount`, tone `accent` (preserves today's
   in-progress indicator).
 - else no badge.
@@ -177,7 +191,7 @@ resolve myId (username→id, cached)
 poll: fetchTasks(submittedBy=myId, limit 50, sort created_at.desc)   every 5–30s
    │  mine = filterMine(page.tasks, myId)
    ├─ diffNewlyTerminal(prevRef, mine) ─> per transition: showToast(..., {href:/tasks/id})
-   ├─ countUnread(mine, lastSeenAt) ─> {unreadCount, hasUnreadFailure} ┐
+   ├─ countUnread(mine, lastSeenAt, pageFull) ─> {unreadCount, hasUnreadFailure, isSaturated} ┐
    └─ activeCount = mine.filter(non-terminal).length                   │
                                                                        ▼
                        badge: unread>0 ? unread(danger if fail) : activeCount
@@ -219,7 +233,9 @@ poll: fetchTasks(submittedBy=myId, limit 50, sort created_at.desc)   every 5–3
   `filterMine` (drops foreign `submitted_by`), `diffNewlyTerminal` (non-terminal→
   terminal detected; terminal→terminal ignored; non-terminal→non-terminal ignored;
   absent-in-prev ignored; baseline/empty prev), `countUnread` (boundary on `lastSeenAt`,
-  failure flag, missing `finished_at` fallback, `50+` saturation), and
+  failure flag, missing `finished_at` fallback, and `isSaturated`: true when
+  `pageFull` and the oldest window task is terminal+unread; false when not `pageFull`,
+  and false when `pageFull` but the oldest window task is read/non-terminal), and
   `toastForTransition` (type + message per status).
 - Wire `npm test` into `.github/workflows/ci.yml`.
 - Static: `npm run typecheck`, `npm run lint`, `npm run build` pass.
