@@ -93,9 +93,10 @@ No React, no I/O. Unit-tested with Vitest.
   `prev` are not transitions (avoids toasting the load-time backlog). The caller skips
   the first poll (`prev` null).
 - `countUnread(myTasks, lastSeenAt, pageFull)` → `{ unreadCount, hasUnreadFailure,
-  isSaturated }` over the terminal tasks in the list: unread = terminal with
-  `finished_at` strictly after `lastSeenAt`; `hasUnreadFailure` true if any unread task
-  is `failed` or `partially_succeeded`. `isSaturated = pageFull`, supplied by the caller
+  isSaturated }` over the terminal tasks in the list: unread = terminal whose
+  effective completion time `finished_at ?? started_at ?? created_at` is strictly after
+  `lastSeenAt` (the fallback covers terminal tasks missing `finished_at`);
+  `hasUnreadFailure` true if any unread task is `failed` or `partially_succeeded`. `isSaturated = pageFull`, supplied by the caller
   as `page.tasks.length === limit` (50). Rationale: when the page is full there are
   tasks beyond the newest-50 window that we never examined, so `unreadCount` is a
   **lower bound** — the window is `created_at`-ordered while unread is by `finished_at`,
