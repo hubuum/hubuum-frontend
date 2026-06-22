@@ -3224,3 +3224,9 @@ html[data-density="compact"] th,
 html[data-density="compact"] td {
 	padding: 0.3rem 0.5rem;
 }
+
+.toast-link {
+	color: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+}

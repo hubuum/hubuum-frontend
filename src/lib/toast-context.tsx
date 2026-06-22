@@ -10,14 +10,19 @@ import {
 
 type ToastType = "success" | "error" | "info";
 
+type ToastAction = {
+	href: string;
+};
+
 type Toast = {
 	id: string;
 	message: string;
 	type: ToastType;
+	action?: ToastAction;
 };
 
 type ToastContextValue = {
-	showToast: (message: string, type?: ToastType) => void;
+	showToast: (message: string, type?: ToastType, action?: ToastAction) => void;
 	toasts: Toast[];
 	removeToast: (id: string) => void;
 };
@@ -29,17 +34,20 @@ let toastIdCounter = 0;
 export function ToastProvider({ children }: { children: ReactNode }) {
 	const [toasts, setToasts] = useState<Toast[]>([]);
 
-	const showToast = useCallback((message: string, type: ToastType = "info") => {
-		const id = `toast-${++toastIdCounter}`;
-		const toast: Toast = { id, message, type };
+	const showToast = useCallback(
+		(message: string, type: ToastType = "info", action?: ToastAction) => {
+			const id = `toast-${++toastIdCounter}`;
+			const toast: Toast = { id, message, type, action };
 
-		setToasts((current) => [...current, toast]);
+			setToasts((current) => [...current, toast]);
 
-		// Auto-dismiss after 4 seconds
-		setTimeout(() => {
-			setToasts((current) => current.filter((t) => t.id !== id));
-		}, 4000);
-	}, []);
+			// Auto-dismiss after 4 seconds
+			setTimeout(() => {
+				setToasts((current) => current.filter((t) => t.id !== id));
+			}, 4000);
+		},
+		[],
+	);
 
 	const removeToast = useCallback((id: string) => {
 		setToasts((current) => current.filter((t) => t.id !== id));

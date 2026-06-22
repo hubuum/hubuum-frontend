@@ -9,6 +9,7 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "node scripts/start-standalone.mjs",
+		"test": "vitest run",
 		"lint": "biome lint .",
 		"typecheck": "next typegen && rm -rf .next/dev && tsc --noEmit",
 		"gen:api": "npx --yes orval@8.4.1 --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
@@ -42,6 +43,7 @@
 		"@types/node": "^25.9.2",
 		"@types/react": "^19.2.17",
 		"@types/react-dom": "^19.2.3",
-		"typescript": "^6.0.3"
+		"typescript": "^6.0.3",
+		"vitest": "^3.2.6"
 	}
 }

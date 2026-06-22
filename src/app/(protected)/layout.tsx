@@ -21,5 +21,9 @@ export default async function ProtectedLayout({
 	const session = await requireServerSession();
 	const canViewAdmin = await hasAdminAccess(session.token, correlationId);
 
-	return <AppShell canViewAdmin={canViewAdmin}>{children}</AppShell>;
+	return (
+		<AppShell canViewAdmin={canViewAdmin} currentUsername={session.username ?? null}>
+			{children}
+		</AppShell>
+	);
 }

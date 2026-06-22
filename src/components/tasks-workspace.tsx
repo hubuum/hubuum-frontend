@@ -10,6 +10,8 @@ import {
 	summarizeTaskActivity,
 	type TaskRecord,
 } from "@/lib/api/tasking";
+import { filterMine } from "@/lib/task-notifications";
+import { useCurrentUserId } from "@/lib/use-current-user-id";
 
 function parsePositiveInteger(value: string): number | null {
 	const parsed = Number.parseInt(value, 10);
@@ -42,17 +44,25 @@ function getTaskLabel(task: Pick<TaskRecord, "kind">): string {
 	return `${task.kind[0].toUpperCase()}${task.kind.slice(1)}`;
 }
 
-export function TasksWorkspace() {
+type TasksWorkspaceProps = {
+	currentUsername: string | null;
+};
+
+export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 	const router = useRouter();
+	const currentUserId = useCurrentUserId(currentUsername);
 	const [taskLookupInput, setTaskLookupInput] = useState("");
 	const issuedTasksQuery = useQuery({
-		queryKey: ["tasks", "workspace-list"],
+		queryKey: ["tasks", "workspace-list", currentUserId],
 		queryFn: async () => {
 			const page = await fetchTasks({
+				submittedBy: currentUserId ?? undefined,
 				limit: 50,
 				sort: "created_at.desc,id.desc",
 			});
-			return page.tasks;
+			return currentUserId != null
+				? filterMine(page.tasks, currentUserId)
+				: page.tasks;
 		},
 		refetchInterval: (query) => {
 			const hasActiveTasks = (query.state.data ?? []).some(
