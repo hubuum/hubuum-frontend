@@ -15,7 +15,13 @@ export type SelectionStateEventDetail = {
 	deleteHandler: (() => void) | null;
 };
 
+export type EditStateEventDetail = {
+	label: string;
+	editHandler: (() => void) | null;
+};
+
 export const OPEN_CREATE_EVENT = "hubuum:open-create";
 export const SELECTION_STATE_EVENT = "hubuum:selection-state";
+export const EDIT_STATE_EVENT = "hubuum:edit-state";
 export const DESELECT_ALL_EVENT = "hubuum:deselect-all";
 export const SELECT_ALL_EVENT = "hubuum:select-all";

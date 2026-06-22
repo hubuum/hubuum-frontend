@@ -3,7 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	FormEvent,
+	type KeyboardEvent as ReactKeyboardEvent,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { CreateModal } from "@/components/create-modal";
 import { JsonEditor } from "@/components/json-editor";
 import { TablePagination } from "@/components/table-pagination";
@@ -540,6 +547,29 @@ export function ObjectsExplorer() {
 		});
 	}
 
+	function onSubmitShortcut(event: ReactKeyboardEvent<HTMLFormElement>) {
+		if (
+			event.key !== "Enter" ||
+			!event.shiftKey ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey
+		) {
+			return;
+		}
+
+		const submitButton =
+			event.currentTarget.querySelector<HTMLButtonElement>(
+				"button[type='submit']:not(:disabled)",
+			);
+		if (!submitButton) {
+			return;
+		}
+
+		event.preventDefault();
+		event.currentTarget.requestSubmit(submitButton);
+	}
+
 	if (classesQuery.isLoading) {
 		return <div className="card">Loading class options...</div>;
 	}
@@ -587,7 +617,11 @@ export function ObjectsExplorer() {
 
 	function renderCreateObjectForm() {
 		return (
-			<form className="stack" onSubmit={onSubmit}>
+			<form
+				className="stack"
+				onSubmit={onSubmit}
+				onKeyDownCapture={onSubmitShortcut}
+			>
 				<div className="form-grid">
 					<label className="control-field">
 						<span>Class</span>
@@ -602,8 +636,7 @@ export function ObjectsExplorer() {
 							) : null}
 							{classes.map((classItem) => (
 								<option key={classItem.id} value={classItem.id}>
-									{classItem.namespace.name} / {classItem.name} (#{classItem.id}
-									)
+									{classItem.name} (#{classItem.id})
 								</option>
 							))}
 						</select>

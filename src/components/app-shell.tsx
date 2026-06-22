@@ -32,6 +32,8 @@ import { useCurrentUserId } from "@/lib/use-current-user-id";
 import {
 	type CreateSection,
 	DESELECT_ALL_EVENT,
+	EDIT_STATE_EVENT,
+	type EditStateEventDetail,
 	OPEN_CREATE_EVENT,
 	SELECT_ALL_EVENT,
 	SELECTION_STATE_EVENT,
@@ -457,6 +459,17 @@ function IconDelete() {
 	);
 }
 
+function IconEdit() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="m4 16.8 8.9-8.9 3.2 3.2-8.9 8.9H4Zm10-10 1.8-1.8a1.8 1.8 0 0 1 2.5 0l.7.7a1.8 1.8 0 0 1 0 2.5l-1.8 1.8Z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
 const workspaceLinks: NavItem[] = [
 	{
 		href: "/app",
@@ -630,6 +643,8 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 	const [searchInput, setSearchInput] = useState("");
 	const [selectionCount, setSelectionCount] = useState(0);
 	const [deleteHandler, setDeleteHandler] = useState<(() => void) | null>(null);
+	const [editLabel, setEditLabel] = useState("Edit item");
+	const [editHandler, setEditHandler] = useState<(() => void) | null>(null);
 	const [isKeyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
 	const goToShortcutTimerRef = useRef<number | null>(null);
 	const userMenuRef = useRef<HTMLDivElement | null>(null);
@@ -872,6 +887,14 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 			if (event.key === "c" || event.key === "C") {
 				event.preventDefault();
 				openCreateModal();
+				return;
+			}
+
+			// "E" to edit the current item
+			if ((event.key === "e" || event.key === "E") && editHandler) {
+				event.preventDefault();
+				editHandler();
+				return;
 			}
 
 			// "D" to delete selected items
@@ -890,6 +913,7 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 	}, [
 		selectionCount,
 		deleteHandler,
+		editHandler,
 		openCreateModal,
 		startGoToShortcut,
 		navigateGoToShortcut,
@@ -915,6 +939,25 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		window.addEventListener(SELECTION_STATE_EVENT, onSelectionStateChange);
 		return () =>
 			window.removeEventListener(SELECTION_STATE_EVENT, onSelectionStateChange);
+	}, []);
+
+	useEffect(() => {
+		const onEditStateChange = (event: Event) => {
+			const customEvent = event as CustomEvent<EditStateEventDetail>;
+			const label = customEvent.detail?.label ?? "Edit item";
+			const handler = customEvent.detail?.editHandler;
+
+			setEditLabel(label);
+
+			if (handler) {
+				setEditHandler(() => handler);
+			} else {
+				setEditHandler(null);
+			}
+		};
+
+		window.addEventListener(EDIT_STATE_EVENT, onEditStateChange);
+		return () => window.removeEventListener(EDIT_STATE_EVENT, onEditStateChange);
 	}, []);
 
 	useEffect(() => {
@@ -1489,6 +1532,17 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 					{selectionCount > 1 ? (
 						<span className="fab-badge">{selectionCount}</span>
 					) : null}
+				</button>
+			) : editHandler ? (
+				<button
+					type="button"
+					className="fab fab--extended"
+					onClick={editHandler}
+					aria-label={editLabel}
+					title={`${editLabel} (E)`}
+				>
+					<IconEdit />
+					<span className="fab-text">{editLabel}</span>
 				</button>
 			) : createSection ? (
 				<button

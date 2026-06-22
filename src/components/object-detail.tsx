@@ -3,7 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import {
+	FormEvent,
+	type KeyboardEvent as ReactKeyboardEvent,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { JsonEditor } from "@/components/json-editor";
 import { JsonViewer } from "@/components/json-viewer";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
@@ -28,6 +35,10 @@ import type {
 	Namespace,
 	UpdateHubuumObject,
 } from "@/lib/api/generated/models";
+import {
+	EDIT_STATE_EVENT,
+	type EditStateEventDetail,
+} from "@/lib/create-events";
 
 type ObjectDetailProps = {
 	classId: number;
@@ -37,6 +48,13 @@ type ObjectDetailProps = {
 };
 
 type EditableField = "name" | "description" | "namespace" | "data";
+
+const ALL_EDITABLE_FIELDS: EditableField[] = [
+	"name",
+	"description",
+	"namespace",
+	"data",
+];
 
 async function fetchObject(
 	classId: number,
@@ -453,6 +471,51 @@ export function ObjectDetail({
 		},
 	});
 
+	const currentUserGroups = currentUserGroupsQuery.data ?? [];
+	const permissionEntries = namespacePermissionsQuery.data ?? [];
+	const canCheckPermissionMembership = Boolean(currentUsername);
+	const permissionCheckPending =
+		!canEditAnything &&
+		canCheckPermissionMembership &&
+		(namespacePermissionsQuery.isLoading || currentUserGroupsQuery.isLoading);
+	const canEditObject =
+		Boolean(objectQuery.data) &&
+		(canEditAnything ||
+			(canCheckPermissionMembership &&
+				canCurrentUserUpdateObject(permissionEntries, currentUserGroups)));
+	const hasActiveEdits = editingFields.length > 0;
+	const isSavingOrDeleting =
+		updateMutation.isPending || deleteMutation.isPending;
+	const beginGlobalEdit = useCallback(() => {
+		if (!canEditObject || isSavingOrDeleting) {
+			return;
+		}
+
+		setFormError(null);
+		setFormSuccess(null);
+		setEditingFields(ALL_EDITABLE_FIELDS);
+	}, [canEditObject, isSavingOrDeleting]);
+
+	useEffect(() => {
+		const detail: EditStateEventDetail = {
+			label: "Edit object",
+			editHandler:
+				canEditObject && !hasActiveEdits && !isSavingOrDeleting
+					? beginGlobalEdit
+					: null,
+		};
+
+		window.dispatchEvent(new CustomEvent(EDIT_STATE_EVENT, { detail }));
+
+		return () => {
+			window.dispatchEvent(
+				new CustomEvent(EDIT_STATE_EVENT, {
+					detail: { label: "Edit object", editHandler: null },
+				}),
+			);
+		};
+	}, [beginGlobalEdit, canEditObject, hasActiveEdits, isSavingOrDeleting]);
+
 	function resetFieldDraft(field: EditableField, objectData: HubuumObject) {
 		if (field === "name") {
 			setName(objectData.name);
@@ -471,6 +534,39 @@ export function ObjectDetail({
 
 		setDataInput(stringifyJson(objectData.data));
 	}
+
+	const cancelActiveEdits = useCallback(() => {
+		const objectData = objectQuery.data;
+		if (!objectData || editingFields.length === 0) {
+			return;
+		}
+
+		setName(objectData.name);
+		setDescription(objectData.description ?? "");
+		setNamespaceId(String(objectData.namespace_id));
+		setDataInput(stringifyJson(objectData.data));
+		setEditingFields([]);
+		setFormError(null);
+		setFormSuccess(null);
+	}, [editingFields.length, objectQuery.data]);
+
+	useEffect(() => {
+		if (!hasActiveEdits) {
+			return;
+		}
+
+		function onEscape(event: KeyboardEvent) {
+			if (event.key !== "Escape") {
+				return;
+			}
+
+			event.preventDefault();
+			cancelActiveEdits();
+		}
+
+		document.addEventListener("keydown", onEscape);
+		return () => document.removeEventListener("keydown", onEscape);
+	}, [cancelActiveEdits, hasActiveEdits]);
 
 	function toggleFieldEditing(field: EditableField, objectData: HubuumObject) {
 		setFormError(null);
@@ -520,6 +616,36 @@ export function ObjectDetail({
 		};
 
 		updateMutation.mutate(payload);
+	}
+
+	function onSubmitShortcut(event: ReactKeyboardEvent<HTMLFormElement>) {
+		if (event.key === "Escape" && hasActiveEdits) {
+			event.preventDefault();
+			event.stopPropagation();
+			cancelActiveEdits();
+			return;
+		}
+
+		if (
+			event.key !== "Enter" ||
+			!event.shiftKey ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey
+		) {
+			return;
+		}
+
+		const submitButton =
+			event.currentTarget.querySelector<HTMLButtonElement>(
+				"button[type='submit']:not(:disabled)",
+			);
+		if (!submitButton) {
+			return;
+		}
+
+		event.preventDefault();
+		event.currentTarget.requestSubmit(submitButton);
 	}
 
 	function onDelete() {
@@ -597,20 +723,6 @@ export function ObjectDetail({
 	const ignoredClassOptions = (classesQuery.data ?? [])
 		.filter((item) => item.id !== objectData.hubuum_class_id)
 		.sort((left, right) => left.name.localeCompare(right.name));
-	const currentUserGroups = currentUserGroupsQuery.data ?? [];
-	const permissionEntries = namespacePermissionsQuery.data ?? [];
-	const canCheckPermissionMembership = Boolean(currentUsername);
-	const permissionCheckPending =
-		!canEditAnything &&
-		canCheckPermissionMembership &&
-		(namespacePermissionsQuery.isLoading || currentUserGroupsQuery.isLoading);
-	const canEditObject =
-		canEditAnything ||
-		(canCheckPermissionMembership &&
-			canCurrentUserUpdateObject(permissionEntries, currentUserGroups));
-	const hasActiveEdits = editingFields.length > 0;
-	const isSavingOrDeleting =
-		updateMutation.isPending || deleteMutation.isPending;
 	const namespaceLabel =
 		namespaceNameById.get(objectData.namespace_id) ??
 		`Namespace #${objectData.namespace_id}`;
@@ -775,7 +887,11 @@ export function ObjectDetail({
 				</h2>
 			</header>
 
-			<form className="card stack" onSubmit={onSubmit}>
+			<form
+				className="card stack"
+				onSubmit={onSubmit}
+				onKeyDownCapture={onSubmitShortcut}
+			>
 				<div className="object-meta-strip">
 					<div className="object-meta-item">
 						<span className="object-meta-label">Class</span>
@@ -809,180 +925,146 @@ export function ObjectDetail({
 				<div className="muted">{editAccessMessage}</div>
 
 				<div className="object-detail-list">
-					<section
-						className={`object-detail-row${editingFields.includes("name") ? " is-editing" : ""}`}
-					>
-						<div className="object-detail-label">Name</div>
-						<div className="object-detail-body">
-							{editingFields.includes("name") ? (
-								<label className="control-field">
-									<span className="sr-only">Object name</span>
-									<input
-										required
-										value={name}
-										onChange={(event) => setName(event.target.value)}
-									/>
-								</label>
-							) : canEditObject ? (
-								<button
-									type="button"
-									className="object-inline-edit"
-									onClick={() => toggleFieldEditing("name", objectData)}
-									disabled={isSavingOrDeleting}
-								>
-									<span className="object-detail-value">
-										{renderFieldText(objectData.name)}
-									</span>
-									<span className="object-inline-edit-icon">
-										<InlineEditIcon />
-									</span>
-								</button>
-							) : (
-								<div className="object-detail-value">
-									{renderFieldText(objectData.name)}
-								</div>
-							)}
-						</div>
-						<div className="object-detail-row-actions">
-							{canEditObject && editingFields.includes("name") ? (
-								<button
-									type="button"
-									className="ghost"
-									onClick={() => toggleFieldEditing("name", objectData)}
-									disabled={isSavingOrDeleting}
-								>
-									Cancel
-								</button>
-							) : null}
-						</div>
-					</section>
-
-					<section
-						className={`object-detail-row${editingFields.includes("description") ? " is-editing" : ""}`}
-					>
-						<div className="object-detail-label">Description</div>
-						<div className="object-detail-body">
-							{editingFields.includes("description") ? (
-								<label className="control-field">
-									<span className="sr-only">Object description</span>
-									<input
-										required
-										value={description}
-										onChange={(event) => setDescription(event.target.value)}
-									/>
-								</label>
-							) : canEditObject ? (
-								<button
-									type="button"
-									className="object-inline-edit"
-									onClick={() => toggleFieldEditing("description", objectData)}
-									disabled={isSavingOrDeleting}
-								>
-									<span className="object-detail-value">
-										{renderFieldText(objectData.description ?? "")}
-									</span>
-									<span className="object-inline-edit-icon">
-										<InlineEditIcon />
-									</span>
-								</button>
-							) : (
-								<div className="object-detail-value">
-									{renderFieldText(objectData.description ?? "")}
-								</div>
-							)}
-						</div>
-						<div className="object-detail-row-actions">
-							{canEditObject && editingFields.includes("description") ? (
-								<button
-									type="button"
-									className="ghost"
-									onClick={() => toggleFieldEditing("description", objectData)}
-									disabled={isSavingOrDeleting}
-								>
-									Cancel
-								</button>
-							) : null}
-						</div>
-					</section>
-
-					<section
-						className={`object-detail-row${editingFields.includes("namespace") ? " is-editing" : ""}`}
-					>
-						<div className="object-detail-label">Namespace</div>
-						<div className="object-detail-body">
-							{editingFields.includes("namespace") ? (
-								<div className="control-field">
-									<label htmlFor="object-detail-namespace" className="sr-only">
-										Namespace
-									</label>
-									{hasNamespaceOptions ? (
-										<select
-											id="object-detail-namespace"
-											required
-											value={hasNamespaceSelection ? namespaceId : ""}
-											onChange={(event) => setNamespaceId(event.target.value)}
-										>
-											{!hasNamespaceSelection ? (
-												<option value="">Select a namespace...</option>
-											) : null}
-											{namespaces.map((namespace) => (
-												<option key={namespace.id} value={namespace.id}>
-													{namespace.name} (#{namespace.id})
-												</option>
-											))}
-										</select>
-									) : (
+					<div className="object-detail-compact-grid">
+						<section
+							className={`object-detail-row object-detail-row--compact${editingFields.includes("name") ? " is-editing" : ""}`}
+						>
+							<div className="object-detail-label">Name</div>
+							<div className="object-detail-body">
+								{editingFields.includes("name") ? (
+									<label className="control-field">
+										<span className="sr-only">Object name</span>
 										<input
-											id="object-detail-namespace"
 											required
-											type="number"
-											min={1}
-											value={namespaceId}
-											onChange={(event) => setNamespaceId(event.target.value)}
-											placeholder={
-												namespacesQuery.isLoading
-													? "Loading namespaces..."
-													: "Enter namespace ID"
-											}
-											disabled={namespacesQuery.isLoading}
+											value={name}
+											onChange={(event) => setName(event.target.value)}
 										/>
-									)}
-								</div>
-							) : canEditObject ? (
-								<button
-									type="button"
-									className="object-inline-edit"
-									onClick={() => toggleFieldEditing("namespace", objectData)}
-									disabled={isSavingOrDeleting}
-								>
-									<span className="object-detail-value">
+									</label>
+								) : canEditObject ? (
+									<button
+										type="button"
+										className="object-inline-edit"
+										onClick={() => toggleFieldEditing("name", objectData)}
+										disabled={isSavingOrDeleting}
+									>
+										<span className="object-detail-value">
+											{renderFieldText(objectData.name)}
+										</span>
+										<span className="object-inline-edit-icon">
+											<InlineEditIcon />
+										</span>
+									</button>
+								) : (
+									<div className="object-detail-value">
+										{renderFieldText(objectData.name)}
+									</div>
+								)}
+							</div>
+						</section>
+
+						<section
+							className={`object-detail-row object-detail-row--compact${editingFields.includes("description") ? " is-editing" : ""}`}
+						>
+							<div className="object-detail-label">Description</div>
+							<div className="object-detail-body">
+								{editingFields.includes("description") ? (
+									<label className="control-field">
+										<span className="sr-only">Object description</span>
+										<input
+											required
+											value={description}
+											onChange={(event) => setDescription(event.target.value)}
+										/>
+									</label>
+								) : canEditObject ? (
+									<button
+										type="button"
+										className="object-inline-edit"
+										onClick={() => toggleFieldEditing("description", objectData)}
+										disabled={isSavingOrDeleting}
+									>
+										<span className="object-detail-value">
+											{renderFieldText(objectData.description ?? "")}
+										</span>
+										<span className="object-inline-edit-icon">
+											<InlineEditIcon />
+										</span>
+									</button>
+								) : (
+									<div className="object-detail-value">
+										{renderFieldText(objectData.description ?? "")}
+									</div>
+								)}
+							</div>
+						</section>
+
+						<section
+							className={`object-detail-row object-detail-row--compact${editingFields.includes("namespace") ? " is-editing" : ""}`}
+						>
+							<div className="object-detail-label">Namespace</div>
+							<div className="object-detail-body">
+								{editingFields.includes("namespace") ? (
+									<div className="control-field">
+										<label htmlFor="object-detail-namespace" className="sr-only">
+											Namespace
+										</label>
+										{hasNamespaceOptions ? (
+											<select
+												id="object-detail-namespace"
+												required
+												value={hasNamespaceSelection ? namespaceId : ""}
+												onChange={(event) => setNamespaceId(event.target.value)}
+											>
+												{!hasNamespaceSelection ? (
+													<option value="">Select a namespace...</option>
+												) : null}
+												{namespaces.map((namespace) => (
+													<option key={namespace.id} value={namespace.id}>
+														{namespace.name} (#{namespace.id})
+													</option>
+												))}
+											</select>
+										) : (
+											<input
+												id="object-detail-namespace"
+												required
+												type="number"
+												min={1}
+												value={namespaceId}
+												onChange={(event) => setNamespaceId(event.target.value)}
+												placeholder={
+													namespacesQuery.isLoading
+														? "Loading namespaces..."
+														: "Enter namespace ID"
+												}
+												disabled={namespacesQuery.isLoading}
+											/>
+										)}
+									</div>
+								) : canEditObject ? (
+									<button
+										type="button"
+										className="object-inline-edit"
+										onClick={() => toggleFieldEditing("namespace", objectData)}
+										disabled={isSavingOrDeleting}
+									>
+										<span className="object-detail-value">
+											{namespaceLabel}{" "}
+											<span className="muted">#{objectData.namespace_id}</span>
+										</span>
+										<span className="object-inline-edit-icon">
+											<InlineEditIcon />
+										</span>
+									</button>
+								) : (
+									<div className="object-detail-value">
 										{namespaceLabel}{" "}
 										<span className="muted">#{objectData.namespace_id}</span>
-									</span>
-									<span className="object-inline-edit-icon">
-										<InlineEditIcon />
-									</span>
-								</button>
-							) : (
-								<div className="object-detail-value">
-									{namespaceLabel}{" "}
-									<span className="muted">#{objectData.namespace_id}</span>
-								</div>
-							)}
-						</div>
-						<div className="object-detail-row-actions">
-							{canEditObject && editingFields.includes("namespace") ? (
-								<button
-									type="button"
-									className="ghost"
-									onClick={() => toggleFieldEditing("namespace", objectData)}
-									disabled={isSavingOrDeleting}
-								>
-									Cancel
-								</button>
-							) : null}
-						</div>
-					</section>
+									</div>
+								)}
+							</div>
+						</section>
+					</div>
 
 					<section
 						className={`object-detail-row object-detail-row--data${editingFields.includes("data") ? " is-editing" : ""}`}
@@ -1011,14 +1093,14 @@ export function ObjectDetail({
 							)}
 						</div>
 						<div className="object-detail-row-actions">
-							{canEditObject ? (
+							{canEditObject && !editingFields.includes("data") ? (
 								<button
 									type="button"
 									className="ghost"
 									onClick={() => toggleFieldEditing("data", objectData)}
 									disabled={isSavingOrDeleting}
 								>
-									{editingFields.includes("data") ? "Cancel" : "Edit"}
+									Edit
 								</button>
 							) : null}
 						</div>
@@ -1048,9 +1130,19 @@ export function ObjectDetail({
 				<div className="form-actions form-actions--spread">
 					{canEditObject ? (
 						hasActiveEdits ? (
-							<button type="submit" disabled={updateMutation.isPending}>
-								{updateMutation.isPending ? "Saving..." : "Save changes"}
-							</button>
+							<div className="form-actions">
+								<button type="submit" disabled={updateMutation.isPending}>
+									{updateMutation.isPending ? "Saving..." : "Save changes"}
+								</button>
+								<button
+									type="button"
+									className="ghost"
+									onClick={cancelActiveEdits}
+									disabled={updateMutation.isPending}
+								>
+									Cancel
+								</button>
+							</div>
 						) : (
 							<div className="muted">
 								Toggle edit on for a field to make changes.
@@ -1059,14 +1151,16 @@ export function ObjectDetail({
 					) : (
 						<div className="muted">This object is currently read-only.</div>
 					)}
-					<button
-						type="button"
-						className="danger"
-						onClick={onDelete}
-						disabled={deleteMutation.isPending}
-					>
-						{deleteMutation.isPending ? "Deleting..." : "Delete object"}
-					</button>
+					{hasActiveEdits ? null : (
+						<button
+							type="button"
+							className="danger"
+							onClick={onDelete}
+							disabled={deleteMutation.isPending}
+						>
+							{deleteMutation.isPending ? "Deleting..." : "Delete object"}
+						</button>
+					)}
 				</div>
 			</form>
 

@@ -1101,6 +1101,24 @@ body.modal-open {
 	border-top: 0;
 }
 
+.object-detail-compact-grid {
+	display: grid;
+	grid-template-columns: minmax(12rem, 1fr) minmax(16rem, 1.35fr) minmax(12rem, 1fr);
+}
+
+.object-detail-compact-grid .object-detail-row {
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: center;
+	min-width: 0;
+	border-top: 0;
+	border-left: 1px solid var(--line);
+	padding-block: 0.72rem;
+}
+
+.object-detail-compact-grid .object-detail-row:first-child {
+	border-left: 0;
+}
+
 .object-detail-row.is-editing {
 	background: color-mix(in oklab, var(--accent-soft) 40%, var(--card));
 }
@@ -1115,6 +1133,10 @@ body.modal-open {
 	font-weight: 700;
 	line-height: 1.4;
 	padding-top: 0.1rem;
+}
+
+.object-detail-compact-grid .object-detail-label {
+	padding-top: 0;
 }
 
 .object-detail-body {
@@ -1362,6 +1384,19 @@ body.modal-open {
 }
 
 @media (max-width: 720px) {
+	.object-detail-compact-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.object-detail-compact-grid .object-detail-row {
+		border-left: 0;
+		border-top: 1px solid var(--line);
+	}
+
+	.object-detail-compact-grid .object-detail-row:first-child {
+		border-top: 0;
+	}
+
 	.object-detail-row {
 		grid-template-columns: 1fr;
 		gap: 0.55rem;
