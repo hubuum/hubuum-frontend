@@ -46,7 +46,7 @@ import {
 	type UpdateReportTemplate,
 	updateReportTemplate,
 } from "@/lib/api/reporting";
-import { isTerminalTaskStatus } from "@/lib/api/tasking";
+import { fetchTasks, isTerminalTaskStatus } from "@/lib/api/tasking";
 import {
 	buildIncludeFromRows,
 	includeAliasesOf,
@@ -364,7 +364,7 @@ function getReportResultView(result: ReportExecutionResult): ReportResultView {
 
 function downloadReportResult(
 	result: ReportExecutionResult,
-	scopeKind: ReportScopeKind,
+	filenameStem: string,
 	body: string,
 ) {
 	const extensionByType: Record<ReportContentType, string> = {
@@ -382,7 +382,7 @@ function downloadReportResult(
 	const anchor = document.createElement("a");
 	const timestamp = new Date().toISOString().replaceAll(":", "-");
 	anchor.href = url;
-	anchor.download = `report-${scopeKind}-${timestamp}.${extensionByType[result.contentType]}`;
+	anchor.download = `${filenameStem}-${timestamp}.${extensionByType[result.contentType]}`;
 	document.body.append(anchor);
 	anchor.click();
 	anchor.remove();
@@ -459,6 +459,9 @@ export function ReportsWorkspace() {
 	const [lastResult, setLastResult] = useState<ReportExecutionResult | null>(null);
 	const [resultActionFeedback, setResultActionFeedback] =
 		useState<ResultActionFeedback>(null);
+	const [reportRunFeedback, setReportRunFeedback] =
+		useState<ResultActionFeedback>(null);
+	const [reportRunActionId, setReportRunActionId] = useState<number | null>(null);
 	const [builderFilters, setBuilderFilters] = useState<QueryBuilderFilter[]>([]);
 	const [builderSorts, setBuilderSorts] = useState<QueryBuilderSort[]>([]);
 	const [includeRows, setIncludeRows] = useState<IncludeBuilderRow[]>([]);
@@ -482,6 +485,16 @@ export function ReportsWorkspace() {
 		queryKey: ["report-objects", parsedClassId],
 		queryFn: () => fetchObjectsByClass(parsedClassId ?? 0),
 		enabled: parsedClassId !== null,
+	});
+	const reportRunsQuery = useQuery({
+		queryKey: ["report-runs", "recent"],
+		queryFn: () =>
+			fetchTasks({
+				kind: "report",
+				status: "succeeded",
+				limit: 10,
+				sort: "created_at.desc,id.desc",
+			}),
 	});
 	const reportTaskQuery = useQuery({
 		queryKey: ["report-task", lastReportTask?.id ?? null],
@@ -527,6 +540,13 @@ export function ReportsWorkspace() {
 	const lastResultView = useMemo(
 		() => (lastResult ? getReportResultView(lastResult) : null),
 		[lastResult],
+	);
+	const successfulReportRuns = useMemo(
+		() =>
+			(reportRunsQuery.data?.tasks ?? []).filter(
+				(task) => task.details?.report?.output_available === true,
+			),
+		[reportRunsQuery.data?.tasks],
 	);
 	const activeReportTask = reportTaskQuery.data ?? lastReportTask;
 	const reportDetails = activeReportTask?.details?.report ?? null;
@@ -714,6 +734,7 @@ export function ReportsWorkspace() {
 			setLastReportTask(task);
 			setLastResult(null);
 			setResultActionFeedback(null);
+			void queryClient.invalidateQueries({ queryKey: ["report-runs"] });
 		},
 		onError: (error) => {
 			setLastResult(null);
@@ -731,6 +752,7 @@ export function ReportsWorkspace() {
 			setLastReportTask(task);
 			setLastResult(null);
 			setResultActionFeedback(null);
+			void queryClient.invalidateQueries({ queryKey: ["report-runs"] });
 		},
 		onError: (error) => {
 			setLastResult(null);
@@ -758,6 +780,76 @@ export function ReportsWorkspace() {
 	function closeEditor() {
 		setEditorState(null);
 		setEditorError(null);
+	}
+
+	function loadReportRun(task: TaskResponse) {
+		setRunnerError(null);
+		setResultActionFeedback(null);
+		setLastResult(null);
+		setLastReportTask(task);
+	}
+
+	async function viewReportRunInBrowser(task: TaskResponse) {
+		const tab = window.open("", "_blank");
+		if (!tab) {
+			setReportRunFeedback({
+				tone: "danger",
+				message: "Could not open a new browser tab for the report output.",
+			});
+			return;
+		}
+
+		tab.document.title = `Report ${task.id}`;
+		tab.document.body.textContent = "Loading report output...";
+
+		setReportRunActionId(task.id);
+		setReportRunFeedback(null);
+		try {
+			const result = await fetchReportOutput(
+				task.id,
+				task.details?.report?.output_content_type,
+			);
+			const text = getResultText(result);
+			const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+			const url = URL.createObjectURL(blob);
+			tab.location.href = url;
+			window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+		} catch (error) {
+			tab.close();
+			setReportRunFeedback({
+				tone: "danger",
+				message:
+					error instanceof Error
+						? error.message
+						: "Failed to open report output.",
+			});
+		} finally {
+			setReportRunActionId(null);
+		}
+	}
+
+	async function downloadReportRun(task: TaskResponse) {
+		const contentType = task.details?.report?.output_content_type;
+		setReportRunActionId(task.id);
+		setReportRunFeedback(null);
+		try {
+			const result = await fetchReportOutput(task.id, contentType);
+			downloadReportResult(result, `report-${task.id}`, getResultText(result));
+			setReportRunFeedback({
+				tone: "success",
+				message: `Report #${task.id} downloaded.`,
+			});
+		} catch (error) {
+			setReportRunFeedback({
+				tone: "danger",
+				message:
+					error instanceof Error
+						? error.message
+						: "Failed to download report output.",
+			});
+		} finally {
+			setReportRunActionId(null);
+		}
 	}
 
 	function addEditorIncludeRow() {
@@ -1588,6 +1680,112 @@ export function ReportsWorkspace() {
 					<article className="card stack panel-card">
 						<div className="panel-header">
 							<div className="stack action-card-header">
+								<h3>Recent report runs</h3>
+								<p className="muted">
+									Open completed report output while the backend still has it
+									stored.
+								</p>
+							</div>
+						</div>
+
+						{reportRunsQuery.isLoading ? (
+							<div className="muted">Loading recent report runs...</div>
+						) : null}
+						{reportRunsQuery.isError ? (
+							<div className="error-banner">
+								Failed to load recent report runs.{" "}
+								{reportRunsQuery.error instanceof Error
+									? reportRunsQuery.error.message
+									: "Unknown error"}
+							</div>
+						) : null}
+						{!reportRunsQuery.isLoading &&
+						!reportRunsQuery.isError &&
+						successfulReportRuns.length === 0 ? (
+							<div className="empty-state">
+								No successful report runs with stored output found.
+							</div>
+						) : null}
+						{reportRunFeedback ? (
+							<div
+								className={
+									reportRunFeedback.tone === "danger"
+										? "error-banner"
+										: "info-banner"
+								}
+							>
+								{reportRunFeedback.message}
+							</div>
+						) : null}
+						{successfulReportRuns.length ? (
+							<div className="table-wrap">
+								<table>
+									<thead>
+										<tr>
+											<th>Run</th>
+											<th>Created</th>
+											<th>Type</th>
+											<th />
+										</tr>
+									</thead>
+									<tbody>
+										{successfulReportRuns.map((task) => {
+											const taskReportDetails = task.details?.report ?? null;
+											const isActionPending = reportRunActionId === task.id;
+											return (
+												<tr key={task.id}>
+													<td>
+														<div className="stack table-cell-stack">
+															<strong>Report #{task.id}</strong>
+															<span className="muted">
+																{taskReportDetails?.template_name ??
+																	task.summary ??
+																	"Ad-hoc report"}
+															</span>
+														</div>
+													</td>
+													<td>{formatTimestamp(task.created_at)}</td>
+													<td>{taskReportDetails?.output_content_type ?? "available"}</td>
+													<td>
+														<div className="action-row">
+															<button
+																type="button"
+																className="ghost"
+																onClick={() => loadReportRun(task)}
+																disabled={isActionPending}
+															>
+																Preview
+															</button>
+															<button
+																type="button"
+																className="ghost"
+																onClick={() => viewReportRunInBrowser(task)}
+																disabled={isActionPending}
+															>
+																Open text
+															</button>
+															<button
+																type="button"
+																className="ghost"
+																onClick={() => downloadReportRun(task)}
+																disabled={isActionPending}
+															>
+																Download
+															</button>
+														</div>
+													</td>
+												</tr>
+											);
+										})}
+									</tbody>
+								</table>
+							</div>
+						) : null}
+					</article>
+
+					<article className="card stack panel-card">
+						<div className="panel-header">
+							<div className="stack action-card-header">
 								<h3>Result console</h3>
 								<p className="muted">
 									Reports run as background tasks. When the task finishes, the
@@ -1698,7 +1896,7 @@ export function ReportsWorkspace() {
 											onClick={() =>
 												downloadReportResult(
 													lastResult,
-													scopeKind,
+													`report-${scopeKind}`,
 													lastResultView.fullText,
 												)
 											}

@@ -15,7 +15,6 @@ import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { JsonViewer } from "@/components/json-viewer";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
-import { PinButton } from "@/components/pin-button";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
@@ -39,6 +38,7 @@ import type {
 import {
 	EDIT_STATE_EVENT,
 	type EditStateEventDetail,
+	TITLE_STATE_EVENT,
 } from "@/lib/create-events";
 
 type ObjectDetailProps = {
@@ -517,6 +517,48 @@ export function ObjectDetail({
 		};
 	}, [beginGlobalEdit, canEditObject, hasActiveEdits, isSavingOrDeleting]);
 
+	useEffect(() => {
+		const objectData = objectQuery.data;
+		if (!objectData) {
+			return;
+		}
+
+		const currentClass = (classesQuery.data ?? []).find(
+			(item) => item.id === objectData.hubuum_class_id,
+		);
+		const title = currentClass
+			? `${currentClass.name} / ${objectData.name}`
+			: objectData.name;
+
+		window.dispatchEvent(
+			new CustomEvent(TITLE_STATE_EVENT, {
+				detail: {
+					title,
+					pin: {
+						type: "object",
+						id: objectData.id,
+						name: objectData.name,
+						namespaceId: objectData.namespace_id,
+						namespaceName:
+							(namespacesQuery.data ?? []).find(
+								(namespace) => namespace.id === objectData.namespace_id,
+							)?.name ?? "Namespace",
+						classId: objectData.hubuum_class_id,
+						className: currentClass?.name,
+					},
+				},
+			}),
+		);
+
+		return () => {
+			window.dispatchEvent(
+				new CustomEvent(TITLE_STATE_EVENT, {
+					detail: { title: null, pin: null },
+				}),
+			);
+		};
+	}, [classesQuery.data, namespacesQuery.data, objectQuery.data]);
+
 	function resetFieldDraft(field: EditableField, objectData: HubuumObject) {
 		if (field === "name") {
 			setName(objectData.name);
@@ -652,7 +694,8 @@ export function ObjectDetail({
 	function onDelete() {
 		setFormError(null);
 		setFormSuccess(null);
-		if (!window.confirm(`Delete object #${objectId}?`)) {
+		const objectLabel = objectQuery.data?.name ?? "this object";
+		if (!window.confirm(`Delete ${objectLabel}?`)) {
 			return;
 		}
 
@@ -683,7 +726,6 @@ export function ObjectDetail({
 		(classesQuery.data ?? []).find(
 			(item) => item.id === objectData.hubuum_class_id,
 		) ?? null;
-	const className = currentClass?.name ?? null;
 	const hasNamespaceOptions = namespaces.length > 0;
 	const hasNamespaceSelection = namespaces.some(
 		(namespace) => String(namespace.id) === namespaceId,
@@ -726,9 +768,9 @@ export function ObjectDetail({
 		.sort((left, right) => left.name.localeCompare(right.name));
 	const namespaceLabel =
 		namespaceNameById.get(objectData.namespace_id) ??
-		`Namespace #${objectData.namespace_id}`;
+		"Namespace";
 	const editAccessMessage = canEditAnything
-		? "Admin access lets you edit this object regardless of namespace-level UpdateObject grants."
+		? null
 		: permissionCheckPending
 			? "Checking whether you can update this object..."
 			: canEditObject
@@ -740,7 +782,7 @@ export function ObjectDetail({
 	function renderObjectLabel(relatedObjectId: number) {
 		const relatedObject = objectContextById.get(relatedObjectId);
 		if (!relatedObject) {
-			return `Unknown related object (#${relatedObjectId})`;
+			return "Unknown related object";
 		}
 
 		const relatedClassName = classNameById.get(relatedObject.classId);
@@ -872,30 +914,6 @@ export function ObjectDetail({
 				classId={classId}
 				namespaceId={objectData.namespace_id}
 			/>
-			<header className="detail-identity">
-				<div className="detail-title-line">
-					<Link className="detail-title-context" href={`/objects?classId=${classId}`}>
-						{className ?? `Class #${objectData.hubuum_class_id}`}
-					</Link>
-					<span className="detail-title-separator">/</span>
-					<h2 className="with-pin-button detail-title">
-						{objectData.name} <span className="muted">#{objectData.id}</span>
-						<PinButton
-							type="object"
-							id={objectId}
-							name={objectData.name}
-							namespaceId={objectData.namespace_id}
-							namespaceName={namespaceLabel}
-							classId={classId}
-							className={className ?? undefined}
-						/>
-					</h2>
-				</div>
-				<p className="detail-title-meta">
-					Object · {namespaceLabel} #{objectData.namespace_id}
-				</p>
-			</header>
-
 			<form
 				className="card stack"
 				onSubmit={onSubmit}
@@ -916,7 +934,9 @@ export function ObjectDetail({
 					</div>
 				</div>
 
-				<div className="muted">{editAccessMessage}</div>
+				{editAccessMessage ? (
+					<div className="muted">{editAccessMessage}</div>
+				) : null}
 
 				<div className="object-detail-list">
 					<div className="object-detail-compact-grid">
@@ -1014,7 +1034,7 @@ export function ObjectDetail({
 												) : null}
 												{namespaces.map((namespace) => (
 													<option key={namespace.id} value={namespace.id}>
-														{namespace.name} (#{namespace.id})
+														{namespace.name}
 													</option>
 												))}
 											</select>
@@ -1043,8 +1063,7 @@ export function ObjectDetail({
 										disabled={isSavingOrDeleting}
 									>
 										<span className="object-detail-value">
-											{namespaceLabel}{" "}
-											<span className="muted">#{objectData.namespace_id}</span>
+											{namespaceLabel}
 										</span>
 										<span className="object-inline-edit-icon">
 											<InlineEditIcon />
@@ -1052,8 +1071,7 @@ export function ObjectDetail({
 									</button>
 								) : (
 									<div className="object-detail-value">
-										{namespaceLabel}{" "}
-										<span className="muted">#{objectData.namespace_id}</span>
+										{namespaceLabel}
 									</div>
 								)}
 							</div>

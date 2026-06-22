@@ -16,6 +16,7 @@ import {
 
 import { KeyboardHelp } from "@/components/keyboard-help";
 import { LogoutButton } from "@/components/logout-button";
+import { PinButton } from "@/components/pin-button";
 import { ToastContainer } from "@/components/toast-container";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV1Classes } from "@/lib/api/generated/client";
@@ -38,6 +39,8 @@ import {
 	SELECT_ALL_EVENT,
 	SELECTION_STATE_EVENT,
 	type SelectionStateEventDetail,
+	TITLE_STATE_EVENT,
+	type TitleStateEventDetail,
 } from "@/lib/create-events";
 import {
 	triggerActivePaginationNextPage,
@@ -646,6 +649,8 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 	const [deleteHandler, setDeleteHandler] = useState<(() => void) | null>(null);
 	const [editLabel, setEditLabel] = useState("Edit item");
 	const [editHandler, setEditHandler] = useState<(() => void) | null>(null);
+	const [detailTitle, setDetailTitle] = useState<string | null>(null);
+	const [detailPin, setDetailPin] = useState<TitleStateEventDetail["pin"]>(null);
 	const [isKeyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
 	const goToShortcutTimerRef = useRef<number | null>(null);
 	const userMenuRef = useRef<HTMLDivElement | null>(null);
@@ -767,6 +772,8 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		setMobileSidebarOpen(false);
 		setUserMenuOpen(false);
 		setTaskMenuOpen(false);
+		setDetailTitle(null);
+		setDetailPin(null);
 	}, [pathname]);
 
 	useEffect(() => {
@@ -983,6 +990,18 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 
 		window.addEventListener(EDIT_STATE_EVENT, onEditStateChange);
 		return () => window.removeEventListener(EDIT_STATE_EVENT, onEditStateChange);
+	}, []);
+
+	useEffect(() => {
+		const onTitleStateChange = (event: Event) => {
+			const customEvent = event as CustomEvent<TitleStateEventDetail>;
+			setDetailTitle(customEvent.detail?.title ?? null);
+			setDetailPin(customEvent.detail?.pin ?? null);
+		};
+
+		window.addEventListener(TITLE_STATE_EVENT, onTitleStateChange);
+		return () =>
+			window.removeEventListener(TITLE_STATE_EVENT, onTitleStateChange);
 	}, []);
 
 	useEffect(() => {
@@ -1309,7 +1328,32 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 							</button>
 
 							<div className="topbar-title-row">
-								<p className="topbar-heading">{sectionLabel}</p>
+								<p className="topbar-heading">{detailTitle ?? sectionLabel}</p>
+								{detailPin ? (
+									<PinButton
+										type={detailPin.type}
+										id={detailPin.id}
+										name={detailPin.name}
+										namespaceId={
+											"namespaceId" in detailPin
+												? detailPin.namespaceId
+												: undefined
+										}
+										namespaceName={
+											"namespaceName" in detailPin
+												? detailPin.namespaceName
+												: undefined
+										}
+										classId={
+											"classId" in detailPin ? detailPin.classId : undefined
+										}
+										className={
+											"className" in detailPin
+												? detailPin.className
+												: undefined
+										}
+									/>
+								) : null}
 								{isRelationsRoute ? (
 									<>
 										<span className="topbar-divider" aria-hidden="true">
@@ -1377,7 +1421,7 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 											) : null}
 											{relationsObjectOptions.map((objectItem) => (
 												<option key={objectItem.id} value={objectItem.id}>
-													{objectItem.name} (#{objectItem.id})
+													{objectItem.name}
 												</option>
 											))}
 										</select>

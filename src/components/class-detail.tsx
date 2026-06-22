@@ -12,7 +12,6 @@ import {
 } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
-import { PinButton } from "@/components/pin-button";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
@@ -30,6 +29,7 @@ import type {
 import {
 	EDIT_STATE_EVENT,
 	type EditStateEventDetail,
+	TITLE_STATE_EVENT,
 } from "@/lib/create-events";
 import { summarizeJsonDocument } from "@/lib/json-inspector";
 
@@ -361,6 +361,36 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 	}, [beginGlobalEdit, hasActiveEdits, isSavingOrDeleting]);
 
 	useEffect(() => {
+		const classData = classQuery.data;
+		if (!classData) {
+			return;
+		}
+
+		window.dispatchEvent(
+			new CustomEvent(TITLE_STATE_EVENT, {
+				detail: {
+					title: classData.name,
+					pin: {
+						type: "class",
+						id: classData.id,
+						name: classData.name,
+						namespaceId: classData.namespace.id,
+						namespaceName: classData.namespace.name,
+					},
+				},
+			}),
+		);
+
+		return () => {
+			window.dispatchEvent(
+				new CustomEvent(TITLE_STATE_EVENT, {
+					detail: { title: null, pin: null },
+				}),
+			);
+		};
+	}, [classQuery.data]);
+
+	useEffect(() => {
 		if (!hasActiveEdits) {
 			return;
 		}
@@ -446,7 +476,8 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 	function onDelete() {
 		setFormError(null);
 		setFormSuccess(null);
-		if (!window.confirm(`Delete class #${classId}?`)) {
+		const classLabel = classQuery.data?.name ?? "this class";
+		if (!window.confirm(`Delete ${classLabel}?`)) {
 			return;
 		}
 
@@ -510,33 +541,11 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 
 	function renderClassLabel(relatedClassId: number) {
 		const relatedClassName = classNameById.get(relatedClassId);
-		return relatedClassName ?? `Class #${relatedClassId}`;
+		return relatedClassName ?? "Class";
 	}
 
 	return (
 		<section className="stack">
-			<header className="detail-identity">
-				<div className="detail-title-line">
-					<Link className="detail-title-context" href={`/namespaces/${classData.namespace.id}`}>
-						{namespaceLabel}
-					</Link>
-					<span className="detail-title-separator">/</span>
-					<h2 className="with-pin-button detail-title">
-						{classData.name} <span className="muted">#{classData.id}</span>
-						<PinButton
-							type="class"
-							id={classId}
-							name={classData.name}
-							namespaceId={classData.namespace.id}
-							namespaceName={classData.namespace.name}
-						/>
-					</h2>
-				</div>
-				<p className="detail-title-meta">
-					Class · Validation {classData.validate_schema ? "enabled" : "disabled"}
-				</p>
-			</header>
-
 			<form
 				className="card stack"
 				onSubmit={onSubmit}
@@ -678,7 +687,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 											) : null}
 											{namespaceOptions.map((namespace) => (
 												<option key={namespace.id} value={namespace.id}>
-													{namespace.name} (#{namespace.id})
+													{namespace.name}
 												</option>
 											))}
 										</select>
@@ -706,8 +715,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 									onClick={() => toggleFieldEditing("namespace", classData)}
 								>
 									<span className="object-detail-value">
-										{namespaceLabel}{" "}
-										<span className="muted">#{classData.namespace.id}</span>
+										{namespaceLabel}
 									</span>
 									<span className="object-inline-edit-icon">
 										<InlineEditIcon />

@@ -12,7 +12,6 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { NamespaceDetailTracker } from "@/components/namespace-detail-tracker";
-import { PinButton } from "@/components/pin-button";
 import {
 	deleteApiV1NamespacesByNamespaceId,
 	deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
@@ -37,6 +36,7 @@ import { Permissions as PermissionValues } from "@/lib/api/generated/models/perm
 import {
 	EDIT_STATE_EVENT,
 	type EditStateEventDetail,
+	TITLE_STATE_EVENT,
 } from "@/lib/create-events";
 
 type NamespaceDetailProps = {
@@ -802,6 +802,34 @@ export function NamespaceDetail({
 	}, [beginGlobalEdit, hasActiveEdits, isSavingOrDeleting]);
 
 	useEffect(() => {
+		const namespaceData = namespaceQuery.data;
+		if (!namespaceData) {
+			return;
+		}
+
+		window.dispatchEvent(
+			new CustomEvent(TITLE_STATE_EVENT, {
+				detail: {
+					title: namespaceData.name,
+					pin: {
+						type: "namespace",
+						id: namespaceData.id,
+						name: namespaceData.name,
+					},
+				},
+			}),
+		);
+
+		return () => {
+			window.dispatchEvent(
+				new CustomEvent(TITLE_STATE_EVENT, {
+					detail: { title: null, pin: null },
+				}),
+			);
+		};
+	}, [namespaceQuery.data]);
+
+	useEffect(() => {
 		if (!hasActiveEdits) {
 			return;
 		}
@@ -863,7 +891,8 @@ export function NamespaceDetail({
 	function onDelete() {
 		setFormError(null);
 		setFormSuccess(null);
-		if (!window.confirm(`Delete namespace #${namespaceId}?`)) {
+		const namespaceLabel = namespaceQuery.data?.name ?? "this namespace";
+		if (!window.confirm(`Delete ${namespaceLabel}?`)) {
 			return;
 		}
 
@@ -1114,48 +1143,33 @@ export function NamespaceDetail({
 				namespaceName={namespaceData.name}
 			/>
 			<section className="stack">
-			<header className="detail-identity">
-				<h2 className="with-pin-button detail-title">
-					{namespaceData.name} <span className="muted">#{namespaceData.id}</span>
-					<PinButton
-						type="namespace"
-						id={namespaceId}
-						name={namespaceData.name}
-					/>
-				</h2>
-				<p className="detail-title-meta">
-					Namespace · {sortedPermissionEntries.length} permission group
-					{sortedPermissionEntries.length === 1 ? "" : "s"}
-				</p>
-			</header>
-
-			<form
-				className="card stack"
-				onSubmit={onSubmit}
-				onKeyDownCapture={onSubmitShortcut}
-			>
-				<div className="object-meta-strip">
-					<div className="object-meta-item">
-						<span className="object-meta-label">Created</span>
-						<span className="object-meta-value">
-							{formatTimestamp(namespaceData.created_at)}
-						</span>
+				<form
+					className="card stack"
+					onSubmit={onSubmit}
+					onKeyDownCapture={onSubmitShortcut}
+				>
+					<div className="object-meta-strip">
+						<div className="object-meta-item">
+							<span className="object-meta-label">Created</span>
+							<span className="object-meta-value">
+								{formatTimestamp(namespaceData.created_at)}
+							</span>
+						</div>
+						<div className="object-meta-item">
+							<span className="object-meta-label">Updated</span>
+							<span className="object-meta-value">
+								{formatTimestamp(namespaceData.updated_at)}
+							</span>
+						</div>
+						<div className="object-meta-item">
+							<span className="object-meta-label">Permission groups</span>
+							<span className="object-meta-value">
+								{permissionsQuery.isLoading
+									? "Loading..."
+									: `${sortedPermissionEntries.length}`}
+							</span>
+						</div>
 					</div>
-					<div className="object-meta-item">
-						<span className="object-meta-label">Updated</span>
-						<span className="object-meta-value">
-							{formatTimestamp(namespaceData.updated_at)}
-						</span>
-					</div>
-					<div className="object-meta-item">
-						<span className="object-meta-label">Permission groups</span>
-						<span className="object-meta-value">
-							{permissionsQuery.isLoading
-								? "Loading..."
-								: `${sortedPermissionEntries.length}`}
-						</span>
-					</div>
-				</div>
 
 				<div className="object-detail-list">
 					<section
