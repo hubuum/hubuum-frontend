@@ -3,9 +3,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
-import { PinButton } from "@/components/pin-button";
+import {
+	FormEvent,
+	type KeyboardEvent as ReactKeyboardEvent,
+	useCallback,
+	useEffect,
+	useState,
+} from "react";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
+import { PinButton } from "@/components/pin-button";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
@@ -20,6 +28,10 @@ import type {
 	Namespace,
 	UpdateHubuumClass,
 } from "@/lib/api/generated/models";
+import {
+	EDIT_STATE_EVENT,
+	type EditStateEventDetail,
+} from "@/lib/create-events";
 import { summarizeJsonDocument } from "@/lib/json-inspector";
 
 type ClassDetailProps = {
@@ -32,6 +44,14 @@ type EditableField =
 	| "namespace"
 	| "validate_schema"
 	| "json_schema";
+
+const ALL_EDITABLE_FIELDS: EditableField[] = [
+	"name",
+	"description",
+	"namespace",
+	"validate_schema",
+	"json_schema",
+];
 
 async function fetchClass(classId: number): Promise<HubuumClassExpanded> {
 	const response = await getApiV1ClassesByClassId(classId, {
@@ -295,6 +315,70 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		setEditingFields((current) => [...current, field]);
 	}
 
+	const hasActiveEdits = editingFields.length > 0;
+	const isSavingOrDeleting =
+		updateMutation.isPending || deleteMutation.isPending;
+	const beginGlobalEdit = useCallback(() => {
+		if (hasActiveEdits || isSavingOrDeleting) {
+			return;
+		}
+
+		setFormError(null);
+		setFormSuccess(null);
+		setEditingFields(ALL_EDITABLE_FIELDS);
+	}, [hasActiveEdits, isSavingOrDeleting]);
+
+	const cancelActiveEdits = useCallback(() => {
+		const classData = classQuery.data;
+		if (!classData || editingFields.length === 0) {
+			return;
+		}
+
+		setName(classData.name);
+		setDescription(classData.description ?? "");
+		setNamespaceId(String(classData.namespace.id));
+		setValidateSchema(classData.validate_schema);
+		setJsonSchemaInput(stringifyJsonSchema(classData.json_schema));
+		setEditingFields([]);
+		setFormError(null);
+		setFormSuccess(null);
+	}, [classQuery.data, editingFields.length]);
+
+	useEffect(() => {
+		const detail: EditStateEventDetail = {
+			label: "Edit class",
+			editHandler: !hasActiveEdits && !isSavingOrDeleting ? beginGlobalEdit : null,
+		};
+
+		window.dispatchEvent(new CustomEvent(EDIT_STATE_EVENT, { detail }));
+
+		return () => {
+			window.dispatchEvent(
+				new CustomEvent(EDIT_STATE_EVENT, {
+					detail: { label: "Edit class", editHandler: null },
+				}),
+			);
+		};
+	}, [beginGlobalEdit, hasActiveEdits, isSavingOrDeleting]);
+
+	useEffect(() => {
+		if (!hasActiveEdits) {
+			return;
+		}
+
+		function onEscape(event: KeyboardEvent) {
+			if (event.key !== "Escape") {
+				return;
+			}
+
+			event.preventDefault();
+			cancelActiveEdits();
+		}
+
+		document.addEventListener("keydown", onEscape);
+		return () => document.removeEventListener("keydown", onEscape);
+	}, [cancelActiveEdits, hasActiveEdits]);
+
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setFormError(null);
@@ -328,6 +412,36 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		}
 
 		updateMutation.mutate(payload);
+	}
+
+	function onSubmitShortcut(event: ReactKeyboardEvent<HTMLFormElement>) {
+		if (event.key === "Escape" && hasActiveEdits) {
+			event.preventDefault();
+			event.stopPropagation();
+			cancelActiveEdits();
+			return;
+		}
+
+		if (
+			event.key !== "Enter" ||
+			!event.shiftKey ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey
+		) {
+			return;
+		}
+
+		const submitButton =
+			event.currentTarget.querySelector<HTMLButtonElement>(
+				"button[type='submit']:not(:disabled)",
+			);
+		if (!submitButton) {
+			return;
+		}
+
+		event.preventDefault();
+		event.currentTarget.requestSubmit(submitButton);
 	}
 
 	function onDelete() {
@@ -389,7 +503,6 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 	const hasNamespaceSelection = namespaceOptions.some(
 		(namespace) => String(namespace.id) === namespaceId,
 	);
-	const hasActiveEdits = editingFields.length > 0;
 	const schemaPreview = stringifyJsonSchema(classData.json_schema);
 	const schemaSummary =
 		classData.json_schema === undefined
@@ -403,7 +516,13 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 
 	return (
 		<section className="stack">
-			<header>
+			<header className="stack">
+				<Breadcrumbs
+					items={[
+						{ label: "Classes", href: "/classes" },
+						{ label: `${classData.name} (#${classData.id})` },
+					]}
+				/>
 				<p className="eyebrow">Class</p>
 				<h2 className="with-pin-button">
 					{classData.name} (#{classData.id})
@@ -417,7 +536,11 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 				</h2>
 			</header>
 
-			<form className="card stack" onSubmit={onSubmit}>
+			<form
+				className="card stack"
+				onSubmit={onSubmit}
+				onKeyDownCapture={onSubmitShortcut}
+			>
 				<div className="object-meta-strip">
 					<div className="object-meta-item">
 						<span className="object-meta-label">Namespace</span>
@@ -705,13 +828,15 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 									{isSchemaExpanded ? "Collapse" : "Expand"}
 								</button>
 							) : null}
-							<button
-								type="button"
-								className="ghost"
-								onClick={() => toggleFieldEditing("json_schema", classData)}
-							>
-								{editingFields.includes("json_schema") ? "Cancel" : "Edit"}
-							</button>
+							{editingFields.includes("json_schema") ? null : (
+								<button
+									type="button"
+									className="ghost"
+									onClick={() => toggleFieldEditing("json_schema", classData)}
+								>
+									Edit
+								</button>
+							)}
 						</div>
 					</section>
 				</div>
@@ -727,20 +852,32 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 
 				<div className="form-actions form-actions--spread">
 					{hasActiveEdits ? (
-						<button type="submit" disabled={updateMutation.isPending}>
-							{updateMutation.isPending ? "Saving..." : "Save changes"}
-						</button>
+						<div className="form-actions">
+							<button type="submit" disabled={updateMutation.isPending}>
+								{updateMutation.isPending ? "Saving..." : "Save changes"}
+							</button>
+							<button
+								type="button"
+								className="ghost"
+								onClick={cancelActiveEdits}
+								disabled={updateMutation.isPending}
+							>
+								Cancel
+							</button>
+						</div>
 					) : (
 						<div />
 					)}
-					<button
-						type="button"
-						className="danger"
-						onClick={onDelete}
-						disabled={deleteMutation.isPending}
-					>
-						{deleteMutation.isPending ? "Deleting..." : "Delete class"}
-					</button>
+					{hasActiveEdits ? null : (
+						<button
+							type="button"
+							className="danger"
+							onClick={onDelete}
+							disabled={deleteMutation.isPending}
+						>
+							{deleteMutation.isPending ? "Deleting..." : "Delete class"}
+						</button>
+					)}
 				</div>
 			</form>
 
@@ -773,9 +910,18 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 						</div>
 
 						{directRelations.length === 0 ? (
-							<div className="empty-state">
-								No direct relations for this class yet.
-							</div>
+							<EmptyState
+								title="No directly connected classes yet."
+								description="Create a class relation to connect this class with another class."
+								action={
+									<Link
+										className="link-chip"
+										href={`/relations/classes?classId=${classId}`}
+									>
+										Open relations
+									</Link>
+								}
+							/>
 						) : (
 							<p>
 								{relatedRelations.map(({ relation, relatedClassId }, index) => (

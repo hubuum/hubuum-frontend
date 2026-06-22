@@ -2,7 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import {
+	FormEvent,
+	type KeyboardEvent as ReactKeyboardEvent,
+	useCallback,
+	useEffect,
+	useState,
+} from "react";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { EmptyState } from "@/components/empty-state";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { NamespaceDetailTracker } from "@/components/namespace-detail-tracker";
 import { PinButton } from "@/components/pin-button";
@@ -27,6 +35,10 @@ import type {
 	UpdateNamespace,
 } from "@/lib/api/generated/models";
 import { Permissions as PermissionValues } from "@/lib/api/generated/models/permissions";
+import {
+	EDIT_STATE_EVENT,
+	type EditStateEventDetail,
+} from "@/lib/create-events";
 
 type NamespaceDetailProps = {
 	namespaceId: number;
@@ -75,6 +87,26 @@ type PermissionSection =
 	| "template";
 
 type EditableField = "name" | "description";
+
+const ALL_EDITABLE_FIELDS: EditableField[] = ["name", "description"];
+
+const PERMISSION_SECTION_LABELS: Record<PermissionSection, string> = {
+	namespace: "Namespace",
+	class: "Classes",
+	object: "Objects",
+	class_relation: "Class relations",
+	object_relation: "Object relations",
+	template: "Templates",
+};
+
+const PERMISSION_SECTION_ORDER: PermissionSection[] = [
+	"namespace",
+	"class",
+	"object",
+	"class_relation",
+	"object_relation",
+	"template",
+];
 
 const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
 	{
@@ -350,6 +382,34 @@ function getPermissionChips(permissionRecord: Permission): PermissionChip[] {
 		label: definition.label,
 		enabled: isPermissionEnabled(permissionRecord, definition.field),
 	}));
+}
+
+function getSectionDefinitions(section: PermissionSection): PermissionDefinition[] {
+	return PERMISSION_DEFINITIONS.filter(
+		(definition) => definition.section === section,
+	);
+}
+
+function summarizePermissions(permissionSet: Set<PermissionName>): string {
+	const sectionSummaries = PERMISSION_SECTION_ORDER.map((section) => {
+		const enabledLabels = getSectionDefinitions(section)
+			.filter((definition) => permissionSet.has(definition.value))
+			.map((definition) =>
+				definition.label
+					.replace(/^(Read|Update|Delete|Create|Delegate)\s+/i, "$1 ")
+					.replace(/\s+(namespace|class|object|relation|template)$/i, ""),
+			);
+
+		if (enabledLabels.length === 0) {
+			return null;
+		}
+
+		return `${PERMISSION_SECTION_LABELS[section]}: ${enabledLabels.join(", ")}`;
+	}).filter(Boolean);
+
+	return sectionSummaries.length > 0
+		? sectionSummaries.join(" · ")
+		: "No permissions selected";
 }
 
 function normalizePermissionFlag(value: unknown): boolean {
@@ -699,6 +759,67 @@ export function NamespaceDetail({
 		setEditingFields((current) => [...current, field]);
 	}
 
+	const hasActiveEdits = editingFields.length > 0;
+	const isSavingOrDeleting =
+		updateMutation.isPending || deleteMutation.isPending;
+	const beginGlobalEdit = useCallback(() => {
+		if (hasActiveEdits || isSavingOrDeleting) {
+			return;
+		}
+
+		setFormError(null);
+		setFormSuccess(null);
+		setEditingFields(ALL_EDITABLE_FIELDS);
+	}, [hasActiveEdits, isSavingOrDeleting]);
+
+	const cancelActiveEdits = useCallback(() => {
+		const namespaceData = namespaceQuery.data;
+		if (!namespaceData || editingFields.length === 0) {
+			return;
+		}
+
+		setName(namespaceData.name);
+		setDescription(namespaceData.description ?? "");
+		setEditingFields([]);
+		setFormError(null);
+		setFormSuccess(null);
+	}, [editingFields.length, namespaceQuery.data]);
+
+	useEffect(() => {
+		const detail: EditStateEventDetail = {
+			label: "Edit namespace",
+			editHandler: !hasActiveEdits && !isSavingOrDeleting ? beginGlobalEdit : null,
+		};
+
+		window.dispatchEvent(new CustomEvent(EDIT_STATE_EVENT, { detail }));
+
+		return () => {
+			window.dispatchEvent(
+				new CustomEvent(EDIT_STATE_EVENT, {
+					detail: { label: "Edit namespace", editHandler: null },
+				}),
+			);
+		};
+	}, [beginGlobalEdit, hasActiveEdits, isSavingOrDeleting]);
+
+	useEffect(() => {
+		if (!hasActiveEdits) {
+			return;
+		}
+
+		function onEscape(event: KeyboardEvent) {
+			if (event.key !== "Escape") {
+				return;
+			}
+
+			event.preventDefault();
+			cancelActiveEdits();
+		}
+
+		document.addEventListener("keydown", onEscape);
+		return () => document.removeEventListener("keydown", onEscape);
+	}, [cancelActiveEdits, hasActiveEdits]);
+
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setFormError(null);
@@ -708,6 +829,36 @@ export function NamespaceDetail({
 			name: name.trim(),
 			description: description.trim(),
 		});
+	}
+
+	function onSubmitShortcut(event: ReactKeyboardEvent<HTMLFormElement>) {
+		if (event.key === "Escape" && hasActiveEdits) {
+			event.preventDefault();
+			event.stopPropagation();
+			cancelActiveEdits();
+			return;
+		}
+
+		if (
+			event.key !== "Enter" ||
+			!event.shiftKey ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey
+		) {
+			return;
+		}
+
+		const submitButton =
+			event.currentTarget.querySelector<HTMLButtonElement>(
+				"button[type='submit']:not(:disabled)",
+			);
+		if (!submitButton) {
+			return;
+		}
+
+		event.preventDefault();
+		event.currentTarget.requestSubmit(submitButton);
 	}
 
 	function onDelete() {
@@ -841,24 +992,33 @@ export function NamespaceDetail({
 		onToggle: (permission: PermissionName, checked: boolean) => void,
 	) {
 		return (
-			<div className="permission-chip-list permission-chip-list--editor">
-				{PERMISSION_DEFINITIONS.map((definition) => {
-					const enabled = selectedPermissionSet.has(definition.value);
-					return (
-						<button
-							key={definition.value}
-							type="button"
-							className={`permission-chip permission-chip-button permission-chip--editor ${
-								enabled
-									? "permission-chip--active"
-									: "permission-chip--inactive"
-							}`}
-							onClick={() => onToggle(definition.value, !enabled)}
-						>
-							{definition.label}
-						</button>
-					);
-				})}
+			<div className="permission-editor-grid">
+				{PERMISSION_SECTION_ORDER.map((section) => (
+					<section key={section} className="permission-section">
+						<h4 className="permission-section-title">
+							{PERMISSION_SECTION_LABELS[section]}
+						</h4>
+						<div className="permission-chip-list permission-chip-list--editor">
+							{getSectionDefinitions(section).map((definition) => {
+								const enabled = selectedPermissionSet.has(definition.value);
+								return (
+									<button
+										key={definition.value}
+										type="button"
+										className={`permission-chip permission-chip-button permission-chip--editor ${
+											enabled
+												? "permission-chip--active"
+												: "permission-chip--inactive"
+										}`}
+										onClick={() => onToggle(definition.value, !enabled)}
+									>
+										{definition.label}
+									</button>
+								);
+							})}
+						</div>
+					</section>
+				))}
 			</div>
 		);
 	}
@@ -902,7 +1062,6 @@ export function NamespaceDetail({
 		sortedPermissionEntries.length > 0 ||
 		(canManagePermissions && addingGroupPermissions);
 	const hasDirtyRowDrafts = Object.keys(permissionDrafts).length > 0;
-	const hasActiveEdits = editingFields.length > 0;
 
 	useEffect(() => {
 		if (!addingGroupPermissions || !usingGroupSelect) {
@@ -956,7 +1115,13 @@ export function NamespaceDetail({
 				namespaceName={namespaceData.name}
 			/>
 			<section className="stack">
-			<header>
+			<header className="stack">
+				<Breadcrumbs
+					items={[
+						{ label: "Namespaces", href: "/namespaces" },
+						{ label: `${namespaceData.name} (#${namespaceData.id})` },
+					]}
+				/>
 				<p className="eyebrow">Namespace</p>
 				<h2 className="with-pin-button">
 					{namespaceData.name} (#{namespaceData.id})
@@ -968,7 +1133,11 @@ export function NamespaceDetail({
 				</h2>
 			</header>
 
-			<form className="card stack" onSubmit={onSubmit}>
+			<form
+				className="card stack"
+				onSubmit={onSubmit}
+				onKeyDownCapture={onSubmitShortcut}
+			>
 				<div className="object-meta-strip">
 					<div className="object-meta-item">
 						<span className="object-meta-label">Created</span>
@@ -1087,20 +1256,32 @@ export function NamespaceDetail({
 
 				<div className="form-actions form-actions--spread">
 					{hasActiveEdits ? (
-						<button type="submit" disabled={updateMutation.isPending}>
-							{updateMutation.isPending ? "Saving..." : "Save changes"}
-						</button>
+						<div className="form-actions">
+							<button type="submit" disabled={updateMutation.isPending}>
+								{updateMutation.isPending ? "Saving..." : "Save changes"}
+							</button>
+							<button
+								type="button"
+								className="ghost"
+								onClick={cancelActiveEdits}
+								disabled={updateMutation.isPending}
+							>
+								Cancel
+							</button>
+						</div>
 					) : (
 						<div />
 					)}
-					<button
-						type="button"
-						className="danger"
-						onClick={onDelete}
-						disabled={deleteMutation.isPending}
-					>
-						{deleteMutation.isPending ? "Deleting..." : "Delete namespace"}
-					</button>
+					{hasActiveEdits ? null : (
+						<button
+							type="button"
+							className="danger"
+							onClick={onDelete}
+							disabled={deleteMutation.isPending}
+						>
+							{deleteMutation.isPending ? "Deleting..." : "Delete namespace"}
+						</button>
+					)}
 				</div>
 			</form>
 
@@ -1160,10 +1341,23 @@ export function NamespaceDetail({
 							? permissionsQuery.error.message
 							: "Unknown error"}
 					</div>
-				) : !hasAnyPermissionRows ? (
-					<div className="muted">
-						No group permissions are currently assigned for this namespace.
-					</div>
+								) : !hasAnyPermissionRows ? (
+					<EmptyState
+						title="No group permissions assigned."
+						description="Grant permissions to a group before members can use this namespace through group access."
+						action={
+							canManagePermissions ? (
+								<button
+									type="button"
+									className="ghost"
+									onClick={onStartAddPermissions}
+									disabled={addingGroupPermissions}
+								>
+									Add group permissions
+								</button>
+							) : null
+						}
+					/>
 				) : (
 					<div className="table-wrap">
 						<table>
@@ -1218,6 +1412,9 @@ export function NamespaceDetail({
 											)}
 										</td>
 										<td>
+											<div className="permission-summary">
+												{summarizePermissions(newSelectedPermissionSet)}
+											</div>
 											{renderPermissionEditor(
 												newSelectedPermissionSet,
 												toggleNewPermission,
@@ -1260,6 +1457,7 @@ export function NamespaceDetail({
 									const draftPermissions =
 										permissionDrafts[entry.group.id] ?? basePermissions;
 									const draftPermissionSet = new Set(draftPermissions);
+									const basePermissionSet = new Set(basePermissions);
 									const isRowDirty = Object.hasOwn(
 										permissionDrafts,
 										entry.group.id,
@@ -1287,6 +1485,13 @@ export function NamespaceDetail({
 												{entry.group.groupname} (#{entry.group.id})
 											</td>
 											<td>
+												<div className="permission-summary">
+													{summarizePermissions(
+														canManagePermissions
+															? draftPermissionSet
+															: basePermissionSet,
+													)}
+												</div>
 												{canManagePermissions ? (
 													renderPermissionEditor(
 														draftPermissionSet,

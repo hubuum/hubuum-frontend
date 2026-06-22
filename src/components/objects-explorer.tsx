@@ -12,6 +12,7 @@ import {
 	useState,
 } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { TablePagination } from "@/components/table-pagination";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
@@ -812,11 +813,29 @@ export function ObjectsExplorer() {
 							: "Unknown error"}
 					</div>
 				) : filteredObjects.length === 0 ? (
-					<div className="empty-state">
-						{searchTerm
-							? `No objects in this class match "${searchTerm}".`
-							: "No objects available in the selected class."}
-					</div>
+					<EmptyState
+						title={
+							searchTerm
+								? `No objects in this class match "${searchTerm}".`
+								: "No objects available in the selected class."
+						}
+						description={
+							searchTerm
+								? "Clear the filter to return to the full object list for this class."
+								: "Create an object to start populating this class."
+						}
+						action={
+							searchTerm ? null : (
+								<button
+									type="button"
+									onClick={() => setCreateModalOpen(true)}
+									disabled={classes.length === 0}
+								>
+									New object
+								</button>
+							)
+						}
+					/>
 				) : (
 					<table id="objects-table">
 						<thead>

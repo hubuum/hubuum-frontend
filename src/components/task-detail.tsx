@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { getApiV1IamUsersByUserId } from "@/lib/api/generated/client";
 import {
 	fetchImportProjection,
@@ -164,6 +165,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 		<section className="stack">
 			<header className="stack action-card-header">
 				<div className="stack action-card-header">
+					<Breadcrumbs
+						items={[
+							{ label: "Tasks", href: "/tasks" },
+							{ label: getTaskHeading(activeTask, taskId) },
+						]}
+					/>
 					<p className="eyebrow">Tasks</p>
 					<h2>{getTaskHeading(activeTask, taskId)}</h2>
 				</div>

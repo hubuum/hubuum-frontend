@@ -636,6 +636,7 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 	const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 	const [isUserMenuOpen, setUserMenuOpen] = useState(false);
+	const [isTaskMenuOpen, setTaskMenuOpen] = useState(false);
 	const [themePreference, setThemePreference] =
 		useState<ThemePreference>("system");
 	const [densityPreference, setDensityPreference] =
@@ -648,6 +649,7 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 	const [isKeyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
 	const goToShortcutTimerRef = useRef<number | null>(null);
 	const userMenuRef = useRef<HTMLDivElement | null>(null);
+	const taskMenuRef = useRef<HTMLDivElement | null>(null);
 
 	const clearGoToShortcut = useCallback(() => {
 		if (goToShortcutTimerRef.current === null) {
@@ -764,6 +766,7 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 
 		setMobileSidebarOpen(false);
 		setUserMenuOpen(false);
+		setTaskMenuOpen(false);
 	}, [pathname]);
 
 	useEffect(() => {
@@ -801,6 +804,28 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 			document.removeEventListener("keydown", onEscape);
 		};
 	}, [isUserMenuOpen]);
+
+	useEffect(() => {
+		if (!isTaskMenuOpen) {
+			return;
+		}
+
+		const onPointerDown = (event: PointerEvent) => {
+			const target = event.target as Node | null;
+			if (
+				!target ||
+				!taskMenuRef.current ||
+				taskMenuRef.current.contains(target)
+			) {
+				return;
+			}
+
+			setTaskMenuOpen(false);
+		};
+
+		document.addEventListener("pointerdown", onPointerDown);
+		return () => document.removeEventListener("pointerdown", onPointerDown);
+	}, [isTaskMenuOpen]);
 
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
@@ -1054,6 +1079,21 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 			</span>
 		);
 	}
+
+	const taskMenuItems = [...myTasks]
+		.sort((left, right) => {
+			const leftActive = isTerminalTaskStatus(left.status) ? 1 : 0;
+			const rightActive = isTerminalTaskStatus(right.status) ? 1 : 0;
+			if (leftActive !== rightActive) {
+				return leftActive - rightActive;
+			}
+
+			return (
+				new Date(right.created_at).getTime() -
+				new Date(left.created_at).getTime()
+			);
+		})
+		.slice(0, 6);
 
 	function onObjectsClassChange(event: ChangeEvent<HTMLSelectElement>) {
 		const nextClassId = event.target.value;
@@ -1422,6 +1462,80 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 									<IconSearch />
 								</button>
 							</form>
+
+							<div className="task-menu-wrapper" ref={taskMenuRef}>
+								<button
+									type="button"
+									className="ghost icon-button task-menu-trigger"
+									onClick={() => setTaskMenuOpen((current) => !current)}
+									aria-haspopup="menu"
+									aria-expanded={isTaskMenuOpen}
+									aria-label="Task activity"
+									title="Task activity"
+								>
+									<IconTasks />
+									{renderTaskBadge()}
+								</button>
+
+								{isTaskMenuOpen ? (
+									<div className="task-menu card" role="menu" aria-label="Task activity">
+										<div className="task-menu-header">
+											<div>
+												<p className="menu-label">Task Activity</p>
+												<p className="muted">
+													{activeTaskCount > 0
+														? `${activeTaskCount} active`
+														: "No active tasks"}
+												</p>
+											</div>
+											<Link
+												className="link-chip"
+												href="/tasks"
+												onClick={() => setTaskMenuOpen(false)}
+											>
+												Open tasks
+											</Link>
+										</div>
+
+										{myTasksQuery.isLoading ? (
+											<div className="muted">Loading tasks...</div>
+										) : null}
+										{myTasksQuery.isError ? (
+											<div className="error-banner">Failed to load task activity.</div>
+										) : null}
+										{!myTasksQuery.isLoading &&
+										!myTasksQuery.isError &&
+										taskMenuItems.length === 0 ? (
+											<div className="muted">No recent task activity.</div>
+										) : null}
+										{taskMenuItems.length > 0 ? (
+											<div className="task-menu-list">
+												{taskMenuItems.map((task) => (
+													<Link
+														key={task.id}
+														className="task-menu-item"
+														href={`/tasks/${task.id}`}
+														onClick={() => setTaskMenuOpen(false)}
+														role="menuitem"
+													>
+														<span className={`status-pill status-pill--${isTerminalTaskStatus(task.status) ? "neutral" : "accent"}`}>
+															{task.status}
+														</span>
+														<span>
+															<strong>
+																{task.kind} #{task.id}
+															</strong>
+															<span className="muted">
+																{new Date(task.created_at).toLocaleString()}
+															</span>
+														</span>
+													</Link>
+												))}
+											</div>
+										) : null}
+									</div>
+								) : null}
+							</div>
 
 							<button
 								type="button"

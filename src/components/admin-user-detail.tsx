@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamUsersByUserId,
@@ -217,6 +218,13 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	return (
 		<section className="stack">
 			<header className="stack">
+				<Breadcrumbs
+					items={[
+						{ label: "Admin", href: "/admin" },
+						{ label: "Users", href: "/admin/users" },
+						{ label: `${user.username} (#${user.id})` },
+					]}
+				/>
 				<p className="eyebrow">Admin / Users</p>
 				<div className="scope-heading">
 					<h2>

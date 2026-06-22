@@ -9,6 +9,7 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { CreateModal } from "@/components/create-modal";
+import { EmptyState } from "@/components/empty-state";
 import { IncludeRows } from "@/components/include-rows";
 import { TemplateCodeEditor } from "@/components/template-code-editor";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -991,9 +992,15 @@ export function ReportsWorkspace() {
 							</div>
 						) : null}
 						{!templatesQuery.isLoading && !templates.length ? (
-							<div className="empty-state">
-								No report templates available yet.
-							</div>
+							<EmptyState
+								title="No report templates available yet."
+								description="Create a template to save reusable report logic for a namespace or class."
+								action={
+									<button type="button" onClick={openCreateModal}>
+										New template
+									</button>
+								}
+							/>
 						) : null}
 
 						<div className="template-list">

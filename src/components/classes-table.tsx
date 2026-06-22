@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { TablePagination } from "@/components/table-pagination";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -560,11 +561,29 @@ export function ClassesTable() {
 				{tableError ? <div className="error-banner">{tableError}</div> : null}
 				{tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
 				{filteredClasses.length === 0 ? (
-					<div className="empty-state">
-						{searchTerm
-							? `No classes match "${searchTerm}".`
-							: "No classes available."}
-					</div>
+					<EmptyState
+						title={
+							searchTerm
+								? `No classes match "${searchTerm}".`
+								: "No classes available."
+						}
+						description={
+							searchTerm
+								? "Clear the filter to return to the full class list."
+								: "Create a class in a namespace before adding objects."
+						}
+						action={
+							searchTerm ? null : (
+								<button
+									type="button"
+									onClick={() => setCreateModalOpen(true)}
+									disabled={namespaces.length === 0}
+								>
+									New class
+								</button>
+							)
+						}
+					/>
 				) : (
 					<table id="classes-table">
 						<thead>

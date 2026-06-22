@@ -11,6 +11,8 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { JsonViewer } from "@/components/json-viewer";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
@@ -841,10 +843,10 @@ export function ObjectDetail({
 
 					const leftLabel = left
 						.map((objectPathId) => renderObjectLabel(objectPathId))
-						.join(" -> ");
+						.join(" / ");
 					const rightLabel = right
 						.map((objectPathId) => renderObjectLabel(objectPathId))
-						.join(" -> ");
+						.join(" / ");
 					return leftLabel.localeCompare(rightLabel);
 				}),
 			}))
@@ -871,7 +873,16 @@ export function ObjectDetail({
 				classId={classId}
 				namespaceId={objectData.namespace_id}
 			/>
-			<header>
+			<header className="stack">
+				<Breadcrumbs
+					items={[
+						{
+							label: className ?? `Class #${objectData.hubuum_class_id}`,
+							href: `/objects?classId=${classId}`,
+						},
+						{ label: `${objectData.name} (#${objectData.id})` },
+					]}
+				/>
 				<p className="eyebrow">Object</p>
 				<h2 className="with-pin-button">
 					{objectData.name} (#{objectData.id})
@@ -1264,9 +1275,18 @@ export function ObjectDetail({
 						</div>
 
 						{relatedObjects.length === 0 ? (
-							<div className="empty-state">
-								No related objects for this object yet.
-							</div>
+							<EmptyState
+								title="No reachable objects yet."
+								description="Create object relations to connect this object with related objects."
+								action={
+									<Link
+										className="link-chip"
+										href={`/relations/objects?classId=${objectData.hubuum_class_id}&objectId=${objectId}&objectView=direct`}
+									>
+										Open relations
+									</Link>
+								}
+							/>
 						) : (
 							<ul className="stat-list compact-stat-list relations-path-list">
 								{relatedObjectGroups.map((group) => (

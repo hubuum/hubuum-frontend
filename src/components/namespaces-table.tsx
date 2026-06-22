@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { EmptyState } from "@/components/empty-state";
 import { TablePagination } from "@/components/table-pagination";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -535,11 +536,25 @@ export function NamespacesTable() {
 				{tableError ? <div className="error-banner">{tableError}</div> : null}
 				{tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
 				{filteredNamespaces.length === 0 ? (
-					<div className="empty-state">
-						{searchTerm
-							? `No namespaces match "${searchTerm}".`
-							: "No namespaces available."}
-					</div>
+					<EmptyState
+						title={
+							searchTerm
+								? `No namespaces match "${searchTerm}".`
+								: "No namespaces available."
+						}
+						description={
+							searchTerm
+								? "Clear the filter to return to the full namespace list."
+								: "Create a namespace to establish ownership, permissions, classes, and objects."
+						}
+						action={
+							searchTerm ? null : (
+								<button type="button" onClick={() => setCreateModalOpen(true)}>
+									New namespace
+								</button>
+							)
+						}
+					/>
 				) : (
 					<table id="namespaces-table">
 						<thead>

@@ -1040,13 +1040,13 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			parsedSourceClassId === null ||
 			parsedClassRelationTargetClassId === null
 		) {
-			setClassRelationError("Select both source and target classes.");
+			setClassRelationError("Select both classes in the relation pair.");
 			return;
 		}
 
 		if (parsedSourceClassId === parsedClassRelationTargetClassId) {
 			setClassRelationError(
-				"Target class must be different from source class.",
+				"Connected class must be different from the current class.",
 			);
 			return;
 		}
@@ -1074,21 +1074,21 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			parsedObjectRelationTargetObjectId === null
 		) {
 			setObjectRelationError(
-				"Select source class/object and target class/object.",
+				"Select both objects and classes in the relation pair.",
 			);
 			return;
 		}
 
 		if (parsedObjectRelationTargetClassId === parsedSourceClassId) {
 			setObjectRelationError(
-				"Target class must be different from source class.",
+				"Connected class must be different from the current class.",
 			);
 			return;
 		}
 
 		if (!relatedTargetClassIds.has(parsedObjectRelationTargetClassId)) {
 			setObjectRelationError(
-				"Target class must be related to the source class.",
+				"Connected class must already be related to the current class.",
 			);
 			return;
 		}
@@ -1161,12 +1161,12 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		const sourceObject = objectContextById.get(relation.from_hubuum_object_id);
 		const targetObject = objectContextById.get(relation.to_hubuum_object_id);
 		if (sourceObject?.classId && targetObject?.classId) {
-			return `${renderClassById(sourceObject.classId)} -> ${renderClassById(targetObject.classId)}`;
+			return `${renderClassById(sourceObject.classId)} / ${renderClassById(targetObject.classId)}`;
 		}
 
 		const classRelation = classRelationById.get(relation.class_relation_id);
 		if (classRelation) {
-			return `${renderClassById(classRelation.from_hubuum_class_id)} -> ${renderClassById(classRelation.to_hubuum_class_id)}`;
+			return `${renderClassById(classRelation.from_hubuum_class_id)} / ${renderClassById(classRelation.to_hubuum_class_id)}`;
 		}
 
 		return "Related object link";
@@ -1211,7 +1211,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 					<span
 						key={`${targetId ?? "path"}-${displayPath.slice(0, index + 1).join("-")}`}
 					>
-						{index > 0 ? " -> " : null}
+						{index > 0 ? " / " : null}
 						{renderObjectLink(pathObjectId)}
 					</span>
 				))}
@@ -1252,7 +1252,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 					<span
 						key={`${targetId}-${displayPath.slice(0, index + 1).join("-")}`}
 					>
-						{index > 0 ? " -> " : null}
+						{index > 0 ? " / " : null}
 						{renderClassLink(pathClassId)}
 					</span>
 				))}
@@ -1292,22 +1292,22 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			<form className="stack" onSubmit={onCreateClassRelation}>
 				<div className="object-detail-list">
 					<section className="object-detail-row">
-						<div className="object-detail-label">From</div>
+						<div className="object-detail-label">Current class</div>
 						<div className="object-detail-body">
 							<div className="object-detail-value">
 								{selectedClass
 									? `${selectedClass.name} (#${selectedClass.id})`
-									: "Select a source class in the top bar first."}
+									: "Select a current class in the top bar first."}
 							</div>
 						</div>
 						<div className="object-detail-row-actions" />
 					</section>
 
 					<section className="object-detail-row">
-						<div className="object-detail-label">To class</div>
+						<div className="object-detail-label">Connected class</div>
 						<div className="object-detail-body">
 							<label className="control-field">
-								<span className="sr-only">Target class</span>
+								<span className="sr-only">Connected class</span>
 								<select
 									value={classRelationTargetClassId}
 									onChange={(event) =>
@@ -1316,7 +1316,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 									disabled={!classRelationTargetOptions.length}
 								>
 									{!classRelationTargetOptions.length ? (
-										<option value="">No eligible target classes</option>
+										<option value="">No eligible connected classes</option>
 									) : null}
 									{classRelationTargetOptions.map((hubuumClass) => (
 										<option key={hubuumClass.id} value={hubuumClass.id}>
@@ -1335,7 +1335,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 				) : null}
 				{!classRelationTargetOptions.length ? (
 					<div className="muted">
-						Create at least two classes to add class-to-class relations.
+						Create at least two classes to add class relations.
 					</div>
 				) : null}
 				{classRelationSuccess ? (
@@ -1363,34 +1363,34 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			<form className="stack" onSubmit={onCreateObjectRelation}>
 				<div className="object-detail-list">
 					<section className="object-detail-row">
-						<div className="object-detail-label">From class</div>
+						<div className="object-detail-label">Current class</div>
 						<div className="object-detail-body">
 							<div className="object-detail-value">
 								{selectedClass
 									? `${selectedClass.name} (#${selectedClass.id})`
-									: "Select source class in the top bar"}
+									: "Select current class in the top bar"}
 							</div>
 						</div>
 						<div className="object-detail-row-actions" />
 					</section>
 
 					<section className="object-detail-row">
-						<div className="object-detail-label">From object</div>
+						<div className="object-detail-label">Current object</div>
 						<div className="object-detail-body">
 							<div className="object-detail-value">
 								{selectedSourceObject
 									? `${selectedSourceObject.name} (#${selectedSourceObject.id})`
-									: "Select source object in the top bar"}
+									: "Select current object in the top bar"}
 							</div>
 						</div>
 						<div className="object-detail-row-actions" />
 					</section>
 
 					<section className="object-detail-row">
-						<div className="object-detail-label">To class</div>
+						<div className="object-detail-label">Connected class</div>
 						<div className="object-detail-body">
 							<label className="control-field">
-								<span className="sr-only">Target class</span>
+								<span className="sr-only">Connected class</span>
 								<select
 									value={objectRelationTargetClassId}
 									onChange={(event) =>
@@ -1399,7 +1399,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 									disabled={!objectRelationTargetClassOptions.length}
 								>
 									{!objectRelationTargetClassOptions.length ? (
-										<option value="">No eligible target classes</option>
+										<option value="">No eligible connected classes</option>
 									) : null}
 									{objectRelationTargetClassOptions.map((hubuumClass) => (
 										<option key={hubuumClass.id} value={hubuumClass.id}>
@@ -1413,10 +1413,10 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 					</section>
 
 					<section className="object-detail-row">
-						<div className="object-detail-label">To object</div>
+						<div className="object-detail-label">Connected object</div>
 						<div className="object-detail-body">
 							<label className="control-field">
-								<span className="sr-only">Target object</span>
+								<span className="sr-only">Connected object</span>
 								<select
 									value={objectRelationTargetObjectId}
 									onChange={(event) =>
@@ -1443,13 +1443,13 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 					<div className="error-banner">{objectRelationError}</div>
 				) : null}
 				{classRelationsQuery.isLoading ? (
-					<div className="muted">Loading related target classes...</div>
+					<div className="muted">Loading connected classes...</div>
 				) : null}
 				{!classRelationsQuery.isLoading &&
 				!objectRelationTargetClassOptions.length ? (
 					<div className="muted">
-						Create a class relation from this source class before adding
-						object-to-object relations.
+						Create a class relation for this current class before adding
+						object relations.
 					</div>
 				) : null}
 				{objectRelationSuccess ? (
@@ -1566,12 +1566,20 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 											/>
 										</th>
 										<th>ID</th>
-										<th>From class</th>
-										<th>To class</th>
+										<th>Endpoint</th>
+										<th>Connected class</th>
 									</tr>
 								</thead>
 								<tbody>
-									{classDirectRelations.map((relation) => (
+									{classDirectRelations.map((relation) => {
+										const currentClassId =
+											parsedSourceClassId ?? relation.from_hubuum_class_id;
+										const connectedClassId =
+											relation.from_hubuum_class_id === currentClassId
+												? relation.to_hubuum_class_id
+												: relation.from_hubuum_class_id;
+
+										return (
 										<tr key={relation.id}>
 											<td className="check-col">
 												<input
@@ -1592,22 +1600,23 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 											<td>{relation.id}</td>
 											<td>
 												<Link
-													href={`/classes/${relation.from_hubuum_class_id}`}
+													href={`/classes/${currentClassId}`}
 													className="row-link"
 												>
-													{renderClassById(relation.from_hubuum_class_id)}
+													{renderClassById(currentClassId)}
 												</Link>
 											</td>
 											<td>
 												<Link
-													href={`/classes/${relation.to_hubuum_class_id}`}
+													href={`/classes/${connectedClassId}`}
 													className="row-link"
 												>
-													{renderClassById(relation.to_hubuum_class_id)}
+													{renderClassById(connectedClassId)}
 												</Link>
 											</td>
 										</tr>
-									))}
+										);
+									})}
 								</tbody>
 							</table>
 						)
@@ -1670,12 +1679,12 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 										? `${objectDirectRelations.length} loaded`
 										: parsedResolvedSourceObjectId !== null
 											? "Waiting..."
-											: "No source object"
+											: "No object"
 									: relatedObjectsQuery.data
 										? `${relatedObjects.length} loaded`
 										: parsedResolvedSourceObjectId !== null
 											? "Waiting..."
-											: "No source object"}
+											: "No object"}
 								{objectRelationsView === "direct" &&
 								selectedObjectRelationIds.length
 									? ` · ${selectedObjectRelationIds.length} selected`
@@ -1708,7 +1717,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 						<div className="muted">Select a class first.</div>
 					) : parsedResolvedSourceObjectId === null ? (
 						<div className="muted">
-							Select a source object to load object-level relations.
+							Select a current object to load object-level relations.
 						</div>
 					) : objectRelationsView === "direct" ? (
 						objectDirectRelationsQuery.isLoading ||
@@ -1796,7 +1805,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 						</div>
 					) : relatedObjects.length === 0 ? (
 						<div className="muted">
-							No reachable objects for this source object.
+							No reachable objects for this object.
 						</div>
 					) : (
 						<table>
