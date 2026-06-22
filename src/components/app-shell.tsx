@@ -46,6 +46,8 @@ type AppShellProps = {
 
 type ThemePreference = "system" | "light" | "dark";
 
+type DensityPreference = "comfortable" | "compact";
+
 type NavItem = {
 	href: string;
 	label: string;
@@ -55,6 +57,7 @@ type NavItem = {
 
 const SIDEBAR_COLLAPSED_KEY = "hubuum.sidebar.collapsed";
 const THEME_PREFERENCE_KEY = "hubuum.theme";
+const DENSITY_PREFERENCE_KEY = "hubuum.density";
 
 async function fetchTopbarClassOptions(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
@@ -207,31 +210,30 @@ function getCreateSection(pathname: string): CreateSection | null {
 	return null;
 }
 
-function getCreateAriaLabel(
+function getCreateLabel(
 	createSection: CreateSection,
 	relationsView: "classes" | "objects" | null,
-	sectionLabel: string,
 ): string {
 	if (createSection === "relations") {
-		return `Add ${relationsView === "objects" ? "object relation" : "class relation"}`;
+		return `New ${relationsView === "objects" ? "object relation" : "class relation"}`;
 	}
 	if (createSection === "admin-users") {
-		return "Add user";
+		return "New user";
 	}
 	if (createSection === "admin-groups") {
-		return "Add group";
+		return "New group";
 	}
 	if (createSection === "namespaces") {
-		return "Add namespace";
+		return "New namespace";
 	}
 	if (createSection === "classes") {
-		return "Add class";
+		return "New class";
 	}
 	if (createSection === "objects") {
-		return "Add object";
+		return "New object";
 	}
 
-	return `Add ${sectionLabel}`;
+	return "New item";
 }
 
 function getRelationsView(pathname: string): "classes" | "objects" | null {
@@ -594,6 +596,8 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 	const [isUserMenuOpen, setUserMenuOpen] = useState(false);
 	const [themePreference, setThemePreference] =
 		useState<ThemePreference>("system");
+	const [densityPreference, setDensityPreference] =
+		useState<DensityPreference>("comfortable");
 	const [recentFailureUntil, setRecentFailureUntil] = useState<number | null>(
 		null,
 	);
@@ -627,6 +631,11 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 		const storedTheme = window.localStorage.getItem(THEME_PREFERENCE_KEY);
 		if (isThemePreference(storedTheme)) {
 			setThemePreference(storedTheme);
+		}
+
+		const storedDensity = window.localStorage.getItem(DENSITY_PREFERENCE_KEY);
+		if (storedDensity === "compact" || storedDensity === "comfortable") {
+			setDensityPreference(storedDensity);
 		}
 	}, []);
 
@@ -664,6 +673,11 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 		mediaQuery.addListener(onChange);
 		return () => mediaQuery.removeListener(onChange);
 	}, [themePreference]);
+
+	useEffect(() => {
+		window.localStorage.setItem(DENSITY_PREFERENCE_KEY, densityPreference);
+		document.documentElement.setAttribute("data-density", densityPreference);
+	}, [densityPreference]);
 
 	useEffect(() => {
 		if (!pathname) {
@@ -1203,15 +1217,15 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 								{createSection ? (
 									<button
 										type="button"
-										className="ghost icon-button quick-add-button"
+										className="create-button"
 										onClick={openCreateModal}
-										aria-label={getCreateAriaLabel(
-											createSection,
-											relationsView,
-											sectionLabel,
-										)}
+										aria-label={getCreateLabel(createSection, relationsView)}
+										title={getCreateLabel(createSection, relationsView)}
 									>
 										<IconPlus />
+										<span className="create-button-text">
+											{getCreateLabel(createSection, relationsView)}
+										</span>
 									</button>
 								) : null}
 							</div>
@@ -1269,6 +1283,24 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 									role="menu"
 									aria-label="User menu"
 								>
+									<div className="menu-group">
+										<p className="menu-label">Density</p>
+										<button
+											type="button"
+											className={`menu-item ${densityPreference === "comfortable" ? "is-selected" : ""}`}
+											onClick={() => setDensityPreference("comfortable")}
+										>
+											Comfortable
+										</button>
+										<button
+											type="button"
+											className={`menu-item ${densityPreference === "compact" ? "is-selected" : ""}`}
+											onClick={() => setDensityPreference("compact")}
+										>
+											Compact
+										</button>
+									</div>
+
 									<div className="menu-group">
 										<p className="menu-label">Theme</p>
 										<button
@@ -1342,16 +1374,13 @@ export function AppShell({ canViewAdmin, children }: AppShellProps) {
 			) : createSection ? (
 				<button
 					type="button"
-					className="fab"
+					className="fab fab--extended"
 					onClick={openCreateModal}
-					aria-label={getCreateAriaLabel(
-						createSection,
-						relationsView,
-						sectionLabel,
-					)}
-					title={`${getCreateAriaLabel(createSection, relationsView, sectionLabel)} (C)`}
+					aria-label={getCreateLabel(createSection, relationsView)}
+					title={`${getCreateLabel(createSection, relationsView)} (C)`}
 				>
 					<IconPlus />
+					<span className="fab-text">{getCreateLabel(createSection, relationsView)}</span>
 				</button>
 			) : null}
 

@@ -455,11 +455,18 @@ button.sidebar-link-button {
 	gap: 0.6rem;
 }
 
+/* Query container for the create-button label collapse. flex:1 1 auto gives
+   topbar-left a layout-determined width (the space left after the search/user
+   cluster) so inline-size containment doesn't collapse it, and so its width
+   reflects available space — narrower on select-heavy routes. */
 .topbar-left {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
 	min-width: 0;
+	flex: 1 1 auto;
+	container-type: inline-size;
+	container-name: topbar;
 }
 
 .topbar-title-row {
@@ -586,9 +593,42 @@ button.sidebar-link-button {
 	height: 1.1rem;
 }
 
-.quick-add-button {
-	width: 1.9rem;
-	height: 1.9rem;
+.create-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.4rem 0.7rem;
+	border-radius: 10px;
+	background: var(--accent);
+	color: #fff;
+	font-weight: 600;
+	font-size: 0.9rem;
+	white-space: nowrap;
+	flex: 0 0 auto;
+}
+
+.create-button svg {
+	width: 1.05rem;
+	height: 1.05rem;
+}
+
+.create-button-text {
+	white-space: nowrap;
+}
+
+/* Collapse the header create label when the topbar-left region is tight.
+   Container is .topbar-left (the heading + context-selects + create cluster), so
+   this fires earlier on select-heavy routes (/objects, /relations/objects) than on
+   plain list routes. The extended FAB remains the always-labeled affordance.
+   Threshold is a starting point — tune against /objects and /relations/objects at
+   1280/1366/1440px in a real browser. */
+@container topbar (max-width: 640px) {
+	.create-button-text {
+		display: none;
+	}
+	.create-button {
+		padding: 0.4rem 0.5rem;
+	}
 }
 
 .mobile-only {
@@ -2028,6 +2068,20 @@ th.sortable:hover {
 	height: 1.5rem;
 }
 
+.fab--extended {
+	width: auto;
+	min-width: 3.5rem;
+	border-radius: 999px;
+	padding: 0 1.1rem;
+	gap: 0.45rem;
+}
+
+.fab-text {
+	font-weight: 600;
+	font-size: 0.95rem;
+	white-space: nowrap;
+}
+
 .fab:hover {
 	transform: scale(1.1);
 	box-shadow:
@@ -2676,6 +2730,17 @@ html[data-theme="dark"] .status-pill--accent {
 		height: 1.3rem;
 	}
 
+	.fab--extended {
+		padding: 0;
+		width: 3rem;
+		min-width: 0;
+		border-radius: 50%;
+	}
+
+	.fab--extended .fab-text {
+		display: none;
+	}
+
 	.fab-badge {
 		top: -2px;
 		right: -2px;
@@ -3125,4 +3190,37 @@ h2.with-pin-button {
 	.landing-main {
 		order: 1;
 	}
+}
+
+/* ---------- Compact density (opt-in) ---------- */
+/* Comfortable = default values above. Compact is strictly additive. */
+html[data-density="compact"] {
+	font-size: 14.25px; /* ~89% of 16px; all rem spacing scales. Conservative start. */
+}
+
+html[data-density="compact"] input,
+html[data-density="compact"] select,
+html[data-density="compact"] textarea {
+	padding: 0.5rem 0.65rem;
+	border-radius: 10px;
+}
+
+/* Normal content/menu/form buttons only — exclude fixed-size icon buttons. */
+html[data-density="compact"]
+	button:not(.icon-button):not(.fab):not(.sidebar-link-button):not(.topbar-search-clear):not(.topbar-search-submit):not(.field-hint-button):not(.pin-button-inline):not(.toast-close):not(.permission-chip-button):not(.table-filter-clear) {
+	padding: 0.55rem 0.8rem;
+}
+
+html[data-density="compact"] .content {
+	gap: 0.7rem;
+}
+
+/* Data-table surfaces only — never `.content .card` (catches modal panels). */
+html[data-density="compact"] .card.table-wrap {
+	padding: 0.75rem;
+}
+
+html[data-density="compact"] th,
+html[data-density="compact"] td {
+	padding: 0.3rem 0.5rem;
 }
