@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 type CreateModalProps = {
 	open: boolean;
@@ -27,6 +27,8 @@ export function CreateModal({
 	onClose,
 	children,
 }: CreateModalProps) {
+	const panelRef = useRef<HTMLElement | null>(null);
+
 	useEffect(() => {
 		if (!open) {
 			return;
@@ -47,6 +49,22 @@ export function CreateModal({
 		};
 	}, [open, onClose]);
 
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+
+		const frame = window.requestAnimationFrame(() => {
+			const firstField = panelRef.current?.querySelector<HTMLElement>(
+				".modal-content input:not([type='hidden']):not([disabled]), .modal-content select:not([disabled]), .modal-content textarea:not([disabled]), .modal-content button:not([disabled]), .modal-content [href], .modal-content [tabindex]:not([tabindex='-1'])",
+			);
+
+			firstField?.focus();
+		});
+
+		return () => window.cancelAnimationFrame(frame);
+	}, [open]);
+
 	if (!open) {
 		return null;
 	}
@@ -60,6 +78,7 @@ export function CreateModal({
 				aria-label="Close dialog"
 			/>
 			<section
+				ref={panelRef}
 				className="modal-panel card"
 				role="dialog"
 				aria-modal="true"

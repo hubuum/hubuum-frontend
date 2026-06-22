@@ -63,6 +63,20 @@ type NavItem = {
 const SIDEBAR_COLLAPSED_KEY = "hubuum.sidebar.collapsed";
 const THEME_PREFERENCE_KEY = "hubuum.theme";
 const DENSITY_PREFERENCE_KEY = "hubuum.density";
+const GO_TO_SHORTCUT_TIMEOUT_MS = 1500;
+const GO_TO_ROUTES: Record<string, string> = {
+	h: "/app",
+	n: "/namespaces",
+	c: "/classes",
+	o: "/objects",
+	r: "/relations",
+	e: "/reports",
+	i: "/imports",
+	t: "/tasks",
+	s: "/statistics",
+	u: "/admin/users",
+	m: "/admin/groups",
+};
 
 async function fetchTopbarClassOptions(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
@@ -617,7 +631,41 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 	const [selectionCount, setSelectionCount] = useState(0);
 	const [deleteHandler, setDeleteHandler] = useState<(() => void) | null>(null);
 	const [isKeyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
+	const goToShortcutTimerRef = useRef<number | null>(null);
 	const userMenuRef = useRef<HTMLDivElement | null>(null);
+
+	const clearGoToShortcut = useCallback(() => {
+		if (goToShortcutTimerRef.current === null) {
+			return;
+		}
+
+		window.clearTimeout(goToShortcutTimerRef.current);
+		goToShortcutTimerRef.current = null;
+	}, []);
+
+	const startGoToShortcut = useCallback(() => {
+		clearGoToShortcut();
+		goToShortcutTimerRef.current = window.setTimeout(() => {
+			goToShortcutTimerRef.current = null;
+		}, GO_TO_SHORTCUT_TIMEOUT_MS);
+	}, [clearGoToShortcut]);
+
+	const navigateGoToShortcut = useCallback(
+		(key: string) => {
+			const route = GO_TO_ROUTES[key.toLowerCase()];
+			if (!route) {
+				return false;
+			}
+
+			if (route.startsWith("/admin") && !canViewAdmin) {
+				return false;
+			}
+
+			router.push(route);
+			return true;
+		},
+		[canViewAdmin, router],
+	);
 
 	const openCreateModal = useCallback(() => {
 		if (!createSection) {
@@ -656,6 +704,10 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 			isSidebarCollapsed ? "1" : "0",
 		);
 	}, [isSidebarCollapsed]);
+
+	useEffect(() => {
+		return () => clearGoToShortcut();
+	}, [clearGoToShortcut]);
 
 	useEffect(() => {
 		window.localStorage.setItem(THEME_PREFERENCE_KEY, themePreference);
@@ -744,6 +796,12 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 				target.contentEditable === "true" ||
 				target.closest(".cm-editor") !== null;
 
+			if (goToShortcutTimerRef.current !== null && event.key === "Escape") {
+				event.preventDefault();
+				clearGoToShortcut();
+				return;
+			}
+
 			// Esc to deselect all (works anywhere)
 			if (event.key === "Escape" && selectionCount > 0) {
 				event.preventDefault();
@@ -783,6 +841,19 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 				return;
 			}
 
+			if (goToShortcutTimerRef.current !== null) {
+				event.preventDefault();
+				navigateGoToShortcut(event.key);
+				clearGoToShortcut();
+				return;
+			}
+
+			if (event.key === "g" || event.key === "G") {
+				event.preventDefault();
+				startGoToShortcut();
+				return;
+			}
+
 			if (event.key === "n" || event.key === "N") {
 				if (triggerActivePaginationNextPage()) {
 					event.preventDefault();
@@ -816,7 +887,14 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [selectionCount, deleteHandler, openCreateModal]);
+	}, [
+		selectionCount,
+		deleteHandler,
+		openCreateModal,
+		startGoToShortcut,
+		navigateGoToShortcut,
+		clearGoToShortcut,
+	]);
 
 	useEffect(() => {
 		const onSelectionStateChange = (event: Event) => {

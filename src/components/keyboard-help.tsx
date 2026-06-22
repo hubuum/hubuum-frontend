@@ -23,6 +23,17 @@ const shortcuts: Shortcut[] = [
 	{ keys: ["Enter"], description: "Open focused row" },
 	{ keys: ["N"], description: "Go to the next page in the active paged view" },
 	{ keys: ["P"], description: "Go to the previous page in the active paged view" },
+	{ keys: ["G", "H"], description: "Go to Home" },
+	{ keys: ["G", "N"], description: "Go to Namespaces" },
+	{ keys: ["G", "C"], description: "Go to Classes" },
+	{ keys: ["G", "O"], description: "Go to Objects" },
+	{ keys: ["G", "R"], description: "Go to Relations" },
+	{ keys: ["G", "E"], description: "Go to Reports" },
+	{ keys: ["G", "I"], description: "Go to Imports" },
+	{ keys: ["G", "T"], description: "Go to Tasks" },
+	{ keys: ["G", "S"], description: "Go to Statistics" },
+	{ keys: ["G", "U"], description: "Go to Users" },
+	{ keys: ["G", "M"], description: "Go to Groups" },
 ];
 
 export function KeyboardHelp({ open, onClose }: KeyboardHelpProps) {
