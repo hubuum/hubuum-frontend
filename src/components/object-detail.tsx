@@ -11,7 +11,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { JsonViewer } from "@/components/json-viewer";
@@ -873,29 +872,28 @@ export function ObjectDetail({
 				classId={classId}
 				namespaceId={objectData.namespace_id}
 			/>
-			<header className="stack">
-				<Breadcrumbs
-					items={[
-						{
-							label: className ?? `Class #${objectData.hubuum_class_id}`,
-							href: `/objects?classId=${classId}`,
-						},
-						{ label: `${objectData.name} (#${objectData.id})` },
-					]}
-				/>
-				<p className="eyebrow">Object</p>
-				<h2 className="with-pin-button">
-					{objectData.name} (#{objectData.id})
-					<PinButton
-						type="object"
-						id={objectId}
-						name={objectData.name}
-						namespaceId={objectData.namespace_id}
-						namespaceName={namespaceLabel}
-						classId={classId}
-						className={className ?? undefined}
-					/>
-				</h2>
+			<header className="detail-identity">
+				<div className="detail-title-line">
+					<Link className="detail-title-context" href={`/objects?classId=${classId}`}>
+						{className ?? `Class #${objectData.hubuum_class_id}`}
+					</Link>
+					<span className="detail-title-separator">/</span>
+					<h2 className="with-pin-button detail-title">
+						{objectData.name} <span className="muted">#{objectData.id}</span>
+						<PinButton
+							type="object"
+							id={objectId}
+							name={objectData.name}
+							namespaceId={objectData.namespace_id}
+							namespaceName={namespaceLabel}
+							classId={classId}
+							className={className ?? undefined}
+						/>
+					</h2>
+				</div>
+				<p className="detail-title-meta">
+					Object · {namespaceLabel} #{objectData.namespace_id}
+				</p>
 			</header>
 
 			<form
@@ -904,21 +902,6 @@ export function ObjectDetail({
 				onKeyDownCapture={onSubmitShortcut}
 			>
 				<div className="object-meta-strip">
-					<div className="object-meta-item">
-						<span className="object-meta-label">Class</span>
-						<span className="object-meta-value">
-							<Link href={`/classes/${classId}`}>
-								{className ?? `Class #${objectData.hubuum_class_id}`}
-							</Link>
-						</span>
-					</div>
-					<div className="object-meta-item">
-						<span className="object-meta-label">Namespace</span>
-						<span className="object-meta-value">
-							{namespaceLabel}{" "}
-							<span className="muted">#{objectData.namespace_id}</span>
-						</span>
-					</div>
 					<div className="object-meta-item">
 						<span className="object-meta-label">Created</span>
 						<span className="object-meta-value">

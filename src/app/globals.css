@@ -2598,37 +2598,48 @@ th.sortable:hover {
 	flex-shrink: 0;
 }
 
-.breadcrumbs ol {
-	display: flex;
-	align-items: center;
-	gap: 0.45rem;
-	flex-wrap: wrap;
-	list-style: none;
-	padding: 0;
-	margin: 0;
-	color: var(--muted);
-	font-size: 0.82rem;
+.detail-identity {
+	display: grid;
+	gap: 0.28rem;
 }
 
-.breadcrumbs li {
+.detail-title-line {
 	display: flex;
-	align-items: center;
+	align-items: baseline;
 	gap: 0.45rem;
+	flex-wrap: wrap;
 	min-width: 0;
 }
 
-.breadcrumbs li:not(:last-child)::after {
-	content: "/";
-	color: var(--line);
+.detail-title {
+	margin: 0;
+	min-width: 0;
 }
 
-.breadcrumbs a {
+.detail-title-context {
+	color: var(--muted);
+	font-size: 1.15rem;
+	font-weight: 700;
+	min-width: 0;
+	max-width: min(28rem, 55vw);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.detail-title-context:hover {
 	color: var(--ink);
-	font-weight: 600;
 }
 
-.breadcrumbs span[aria-current="page"] {
-	font-weight: 600;
+.detail-title-separator {
+	color: var(--line);
+	font-size: 1.1rem;
+	font-weight: 700;
+}
+
+.detail-title-meta {
+	color: var(--muted);
+	font-size: 0.88rem;
 }
 
 .file-summary {

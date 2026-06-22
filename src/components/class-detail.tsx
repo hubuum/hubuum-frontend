@@ -10,7 +10,6 @@ import {
 	useEffect,
 	useState,
 } from "react";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { PinButton } from "@/components/pin-button";
@@ -516,24 +515,26 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 
 	return (
 		<section className="stack">
-			<header className="stack">
-				<Breadcrumbs
-					items={[
-						{ label: "Classes", href: "/classes" },
-						{ label: `${classData.name} (#${classData.id})` },
-					]}
-				/>
-				<p className="eyebrow">Class</p>
-				<h2 className="with-pin-button">
-					{classData.name} (#{classData.id})
-					<PinButton
-						type="class"
-						id={classId}
-						name={classData.name}
-						namespaceId={classData.namespace.id}
-						namespaceName={classData.namespace.name}
-					/>
-				</h2>
+			<header className="detail-identity">
+				<div className="detail-title-line">
+					<Link className="detail-title-context" href={`/namespaces/${classData.namespace.id}`}>
+						{namespaceLabel}
+					</Link>
+					<span className="detail-title-separator">/</span>
+					<h2 className="with-pin-button detail-title">
+						{classData.name} <span className="muted">#{classData.id}</span>
+						<PinButton
+							type="class"
+							id={classId}
+							name={classData.name}
+							namespaceId={classData.namespace.id}
+							namespaceName={classData.namespace.name}
+						/>
+					</h2>
+				</div>
+				<p className="detail-title-meta">
+					Class · Validation {classData.validate_schema ? "enabled" : "disabled"}
+				</p>
 			</header>
 
 			<form
@@ -542,13 +543,6 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 				onKeyDownCapture={onSubmitShortcut}
 			>
 				<div className="object-meta-strip">
-					<div className="object-meta-item">
-						<span className="object-meta-label">Namespace</span>
-						<span className="object-meta-value">
-							{namespaceLabel}{" "}
-							<span className="muted">#{classData.namespace.id}</span>
-						</span>
-					</div>
 					<div className="object-meta-item">
 						<span className="object-meta-label">Validation</span>
 						<span className="object-meta-value">

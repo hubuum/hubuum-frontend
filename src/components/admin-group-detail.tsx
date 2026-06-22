@@ -3,7 +3,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamGroupsByGroupIdMembersByUserId,
@@ -480,23 +479,16 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 
 	return (
 		<section className="stack">
-			<header className="stack">
-				<Breadcrumbs
-					items={[
-						{ label: "Admin", href: "/admin" },
-						{ label: "Groups", href: "/admin/groups" },
-						{ label: `${group.groupname} (#${group.id})` },
-					]}
-				/>
-				<p className="eyebrow">Admin / Groups</p>
+			<header className="detail-identity">
 				<div className="scope-heading">
 					<h2>
-						{group.groupname} (#{group.id})
+						{group.groupname} <span className="muted">#{group.id}</span>
 					</h2>
 					<Link className="link-chip" href="/admin/groups">
 						Back to groups
 					</Link>
 				</div>
+				<p className="detail-title-meta">Admin group</p>
 			</header>
 
 			<form className="card stack" onSubmit={onSubmit}>

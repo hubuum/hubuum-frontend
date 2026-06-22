@@ -9,7 +9,6 @@ import {
 	useEffect,
 	useState,
 } from "react";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { NamespaceDetailTracker } from "@/components/namespace-detail-tracker";
@@ -1115,22 +1114,19 @@ export function NamespaceDetail({
 				namespaceName={namespaceData.name}
 			/>
 			<section className="stack">
-			<header className="stack">
-				<Breadcrumbs
-					items={[
-						{ label: "Namespaces", href: "/namespaces" },
-						{ label: `${namespaceData.name} (#${namespaceData.id})` },
-					]}
-				/>
-				<p className="eyebrow">Namespace</p>
-				<h2 className="with-pin-button">
-					{namespaceData.name} (#{namespaceData.id})
+			<header className="detail-identity">
+				<h2 className="with-pin-button detail-title">
+					{namespaceData.name} <span className="muted">#{namespaceData.id}</span>
 					<PinButton
 						type="namespace"
 						id={namespaceId}
 						name={namespaceData.name}
 					/>
 				</h2>
+				<p className="detail-title-meta">
+					Namespace · {sortedPermissionEntries.length} permission group
+					{sortedPermissionEntries.length === 1 ? "" : "s"}
+				</p>
 			</header>
 
 			<form
