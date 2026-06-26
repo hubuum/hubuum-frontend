@@ -196,6 +196,9 @@ function getSectionLabel(pathname: string): string {
 	if (pathname.startsWith("/admin/groups")) {
 		return "Groups";
 	}
+	if (pathname.startsWith("/admin/remote-targets")) {
+		return "Remote targets";
+	}
 	if (pathname.startsWith("/admin")) {
 		return "Admin";
 	}
@@ -221,6 +224,9 @@ function getCreateSection(pathname: string): CreateSection | null {
 	if (pathname === "/admin/groups") {
 		return "admin-groups";
 	}
+	if (pathname === "/admin/remote-targets") {
+		return "admin-remote-targets";
+	}
 
 	return null;
 }
@@ -237,6 +243,9 @@ function getCreateLabel(
 	}
 	if (createSection === "admin-groups") {
 		return "New group";
+	}
+	if (createSection === "admin-remote-targets") {
+		return "New remote target";
 	}
 	if (createSection === "namespaces") {
 		return "New namespace";
@@ -366,6 +375,17 @@ function IconUsers() {
 		<svg viewBox="0 0 24 24" aria-hidden="true">
 			<path
 				d="M16 11a3.5 3.5 0 1 0-2.9-5.5A4.5 4.5 0 0 1 12 14c3.1 0 5.6 1.5 6.6 3.6H22v-.9c0-2.2-2.6-4-6-4m-7-1a4 4 0 1 0-4-4 4 4 0 0 0 4 4m0 2c-3.3 0-6 1.8-6 4v2h12v-2c0-2.2-2.7-4-6-4"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
+function IconRemoteTarget() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M5 4h8a4 4 0 0 1 3.9 3H19a3 3 0 0 1 0 6h-2.1A4 4 0 0 1 13 16H9v3h3v2H4v-2h3v-3H5a4 4 0 0 1 0-8h.1A4 4 0 0 1 5 7zm0 6a2 2 0 1 0 0 4h8a2 2 0 1 0 0-4zm12 1h2a1 1 0 1 0 0-2h-2zm-12-5a2 2 0 0 0-2 2.5A4 4 0 0 1 5 8h8a4 4 0 0 1 2 .54A2 2 0 0 0 13 6z"
 				fill="currentColor"
 			/>
 		</svg>
@@ -536,6 +556,12 @@ const adminLinks: NavItem[] = [
 		label: "Groups",
 		icon: <IconUsers />,
 		hint: "Groups: manage role assignments",
+	},
+	{
+		href: "/admin/remote-targets",
+		label: "Remote targets",
+		icon: <IconRemoteTarget />,
+		hint: "Remote targets: manage outbound actions",
 	},
 ];
 

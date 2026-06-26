@@ -34,4 +34,9 @@ export const Permissions = {
   CreateTemplate: 'CreateTemplate',
   UpdateTemplate: 'UpdateTemplate',
   DeleteTemplate: 'DeleteTemplate',
+  ReadRemoteTarget: 'ReadRemoteTarget',
+  CreateRemoteTarget: 'CreateRemoteTarget',
+  UpdateRemoteTarget: 'UpdateRemoteTarget',
+  DeleteRemoteTarget: 'DeleteRemoteTarget',
+  ExecuteRemoteTarget: 'ExecuteRemoteTarget',
 } as const;

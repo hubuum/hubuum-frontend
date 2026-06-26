@@ -6,7 +6,4 @@
  * OpenAPI spec version: 0.0.1
  */
 
-/**
- * Identifier wrapper for a [`ReportTemplate`].
- */
-export type ReportTemplateID = number;
+export interface RemoteInvocationParameters {}

@@ -6,7 +6,11 @@
  * OpenAPI spec version: 0.0.1
  */
 
-/**
- * Identifier wrapper for a [`ReportTemplate`].
- */
-export type ReportTemplateID = number;
+export interface UserResponse {
+  created_at: string;
+  /** @nullable */
+  email?: string | null;
+  id: number;
+  updated_at: string;
+  username: string;
+}

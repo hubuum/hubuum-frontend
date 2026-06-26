@@ -9,8 +9,7 @@
 /**
  * Struct to update a user.
 
-The password, if present, is expected to be hashed
-before being passed to the database.
+The password, if present, is expected to be plaintext.
  */
 export interface UpdateUser {
   /** @nullable */

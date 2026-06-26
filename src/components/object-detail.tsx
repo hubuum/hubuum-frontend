@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { JsonViewer } from "@/components/json-viewer";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
+import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
@@ -1175,6 +1176,14 @@ export function ObjectDetail({
 					)}
 				</div>
 			</form>
+
+			<RemoteInvocationsPanel
+				namespaceId={objectData.namespace_id}
+				subject={{ type: "object", class_id: classId, object_id: objectId }}
+				subjectLabel={`object "${objectData.name}"`}
+				subjectType="object"
+				targetClassId={classId}
+			/>
 
 			<section className="card stack">
 				{relatedObjectsQuery.isLoading ? (

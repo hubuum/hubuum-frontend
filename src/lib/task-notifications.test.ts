@@ -141,4 +141,12 @@ describe("toastForTransition", () => {
 			type: "info",
 		});
 	});
+
+	it("labels remote calls as remote invocations", () => {
+		const t = makeTask({ id: 17, kind: "remote_call", status: "succeeded" });
+		expect(toastForTransition(t)).toEqual({
+			message: "Remote invocation #17 succeeded",
+			type: "success",
+		});
+	});
 });

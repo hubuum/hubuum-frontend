@@ -10,8 +10,9 @@ import {
 	useState,
 } from "react";
 import { EmptyState } from "@/components/empty-state";
-import { getApiErrorMessage } from "@/lib/api/errors";
 import { NamespaceDetailTracker } from "@/components/namespace-detail-tracker";
+import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1NamespacesByNamespaceId,
 	deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
@@ -68,7 +69,12 @@ type PermissionFlagField =
 	| "has_create_template"
 	| "has_read_template"
 	| "has_update_template"
-	| "has_delete_template";
+	| "has_delete_template"
+	| "has_read_remote_target"
+	| "has_create_remote_target"
+	| "has_update_remote_target"
+	| "has_delete_remote_target"
+	| "has_execute_remote_target";
 
 type PermissionDefinition = {
 	value: PermissionName;
@@ -83,7 +89,8 @@ type PermissionSection =
 	| "object"
 	| "class_relation"
 	| "object_relation"
-	| "template";
+	| "template"
+	| "remote_target";
 
 type EditableField = "name" | "description";
 
@@ -96,6 +103,7 @@ const PERMISSION_SECTION_LABELS: Record<PermissionSection, string> = {
 	class_relation: "Class relations",
 	object_relation: "Object relations",
 	template: "Templates",
+	remote_target: "Remote targets",
 };
 
 const PERMISSION_SECTION_ORDER: PermissionSection[] = [
@@ -105,6 +113,7 @@ const PERMISSION_SECTION_ORDER: PermissionSection[] = [
 	"class_relation",
 	"object_relation",
 	"template",
+	"remote_target",
 ];
 
 const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
@@ -251,6 +260,36 @@ const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
 		label: "Delete template",
 		field: "has_delete_template",
 		section: "template",
+	},
+	{
+		value: PermissionValues.ReadRemoteTarget,
+		label: "Read remote target",
+		field: "has_read_remote_target",
+		section: "remote_target",
+	},
+	{
+		value: PermissionValues.CreateRemoteTarget,
+		label: "Create remote target",
+		field: "has_create_remote_target",
+		section: "remote_target",
+	},
+	{
+		value: PermissionValues.UpdateRemoteTarget,
+		label: "Update remote target",
+		field: "has_update_remote_target",
+		section: "remote_target",
+	},
+	{
+		value: PermissionValues.DeleteRemoteTarget,
+		label: "Delete remote target",
+		field: "has_delete_remote_target",
+		section: "remote_target",
+	},
+	{
+		value: PermissionValues.ExecuteRemoteTarget,
+		label: "Execute remote target",
+		field: "has_execute_remote_target",
+		section: "remote_target",
 	},
 ];
 
@@ -1294,6 +1333,13 @@ export function NamespaceDetail({
 					)}
 				</div>
 			</form>
+
+			<RemoteInvocationsPanel
+				namespaceId={namespaceId}
+				subject={{ type: "namespace", namespace_id: namespaceId }}
+				subjectLabel={`namespace "${namespaceData.name}"`}
+				subjectType="namespace"
+			/>
 
 			<section className="card stack">
 				<header className="stack">

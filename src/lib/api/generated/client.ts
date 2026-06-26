@@ -56,6 +56,7 @@ import type {
   NewHubuumObject,
   NewHubuumObjectRelation,
   NewNamespaceWithAssignee,
+  NewRemoteTarget,
   NewReportTemplate,
   NewUser,
   Permission,
@@ -63,6 +64,8 @@ import type {
   RelatedClassGraph,
   RelatedObjectGraph,
   ReleaseRateLimitResponse,
+  RemoteTarget,
+  RemoteTargetInvokeRequest,
   ReportJsonResponse,
   ReportRequest,
   ReportTemplate,
@@ -75,9 +78,10 @@ import type {
   UpdateHubuumClass,
   UpdateHubuumObject,
   UpdateNamespace,
+  UpdateRemoteTarget,
   UpdateReportTemplate,
   UpdateUser,
-  User,
+  UserResponse,
   UserTokenMetadata
 } from './models';
 import { HUBUUM_BFF_PREFIX } from '@/lib/api/frontend';
@@ -2449,7 +2453,7 @@ export const patchApiV1IamGroupsByGroupId = async (groupId: number,
  * @summary Get Api V1 Iam Groups By Group Id Members
  */
 export type getApiV1IamGroupsByGroupIdMembersResponse200 = {
-  data: User[]
+  data: UserResponse[]
   status: 200
 }
 
@@ -2627,7 +2631,7 @@ export const deleteApiV1IamGroupsByGroupIdMembersByUserId = async (groupId: numb
  * @summary Get Api V1 Iam Users
  */
 export type getApiV1IamUsersResponse200 = {
-  data: User[]
+  data: UserResponse[]
   status: 200
 }
 
@@ -2641,10 +2645,15 @@ export type getApiV1IamUsersResponse401 = {
   status: 401
 }
 
+export type getApiV1IamUsersResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
 export type getApiV1IamUsersResponseSuccess = (getApiV1IamUsersResponse200) & {
   headers: Headers;
 };
-export type getApiV1IamUsersResponseError = (getApiV1IamUsersResponse400 | getApiV1IamUsersResponse401) & {
+export type getApiV1IamUsersResponseError = (getApiV1IamUsersResponse400 | getApiV1IamUsersResponse401 | getApiV1IamUsersResponse403) & {
   headers: Headers;
 };
 
@@ -2689,7 +2698,7 @@ export const getApiV1IamUsers = async (params?: GetApiV1IamUsersParams, options?
  * @summary Post Api V1 Iam Users
  */
 export type postApiV1IamUsersResponse201 = {
-  data: User
+  data: UserResponse
   status: 201
 }
 
@@ -2750,13 +2759,18 @@ export const postApiV1IamUsers = async (newUser: NewUser, options?: RequestInit)
  * @summary Get Api V1 Iam Users By User Id
  */
 export type getApiV1IamUsersByUserIdResponse200 = {
-  data: User
+  data: UserResponse
   status: 200
 }
 
 export type getApiV1IamUsersByUserIdResponse401 = {
   data: ApiErrorResponse
   status: 401
+}
+
+export type getApiV1IamUsersByUserIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
 }
 
 export type getApiV1IamUsersByUserIdResponse404 = {
@@ -2767,7 +2781,7 @@ export type getApiV1IamUsersByUserIdResponse404 = {
 export type getApiV1IamUsersByUserIdResponseSuccess = (getApiV1IamUsersByUserIdResponse200) & {
   headers: Headers;
 };
-export type getApiV1IamUsersByUserIdResponseError = (getApiV1IamUsersByUserIdResponse401 | getApiV1IamUsersByUserIdResponse404) & {
+export type getApiV1IamUsersByUserIdResponseError = (getApiV1IamUsersByUserIdResponse401 | getApiV1IamUsersByUserIdResponse403 | getApiV1IamUsersByUserIdResponse404) & {
   headers: Headers;
 };
 
@@ -2860,7 +2874,7 @@ export const deleteApiV1IamUsersByUserId = async (userId: number, options?: Requ
  * @summary Patch Api V1 Iam Users By User Id
  */
 export type patchApiV1IamUsersByUserIdResponse200 = {
-  data: User
+  data: UserResponse
   status: 200
 }
 
@@ -4609,6 +4623,391 @@ export const deleteApiV1RelationsObjectsByRelationId = async (relationId: number
 
 
 /**
+ * Auto-generated documentation for GET /api/v1/remote-targets.
+ * @summary Get Api V1 Remote Targets
+ */
+export type getApiV1RemoteTargetsResponse200 = {
+  data: RemoteTarget[]
+  status: 200
+}
+
+export type getApiV1RemoteTargetsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1RemoteTargetsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1RemoteTargetsResponseSuccess = (getApiV1RemoteTargetsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1RemoteTargetsResponseError = (getApiV1RemoteTargetsResponse400 | getApiV1RemoteTargetsResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1RemoteTargetsResponse = (getApiV1RemoteTargetsResponseSuccess | getApiV1RemoteTargetsResponseError)
+
+export const getGetApiV1RemoteTargetsUrl = () => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets`
+}
+
+export const getApiV1RemoteTargets = async ( options?: RequestInit): Promise<getApiV1RemoteTargetsResponse> => {
+  
+  const res = await fetch(getGetApiV1RemoteTargetsUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1RemoteTargetsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1RemoteTargetsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/remote-targets.
+ * @summary Post Api V1 Remote Targets
+ */
+export type postApiV1RemoteTargetsResponse201 = {
+  data: RemoteTarget
+  status: 201
+}
+
+export type postApiV1RemoteTargetsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1RemoteTargetsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1RemoteTargetsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1RemoteTargetsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1RemoteTargetsResponseSuccess = (postApiV1RemoteTargetsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1RemoteTargetsResponseError = (postApiV1RemoteTargetsResponse400 | postApiV1RemoteTargetsResponse401 | postApiV1RemoteTargetsResponse403 | postApiV1RemoteTargetsResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1RemoteTargetsResponse = (postApiV1RemoteTargetsResponseSuccess | postApiV1RemoteTargetsResponseError)
+
+export const getPostApiV1RemoteTargetsUrl = () => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets`
+}
+
+export const postApiV1RemoteTargets = async (newRemoteTarget: NewRemoteTarget, options?: RequestInit): Promise<postApiV1RemoteTargetsResponse> => {
+  
+  const res = await fetch(getPostApiV1RemoteTargetsUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      newRemoteTarget,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: postApiV1RemoteTargetsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1RemoteTargetsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/remote-targets/{target_id}.
+ * @summary Get Api V1 Remote Targets By Target Id
+ */
+export type getApiV1RemoteTargetsByTargetIdResponse200 = {
+  data: RemoteTarget
+  status: 200
+}
+
+export type getApiV1RemoteTargetsByTargetIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1RemoteTargetsByTargetIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1RemoteTargetsByTargetIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1RemoteTargetsByTargetIdResponseSuccess = (getApiV1RemoteTargetsByTargetIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1RemoteTargetsByTargetIdResponseError = (getApiV1RemoteTargetsByTargetIdResponse401 | getApiV1RemoteTargetsByTargetIdResponse403 | getApiV1RemoteTargetsByTargetIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1RemoteTargetsByTargetIdResponse = (getApiV1RemoteTargetsByTargetIdResponseSuccess | getApiV1RemoteTargetsByTargetIdResponseError)
+
+export const getGetApiV1RemoteTargetsByTargetIdUrl = (targetId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets/${targetId}`
+}
+
+export const getApiV1RemoteTargetsByTargetId = async (targetId: number, options?: RequestInit): Promise<getApiV1RemoteTargetsByTargetIdResponse> => {
+  
+  const res = await fetch(getGetApiV1RemoteTargetsByTargetIdUrl(targetId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1RemoteTargetsByTargetIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1RemoteTargetsByTargetIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/remote-targets/{target_id}.
+ * @summary Delete Api V1 Remote Targets By Target Id
+ */
+export type deleteApiV1RemoteTargetsByTargetIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1RemoteTargetsByTargetIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1RemoteTargetsByTargetIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1RemoteTargetsByTargetIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1RemoteTargetsByTargetIdResponseSuccess = (deleteApiV1RemoteTargetsByTargetIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1RemoteTargetsByTargetIdResponseError = (deleteApiV1RemoteTargetsByTargetIdResponse401 | deleteApiV1RemoteTargetsByTargetIdResponse403 | deleteApiV1RemoteTargetsByTargetIdResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1RemoteTargetsByTargetIdResponse = (deleteApiV1RemoteTargetsByTargetIdResponseSuccess | deleteApiV1RemoteTargetsByTargetIdResponseError)
+
+export const getDeleteApiV1RemoteTargetsByTargetIdUrl = (targetId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets/${targetId}`
+}
+
+export const deleteApiV1RemoteTargetsByTargetId = async (targetId: number, options?: RequestInit): Promise<deleteApiV1RemoteTargetsByTargetIdResponse> => {
+  
+  const res = await fetch(getDeleteApiV1RemoteTargetsByTargetIdUrl(targetId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteApiV1RemoteTargetsByTargetIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1RemoteTargetsByTargetIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/remote-targets/{target_id}.
+ * @summary Patch Api V1 Remote Targets By Target Id
+ */
+export type patchApiV1RemoteTargetsByTargetIdResponse200 = {
+  data: RemoteTarget
+  status: 200
+}
+
+export type patchApiV1RemoteTargetsByTargetIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1RemoteTargetsByTargetIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1RemoteTargetsByTargetIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1RemoteTargetsByTargetIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1RemoteTargetsByTargetIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1RemoteTargetsByTargetIdResponseSuccess = (patchApiV1RemoteTargetsByTargetIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1RemoteTargetsByTargetIdResponseError = (patchApiV1RemoteTargetsByTargetIdResponse400 | patchApiV1RemoteTargetsByTargetIdResponse401 | patchApiV1RemoteTargetsByTargetIdResponse403 | patchApiV1RemoteTargetsByTargetIdResponse404 | patchApiV1RemoteTargetsByTargetIdResponse409) & {
+  headers: Headers;
+};
+
+export type patchApiV1RemoteTargetsByTargetIdResponse = (patchApiV1RemoteTargetsByTargetIdResponseSuccess | patchApiV1RemoteTargetsByTargetIdResponseError)
+
+export const getPatchApiV1RemoteTargetsByTargetIdUrl = (targetId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets/${targetId}`
+}
+
+export const patchApiV1RemoteTargetsByTargetId = async (targetId: number,
+    updateRemoteTarget: UpdateRemoteTarget, options?: RequestInit): Promise<patchApiV1RemoteTargetsByTargetIdResponse> => {
+  
+  const res = await fetch(getPatchApiV1RemoteTargetsByTargetIdUrl(targetId),
+  {      
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateRemoteTarget,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: patchApiV1RemoteTargetsByTargetIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1RemoteTargetsByTargetIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/remote-targets/{target_id}/invoke.
+ * @summary Post Api V1 Remote Targets By Target Id Invoke
+ */
+export type postApiV1RemoteTargetsByTargetIdInvokeResponse202 = {
+  data: TaskResponse
+  status: 202
+}
+
+export type postApiV1RemoteTargetsByTargetIdInvokeResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1RemoteTargetsByTargetIdInvokeResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1RemoteTargetsByTargetIdInvokeResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1RemoteTargetsByTargetIdInvokeResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1RemoteTargetsByTargetIdInvokeResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1RemoteTargetsByTargetIdInvokeResponseSuccess = (postApiV1RemoteTargetsByTargetIdInvokeResponse202) & {
+  headers: Headers;
+};
+export type postApiV1RemoteTargetsByTargetIdInvokeResponseError = (postApiV1RemoteTargetsByTargetIdInvokeResponse400 | postApiV1RemoteTargetsByTargetIdInvokeResponse401 | postApiV1RemoteTargetsByTargetIdInvokeResponse403 | postApiV1RemoteTargetsByTargetIdInvokeResponse404 | postApiV1RemoteTargetsByTargetIdInvokeResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1RemoteTargetsByTargetIdInvokeResponse = (postApiV1RemoteTargetsByTargetIdInvokeResponseSuccess | postApiV1RemoteTargetsByTargetIdInvokeResponseError)
+
+export const getPostApiV1RemoteTargetsByTargetIdInvokeUrl = (targetId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets/${targetId}/invoke`
+}
+
+export const postApiV1RemoteTargetsByTargetIdInvoke = async (targetId: number,
+    remoteTargetInvokeRequest: RemoteTargetInvokeRequest, options?: RequestInit): Promise<postApiV1RemoteTargetsByTargetIdInvokeResponse> => {
+  
+  const res = await fetch(getPostApiV1RemoteTargetsByTargetIdInvokeUrl(targetId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      remoteTargetInvokeRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: postApiV1RemoteTargetsByTargetIdInvokeResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1RemoteTargetsByTargetIdInvokeResponse
+}
+  
+
+
+/**
  * Auto-generated documentation for POST /api/v1/reports.
  * @summary Post Api V1 Reports
  */
@@ -4763,10 +5162,15 @@ export type getApiV1ReportsByTaskIdOutputResponse404 = {
   status: 404
 }
 
+export type getApiV1ReportsByTaskIdOutputResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
 export type getApiV1ReportsByTaskIdOutputResponseSuccess = (getApiV1ReportsByTaskIdOutputResponse200ApplicationJson | getApiV1ReportsByTaskIdOutputResponse200TextPlain | getApiV1ReportsByTaskIdOutputResponse200TextHtml | getApiV1ReportsByTaskIdOutputResponse200TextCsv) & {
   headers: Headers;
 };
-export type getApiV1ReportsByTaskIdOutputResponseError = (getApiV1ReportsByTaskIdOutputResponse401 | getApiV1ReportsByTaskIdOutputResponse404) & {
+export type getApiV1ReportsByTaskIdOutputResponseError = (getApiV1ReportsByTaskIdOutputResponse401 | getApiV1ReportsByTaskIdOutputResponse404 | getApiV1ReportsByTaskIdOutputResponse410) & {
   headers: Headers;
 };
 

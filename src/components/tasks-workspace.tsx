@@ -40,6 +40,9 @@ function getTaskLabel(task: Pick<TaskRecord, "kind">): string {
 	if (task.kind === "report") {
 		return "Report";
 	}
+	if (task.kind === "remote_call") {
+		return "Remote invocation";
+	}
 
 	return `${task.kind[0].toUpperCase()}${task.kind.slice(1)}`;
 }

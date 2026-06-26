@@ -7,6 +7,6 @@
  */
 
 /**
- * Identifier wrapper for a [`ReportTemplate`].
+ * Identifier wrapper for a remote target.
  */
-export type ReportTemplateID = number;
+export type RemoteTargetID = number;

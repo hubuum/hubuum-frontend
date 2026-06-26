@@ -11,13 +11,13 @@ import {
 	getApiV1IamUsersByUserIdGroups,
 	patchApiV1IamUsersByUserId,
 } from "@/lib/api/generated/client";
-import type { Group, UpdateUser, User } from "@/lib/api/generated/models";
+import type { Group, UpdateUser, UserResponse } from "@/lib/api/generated/models";
 
 type AdminUserDetailProps = {
 	userId: number;
 };
 
-async function fetchUser(userId: number): Promise<User> {
+async function fetchUser(userId: number): Promise<UserResponse> {
 	const response = await getApiV1IamUsersByUserId(userId, {
 		credentials: "include",
 	});

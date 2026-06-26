@@ -12,6 +12,7 @@ import {
 } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
+import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
@@ -882,6 +883,13 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 					)}
 				</div>
 			</form>
+
+			<RemoteInvocationsPanel
+				namespaceId={classData.namespace.id}
+				subject={{ type: "class", class_id: classId }}
+				subjectLabel={`class "${classData.name}"`}
+				subjectType="class"
+			/>
 
 			<section className="card stack">
 				{classRelationsQuery.isLoading ? (

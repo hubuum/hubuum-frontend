@@ -29,6 +29,17 @@ export default function AdminLandingPage() {
 						Open groups
 					</Link>
 				</article>
+
+				<article className="card stack">
+					<h3>Remote targets</h3>
+					<p className="muted">
+						Define outbound actions users can invoke from namespaces, classes,
+						and objects.
+					</p>
+					<Link className="link-chip" href="/admin/remote-targets">
+						Open remote targets
+					</Link>
+				</article>
 			</div>
 		</section>
 	);

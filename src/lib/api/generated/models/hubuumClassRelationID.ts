@@ -7,6 +7,6 @@
  */
 
 /**
- * Identifier wrapper for a [`ReportTemplate`].
+ * Identifier wrapper for a [`HubuumClassRelation`].
  */
-export type ReportTemplateID = number;
+export type HubuumClassRelationID = number;

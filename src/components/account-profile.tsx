@@ -7,7 +7,7 @@ import {
 	getApiV1IamUsers,
 	patchApiV1IamUsersByUserId,
 } from "@/lib/api/generated/client";
-import type { UpdateUser, User } from "@/lib/api/generated/models";
+import type { UpdateUser, UserResponse } from "@/lib/api/generated/models";
 
 type AccountProfileProps = {
 	currentUsername: string | null;
@@ -15,7 +15,7 @@ type AccountProfileProps = {
 
 async function fetchCurrentUser(
 	currentUsername: string | null,
-): Promise<User> {
+): Promise<UserResponse> {
 	const response = await getApiV1IamUsers(undefined, {
 		credentials: "include",
 	});

@@ -77,6 +77,9 @@ function getTaskHeading(task: TaskRecord | null, taskId: number): string {
 	if (task.kind === "report") {
 		return `Report task #${task.id}`;
 	}
+	if (task.kind === "remote_call") {
+		return `Remote invocation task #${task.id}`;
+	}
 
 	return `${task.kind[0].toUpperCase()}${task.kind.slice(1)} task #${task.id}`;
 }
@@ -141,9 +144,18 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 	const taskTone = getTaskStatusTone(activeTask);
 	const isImportTask = activeTask?.kind === "import";
 	const reportDetails = activeTask?.details?.report ?? null;
-	const backHref = activeTask?.kind === "report" ? "/reports" : "/imports";
+	const backHref =
+		activeTask?.kind === "report"
+			? "/reports"
+			: activeTask?.kind === "import"
+				? "/imports"
+				: "/tasks";
 	const backLabel =
-		activeTask?.kind === "report" ? "Back to reports" : "Back to imports";
+		activeTask?.kind === "report"
+			? "Back to reports"
+			: activeTask?.kind === "import"
+				? "Back to imports"
+				: "Back to tasks";
 
 	if (!activeTask) {
 		return <div className="card error-banner">Task data is unavailable.</div>;

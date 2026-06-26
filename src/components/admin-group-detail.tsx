@@ -11,7 +11,7 @@ import {
 	getApiV1IamUsers,
 	postApiV1IamGroupsByGroupIdMembersByUserId,
 } from "@/lib/api/generated/client";
-import type { Group, User } from "@/lib/api/generated/models";
+import type { Group, UserResponse } from "@/lib/api/generated/models";
 
 type AdminGroupDetailProps = {
 	groupId: number;
@@ -40,7 +40,7 @@ async function fetchGroup(groupId: number): Promise<Group> {
 	return response.data;
 }
 
-async function fetchUsers(): Promise<User[]> {
+async function fetchUsers(): Promise<UserResponse[]> {
 	const response = await getApiV1IamUsers(undefined, {
 		credentials: "include",
 	});
@@ -52,7 +52,7 @@ async function fetchUsers(): Promise<User[]> {
 	return response.data;
 }
 
-async function fetchGroupMembers(groupId: number): Promise<User[]> {
+async function fetchGroupMembers(groupId: number): Promise<UserResponse[]> {
 	const response = await getApiV1IamGroupsByGroupIdMembers(groupId, undefined, {
 		credentials: "include",
 	});
@@ -130,14 +130,14 @@ async function updateGroup(
 	);
 }
 
-function formatUserOption(user: User): string {
+function formatUserOption(user: UserResponse): string {
 	return `${user.username} (#${user.id})${user.email ? ` - ${user.email}` : ""}`;
 }
 
 function resolveUserFromInput(
 	input: string,
-	availableUsers: User[],
-): User | null {
+	availableUsers: UserResponse[],
+): UserResponse | null {
 	const trimmed = input.trim();
 	if (!trimmed) {
 		return null;

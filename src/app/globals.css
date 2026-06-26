@@ -1031,6 +1031,36 @@ body.modal-open {
 	margin: 0;
 }
 
+.remote-subject-section {
+	display: grid;
+	gap: 0.65rem;
+}
+
+.remote-subject-section h4 {
+	margin: 0;
+}
+
+.remote-subject-options {
+	display: grid;
+	gap: 0.55rem;
+	max-width: 28rem;
+}
+
+.remote-subject-option {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: center;
+	gap: 0.65rem;
+	padding: 0.5rem 0.65rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--bg-highlight);
+}
+
+.remote-subject-option input {
+	margin: 0;
+}
+
 .form-actions {
 	display: flex;
 	align-items: center;

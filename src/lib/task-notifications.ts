@@ -74,6 +74,7 @@ const TASK_KIND_LABELS: Record<string, string> = {
 	report: "Report",
 	export: "Export",
 	reindex: "Reindex",
+	remote_call: "Remote invocation",
 };
 
 function taskKindLabel(kind: string): string {

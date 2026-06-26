@@ -10,13 +10,13 @@ import {
 	getApiV1IamUsers,
 	postApiV1IamUsers,
 } from "@/lib/api/generated/client";
-import type { NewUser, User } from "@/lib/api/generated/models";
+import type { NewUser, UserResponse } from "@/lib/api/generated/models";
 import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
 
-async function fetchUsers(): Promise<User[]> {
+async function fetchUsers(): Promise<UserResponse[]> {
 	const response = await getApiV1IamUsers(undefined, {
 		credentials: "include",
 	});

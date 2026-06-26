@@ -9,8 +9,7 @@
 /**
  * Struct to create a new user.
 
-The password is expected to be hashed
-before being passed to the database.
+The password is expected to be plaintext.
  */
 export interface NewUser {
   /** @nullable */

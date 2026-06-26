@@ -14,4 +14,5 @@ export const TaskKind = {
   report: 'report',
   export: 'export',
   reindex: 'reindex',
+  remote_call: 'remote_call',
 } as const;
