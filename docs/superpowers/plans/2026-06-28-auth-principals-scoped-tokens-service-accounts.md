@@ -2454,7 +2454,8 @@ export function ServiceAccountsTable() {
 				credentials: "include",
 			});
 
-			if (response.status !== 201 && response.status !== 200) {
+			// Create returns 201 only (per OpenAPI + generated types).
+			if (response.status !== 201) {
 				throw new Error(
 					getApiErrorMessage(
 						response.data,
