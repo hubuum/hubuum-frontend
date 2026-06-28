@@ -5,13 +5,17 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
-	deleteApiV1IamGroupsByGroupIdMembersByUserId,
+	deleteApiV1IamGroupsByGroupIdMembersByPrincipalId,
 	getApiV1IamGroupsByGroupId,
 	getApiV1IamGroupsByGroupIdMembers,
 	getApiV1IamUsers,
-	postApiV1IamGroupsByGroupIdMembersByUserId,
+	postApiV1IamGroupsByGroupIdMembersByPrincipalId,
 } from "@/lib/api/generated/client";
-import type { Group, UserResponse } from "@/lib/api/generated/models";
+import type {
+	Group,
+	PrincipalMemberResponse,
+	UserResponse,
+} from "@/lib/api/generated/models";
 
 type AdminGroupDetailProps = {
 	groupId: number;
@@ -52,7 +56,9 @@ async function fetchUsers(): Promise<UserResponse[]> {
 	return response.data;
 }
 
-async function fetchGroupMembers(groupId: number): Promise<UserResponse[]> {
+async function fetchGroupMembers(
+	groupId: number,
+): Promise<PrincipalMemberResponse[]> {
 	const response = await getApiV1IamGroupsByGroupIdMembers(groupId, undefined, {
 		credentials: "include",
 	});
@@ -83,14 +89,17 @@ async function updateGroup(
 	groupId: number,
 	payload: UpdateGroupPayload,
 ): Promise<UpdateGroupResult> {
-	const response = await fetch(`/_hubuum-bff/hubuum/api/v1/iam/groups/${groupId}`, {
-		method: "PATCH",
-		credentials: "include",
-		headers: {
-			"Content-Type": "application/json",
+	const response = await fetch(
+		`/_hubuum-bff/hubuum/api/v1/iam/groups/${groupId}`,
+		{
+			method: "PATCH",
+			credentials: "include",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(payload),
 		},
-		body: JSON.stringify(payload),
-	});
+	);
 	const responsePayload = await readResponsePayload(response);
 
 	if (response.status === 200) {
@@ -102,14 +111,17 @@ async function updateGroup(
 	}
 
 	if (payload.description !== undefined) {
-		const fallbackResponse = await fetch(`/_hubuum-bff/hubuum/api/v1/iam/groups/${groupId}`, {
-			method: "PATCH",
-			credentials: "include",
-			headers: {
-				"Content-Type": "application/json",
+		const fallbackResponse = await fetch(
+			`/_hubuum-bff/hubuum/api/v1/iam/groups/${groupId}`,
+			{
+				method: "PATCH",
+				credentials: "include",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ groupname: payload.groupname }),
 			},
-			body: JSON.stringify({ groupname: payload.groupname }),
-		});
+		);
 		const fallbackPayload = await readResponsePayload(fallbackResponse);
 
 		if (fallbackResponse.status === 200) {
@@ -131,7 +143,7 @@ async function updateGroup(
 }
 
 function formatUserOption(user: UserResponse): string {
-	return `${user.username} (#${user.id})${user.email ? ` - ${user.email}` : ""}`;
+	return `${user.name} (#${user.id})${user.email ? ` - ${user.email}` : ""}`;
 }
 
 function resolveUserFromInput(
@@ -173,7 +185,7 @@ function resolveUserFromInput(
 	}
 
 	const matchedByUsername = availableUsers.find(
-		(user) => user.username.toLowerCase() === normalized,
+		(user) => user.name.toLowerCase() === normalized,
 	);
 	if (matchedByUsername) {
 		return matchedByUsername;
@@ -227,7 +239,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	const members = membersQuery.data ?? [];
 	const users = usersQuery.data ?? [];
 	const memberIdSet = useMemo(
-		() => new Set(members.map((member) => member.id)),
+		() => new Set(members.map((member) => member.principal_id)),
 		[members],
 	);
 	const allMembersSelected =
@@ -241,7 +253,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		const filteredUsers = memberInputTerm
 			? usersNotInGroup.filter((user) => {
 					return (
-						user.username.toLowerCase().includes(memberInputTerm) ||
+						user.name.toLowerCase().includes(memberInputTerm) ||
 						(user.email ?? "").toLowerCase().includes(memberInputTerm) ||
 						String(user.id).includes(memberInputTerm)
 					);
@@ -279,7 +291,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 
 	const addMemberMutation = useMutation({
 		mutationFn: async (userId: number) => {
-			const response = await postApiV1IamGroupsByGroupIdMembersByUserId(
+			const response = await postApiV1IamGroupsByGroupIdMembersByPrincipalId(
 				groupId,
 				userId,
 				{
@@ -316,13 +328,14 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		mutationFn: async (userIds: number[]) => {
 			await Promise.all(
 				userIds.map(async (userId) => {
-					const response = await deleteApiV1IamGroupsByGroupIdMembersByUserId(
-						groupId,
-						userId,
-						{
-							credentials: "include",
-						},
-					);
+					const response =
+						await deleteApiV1IamGroupsByGroupIdMembersByPrincipalId(
+							groupId,
+							userId,
+							{
+								credentials: "include",
+							},
+						);
 
 					if (response.status !== 204) {
 						throw new Error(
@@ -365,7 +378,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 			return;
 		}
 
-		const existingIds = new Set(members.map((member) => member.id));
+		const existingIds = new Set(members.map((member) => member.principal_id));
 		setSelectedMemberIds((current) =>
 			current.filter((memberId) => existingIds.has(memberId)),
 		);
@@ -416,7 +429,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 
 	function toggleAllMembers(checked: boolean) {
 		if (checked) {
-			setSelectedMemberIds(members.map((member) => member.id));
+			setSelectedMemberIds(members.map((member) => member.principal_id));
 			return;
 		}
 
@@ -637,27 +650,38 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 										/>
 									</th>
 									<th>ID</th>
-									<th>Username</th>
-									<th>Email</th>
+									<th>Name</th>
+									<th>Kind</th>
 								</tr>
 							</thead>
 							<tbody>
 								{members.map((member) => (
-									<tr key={member.id}>
+									<tr key={member.principal_id}>
 										<td className="check-col">
 											<input
 												type="checkbox"
-												aria-label={`Select member ${member.username}`}
-												checked={selectedMemberIds.includes(member.id)}
+												aria-label={`Select member ${member.name}`}
+												checked={selectedMemberIds.includes(
+													member.principal_id,
+												)}
 												onChange={(event) =>
-													toggleMember(member.id, event.target.checked)
+													toggleMember(
+														member.principal_id,
+														event.target.checked,
+													)
 												}
 												disabled={isMembershipUpdating}
 											/>
 										</td>
-										<td>{member.id}</td>
-										<td>{member.username}</td>
-										<td>{member.email ?? "-"}</td>
+										<td>{member.principal_id}</td>
+										<td>{member.name}</td>
+										<td>
+											<span className="badge">
+												{member.kind === "service_account"
+													? "Service account"
+													: "Human"}
+											</span>
+										</td>
 									</tr>
 								))}
 							</tbody>
