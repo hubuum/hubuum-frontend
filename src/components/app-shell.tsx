@@ -558,6 +558,12 @@ const adminLinks: NavItem[] = [
 		hint: "Groups: manage role assignments",
 	},
 	{
+		href: "/admin/service-accounts",
+		label: "Service accounts",
+		icon: <IconUser />,
+		hint: "Service accounts: non-human principals for automation",
+	},
+	{
 		href: "/admin/remote-targets",
 		label: "Remote targets",
 		icon: <IconRemoteTarget />,
