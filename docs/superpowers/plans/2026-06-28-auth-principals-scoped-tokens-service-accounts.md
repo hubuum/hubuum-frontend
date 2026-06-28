@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Adapt the Hubuum frontend to PR #94's principal-centric identity model — field rename, re-homed IAM endpoints, self-service token/group/permission surfaces, scoped token minting, and service-account management.
+**Goal:** Adapt the Hubuum frontend to PR #94's principal-centric identity model plus PR #95's `/api/v1/iam/me` self-service endpoints — field rename, re-homed IAM endpoints, `/me`-based self-service token/group/permission surfaces, scoped token minting, and service-account management.
 
 **Architecture:** The frontend talks to the backend through a generated fetch client (`src/lib/api/generated/`) whose URLs are rewritten to the BFF prefix `/_hubuum-bff/hubuum`. The client is regenerated from `openapi.json` via `npm run gen:api`. We regenerate first (Part A), fix every breaking call site so the app compiles again (Part B), then layer new features on shared reusable components (Parts C–E).
 
@@ -25,6 +25,11 @@ After regen, orval produces these (verified against existing naming convention; 
 
 | Function | Returns (`response.data`) |
 | --- | --- |
+| `getApiV1IamMe(options?)` | `MeResponse` (`{ principal: PrincipalMemberResponse, token: CurrentTokenMetadata }`) |
+| `getApiV1IamMeTokens(params?, options?)` | `PrincipalTokenMetadata[]` |
+| `getApiV1IamMeGroups(params?, options?)` | `Group[]` |
+| `getApiV1IamMePermissions(options?)` | `PrincipalNamespacePermissions[]` |
+| `getApiV1IamUsersByUserId(userId, options?)` | `UserResponse` |
 | `getApiV1IamPrincipalsByPrincipalIdTokens(principalId, params?, options?)` | `PrincipalTokenMetadata[]` |
 | `postApiV1IamPrincipalsByPrincipalIdTokens(principalId, newTokenRequest, options?)` | `{}` at type level; at runtime the parsed body — cast to `PrincipalToken` to read `.token` |
 | `postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevoke(principalId, tokenId, options?)` | success status 200/204 |
@@ -40,7 +45,7 @@ After regen, orval produces these (verified against existing naming convention; 
 | `postApiV1IamGroupsByGroupIdMembersByPrincipalId(groupId, principalId, options?)` | success status 204 |
 | `deleteApiV1IamGroupsByGroupIdMembersByPrincipalId(groupId, principalId, options?)` | success status 204 |
 
-New model types (PascalCase, in `src/lib/api/generated/models`): `ServiceAccountResponse`, `NewServiceAccount`, `UpdateServiceAccount`, `PrincipalMemberResponse`, `PrincipalToken`, `PrincipalTokenMetadata`, `NewTokenRequest`, `PrincipalNamespacePermissions`, `GroupGrant`, `Permissions` (const-object enum of 29 strings). `UserResponse` gains `name` (replacing `username`) + optional `proper_name`; `NewUser` gains `proper_name`; `UpdateUser` gains `proper_name` and loses `username`.
+New model types (PascalCase, in `src/lib/api/generated/models`): `MeResponse`, `CurrentTokenMetadata`, `ServiceAccountResponse`, `NewServiceAccount`, `UpdateServiceAccount`, `PrincipalMemberResponse`, `PrincipalToken`, `PrincipalTokenMetadata`, `NewTokenRequest`, `PrincipalNamespacePermissions`, `GroupGrant`, `Permissions` (const-object enum of 29 strings). `UserResponse` gains `name` (replacing `username`) + optional `proper_name`; `NewUser` gains `proper_name`; `UpdateUser` gains `proper_name` and loses `username`.
 
 ---
 
@@ -57,19 +62,19 @@ New model types (PascalCase, in `src/lib/api/generated/models`): `ServiceAccount
 
 - [ ] **Step 1: Replace the spec**
 
-Download the merged spec to the repo root:
+Download the spec from the `me_endpoints` branch (a superset of #94 + #95) to the repo root:
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/hubuum/hubuum/main/docs/openapi.json" -o openapi.json
+curl -fsSL "https://raw.githubusercontent.com/hubuum/hubuum/me_endpoints/docs/openapi.json" -o openapi.json
 ```
 
 - [ ] **Step 2: Verify the spec is the new one**
 
 Run:
 ```bash
-grep -c "service-accounts" openapi.json && grep -c "principals" openapi.json
+grep -c "service-accounts" openapi.json && grep -c "principals" openapi.json && grep -c "iam/me" openapi.json
 ```
-Expected: both counts > 0.
+Expected: all counts > 0 (the last confirms the PR #95 `/me` endpoints are present).
 
 - [ ] **Step 3: Regenerate the client**
 
@@ -83,10 +88,10 @@ Expected: completes without error; new model files appear under `src/lib/api/gen
 
 Run:
 ```bash
-grep -oE "export const (get|post|patch|delete)ApiV1Iam(Principals|ServiceAccounts)[A-Za-z]*" src/lib/api/generated/client.ts | sort -u
+grep -oE "export const (get|post|patch|delete)ApiV1Iam(Principals|ServiceAccounts|Me)[A-Za-z]*" src/lib/api/generated/client.ts | sort -u
 grep -oE "export const (post|delete)ApiV1IamGroupsByGroupIdMembersByPrincipalId" src/lib/api/generated/client.ts | sort -u
 ```
-Expected: the names match the table above. If any differ, note the actual name and use it consistently in later tasks.
+Expected: the names match the table above, including `getApiV1IamMe`, `getApiV1IamMeTokens`, `getApiV1IamMeGroups`, `getApiV1IamMePermissions`. If any differ, note the actual name and use it consistently in later tasks.
 
 - [ ] **Step 5: Confirm field rename and enum**
 
@@ -95,8 +100,9 @@ Run:
 grep -n "proper_name" src/lib/api/generated/models/userResponse.ts
 grep -n "name" src/lib/api/generated/models/userResponse.ts | grep -v proper_name
 test -f src/lib/api/generated/models/permissions.ts && grep -c "ReadCollection" src/lib/api/generated/models/permissions.ts
+test -f src/lib/api/generated/models/meResponse.ts && test -f src/lib/api/generated/models/currentTokenMetadata.ts && echo "me models present"
 ```
-Expected: `userResponse.ts` has `name` and `proper_name` (no `username`); `permissions.ts` exists and contains `ReadCollection`.
+Expected: `userResponse.ts` has `name` and `proper_name` (no `username`); `permissions.ts` exists and contains `ReadCollection`; `meResponse.ts` and `currentTokenMetadata.ts` exist.
 
 - [ ] **Step 6: Commit**
 
@@ -209,32 +215,120 @@ git commit -m "feat: log in by principal name"
 **Interfaces:**
 - Consumes: `UserResponse.name`, `UserResponse.proper_name`; `NewUser { name, password, email?, proper_name? }`; `UpdateUser { email?, password?, proper_name? }`.
 
-- [ ] **Step 1: Fix `use-current-user-id.ts` to match on `name`**
+- [ ] **Step 1: Rewrite `use-current-user-id.ts` to resolve via `GET /me`**
 
-In `src/lib/use-current-user-id.ts`, replace:
+PR #95 adds `GET /api/v1/iam/me`, so we no longer scan the (admin-only) user list. Replace the **entire** contents of `src/lib/use-current-user-id.ts` with:
 ```ts
-		const match = response.data.find((user) => user.username === username);
-```
-with:
-```ts
-		const match = response.data.find((user) => user.name === username);
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+
+import { getApiV1IamMe } from "@/lib/api/generated/client";
+
+async function resolveCurrentUserId(): Promise<number | null> {
+	const response = await getApiV1IamMe({ credentials: "include" });
+	if (response.status !== 200) {
+		return null;
+	}
+	return response.data.principal.principal_id;
+}
+
+export function useCurrentUserId(currentUsername: string | null): number | null {
+	const query = useQuery({
+		queryKey: ["current-user-id", currentUsername],
+		queryFn: async () => resolveCurrentUserId(),
+		enabled: Boolean(currentUsername),
+		staleTime: Number.POSITIVE_INFINITY,
+		gcTime: Number.POSITIVE_INFINITY,
+	});
+
+	return query.data ?? null;
+}
 ```
 
-- [ ] **Step 2: Rework `account-profile.tsx` — name read-only, proper_name editable, no username in UpdateUser**
+> The `currentUsername` argument is kept (signature unchanged, so `app-shell` and account components don't change) and is used only for the query key + the `enabled` gate; the id itself comes from `/me`.
+
+- [ ] **Step 2: Rework `account-profile.tsx` — load via `/me` + `users/{id}`, name read-only, proper_name editable, no username in UpdateUser**
 
 In `src/components/account-profile.tsx`:
 
-(a) Replace the `fetchCurrentUser` matcher:
+(a) Replace the import block:
 ```tsx
-	const matchedUser = currentUsername
-		? users.find((user) => user.username === currentUsername)
-		: null;
+import {
+	getApiV1IamUsers,
+	patchApiV1IamUsersByUserId,
+} from "@/lib/api/generated/client";
 ```
 with:
 ```tsx
+import {
+	getApiV1IamMe,
+	getApiV1IamUsersByUserId,
+	patchApiV1IamUsersByUserId,
+} from "@/lib/api/generated/client";
+```
+and replace the entire `fetchCurrentUser` function:
+```tsx
+async function fetchCurrentUser(
+	currentUsername: string | null,
+): Promise<UserResponse> {
+	const response = await getApiV1IamUsers(undefined, {
+		credentials: "include",
+	});
+
+	if (response.status !== 200) {
+		throw new Error(getApiErrorMessage(response.data, "Failed to load user."));
+	}
+
+	const users = response.data;
 	const matchedUser = currentUsername
-		? users.find((user) => user.name === currentUsername)
+		? users.find((user) => user.username === currentUsername)
 		: null;
+	const currentUser = matchedUser ?? (users.length === 1 ? users[0] : null);
+
+	if (!currentUser) {
+		throw new Error("Current user was not returned by the user endpoint.");
+	}
+
+	return currentUser;
+}
+```
+with:
+```tsx
+async function fetchCurrentUser(): Promise<UserResponse> {
+	const meResponse = await getApiV1IamMe({ credentials: "include" });
+	if (meResponse.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(meResponse.data, "Failed to load account."),
+		);
+	}
+
+	const userId = meResponse.data.principal.principal_id;
+	const userResponse = await getApiV1IamUsersByUserId(userId, {
+		credentials: "include",
+	});
+	if (userResponse.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(userResponse.data, "Failed to load user."),
+		);
+	}
+
+	return userResponse.data;
+}
+```
+and update the query call (it no longer takes an argument):
+```tsx
+	const userQuery = useQuery({
+		queryKey: ["account-user", currentUsername],
+		queryFn: async () => fetchCurrentUser(currentUsername),
+	});
+```
+→
+```tsx
+	const userQuery = useQuery({
+		queryKey: ["account-user", currentUsername],
+		queryFn: async () => fetchCurrentUser(),
+	});
 ```
 
 (b) Replace the local state block:
@@ -940,12 +1034,21 @@ git commit -m "feat: render group members as principals (human + service account
 - Modify: `src/components/task-detail.tsx`
 
 **Interfaces:**
-- Consumes: `getApiV1IamPrincipalsByPrincipalIdGroups`, `UserResponse.name`.
+- Consumes: `getApiV1IamMeGroups` (→ `Group[]`), `UserResponse.name`.
 
-- [ ] **Step 1: namespace-detail `fetchCurrentUserGroups`**
+- [ ] **Step 1: namespace-detail `fetchCurrentUserGroups` → `/me/groups`**
 
-In `src/components/namespace-detail.tsx`, update the import list to add `getApiV1IamPrincipalsByPrincipalIdGroups` and remove `getApiV1IamUsersByUserIdGroups`. Then replace the function body:
+In `src/components/namespace-detail.tsx`, update the import list: remove `getApiV1IamUsers` and `getApiV1IamUsersByUserIdGroups` from the generated-client import **only if they are not used elsewhere in the file** (grep first: `grep -n "getApiV1IamUsers\b\|getApiV1IamUsersByUserIdGroups" src/components/namespace-detail.tsx`); add `getApiV1IamMeGroups`. Then replace the entire `fetchCurrentUserGroups` function:
 ```tsx
+async function fetchCurrentUserGroups(username: string): Promise<Group[]> {
+	try {
+		const usersResponse = await getApiV1IamUsers(undefined, {
+			credentials: "include",
+		});
+		if (usersResponse.status !== 200) {
+			return [];
+		}
+
 		const matchedUser = usersResponse.data.find(
 			(user) => user.username === username,
 		);
@@ -960,28 +1063,38 @@ In `src/components/namespace-detail.tsx`, update the import list to add `getApiV
 				credentials: "include",
 			},
 		);
-```
-with:
-```tsx
-		const matchedUser = usersResponse.data.find(
-			(user) => user.name === username,
-		);
-		if (!matchedUser) {
+		if (userGroupsResponse.status !== 200) {
 			return [];
 		}
 
-		const userGroupsResponse = await getApiV1IamPrincipalsByPrincipalIdGroups(
-			matchedUser.id,
-			undefined,
-			{
-				credentials: "include",
-			},
-		);
+		return userGroupsResponse.data;
+	} catch {
+		return [];
+	}
+}
+```
+with:
+```tsx
+async function fetchCurrentUserGroups(_username: string): Promise<Group[]> {
+	try {
+		const response = await getApiV1IamMeGroups(undefined, {
+			credentials: "include",
+		});
+		if (response.status !== 200) {
+			return [];
+		}
+		return response.data;
+	} catch {
+		return [];
+	}
+}
 ```
 
-- [ ] **Step 2: object-detail `fetchCurrentUserGroups`**
+> The `_username` parameter is retained (prefixed to satisfy lint) so the call site is unchanged. If the grep in the import step shows `getApiV1IamUsers` is still used elsewhere, keep that import and only remove `getApiV1IamUsersByUserIdGroups`.
 
-Apply the identical import swap and body change in `src/components/object-detail.tsx` (the function is byte-identical to namespace-detail's).
+- [ ] **Step 2: object-detail `fetchCurrentUserGroups` → `/me/groups`**
+
+Apply the identical import swap and the identical function replacement in `src/components/object-detail.tsx` (the function is byte-identical to namespace-detail's). Run the same grep there first to decide whether `getApiV1IamUsers` must stay.
 
 - [ ] **Step 3: task-detail submitter**
 
@@ -1633,7 +1746,7 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 
 - [ ] **Step 3: `TokenList`**
 
-Create `src/components/token-list.tsx`:
+Create `src/components/token-list.tsx`. The `principalId` prop is `number | "me"`: when `"me"` it lists via `getApiV1IamMeTokens` (PR #95). Revocation always targets `token.principal_id` from the row (present on every `PrincipalTokenMetadata`), so the same code path serves both self and service accounts.
 ```tsx
 "use client";
 
@@ -1641,23 +1754,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
+	getApiV1IamMeTokens,
 	getApiV1IamPrincipalsByPrincipalIdTokens,
 	postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevoke,
 } from "@/lib/api/generated/client";
 import type { PrincipalTokenMetadata } from "@/lib/api/generated/models";
 
 type TokenListProps = {
-	principalId: number;
+	principalId: number | "me";
 };
 
 async function fetchTokens(
-	principalId: number,
+	principalId: number | "me",
 ): Promise<PrincipalTokenMetadata[]> {
-	const response = await getApiV1IamPrincipalsByPrincipalIdTokens(
-		principalId,
-		undefined,
-		{ credentials: "include" },
-	);
+	const response =
+		principalId === "me"
+			? await getApiV1IamMeTokens(undefined, { credentials: "include" })
+			: await getApiV1IamPrincipalsByPrincipalIdTokens(principalId, undefined, {
+					credentials: "include",
+				});
 
 	if (response.status !== 200) {
 		throw new Error(getApiErrorMessage(response.data, "Failed to load tokens."));
@@ -1682,11 +1797,11 @@ export function TokenList({ principalId }: TokenListProps) {
 	});
 
 	const revokeMutation = useMutation({
-		mutationFn: async (tokenId: number) => {
+		mutationFn: async (token: PrincipalTokenMetadata) => {
 			const response =
 				await postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevoke(
-					principalId,
-					tokenId,
+					token.principal_id,
+					token.id,
 					{ credentials: "include" },
 				);
 
@@ -1703,11 +1818,11 @@ export function TokenList({ principalId }: TokenListProps) {
 		},
 	});
 
-	function revoke(tokenId: number) {
-		if (!window.confirm(`Revoke token #${tokenId}? This cannot be undone.`)) {
+	function revoke(token: PrincipalTokenMetadata) {
+		if (!window.confirm(`Revoke token #${token.id}? This cannot be undone.`)) {
 			return;
 		}
-		revokeMutation.mutate(tokenId);
+		revokeMutation.mutate(token);
 	}
 
 	if (tokensQuery.isLoading) {
@@ -1772,7 +1887,7 @@ export function TokenList({ principalId }: TokenListProps) {
 											<button
 												type="button"
 												className="danger"
-												onClick={() => revoke(token.id)}
+												onClick={() => revoke(token)}
 												disabled={revoked || revokeMutation.isPending}
 											>
 												Revoke
@@ -1816,27 +1931,32 @@ git commit -m "feat: add reusable token mint/list/reveal components"
 
 - [ ] **Step 1: Implement the component**
 
-Create `src/components/principal-permissions.tsx`:
+Create `src/components/principal-permissions.tsx`. The `principalId` prop is `number | "me"`: when `"me"` it reads `/me/permissions` (PR #95).
 ```tsx
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
 
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { getApiV1IamPrincipalsByPrincipalIdPermissions } from "@/lib/api/generated/client";
+import {
+	getApiV1IamMePermissions,
+	getApiV1IamPrincipalsByPrincipalIdPermissions,
+} from "@/lib/api/generated/client";
 import type { PrincipalNamespacePermissions } from "@/lib/api/generated/models";
 
 type PrincipalPermissionsProps = {
-	principalId: number;
+	principalId: number | "me";
 };
 
 async function fetchPermissions(
-	principalId: number,
+	principalId: number | "me",
 ): Promise<PrincipalNamespacePermissions[]> {
-	const response = await getApiV1IamPrincipalsByPrincipalIdPermissions(
-		principalId,
-		{ credentials: "include" },
-	);
+	const response =
+		principalId === "me"
+			? await getApiV1IamMePermissions({ credentials: "include" })
+			: await getApiV1IamPrincipalsByPrincipalIdPermissions(principalId, {
+					credentials: "include",
+				});
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -1948,13 +2068,14 @@ git commit -m "feat: add principal effective-permissions view"
 **Files:**
 - Create: `src/components/account-tabs.tsx`
 - Create: `src/components/account-tokens.tsx`
+- Create: `src/components/account-groups.tsx`
 - Create: `src/app/(protected)/account/tokens/page.tsx`
 - Create: `src/app/(protected)/account/groups/page.tsx`
 - Create: `src/app/(protected)/account/permissions/page.tsx`
 - Modify: `src/app/(protected)/account/page.tsx`
 
 **Interfaces:**
-- Consumes: `useCurrentUserId`, `TokenList`, `TokenMintForm`, `RawTokenReveal`, `PrincipalPermissions`, `getApiV1IamPrincipalsByPrincipalIdGroups`, `requireServerSession`.
+- Consumes: `useCurrentUserId` (for the mint form's numeric id), `TokenList` (with `principalId="me"`), `TokenMintForm`, `RawTokenReveal`, `PrincipalPermissions` (with `principalId="me"`), `getApiV1IamMeGroups`, `requireServerSession`.
 
 - [ ] **Step 1: Account tab strip**
 
@@ -2033,11 +2154,13 @@ export function AccountTokens({ currentUsername }: AccountTokensProps) {
 				principalId={principalId}
 				onMinted={(token) => setRawToken(token.token)}
 			/>
-			<TokenList principalId={principalId} />
+			<TokenList principalId="me" />
 		</div>
 	);
 }
 ```
+
+> `TokenMintForm` needs the numeric id (mint is `principals/{id}/tokens` — there is no `POST /me/tokens`), so we keep `useCurrentUserId` here. The list uses the `/me/tokens` endpoint via `principalId="me"`.
 
 - [ ] **Step 3: Tokens page (RSC wrapper)**
 
@@ -2070,12 +2193,12 @@ export default async function AccountTokensPage() {
 
 Create `src/app/(protected)/account/groups/page.tsx`:
 ```tsx
+import { AccountGroups } from "@/components/account-groups";
 import { AccountTabs } from "@/components/account-tabs";
-import { AdminUserGroupsByName } from "@/components/account-groups";
 import { requireServerSession } from "@/lib/auth/guards";
 
 export default async function AccountGroupsPage() {
-	const session = await requireServerSession();
+	await requireServerSession();
 
 	return (
 		<section className="stack">
@@ -2085,13 +2208,13 @@ export default async function AccountGroupsPage() {
 				<p className="muted">Groups you belong to.</p>
 			</header>
 			<AccountTabs />
-			<AdminUserGroupsByName currentUsername={session.username ?? null} />
+			<AccountGroups />
 		</section>
 	);
 }
 ```
 
-Create `src/components/account-groups.tsx`:
+Create `src/components/account-groups.tsx` (uses `/me/groups`, so no id resolution needed):
 ```tsx
 "use client";
 
@@ -2099,16 +2222,13 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { getApiV1IamPrincipalsByPrincipalIdGroups } from "@/lib/api/generated/client";
+import { getApiV1IamMeGroups } from "@/lib/api/generated/client";
 import type { Group } from "@/lib/api/generated/models";
-import { useCurrentUserId } from "@/lib/use-current-user-id";
 
-async function fetchGroups(principalId: number): Promise<Group[]> {
-	const response = await getApiV1IamPrincipalsByPrincipalIdGroups(
-		principalId,
-		undefined,
-		{ credentials: "include" },
-	);
+async function fetchGroups(): Promise<Group[]> {
+	const response = await getApiV1IamMeGroups(undefined, {
+		credentials: "include",
+	});
 
 	if (response.status !== 200) {
 		throw new Error(getApiErrorMessage(response.data, "Failed to load groups."));
@@ -2117,20 +2237,13 @@ async function fetchGroups(principalId: number): Promise<Group[]> {
 	return response.data;
 }
 
-export function AdminUserGroupsByName({
-	currentUsername,
-}: {
-	currentUsername: string | null;
-}) {
-	const principalId = useCurrentUserId(currentUsername);
-
+export function AccountGroups() {
 	const groupsQuery = useQuery({
-		queryKey: ["principal-groups", principalId],
-		queryFn: async () => fetchGroups(principalId as number),
-		enabled: principalId != null,
+		queryKey: ["me-groups"],
+		queryFn: fetchGroups,
 	});
 
-	if (principalId == null || groupsQuery.isLoading) {
+	if (groupsQuery.isLoading) {
 		return <div className="card muted">Loading groups…</div>;
 	}
 
@@ -2179,40 +2292,18 @@ export function AdminUserGroupsByName({
 }
 ```
 
-> The admin group links are fine for admins; non-admins simply can't open them. Keeping one component avoids duplicating the table.
+> The group links point at admin pages; non-admins simply can't open them (acceptable — the table itself is the value here).
 
 - [ ] **Step 5: Permissions page**
 
-Create `src/components/account-permissions.tsx`:
+Create `src/app/(protected)/account/permissions/page.tsx` (the `"me"` mode means no client wrapper is needed):
 ```tsx
-"use client";
-
-import { PrincipalPermissions } from "@/components/principal-permissions";
-import { useCurrentUserId } from "@/lib/use-current-user-id";
-
-export function AccountPermissions({
-	currentUsername,
-}: {
-	currentUsername: string | null;
-}) {
-	const principalId = useCurrentUserId(currentUsername);
-
-	if (principalId == null) {
-		return <div className="card muted">Resolving your account…</div>;
-	}
-
-	return <PrincipalPermissions principalId={principalId} />;
-}
-```
-
-Create `src/app/(protected)/account/permissions/page.tsx`:
-```tsx
-import { AccountPermissions } from "@/components/account-permissions";
 import { AccountTabs } from "@/components/account-tabs";
+import { PrincipalPermissions } from "@/components/principal-permissions";
 import { requireServerSession } from "@/lib/auth/guards";
 
 export default async function AccountPermissionsPage() {
-	const session = await requireServerSession();
+	await requireServerSession();
 
 	return (
 		<section className="stack">
@@ -2224,7 +2315,7 @@ export default async function AccountPermissionsPage() {
 				</p>
 			</header>
 			<AccountTabs />
-			<AccountPermissions currentUsername={session.username ?? null} />
+			<PrincipalPermissions principalId="me" />
 		</section>
 	);
 }
@@ -2259,14 +2350,14 @@ export default async function AccountPage() {
 
 Run:
 ```bash
-npm run typecheck && npx biome check src/components/account-tabs.tsx src/components/account-tokens.tsx src/components/account-groups.tsx src/components/account-permissions.tsx "src/app/(protected)/account"
+npm run typecheck && npx biome check src/components/account-tabs.tsx src/components/account-tokens.tsx src/components/account-groups.tsx "src/app/(protected)/account"
 ```
 Expected: clean.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add "src/app/(protected)/account" src/components/account-tabs.tsx src/components/account-tokens.tsx src/components/account-groups.tsx src/components/account-permissions.tsx
+git add "src/app/(protected)/account" src/components/account-tabs.tsx src/components/account-tokens.tsx src/components/account-groups.tsx
 git commit -m "feat: self-service account tokens, groups, and permissions"
 ```
 

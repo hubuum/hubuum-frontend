@@ -2,8 +2,11 @@
 
 **Date:** 2026-06-28
 **Status:** Approved (design)
-**Upstream:** [hubuum/hubuum#94](https://github.com/hubuum/hubuum/pull/94),
-spec in `docs/auth_model.md` on `hubuum` main.
+**Upstream:** [hubuum/hubuum#94](https://github.com/hubuum/hubuum/pull/94)
+(merged) + [hubuum/hubuum#95](https://github.com/hubuum/hubuum/pull/95)
+(`me_endpoints` branch, assumed to merge), spec in `docs/auth_model.md` on
+`hubuum` main. The client is generated from the `me_endpoints` branch
+`docs/openapi.json`, which is a superset of #94 + #95.
 
 ## Background
 
@@ -37,8 +40,8 @@ adapted.
   kinds).
 - Separate nav gating for non-admin human owner-group members of service accounts
   (we rely on backend 403s).
-- A `whoami` flow (no such endpoint; current-principal id is resolved by name
-  match, as today).
+- A name-match scan for the current principal (replaced by `GET /api/v1/iam/me`
+  from PR #95).
 
 ## Reference: relevant API surface (from new `openapi.json`)
 
@@ -48,7 +51,18 @@ adapted.
 - `POST|DELETE /api/v1/iam/groups/{group_id}/members/{user_id}`
 - `GET /api/v1/namespaces/{namespace_id}/permissions/user/{user_id}`
 
-**Added paths:**
+**Added paths (PR #95 — self-service "me"):**
+- `GET /api/v1/iam/me` → `MeResponse { principal: PrincipalMemberResponse, token: CurrentTokenMetadata }` (current principal id = `principal.principal_id`)
+- `GET /api/v1/iam/me/tokens` → `PrincipalTokenMetadata[]`
+- `GET /api/v1/iam/me/groups` → `Group[]`
+- `GET /api/v1/iam/me/permissions` → `PrincipalNamespacePermissions[]`
+
+> The `/me` endpoints replace the original plan's name-match scan for the current
+> principal id and are the correct self-service surface (no admin/self ambiguity).
+> Self token **mint/revoke** still go through `principals/{id}` using the id from
+> `GET /me` (there is no `POST /me/tokens`).
+
+**Added paths (PR #94):**
 - `GET|POST /api/v1/iam/principals/{principal_id}/tokens`
 - `POST /api/v1/iam/principals/{principal_id}/tokens/{token_id}/revoke`
 - `GET /api/v1/iam/principals/{principal_id}/groups`
@@ -111,8 +125,10 @@ committed and regenerated from `openapi.json` via `npm run gen:api`.
     `…GroupsByGroupIdMembersByPrincipalId`; member rows render
     `PrincipalMemberResponse` (`principal_id`, `kind`, `name`) with a kind badge.
   - namespace user-permission lookups → `…PermissionsPrincipalByPrincipalId`.
-- **"me" resolution**: `use-current-user-id` keeps paginating users and matching on
-  `name` (returns the current principal id used by all `principals/*` calls).
+- **"me" resolution**: `use-current-user-id` is rewritten to call
+  `GET /api/v1/iam/me` and return `me.principal.principal_id` (signature unchanged,
+  so app-shell and account components are untouched). Self-service reads use the
+  `/me/*` endpoints directly; self token mint/revoke use `principals/{me id}`.
 
 ### Part C — `proper_name`
 
@@ -124,10 +140,12 @@ the `UpdateUser` payload. Display continues to use `name`.
 
 New routes (with a shared sub-nav/tabs across account pages):
 
-- `/account` — profile (existing) + `proper_name`.
-- `/account/tokens` — list own tokens, mint, revoke.
-- `/account/groups` — own groups.
-- `/account/permissions` — effective permissions per namespace, by granting group.
+- `/account` — profile (existing) + `proper_name`; loads via `GET /me` (id) +
+  `GET /api/v1/iam/users/{id}` (full record), not a full-list scan.
+- `/account/tokens` — list own tokens via `GET /me/tokens`; mint/revoke via
+  `principals/{me id}`.
+- `/account/groups` — own groups via `GET /me/groups`.
+- `/account/permissions` — effective permissions via `GET /me/permissions`.
 
 **Reusable components** (shared with service-account detail):
 
