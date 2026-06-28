@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
-	getApiV1IamUsers,
+	getApiV1IamMe,
+	getApiV1IamUsersByUserId,
 	patchApiV1IamUsersByUserId,
 } from "@/lib/api/generated/client";
 import type { UpdateUser, UserResponse } from "@/lib/api/generated/models";
@@ -13,33 +14,30 @@ type AccountProfileProps = {
 	currentUsername: string | null;
 };
 
-async function fetchCurrentUser(
-	currentUsername: string | null,
-): Promise<UserResponse> {
-	const response = await getApiV1IamUsers(undefined, {
+async function fetchCurrentUser(): Promise<UserResponse> {
+	const meResponse = await getApiV1IamMe({ credentials: "include" });
+	if (meResponse.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(meResponse.data, "Failed to load account."),
+		);
+	}
+
+	const userId = meResponse.data.principal.principal_id;
+	const userResponse = await getApiV1IamUsersByUserId(userId, {
 		credentials: "include",
 	});
-
-	if (response.status !== 200) {
-		throw new Error(getApiErrorMessage(response.data, "Failed to load user."));
+	if (userResponse.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(userResponse.data, "Failed to load user."),
+		);
 	}
 
-	const users = response.data;
-	const matchedUser = currentUsername
-		? users.find((user) => user.username === currentUsername)
-		: null;
-	const currentUser = matchedUser ?? (users.length === 1 ? users[0] : null);
-
-	if (!currentUser) {
-		throw new Error("Current user was not returned by the user endpoint.");
-	}
-
-	return currentUser;
+	return userResponse.data;
 }
 
 export function AccountProfile({ currentUsername }: AccountProfileProps) {
 	const queryClient = useQueryClient();
-	const [username, setUsername] = useState("");
+	const [properName, setProperName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [initializedUserId, setInitializedUserId] = useState<number | null>(
@@ -50,7 +48,7 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 
 	const userQuery = useQuery({
 		queryKey: ["account-user", currentUsername],
-		queryFn: async () => fetchCurrentUser(currentUsername),
+		queryFn: async () => fetchCurrentUser(),
 	});
 
 	useEffect(() => {
@@ -58,7 +56,7 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 			return;
 		}
 
-		setUsername(userQuery.data.username);
+		setProperName(userQuery.data.proper_name ?? "");
 		setEmail(userQuery.data.email ?? "");
 		setInitializedUserId(userQuery.data.id);
 	}, [initializedUserId, userQuery.data]);
@@ -88,7 +86,7 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 				queryKey: ["account-user", currentUsername],
 			});
 			await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-			setUsername(updatedUser.username);
+			setProperName(updatedUser.proper_name ?? "");
 			setEmail(updatedUser.email ?? "");
 			setPassword("");
 			setFormError(null);
@@ -113,17 +111,13 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 			return;
 		}
 
-		const trimmedUsername = username.trim();
-		if (!trimmedUsername) {
-			setFormError("Username is required.");
-			return;
-		}
-
+		const trimmedProperName = properName.trim();
 		const trimmedEmail = email.trim();
 		const payload: UpdateUser = {};
 
-		if (trimmedUsername !== originalUser.username) {
-			payload.username = trimmedUsername;
+		const originalProperName = originalUser.proper_name ?? "";
+		if (trimmedProperName !== originalProperName) {
+			payload.proper_name = trimmedProperName || null;
 		}
 
 		const originalEmail = originalUser.email ?? "";
@@ -170,10 +164,15 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 			<div className="form-grid">
 				<label className="control-field">
 					<span>Username</span>
+					<input value={user.name} readOnly disabled />
+				</label>
+
+				<label className="control-field">
+					<span>Display name</span>
 					<input
-						required
-						value={username}
-						onChange={(event) => setUsername(event.target.value)}
+						value={properName}
+						onChange={(event) => setProperName(event.target.value)}
+						placeholder="e.g. Alice Doe"
 					/>
 				</label>
 
@@ -200,8 +199,8 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 			</div>
 
 			<div className="muted">
-				Created {new Date(user.created_at).toLocaleString()} &middot; Last updated{" "}
-				{new Date(user.updated_at).toLocaleString()}
+				Created {new Date(user.created_at).toLocaleString()} &middot; Last
+				updated {new Date(user.updated_at).toLocaleString()}
 			</div>
 
 			{formError ? <div className="error-banner">{formError}</div> : null}

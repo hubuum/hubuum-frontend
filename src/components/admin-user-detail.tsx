@@ -7,11 +7,15 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamUsersByUserId,
+	getApiV1IamPrincipalsByPrincipalIdGroups,
 	getApiV1IamUsersByUserId,
-	getApiV1IamUsersByUserIdGroups,
 	patchApiV1IamUsersByUserId,
 } from "@/lib/api/generated/client";
-import type { Group, UpdateUser, UserResponse } from "@/lib/api/generated/models";
+import type {
+	Group,
+	UpdateUser,
+	UserResponse,
+} from "@/lib/api/generated/models";
 
 type AdminUserDetailProps = {
 	userId: number;
@@ -30,9 +34,11 @@ async function fetchUser(userId: number): Promise<UserResponse> {
 }
 
 async function fetchUserGroups(userId: number): Promise<Group[]> {
-	const response = await getApiV1IamUsersByUserIdGroups(userId, undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1IamPrincipalsByPrincipalIdGroups(
+		userId,
+		undefined,
+		{ credentials: "include" },
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -47,7 +53,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 
-	const [username, setUsername] = useState("");
+	const [properName, setProperName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [initialized, setInitialized] = useState(false);
@@ -68,7 +74,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 			return;
 		}
 
-		setUsername(userQuery.data.username);
+		setProperName(userQuery.data.proper_name ?? "");
 		setEmail(userQuery.data.email ?? "");
 		setInitialized(true);
 	}, [initialized, userQuery.data]);
@@ -100,7 +106,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 			await queryClient.invalidateQueries({
 				queryKey: ["admin-users", "group-detail"],
 			});
-			setUsername(updatedUser.username);
+			setProperName(updatedUser.proper_name ?? "");
 			setEmail(updatedUser.email ?? "");
 			setPassword("");
 			setFormError(null);
@@ -154,17 +160,13 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 			return;
 		}
 
-		const trimmedUsername = username.trim();
-		if (!trimmedUsername) {
-			setFormError("Username is required.");
-			return;
-		}
-
+		const trimmedProperName = properName.trim();
 		const trimmedEmail = email.trim();
 		const payload: UpdateUser = {};
 
-		if (trimmedUsername !== originalUser.username) {
-			payload.username = trimmedUsername;
+		const originalProperName = originalUser.proper_name ?? "";
+		if (trimmedProperName !== originalProperName) {
+			payload.proper_name = trimmedProperName || null;
 		}
 
 		const originalEmail = originalUser.email ?? "";
@@ -219,7 +221,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 			<header className="detail-identity">
 				<div className="scope-heading">
 					<h2>
-						{user.username} <span className="muted">#{user.id}</span>
+						{user.name} <span className="muted">#{user.id}</span>
 					</h2>
 					<Link className="link-chip" href="/admin/users">
 						Back to users
@@ -234,10 +236,15 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 				<div className="form-grid">
 					<label className="control-field">
 						<span>Username</span>
+						<input value={user.name} readOnly disabled />
+					</label>
+
+					<label className="control-field">
+						<span>Display name</span>
 						<input
-							required
-							value={username}
-							onChange={(event) => setUsername(event.target.value)}
+							value={properName}
+							onChange={(event) => setProperName(event.target.value)}
+							placeholder="e.g. Alice Doe"
 						/>
 					</label>
 

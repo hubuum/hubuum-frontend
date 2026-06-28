@@ -31,6 +31,7 @@ async function fetchUsers(): Promise<UserResponse[]> {
 export function AdminUsersTable() {
 	const queryClient = useQueryClient();
 	const [username, setUsername] = useState("");
+	const [properName, setProperName] = useState("");
 	const [password, setPassword] = useState("");
 	const [email, setEmail] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
@@ -58,6 +59,7 @@ export function AdminUsersTable() {
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
 			setUsername("");
+			setProperName("");
 			setPassword("");
 			setEmail("");
 			setFormError(null);
@@ -157,13 +159,18 @@ export function AdminUsersTable() {
 		}
 
 		const trimmedEmail = email.trim();
+		const trimmedProperName = properName.trim();
 		const payload: NewUser = {
-			username: trimmedUsername,
+			name: trimmedUsername,
 			password,
 		};
 
 		if (trimmedEmail) {
 			payload.email = trimmedEmail;
+		}
+
+		if (trimmedProperName) {
+			payload.proper_name = trimmedProperName;
 		}
 
 		createMutation.mutate(payload);
@@ -216,6 +223,15 @@ export function AdminUsersTable() {
 							value={username}
 							onChange={(event) => setUsername(event.target.value)}
 							placeholder="e.g. alice"
+						/>
+					</label>
+
+					<label className="control-field">
+						<span>Display name (optional)</span>
+						<input
+							value={properName}
+							onChange={(event) => setProperName(event.target.value)}
+							placeholder="e.g. Alice Doe"
 						/>
 					</label>
 
@@ -326,7 +342,7 @@ export function AdminUsersTable() {
 								<td className="check-col">
 									<input
 										type="checkbox"
-										aria-label={`Select user ${user.username}`}
+										aria-label={`Select user ${user.name}`}
 										checked={selectedUserIds.includes(user.id)}
 										onChange={(event) =>
 											toggleUser(user.id, event.target.checked)
@@ -336,7 +352,7 @@ export function AdminUsersTable() {
 								<td>{user.id}</td>
 								<td>
 									<Link className="row-link" href={`/admin/users/${user.id}`}>
-										{user.username}
+										{user.name}
 									</Link>
 								</td>
 								<td>{user.email ?? "-"}</td>
