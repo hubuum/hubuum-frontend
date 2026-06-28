@@ -7,11 +7,11 @@
  */
 
 /**
- * Struct to log in a user.
-
-The password is expected to be plaintext. `name` is the principal name.
+ * Request body to create a service account.
  */
-export interface LoginUser {
+export interface NewServiceAccount {
+  /** @nullable */
+  description?: string | null;
   name: string;
-  password: string;
+  owner_group_id: number;
 }

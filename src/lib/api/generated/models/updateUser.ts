@@ -9,7 +9,8 @@
 /**
  * Struct to update a user.
 
-The password, if present, is expected to be plaintext.
+The password, if present, is expected to be plaintext. The name lives on the
+principal; renaming is handled via the principal, not here.
  */
 export interface UpdateUser {
   /** @nullable */
@@ -17,5 +18,5 @@ export interface UpdateUser {
   /** @nullable */
   password?: string | null;
   /** @nullable */
-  username?: string | null;
+  proper_name?: string | null;
 }

@@ -6,11 +6,17 @@
  * OpenAPI spec version: 0.0.1
  */
 
+/**
+ * Public representation of a user, including the name resolved from the
+principal (the name authority).
+ */
 export interface UserResponse {
   created_at: string;
   /** @nullable */
   email?: string | null;
   id: number;
+  name: string;
+  /** @nullable */
+  proper_name?: string | null;
   updated_at: string;
-  username: string;
 }

@@ -6,12 +6,6 @@
  * OpenAPI spec version: 0.0.1
  */
 
-/**
- * Struct to log in a user.
-
-The password is expected to be plaintext. `name` is the principal name.
- */
-export interface LoginUser {
-  name: string;
-  password: string;
+export interface ProbeResponse {
+  status: string;
 }

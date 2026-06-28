@@ -9,11 +9,13 @@
 /**
  * Struct to create a new user.
 
-The password is expected to be plaintext.
+The password is expected to be plaintext. `name` is the principal name.
  */
 export interface NewUser {
   /** @nullable */
   email?: string | null;
+  name: string;
   password: string;
-  username: string;
+  /** @nullable */
+  proper_name?: string | null;
 }
