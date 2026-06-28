@@ -17,8 +17,7 @@ import {
 	deleteApiV1NamespacesByNamespaceId,
 	deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
 	getApiV1IamGroups,
-	getApiV1IamUsers,
-	getApiV1IamUsersByUserIdGroups,
+	getApiV1IamMeGroups,
 	getApiV1NamespacesByNamespaceId,
 	getApiV1NamespacesByNamespaceIdPermissions,
 	getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
@@ -371,34 +370,15 @@ async function putNamespacePermissions(
 	);
 }
 
-async function fetchCurrentUserGroups(username: string): Promise<Group[]> {
+async function fetchCurrentUserGroups(_username: string): Promise<Group[]> {
 	try {
-		const usersResponse = await getApiV1IamUsers(undefined, {
+		const response = await getApiV1IamMeGroups(undefined, {
 			credentials: "include",
 		});
-		if (usersResponse.status !== 200) {
+		if (response.status !== 200) {
 			return [];
 		}
-
-		const matchedUser = usersResponse.data.find(
-			(user) => user.username === username,
-		);
-		if (!matchedUser) {
-			return [];
-		}
-
-		const userGroupsResponse = await getApiV1IamUsersByUserIdGroups(
-			matchedUser.id,
-			undefined,
-			{
-				credentials: "include",
-			},
-		);
-		if (userGroupsResponse.status !== 200) {
-			return [];
-		}
-
-		return userGroupsResponse.data;
+		return response.data;
 	} catch {
 		return [];
 	}
@@ -422,7 +402,9 @@ function getPermissionChips(permissionRecord: Permission): PermissionChip[] {
 	}));
 }
 
-function getSectionDefinitions(section: PermissionSection): PermissionDefinition[] {
+function getSectionDefinitions(
+	section: PermissionSection,
+): PermissionDefinition[] {
 	return PERMISSION_DEFINITIONS.filter(
 		(definition) => definition.section === section,
 	);
@@ -826,7 +808,8 @@ export function NamespaceDetail({
 	useEffect(() => {
 		const detail: EditStateEventDetail = {
 			label: "Edit namespace",
-			editHandler: !hasActiveEdits && !isSavingOrDeleting ? beginGlobalEdit : null,
+			editHandler:
+				!hasActiveEdits && !isSavingOrDeleting ? beginGlobalEdit : null,
 		};
 
 		window.dispatchEvent(new CustomEvent(EDIT_STATE_EVENT, { detail }));
@@ -915,10 +898,9 @@ export function NamespaceDetail({
 			return;
 		}
 
-		const submitButton =
-			event.currentTarget.querySelector<HTMLButtonElement>(
-				"button[type='submit']:not(:disabled)",
-			);
+		const submitButton = event.currentTarget.querySelector<HTMLButtonElement>(
+			"button[type='submit']:not(:disabled)",
+		);
 		if (!submitButton) {
 			return;
 		}
@@ -1210,423 +1192,428 @@ export function NamespaceDetail({
 						</div>
 					</div>
 
-				<div className="object-detail-list">
-					<section
-						className={`object-detail-row${editingFields.includes("name") ? " is-editing" : ""}`}
-					>
-						<div className="object-detail-label">Name</div>
-						<div className="object-detail-body">
-							{editingFields.includes("name") ? (
-								<label className="control-field">
-									<span className="sr-only">Namespace name</span>
-									<input
-										required
-										value={name}
-										onChange={(event) => setName(event.target.value)}
-									/>
-								</label>
-							) : (
-								<button
-									type="button"
-									className="object-inline-edit"
-									onClick={() => toggleFieldEditing("name", namespaceData)}
-								>
-									<span className="object-detail-value">
-										{renderFieldText(namespaceData.name)}
-									</span>
-									<span className="object-inline-edit-icon">
-										<InlineEditIcon />
-									</span>
+					<div className="object-detail-list">
+						<section
+							className={`object-detail-row${editingFields.includes("name") ? " is-editing" : ""}`}
+						>
+							<div className="object-detail-label">Name</div>
+							<div className="object-detail-body">
+								{editingFields.includes("name") ? (
+									<label className="control-field">
+										<span className="sr-only">Namespace name</span>
+										<input
+											required
+											value={name}
+											onChange={(event) => setName(event.target.value)}
+										/>
+									</label>
+								) : (
+									<button
+										type="button"
+										className="object-inline-edit"
+										onClick={() => toggleFieldEditing("name", namespaceData)}
+									>
+										<span className="object-detail-value">
+											{renderFieldText(namespaceData.name)}
+										</span>
+										<span className="object-inline-edit-icon">
+											<InlineEditIcon />
+										</span>
+									</button>
+								)}
+							</div>
+							<div className="object-detail-row-actions">
+								{editingFields.includes("name") ? (
+									<button
+										type="button"
+										className="ghost"
+										onClick={() => toggleFieldEditing("name", namespaceData)}
+									>
+										Cancel
+									</button>
+								) : null}
+							</div>
+						</section>
+
+						<section
+							className={`object-detail-row${editingFields.includes("description") ? " is-editing" : ""}`}
+						>
+							<div className="object-detail-label">Description</div>
+							<div className="object-detail-body">
+								{editingFields.includes("description") ? (
+									<label className="control-field">
+										<span className="sr-only">Namespace description</span>
+										<input
+											required
+											value={description}
+											onChange={(event) => setDescription(event.target.value)}
+										/>
+									</label>
+								) : (
+									<button
+										type="button"
+										className="object-inline-edit"
+										onClick={() =>
+											toggleFieldEditing("description", namespaceData)
+										}
+									>
+										<span className="object-detail-value">
+											{renderFieldText(namespaceData.description ?? "")}
+										</span>
+										<span className="object-inline-edit-icon">
+											<InlineEditIcon />
+										</span>
+									</button>
+								)}
+							</div>
+							<div className="object-detail-row-actions">
+								{editingFields.includes("description") ? (
+									<button
+										type="button"
+										className="ghost"
+										onClick={() =>
+											toggleFieldEditing("description", namespaceData)
+										}
+									>
+										Cancel
+									</button>
+								) : null}
+							</div>
+						</section>
+					</div>
+
+					{formError ? <div className="error-banner">{formError}</div> : null}
+					{formSuccess ? <div className="muted">{formSuccess}</div> : null}
+
+					<div className="form-actions form-actions--spread">
+						{hasActiveEdits ? (
+							<div className="form-actions">
+								<button type="submit" disabled={updateMutation.isPending}>
+									{updateMutation.isPending ? "Saving..." : "Save changes"}
 								</button>
-							)}
-						</div>
-						<div className="object-detail-row-actions">
-							{editingFields.includes("name") ? (
 								<button
 									type="button"
 									className="ghost"
-									onClick={() => toggleFieldEditing("name", namespaceData)}
+									onClick={cancelActiveEdits}
+									disabled={updateMutation.isPending}
 								>
 									Cancel
 								</button>
-							) : null}
-						</div>
-					</section>
-
-					<section
-						className={`object-detail-row${editingFields.includes("description") ? " is-editing" : ""}`}
-					>
-						<div className="object-detail-label">Description</div>
-						<div className="object-detail-body">
-							{editingFields.includes("description") ? (
-								<label className="control-field">
-									<span className="sr-only">Namespace description</span>
-									<input
-										required
-										value={description}
-										onChange={(event) => setDescription(event.target.value)}
-									/>
-								</label>
-							) : (
-								<button
-									type="button"
-									className="object-inline-edit"
-									onClick={() =>
-										toggleFieldEditing("description", namespaceData)
-									}
-								>
-									<span className="object-detail-value">
-										{renderFieldText(namespaceData.description ?? "")}
-									</span>
-									<span className="object-inline-edit-icon">
-										<InlineEditIcon />
-									</span>
-								</button>
-							)}
-						</div>
-						<div className="object-detail-row-actions">
-							{editingFields.includes("description") ? (
-								<button
-									type="button"
-									className="ghost"
-									onClick={() =>
-										toggleFieldEditing("description", namespaceData)
-									}
-								>
-									Cancel
-								</button>
-							) : null}
-						</div>
-					</section>
-				</div>
-
-				{formError ? <div className="error-banner">{formError}</div> : null}
-				{formSuccess ? <div className="muted">{formSuccess}</div> : null}
-
-				<div className="form-actions form-actions--spread">
-					{hasActiveEdits ? (
-						<div className="form-actions">
-							<button type="submit" disabled={updateMutation.isPending}>
-								{updateMutation.isPending ? "Saving..." : "Save changes"}
+							</div>
+						) : (
+							<div />
+						)}
+						{hasActiveEdits ? null : (
+							<button
+								type="button"
+								className="danger"
+								onClick={onDelete}
+								disabled={deleteMutation.isPending}
+							>
+								{deleteMutation.isPending ? "Deleting..." : "Delete namespace"}
 							</button>
+						)}
+					</div>
+				</form>
+
+				<RemoteInvocationsPanel
+					namespaceId={namespaceId}
+					subject={{ type: "namespace", namespace_id: namespaceId }}
+					subjectLabel={`namespace "${namespaceData.name}"`}
+					subjectType="namespace"
+				/>
+
+				<section className="card stack">
+					<header className="stack">
+						<h3>Namespace Permissions</h3>
+						<p className="muted">
+							{checkingPermissionMembership
+								? "Checking whether you can modify namespace permissions..."
+								: canManagePermissions
+									? "You can grant, update, and revoke permission sets for groups on this namespace."
+									: canCheckPermissionMembership
+										? "You can view permissions, but you cannot modify them with your current access."
+										: "Could not identify the current user. Showing read-only permissions."}
+						</p>
+					</header>
+
+					{canManagePermissions ? (
+						<div className="form-actions">
 							<button
 								type="button"
 								className="ghost"
-								onClick={cancelActiveEdits}
-								disabled={updateMutation.isPending}
+								onClick={onStartAddPermissions}
+								disabled={
+									addingGroupPermissions ||
+									hasDirtyRowDrafts ||
+									upsertPermissionsMutation.isPending ||
+									(usingGroupSelect && availableGroups.length === 0)
+								}
 							>
-								Cancel
+								{usingGroupSelect && availableGroups.length === 0
+									? "All groups assigned"
+									: "Add group permissions"}
 							</button>
+							{groupsQuery.isError ? (
+								<span className="muted">
+									Could not load groups automatically. You can enter a group ID
+									manually.
+								</span>
+							) : null}
 						</div>
-					) : (
-						<div />
-					)}
-					{hasActiveEdits ? null : (
-						<button
-							type="button"
-							className="danger"
-							onClick={onDelete}
-							disabled={deleteMutation.isPending}
-						>
-							{deleteMutation.isPending ? "Deleting..." : "Delete namespace"}
-						</button>
-					)}
-				</div>
-			</form>
+					) : null}
 
-			<RemoteInvocationsPanel
-				namespaceId={namespaceId}
-				subject={{ type: "namespace", namespace_id: namespaceId }}
-				subjectLabel={`namespace "${namespaceData.name}"`}
-				subjectType="namespace"
-			/>
+					{permissionsError ? (
+						<div className="error-banner">{permissionsError}</div>
+					) : null}
+					{permissionsSuccess ? (
+						<div className="muted">{permissionsSuccess}</div>
+					) : null}
 
-			<section className="card stack">
-				<header className="stack">
-					<h3>Namespace Permissions</h3>
-					<p className="muted">
-						{checkingPermissionMembership
-							? "Checking whether you can modify namespace permissions..."
-							: canManagePermissions
-								? "You can grant, update, and revoke permission sets for groups on this namespace."
-								: canCheckPermissionMembership
-									? "You can view permissions, but you cannot modify them with your current access."
-									: "Could not identify the current user. Showing read-only permissions."}
-					</p>
-				</header>
-
-				{canManagePermissions ? (
-					<div className="form-actions">
-						<button
-							type="button"
-							className="ghost"
-							onClick={onStartAddPermissions}
-							disabled={
-								addingGroupPermissions ||
-								hasDirtyRowDrafts ||
-								upsertPermissionsMutation.isPending ||
-								(usingGroupSelect && availableGroups.length === 0)
+					{permissionsQuery.isLoading ? (
+						<div className="muted">Loading namespace permissions...</div>
+					) : permissionsQuery.isError ? (
+						<div className="error-banner">
+							Failed to load namespace permissions.{" "}
+							{permissionsQuery.error instanceof Error
+								? permissionsQuery.error.message
+								: "Unknown error"}
+						</div>
+					) : !hasAnyPermissionRows ? (
+						<EmptyState
+							title="No group permissions assigned."
+							description="Grant permissions to a group before members can use this namespace through group access."
+							action={
+								canManagePermissions ? (
+									<button
+										type="button"
+										className="ghost"
+										onClick={onStartAddPermissions}
+										disabled={addingGroupPermissions}
+									>
+										Add group permissions
+									</button>
+								) : null
 							}
-						>
-							{usingGroupSelect && availableGroups.length === 0
-								? "All groups assigned"
-								: "Add group permissions"}
-						</button>
-						{groupsQuery.isError ? (
-							<span className="muted">
-								Could not load groups automatically. You can enter a group ID
-								manually.
-							</span>
-						) : null}
-					</div>
-				) : null}
-
-				{permissionsError ? (
-					<div className="error-banner">{permissionsError}</div>
-				) : null}
-				{permissionsSuccess ? (
-					<div className="muted">{permissionsSuccess}</div>
-				) : null}
-
-				{permissionsQuery.isLoading ? (
-					<div className="muted">Loading namespace permissions...</div>
-				) : permissionsQuery.isError ? (
-					<div className="error-banner">
-						Failed to load namespace permissions.{" "}
-						{permissionsQuery.error instanceof Error
-							? permissionsQuery.error.message
-							: "Unknown error"}
-					</div>
-								) : !hasAnyPermissionRows ? (
-					<EmptyState
-						title="No group permissions assigned."
-						description="Grant permissions to a group before members can use this namespace through group access."
-						action={
-							canManagePermissions ? (
-								<button
-									type="button"
-									className="ghost"
-									onClick={onStartAddPermissions}
-									disabled={addingGroupPermissions}
-								>
-									Add group permissions
-								</button>
-							) : null
-						}
-					/>
-				) : (
-					<div className="table-wrap">
-						<table>
-							<thead>
-								<tr>
-									<th>Group</th>
-									<th>Permissions</th>
-									<th>Updated</th>
-									{canManagePermissions ? <th>Actions</th> : null}
-								</tr>
-							</thead>
-							<tbody>
-								{canManagePermissions && addingGroupPermissions ? (
+						/>
+					) : (
+						<div className="table-wrap">
+							<table>
+								<thead>
 									<tr>
-										<td>
-											{usingGroupSelect ? (
-												availableGroups.length > 0 ? (
-													<select
+										<th>Group</th>
+										<th>Permissions</th>
+										<th>Updated</th>
+										{canManagePermissions ? <th>Actions</th> : null}
+									</tr>
+								</thead>
+								<tbody>
+									{canManagePermissions && addingGroupPermissions ? (
+										<tr>
+											<td>
+												{usingGroupSelect ? (
+													availableGroups.length > 0 ? (
+														<select
+															value={newPermissionGroupId}
+															onChange={(event) =>
+																setNewPermissionGroupId(event.target.value)
+															}
+															aria-label="Select group to grant permissions"
+														>
+															{availableGroups.map((group) => (
+																<option key={group.id} value={group.id}>
+																	{group.groupname} (#{group.id})
+																</option>
+															))}
+														</select>
+													) : (
+														<span className="muted">
+															All groups already have permissions.
+														</span>
+													)
+												) : (
+													<input
+														type="number"
+														min={1}
 														value={newPermissionGroupId}
 														onChange={(event) =>
 															setNewPermissionGroupId(event.target.value)
 														}
-														aria-label="Select group to grant permissions"
-													>
-														{availableGroups.map((group) => (
-															<option key={group.id} value={group.id}>
-																{group.groupname} (#{group.id})
-															</option>
-														))}
-													</select>
-												) : (
-													<span className="muted">
-														All groups already have permissions.
-													</span>
-												)
-											) : (
-												<input
-													type="number"
-													min={1}
-													value={newPermissionGroupId}
-													onChange={(event) =>
-														setNewPermissionGroupId(event.target.value)
-													}
-													placeholder={
-														groupsQuery.isLoading
-															? "Loading groups..."
-															: "Enter group ID"
-													}
-													disabled={groupsQuery.isLoading}
-													required
-												/>
-											)}
-										</td>
-										<td>
-											<div className="permission-summary">
-												{summarizePermissions(newSelectedPermissionSet)}
-											</div>
-											{renderPermissionEditor(
-												newSelectedPermissionSet,
-												toggleNewPermission,
-											)}
-										</td>
-										<td>-</td>
-										<td>
-											<div className="table-tools permission-table-tools">
-												<div className="permission-action-stack">
-													<button
-														type="button"
-														onClick={onSaveNewPermissions}
-														disabled={
-															upsertPermissionsMutation.isPending ||
-															newSelectedPermissions.length === 0 ||
-															(usingGroupSelect && availableGroups.length === 0)
+														placeholder={
+															groupsQuery.isLoading
+																? "Loading groups..."
+																: "Enter group ID"
 														}
-													>
-														{upsertPermissionsMutation.isPending
-															? "Saving..."
-															: "Grant"}
-													</button>
-													<button
-														type="button"
-														className="ghost"
-														onClick={onResetPermissionEditor}
-														disabled={upsertPermissionsMutation.isPending}
-													>
-														Cancel
-													</button>
-												</div>
-											</div>
-										</td>
-									</tr>
-								) : null}
-								{sortedPermissionEntries.map((entry) => {
-									const basePermissions = getEnabledPermissions(
-										entry.permission,
-									);
-									const draftPermissions =
-										permissionDrafts[entry.group.id] ?? basePermissions;
-									const draftPermissionSet = new Set(draftPermissions);
-									const basePermissionSet = new Set(basePermissions);
-									const isRowDirty = Object.hasOwn(
-										permissionDrafts,
-										entry.group.id,
-									);
-									const isSavingRow =
-										upsertPermissionsMutation.isPending && isRowDirty;
-									const chips = getPermissionChips(entry.permission);
-									const isRevokePending =
-										revokePermissionsMutation.isPending &&
-										pendingRevokeGroupId !== null &&
-										pendingRevokeGroupId === entry.group.id;
-									const revokeDisabled =
-										isRevokePending ||
-										upsertPermissionsMutation.isPending ||
-										addingGroupPermissions ||
-										isRowDirty;
-									const actionDisabled =
-										!isRowDirty ||
-										upsertPermissionsMutation.isPending ||
-										addingGroupPermissions;
-
-									return (
-										<tr key={entry.permission.id}>
-											<td>
-												{entry.group.groupname} (#{entry.group.id})
-											</td>
-											<td>
-												<div className="permission-summary">
-													{summarizePermissions(
-														canManagePermissions
-															? draftPermissionSet
-															: basePermissionSet,
-													)}
-												</div>
-												{canManagePermissions ? (
-													renderPermissionEditor(
-														draftPermissionSet,
-														(permission, checked) =>
-															toggleRowPermission(entry, permission, checked),
-													)
-												) : chips.length > 0 ? (
-													<div className="permission-chip-list">
-														{chips.map((chip) => (
-															<span
-																key={chip.label}
-																className={`permission-chip ${chip.enabled ? "permission-chip--active" : "permission-chip--inactive"}`}
-															>
-																{chip.label}
-															</span>
-														))}
-													</div>
-												) : (
-													"-"
+														disabled={groupsQuery.isLoading}
+														required
+													/>
 												)}
 											</td>
 											<td>
-												{new Date(entry.permission.updated_at).toLocaleString()}
+												<div className="permission-summary">
+													{summarizePermissions(newSelectedPermissionSet)}
+												</div>
+												{renderPermissionEditor(
+													newSelectedPermissionSet,
+													toggleNewPermission,
+												)}
 											</td>
-											{canManagePermissions ? (
+											<td>-</td>
+											<td>
+												<div className="table-tools permission-table-tools">
+													<div className="permission-action-stack">
+														<button
+															type="button"
+															onClick={onSaveNewPermissions}
+															disabled={
+																upsertPermissionsMutation.isPending ||
+																newSelectedPermissions.length === 0 ||
+																(usingGroupSelect &&
+																	availableGroups.length === 0)
+															}
+														>
+															{upsertPermissionsMutation.isPending
+																? "Saving..."
+																: "Grant"}
+														</button>
+														<button
+															type="button"
+															className="ghost"
+															onClick={onResetPermissionEditor}
+															disabled={upsertPermissionsMutation.isPending}
+														>
+															Cancel
+														</button>
+													</div>
+												</div>
+											</td>
+										</tr>
+									) : null}
+									{sortedPermissionEntries.map((entry) => {
+										const basePermissions = getEnabledPermissions(
+											entry.permission,
+										);
+										const draftPermissions =
+											permissionDrafts[entry.group.id] ?? basePermissions;
+										const draftPermissionSet = new Set(draftPermissions);
+										const basePermissionSet = new Set(basePermissions);
+										const isRowDirty = Object.hasOwn(
+											permissionDrafts,
+											entry.group.id,
+										);
+										const isSavingRow =
+											upsertPermissionsMutation.isPending && isRowDirty;
+										const chips = getPermissionChips(entry.permission);
+										const isRevokePending =
+											revokePermissionsMutation.isPending &&
+											pendingRevokeGroupId !== null &&
+											pendingRevokeGroupId === entry.group.id;
+										const revokeDisabled =
+											isRevokePending ||
+											upsertPermissionsMutation.isPending ||
+											addingGroupPermissions ||
+											isRowDirty;
+										const actionDisabled =
+											!isRowDirty ||
+											upsertPermissionsMutation.isPending ||
+											addingGroupPermissions;
+
+										return (
+											<tr key={entry.permission.id}>
 												<td>
-													<div className="table-tools permission-table-tools">
-														<div className="permission-action-stack">
-															<button
-																type="button"
-																className="ghost"
-																onClick={() => onSaveRowPermissions(entry)}
-																disabled={actionDisabled}
-															>
-																{isSavingRow
-																	? "Saving..."
-																	: isRowDirty
-																		? "Save"
-																		: "Edit"}
-															</button>
-															{isRowDirty ? (
+													{entry.group.groupname} (#{entry.group.id})
+												</td>
+												<td>
+													<div className="permission-summary">
+														{summarizePermissions(
+															canManagePermissions
+																? draftPermissionSet
+																: basePermissionSet,
+														)}
+													</div>
+													{canManagePermissions ? (
+														renderPermissionEditor(
+															draftPermissionSet,
+															(permission, checked) =>
+																toggleRowPermission(entry, permission, checked),
+														)
+													) : chips.length > 0 ? (
+														<div className="permission-chip-list">
+															{chips.map((chip) => (
+																<span
+																	key={chip.label}
+																	className={`permission-chip ${chip.enabled ? "permission-chip--active" : "permission-chip--inactive"}`}
+																>
+																	{chip.label}
+																</span>
+															))}
+														</div>
+													) : (
+														"-"
+													)}
+												</td>
+												<td>
+													{new Date(
+														entry.permission.updated_at,
+													).toLocaleString()}
+												</td>
+												{canManagePermissions ? (
+													<td>
+														<div className="table-tools permission-table-tools">
+															<div className="permission-action-stack">
 																<button
 																	type="button"
 																	className="ghost"
-																	onClick={() =>
-																		setPermissionDrafts((current) => {
-																			const next = { ...current };
-																			delete next[entry.group.id];
-																			return next;
-																		})
-																	}
-																	disabled={upsertPermissionsMutation.isPending}
+																	onClick={() => onSaveRowPermissions(entry)}
+																	disabled={actionDisabled}
 																>
-																	Cancel
+																	{isSavingRow
+																		? "Saving..."
+																		: isRowDirty
+																			? "Save"
+																			: "Edit"}
 																</button>
-															) : null}
+																{isRowDirty ? (
+																	<button
+																		type="button"
+																		className="ghost"
+																		onClick={() =>
+																			setPermissionDrafts((current) => {
+																				const next = { ...current };
+																				delete next[entry.group.id];
+																				return next;
+																			})
+																		}
+																		disabled={
+																			upsertPermissionsMutation.isPending
+																		}
+																	>
+																		Cancel
+																	</button>
+																) : null}
+															</div>
+															<button
+																type="button"
+																className="danger"
+																onClick={() =>
+																	onRevokePermissions(entry.group.id)
+																}
+																disabled={revokeDisabled}
+															>
+																{isRevokePending ? "Revoking..." : "Revoke"}
+															</button>
 														</div>
-														<button
-															type="button"
-															className="danger"
-															onClick={() =>
-																onRevokePermissions(entry.group.id)
-															}
-															disabled={revokeDisabled}
-														>
-															{isRevokePending ? "Revoking..." : "Revoke"}
-														</button>
-													</div>
-												</td>
-											) : null}
-										</tr>
-									);
-								})}
-							</tbody>
-						</table>
-					</div>
-				)}
+													</td>
+												) : null}
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</div>
+					)}
+				</section>
 			</section>
-		</section>
 		</>
 	);
 }

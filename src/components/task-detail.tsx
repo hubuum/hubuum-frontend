@@ -14,7 +14,7 @@ import {
 
 async function fetchTaskSubmitter(
 	userId: number,
-): Promise<{ id: number; username: string } | null> {
+): Promise<{ id: number; name: string } | null> {
 	const response = await getApiV1IamUsersByUserId(userId, {
 		credentials: "include",
 	});
@@ -25,7 +25,7 @@ async function fetchTaskSubmitter(
 
 	return {
 		id: response.data.id,
-		username: response.data.username,
+		name: response.data.name,
 	};
 }
 
@@ -168,7 +168,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 		if (submitterQuery.isLoading) {
 			submittedByLabel = `Loading user #${submittedByUserId}...`;
 		} else if (submitterQuery.data) {
-			submittedByLabel = `${submitterQuery.data.username} (#${submitterQuery.data.id})`;
+			submittedByLabel = `${submitterQuery.data.name} (#${submitterQuery.data.id})`;
 		}
 	}
 
