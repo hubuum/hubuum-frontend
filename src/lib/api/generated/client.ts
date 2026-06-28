@@ -20,6 +20,8 @@ import type {
   GetApiV1ClassesParams,
   GetApiV1IamGroupsByGroupIdMembersParams,
   GetApiV1IamGroupsParams,
+  GetApiV1IamMeGroupsParams,
+  GetApiV1IamMeTokensParams,
   GetApiV1IamPrincipalsByPrincipalIdGroupsParams,
   GetApiV1IamPrincipalsByPrincipalIdTokensParams,
   GetApiV1IamServiceAccountsParams,
@@ -48,6 +50,7 @@ import type {
   LoginResponse,
   LoginUser,
   LogoutTokenRequest,
+  MeResponse,
   MessageResponse,
   Namespace,
   NewGroup,
@@ -2635,6 +2638,225 @@ export const deleteApiV1IamGroupsByGroupIdMembersByPrincipalId = async (groupId:
   
   const data: deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me.
+ * @summary Get Api V1 Iam Me
+ */
+export type getApiV1IamMeResponse200 = {
+  data: MeResponse
+  status: 200
+}
+
+export type getApiV1IamMeResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamMeResponseSuccess = (getApiV1IamMeResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMeResponseError = (getApiV1IamMeResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMeResponse = (getApiV1IamMeResponseSuccess | getApiV1IamMeResponseError)
+
+export const getGetApiV1IamMeUrl = () => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me`
+}
+
+export const getApiV1IamMe = async ( options?: RequestInit): Promise<getApiV1IamMeResponse> => {
+  
+  const res = await fetch(getGetApiV1IamMeUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamMeResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMeResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Iam Me Groups
+ */
+export type getApiV1IamMeGroupsResponse200 = {
+  data: Group[]
+  status: 200
+}
+
+export type getApiV1IamMeGroupsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamMeGroupsResponseSuccess = (getApiV1IamMeGroupsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMeGroupsResponseError = (getApiV1IamMeGroupsResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMeGroupsResponse = (getApiV1IamMeGroupsResponseSuccess | getApiV1IamMeGroupsResponseError)
+
+export const getGetApiV1IamMeGroupsUrl = (params?: GetApiV1IamMeGroupsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/groups?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/groups`
+}
+
+export const getApiV1IamMeGroups = async (params?: GetApiV1IamMeGroupsParams, options?: RequestInit): Promise<getApiV1IamMeGroupsResponse> => {
+  
+  const res = await fetch(getGetApiV1IamMeGroupsUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamMeGroupsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMeGroupsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me/permissions.
+ * @summary Get Api V1 Iam Me Permissions
+ */
+export type getApiV1IamMePermissionsResponse200 = {
+  data: PrincipalNamespacePermissions[]
+  status: 200
+}
+
+export type getApiV1IamMePermissionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamMePermissionsResponseSuccess = (getApiV1IamMePermissionsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMePermissionsResponseError = (getApiV1IamMePermissionsResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMePermissionsResponse = (getApiV1IamMePermissionsResponseSuccess | getApiV1IamMePermissionsResponseError)
+
+export const getGetApiV1IamMePermissionsUrl = () => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/permissions`
+}
+
+export const getApiV1IamMePermissions = async ( options?: RequestInit): Promise<getApiV1IamMePermissionsResponse> => {
+  
+  const res = await fetch(getGetApiV1IamMePermissionsUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamMePermissionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMePermissionsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Iam Me Tokens
+ */
+export type getApiV1IamMeTokensResponse200 = {
+  data: PrincipalTokenMetadata[]
+  status: 200
+}
+
+export type getApiV1IamMeTokensResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamMeTokensResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1IamMeTokensResponseSuccess = (getApiV1IamMeTokensResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMeTokensResponseError = (getApiV1IamMeTokensResponse401 | getApiV1IamMeTokensResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMeTokensResponse = (getApiV1IamMeTokensResponseSuccess | getApiV1IamMeTokensResponseError)
+
+export const getGetApiV1IamMeTokensUrl = (params?: GetApiV1IamMeTokensParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/tokens?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/tokens`
+}
+
+export const getApiV1IamMeTokens = async (params?: GetApiV1IamMeTokensParams, options?: RequestInit): Promise<getApiV1IamMeTokensResponse> => {
+  
+  const res = await fetch(getGetApiV1IamMeTokensUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamMeTokensResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMeTokensResponse
 }
   
 
