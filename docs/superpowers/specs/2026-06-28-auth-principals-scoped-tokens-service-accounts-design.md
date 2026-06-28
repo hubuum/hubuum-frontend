@@ -1,7 +1,7 @@
 # Frontend adaptation for PR #94 — principals, scoped tokens, service accounts
 
 **Date:** 2026-06-28
-**Status:** Approved (design)
+**Status:** Implemented
 **Upstream:** [hubuum/hubuum#94](https://github.com/hubuum/hubuum/pull/94)
 (merged) + [hubuum/hubuum#95](https://github.com/hubuum/hubuum/pull/95)
 (`me_endpoints` branch, assumed to merge), spec in `docs/auth_model.md` on
