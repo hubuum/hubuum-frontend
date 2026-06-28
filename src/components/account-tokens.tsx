@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { RawTokenReveal } from "@/components/raw-token-reveal";
@@ -12,6 +13,7 @@ type AccountTokensProps = {
 };
 
 export function AccountTokens({ currentUsername }: AccountTokensProps) {
+	const queryClient = useQueryClient();
 	const principalId = useCurrentUserId(currentUsername);
 	const [rawToken, setRawToken] = useState<string | null>(null);
 
@@ -26,7 +28,12 @@ export function AccountTokens({ currentUsername }: AccountTokensProps) {
 			) : null}
 			<TokenMintForm
 				principalId={principalId}
-				onMinted={(token) => setRawToken(token.token)}
+				onMinted={(token) => {
+					setRawToken(token.token);
+					void queryClient.invalidateQueries({
+						queryKey: ["principal-tokens", "me"],
+					});
+				}}
 			/>
 			<TokenList principalId="me" />
 		</div>
