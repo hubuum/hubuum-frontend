@@ -21,7 +21,7 @@ export function LoginForm() {
 		setError(null);
 
 		try {
-			const payload: LoginUser = { username, password };
+			const payload: LoginUser = { name: username, password };
 			const response = await fetch("/_hubuum-bff/auth/login", {
 				method: "POST",
 				headers: {

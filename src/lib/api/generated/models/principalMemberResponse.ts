@@ -7,11 +7,10 @@
  */
 
 /**
- * Struct to log in a user.
-
-The password is expected to be plaintext. `name` is the principal name.
+ * Public representation of a group member (a principal of either kind).
  */
-export interface LoginUser {
+export interface PrincipalMemberResponse {
+  kind: string;
   name: string;
-  password: string;
+  principal_id: number;
 }

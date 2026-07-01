@@ -13,10 +13,19 @@ import {
 	normalizeCorrelationId,
 } from "@/lib/correlation";
 
-const loginSchema = z.object({
-	username: z.string().min(1),
-	password: z.string().min(1),
-});
+const loginSchema = z
+	.object({
+		name: z.string().min(1).optional(),
+		username: z.string().min(1).optional(),
+		password: z.string().min(1),
+	})
+	.transform((value) => ({
+		name: value.name ?? value.username ?? "",
+		password: value.password,
+	}))
+	.refine((value) => value.name.length > 0, {
+		message: "name is required",
+	});
 
 const BACKEND_LOGIN_PATH = "/api/v0/auth/login";
 
@@ -131,11 +140,11 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
-	const sid = await createSession(token, credentials.username);
+	const sid = await createSession(token, credentials.name);
 	const response = fromForm
 		? seeOther("/app")
 		: NextResponse.json({ authenticated: true }, { status: 200 });
-	setSessionCookie(response, sid, request, token, credentials.username);
+	setSessionCookie(response, sid, request, token, credentials.name);
 	console.info(
 		`[hubuum-auth][cid=${correlationId}] login succeeded and session created (fromForm=${String(fromForm)})`,
 	);

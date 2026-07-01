@@ -21,8 +21,7 @@ import {
 	deleteApiV1ClassesByClassIdByObjectId,
 	getApiV1Classes,
 	getApiV1ClassesByClassIdByObjectId,
-	getApiV1IamUsers,
-	getApiV1IamUsersByUserIdGroups,
+	getApiV1IamMeGroups,
 	getApiV1Namespaces,
 	getApiV1NamespacesByNamespaceIdPermissions,
 	patchApiV1ClassesByClassIdByObjectId,
@@ -126,34 +125,15 @@ async function fetchNamespacePermissions(
 	return response.data;
 }
 
-async function fetchCurrentUserGroups(username: string): Promise<Group[]> {
+async function fetchCurrentUserGroups(_username: string): Promise<Group[]> {
 	try {
-		const usersResponse = await getApiV1IamUsers(undefined, {
+		const response = await getApiV1IamMeGroups(undefined, {
 			credentials: "include",
 		});
-		if (usersResponse.status !== 200) {
+		if (response.status !== 200) {
 			return [];
 		}
-
-		const matchedUser = usersResponse.data.find(
-			(user) => user.username === username,
-		);
-		if (!matchedUser) {
-			return [];
-		}
-
-		const userGroupsResponse = await getApiV1IamUsersByUserIdGroups(
-			matchedUser.id,
-			undefined,
-			{
-				credentials: "include",
-			},
-		);
-		if (userGroupsResponse.status !== 200) {
-			return [];
-		}
-
-		return userGroupsResponse.data;
+		return response.data;
 	} catch {
 		return [];
 	}
@@ -680,10 +660,9 @@ export function ObjectDetail({
 			return;
 		}
 
-		const submitButton =
-			event.currentTarget.querySelector<HTMLButtonElement>(
-				"button[type='submit']:not(:disabled)",
-			);
+		const submitButton = event.currentTarget.querySelector<HTMLButtonElement>(
+			"button[type='submit']:not(:disabled)",
+		);
 		if (!submitButton) {
 			return;
 		}
@@ -768,8 +747,7 @@ export function ObjectDetail({
 		.filter((item) => item.id !== objectData.hubuum_class_id)
 		.sort((left, right) => left.name.localeCompare(right.name));
 	const namespaceLabel =
-		namespaceNameById.get(objectData.namespace_id) ??
-		"Namespace";
+		namespaceNameById.get(objectData.namespace_id) ?? "Namespace";
 	const editAccessMessage = canEditAnything
 		? null
 		: permissionCheckPending
@@ -995,7 +973,9 @@ export function ObjectDetail({
 									<button
 										type="button"
 										className="object-inline-edit"
-										onClick={() => toggleFieldEditing("description", objectData)}
+										onClick={() =>
+											toggleFieldEditing("description", objectData)
+										}
 										disabled={isSavingOrDeleting}
 									>
 										<span className="object-detail-value">
@@ -1020,7 +1000,10 @@ export function ObjectDetail({
 							<div className="object-detail-body">
 								{editingFields.includes("namespace") ? (
 									<div className="control-field">
-										<label htmlFor="object-detail-namespace" className="sr-only">
+										<label
+											htmlFor="object-detail-namespace"
+											className="sr-only"
+										>
 											Namespace
 										</label>
 										{hasNamespaceOptions ? (
@@ -1071,9 +1054,7 @@ export function ObjectDetail({
 										</span>
 									</button>
 								) : (
-									<div className="object-detail-value">
-										{namespaceLabel}
-									</div>
+									<div className="object-detail-value">{namespaceLabel}</div>
 								)}
 							</div>
 						</section>

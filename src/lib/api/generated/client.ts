@@ -20,12 +20,15 @@ import type {
   GetApiV1ClassesParams,
   GetApiV1IamGroupsByGroupIdMembersParams,
   GetApiV1IamGroupsParams,
-  GetApiV1IamUsersByUserIdGroupsParams,
-  GetApiV1IamUsersByUserIdTokensParams,
+  GetApiV1IamMeGroupsParams,
+  GetApiV1IamMeTokensParams,
+  GetApiV1IamPrincipalsByPrincipalIdGroupsParams,
+  GetApiV1IamPrincipalsByPrincipalIdTokensParams,
+  GetApiV1IamServiceAccountsParams,
   GetApiV1IamUsersParams,
   GetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionParams,
   GetApiV1NamespacesByNamespaceIdPermissionsParams,
-  GetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdParams,
+  GetApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdParams,
   GetApiV1NamespacesParams,
   GetApiV1RelationsClassesParams,
   GetApiV1RelationsObjectsParams,
@@ -47,6 +50,7 @@ import type {
   LoginResponse,
   LoginUser,
   LogoutTokenRequest,
+  MeResponse,
   MessageResponse,
   Namespace,
   NewGroup,
@@ -58,9 +62,15 @@ import type {
   NewNamespaceWithAssignee,
   NewRemoteTarget,
   NewReportTemplate,
+  NewServiceAccount,
+  NewTokenRequest,
   NewUser,
   Permission,
   Permissions,
+  PrincipalMemberResponse,
+  PrincipalNamespacePermissions,
+  PrincipalTokenMetadata,
+  ProbeResponse,
   RelatedClassGraph,
   RelatedObjectGraph,
   ReleaseRateLimitResponse,
@@ -70,6 +80,7 @@ import type {
   ReportRequest,
   ReportTemplate,
   ReportTemplateRunRequest,
+  ServiceAccountResponse,
   TaskEventResponse,
   TaskQueueStateResponse,
   TaskResponse,
@@ -80,9 +91,9 @@ import type {
   UpdateNamespace,
   UpdateRemoteTarget,
   UpdateReportTemplate,
+  UpdateServiceAccount,
   UpdateUser,
-  UserResponse,
-  UserTokenMetadata
+  UserResponse
 } from './models';
 import { HUBUUM_BFF_PREFIX } from '@/lib/api/frontend';
 
@@ -2350,10 +2361,15 @@ export type deleteApiV1IamGroupsByGroupIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1IamGroupsByGroupIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
 export type deleteApiV1IamGroupsByGroupIdResponseSuccess = (deleteApiV1IamGroupsByGroupIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamGroupsByGroupIdResponseError = (deleteApiV1IamGroupsByGroupIdResponse401 | deleteApiV1IamGroupsByGroupIdResponse404) & {
+export type deleteApiV1IamGroupsByGroupIdResponseError = (deleteApiV1IamGroupsByGroupIdResponse401 | deleteApiV1IamGroupsByGroupIdResponse404 | deleteApiV1IamGroupsByGroupIdResponse409) & {
   headers: Headers;
 };
 
@@ -2453,7 +2469,7 @@ export const patchApiV1IamGroupsByGroupId = async (groupId: number,
  * @summary Get Api V1 Iam Groups By Group Id Members
  */
 export type getApiV1IamGroupsByGroupIdMembersResponse200 = {
-  data: UserResponse[]
+  data: PrincipalMemberResponse[]
   status: 200
 }
 
@@ -2513,46 +2529,46 @@ export const getApiV1IamGroupsByGroupIdMembers = async (groupId: number,
 
 
 /**
- * Auto-generated documentation for POST /api/v1/iam/groups/{group_id}/members/{user_id}.
- * @summary Post Api V1 Iam Groups By Group Id Members By User Id
+ * Auto-generated documentation for POST /api/v1/iam/groups/{group_id}/members/{principal_id}.
+ * @summary Post Api V1 Iam Groups By Group Id Members By Principal Id
  */
-export type postApiV1IamGroupsByGroupIdMembersByUserIdResponse204 = {
+export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse204 = {
   data: void
   status: 204
 }
 
-export type postApiV1IamGroupsByGroupIdMembersByUserIdResponse401 = {
+export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type postApiV1IamGroupsByGroupIdMembersByUserIdResponse404 = {
+export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404 = {
   data: ApiErrorResponse
   status: 404
 }
 
-export type postApiV1IamGroupsByGroupIdMembersByUserIdResponseSuccess = (postApiV1IamGroupsByGroupIdMembersByUserIdResponse204) & {
+export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseSuccess = (postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse204) & {
   headers: Headers;
 };
-export type postApiV1IamGroupsByGroupIdMembersByUserIdResponseError = (postApiV1IamGroupsByGroupIdMembersByUserIdResponse401 | postApiV1IamGroupsByGroupIdMembersByUserIdResponse404) & {
+export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseError = (postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 | postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404) & {
   headers: Headers;
 };
 
-export type postApiV1IamGroupsByGroupIdMembersByUserIdResponse = (postApiV1IamGroupsByGroupIdMembersByUserIdResponseSuccess | postApiV1IamGroupsByGroupIdMembersByUserIdResponseError)
+export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse = (postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseSuccess | postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseError)
 
-export const getPostApiV1IamGroupsByGroupIdMembersByUserIdUrl = (groupId: number,
-    userId: number,) => {
+export const getPostApiV1IamGroupsByGroupIdMembersByPrincipalIdUrl = (groupId: number,
+    principalId: number,) => {
 
 
   
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members/${userId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members/${principalId}`
 }
 
-export const postApiV1IamGroupsByGroupIdMembersByUserId = async (groupId: number,
-    userId: number, options?: RequestInit): Promise<postApiV1IamGroupsByGroupIdMembersByUserIdResponse> => {
+export const postApiV1IamGroupsByGroupIdMembersByPrincipalId = async (groupId: number,
+    principalId: number, options?: RequestInit): Promise<postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse> => {
   
-  const res = await fetch(getPostApiV1IamGroupsByGroupIdMembersByUserIdUrl(groupId,userId),
+  const res = await fetch(getPostApiV1IamGroupsByGroupIdMembersByPrincipalIdUrl(groupId,principalId),
   {      
     ...options,
     method: 'POST'
@@ -2563,53 +2579,53 @@ export const postApiV1IamGroupsByGroupIdMembersByUserId = async (groupId: number
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: postApiV1IamGroupsByGroupIdMembersByUserIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as postApiV1IamGroupsByGroupIdMembersByUserIdResponse
+  const data: postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse
 }
   
 
 
 /**
- * Auto-generated documentation for DELETE /api/v1/iam/groups/{group_id}/members/{user_id}.
- * @summary Delete Api V1 Iam Groups By Group Id Members By User Id
+ * Auto-generated documentation for DELETE /api/v1/iam/groups/{group_id}/members/{principal_id}.
+ * @summary Delete Api V1 Iam Groups By Group Id Members By Principal Id
  */
-export type deleteApiV1IamGroupsByGroupIdMembersByUserIdResponse204 = {
+export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse204 = {
   data: void
   status: 204
 }
 
-export type deleteApiV1IamGroupsByGroupIdMembersByUserIdResponse401 = {
+export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type deleteApiV1IamGroupsByGroupIdMembersByUserIdResponse404 = {
+export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404 = {
   data: ApiErrorResponse
   status: 404
 }
 
-export type deleteApiV1IamGroupsByGroupIdMembersByUserIdResponseSuccess = (deleteApiV1IamGroupsByGroupIdMembersByUserIdResponse204) & {
+export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseSuccess = (deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamGroupsByGroupIdMembersByUserIdResponseError = (deleteApiV1IamGroupsByGroupIdMembersByUserIdResponse401 | deleteApiV1IamGroupsByGroupIdMembersByUserIdResponse404) & {
+export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseError = (deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 | deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404) & {
   headers: Headers;
 };
 
-export type deleteApiV1IamGroupsByGroupIdMembersByUserIdResponse = (deleteApiV1IamGroupsByGroupIdMembersByUserIdResponseSuccess | deleteApiV1IamGroupsByGroupIdMembersByUserIdResponseError)
+export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse = (deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseSuccess | deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseError)
 
-export const getDeleteApiV1IamGroupsByGroupIdMembersByUserIdUrl = (groupId: number,
-    userId: number,) => {
+export const getDeleteApiV1IamGroupsByGroupIdMembersByPrincipalIdUrl = (groupId: number,
+    principalId: number,) => {
 
 
   
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members/${userId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members/${principalId}`
 }
 
-export const deleteApiV1IamGroupsByGroupIdMembersByUserId = async (groupId: number,
-    userId: number, options?: RequestInit): Promise<deleteApiV1IamGroupsByGroupIdMembersByUserIdResponse> => {
+export const deleteApiV1IamGroupsByGroupIdMembersByPrincipalId = async (groupId: number,
+    principalId: number, options?: RequestInit): Promise<deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse> => {
   
-  const res = await fetch(getDeleteApiV1IamGroupsByGroupIdMembersByUserIdUrl(groupId,userId),
+  const res = await fetch(getDeleteApiV1IamGroupsByGroupIdMembersByPrincipalIdUrl(groupId,principalId),
   {      
     ...options,
     method: 'DELETE'
@@ -2620,8 +2636,904 @@ export const deleteApiV1IamGroupsByGroupIdMembersByUserId = async (groupId: numb
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: deleteApiV1IamGroupsByGroupIdMembersByUserIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as deleteApiV1IamGroupsByGroupIdMembersByUserIdResponse
+  const data: deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me.
+ * @summary Get Api V1 Iam Me
+ */
+export type getApiV1IamMeResponse200 = {
+  data: MeResponse
+  status: 200
+}
+
+export type getApiV1IamMeResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamMeResponseSuccess = (getApiV1IamMeResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMeResponseError = (getApiV1IamMeResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMeResponse = (getApiV1IamMeResponseSuccess | getApiV1IamMeResponseError)
+
+export const getGetApiV1IamMeUrl = () => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me`
+}
+
+export const getApiV1IamMe = async ( options?: RequestInit): Promise<getApiV1IamMeResponse> => {
+  
+  const res = await fetch(getGetApiV1IamMeUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamMeResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMeResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Iam Me Groups
+ */
+export type getApiV1IamMeGroupsResponse200 = {
+  data: Group[]
+  status: 200
+}
+
+export type getApiV1IamMeGroupsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamMeGroupsResponseSuccess = (getApiV1IamMeGroupsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMeGroupsResponseError = (getApiV1IamMeGroupsResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMeGroupsResponse = (getApiV1IamMeGroupsResponseSuccess | getApiV1IamMeGroupsResponseError)
+
+export const getGetApiV1IamMeGroupsUrl = (params?: GetApiV1IamMeGroupsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/groups?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/groups`
+}
+
+export const getApiV1IamMeGroups = async (params?: GetApiV1IamMeGroupsParams, options?: RequestInit): Promise<getApiV1IamMeGroupsResponse> => {
+  
+  const res = await fetch(getGetApiV1IamMeGroupsUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamMeGroupsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMeGroupsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me/permissions.
+ * @summary Get Api V1 Iam Me Permissions
+ */
+export type getApiV1IamMePermissionsResponse200 = {
+  data: PrincipalNamespacePermissions[]
+  status: 200
+}
+
+export type getApiV1IamMePermissionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamMePermissionsResponseSuccess = (getApiV1IamMePermissionsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMePermissionsResponseError = (getApiV1IamMePermissionsResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMePermissionsResponse = (getApiV1IamMePermissionsResponseSuccess | getApiV1IamMePermissionsResponseError)
+
+export const getGetApiV1IamMePermissionsUrl = () => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/permissions`
+}
+
+export const getApiV1IamMePermissions = async ( options?: RequestInit): Promise<getApiV1IamMePermissionsResponse> => {
+  
+  const res = await fetch(getGetApiV1IamMePermissionsUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamMePermissionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMePermissionsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Iam Me Tokens
+ */
+export type getApiV1IamMeTokensResponse200 = {
+  data: PrincipalTokenMetadata[]
+  status: 200
+}
+
+export type getApiV1IamMeTokensResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamMeTokensResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1IamMeTokensResponseSuccess = (getApiV1IamMeTokensResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMeTokensResponseError = (getApiV1IamMeTokensResponse401 | getApiV1IamMeTokensResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMeTokensResponse = (getApiV1IamMeTokensResponseSuccess | getApiV1IamMeTokensResponseError)
+
+export const getGetApiV1IamMeTokensUrl = (params?: GetApiV1IamMeTokensParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/tokens?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/tokens`
+}
+
+export const getApiV1IamMeTokens = async (params?: GetApiV1IamMeTokensParams, options?: RequestInit): Promise<getApiV1IamMeTokensResponse> => {
+  
+  const res = await fetch(getGetApiV1IamMeTokensUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamMeTokensResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMeTokensResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Iam Principals By Principal Id Groups
+ */
+export type getApiV1IamPrincipalsByPrincipalIdGroupsResponse200 = {
+  data: Group[]
+  status: 200
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdGroupsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdGroupsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdGroupsResponseSuccess = (getApiV1IamPrincipalsByPrincipalIdGroupsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamPrincipalsByPrincipalIdGroupsResponseError = (getApiV1IamPrincipalsByPrincipalIdGroupsResponse401 | getApiV1IamPrincipalsByPrincipalIdGroupsResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1IamPrincipalsByPrincipalIdGroupsResponse = (getApiV1IamPrincipalsByPrincipalIdGroupsResponseSuccess | getApiV1IamPrincipalsByPrincipalIdGroupsResponseError)
+
+export const getGetApiV1IamPrincipalsByPrincipalIdGroupsUrl = (principalId: number,
+    params?: GetApiV1IamPrincipalsByPrincipalIdGroupsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/groups?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/groups`
+}
+
+export const getApiV1IamPrincipalsByPrincipalIdGroups = async (principalId: number,
+    params?: GetApiV1IamPrincipalsByPrincipalIdGroupsParams, options?: RequestInit): Promise<getApiV1IamPrincipalsByPrincipalIdGroupsResponse> => {
+  
+  const res = await fetch(getGetApiV1IamPrincipalsByPrincipalIdGroupsUrl(principalId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamPrincipalsByPrincipalIdGroupsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamPrincipalsByPrincipalIdGroupsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/permissions.
+ * @summary Get Api V1 Iam Principals By Principal Id Permissions
+ */
+export type getApiV1IamPrincipalsByPrincipalIdPermissionsResponse200 = {
+  data: PrincipalNamespacePermissions[]
+  status: 200
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdPermissionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdPermissionsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdPermissionsResponseSuccess = (getApiV1IamPrincipalsByPrincipalIdPermissionsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamPrincipalsByPrincipalIdPermissionsResponseError = (getApiV1IamPrincipalsByPrincipalIdPermissionsResponse401 | getApiV1IamPrincipalsByPrincipalIdPermissionsResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1IamPrincipalsByPrincipalIdPermissionsResponse = (getApiV1IamPrincipalsByPrincipalIdPermissionsResponseSuccess | getApiV1IamPrincipalsByPrincipalIdPermissionsResponseError)
+
+export const getGetApiV1IamPrincipalsByPrincipalIdPermissionsUrl = (principalId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/permissions`
+}
+
+export const getApiV1IamPrincipalsByPrincipalIdPermissions = async (principalId: number, options?: RequestInit): Promise<getApiV1IamPrincipalsByPrincipalIdPermissionsResponse> => {
+  
+  const res = await fetch(getGetApiV1IamPrincipalsByPrincipalIdPermissionsUrl(principalId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamPrincipalsByPrincipalIdPermissionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamPrincipalsByPrincipalIdPermissionsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Iam Principals By Principal Id Tokens
+ */
+export type getApiV1IamPrincipalsByPrincipalIdTokensResponse200 = {
+  data: PrincipalTokenMetadata[]
+  status: 200
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdTokensResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdTokensResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdTokensResponseSuccess = (getApiV1IamPrincipalsByPrincipalIdTokensResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamPrincipalsByPrincipalIdTokensResponseError = (getApiV1IamPrincipalsByPrincipalIdTokensResponse401 | getApiV1IamPrincipalsByPrincipalIdTokensResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1IamPrincipalsByPrincipalIdTokensResponse = (getApiV1IamPrincipalsByPrincipalIdTokensResponseSuccess | getApiV1IamPrincipalsByPrincipalIdTokensResponseError)
+
+export const getGetApiV1IamPrincipalsByPrincipalIdTokensUrl = (principalId: number,
+    params?: GetApiV1IamPrincipalsByPrincipalIdTokensParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/tokens?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/tokens`
+}
+
+export const getApiV1IamPrincipalsByPrincipalIdTokens = async (principalId: number,
+    params?: GetApiV1IamPrincipalsByPrincipalIdTokensParams, options?: RequestInit): Promise<getApiV1IamPrincipalsByPrincipalIdTokensResponse> => {
+  
+  const res = await fetch(getGetApiV1IamPrincipalsByPrincipalIdTokensUrl(principalId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamPrincipalsByPrincipalIdTokensResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamPrincipalsByPrincipalIdTokensResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/iam/principals/{principal_id}/tokens.
+ * @summary Post Api V1 Iam Principals By Principal Id Tokens
+ */
+export type postApiV1IamPrincipalsByPrincipalIdTokensResponse201 = {
+  data: void
+  status: 201
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensResponseSuccess = (postApiV1IamPrincipalsByPrincipalIdTokensResponse201) & {
+  headers: Headers;
+};
+export type postApiV1IamPrincipalsByPrincipalIdTokensResponseError = (postApiV1IamPrincipalsByPrincipalIdTokensResponse400 | postApiV1IamPrincipalsByPrincipalIdTokensResponse401 | postApiV1IamPrincipalsByPrincipalIdTokensResponse403 | postApiV1IamPrincipalsByPrincipalIdTokensResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensResponse = (postApiV1IamPrincipalsByPrincipalIdTokensResponseSuccess | postApiV1IamPrincipalsByPrincipalIdTokensResponseError)
+
+export const getPostApiV1IamPrincipalsByPrincipalIdTokensUrl = (principalId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/tokens`
+}
+
+export const postApiV1IamPrincipalsByPrincipalIdTokens = async (principalId: number,
+    newTokenRequest: NewTokenRequest, options?: RequestInit): Promise<postApiV1IamPrincipalsByPrincipalIdTokensResponse> => {
+  
+  const res = await fetch(getPostApiV1IamPrincipalsByPrincipalIdTokensUrl(principalId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      newTokenRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: postApiV1IamPrincipalsByPrincipalIdTokensResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1IamPrincipalsByPrincipalIdTokensResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/iam/principals/{principal_id}/tokens/{token_id}/revoke.
+ * @summary Post Api V1 Iam Principals By Principal Id Tokens By Token Id Revoke
+ */
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse204 = {
+  data: void
+  status: 204
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponseSuccess = (postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse204) & {
+  headers: Headers;
+};
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponseError = (postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse401 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse403 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse404) & {
+  headers: Headers;
+};
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse = (postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponseSuccess | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponseError)
+
+export const getPostApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeUrl = (principalId: number,
+    tokenId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/tokens/${tokenId}/revoke`
+}
+
+export const postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevoke = async (principalId: number,
+    tokenId: number, options?: RequestInit): Promise<postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse> => {
+  
+  const res = await fetch(getPostApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeUrl(principalId,tokenId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/service-accounts. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Iam Service Accounts
+ */
+export type getApiV1IamServiceAccountsResponse200 = {
+  data: ServiceAccountResponse[]
+  status: 200
+}
+
+export type getApiV1IamServiceAccountsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamServiceAccountsResponseSuccess = (getApiV1IamServiceAccountsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamServiceAccountsResponseError = (getApiV1IamServiceAccountsResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1IamServiceAccountsResponse = (getApiV1IamServiceAccountsResponseSuccess | getApiV1IamServiceAccountsResponseError)
+
+export const getGetApiV1IamServiceAccountsUrl = (params?: GetApiV1IamServiceAccountsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts`
+}
+
+export const getApiV1IamServiceAccounts = async (params?: GetApiV1IamServiceAccountsParams, options?: RequestInit): Promise<getApiV1IamServiceAccountsResponse> => {
+  
+  const res = await fetch(getGetApiV1IamServiceAccountsUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamServiceAccountsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamServiceAccountsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/iam/service-accounts.
+ * @summary Post Api V1 Iam Service Accounts
+ */
+export type postApiV1IamServiceAccountsResponse201 = {
+  data: ServiceAccountResponse
+  status: 201
+}
+
+export type postApiV1IamServiceAccountsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1IamServiceAccountsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1IamServiceAccountsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1IamServiceAccountsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1IamServiceAccountsResponseSuccess = (postApiV1IamServiceAccountsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1IamServiceAccountsResponseError = (postApiV1IamServiceAccountsResponse400 | postApiV1IamServiceAccountsResponse401 | postApiV1IamServiceAccountsResponse403 | postApiV1IamServiceAccountsResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1IamServiceAccountsResponse = (postApiV1IamServiceAccountsResponseSuccess | postApiV1IamServiceAccountsResponseError)
+
+export const getPostApiV1IamServiceAccountsUrl = () => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts`
+}
+
+export const postApiV1IamServiceAccounts = async (newServiceAccount: NewServiceAccount, options?: RequestInit): Promise<postApiV1IamServiceAccountsResponse> => {
+  
+  const res = await fetch(getPostApiV1IamServiceAccountsUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      newServiceAccount,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: postApiV1IamServiceAccountsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1IamServiceAccountsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/service-accounts/{service_account_id}.
+ * @summary Get Api V1 Iam Service Accounts By Service Account Id
+ */
+export type getApiV1IamServiceAccountsByServiceAccountIdResponse200 = {
+  data: ServiceAccountResponse
+  status: 200
+}
+
+export type getApiV1IamServiceAccountsByServiceAccountIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamServiceAccountsByServiceAccountIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1IamServiceAccountsByServiceAccountIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1IamServiceAccountsByServiceAccountIdResponseSuccess = (getApiV1IamServiceAccountsByServiceAccountIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamServiceAccountsByServiceAccountIdResponseError = (getApiV1IamServiceAccountsByServiceAccountIdResponse401 | getApiV1IamServiceAccountsByServiceAccountIdResponse403 | getApiV1IamServiceAccountsByServiceAccountIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1IamServiceAccountsByServiceAccountIdResponse = (getApiV1IamServiceAccountsByServiceAccountIdResponseSuccess | getApiV1IamServiceAccountsByServiceAccountIdResponseError)
+
+export const getGetApiV1IamServiceAccountsByServiceAccountIdUrl = (serviceAccountId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts/${serviceAccountId}`
+}
+
+export const getApiV1IamServiceAccountsByServiceAccountId = async (serviceAccountId: number, options?: RequestInit): Promise<getApiV1IamServiceAccountsByServiceAccountIdResponse> => {
+  
+  const res = await fetch(getGetApiV1IamServiceAccountsByServiceAccountIdUrl(serviceAccountId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getApiV1IamServiceAccountsByServiceAccountIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamServiceAccountsByServiceAccountIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/iam/service-accounts/{service_account_id}.
+ * @summary Delete Api V1 Iam Service Accounts By Service Account Id
+ */
+export type deleteApiV1IamServiceAccountsByServiceAccountIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1IamServiceAccountsByServiceAccountIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1IamServiceAccountsByServiceAccountIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1IamServiceAccountsByServiceAccountIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1IamServiceAccountsByServiceAccountIdResponseSuccess = (deleteApiV1IamServiceAccountsByServiceAccountIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1IamServiceAccountsByServiceAccountIdResponseError = (deleteApiV1IamServiceAccountsByServiceAccountIdResponse401 | deleteApiV1IamServiceAccountsByServiceAccountIdResponse403 | deleteApiV1IamServiceAccountsByServiceAccountIdResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1IamServiceAccountsByServiceAccountIdResponse = (deleteApiV1IamServiceAccountsByServiceAccountIdResponseSuccess | deleteApiV1IamServiceAccountsByServiceAccountIdResponseError)
+
+export const getDeleteApiV1IamServiceAccountsByServiceAccountIdUrl = (serviceAccountId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts/${serviceAccountId}`
+}
+
+export const deleteApiV1IamServiceAccountsByServiceAccountId = async (serviceAccountId: number, options?: RequestInit): Promise<deleteApiV1IamServiceAccountsByServiceAccountIdResponse> => {
+  
+  const res = await fetch(getDeleteApiV1IamServiceAccountsByServiceAccountIdUrl(serviceAccountId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: deleteApiV1IamServiceAccountsByServiceAccountIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1IamServiceAccountsByServiceAccountIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/iam/service-accounts/{service_account_id}.
+ * @summary Patch Api V1 Iam Service Accounts By Service Account Id
+ */
+export type patchApiV1IamServiceAccountsByServiceAccountIdResponse200 = {
+  data: ServiceAccountResponse
+  status: 200
+}
+
+export type patchApiV1IamServiceAccountsByServiceAccountIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1IamServiceAccountsByServiceAccountIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1IamServiceAccountsByServiceAccountIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1IamServiceAccountsByServiceAccountIdResponseSuccess = (patchApiV1IamServiceAccountsByServiceAccountIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1IamServiceAccountsByServiceAccountIdResponseError = (patchApiV1IamServiceAccountsByServiceAccountIdResponse401 | patchApiV1IamServiceAccountsByServiceAccountIdResponse403 | patchApiV1IamServiceAccountsByServiceAccountIdResponse404) & {
+  headers: Headers;
+};
+
+export type patchApiV1IamServiceAccountsByServiceAccountIdResponse = (patchApiV1IamServiceAccountsByServiceAccountIdResponseSuccess | patchApiV1IamServiceAccountsByServiceAccountIdResponseError)
+
+export const getPatchApiV1IamServiceAccountsByServiceAccountIdUrl = (serviceAccountId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts/${serviceAccountId}`
+}
+
+export const patchApiV1IamServiceAccountsByServiceAccountId = async (serviceAccountId: number,
+    updateServiceAccount: UpdateServiceAccount, options?: RequestInit): Promise<patchApiV1IamServiceAccountsByServiceAccountIdResponse> => {
+  
+  const res = await fetch(getPatchApiV1IamServiceAccountsByServiceAccountIdUrl(serviceAccountId),
+  {      
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateServiceAccount,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: patchApiV1IamServiceAccountsByServiceAccountIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1IamServiceAccountsByServiceAccountIdResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/iam/service-accounts/{service_account_id}/disable.
+ * @summary Post Api V1 Iam Service Accounts By Service Account Id Disable
+ */
+export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponse200 = {
+  data: ServiceAccountResponse
+  status: 200
+}
+
+export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponseSuccess = (postApiV1IamServiceAccountsByServiceAccountIdDisableResponse200) & {
+  headers: Headers;
+};
+export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponseError = (postApiV1IamServiceAccountsByServiceAccountIdDisableResponse401 | postApiV1IamServiceAccountsByServiceAccountIdDisableResponse403 | postApiV1IamServiceAccountsByServiceAccountIdDisableResponse404) & {
+  headers: Headers;
+};
+
+export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponse = (postApiV1IamServiceAccountsByServiceAccountIdDisableResponseSuccess | postApiV1IamServiceAccountsByServiceAccountIdDisableResponseError)
+
+export const getPostApiV1IamServiceAccountsByServiceAccountIdDisableUrl = (serviceAccountId: number,) => {
+
+
+  
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts/${serviceAccountId}/disable`
+}
+
+export const postApiV1IamServiceAccountsByServiceAccountIdDisable = async (serviceAccountId: number, options?: RequestInit): Promise<postApiV1IamServiceAccountsByServiceAccountIdDisableResponse> => {
+  
+  const res = await fetch(getPostApiV1IamServiceAccountsByServiceAccountIdDisableUrl(serviceAccountId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: postApiV1IamServiceAccountsByServiceAccountIdDisableResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1IamServiceAccountsByServiceAccountIdDisableResponse
 }
   
 
@@ -2927,134 +3839,6 @@ export const patchApiV1IamUsersByUserId = async (userId: number,
   
   const data: patchApiV1IamUsersByUserIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1IamUsersByUserIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary Get Api V1 Iam Users By User Id Groups
- */
-export type getApiV1IamUsersByUserIdGroupsResponse200 = {
-  data: Group[]
-  status: 200
-}
-
-export type getApiV1IamUsersByUserIdGroupsResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1IamUsersByUserIdGroupsResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1IamUsersByUserIdGroupsResponseSuccess = (getApiV1IamUsersByUserIdGroupsResponse200) & {
-  headers: Headers;
-};
-export type getApiV1IamUsersByUserIdGroupsResponseError = (getApiV1IamUsersByUserIdGroupsResponse401 | getApiV1IamUsersByUserIdGroupsResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1IamUsersByUserIdGroupsResponse = (getApiV1IamUsersByUserIdGroupsResponseSuccess | getApiV1IamUsersByUserIdGroupsResponseError)
-
-export const getGetApiV1IamUsersByUserIdGroupsUrl = (userId: number,
-    params?: GetApiV1IamUsersByUserIdGroupsParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}/groups?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}/groups`
-}
-
-export const getApiV1IamUsersByUserIdGroups = async (userId: number,
-    params?: GetApiV1IamUsersByUserIdGroupsParams, options?: RequestInit): Promise<getApiV1IamUsersByUserIdGroupsResponse> => {
-  
-  const res = await fetch(getGetApiV1IamUsersByUserIdGroupsUrl(userId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1IamUsersByUserIdGroupsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1IamUsersByUserIdGroupsResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary Get Api V1 Iam Users By User Id Tokens
- */
-export type getApiV1IamUsersByUserIdTokensResponse200 = {
-  data: UserTokenMetadata[]
-  status: 200
-}
-
-export type getApiV1IamUsersByUserIdTokensResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1IamUsersByUserIdTokensResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1IamUsersByUserIdTokensResponseSuccess = (getApiV1IamUsersByUserIdTokensResponse200) & {
-  headers: Headers;
-};
-export type getApiV1IamUsersByUserIdTokensResponseError = (getApiV1IamUsersByUserIdTokensResponse401 | getApiV1IamUsersByUserIdTokensResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1IamUsersByUserIdTokensResponse = (getApiV1IamUsersByUserIdTokensResponseSuccess | getApiV1IamUsersByUserIdTokensResponseError)
-
-export const getGetApiV1IamUsersByUserIdTokensUrl = (userId: number,
-    params?: GetApiV1IamUsersByUserIdTokensParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}/tokens?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}/tokens`
-}
-
-export const getApiV1IamUsersByUserIdTokens = async (userId: number,
-    params?: GetApiV1IamUsersByUserIdTokensParams, options?: RequestInit): Promise<getApiV1IamUsersByUserIdTokensResponse> => {
-  
-  const res = await fetch(getGetApiV1IamUsersByUserIdTokensUrl(userId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1IamUsersByUserIdTokensResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1IamUsersByUserIdTokensResponse
 }
   
 
@@ -4091,36 +4875,36 @@ export const deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermis
 
 
 /**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions/user/{user_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary List all permissions for a user on a namespace
+ * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions/principal/{principal_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary List all permissions for a principal on a namespace
  */
-export type getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse200 = {
+export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse200 = {
   data: GroupPermission[]
   status: 200
 }
 
-export type getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse401 = {
+export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse404 = {
+export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse404 = {
   data: ApiErrorResponse
   status: 404
 }
 
-export type getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponseSuccess = (getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse200) & {
+export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponseSuccess = (getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse200) & {
   headers: Headers;
 };
-export type getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponseError = (getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse401 | getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse404) & {
+export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponseError = (getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse401 | getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse404) & {
   headers: Headers;
 };
 
-export type getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse = (getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponseSuccess | getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponseError)
+export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse = (getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponseSuccess | getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponseError)
 
-export const getGetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdUrl = (namespaceId: number,
-    userId: number,
-    params?: GetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdParams,) => {
+export const getGetApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdUrl = (namespaceId: number,
+    principalId: number,
+    params?: GetApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -4132,14 +4916,14 @@ export const getGetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdUrl = (nam
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/user/${userId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/user/${userId}`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/principal/${principalId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/principal/${principalId}`
 }
 
-export const getApiV1NamespacesByNamespaceIdPermissionsUserByUserId = async (namespaceId: number,
-    userId: number,
-    params?: GetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse> => {
+export const getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalId = async (namespaceId: number,
+    principalId: number,
+    params?: GetApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse> => {
   
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdPermissionsUserByUserIdUrl(namespaceId,userId,params),
+  const res = await fetch(getGetApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdUrl(namespaceId,principalId,params),
   {      
     ...options,
     method: 'GET'
@@ -4150,8 +4934,8 @@ export const getApiV1NamespacesByNamespaceIdPermissionsUserByUserId = async (nam
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   
-  const data: getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdPermissionsUserByUserIdResponse
+  const data: getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse
 }
   
 
@@ -5902,6 +6686,99 @@ export const postApiV1TemplatesByTemplateIdReports = async (templateId: number,
   
   const data: postApiV1TemplatesByTemplateIdReportsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1TemplatesByTemplateIdReportsResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /healthz.
+ * @summary Get Healthz
+ */
+export type getHealthzResponse200 = {
+  data: ProbeResponse
+  status: 200
+}
+
+export type getHealthzResponseSuccess = (getHealthzResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getHealthzResponse = (getHealthzResponseSuccess)
+
+export const getGetHealthzUrl = () => {
+
+
+  
+
+  return `/healthz`
+}
+
+export const getHealthz = async ( options?: RequestInit): Promise<getHealthzResponse> => {
+  
+  const res = await fetch(getGetHealthzUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getHealthzResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getHealthzResponse
+}
+  
+
+
+/**
+ * Auto-generated documentation for GET /readyz.
+ * @summary Get Readyz
+ */
+export type getReadyzResponse200 = {
+  data: ProbeResponse
+  status: 200
+}
+
+export type getReadyzResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
+export type getReadyzResponseSuccess = (getReadyzResponse200) & {
+  headers: Headers;
+};
+export type getReadyzResponseError = (getReadyzResponse503) & {
+  headers: Headers;
+};
+
+export type getReadyzResponse = (getReadyzResponseSuccess | getReadyzResponseError)
+
+export const getGetReadyzUrl = () => {
+
+
+  
+
+  return `/readyz`
+}
+
+export const getReadyz = async ( options?: RequestInit): Promise<getReadyzResponse> => {
+  
+  const res = await fetch(getGetReadyzUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  
+  const data: getReadyzResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getReadyzResponse
 }
   
 

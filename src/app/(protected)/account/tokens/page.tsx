@@ -1,19 +1,21 @@
-import { AccountProfile } from "@/components/account-profile";
 import { AccountTabs } from "@/components/account-tabs";
+import { AccountTokens } from "@/components/account-tokens";
 import { requireServerSession } from "@/lib/auth/guards";
 
-export default async function AccountPage() {
+export default async function AccountTokensPage() {
 	const session = await requireServerSession();
 
 	return (
 		<section className="stack">
 			<header>
 				<p className="eyebrow">Account</p>
-				<h2>Profile</h2>
-				<p className="muted">Manage your own Hubuum user profile.</p>
+				<h2>Tokens</h2>
+				<p className="muted">
+					Create and revoke API tokens for your own account.
+				</p>
 			</header>
 			<AccountTabs />
-			<AccountProfile currentUsername={session.username ?? null} />
+			<AccountTokens currentUsername={session.username ?? null} />
 		</section>
 	);
 }
