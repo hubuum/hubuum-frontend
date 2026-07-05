@@ -24,6 +24,8 @@ export interface Permission {
   has_delete_remote_target: boolean;
   has_delete_template: boolean;
   has_execute_remote_target: boolean;
+  has_manage_event_subscription: boolean;
+  has_read_audit: boolean;
   has_read_class: boolean;
   has_read_class_relation: boolean;
   has_read_namespace: boolean;

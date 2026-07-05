@@ -123,6 +123,29 @@ npm run audit:prod
 This checks runtime dependencies only (`npm audit --omit=dev`), so lint/codegen dev-tool advisories do not block deploys.
 The CI workflow at `.github/workflows/ci.yml` runs this gate together with lint, typecheck, and build.
 
+## Live backend contract tests
+
+Run the frontend's live backend contract suite against the latest published
+server image:
+
+```bash
+npm run test:live-backend
+```
+
+The script always pulls `ghcr.io/hubuum/hubuum-server:main`, starts a
+disposable Hubuum server and Postgres database through Docker Compose, waits for
+`/readyz`, resets the default `admin` password inside the container, exercises
+the auth, permission, events/audit, history/as-of, event sink, subscription,
+delivery lifecycle, and pagination APIs directly, and tears the stack down.
+
+Useful overrides:
+
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:main`
+- `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
+- `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
+- `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`
+- `HUBUUM_LIVE_KEEP_STACK=1`: leave the containers running for debugging
+
 ## OpenAPI generation
 
 `openapi.json` is in repo root.

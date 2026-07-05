@@ -10,8 +10,10 @@ import {
 	useState,
 } from "react";
 import { EmptyState } from "@/components/empty-state";
+import { NamespaceEventSubscriptionsPanel } from "@/components/namespace-event-subscriptions-panel";
 import { NamespaceDetailTracker } from "@/components/namespace-detail-tracker";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
+import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1NamespacesByNamespaceId,
@@ -73,7 +75,9 @@ type PermissionFlagField =
 	| "has_create_remote_target"
 	| "has_update_remote_target"
 	| "has_delete_remote_target"
-	| "has_execute_remote_target";
+	| "has_execute_remote_target"
+	| "has_read_audit"
+	| "has_manage_event_subscription";
 
 type PermissionDefinition = {
 	value: PermissionName;
@@ -89,7 +93,9 @@ type PermissionSection =
 	| "class_relation"
 	| "object_relation"
 	| "template"
-	| "remote_target";
+	| "remote_target"
+	| "audit"
+	| "events";
 
 type EditableField = "name" | "description";
 
@@ -103,6 +109,8 @@ const PERMISSION_SECTION_LABELS: Record<PermissionSection, string> = {
 	object_relation: "Object relations",
 	template: "Templates",
 	remote_target: "Remote targets",
+	audit: "Audit",
+	events: "Events",
 };
 
 const PERMISSION_SECTION_ORDER: PermissionSection[] = [
@@ -113,6 +121,8 @@ const PERMISSION_SECTION_ORDER: PermissionSection[] = [
 	"object_relation",
 	"template",
 	"remote_target",
+	"audit",
+	"events",
 ];
 
 const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
@@ -289,6 +299,18 @@ const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
 		label: "Execute remote target",
 		field: "has_execute_remote_target",
 		section: "remote_target",
+	},
+	{
+		value: PermissionValues.ReadAudit,
+		label: "Read audit",
+		field: "has_read_audit",
+		section: "audit",
+	},
+	{
+		value: PermissionValues.ManageEventSubscription,
+		label: "Manage event subscriptions",
+		field: "has_manage_event_subscription",
+		section: "events",
 	},
 ];
 
@@ -1099,6 +1121,11 @@ export function NamespaceDetail({
 			isPermissionEnabled(entry.permission, "has_delegate_namespace") &&
 			currentUserGroupIds.has(entry.group.id),
 	);
+	const canManageEventSubscriptions = permissionEntries.some(
+		(entry) =>
+			isPermissionEnabled(entry.permission, "has_manage_event_subscription") &&
+			currentUserGroupIds.has(entry.group.id),
+	);
 	const newSelectedPermissionSet = new Set(newSelectedPermissions);
 	const sortedPermissionEntries = [...permissionEntries].sort((left, right) =>
 		left.group.groupname.localeCompare(right.group.groupname),
@@ -1321,6 +1348,17 @@ export function NamespaceDetail({
 					subject={{ type: "namespace", namespace_id: namespaceId }}
 					subjectLabel={`namespace "${namespaceData.name}"`}
 					subjectType="namespace"
+				/>
+
+				<ResourceActivityPanel
+					scope={{ type: "namespace", namespaceId }}
+					title="Namespace audit and history"
+				/>
+
+				<NamespaceEventSubscriptionsPanel
+					namespaceId={namespaceId}
+					canManage={canManageEventSubscriptions}
+					isPermissionPending={checkingPermissionMembership}
 				/>
 
 				<section className="card stack">

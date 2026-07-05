@@ -70,6 +70,7 @@ const THEME_PREFERENCE_KEY = "hubuum.theme";
 const DENSITY_PREFERENCE_KEY = "hubuum.density";
 const GO_TO_SHORTCUT_TIMEOUT_MS = 1500;
 const GO_TO_ROUTES: Record<string, string> = {
+	a: "/audit",
 	h: "/app",
 	n: "/namespaces",
 	c: "/classes",
@@ -163,6 +164,9 @@ function getSectionLabel(pathname: string): string {
 	if (pathname.startsWith("/tasks")) {
 		return "Tasks";
 	}
+	if (pathname.startsWith("/audit")) {
+		return "Audit";
+	}
 	if (pathname.startsWith("/search")) {
 		return "Search";
 	}
@@ -198,6 +202,9 @@ function getSectionLabel(pathname: string): string {
 	}
 	if (pathname.startsWith("/admin/remote-targets")) {
 		return "Remote targets";
+	}
+	if (pathname.startsWith("/admin/events")) {
+		return "Events";
 	}
 	if (pathname.startsWith("/admin")) {
 		return "Admin";
@@ -471,6 +478,17 @@ function IconTasks() {
 	);
 }
 
+function IconAudit() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M12 2 4 5.2v6.6c0 5 3.4 8.4 8 10.2 4.6-1.8 8-5.2 8-10.2V5.2zm0 2.2 6 2.4v5.2c0 3.7-2.3 6.3-6 8-3.7-1.7-6-4.3-6-8V6.6zm-1 4.3h2v5.8h-2zm0 7.2h2v2h-2z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
 function IconDelete() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -542,6 +560,12 @@ const workspaceLinks: NavItem[] = [
 		icon: <IconTasks />,
 		hint: "Tasks: monitor active background work and resume task detail pages",
 	},
+	{
+		href: "/audit",
+		label: "Audit",
+		icon: <IconAudit />,
+		hint: "Audit: inspect visible backend event history",
+	},
 ];
 
 const adminLinks: NavItem[] = [
@@ -568,6 +592,12 @@ const adminLinks: NavItem[] = [
 		label: "Remote targets",
 		icon: <IconRemoteTarget />,
 		hint: "Remote targets: manage outbound actions",
+	},
+	{
+		href: "/admin/events",
+		label: "Events",
+		icon: <IconAudit />,
+		hint: "Events: inspect delivery health and retries",
 	},
 ];
 

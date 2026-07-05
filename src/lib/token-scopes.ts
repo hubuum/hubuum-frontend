@@ -70,6 +70,10 @@ export const SCOPE_GROUPS: ScopeGroup[] = [
 			Permissions.ExecuteRemoteTarget,
 		],
 	},
+	{
+		label: "Audit and events",
+		scopes: [Permissions.ReadAudit, Permissions.ManageEventSubscription],
+	},
 ];
 
 export const ALL_SCOPES: Permissions[] = SCOPE_GROUPS.flatMap(

@@ -10,7 +10,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
@@ -33,6 +33,9 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Live backend contract test
+        run: npm run test:live-backend
 
       - name: Build
         run: npm run build
