@@ -14,6 +14,7 @@ type TablePaginationProps = {
 	onPrevPage: () => void;
 	onFirstPage: () => void;
 	currentCount: number;
+	totalCount?: number | null;
 };
 
 export function TablePagination({
@@ -23,6 +24,7 @@ export function TablePagination({
 	onPrevPage,
 	onFirstPage,
 	currentCount,
+	totalCount = null,
 }: TablePaginationProps) {
 	const paginationId = useId();
 
@@ -55,7 +57,10 @@ export function TablePagination({
 			onPointerDownCapture={() => markPaginationActive(paginationId)}
 		>
 			<div className="table-pagination-info">
-				<span>Showing {currentCount} of {currentCount}</span>
+				<span>
+					Showing {currentCount}
+					{totalCount !== null ? ` of ${totalCount}` : " loaded"}
+				</span>
 				{hasPrevPage ? (
 					<button
 						type="button"

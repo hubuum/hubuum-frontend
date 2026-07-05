@@ -1,4 +1,11 @@
-export type RecentItemType = "namespace" | "class" | "object";
+export type RecentItemType =
+	| "namespace"
+	| "class"
+	| "object"
+	| "task"
+	| "admin-user"
+	| "admin-group"
+	| "service-account";
 
 export interface RecentItem {
 	type: RecentItemType;

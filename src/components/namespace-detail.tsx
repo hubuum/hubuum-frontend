@@ -14,6 +14,7 @@ import { NamespaceEventSubscriptionsPanel } from "@/components/namespace-event-s
 import { NamespaceDetailTracker } from "@/components/namespace-detail-tracker";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
+import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1NamespacesByNamespaceId,
@@ -540,6 +541,7 @@ export function NamespaceDetail({
 }: NamespaceDetailProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [editingFields, setEditingFields] = useState<EditableField[]>([]);
@@ -931,11 +933,17 @@ export function NamespaceDetail({
 		event.currentTarget.requestSubmit(submitButton);
 	}
 
-	function onDelete() {
+	async function onDelete() {
 		setFormError(null);
 		setFormSuccess(null);
 		const namespaceLabel = namespaceQuery.data?.name ?? "this namespace";
-		if (!window.confirm(`Delete ${namespaceLabel}?`)) {
+		const confirmed = await confirm({
+			title: `Delete ${namespaceLabel}?`,
+			description: "This removes the namespace and cannot be undone.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
+		if (!confirmed) {
 			return;
 		}
 
@@ -1094,10 +1102,15 @@ export function NamespaceDetail({
 		);
 	}
 
-	function onRevokePermissions(groupId: number) {
-		if (
-			!window.confirm(`Revoke all namespace permissions for group #${groupId}?`)
-		) {
+	async function onRevokePermissions(groupId: number) {
+		const confirmed = await confirm({
+			title: `Revoke permissions for group #${groupId}?`,
+			description:
+				"This removes every namespace permission granted to the group.",
+			confirmLabel: "Revoke",
+			tone: "danger",
+		});
+		if (!confirmed) {
 			return;
 		}
 

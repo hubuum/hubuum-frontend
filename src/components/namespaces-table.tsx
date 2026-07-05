@@ -7,6 +7,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { TablePagination } from "@/components/table-pagination";
+import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1NamespacesByNamespaceId,
@@ -51,6 +52,7 @@ type NamespacesPageData = {
 	namespaces: Namespace[];
 	nextCursor: string | null;
 	prevCursor: string | null;
+	totalCount: number | null;
 };
 
 async function fetchNamespaces(
@@ -73,11 +75,14 @@ async function fetchNamespaces(
 
 	const nextCursor = response.headers.get("X-Next-Cursor");
 	const prevCursor = response.headers.get("X-Prev-Cursor");
+	const totalCountHeader = response.headers.get("X-Total-Count");
+	const totalCount = totalCountHeader ? Number.parseInt(totalCountHeader, 10) : null;
 
 	return {
 		namespaces: response.data,
 		nextCursor,
 		prevCursor,
+		totalCount: Number.isFinite(totalCount) ? totalCount : null,
 	};
 }
 
@@ -100,6 +105,7 @@ export function NamespacesTable() {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [groupId, setGroupId] = useState("");
@@ -203,7 +209,7 @@ export function NamespacesTable() {
 		},
 	});
 
-	const deleteSelectedNamespaces = useCallback(() => {
+	const deleteSelectedNamespaces = useCallback(async () => {
 		if (!selectedNamespaceIds.length) {
 			return;
 		}
@@ -211,15 +217,21 @@ export function NamespacesTable() {
 		setTableError(null);
 		setTableSuccess(null);
 
-		const confirmed = window.confirm(
-			`Delete ${selectedNamespaceIds.length} selected namespace(s)?`,
-		);
+		const confirmed = await confirm({
+			title: `Delete ${selectedNamespaceIds.length} selected namespace${
+				selectedNamespaceIds.length === 1 ? "" : "s"
+			}?`,
+			description:
+				"This removes the selected namespaces and cannot be undone.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
 		if (!confirmed) {
 			return;
 		}
 
 		deleteMutation.mutate([...selectedNamespaceIds]);
-	}, [selectedNamespaceIds, deleteMutation]);
+	}, [confirm, selectedNamespaceIds, deleteMutation]);
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -381,6 +393,7 @@ export function NamespacesTable() {
 		} else {
 			params.delete("search");
 		}
+		params.delete("cursor");
 
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
@@ -390,6 +403,7 @@ export function NamespacesTable() {
 		setSearchInput("");
 		const params = new URLSearchParams(searchParams.toString());
 		params.delete("search");
+		params.delete("cursor");
 
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
@@ -640,6 +654,7 @@ export function NamespacesTable() {
 						}
 						onFirstPage={pagination.goToFirstPage}
 						currentCount={namespaces.length}
+						totalCount={pageData.totalCount}
 					/>
 				) : null}
 			</div>

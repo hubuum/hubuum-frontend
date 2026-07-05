@@ -9,12 +9,14 @@ import {
 	useCallback,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { TablePagination } from "@/components/table-pagination";
+import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
@@ -41,6 +43,7 @@ import {
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
+import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
 import { useTableSort } from "@/lib/use-table-sort";
 import { useToast } from "@/lib/toast-context";
 
@@ -54,6 +57,24 @@ function IconSearch() {
 		</svg>
 	);
 }
+
+function IconColumns() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M4 5h16v14H4zm2 2v10h3V7zm5 0v10h3V7zm5 0v10h2V7z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
+const OBJECT_DATA_COLUMNS_STORAGE_PREFIX = "hubuum.object-data-columns";
+const DEFAULT_SELECTED_DATA_COLUMN_COUNT = 3;
+const MAX_SELECTED_DATA_COLUMNS = 6;
+const EMPTY_CLASSES: HubuumClassExpanded[] = [];
+const EMPTY_NAMESPACES: Namespace[] = [];
+const EMPTY_OBJECTS: HubuumObject[] = [];
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
@@ -89,6 +110,7 @@ type ObjectsPageData = {
 	objects: HubuumObject[];
 	nextCursor: string | null;
 	prevCursor: string | null;
+	totalCount: number | null;
 };
 
 async function fetchObjectsByClass(
@@ -116,11 +138,14 @@ async function fetchObjectsByClass(
 
 	const nextCursor = response.headers.get("X-Next-Cursor");
 	const prevCursor = response.headers.get("X-Prev-Cursor");
+	const totalCountHeader = response.headers.get("X-Total-Count");
+	const totalCount = totalCountHeader ? Number.parseInt(totalCountHeader, 10) : null;
 
 	return {
 		objects: expectArrayPayload<HubuumObject>(payload, "class objects"),
 		nextCursor,
 		prevCursor,
+		totalCount: Number.isFinite(totalCount) ? totalCount : null,
 	};
 }
 
@@ -141,21 +166,134 @@ async function fetchNamespaces(): Promise<Namespace[]> {
 	return response.data;
 }
 
-function stringifyData(data: unknown): string {
+function getDataSearchText(data: unknown): string {
 	if (data === null || data === undefined) {
-		return "-";
+		return "";
 	}
 
 	if (typeof data === "string") {
-		return data.length > 40 ? `${data.slice(0, 40)}...` : data;
+		return data;
 	}
 
 	try {
-		const json = JSON.stringify(data);
-		return json.length > 40 ? `${json.slice(0, 40)}...` : json;
+		return JSON.stringify(data);
 	} catch {
-		return "[unserializable]";
+		return "";
 	}
+}
+
+function getObjectDataRecord(data: unknown): Record<string, unknown> | null {
+	if (data === null || data === undefined || Array.isArray(data)) {
+		return null;
+	}
+	if (typeof data !== "object") {
+		return null;
+	}
+	return data as Record<string, unknown>;
+}
+
+function getSchemaPropertyKeys(jsonSchema: unknown): string[] {
+	if (!jsonSchema || typeof jsonSchema !== "object" || Array.isArray(jsonSchema)) {
+		return [];
+	}
+
+	const properties = (jsonSchema as { properties?: unknown }).properties;
+	if (!properties || typeof properties !== "object" || Array.isArray(properties)) {
+		return [];
+	}
+
+	return Object.keys(properties);
+}
+
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+	if (left.length !== right.length) {
+		return false;
+	}
+	return left.every((value, index) => value === right[index]);
+}
+
+function formatDataPreviewValue(value: unknown): string {
+	if (value === null) {
+		return "null";
+	}
+	if (value === undefined) {
+		return "undefined";
+	}
+	if (typeof value === "string") {
+		return value || '""';
+	}
+	if (typeof value === "number" || typeof value === "boolean") {
+		return String(value);
+	}
+	if (Array.isArray(value)) {
+		return `${value.length} item${value.length === 1 ? "" : "s"}`;
+	}
+	if (typeof value === "object") {
+		const keyCount = Object.keys(value as Record<string, unknown>).length;
+		return `${keyCount} key${keyCount === 1 ? "" : "s"}`;
+	}
+	return String(value);
+}
+
+function renderObjectDataPreview(data: unknown, omittedKeys: string[] = []) {
+	if (data === null || data === undefined) {
+		return <span className="muted">No data</span>;
+	}
+
+	if (typeof data !== "object" || Array.isArray(data)) {
+		return (
+			<span className="object-data-raw" title={getDataSearchText(data)}>
+				{formatDataPreviewValue(data)}
+			</span>
+		);
+	}
+
+	const omittedKeySet = new Set(omittedKeys);
+	const entries = Object.entries(data as Record<string, unknown>).filter(
+		([key]) => !omittedKeySet.has(key),
+	);
+	if (entries.length === 0) {
+		return <span className="muted">No other data</span>;
+	}
+
+	const visibleEntries = entries.slice(0, 8);
+	const hiddenCount = entries.length - visibleEntries.length;
+
+	return (
+		<div className="object-data-preview">
+			{visibleEntries.map(([key, value]) => {
+				const formattedValue = formatDataPreviewValue(value);
+				return (
+					<span
+						key={key}
+						className="object-data-chip"
+						title={`${key}: ${formattedValue}`}
+					>
+						<span className="object-data-key">{key}</span>
+						<span className="object-data-value">{formattedValue}</span>
+					</span>
+				);
+			})}
+			{hiddenCount > 0 ? (
+				<span className="object-data-more">
+					+{hiddenCount} more
+				</span>
+			) : null}
+		</div>
+	);
+}
+
+function renderPromotedDataValue(value: unknown) {
+	if (value === undefined || value === null || value === "") {
+		return <span className="muted">-</span>;
+	}
+
+	const formattedValue = formatDataPreviewValue(value);
+	return (
+		<span className="object-data-column-value" title={getDataSearchText(value)}>
+			{formattedValue}
+		</span>
+	);
 }
 
 export function ObjectsExplorer() {
@@ -163,6 +301,8 @@ export function ObjectsExplorer() {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
+	const columnPickerRef = useRef<HTMLDivElement | null>(null);
 	const classesQuery = useQuery({
 		queryKey: ["classes", "object-explorer"],
 		queryFn: fetchClasses,
@@ -179,6 +319,8 @@ export function ObjectsExplorer() {
 	const [dataInput, setDataInput] = useState("{}");
 	const [selectedObjectIds, setSelectedObjectIds] = useState<number[]>([]);
 	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+	const [isColumnPickerOpen, setColumnPickerOpen] = useState(false);
+	const [selectedDataColumns, setSelectedDataColumns] = useState<string[]>([]);
 	const [searchInput, setSearchInput] = useState(
 		searchParams.get("search") ?? "",
 	);
@@ -222,8 +364,8 @@ export function ObjectsExplorer() {
 		const value = Number.parseInt(selectedClassId, 10);
 		return Number.isFinite(value) ? value : null;
 	}, [selectedClassId]);
-	const classes = classesQuery.data ?? [];
-	const namespaces = namespacesQuery.data ?? [];
+	const classes = classesQuery.data ?? EMPTY_CLASSES;
+	const namespaces = namespacesQuery.data ?? EMPTY_NAMESPACES;
 	const namespaceNameById = useMemo(() => {
 		const map = new Map<number, string>();
 		for (const namespace of namespaces) {
@@ -236,13 +378,21 @@ export function ObjectsExplorer() {
 		}
 		return map;
 	}, [classes, namespaces]);
-	const selectedClass = classes.find((item) => item.id === parsedClassId);
+	const selectedClass = useMemo(
+		() => classes.find((item) => item.id === parsedClassId),
+		[classes, parsedClassId],
+	);
+	const dataColumnStorageKey =
+		parsedClassId === null
+			? null
+			: `${OBJECT_DATA_COLUMNS_STORAGE_PREFIX}:${parsedClassId}`;
 	const parsedCreateClassId = useMemo(() => {
 		const value = Number.parseInt(createClassId, 10);
 		return Number.isFinite(value) ? value : null;
 	}, [createClassId]);
-	const createSelectedClass = classes.find(
-		(item) => item.id === parsedCreateClassId,
+	const createSelectedClass = useMemo(
+		() => classes.find((item) => item.id === parsedCreateClassId),
+		[classes, parsedCreateClassId],
 	);
 
 	const objectsQuery = useQuery({
@@ -340,14 +490,19 @@ export function ObjectsExplorer() {
 		},
 	});
 
-	const deleteSelectedObjects = useCallback(() => {
+	const deleteSelectedObjects = useCallback(async () => {
 		if (!selectedObjectIds.length || parsedClassId === null) {
 			return;
 		}
 
-		const confirmed = window.confirm(
-			`Delete ${selectedObjectIds.length} selected object(s)?`,
-		);
+		const confirmed = await confirm({
+			title: `Delete ${selectedObjectIds.length} selected object${
+				selectedObjectIds.length === 1 ? "" : "s"
+			}?`,
+			description: "This removes the selected objects and cannot be undone.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
 		if (!confirmed) {
 			return;
 		}
@@ -356,11 +511,11 @@ export function ObjectsExplorer() {
 			classId: parsedClassId,
 			objectIds: [...selectedObjectIds],
 		});
-	}, [selectedObjectIds, parsedClassId, deleteMutation]);
+	}, [confirm, selectedObjectIds, parsedClassId, deleteMutation]);
 
 	useEffect(() => {
 		if (!classes.length) {
-			setCreateClassId("");
+			setCreateClassId((current) => (current === "" ? current : ""));
 			return;
 		}
 
@@ -372,16 +527,22 @@ export function ObjectsExplorer() {
 		}
 
 		if (selectedClass) {
-			setCreateClassId(String(selectedClass.id));
+			const nextClassId = String(selectedClass.id);
+			setCreateClassId((current) =>
+				current === nextClassId ? current : nextClassId,
+			);
 			return;
 		}
 
-		setCreateClassId(String(classes[0].id));
+		const nextClassId = String(classes[0].id);
+		setCreateClassId((current) =>
+			current === nextClassId ? current : nextClassId,
+		);
 	}, [classes, createClassId, selectedClass]);
 
 	useEffect(() => {
 		if (!namespaces.length) {
-			setNamespaceId("");
+			setNamespaceId((current) => (current === "" ? current : ""));
 			return;
 		}
 
@@ -397,25 +558,58 @@ export function ObjectsExplorer() {
 				(namespace) => namespace.id === createSelectedClass.namespace.id,
 			);
 			if (classNamespace) {
-				setNamespaceId(String(classNamespace.id));
+				const nextNamespaceId = String(classNamespace.id);
+				setNamespaceId((current) =>
+					current === nextNamespaceId ? current : nextNamespaceId,
+				);
 				return;
 			}
 		}
 
-		setNamespaceId(String(namespaces[0].id));
+		const nextNamespaceId = String(namespaces[0].id);
+		setNamespaceId((current) =>
+			current === nextNamespaceId ? current : nextNamespaceId,
+		);
 	}, [createSelectedClass, namespaceId, namespaces]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: selected object ids must reset when the selected class changes.
 	useEffect(() => {
-		if (!selectedClassId) {
-			setSelectedObjectIds([]);
-			return;
-		}
-
-		setSelectedObjectIds([]);
+		setSelectedObjectIds((current) => (current.length ? [] : current));
 	}, [selectedClassId]);
 
 	const pageData = objectsQuery.data;
-	const objects = pageData?.objects ?? [];
+	const objects = pageData?.objects ?? EMPTY_OBJECTS;
+	const dataColumnCandidates = useMemo(() => {
+		const schemaKeys = getSchemaPropertyKeys(selectedClass?.json_schema);
+		const counts = new Map<string, number>();
+		for (const objectItem of objects) {
+			const dataRecord = getObjectDataRecord(objectItem.data);
+			if (!dataRecord) {
+				continue;
+			}
+			for (const key of Object.keys(dataRecord)) {
+				counts.set(key, (counts.get(key) ?? 0) + 1);
+			}
+		}
+
+		const schemaKeySet = new Set(schemaKeys);
+		const inferredKeys = [...counts.keys()]
+			.filter((key) => !schemaKeySet.has(key))
+			.sort((left, right) => {
+				const countDelta = (counts.get(right) ?? 0) - (counts.get(left) ?? 0);
+				return countDelta || left.localeCompare(right);
+			});
+
+		return [...schemaKeys, ...inferredKeys].map((key) => ({
+			key,
+			count: counts.get(key) ?? 0,
+			fromSchema: schemaKeySet.has(key),
+		}));
+	}, [objects, selectedClass?.json_schema]);
+	const activeDataColumns = useMemo(() => {
+		const candidateKeys = new Set(dataColumnCandidates.map((column) => column.key));
+		return selectedDataColumns.filter((key) => candidateKeys.has(key));
+	}, [dataColumnCandidates, selectedDataColumns]);
 	const searchTerm = normalizeSearchTerm(searchParams.get("search"));
 	const filteredObjects = useMemo(
 		() =>
@@ -424,6 +618,7 @@ export function ObjectsExplorer() {
 					searchTerm,
 					objectItem.name,
 					objectItem.description,
+					getDataSearchText(objectItem.data),
 				),
 			),
 		[objects, searchTerm],
@@ -432,11 +627,97 @@ export function ObjectsExplorer() {
 		filteredObjects.length > 0 &&
 		selectedObjectIds.length === filteredObjects.length;
 
+	useEffect(() => {
+		if (!dataColumnStorageKey) {
+			setSelectedDataColumns((current) => (current.length ? [] : current));
+			return;
+		}
+		if (dataColumnCandidates.length === 0) {
+			setSelectedDataColumns((current) => (current.length ? [] : current));
+			return;
+		}
+
+		try {
+			const storedValue = window.localStorage.getItem(dataColumnStorageKey);
+			if (storedValue) {
+				const parsedValue = JSON.parse(storedValue);
+				if (Array.isArray(parsedValue)) {
+					const nextColumns = parsedValue
+							.filter((value): value is string => typeof value === "string")
+						.slice(0, MAX_SELECTED_DATA_COLUMNS);
+					setSelectedDataColumns((current) =>
+						areStringArraysEqual(current, nextColumns) ? current : nextColumns,
+					);
+					return;
+				}
+			}
+		} catch {
+			// Ignore unavailable or malformed localStorage.
+		}
+
+		const nextColumns =
+			dataColumnCandidates
+				.slice(0, DEFAULT_SELECTED_DATA_COLUMN_COUNT)
+			.map((column) => column.key);
+		setSelectedDataColumns((current) =>
+			areStringArraysEqual(current, nextColumns) ? current : nextColumns,
+		);
+	}, [dataColumnCandidates, dataColumnStorageKey]);
+
+	useEffect(() => {
+		if (!dataColumnStorageKey) {
+			return;
+		}
+		if (dataColumnCandidates.length === 0) {
+			return;
+		}
+
+		try {
+			window.localStorage.setItem(
+				dataColumnStorageKey,
+				JSON.stringify(selectedDataColumns),
+			);
+		} catch {
+			// Ignore unavailable localStorage.
+		}
+	}, [dataColumnCandidates.length, dataColumnStorageKey, selectedDataColumns]);
+
+	useEffect(() => {
+		if (!isColumnPickerOpen) {
+			return;
+		}
+
+		function onPointerDown(event: MouseEvent) {
+			if (!columnPickerRef.current?.contains(event.target as Node)) {
+				setColumnPickerOpen(false);
+			}
+		}
+
+		function onKeyDown(event: KeyboardEvent) {
+			if (event.key === "Escape") {
+				setColumnPickerOpen(false);
+			}
+		}
+
+		document.addEventListener("mousedown", onPointerDown);
+		document.addEventListener("keydown", onKeyDown);
+		return () => {
+			document.removeEventListener("mousedown", onPointerDown);
+			document.removeEventListener("keydown", onKeyDown);
+		};
+	}, [isColumnPickerOpen]);
+
 	const shiftSelect = useShiftSelect({
 		items: filteredObjects,
 		selectedIds: selectedObjectIds,
 		setSelectedIds: setSelectedObjectIds,
 		getId: (objectItem) => objectItem.id,
+	});
+	const keyboardNav = useTableKeyboardNav({
+		items: filteredObjects,
+		getId: (objectItem) => objectItem.id,
+		onOpen: (objectItem) =>
+			router.push(`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`),
 	});
 
 	useEffect(() => {
@@ -597,6 +878,7 @@ export function ObjectsExplorer() {
 		} else {
 			params.delete("search");
 		}
+		params.delete("cursor");
 
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
@@ -606,9 +888,34 @@ export function ObjectsExplorer() {
 		setSearchInput("");
 		const params = new URLSearchParams(searchParams.toString());
 		params.delete("search");
+		params.delete("cursor");
 
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
+	}
+
+	function toggleDataColumn(key: string, checked: boolean) {
+		setSelectedDataColumns((current) => {
+			if (checked) {
+				if (current.includes(key)) {
+					return current;
+				}
+				return [...current, key].slice(0, MAX_SELECTED_DATA_COLUMNS);
+			}
+			return current.filter((currentKey) => currentKey !== key);
+		});
+	}
+
+	function resetDataColumns() {
+		setSelectedDataColumns(
+			dataColumnCandidates
+				.slice(0, DEFAULT_SELECTED_DATA_COLUMN_COUNT)
+				.map((column) => column.key),
+		);
+	}
+
+	function clearDataColumns() {
+		setSelectedDataColumns([]);
 	}
 
 	function renderNamespace(value: number): string {
@@ -765,6 +1072,86 @@ export function ObjectsExplorer() {
 						</span>
 					</div>
 					<div className="table-tools">
+						<div className="object-column-picker" ref={columnPickerRef}>
+							<button
+								type="button"
+								className="ghost object-column-picker-trigger"
+								onClick={() => setColumnPickerOpen((current) => !current)}
+								disabled={dataColumnCandidates.length === 0}
+							>
+								<IconColumns />
+								<span>Data columns</span>
+								{activeDataColumns.length ? (
+									<span className="object-column-count">
+										{activeDataColumns.length}
+									</span>
+								) : null}
+							</button>
+							{isColumnPickerOpen ? (
+								<div className="object-column-menu card">
+									<div className="object-column-menu-header">
+										<strong>Show data fields</strong>
+										<div className="object-column-menu-actions">
+											<button
+												type="button"
+												className="ghost"
+												onClick={resetDataColumns}
+											>
+												Reset
+											</button>
+											<button
+												type="button"
+												className="ghost"
+												onClick={clearDataColumns}
+											>
+												Clear
+											</button>
+										</div>
+									</div>
+									{dataColumnCandidates.length === 0 ? (
+										<p className="muted">No top-level data fields loaded.</p>
+									) : (
+										<div className="object-column-options">
+											{dataColumnCandidates.map((column) => {
+												const checked = selectedDataColumns.includes(
+													column.key,
+												);
+												const disabled =
+													!checked &&
+													activeDataColumns.length >=
+														MAX_SELECTED_DATA_COLUMNS;
+												return (
+													<label
+														key={column.key}
+														className="object-column-option"
+													>
+														<input
+															type="checkbox"
+															checked={checked}
+															disabled={disabled}
+															onChange={(event) =>
+																toggleDataColumn(
+																	column.key,
+																	event.target.checked,
+																)
+															}
+														/>
+														<span>
+															<strong>{column.key}</strong>
+															<small>
+																{column.fromSchema
+																	? "schema"
+																	: `${column.count} loaded`}
+															</small>
+														</span>
+													</label>
+												);
+											})}
+										</div>
+									)}
+								</div>
+							) : null}
+						</div>
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
 								<input
@@ -838,6 +1225,20 @@ export function ObjectsExplorer() {
 					/>
 				) : (
 					<table id="objects-table">
+						<colgroup>
+							<col className="object-select-column" />
+							<col className="object-id-column" />
+							<col className="object-name-column" />
+							<col className="object-namespace-column" />
+							<col className="object-description-column" />
+							{activeDataColumns.map((columnKey) => (
+								<col
+									key={columnKey}
+									className="object-promoted-data-column"
+								/>
+							))}
+							<col className="object-data-column" />
+						</colgroup>
 						<thead>
 							<tr>
 								<th className="check-col">
@@ -865,17 +1266,36 @@ export function ObjectsExplorer() {
 								<th className="sortable" onClick={() => setSort("description")}>
 									Description{renderSortIndicator("description")}
 								</th>
+								{activeDataColumns.map((columnKey) => (
+									<th key={columnKey} className="object-data-field-heading">
+										{columnKey}
+									</th>
+								))}
 								<th>Data</th>
 							</tr>
 						</thead>
 						<tbody>
-							{filteredObjects.map((objectItem) => (
-								<tr key={objectItem.id}>
+							{filteredObjects.map((objectItem, index) => {
+								const isSelected = selectedObjectIds.includes(objectItem.id);
+								const isFocused = keyboardNav.focusedId === objectItem.id;
+								const rowClassName = [
+									isSelected ? "table-row-selected" : "",
+									isFocused ? "table-row-focused" : "",
+								]
+									.filter(Boolean)
+									.join(" ");
+
+								return (
+								<tr
+									key={objectItem.id}
+									className={rowClassName}
+									data-table-row-index={index}
+								>
 									<td className="check-col">
 										<input
 											type="checkbox"
 											aria-label={`Select object ${objectItem.name}`}
-											checked={selectedObjectIds.includes(objectItem.id)}
+											checked={isSelected}
 											onChange={(event) =>
 												shiftSelect.handleClick(
 													objectItem.id,
@@ -896,11 +1316,28 @@ export function ObjectsExplorer() {
 									</td>
 									<td>{renderNamespace(objectItem.namespace_id)}</td>
 									<td>{objectItem.description || "-"}</td>
+									{activeDataColumns.map((columnKey) => {
+										const dataRecord = getObjectDataRecord(objectItem.data);
+										return (
+											<td
+												key={columnKey}
+												className="object-data-field-cell"
+											>
+												{renderPromotedDataValue(
+													dataRecord?.[columnKey],
+												)}
+											</td>
+										);
+									})}
 									<td className="data-cell">
-										{stringifyData(objectItem.data)}
+										{renderObjectDataPreview(
+											objectItem.data,
+											activeDataColumns,
+										)}
 									</td>
 								</tr>
-							))}
+								);
+							})}
 						</tbody>
 					</table>
 				)}
@@ -917,6 +1354,7 @@ export function ObjectsExplorer() {
 						}
 						onFirstPage={pagination.goToFirstPage}
 						currentCount={objects.length}
+						totalCount={pageData.totalCount}
 					/>
 				) : null}
 			</div>

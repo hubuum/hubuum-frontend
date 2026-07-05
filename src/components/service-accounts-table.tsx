@@ -2,8 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
+import { CreateModal } from "@/components/create-modal";
+import { EmptyState } from "@/components/empty-state";
+import { TablePagination } from "@/components/table-pagination";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1IamGroups,
@@ -15,11 +19,42 @@ import type {
 	NewServiceAccount,
 	ServiceAccountResponse,
 } from "@/lib/api/generated/models";
+import {
+	OPEN_CREATE_EVENT,
+	type OpenCreateEventDetail,
+} from "@/lib/create-events";
+import {
+	matchesFreeTextSearch,
+	normalizeSearchTerm,
+} from "@/lib/resource-search";
+import { useCursorPagination } from "@/lib/use-cursor-pagination";
 
-async function fetchServiceAccounts(): Promise<ServiceAccountResponse[]> {
-	const response = await getApiV1IamServiceAccounts(undefined, {
-		credentials: "include",
-	});
+function IconSearch() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.42-1.42-4.44-4.43A6.5 6.5 0 0 0 10.5 4m0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
+type ServiceAccountsPageData = {
+	accounts: ServiceAccountResponse[];
+	nextCursor: string | null;
+	prevCursor: string | null;
+	totalCount: number | null;
+};
+
+async function fetchServiceAccounts(
+	limit: number,
+	cursor?: string,
+): Promise<ServiceAccountsPageData> {
+	const response = await getApiV1IamServiceAccounts(
+		{ limit, cursor },
+		{ credentials: "include" },
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -27,7 +62,15 @@ async function fetchServiceAccounts(): Promise<ServiceAccountResponse[]> {
 		);
 	}
 
-	return response.data;
+	const totalCountHeader = response.headers.get("X-Total-Count");
+	const totalCount = totalCountHeader ? Number.parseInt(totalCountHeader, 10) : null;
+
+	return {
+		accounts: response.data,
+		nextCursor: response.headers.get("X-Next-Cursor"),
+		prevCursor: response.headers.get("X-Prev-Cursor"),
+		totalCount: Number.isFinite(totalCount) ? totalCount : null,
+	};
 }
 
 async function fetchGroups(): Promise<Group[]> {
@@ -46,15 +89,24 @@ async function fetchGroups(): Promise<Group[]> {
 
 export function ServiceAccountsTable() {
 	const queryClient = useQueryClient();
+	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
+	const pagination = useCursorPagination({ defaultLimit: 100 });
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [ownerGroupId, setOwnerGroupId] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
+	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+	const [searchInput, setSearchInput] = useState(
+		searchParams.get("search") ?? "",
+	);
 
 	const query = useQuery({
-		queryKey: ["service-accounts"],
-		queryFn: fetchServiceAccounts,
+		queryKey: ["service-accounts", pagination.cursor, pagination.limit],
+		queryFn: () =>
+			fetchServiceAccounts(pagination.limit, pagination.cursor),
 	});
 	const groupsQuery = useQuery({
 		queryKey: ["groups", "service-account-owner"],
@@ -67,7 +119,6 @@ export function ServiceAccountsTable() {
 				credentials: "include",
 			});
 
-			// Create returns 201 only (per OpenAPI + generated types).
 			if (response.status !== 201) {
 				throw new Error(
 					getApiErrorMessage(
@@ -84,6 +135,7 @@ export function ServiceAccountsTable() {
 			setOwnerGroupId("");
 			setFormError(null);
 			setFormSuccess("Service account created.");
+			setCreateModalOpen(false);
 		},
 		onError: (error) => {
 			setFormSuccess(null);
@@ -94,6 +146,72 @@ export function ServiceAccountsTable() {
 			);
 		},
 	});
+
+	const accounts = query.data?.accounts ?? [];
+	const groups = groupsQuery.data ?? [];
+	const groupById = useMemo(() => {
+		const map = new Map<number, Group>();
+		for (const group of groups) {
+			map.set(group.id, group);
+		}
+		return map;
+	}, [groups]);
+	const searchTerm = normalizeSearchTerm(searchParams.get("search"));
+	const filteredAccounts = useMemo(
+		() =>
+			accounts.filter((account) =>
+				matchesFreeTextSearch(
+					searchTerm,
+					account.name,
+					account.description,
+					String(account.owner_group_id),
+					groupById.get(account.owner_group_id)?.groupname,
+					account.disabled_at ? "disabled" : "active",
+				),
+			),
+		[accounts, groupById, searchTerm],
+	);
+
+	useEffect(() => {
+		if (searchParams.get("create") !== "1") {
+			return;
+		}
+
+		const params = new URLSearchParams(searchParams.toString());
+		params.delete("create");
+		setCreateModalOpen(true);
+		router.replace(
+			params.toString() ? `${pathname}?${params.toString()}` : pathname,
+		);
+	}, [pathname, router, searchParams]);
+
+	useEffect(() => {
+		const onOpenCreate = (event: Event) => {
+			const customEvent = event as CustomEvent<OpenCreateEventDetail>;
+			if (customEvent.detail?.section !== "admin-service-accounts") {
+				return;
+			}
+
+			setFormError(null);
+			setFormSuccess(null);
+			setCreateModalOpen(true);
+		};
+
+		window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
+		return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
+	}, []);
+
+	useEffect(() => {
+		setSearchInput(searchParams.get("search") ?? "");
+	}, [searchParams]);
+
+	useEffect(() => {
+		if (ownerGroupId || groups.length === 0) {
+			return;
+		}
+
+		setOwnerGroupId(String(groups[0].id));
+	}, [groups, ownerGroupId]);
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -124,13 +242,35 @@ export function ServiceAccountsTable() {
 		createMutation.mutate(payload);
 	}
 
-	const accounts = query.data ?? [];
-	const groups = groupsQuery.data ?? [];
+	function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
 
-	return (
-		<div className="stack">
-			<form className="card stack" onSubmit={onSubmit}>
-				<h3>Create service account</h3>
+		const trimmedSearchTerm = normalizeSearchTerm(searchInput);
+		const params = new URLSearchParams(searchParams.toString());
+		if (trimmedSearchTerm) {
+			params.set("search", trimmedSearchTerm);
+		} else {
+			params.delete("search");
+		}
+		params.delete("cursor");
+
+		const queryString = params.toString();
+		router.push(queryString ? `${pathname}?${queryString}` : pathname);
+	}
+
+	function clearFilter() {
+		setSearchInput("");
+		const params = new URLSearchParams(searchParams.toString());
+		params.delete("search");
+		params.delete("cursor");
+
+		const queryString = params.toString();
+		router.push(queryString ? `${pathname}?${queryString}` : pathname);
+	}
+
+	function renderCreateForm() {
+		return (
+			<form className="stack" onSubmit={onSubmit}>
 				<div className="form-grid">
 					<label className="control-field">
 						<span>Name</span>
@@ -145,10 +285,17 @@ export function ServiceAccountsTable() {
 					<label className="control-field">
 						<span>Owner group</span>
 						<select
+							required
 							value={ownerGroupId}
 							onChange={(event) => setOwnerGroupId(event.target.value)}
+							disabled={groupsQuery.isLoading || groups.length === 0}
 						>
-							<option value="">Select a group…</option>
+							{groupsQuery.isLoading ? (
+								<option value="">Loading groups...</option>
+							) : null}
+							{!groupsQuery.isLoading && groups.length === 0 ? (
+								<option value="">No groups available</option>
+							) : null}
 							{groups.map((group) => (
 								<option key={group.id} value={group.id}>
 									{group.groupname} (#{group.id})
@@ -167,59 +314,173 @@ export function ServiceAccountsTable() {
 				</div>
 
 				{formError ? <div className="error-banner">{formError}</div> : null}
+				{groupsQuery.isError ? (
+					<div className="error-banner">
+						Failed to load owner groups. Reload before creating a service
+						account.
+					</div>
+				) : null}
 				{formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
 				<div className="form-actions">
-					<button type="submit" disabled={createMutation.isPending}>
+					<button
+						type="submit"
+						disabled={
+							createMutation.isPending ||
+							groupsQuery.isLoading ||
+							groups.length === 0
+						}
+					>
 						{createMutation.isPending
 							? "Creating..."
 							: "Create service account"}
 					</button>
 				</div>
 			</form>
+		);
+	}
+
+	if (query.isLoading) {
+		return <div className="card">Loading service accounts...</div>;
+	}
+
+	if (query.isError) {
+		return (
+			<div className="card error-banner">
+				Failed to load service accounts.{" "}
+				{query.error instanceof Error ? query.error.message : "Unknown error"}
+			</div>
+		);
+	}
+
+	return (
+		<div className="stack">
+			<CreateModal
+				open={isCreateModalOpen}
+				title="Create service account"
+				onClose={() => setCreateModalOpen(false)}
+			>
+				{renderCreateForm()}
+			</CreateModal>
 
 			<div className="card table-wrap">
 				<div className="table-header">
-					<h3>Service accounts</h3>
-					<span className="muted">{accounts.length} loaded</span>
-				</div>
-				{query.isError ? (
-					<div className="error-banner">
-						Failed to load service accounts.{" "}
-						{query.error instanceof Error
-							? query.error.message
-							: "Unknown error"}
+					<div className="table-title-row">
+						<h3>Service accounts</h3>
+						<span className="muted table-count">
+							{searchTerm
+								? `${filteredAccounts.length} shown of ${accounts.length}`
+								: `${accounts.length} loaded`}
+						</span>
 					</div>
-				) : null}
-				<table>
-					<thead>
-						<tr>
-							<th>ID</th>
-							<th>Name</th>
-							<th>Owner group</th>
-							<th>Status</th>
-							<th>Created</th>
-						</tr>
-					</thead>
-					<tbody>
-						{accounts.map((account) => (
-							<tr key={account.id}>
-								<td>{account.id}</td>
-								<td>
-									<Link
-										className="row-link"
-										href={`/admin/service-accounts/${account.id}`}
+					<div className="table-tools">
+						<form className="table-filter-form" onSubmit={onFilterSubmit}>
+							<div className="table-filter-field">
+								<input
+									aria-label="Filter loaded service accounts"
+									className="table-filter-input"
+									value={searchInput}
+									onChange={(event) => setSearchInput(event.target.value)}
+									placeholder="Filter loaded items"
+								/>
+								{normalizeSearchTerm(searchInput) ? (
+									<button
+										type="button"
+										className="ghost table-filter-clear"
+										onClick={clearFilter}
+										aria-label="Clear service account filter"
 									>
-										{account.name}
-									</Link>
-								</td>
-								<td>#{account.owner_group_id}</td>
-								<td>{account.disabled_at ? "Disabled" : "Active"}</td>
-								<td>{new Date(account.created_at).toLocaleString()}</td>
+										Clear
+									</button>
+								) : null}
+							</div>
+							<button
+								type="submit"
+								className="ghost icon-button"
+								aria-label="Filter service accounts"
+							>
+								<IconSearch />
+							</button>
+						</form>
+					</div>
+				</div>
+				{filteredAccounts.length === 0 ? (
+					<EmptyState
+						title={
+							searchTerm
+								? `No service accounts match "${searchTerm}".`
+								: "No service accounts available."
+						}
+						description={
+							searchTerm
+								? "Clear the filter to return to the full service account list."
+								: "Create a service account for non-human automation, then mint scoped tokens for it."
+						}
+						action={
+							searchTerm ? null : (
+								<button type="button" onClick={() => setCreateModalOpen(true)}>
+									New service account
+								</button>
+							)
+						}
+					/>
+				) : (
+					<table>
+						<thead>
+							<tr>
+								<th>ID</th>
+								<th>Name</th>
+								<th>Owner group</th>
+								<th>Status</th>
+								<th>Created</th>
 							</tr>
-						))}
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							{filteredAccounts.map((account) => {
+								const ownerGroup = groupById.get(account.owner_group_id);
+								return (
+									<tr key={account.id}>
+										<td>{account.id}</td>
+										<td>
+											<Link
+												className="row-link"
+												href={`/admin/service-accounts/${account.id}`}
+											>
+												{account.name}
+											</Link>
+										</td>
+										<td>
+											{ownerGroup
+												? `${ownerGroup.groupname} (#${ownerGroup.id})`
+												: `#${account.owner_group_id}`}
+										</td>
+										<td>{account.disabled_at ? "Disabled" : "Active"}</td>
+										<td>{new Date(account.created_at).toLocaleString()}</td>
+									</tr>
+								);
+							})}
+						</tbody>
+					</table>
+				)}
+				{query.data &&
+				(query.data.nextCursor ||
+					query.data.prevCursor ||
+					pagination.hasPrevPage) ? (
+					<TablePagination
+						hasNextPage={!!query.data.nextCursor}
+						hasPrevPage={pagination.hasPrevPage || !!query.data.prevCursor}
+						onNextPage={() =>
+							query.data?.nextCursor &&
+							pagination.goToNextPage(query.data.nextCursor)
+						}
+						onPrevPage={() =>
+							pagination.goToPrevPage(query.data?.prevCursor ?? undefined)
+						}
+						onFirstPage={pagination.goToFirstPage}
+						currentCount={accounts.length}
+						totalCount={query.data.totalCount}
+					/>
+				) : null}
 			</div>
 		</div>
 	);

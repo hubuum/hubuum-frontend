@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1IamMeTokens,
@@ -42,6 +43,7 @@ function formatTimestamp(value: string | null | undefined): string {
 
 export function TokenList({ principalId }: TokenListProps) {
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 
 	const tokensQuery = useQuery({
 		queryKey: ["principal-tokens", principalId],
@@ -70,8 +72,14 @@ export function TokenList({ principalId }: TokenListProps) {
 		},
 	});
 
-	function revoke(token: PrincipalTokenMetadata) {
-		if (!window.confirm(`Revoke token #${token.id}? This cannot be undone.`)) {
+	async function revoke(token: PrincipalTokenMetadata) {
+		const confirmed = await confirm({
+			title: `Revoke token #${token.id}?`,
+			description: "This cannot be undone.",
+			confirmLabel: "Revoke",
+			tone: "danger",
+		});
+		if (!confirmed) {
 			return;
 		}
 		revokeMutation.mutate(token);

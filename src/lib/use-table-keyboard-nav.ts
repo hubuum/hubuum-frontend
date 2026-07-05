@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type UseTableKeyboardNavOptions<T> = {
 	items: T[];
@@ -15,6 +15,10 @@ export function useTableKeyboardNav<T>({
 }: UseTableKeyboardNavOptions<T>) {
 	const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 	const tableRef = useRef<HTMLTableElement | null>(null);
+	const itemSignature = useMemo(
+		() => items.map((item) => getId(item)).join(","),
+		[items, getId],
+	);
 
 	useEffect(() => {
 		if (!enabled) {
@@ -22,11 +26,13 @@ export function useTableKeyboardNav<T>({
 		}
 
 		const onKeyDown = (event: KeyboardEvent) => {
-			// Ignore if typing in an input/textarea
+			// Ignore controls and editable regions.
 			const target = event.target as HTMLElement;
 			if (
 				target.tagName === "INPUT" ||
+				target.tagName === "SELECT" ||
 				target.tagName === "TEXTAREA" ||
+				target.tagName === "BUTTON" ||
 				target.contentEditable === "true"
 			) {
 				return;
@@ -75,18 +81,20 @@ export function useTableKeyboardNav<T>({
 			return;
 		}
 
-		const row = document.querySelector(
+		const container = tableRef.current ?? document;
+		const row = container.querySelector(
 			`[data-table-row-index="${focusedIndex}"]`,
-		) as HTMLElement;
+		) as HTMLElement | null;
 		if (row) {
 			row.scrollIntoView({ block: "nearest", behavior: "smooth" });
 		}
 	}, [focusedIndex]);
 
 	// Reset focus when items change
+	// biome-ignore lint/correctness/useExhaustiveDependencies: row identity changes under filtering and pagination even when the item count is unchanged.
 	useEffect(() => {
 		setFocusedIndex(null);
-	}, []);
+	}, [itemSignature]);
 
 	return {
 		focusedIndex,

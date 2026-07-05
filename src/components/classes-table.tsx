@@ -8,6 +8,7 @@ import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { TablePagination } from "@/components/table-pagination";
+import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
@@ -52,6 +53,7 @@ type ClassesPageData = {
 	classes: HubuumClassExpanded[];
 	nextCursor: string | null;
 	prevCursor: string | null;
+	totalCount: number | null;
 };
 
 async function fetchClasses(
@@ -74,11 +76,14 @@ async function fetchClasses(
 
 	const nextCursor = response.headers.get("X-Next-Cursor");
 	const prevCursor = response.headers.get("X-Prev-Cursor");
+	const totalCountHeader = response.headers.get("X-Total-Count");
+	const totalCount = totalCountHeader ? Number.parseInt(totalCountHeader, 10) : null;
 
 	return {
 		classes: response.data,
 		nextCursor,
 		prevCursor,
+		totalCount: Number.isFinite(totalCount) ? totalCount : null,
 	};
 }
 
@@ -104,6 +109,7 @@ export function ClassesTable() {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [namespaceId, setNamespaceId] = useState("");
@@ -229,7 +235,7 @@ export function ClassesTable() {
 		},
 	});
 
-	const deleteSelectedClasses = useCallback(() => {
+	const deleteSelectedClasses = useCallback(async () => {
 		if (!selectedClassIds.length) {
 			return;
 		}
@@ -237,15 +243,20 @@ export function ClassesTable() {
 		setTableError(null);
 		setTableSuccess(null);
 
-		const confirmed = window.confirm(
-			`Delete ${selectedClassIds.length} selected class(es)?`,
-		);
+		const confirmed = await confirm({
+			title: `Delete ${selectedClassIds.length} selected class${
+				selectedClassIds.length === 1 ? "" : "es"
+			}?`,
+			description: "This removes the selected classes and cannot be undone.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
 		if (!confirmed) {
 			return;
 		}
 
 		deleteMutation.mutate([...selectedClassIds]);
-	}, [selectedClassIds, deleteMutation]);
+	}, [confirm, selectedClassIds, deleteMutation]);
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -409,6 +420,7 @@ export function ClassesTable() {
 		} else {
 			params.delete("search");
 		}
+		params.delete("cursor");
 
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
@@ -418,6 +430,7 @@ export function ClassesTable() {
 		setSearchInput("");
 		const params = new URLSearchParams(searchParams.toString());
 		params.delete("search");
+		params.delete("cursor");
 
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
@@ -677,6 +690,7 @@ export function ClassesTable() {
 						}
 						onFirstPage={pagination.goToFirstPage}
 						currentCount={classes.length}
+						totalCount={pageData.totalCount}
 					/>
 				) : null}
 			</div>

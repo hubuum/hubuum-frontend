@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
+import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
@@ -34,6 +35,7 @@ import {
 	TITLE_STATE_EVENT,
 } from "@/lib/create-events";
 import { summarizeJsonDocument } from "@/lib/json-inspector";
+import { trackRecentItem } from "@/lib/recent-items";
 
 type ClassDetailProps = {
 	classId: number;
@@ -163,6 +165,7 @@ function InlineEditIcon() {
 export function ClassDetail({ classId }: ClassDetailProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -206,6 +209,20 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 			setInitialized(true);
 		}
 	}, [classQuery.data, editingFields.length, initialized]);
+
+	useEffect(() => {
+		const classData = classQuery.data;
+		if (!classData) {
+			return;
+		}
+
+		trackRecentItem({
+			type: "class",
+			id: classData.id,
+			name: classData.name,
+			namespaceId: classData.namespace.id,
+		});
+	}, [classQuery.data]);
 
 	const updateMutation = useMutation({
 		mutationFn: async (payload: UpdateHubuumClass) => {
@@ -475,11 +492,17 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		event.currentTarget.requestSubmit(submitButton);
 	}
 
-	function onDelete() {
+	async function onDelete() {
 		setFormError(null);
 		setFormSuccess(null);
 		const classLabel = classQuery.data?.name ?? "this class";
-		if (!window.confirm(`Delete ${classLabel}?`)) {
+		const confirmed = await confirm({
+			title: `Delete ${classLabel}?`,
+			description: "This removes the class and cannot be undone.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
+		if (!confirmed) {
 			return;
 		}
 

@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useEffect } from "react";
 import { getApiV1IamUsersByUserId } from "@/lib/api/generated/client";
 import {
 	fetchImportProjection,
@@ -11,6 +12,7 @@ import {
 	isTerminalTaskStatus,
 	type TaskRecord,
 } from "@/lib/api/tasking";
+import { trackRecentItem } from "@/lib/recent-items";
 
 async function fetchTaskSubmitter(
 	userId: number,
@@ -124,6 +126,19 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 		queryFn: () => fetchTaskSubmitter(submittedByUserId as number),
 		enabled: submittedByUserId != null,
 	});
+
+	useEffect(() => {
+		const task = taskQuery.data;
+		if (!task) {
+			return;
+		}
+
+		trackRecentItem({
+			type: "task",
+			id: task.id,
+			name: getTaskHeading(task, task.id),
+		});
+	}, [taskQuery.data]);
 
 	if (taskQuery.isLoading) {
 		return <div className="card">Loading task...</div>;

@@ -5,6 +5,7 @@ export type CreateSection =
 	| "relations"
 	| "admin-users"
 	| "admin-groups"
+	| "admin-service-accounts"
 	| "admin-remote-targets";
 
 export type OpenCreateEventDetail = {

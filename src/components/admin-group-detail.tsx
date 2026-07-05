@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamGroupsByGroupIdMembersByPrincipalId,
@@ -16,6 +17,7 @@ import type {
 	PrincipalMemberResponse,
 	UserResponse,
 } from "@/lib/api/generated/models";
+import { trackRecentItem } from "@/lib/recent-items";
 
 type AdminGroupDetailProps = {
 	groupId: number;
@@ -200,6 +202,7 @@ function resolveUserFromInput(
 
 export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 	const [groupname, setGroupname] = useState("");
 	const [description, setDescription] = useState("");
 	const [initialized, setInitialized] = useState(false);
@@ -235,6 +238,19 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		setDescription(groupQuery.data.description ?? "");
 		setInitialized(true);
 	}, [groupQuery.data, initialized]);
+
+	useEffect(() => {
+		const group = groupQuery.data;
+		if (!group) {
+			return;
+		}
+
+		trackRecentItem({
+			type: "admin-group",
+			id: group.id,
+			name: group.groupname,
+		});
+	}, [groupQuery.data]);
 
 	const members = membersQuery.data ?? [];
 	const users = usersQuery.data ?? [];
@@ -446,7 +462,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		});
 	}
 
-	function removeSelectedMembers() {
+	async function removeSelectedMembers() {
 		if (addMemberMutation.isPending || removeMemberMutation.isPending) {
 			return;
 		}
@@ -455,9 +471,14 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 			return;
 		}
 
-		const confirmed = window.confirm(
-			`Remove ${selectedMemberIds.length} selected member(s) from this group?`,
-		);
+		const confirmed = await confirm({
+			title: `Remove ${selectedMemberIds.length} selected member${
+				selectedMemberIds.length === 1 ? "" : "s"
+			}?`,
+			description: "This removes the selected users from this group.",
+			confirmLabel: "Remove",
+			tone: "danger",
+		});
 		if (!confirmed) {
 			return;
 		}

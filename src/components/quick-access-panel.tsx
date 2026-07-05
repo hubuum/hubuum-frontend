@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { PinnedItem, RecentItem } from "@/types/quick-access";
+import { useConfirm } from "@/lib/confirm-context";
 import {
 	clearRecentItems,
 	getRecentItems,
@@ -43,6 +44,17 @@ function IconObject() {
 	);
 }
 
+function IconGenericRecord() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M4 4h16v16H4zm2 2v3h12V6zm0 5v7h12v-7z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
 function IconClose() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -62,6 +74,11 @@ function getItemIcon(type: RecentItem["type"]) {
 			return <IconClass />;
 		case "object":
 			return <IconObject />;
+		case "task":
+		case "admin-user":
+		case "admin-group":
+		case "service-account":
+			return <IconGenericRecord />;
 	}
 }
 
@@ -73,6 +90,33 @@ function getItemHref(item: RecentItem): string {
 			return `/classes/${item.id}`;
 		case "object":
 			return `/objects/${item.classId}/${item.id}`;
+		case "task":
+			return `/tasks/${item.id}`;
+		case "admin-user":
+			return `/admin/users/${item.id}`;
+		case "admin-group":
+			return `/admin/groups/${item.id}`;
+		case "service-account":
+			return `/admin/service-accounts/${item.id}`;
+	}
+}
+
+function formatItemType(type: RecentItem["type"]): string {
+	switch (type) {
+		case "admin-user":
+			return "Admin user";
+		case "admin-group":
+			return "Admin group";
+		case "service-account":
+			return "Service account";
+		case "namespace":
+			return "Namespace";
+		case "class":
+			return "Class";
+		case "object":
+			return "Object";
+		case "task":
+			return "Task";
 	}
 }
 
@@ -137,21 +181,26 @@ function getPinItemBadge(item: PinnedItem): string | undefined {
 export function QuickAccessPanel() {
 	const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
 	const [pinnedItems, setPinnedItems] = useState<PinnedItem[]>([]);
+	const confirm = useConfirm();
 
 	useEffect(() => {
 		setRecentItems(getRecentItems().slice(0, 10));
 		setPinnedItems(getPinnedItems());
 	}, []);
 
-	function handleClearRecent() {
-		if (
-			window.confirm(
-				"Clear all recent items? This action cannot be undone.",
-			)
-		) {
-			clearRecentItems();
-			setRecentItems([]);
+	async function handleClearRecent() {
+		const confirmed = await confirm({
+			title: "Clear all recent items?",
+			description: "This removes the quick-access history on this device.",
+			confirmLabel: "Clear",
+			tone: "danger",
+		});
+		if (!confirmed) {
+			return;
 		}
+
+		clearRecentItems();
+		setRecentItems([]);
 	}
 
 	function handleUnpin(item: PinnedItem) {
@@ -200,8 +249,7 @@ export function QuickAccessPanel() {
 									<span className="recent-item-content">
 										<span className="recent-item-name">{item.name}</span>
 										<span className="recent-item-meta">
-											{item.type.charAt(0).toUpperCase() + item.type.slice(1)}{" "}
-											• {formatTimestamp(item.timestamp)}
+											{formatItemType(item.type)} • {formatTimestamp(item.timestamp)}
 										</span>
 									</span>
 								</Link>

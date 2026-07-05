@@ -111,7 +111,7 @@ export function ResourceActivityPanel({
 			fetchResourceHistoryPage(scope, {
 				cursor: historyCursor || undefined,
 				limit: 20,
-				sort: "-valid_from,-history_id",
+				sort: "-history_id",
 			}),
 	});
 

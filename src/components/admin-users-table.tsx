@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamUsersByUserId,
@@ -30,6 +31,7 @@ async function fetchUsers(): Promise<UserResponse[]> {
 
 export function AdminUsersTable() {
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 	const [username, setUsername] = useState("");
 	const [properName, setProperName] = useState("");
 	const [password, setPassword] = useState("");
@@ -194,7 +196,7 @@ export function AdminUsersTable() {
 		});
 	}
 
-	function deleteSelectedUsers() {
+	async function deleteSelectedUsers() {
 		if (!selectedUserIds.length) {
 			return;
 		}
@@ -202,9 +204,14 @@ export function AdminUsersTable() {
 		setTableError(null);
 		setTableSuccess(null);
 
-		const confirmed = window.confirm(
-			`Delete ${selectedUserIds.length} selected user(s)?`,
-		);
+		const confirmed = await confirm({
+			title: `Delete ${selectedUserIds.length} selected user${
+				selectedUserIds.length === 1 ? "" : "s"
+			}?`,
+			description: "This removes the selected users and cannot be undone.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
 		if (!confirmed) {
 			return;
 		}

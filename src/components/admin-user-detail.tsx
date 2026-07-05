@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamUsersByUserId,
@@ -16,6 +17,7 @@ import type {
 	UpdateUser,
 	UserResponse,
 } from "@/lib/api/generated/models";
+import { trackRecentItem } from "@/lib/recent-items";
 
 type AdminUserDetailProps = {
 	userId: number;
@@ -52,6 +54,7 @@ async function fetchUserGroups(userId: number): Promise<Group[]> {
 export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 
 	const [properName, setProperName] = useState("");
 	const [email, setEmail] = useState("");
@@ -78,6 +81,19 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 		setEmail(userQuery.data.email ?? "");
 		setInitialized(true);
 	}, [initialized, userQuery.data]);
+
+	useEffect(() => {
+		const user = userQuery.data;
+		if (!user) {
+			return;
+		}
+
+		trackRecentItem({
+			type: "admin-user",
+			id: user.id,
+			name: user.name,
+		});
+	}, [userQuery.data]);
 
 	const groups = groupsQuery.data ?? [];
 	const sortedGroups = useMemo(() => {
@@ -186,10 +202,16 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 		updateMutation.mutate(payload);
 	}
 
-	function onDelete() {
+	async function onDelete() {
 		setFormError(null);
 		setFormSuccess(null);
-		if (!window.confirm(`Delete user #${userId}?`)) {
+		const confirmed = await confirm({
+			title: `Delete user #${userId}?`,
+			description: "This removes the user and cannot be undone.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
+		if (!confirmed) {
 			return;
 		}
 

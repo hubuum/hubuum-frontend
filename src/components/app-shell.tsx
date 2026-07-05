@@ -200,6 +200,9 @@ function getSectionLabel(pathname: string): string {
 	if (pathname.startsWith("/admin/groups")) {
 		return "Groups";
 	}
+	if (pathname.startsWith("/admin/service-accounts")) {
+		return "Service accounts";
+	}
 	if (pathname.startsWith("/admin/remote-targets")) {
 		return "Remote targets";
 	}
@@ -231,6 +234,9 @@ function getCreateSection(pathname: string): CreateSection | null {
 	if (pathname === "/admin/groups") {
 		return "admin-groups";
 	}
+	if (pathname === "/admin/service-accounts") {
+		return "admin-service-accounts";
+	}
 	if (pathname === "/admin/remote-targets") {
 		return "admin-remote-targets";
 	}
@@ -250,6 +256,9 @@ function getCreateLabel(
 	}
 	if (createSection === "admin-groups") {
 		return "New group";
+	}
+	if (createSection === "admin-service-accounts") {
+		return "New service account";
 	}
 	if (createSection === "admin-remote-targets") {
 		return "New remote target";

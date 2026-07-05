@@ -31,6 +31,16 @@ export default function AdminLandingPage() {
 				</article>
 
 				<article className="card stack">
+					<h3>Service accounts</h3>
+					<p className="muted">
+						Manage non-human principals for automation and scoped token access.
+					</p>
+					<Link className="link-chip" href="/admin/service-accounts">
+						Open service accounts
+					</Link>
+				</article>
+
+				<article className="card stack">
 					<h3>Remote targets</h3>
 					<p className="muted">
 						Define outbound actions users can invoke from namespaces, classes,
@@ -38,6 +48,16 @@ export default function AdminLandingPage() {
 					</p>
 					<Link className="link-chip" href="/admin/remote-targets">
 						Open remote targets
+					</Link>
+				</article>
+
+				<article className="card stack">
+					<h3>Events</h3>
+					<p className="muted">
+						Inspect event delivery health, failed deliveries, and retry actions.
+					</p>
+					<Link className="link-chip" href="/admin/events">
+						Open events
 					</Link>
 				</article>
 			</div>

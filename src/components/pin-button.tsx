@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { PinMenu } from "@/components/pin-menu";
 import { isPinned, pinItem, unpinItem } from "@/lib/pinned-items";
+import { useToast } from "@/lib/toast-context";
 import type { PinnedItemType } from "@/types/quick-access";
 
 interface PinButtonProps {
@@ -47,6 +48,11 @@ export function PinButton({
 	const [namespacePinned, setNamespacePinned] = useState(false);
 	const [objectPinned, setObjectPinned] = useState(false);
 	const [isMenuOpen, setMenuOpen] = useState(false);
+	const { showToast } = useToast();
+
+	function showPinLimitToast() {
+		showToast("Maximum 10 items can be pinned. Unpin one to add another.", "error");
+	}
 
 	useEffect(() => {
 		if (type === "class") {
@@ -72,7 +78,7 @@ export function PinButton({
 			if (success) {
 				setNamespacePinned(true);
 			} else {
-				alert("Maximum 10 items can be pinned. Unpin one to add another.");
+				showPinLimitToast();
 			}
 		}
 	}
@@ -94,7 +100,7 @@ export function PinButton({
 			if (success) {
 				setObjectPinned(true);
 			} else {
-				alert("Maximum 10 items can be pinned. Unpin one to add another.");
+				showPinLimitToast();
 			}
 		}
 	}
@@ -115,7 +121,7 @@ export function PinButton({
 			if (success) {
 				setViewPinned(true);
 			} else {
-				alert("Maximum 10 items can be pinned. Unpin one to add another.");
+				showPinLimitToast();
 			}
 		}
 		setMenuOpen(false);
@@ -137,7 +143,7 @@ export function PinButton({
 			if (success) {
 				setCreatePinned(true);
 			} else {
-				alert("Maximum 10 items can be pinned. Unpin one to add another.");
+				showPinLimitToast();
 			}
 		}
 		setMenuOpen(false);

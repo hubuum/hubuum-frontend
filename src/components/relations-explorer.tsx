@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1RelationsClassesByRelationId,
@@ -208,6 +209,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 	const isClassMode = mode === "classes";
 	const isObjectMode = mode === "objects";
 
@@ -999,37 +1001,45 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		},
 	});
 
-	const deleteSelectedClassRelations = useCallback(() => {
+	const deleteSelectedClassRelations = useCallback(async () => {
 		if (!selectedClassRelationIds.length) {
 			return;
 		}
 
-		if (
-			!window.confirm(
-				`Delete ${selectedClassRelationIds.length} selected class relation(s)?`,
-			)
-		) {
+		const confirmed = await confirm({
+			title: `Delete ${selectedClassRelationIds.length} selected class relation${
+				selectedClassRelationIds.length === 1 ? "" : "s"
+			}?`,
+			description: "This removes the selected class relations.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
+		if (!confirmed) {
 			return;
 		}
 
 		deleteClassRelationsMutation.mutate([...selectedClassRelationIds]);
-	}, [selectedClassRelationIds, deleteClassRelationsMutation]);
+	}, [confirm, selectedClassRelationIds, deleteClassRelationsMutation]);
 
-	const deleteSelectedObjectRelations = useCallback(() => {
+	const deleteSelectedObjectRelations = useCallback(async () => {
 		if (!selectedObjectRelationIds.length) {
 			return;
 		}
 
-		if (
-			!window.confirm(
-				`Delete ${selectedObjectRelationIds.length} selected object relation(s)?`,
-			)
-		) {
+		const confirmed = await confirm({
+			title: `Delete ${selectedObjectRelationIds.length} selected object relation${
+				selectedObjectRelationIds.length === 1 ? "" : "s"
+			}?`,
+			description: "This removes the selected object relations.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
+		if (!confirmed) {
 			return;
 		}
 
 		deleteObjectRelationsMutation.mutate([...selectedObjectRelationIds]);
-	}, [selectedObjectRelationIds, deleteObjectRelationsMutation]);
+	}, [confirm, selectedObjectRelationIds, deleteObjectRelationsMutation]);
 
 	function onCreateClassRelation(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();

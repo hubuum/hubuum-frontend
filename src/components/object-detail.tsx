@@ -17,6 +17,7 @@ import { JsonViewer } from "@/components/json-viewer";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
+import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
@@ -253,6 +254,7 @@ export function ObjectDetail({
 }: ObjectDetailProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 	const ignoreClassesRef = useRef<HTMLDivElement | null>(null);
 
 	const [relationDepthLimit, setRelationDepthLimit] = useState(2);
@@ -672,11 +674,17 @@ export function ObjectDetail({
 		event.currentTarget.requestSubmit(submitButton);
 	}
 
-	function onDelete() {
+	async function onDelete() {
 		setFormError(null);
 		setFormSuccess(null);
 		const objectLabel = objectQuery.data?.name ?? "this object";
-		if (!window.confirm(`Delete ${objectLabel}?`)) {
+		const confirmed = await confirm({
+			title: `Delete ${objectLabel}?`,
+			description: "This removes the object and cannot be undone.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
+		if (!confirmed) {
 			return;
 		}
 

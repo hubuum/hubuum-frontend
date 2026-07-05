@@ -164,7 +164,7 @@ export async function fetchResourceHistoryPage(
 ): Promise<PageResult<HistoryRecord>> {
 	const params = {
 		limit: options.limit ?? 25,
-		sort: options.sort ?? "-valid_from,-history_id",
+		sort: options.sort ?? "-history_id",
 		cursor: options.cursor,
 	};
 

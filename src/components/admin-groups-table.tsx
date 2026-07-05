@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamGroupsByGroupId,
@@ -50,6 +51,7 @@ async function fetchGroupMemberCount(groupId: number): Promise<number> {
 
 export function AdminGroupsTable() {
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 	const [groupname, setGroupname] = useState("");
 	const [description, setDescription] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
@@ -219,7 +221,7 @@ export function AdminGroupsTable() {
 		});
 	}
 
-	function deleteSelectedGroups() {
+	async function deleteSelectedGroups() {
 		if (!selectedGroupIds.length) {
 			return;
 		}
@@ -227,9 +229,14 @@ export function AdminGroupsTable() {
 		setTableError(null);
 		setTableSuccess(null);
 
-		const confirmed = window.confirm(
-			`Delete ${selectedGroupIds.length} selected group(s)?`,
-		);
+		const confirmed = await confirm({
+			title: `Delete ${selectedGroupIds.length} selected group${
+				selectedGroupIds.length === 1 ? "" : "s"
+			}?`,
+			description: "This removes the selected groups and cannot be undone.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
 		if (!confirmed) {
 			return;
 		}

@@ -9,6 +9,7 @@ import { PrincipalPermissions } from "@/components/principal-permissions";
 import { RawTokenReveal } from "@/components/raw-token-reveal";
 import { TokenList } from "@/components/token-list";
 import { TokenMintForm } from "@/components/token-mint-form";
+import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamServiceAccountsByServiceAccountId,
@@ -22,6 +23,7 @@ import type {
 	ServiceAccountResponse,
 	UpdateServiceAccount,
 } from "@/lib/api/generated/models";
+import { trackRecentItem } from "@/lib/recent-items";
 
 type ServiceAccountDetailProps = {
 	serviceAccountId: number;
@@ -62,6 +64,7 @@ export function ServiceAccountDetail({
 }: ServiceAccountDetailProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 	const [description, setDescription] = useState("");
 	const [ownerGroupId, setOwnerGroupId] = useState("");
 	const [initialized, setInitialized] = useState(false);
@@ -86,6 +89,19 @@ export function ServiceAccountDetail({
 		setOwnerGroupId(String(accountQuery.data.owner_group_id));
 		setInitialized(true);
 	}, [initialized, accountQuery.data]);
+
+	useEffect(() => {
+		const account = accountQuery.data;
+		if (!account) {
+			return;
+		}
+
+		trackRecentItem({
+			type: "service-account",
+			id: account.id,
+			name: account.name,
+		});
+	}, [accountQuery.data]);
 
 	const updateMutation = useMutation({
 		mutationFn: async (payload: UpdateServiceAccount) => {
@@ -225,19 +241,28 @@ export function ServiceAccountDetail({
 		updateMutation.mutate(payload);
 	}
 
-	function onDisable() {
-		if (
-			!window.confirm(
-				"Disable this service account? This is irreversible — there is no enable endpoint. All its tokens stop validating and pending tasks are cancelled.",
-			)
-		) {
+	async function onDisable() {
+		const confirmed = await confirm({
+			title: "Disable this service account?",
+			description:
+				"This is irreversible. All tokens stop validating and pending tasks are cancelled.",
+			confirmLabel: "Disable",
+			tone: "danger",
+		});
+		if (!confirmed) {
 			return;
 		}
 		disableMutation.mutate();
 	}
 
-	function onDelete() {
-		if (!window.confirm(`Delete service account #${serviceAccountId}?`)) {
+	async function onDelete() {
+		const confirmed = await confirm({
+			title: `Delete service account #${serviceAccountId}?`,
+			description: "This removes the service account and cannot be undone.",
+			confirmLabel: "Delete",
+			tone: "danger",
+		});
+		if (!confirmed) {
 			return;
 		}
 		deleteMutation.mutate();
