@@ -1807,6 +1807,49 @@ table {
 	width: 100%;
 }
 
+.checkbox-row {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	min-height: 2.35rem;
+	font-weight: 600;
+}
+
+.checkbox-row input {
+	width: 1rem;
+	height: 1rem;
+	margin: 0;
+}
+
+.event-subscription-editor {
+	padding: 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--field-bg);
+}
+
+.segmented-control {
+	display: inline-flex;
+	width: fit-content;
+	padding: 0.18rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--bg-highlight);
+}
+
+.segmented-control button {
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	padding: 0.32rem 0.65rem;
+	border-radius: 6px;
+}
+
+.segmented-control button.is-active {
+	background: var(--accent-soft);
+	color: var(--ink);
+}
+
 .relation-create-grid {
 	display: grid;
 	gap: 0.8rem;

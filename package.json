@@ -10,6 +10,7 @@
 		"build": "next build",
 		"start": "node scripts/start-standalone.mjs",
 		"test": "vitest run",
+		"test:live-backend": "scripts/live-backend-test.sh",
 		"lint": "biome lint .",
 		"typecheck": "next typegen && rm -rf .next/dev && tsc --noEmit",
 		"gen:api": "npx --yes orval@8.4.1 --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",

@@ -16,6 +16,7 @@ import { JsonEditor } from "@/components/json-editor";
 import { JsonViewer } from "@/components/json-viewer";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
+import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
@@ -1164,6 +1165,11 @@ export function ObjectDetail({
 				subjectLabel={`object "${objectData.name}"`}
 				subjectType="object"
 				targetClassId={classId}
+			/>
+
+			<ResourceActivityPanel
+				scope={{ type: "object", classId, objectId }}
+				title="Object audit and history"
 			/>
 
 			<section className="card stack">

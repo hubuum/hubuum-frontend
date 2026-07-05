@@ -13,6 +13,7 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
+import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
@@ -889,6 +890,11 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 				subject={{ type: "class", class_id: classId }}
 				subjectLabel={`class "${classData.name}"`}
 				subjectType="class"
+			/>
+
+			<ResourceActivityPanel
+				scope={{ type: "class", classId }}
+				title="Class audit and history"
 			/>
 
 			<section className="card stack">

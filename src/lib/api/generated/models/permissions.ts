@@ -39,4 +39,6 @@ export const Permissions = {
   UpdateRemoteTarget: 'UpdateRemoteTarget',
   DeleteRemoteTarget: 'DeleteRemoteTarget',
   ExecuteRemoteTarget: 'ExecuteRemoteTarget',
+  ReadAudit: 'ReadAudit',
+  ManageEventSubscription: 'ManageEventSubscription',
 } as const;
