@@ -70,11 +70,51 @@ function IconColumns() {
 }
 
 const OBJECT_DATA_COLUMNS_STORAGE_PREFIX = "hubuum.object-data-columns";
+const OBJECT_RAW_DATA_COLUMN_STORAGE_PREFIX = "hubuum.object-raw-data-column";
+const OBJECT_CUSTOM_DATA_FIELDS_STORAGE_PREFIX =
+	"hubuum.object-custom-data-fields";
 const DEFAULT_SELECTED_DATA_COLUMN_COUNT = 3;
 const MAX_SELECTED_DATA_COLUMNS = 6;
+const MAX_DATA_PATH_DEPTH = 3;
+const MAX_DATA_ARRAY_ITEMS = 3;
+const CUSTOM_DATA_FIELD_ID_PREFIX = "custom:";
 const EMPTY_CLASSES: HubuumClassExpanded[] = [];
 const EMPTY_NAMESPACES: Namespace[] = [];
 const EMPTY_OBJECTS: HubuumObject[] = [];
+
+type DataPathCandidate = {
+	id: string;
+	path: string[];
+	label: string;
+	count: number;
+	fromSchema: boolean;
+};
+
+type CustomDataField = {
+	id: string;
+	label: string;
+	expression: string;
+	paths: string[][];
+	scope: "user";
+};
+
+type ActiveDataColumn = {
+	id: string;
+	label: string;
+	paths: string[][];
+	source: "data" | "custom";
+};
+
+type DataPreviewEntry = {
+	id: string;
+	path: string[];
+	value: unknown;
+};
+
+type DataColumnSortState = {
+	columnId: string | null;
+	direction: "asc" | "desc";
+};
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
@@ -182,17 +222,212 @@ function getDataSearchText(data: unknown): string {
 	}
 }
 
-function getObjectDataRecord(data: unknown): Record<string, unknown> | null {
-	if (data === null || data === undefined || Array.isArray(data)) {
-		return null;
-	}
-	if (typeof data !== "object") {
-		return null;
-	}
-	return data as Record<string, unknown>;
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function getSchemaPropertyKeys(jsonSchema: unknown): string[] {
+function getDataPathId(path: string[]): string {
+	return JSON.stringify(path);
+}
+
+function parseDataPathId(value: string): string[] | null {
+	try {
+		const parsedValue = JSON.parse(value);
+		if (
+			Array.isArray(parsedValue) &&
+			parsedValue.every((item) => typeof item === "string")
+		) {
+			return parsedValue;
+		}
+	} catch {
+		// Existing stored preferences used plain top-level keys.
+	}
+
+	return value ? [value] : null;
+}
+
+function escapeDataPathSegment(segment: string): string {
+	return segment.replaceAll("\\", "\\\\").replaceAll(".", "\\.");
+}
+
+function formatDataPathLabel(path: string[]): string {
+	return path.reduce((label, segment) => {
+		if (segment.startsWith("[")) {
+			return `${label}${segment}`;
+		}
+		const escapedSegment = escapeDataPathSegment(segment);
+		return label ? `${label}.${escapedSegment}` : escapedSegment;
+	}, "");
+}
+
+function splitEscapedExpression(value: string, separator: string): string[] {
+	const parts: string[] = [];
+	let current = "";
+	let escaped = false;
+
+	for (const character of value) {
+		if (escaped) {
+			current += character;
+			escaped = false;
+			continue;
+		}
+		if (character === "\\") {
+			escaped = true;
+			continue;
+		}
+		if (character === separator) {
+			parts.push(current);
+			current = "";
+			continue;
+		}
+		current += character;
+	}
+
+	if (escaped) {
+		current += "\\";
+	}
+	parts.push(current);
+	return parts;
+}
+
+function expandArraySegments(segment: string): string[] {
+	const parts: string[] = [];
+	let remaining = segment;
+	const arraySegmentPattern = /^(.*?)(\[(\d+)])$/;
+
+	while (remaining) {
+		const match = remaining.match(arraySegmentPattern);
+		if (!match) {
+			parts.unshift(remaining);
+			break;
+		}
+
+		parts.unshift(match[2]);
+		remaining = match[1];
+	}
+
+	return parts.filter(Boolean);
+}
+
+function parseDataPathExpression(value: string): string[] | null {
+	const segments = splitEscapedExpression(value.trim(), ".")
+		.map((segment) => segment.trim())
+		.filter(Boolean)
+		.flatMap(expandArraySegments);
+
+	return segments.length ? segments : null;
+}
+
+function parseCustomDataFieldExpression(value: string): string[][] {
+	const seen = new Set<string>();
+	const paths: string[][] = [];
+	for (const pathExpression of splitEscapedExpression(value, "|")) {
+		const path = parseDataPathExpression(pathExpression);
+		if (!path) {
+			continue;
+		}
+		const id = getDataPathId(path);
+		if (seen.has(id)) {
+			continue;
+		}
+		seen.add(id);
+		paths.push(path);
+	}
+	return paths;
+}
+
+function getValueAtDataPath(data: unknown, path: string[]): unknown {
+	let current = data;
+	for (const segment of path) {
+		const arrayIndexMatch = segment.match(/^\[(\d+)\]$/);
+		if (arrayIndexMatch) {
+			if (!Array.isArray(current)) {
+				return undefined;
+			}
+			current = current[Number.parseInt(arrayIndexMatch[1], 10)];
+			continue;
+		}
+
+		if (!isPlainObject(current) || !(segment in current)) {
+			return undefined;
+		}
+		current = current[segment];
+	}
+	return current;
+}
+
+function isEmptyDataValue(value: unknown): boolean {
+	return value === undefined || value === null || value === "";
+}
+
+function getValueAtFirstAvailableDataPath(
+	data: unknown,
+	paths: string[][],
+): unknown {
+	for (const path of paths) {
+		const value = getValueAtDataPath(data, path);
+		if (!isEmptyDataValue(value)) {
+			return value;
+		}
+	}
+	return undefined;
+}
+
+function getComparableDataValue(value: unknown): string | number | boolean | null {
+	if (value === null || value === undefined) {
+		return null;
+	}
+
+	if (
+		typeof value === "string" ||
+		typeof value === "number" ||
+		typeof value === "boolean"
+	) {
+		return value;
+	}
+
+	return JSON.stringify(value);
+}
+
+function compareDataColumnValues(
+	left: unknown,
+	right: unknown,
+	direction: DataColumnSortState["direction"],
+): number {
+	const leftValue = getComparableDataValue(left);
+	const rightValue = getComparableDataValue(right);
+	if (leftValue === null && rightValue === null) {
+		return 0;
+	}
+	if (leftValue === null) {
+		return 1;
+	}
+	if (rightValue === null) {
+		return -1;
+	}
+
+	const directionMultiplier = direction === "asc" ? 1 : -1;
+	if (typeof leftValue === "number" && typeof rightValue === "number") {
+		return (leftValue - rightValue) * directionMultiplier;
+	}
+
+	if (typeof leftValue === "boolean" && typeof rightValue === "boolean") {
+		return (Number(leftValue) - Number(rightValue)) * directionMultiplier;
+	}
+
+	return (
+		String(leftValue).localeCompare(String(rightValue), undefined, {
+			numeric: true,
+			sensitivity: "base",
+		}) * directionMultiplier
+	);
+}
+
+function getSchemaPropertyPaths(
+	jsonSchema: unknown,
+	parentPath: string[] = [],
+	depth = 1,
+): string[][] {
 	if (!jsonSchema || typeof jsonSchema !== "object" || Array.isArray(jsonSchema)) {
 		return [];
 	}
@@ -202,7 +437,155 @@ function getSchemaPropertyKeys(jsonSchema: unknown): string[] {
 		return [];
 	}
 
-	return Object.keys(properties);
+	const paths: string[][] = [];
+	for (const [key, propertySchema] of Object.entries(
+		properties as Record<string, unknown>,
+	)) {
+		const path = [...parentPath, key];
+		const childPaths =
+			depth < MAX_DATA_PATH_DEPTH
+				? getSchemaPropertyPaths(propertySchema, path, depth + 1)
+				: [];
+		if (childPaths.length > 0) {
+			paths.push(...childPaths);
+		} else {
+			paths.push(path);
+		}
+	}
+
+	return paths;
+}
+
+function incrementDataPathCount(counts: Map<string, number>, path: string[]) {
+	const id = getDataPathId(path);
+	counts.set(id, (counts.get(id) ?? 0) + 1);
+}
+
+function collectDataPaths(
+	value: unknown,
+	counts: Map<string, number>,
+	parentPath: string[] = [],
+	depth = 0,
+) {
+	if (Array.isArray(value)) {
+		if (depth >= MAX_DATA_PATH_DEPTH || value.length === 0) {
+			incrementDataPathCount(counts, parentPath);
+			return;
+		}
+
+		for (const [index, childValue] of value
+			.slice(0, MAX_DATA_ARRAY_ITEMS)
+			.entries()) {
+			const path = [...parentPath, `[${index}]`];
+			if (isPlainObject(childValue) || Array.isArray(childValue)) {
+				collectDataPaths(childValue, counts, path, depth + 1);
+			} else {
+				incrementDataPathCount(counts, path);
+			}
+		}
+		return;
+	}
+
+	if (!isPlainObject(value)) {
+		return;
+	}
+
+	for (const [key, childValue] of Object.entries(value)) {
+		const path = [...parentPath, key];
+
+		if (
+			depth < MAX_DATA_PATH_DEPTH &&
+			(isPlainObject(childValue) || Array.isArray(childValue))
+		) {
+			collectDataPaths(childValue, counts, path, depth + 1);
+			continue;
+		}
+
+		incrementDataPathCount(counts, path);
+	}
+}
+
+function isSameOrChildPath(path: string[], maybeParentPath: string[]): boolean {
+	if (maybeParentPath.length > path.length) {
+		return false;
+	}
+	return maybeParentPath.every((segment, index) => segment === path[index]);
+}
+
+function isOmittedDataPath(path: string[], omittedPaths: string[][]): boolean {
+	return omittedPaths.some((omittedPath) =>
+		isSameOrChildPath(path, omittedPath),
+	);
+}
+
+function collectDataPreviewEntries(
+	value: unknown,
+	omittedPaths: string[][],
+	parentPath: string[] = [],
+	depth = 0,
+): DataPreviewEntry[] {
+	if (Array.isArray(value)) {
+		if (depth >= MAX_DATA_PATH_DEPTH || value.length === 0) {
+			return parentPath.length
+				? [{ id: getDataPathId(parentPath), path: parentPath, value }]
+				: [];
+		}
+
+		return value
+			.slice(0, MAX_DATA_ARRAY_ITEMS)
+			.flatMap((childValue, index) => {
+				const path = [...parentPath, `[${index}]`];
+				if (isOmittedDataPath(path, omittedPaths)) {
+					return [];
+				}
+				if (isPlainObject(childValue) || Array.isArray(childValue)) {
+					const childEntries = collectDataPreviewEntries(
+						childValue,
+						omittedPaths,
+						path,
+						depth + 1,
+					);
+					return childEntries.length > 0
+						? childEntries
+						: [{ id: getDataPathId(path), path, value: childValue }];
+				}
+				return [{ id: getDataPathId(path), path, value: childValue }];
+			});
+	}
+
+	if (!isPlainObject(value)) {
+		return [];
+	}
+
+	const entries: DataPreviewEntry[] = [];
+	for (const [key, childValue] of Object.entries(value)) {
+		const path = [...parentPath, key];
+		if (isOmittedDataPath(path, omittedPaths)) {
+			continue;
+		}
+
+		if (
+			depth < MAX_DATA_PATH_DEPTH &&
+			(isPlainObject(childValue) || Array.isArray(childValue))
+		) {
+			const childEntries = collectDataPreviewEntries(
+				childValue,
+				omittedPaths,
+				path,
+				depth + 1,
+			);
+			if (childEntries.length > 0) {
+				entries.push(...childEntries);
+			} else {
+				entries.push({ id: getDataPathId(path), path, value: childValue });
+			}
+			continue;
+		}
+
+		entries.push({ id: getDataPathId(path), path, value: childValue });
+	}
+
+	return entries;
 }
 
 function areStringArraysEqual(left: string[], right: string[]): boolean {
@@ -210,6 +593,42 @@ function areStringArraysEqual(left: string[], right: string[]): boolean {
 		return false;
 	}
 	return left.every((value, index) => value === right[index]);
+}
+
+function normalizeCustomDataField(value: unknown): CustomDataField | null {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		return null;
+	}
+
+	const field = value as {
+		id?: unknown;
+		label?: unknown;
+		expression?: unknown;
+		scope?: unknown;
+	};
+	if (
+		typeof field.id !== "string" ||
+		!field.id.startsWith(CUSTOM_DATA_FIELD_ID_PREFIX) ||
+		typeof field.label !== "string" ||
+		typeof field.expression !== "string"
+	) {
+		return null;
+	}
+
+	const label = field.label.trim();
+	const expression = field.expression.trim();
+	const paths = parseCustomDataFieldExpression(expression);
+	if (!label || paths.length === 0) {
+		return null;
+	}
+
+	return {
+		id: field.id,
+		label,
+		expression,
+		paths,
+		scope: "user",
+	};
 }
 
 function formatDataPreviewValue(value: unknown): string {
@@ -235,7 +654,7 @@ function formatDataPreviewValue(value: unknown): string {
 	return String(value);
 }
 
-function renderObjectDataPreview(data: unknown, omittedKeys: string[] = []) {
+function renderObjectDataPreview(data: unknown, omittedPaths: string[][] = []) {
 	if (data === null || data === undefined) {
 		return <span className="muted">No data</span>;
 	}
@@ -248,28 +667,29 @@ function renderObjectDataPreview(data: unknown, omittedKeys: string[] = []) {
 		);
 	}
 
-	const omittedKeySet = new Set(omittedKeys);
-	const entries = Object.entries(data as Record<string, unknown>).filter(
-		([key]) => !omittedKeySet.has(key),
+	const previewEntries = collectDataPreviewEntries(
+		data,
+		omittedPaths,
 	);
-	if (entries.length === 0) {
+	if (previewEntries.length === 0) {
 		return <span className="muted">No other data</span>;
 	}
 
-	const visibleEntries = entries.slice(0, 8);
-	const hiddenCount = entries.length - visibleEntries.length;
+	const visibleEntries = previewEntries.slice(0, 10);
+	const hiddenCount = previewEntries.length - visibleEntries.length;
 
 	return (
 		<div className="object-data-preview">
-			{visibleEntries.map(([key, value]) => {
-				const formattedValue = formatDataPreviewValue(value);
+			{visibleEntries.map((entry) => {
+				const formattedLabel = formatDataPathLabel(entry.path);
+				const formattedValue = formatDataPreviewValue(entry.value);
 				return (
 					<span
-						key={key}
+						key={entry.id}
 						className="object-data-chip"
-						title={`${key}: ${formattedValue}`}
+						title={`${formattedLabel}: ${formattedValue}`}
 					>
-						<span className="object-data-key">{key}</span>
+						<span className="object-data-key">{formattedLabel}</span>
 						<span className="object-data-value">{formattedValue}</span>
 					</span>
 				);
@@ -284,8 +704,34 @@ function renderObjectDataPreview(data: unknown, omittedKeys: string[] = []) {
 }
 
 function renderPromotedDataValue(value: unknown) {
-	if (value === undefined || value === null || value === "") {
+	if (isEmptyDataValue(value)) {
 		return <span className="muted">-</span>;
+	}
+
+	if (isPlainObject(value)) {
+		const childEntries = collectDataPreviewEntries(value, []);
+		if (childEntries.length === 0) {
+			return <span className="muted">Empty object</span>;
+		}
+
+		const visibleEntries = childEntries.slice(0, 3);
+		const hiddenCount = childEntries.length - visibleEntries.length;
+		const previewText = visibleEntries
+			.map((entry) => {
+				const label = formatDataPathLabel(entry.path);
+				return `${label}: ${formatDataPreviewValue(entry.value)}`;
+			})
+			.join("; ");
+
+		return (
+			<span
+				className="object-data-column-value"
+				title={getDataSearchText(value)}
+			>
+				{previewText}
+				{hiddenCount > 0 ? `; +${hiddenCount} more` : ""}
+			</span>
+		);
 	}
 
 	const formattedValue = formatDataPreviewValue(value);
@@ -303,6 +749,7 @@ export function ObjectsExplorer() {
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
 	const columnPickerRef = useRef<HTMLDivElement | null>(null);
+	const customColumnPickerRef = useRef<HTMLDivElement | null>(null);
 	const classesQuery = useQuery({
 		queryKey: ["classes", "object-explorer"],
 		queryFn: fetchClasses,
@@ -321,6 +768,21 @@ export function ObjectsExplorer() {
 	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 	const [isColumnPickerOpen, setColumnPickerOpen] = useState(false);
 	const [selectedDataColumns, setSelectedDataColumns] = useState<string[]>([]);
+	const [showRawDataColumn, setShowRawDataColumn] = useState(true);
+	const [isCustomColumnPickerOpen, setCustomColumnPickerOpen] = useState(false);
+	const [customDataFields, setCustomDataFields] = useState<CustomDataField[]>(
+		[],
+	);
+	const [
+		loadedCustomDataFieldsStorageKey,
+		setLoadedCustomDataFieldsStorageKey,
+	] = useState<string | null>(null);
+	const [customDataFieldLabel, setCustomDataFieldLabel] = useState("");
+	const [customDataFieldExpression, setCustomDataFieldExpression] = useState("");
+	const [dataColumnSort, setDataColumnSort] = useState<DataColumnSortState>({
+		columnId: null,
+		direction: "asc",
+	});
 	const [searchInput, setSearchInput] = useState(
 		searchParams.get("search") ?? "",
 	);
@@ -386,6 +848,16 @@ export function ObjectsExplorer() {
 		parsedClassId === null
 			? null
 			: `${OBJECT_DATA_COLUMNS_STORAGE_PREFIX}:${parsedClassId}`;
+	const rawDataColumnStorageKey =
+		parsedClassId === null
+			? null
+			: `${OBJECT_RAW_DATA_COLUMN_STORAGE_PREFIX}:${parsedClassId}`;
+	const customDataFieldsStorageKey =
+		parsedClassId === null
+			? null
+			: `${OBJECT_CUSTOM_DATA_FIELDS_STORAGE_PREFIX}:${parsedClassId}:user`;
+	const customDataFieldsReady =
+		loadedCustomDataFieldsStorageKey === customDataFieldsStorageKey;
 	const parsedCreateClassId = useMemo(() => {
 		const value = Number.parseInt(createClassId, 10);
 		return Number.isFinite(value) ? value : null;
@@ -579,37 +1051,97 @@ export function ObjectsExplorer() {
 
 	const pageData = objectsQuery.data;
 	const objects = pageData?.objects ?? EMPTY_OBJECTS;
-	const dataColumnCandidates = useMemo(() => {
-		const schemaKeys = getSchemaPropertyKeys(selectedClass?.json_schema);
+	const dataColumnCandidates = useMemo<DataPathCandidate[]>(() => {
+		const schemaPaths = getSchemaPropertyPaths(selectedClass?.json_schema);
 		const counts = new Map<string, number>();
 		for (const objectItem of objects) {
-			const dataRecord = getObjectDataRecord(objectItem.data);
-			if (!dataRecord) {
-				continue;
-			}
-			for (const key of Object.keys(dataRecord)) {
-				counts.set(key, (counts.get(key) ?? 0) + 1);
-			}
+			collectDataPaths(objectItem.data, counts);
 		}
 
-		const schemaKeySet = new Set(schemaKeys);
+		const schemaIds = schemaPaths.map(getDataPathId);
+		const schemaIdSet = new Set(schemaIds);
 		const inferredKeys = [...counts.keys()]
-			.filter((key) => !schemaKeySet.has(key))
+			.filter((key) => !schemaIdSet.has(key))
 			.sort((left, right) => {
 				const countDelta = (counts.get(right) ?? 0) - (counts.get(left) ?? 0);
 				return countDelta || left.localeCompare(right);
 			});
 
-		return [...schemaKeys, ...inferredKeys].map((key) => ({
-			key,
-			count: counts.get(key) ?? 0,
-			fromSchema: schemaKeySet.has(key),
-		}));
+		return [...schemaIds, ...inferredKeys]
+			.map((id) => {
+				const path = parseDataPathId(id);
+				if (!path) {
+					return null;
+				}
+				return {
+					id,
+					path,
+					label: formatDataPathLabel(path),
+					count: counts.get(id) ?? 0,
+					fromSchema: schemaIdSet.has(id),
+				};
+			})
+			.filter((candidate): candidate is DataPathCandidate =>
+				Boolean(candidate),
+			);
 	}, [objects, selectedClass?.json_schema]);
-	const activeDataColumns = useMemo(() => {
-		const candidateKeys = new Set(dataColumnCandidates.map((column) => column.key));
-		return selectedDataColumns.filter((key) => candidateKeys.has(key));
-	}, [dataColumnCandidates, selectedDataColumns]);
+	const activeDataColumns = useMemo<ActiveDataColumn[]>(() => {
+		const candidatesById = new Map(
+			dataColumnCandidates.map((column) => [column.id, column]),
+		);
+		const customFieldsById = new Map(
+			customDataFields.map((field) => [field.id, field]),
+		);
+		return selectedDataColumns
+			.map((columnId) => {
+				const candidate = candidatesById.get(columnId);
+				if (candidate) {
+					return {
+						id: candidate.id,
+						label: candidate.label,
+						paths: [candidate.path],
+						source: "data" as const,
+					};
+				}
+
+				const customField = customFieldsById.get(columnId);
+				if (customField) {
+					return {
+						id: customField.id,
+						label: customField.label,
+						paths: customField.paths,
+						source: "custom" as const,
+					};
+				}
+
+				return null;
+			})
+			.filter((column): column is ActiveDataColumn => column !== null);
+	}, [customDataFields, dataColumnCandidates, selectedDataColumns]);
+	const sortedDataColumnCandidates = useMemo(
+		() =>
+			[...dataColumnCandidates].sort((left, right) =>
+				left.label.localeCompare(right.label),
+			),
+		[dataColumnCandidates],
+	);
+	const dataColumnMenuWidth = useMemo(() => {
+		const longestLabelLength = dataColumnCandidates.reduce(
+			(maxLength, column) => Math.max(maxLength, column.label.length),
+			0,
+		);
+		const widthCh = Math.max(24, Math.min(96, longestLabelLength + 14));
+		return `${widthCh}ch`;
+	}, [dataColumnCandidates]);
+	const customDataColumnMenuWidth = useMemo(() => {
+		const longestLabelLength = customDataFields.reduce(
+			(maxLength, field) =>
+				Math.max(maxLength, field.label.length, field.expression.length),
+			0,
+		);
+		const widthCh = Math.max(34, Math.min(96, longestLabelLength + 14));
+		return `${widthCh}ch`;
+	}, [customDataFields]);
 	const searchTerm = normalizeSearchTerm(searchParams.get("search"));
 	const filteredObjects = useMemo(
 		() =>
@@ -623,16 +1155,101 @@ export function ObjectsExplorer() {
 			),
 		[objects, searchTerm],
 	);
+	const displayedObjects = useMemo(() => {
+		if (!dataColumnSort.columnId) {
+			return filteredObjects;
+		}
+
+		const sortedColumn = activeDataColumns.find(
+			(column) => column.id === dataColumnSort.columnId,
+		);
+		if (!sortedColumn) {
+			return filteredObjects;
+		}
+
+		return [...filteredObjects].sort((left, right) => {
+			const result = compareDataColumnValues(
+				getValueAtFirstAvailableDataPath(left.data, sortedColumn.paths),
+				getValueAtFirstAvailableDataPath(right.data, sortedColumn.paths),
+				dataColumnSort.direction,
+			);
+			if (result !== 0) {
+				return result;
+			}
+			return left.id - right.id;
+		});
+	}, [activeDataColumns, dataColumnSort, filteredObjects]);
 	const allSelected =
-		filteredObjects.length > 0 &&
-		selectedObjectIds.length === filteredObjects.length;
+		displayedObjects.length > 0 &&
+		selectedObjectIds.length === displayedObjects.length;
+	const activeStandardDataColumnCount = activeDataColumns.filter(
+		(column) => column.source === "data",
+	).length;
+	const activeCustomDataColumnCount = activeDataColumns.filter(
+		(column) => column.source === "custom",
+	).length;
 
 	useEffect(() => {
+		setLoadedCustomDataFieldsStorageKey(null);
+		if (!customDataFieldsStorageKey) {
+			setCustomDataFields((current) => (current.length ? [] : current));
+			setLoadedCustomDataFieldsStorageKey(null);
+			return;
+		}
+
+		try {
+			const storedValue = window.localStorage.getItem(customDataFieldsStorageKey);
+			if (storedValue) {
+				const parsedValue = JSON.parse(storedValue);
+				if (Array.isArray(parsedValue)) {
+					const nextFields = parsedValue
+						.map(normalizeCustomDataField)
+						.filter((field): field is CustomDataField => field !== null);
+					setCustomDataFields((current) =>
+						JSON.stringify(current) === JSON.stringify(nextFields)
+							? current
+							: nextFields,
+					);
+					setLoadedCustomDataFieldsStorageKey(customDataFieldsStorageKey);
+					return;
+				}
+			}
+		} catch {
+			// Ignore unavailable or malformed localStorage.
+		}
+
+		setCustomDataFields((current) => (current.length ? [] : current));
+		setLoadedCustomDataFieldsStorageKey(customDataFieldsStorageKey);
+	}, [customDataFieldsStorageKey]);
+
+	useEffect(() => {
+		if (!customDataFieldsStorageKey || !customDataFieldsReady) {
+			return;
+		}
+
+		try {
+			window.localStorage.setItem(
+				customDataFieldsStorageKey,
+				JSON.stringify(customDataFields),
+			);
+		} catch {
+			// Ignore unavailable localStorage.
+		}
+	}, [
+		customDataFields,
+		customDataFieldsStorageKey,
+		customDataFieldsReady,
+	]);
+
+	useEffect(() => {
+		if (!customDataFieldsReady) {
+			return;
+		}
 		if (!dataColumnStorageKey) {
 			setSelectedDataColumns((current) => (current.length ? [] : current));
 			return;
 		}
-		if (dataColumnCandidates.length === 0) {
+		if (dataColumnCandidates.length === 0 && customDataFields.length === 0) {
 			setSelectedDataColumns((current) => (current.length ? [] : current));
 			return;
 		}
@@ -642,13 +1259,39 @@ export function ObjectsExplorer() {
 			if (storedValue) {
 				const parsedValue = JSON.parse(storedValue);
 				if (Array.isArray(parsedValue)) {
-					const nextColumns = parsedValue
-							.filter((value): value is string => typeof value === "string")
-						.slice(0, MAX_SELECTED_DATA_COLUMNS);
-					setSelectedDataColumns((current) =>
-						areStringArraysEqual(current, nextColumns) ? current : nextColumns,
+					if (parsedValue.length === 0) {
+						setSelectedDataColumns((current) =>
+							current.length ? [] : current,
+						);
+						return;
+					}
+
+					const candidateIds = new Set(
+						[
+							...dataColumnCandidates.map((column) => column.id),
+							...customDataFields.map((field) => field.id),
+						],
 					);
-					return;
+					const nextColumns = parsedValue
+						.filter((value): value is string => typeof value === "string")
+						.map((value) => {
+							if (value.startsWith(CUSTOM_DATA_FIELD_ID_PREFIX)) {
+								return value;
+							}
+							const path = parseDataPathId(value);
+							return path ? getDataPathId(path) : null;
+						})
+						.filter((id): id is string => id !== null)
+						.filter((id) => candidateIds.has(id))
+						.slice(0, MAX_SELECTED_DATA_COLUMNS);
+					if (nextColumns.length > 0) {
+						setSelectedDataColumns((current) =>
+							areStringArraysEqual(current, nextColumns)
+								? current
+								: nextColumns,
+						);
+						return;
+					}
 				}
 			}
 		} catch {
@@ -658,29 +1301,88 @@ export function ObjectsExplorer() {
 		const nextColumns =
 			dataColumnCandidates
 				.slice(0, DEFAULT_SELECTED_DATA_COLUMN_COUNT)
-			.map((column) => column.key);
+				.map((column) => column.id);
 		setSelectedDataColumns((current) =>
 			areStringArraysEqual(current, nextColumns) ? current : nextColumns,
 		);
-	}, [dataColumnCandidates, dataColumnStorageKey]);
+	}, [
+		customDataFields,
+		customDataFieldsReady,
+		dataColumnCandidates,
+		dataColumnStorageKey,
+	]);
 
 	useEffect(() => {
-		if (!dataColumnStorageKey) {
+		if (!dataColumnStorageKey || !customDataFieldsReady) {
 			return;
 		}
-		if (dataColumnCandidates.length === 0) {
+		if (dataColumnCandidates.length === 0 && customDataFields.length === 0) {
 			return;
 		}
 
 		try {
 			window.localStorage.setItem(
 				dataColumnStorageKey,
-				JSON.stringify(selectedDataColumns),
+				JSON.stringify(activeDataColumns.map((column) => column.id)),
 			);
 		} catch {
 			// Ignore unavailable localStorage.
 		}
-	}, [dataColumnCandidates.length, dataColumnStorageKey, selectedDataColumns]);
+	}, [
+		activeDataColumns,
+		customDataFields.length,
+		customDataFieldsReady,
+		dataColumnCandidates.length,
+		dataColumnStorageKey,
+	]);
+
+	useEffect(() => {
+		if (!rawDataColumnStorageKey) {
+			setShowRawDataColumn((current) => (current ? current : true));
+			return;
+		}
+
+		try {
+			const storedValue = window.localStorage.getItem(rawDataColumnStorageKey);
+			if (storedValue === "hidden") {
+				setShowRawDataColumn(false);
+				return;
+			}
+			if (storedValue === "visible") {
+				setShowRawDataColumn(true);
+				return;
+			}
+		} catch {
+			// Ignore unavailable localStorage.
+		}
+
+		setShowRawDataColumn((current) => (current ? current : true));
+	}, [rawDataColumnStorageKey]);
+
+	useEffect(() => {
+		if (!rawDataColumnStorageKey) {
+			return;
+		}
+
+		try {
+			window.localStorage.setItem(
+				rawDataColumnStorageKey,
+				showRawDataColumn ? "visible" : "hidden",
+			);
+		} catch {
+			// Ignore unavailable localStorage.
+		}
+	}, [rawDataColumnStorageKey, showRawDataColumn]);
+
+	useEffect(() => {
+		if (!dataColumnSort.columnId) {
+			return;
+		}
+		if (activeDataColumns.some((column) => column.id === dataColumnSort.columnId)) {
+			return;
+		}
+		setDataColumnSort({ columnId: null, direction: "asc" });
+	}, [activeDataColumns, dataColumnSort.columnId]);
 
 	useEffect(() => {
 		if (!isColumnPickerOpen) {
@@ -707,14 +1409,39 @@ export function ObjectsExplorer() {
 		};
 	}, [isColumnPickerOpen]);
 
+	useEffect(() => {
+		if (!isCustomColumnPickerOpen) {
+			return;
+		}
+
+		function onPointerDown(event: MouseEvent) {
+			if (!customColumnPickerRef.current?.contains(event.target as Node)) {
+				setCustomColumnPickerOpen(false);
+			}
+		}
+
+		function onKeyDown(event: KeyboardEvent) {
+			if (event.key === "Escape") {
+				setCustomColumnPickerOpen(false);
+			}
+		}
+
+		document.addEventListener("mousedown", onPointerDown);
+		document.addEventListener("keydown", onKeyDown);
+		return () => {
+			document.removeEventListener("mousedown", onPointerDown);
+			document.removeEventListener("keydown", onKeyDown);
+		};
+	}, [isCustomColumnPickerOpen]);
+
 	const shiftSelect = useShiftSelect({
-		items: filteredObjects,
+		items: displayedObjects,
 		selectedIds: selectedObjectIds,
 		setSelectedIds: setSelectedObjectIds,
 		getId: (objectItem) => objectItem.id,
 	});
 	const keyboardNav = useTableKeyboardNav({
-		items: filteredObjects,
+		items: displayedObjects,
 		getId: (objectItem) => objectItem.id,
 		onOpen: (objectItem) =>
 			router.push(`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`),
@@ -726,13 +1453,13 @@ export function ObjectsExplorer() {
 		}
 
 		const existingIds = new Set(
-			filteredObjects.map((objectItem) => objectItem.id),
+			displayedObjects.map((objectItem) => objectItem.id),
 		);
 		setSelectedObjectIds((current) => {
 			const next = current.filter((objectId) => existingIds.has(objectId));
 			return next.length === current.length ? current : next;
 		});
-	}, [filteredObjects, selectedObjectIds]);
+	}, [displayedObjects, selectedObjectIds]);
 
 	useEffect(() => {
 		const onOpenCreate = (event: Event) => {
@@ -761,7 +1488,7 @@ export function ObjectsExplorer() {
 		};
 
 		const onSelectAll = () => {
-			setSelectedObjectIds(filteredObjects.map((obj) => obj.id));
+			setSelectedObjectIds(displayedObjects.map((obj) => obj.id));
 		};
 
 		window.addEventListener(DESELECT_ALL_EVENT, onDeselectAll);
@@ -770,7 +1497,7 @@ export function ObjectsExplorer() {
 			window.removeEventListener(DESELECT_ALL_EVENT, onDeselectAll);
 			window.removeEventListener(SELECT_ALL_EVENT, onSelectAll);
 		};
-	}, [filteredObjects]);
+	}, [displayedObjects]);
 
 	useEffect(() => {
 		window.dispatchEvent(
@@ -787,6 +1514,9 @@ export function ObjectsExplorer() {
 	}, [selectedObjectIds.length, parsedClassId, deleteSelectedObjects]);
 
 	function renderSortIndicator(column: string) {
+		if (dataColumnSort.columnId) {
+			return <span className="sort-indicator">⇅</span>;
+		}
 		if (sortState.column !== column) {
 			return <span className="sort-indicator">⇅</span>;
 		}
@@ -796,6 +1526,45 @@ export function ObjectsExplorer() {
 				{sortState.direction === "asc" ? "↑" : "↓"}
 			</span>
 		);
+	}
+
+	function renderDataSortIndicator(columnId: string) {
+		if (dataColumnSort.columnId !== columnId) {
+			return <span className="sort-indicator">⇅</span>;
+		}
+
+		return (
+			<span className="sort-indicator sort-indicator--active">
+				{dataColumnSort.direction === "asc" ? "↑" : "↓"}
+			</span>
+		);
+	}
+
+	function setServerSort(column: string) {
+		setDataColumnSort({ columnId: null, direction: "asc" });
+		setSort(column);
+	}
+
+	function setDataSort(columnId: string) {
+		setDataColumnSort((current) => {
+			if (current.columnId !== columnId) {
+				return { columnId, direction: "asc" };
+			}
+			if (current.direction === "asc") {
+				return { columnId, direction: "desc" };
+			}
+			return { columnId: null, direction: "asc" };
+		});
+	}
+
+	function toggleDataColumnPicker() {
+		setCustomColumnPickerOpen(false);
+		setColumnPickerOpen((current) => !current);
+	}
+
+	function toggleCustomDataColumnPicker() {
+		setColumnPickerOpen(false);
+		setCustomColumnPickerOpen((current) => !current);
 	}
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -906,11 +1675,63 @@ export function ObjectsExplorer() {
 		});
 	}
 
+	function addCustomDataField(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+
+		const label = customDataFieldLabel.trim();
+		const expression = customDataFieldExpression.trim();
+		const paths = parseCustomDataFieldExpression(expression);
+		if (!label) {
+			showToast("Custom data field label is required.", "error");
+			return;
+		}
+		if (paths.length === 0) {
+			showToast("Enter at least one valid data path.", "error");
+			return;
+		}
+		if (
+			customDataFields.some(
+				(field) => field.label.toLowerCase() === label.toLowerCase(),
+			)
+		) {
+			showToast("A custom data field with that label already exists.", "error");
+			return;
+		}
+
+		const id = `${CUSTOM_DATA_FIELD_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+		const nextField: CustomDataField = {
+			id,
+			label,
+			expression,
+			paths,
+			scope: "user",
+		};
+
+		setCustomDataFields((current) => [...current, nextField]);
+		setSelectedDataColumns((current) =>
+			current.includes(id) || current.length >= MAX_SELECTED_DATA_COLUMNS
+				? current
+				: [...current, id],
+		);
+		setCustomDataFieldLabel("");
+		setCustomDataFieldExpression("");
+		showToast("Custom data field added.", "success");
+	}
+
+	function deleteCustomDataField(fieldId: string) {
+		setCustomDataFields((current) =>
+			current.filter((field) => field.id !== fieldId),
+		);
+		setSelectedDataColumns((current) =>
+			current.filter((columnId) => columnId !== fieldId),
+		);
+	}
+
 	function resetDataColumns() {
 		setSelectedDataColumns(
 			dataColumnCandidates
 				.slice(0, DEFAULT_SELECTED_DATA_COLUMN_COUNT)
-				.map((column) => column.key),
+				.map((column) => column.id),
 		);
 	}
 
@@ -1076,19 +1897,26 @@ export function ObjectsExplorer() {
 							<button
 								type="button"
 								className="ghost object-column-picker-trigger"
-								onClick={() => setColumnPickerOpen((current) => !current)}
-								disabled={dataColumnCandidates.length === 0}
+								onClick={toggleDataColumnPicker}
+								disabled={parsedClassId === null}
 							>
 								<IconColumns />
 								<span>Data columns</span>
-								{activeDataColumns.length ? (
+								{activeStandardDataColumnCount ? (
 									<span className="object-column-count">
-										{activeDataColumns.length}
+										{activeStandardDataColumnCount}
 									</span>
 								) : null}
 							</button>
 							{isColumnPickerOpen ? (
-								<div className="object-column-menu card">
+								<div
+									className="object-column-menu card"
+									style={
+										{
+											"--object-column-menu-width": dataColumnMenuWidth,
+										} as React.CSSProperties
+									}
+								>
 									<div className="object-column-menu-header">
 										<strong>Show data fields</strong>
 										<div className="object-column-menu-actions">
@@ -1108,13 +1936,26 @@ export function ObjectsExplorer() {
 											</button>
 										</div>
 									</div>
+									<label className="object-column-option object-column-option--raw">
+										<input
+											type="checkbox"
+											checked={showRawDataColumn}
+											onChange={(event) =>
+												setShowRawDataColumn(event.target.checked)
+											}
+										/>
+										<span>
+											<strong>Raw data preview</strong>
+											<small>{showRawDataColumn ? "shown" : "hidden"}</small>
+										</span>
+									</label>
 									{dataColumnCandidates.length === 0 ? (
-										<p className="muted">No top-level data fields loaded.</p>
+										<p className="muted">No data fields loaded.</p>
 									) : (
 										<div className="object-column-options">
-											{dataColumnCandidates.map((column) => {
+											{sortedDataColumnCandidates.map((column) => {
 												const checked = selectedDataColumns.includes(
-													column.key,
+													column.id,
 												);
 												const disabled =
 													!checked &&
@@ -1122,7 +1963,7 @@ export function ObjectsExplorer() {
 														MAX_SELECTED_DATA_COLUMNS;
 												return (
 													<label
-														key={column.key}
+														key={column.id}
 														className="object-column-option"
 													>
 														<input
@@ -1131,13 +1972,15 @@ export function ObjectsExplorer() {
 															disabled={disabled}
 															onChange={(event) =>
 																toggleDataColumn(
-																	column.key,
+																	column.id,
 																	event.target.checked,
 																)
 															}
 														/>
 														<span>
-															<strong>{column.key}</strong>
+															<strong title={column.label}>
+																{column.label}
+															</strong>
 															<small>
 																{column.fromSchema
 																	? "schema"
@@ -1145,6 +1988,130 @@ export function ObjectsExplorer() {
 															</small>
 														</span>
 													</label>
+												);
+											})}
+										</div>
+									)}
+								</div>
+							) : null}
+						</div>
+						<div
+							className="object-column-picker"
+							ref={customColumnPickerRef}
+						>
+							<button
+								type="button"
+								className="ghost object-column-picker-trigger"
+								onClick={toggleCustomDataColumnPicker}
+								disabled={parsedClassId === null}
+							>
+								<IconColumns />
+								<span>Custom data fields</span>
+								{activeCustomDataColumnCount ? (
+									<span className="object-column-count">
+										{activeCustomDataColumnCount}
+									</span>
+								) : null}
+							</button>
+							{isCustomColumnPickerOpen ? (
+								<div
+									className="object-column-menu object-column-menu--custom card"
+									style={
+										{
+											"--object-column-menu-width":
+												customDataColumnMenuWidth,
+										} as React.CSSProperties
+									}
+								>
+									<div className="object-column-menu-header">
+										<strong>Custom data fields</strong>
+									</div>
+									<form
+										className="custom-data-field-form"
+										onSubmit={addCustomDataField}
+									>
+										<div className="custom-data-field-scope">
+											<label>
+												<input type="radio" checked readOnly />
+												<span>Only me</span>
+											</label>
+											<label title="System-wide custom fields need a backend settings endpoint.">
+												<input type="radio" disabled />
+												<span>System-wide</span>
+											</label>
+										</div>
+										<label className="control-field">
+											<span>Label</span>
+											<input
+												value={customDataFieldLabel}
+												onChange={(event) =>
+													setCustomDataFieldLabel(event.target.value)
+												}
+												placeholder="OS version"
+											/>
+										</label>
+										<label className="control-field">
+											<span>Paths</span>
+											<input
+												value={customDataFieldExpression}
+												onChange={(event) =>
+													setCustomDataFieldExpression(event.target.value)
+												}
+												placeholder="os.fedora.version|os.redhat.version|os.macos.version"
+											/>
+										</label>
+										<p className="muted">
+											Uses the first non-empty path. Escape literal dots or
+											pipes with a backslash.
+										</p>
+										<button type="submit">Add custom field</button>
+									</form>
+									{customDataFields.length === 0 ? (
+										<p className="muted">No custom data fields yet.</p>
+									) : (
+										<div className="object-column-options">
+											{customDataFields.map((field) => {
+												const checked = selectedDataColumns.includes(
+													field.id,
+												);
+												const disabled =
+													!checked &&
+													activeDataColumns.length >=
+														MAX_SELECTED_DATA_COLUMNS;
+												return (
+													<div
+														key={field.id}
+														className="object-column-option object-column-option--custom"
+													>
+														<input
+															type="checkbox"
+															checked={checked}
+															disabled={disabled}
+															onChange={(event) =>
+																toggleDataColumn(
+																	field.id,
+																	event.target.checked,
+																)
+															}
+															aria-label={`Show ${field.label}`}
+														/>
+														<span>
+															<strong title={field.label}>
+																{field.label}
+															</strong>
+															<small title={field.expression}>
+																Only me
+															</small>
+														</span>
+														<button
+															type="button"
+															className="ghost object-column-delete"
+															onClick={() => deleteCustomDataField(field.id)}
+															aria-label={`Delete ${field.label}`}
+														>
+															Delete
+														</button>
+													</div>
 												);
 											})}
 										</div>
@@ -1231,13 +2198,15 @@ export function ObjectsExplorer() {
 							<col className="object-name-column" />
 							<col className="object-namespace-column" />
 							<col className="object-description-column" />
-							{activeDataColumns.map((columnKey) => (
+							{activeDataColumns.map((column) => (
 								<col
-									key={columnKey}
+									key={column.id}
 									className="object-promoted-data-column"
 								/>
 							))}
-							<col className="object-data-column" />
+							{showRawDataColumn ? (
+								<col className="object-data-column" />
+							) : null}
 						</colgroup>
 						<thead>
 							<tr>
@@ -1251,31 +2220,40 @@ export function ObjectsExplorer() {
 										}
 									/>
 								</th>
-								<th className="sortable" onClick={() => setSort("id")}>
+								<th className="sortable" onClick={() => setServerSort("id")}>
 									ID{renderSortIndicator("id")}
 								</th>
-								<th className="sortable" onClick={() => setSort("name")}>
+								<th className="sortable" onClick={() => setServerSort("name")}>
 									Name{renderSortIndicator("name")}
 								</th>
 								<th
 									className="sortable"
-									onClick={() => setSort("namespace_id")}
+									onClick={() => setServerSort("namespace_id")}
 								>
 									Namespace{renderSortIndicator("namespace_id")}
 								</th>
-								<th className="sortable" onClick={() => setSort("description")}>
+								<th
+									className="sortable"
+									onClick={() => setServerSort("description")}
+								>
 									Description{renderSortIndicator("description")}
 								</th>
-								{activeDataColumns.map((columnKey) => (
-									<th key={columnKey} className="object-data-field-heading">
-										{columnKey}
+								{activeDataColumns.map((column) => (
+									<th
+										key={column.id}
+										className="sortable object-data-field-heading"
+										title={`${column.label} (sorts loaded rows)`}
+										onClick={() => setDataSort(column.id)}
+									>
+										{column.label}
+										{renderDataSortIndicator(column.id)}
 									</th>
 								))}
-								<th>Data</th>
+								{showRawDataColumn ? <th>Data</th> : null}
 							</tr>
 						</thead>
 						<tbody>
-							{filteredObjects.map((objectItem, index) => {
+							{displayedObjects.map((objectItem, index) => {
 								const isSelected = selectedObjectIds.includes(objectItem.id);
 								const isFocused = keyboardNav.focusedId === objectItem.id;
 								const rowClassName = [
@@ -1286,56 +2264,60 @@ export function ObjectsExplorer() {
 									.join(" ");
 
 								return (
-								<tr
-									key={objectItem.id}
-									className={rowClassName}
-									data-table-row-index={index}
-								>
-									<td className="check-col">
-										<input
-											type="checkbox"
-											aria-label={`Select object ${objectItem.name}`}
-											checked={isSelected}
-											onChange={(event) =>
-												shiftSelect.handleClick(
-													objectItem.id,
-													event.target.checked,
-													(event.nativeEvent as MouseEvent).shiftKey,
-												)
-											}
-										/>
-									</td>
-									<td>{objectItem.id}</td>
-									<td>
-										<Link
-											href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
-											className="row-link"
-										>
-											{objectItem.name}
-										</Link>
-									</td>
-									<td>{renderNamespace(objectItem.namespace_id)}</td>
-									<td>{objectItem.description || "-"}</td>
-									{activeDataColumns.map((columnKey) => {
-										const dataRecord = getObjectDataRecord(objectItem.data);
-										return (
+									<tr
+										key={objectItem.id}
+										className={rowClassName}
+										data-table-row-index={index}
+									>
+										<td className="check-col">
+											<input
+												type="checkbox"
+												aria-label={`Select object ${objectItem.name}`}
+												checked={isSelected}
+												onChange={(event) =>
+													shiftSelect.handleClick(
+														objectItem.id,
+														event.target.checked,
+														(event.nativeEvent as MouseEvent).shiftKey,
+													)
+												}
+											/>
+										</td>
+										<td>{objectItem.id}</td>
+										<td>
+											<Link
+												href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
+												className="row-link"
+											>
+												{objectItem.name}
+											</Link>
+										</td>
+										<td>{renderNamespace(objectItem.namespace_id)}</td>
+										<td>{objectItem.description || "-"}</td>
+										{activeDataColumns.map((column) => (
 											<td
-												key={columnKey}
+												key={column.id}
 												className="object-data-field-cell"
 											>
 												{renderPromotedDataValue(
-													dataRecord?.[columnKey],
+													getValueAtFirstAvailableDataPath(
+														objectItem.data,
+														column.paths,
+													),
 												)}
 											</td>
-										);
-									})}
-									<td className="data-cell">
-										{renderObjectDataPreview(
-											objectItem.data,
-											activeDataColumns,
-										)}
-									</td>
-								</tr>
+										))}
+										{showRawDataColumn ? (
+											<td className="data-cell">
+												{renderObjectDataPreview(
+													objectItem.data,
+													activeDataColumns.flatMap(
+														(column) => column.paths,
+													),
+												)}
+											</td>
+										) : null}
+									</tr>
 								);
 							})}
 						</tbody>

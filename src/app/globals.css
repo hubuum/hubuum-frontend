@@ -1376,7 +1376,7 @@ body.modal-open {
 
 .json-overview-row {
 	display: grid;
-	grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+	grid-template-columns: minmax(160px, 260px) minmax(0, 1fr);
 	gap: 0.75rem;
 	padding: 0.65rem 0.8rem;
 	border-top: 1px solid var(--line);
@@ -2055,7 +2055,7 @@ th.resizable {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	max-width: 9rem;
+	max-width: 14rem;
 }
 
 .object-data-value,
@@ -2115,7 +2115,10 @@ th.resizable {
 	top: calc(100% + 0.4rem);
 	right: 0;
 	z-index: 50;
-	width: min(22rem, calc(100vw - 2rem));
+	width: min(
+		max(22rem, var(--object-column-menu-width, 22rem)),
+		calc(100vw - 2rem)
+	);
 	padding: 0.75rem;
 	display: grid;
 	gap: 0.65rem;
@@ -2155,6 +2158,10 @@ th.resizable {
 	background: var(--bg-highlight);
 }
 
+.object-column-option--custom {
+	grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
 .object-column-option > span {
 	display: flex;
 	align-items: baseline;
@@ -2167,11 +2174,44 @@ th.resizable {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	flex: 1 1 auto;
 }
 
 .object-column-option small {
 	color: var(--muted);
 	white-space: nowrap;
+	flex: 0 0 auto;
+}
+
+.object-column-delete {
+	padding: 0.28rem 0.45rem;
+}
+
+.custom-data-field-form {
+	display: grid;
+	gap: 0.55rem;
+	padding: 0.65rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--bg-highlight);
+}
+
+.custom-data-field-form .control-field {
+	gap: 0.25rem;
+}
+
+.custom-data-field-scope {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	font-size: 0.85rem;
+	color: var(--muted);
+}
+
+.custom-data-field-scope label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
 }
 
 .object-data-field-heading,

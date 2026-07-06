@@ -9,6 +9,14 @@ type JsonViewerProps = {
 	defaultTab?: JsonViewerTab;
 };
 
+const MAX_OVERVIEW_DEPTH = 3;
+const MAX_OVERVIEW_ARRAY_ITEMS = 3;
+
+type JsonOverviewEntry = {
+	label: string;
+	value: string;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -31,6 +39,82 @@ function summarizeValue(value: unknown): string {
 	}
 
 	return String(value);
+}
+
+function escapeOverviewPathSegment(segment: string): string {
+	return segment.replaceAll("\\", "\\\\").replaceAll(".", "\\.");
+}
+
+function formatOverviewPath(path: string[]): string {
+	return path.reduce((label, segment) => {
+		if (segment.startsWith("[")) {
+			return `${label}${segment}`;
+		}
+		const escapedSegment = escapeOverviewPathSegment(segment);
+		return label ? `${label}.${escapedSegment}` : escapedSegment;
+	}, "");
+}
+
+function collectOverviewEntries(
+	value: unknown,
+	path: string[] = [],
+	depth = 0,
+): JsonOverviewEntry[] {
+	if (Array.isArray(value)) {
+		if (value.length === 0) {
+			return path.length
+				? [{ label: formatOverviewPath(path), value: summarizeValue(value) }]
+				: [];
+		}
+
+		if (depth >= MAX_OVERVIEW_DEPTH) {
+			return path.length
+				? [{ label: formatOverviewPath(path), value: summarizeValue(value) }]
+				: value.slice(0, MAX_OVERVIEW_ARRAY_ITEMS).map((item, index) => ({
+						label: `[${index}]`,
+						value: summarizeValue(item),
+					}));
+		}
+
+		return value
+			.slice(0, MAX_OVERVIEW_ARRAY_ITEMS)
+			.flatMap((item, index) =>
+				collectOverviewEntries(item, [...path, `[${index}]`], depth + 1),
+			);
+	}
+
+	if (!isRecord(value)) {
+		return path.length
+			? [{ label: formatOverviewPath(path), value: summarizeValue(value) }]
+			: [];
+	}
+
+	const entries = Object.entries(value).sort(([leftKey], [rightKey]) =>
+		leftKey.localeCompare(rightKey),
+	);
+	if (entries.length === 0) {
+		return path.length
+			? [{ label: formatOverviewPath(path), value: summarizeValue(value) }]
+			: [];
+	}
+
+	return entries.flatMap(([entryKey, entryValue]) => {
+		const entryPath = [...path, entryKey];
+		if (
+			depth < MAX_OVERVIEW_DEPTH &&
+			((isRecord(entryValue) && Object.keys(entryValue).length > 0) ||
+				(Array.isArray(entryValue) && entryValue.length > 0))
+		) {
+			return collectOverviewEntries(entryValue, entryPath, depth + 1);
+		}
+
+		return [
+			{
+				label: formatOverviewPath(entryPath),
+				value: summarizeValue(entryValue),
+			},
+		];
+	});
 }
 
 function renderPrimitive(value: unknown): string {
@@ -141,19 +225,7 @@ export function JsonViewer({
 	const [overviewFilter, setOverviewFilter] = useState("");
 	const deferredOverviewFilter = useDeferredValue(overviewFilter);
 	const rawJson = JSON.stringify(value, null, 2) ?? "null";
-	const overviewEntries = Array.isArray(value)
-		? value.map((item, index) => ({
-				label: `[${index}]`,
-				value: summarizeValue(item),
-			}))
-		: isRecord(value)
-			? Object.entries(value)
-					.sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
-					.map(([entryKey, entryValue]) => ({
-						label: entryKey,
-						value: summarizeValue(entryValue),
-					}))
-			: [];
+	const overviewEntries = collectOverviewEntries(value);
 	const normalizedOverviewFilter = deferredOverviewFilter.trim().toLowerCase();
 	const filteredOverviewEntries = normalizedOverviewFilter
 		? overviewEntries.filter((entry) => {

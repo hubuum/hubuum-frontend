@@ -78,6 +78,37 @@ Task activity shown to regular users comes from `/api/v1/tasks` through the BFF
 proxy, so users can see the task records available to their account without
 requiring global meta access.
 
+## Object data columns
+
+The objects workspace can promote fields from each object's JSON `data` blob
+into table columns. Candidate fields are discovered from the selected class
+schema when available, then augmented from the currently loaded object rows.
+Discovery is page-local and shallowly bounded, so it does not trigger an
+expensive full-dataset scan.
+
+Column preferences are stored in browser `localStorage` per class id. The
+`Data columns` menu lets users reset to suggested fields or clear all promoted
+columns. The same menu can show or hide the raw data preview column, also
+remembered per class id.
+
+The `Custom data fields` menu lets users create personal fallback columns with a
+label and a `|`-separated list of data paths. The table shows the first
+non-empty value, so a field like
+`os.fedora.version|os.redhat.version|os.macos.version` can display one
+normalized `OS version` column across differently shaped object data. These
+custom definitions are currently stored per class id in browser `localStorage`;
+system-wide admin-managed definitions need a backend settings endpoint before
+they can be shared across users.
+
+Nested data fields use dotted display paths, while literal dots and backslashes
+inside object keys are escaped:
+
+```text
+metadata.owner     -> nested { "metadata": { "owner": ... } }
+metadata\.owner    -> literal key { "metadata.owner": ... }
+path\\.segment     -> literal key { "path\\segment": ... }
+```
+
 ## Quick start
 
 1. Install dependencies:
