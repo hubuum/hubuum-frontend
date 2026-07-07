@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 
-import { NamespaceDetail } from "@/components/namespace-detail";
+import { CollectionDetail } from "@/components/collection-detail";
 import { requireServerSession } from "@/lib/auth/guards";
 
-type NamespaceDetailPageProps = {
+type CollectionDetailPageProps = {
 	params: Promise<{
-		namespaceId: string;
+		collectionId: string;
 	}>;
 };
 
@@ -18,21 +18,21 @@ function parseId(value: string): number | null {
 	return parsed;
 }
 
-export default async function NamespaceDetailPage({
+export default async function CollectionDetailPage({
 	params,
-}: NamespaceDetailPageProps) {
+}: CollectionDetailPageProps) {
 	const session = await requireServerSession();
-	const { namespaceId } = await params;
-	const parsedNamespaceId = parseId(namespaceId);
+	const { collectionId } = await params;
+	const parsedCollectionId = parseId(collectionId);
 
-	if (parsedNamespaceId === null) {
+	if (parsedCollectionId === null) {
 		notFound();
 	}
 
 	return (
 		<section className="stack">
-			<NamespaceDetail
-				namespaceId={parsedNamespaceId}
+			<CollectionDetail
+				collectionId={parsedCollectionId}
 				currentUsername={session.username ?? null}
 			/>
 		</section>

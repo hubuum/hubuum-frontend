@@ -24,8 +24,8 @@ import {
 	getApiV1Classes,
 	getApiV1ClassesByClassIdByObjectId,
 	getApiV1IamMeGroups,
-	getApiV1Namespaces,
-	getApiV1NamespacesByNamespaceIdPermissions,
+	getApiV1Collections,
+	getApiV1CollectionsByCollectionIdPermissions,
 	patchApiV1ClassesByClassIdByObjectId,
 } from "@/lib/api/generated/client";
 import type {
@@ -34,7 +34,7 @@ import type {
 	HubuumClassExpanded,
 	HubuumObject,
 	HubuumObjectWithPath,
-	Namespace,
+	Collection,
 	UpdateHubuumObject,
 } from "@/lib/api/generated/models";
 import {
@@ -50,12 +50,12 @@ type ObjectDetailProps = {
 	canEditAnything: boolean;
 };
 
-type EditableField = "name" | "description" | "namespace" | "data";
+type EditableField = "name" | "description" | "collection" | "data";
 
 const ALL_EDITABLE_FIELDS: EditableField[] = [
 	"name",
 	"description",
-	"namespace",
+	"collection",
 	"data",
 ];
 
@@ -90,25 +90,25 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	return response.data;
 }
 
-async function fetchNamespaces(): Promise<Namespace[]> {
-	const response = await getApiV1Namespaces(undefined, {
+async function fetchCollections(): Promise<Collection[]> {
+	const response = await getApiV1Collections(undefined, {
 		credentials: "include",
 	});
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load namespaces."),
+			getApiErrorMessage(response.data, "Failed to load collections."),
 		);
 	}
 
 	return response.data;
 }
 
-async function fetchNamespacePermissions(
-	namespaceId: number,
+async function fetchCollectionPermissions(
+	collectionId: number,
 ): Promise<GroupPermission[]> {
-	const response = await getApiV1NamespacesByNamespaceIdPermissions(
-		namespaceId,
+	const response = await getApiV1CollectionsByCollectionIdPermissions(
+		collectionId,
 		undefined,
 		{
 			credentials: "include",
@@ -119,7 +119,7 @@ async function fetchNamespacePermissions(
 		throw new Error(
 			getApiErrorMessage(
 				response.data,
-				"Failed to load namespace permissions.",
+				"Failed to load collection permissions.",
 			),
 		);
 	}
@@ -264,7 +264,7 @@ export function ObjectDetail({
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [dataInput, setDataInput] = useState("{}");
-	const [namespaceId, setNamespaceId] = useState("");
+	const [collectionId, setCollectionId] = useState("");
 	const [initialized, setInitialized] = useState(false);
 	const [editingFields, setEditingFields] = useState<EditableField[]>([]);
 	const [formError, setFormError] = useState<string | null>(null);
@@ -278,14 +278,14 @@ export function ObjectDetail({
 		queryKey: ["classes", "object-detail"],
 		queryFn: fetchClasses,
 	});
-	const namespacesQuery = useQuery({
-		queryKey: ["namespaces", "object-detail"],
-		queryFn: fetchNamespaces,
+	const collectionsQuery = useQuery({
+		queryKey: ["collections", "object-detail"],
+		queryFn: fetchCollections,
 	});
-	const namespacePermissionsQuery = useQuery({
+	const collectionPermissionsQuery = useQuery({
 		queryKey: [
-			"namespace",
-			objectQuery.data?.namespace_id,
+			"collection",
+			objectQuery.data?.collection_id,
 			"permissions",
 			"object-detail",
 		],
@@ -294,7 +294,7 @@ export function ObjectDetail({
 				return [];
 			}
 
-			return fetchNamespacePermissions(objectQuery.data.namespace_id);
+			return fetchCollectionPermissions(objectQuery.data.collection_id);
 		},
 		enabled: Boolean(objectQuery.data) && !canEditAnything,
 	});
@@ -343,7 +343,7 @@ export function ObjectDetail({
 			setName(objectQuery.data.name);
 			setDescription(objectQuery.data.description ?? "");
 			setDataInput(stringifyJson(objectQuery.data.data));
-			setNamespaceId(String(objectQuery.data.namespace_id));
+			setCollectionId(String(objectQuery.data.collection_id));
 			setInitialized(true);
 		}
 	}, [editingFields.length, initialized, objectQuery.data]);
@@ -373,7 +373,7 @@ export function ObjectDetail({
 		};
 	}, [isIgnoreClassesOpen]);
 
-	const namespaces = namespacesQuery.data ?? [];
+	const collections = collectionsQuery.data ?? [];
 
 	const updateMutation = useMutation({
 		mutationFn: async (payload: UpdateHubuumObject) => {
@@ -404,12 +404,12 @@ export function ObjectDetail({
 				queryKey: ["objects", targetClassId],
 			});
 			await queryClient.invalidateQueries({
-				queryKey: ["namespace", updatedObject.namespace_id, "permissions"],
+				queryKey: ["collection", updatedObject.collection_id, "permissions"],
 			});
 			setName(updatedObject.name);
 			setDescription(updatedObject.description ?? "");
 			setDataInput(stringifyJson(updatedObject.data));
-			setNamespaceId(String(updatedObject.namespace_id));
+			setCollectionId(String(updatedObject.collection_id));
 			setEditingFields([]);
 			setFormError(null);
 			setFormSuccess("Object updated.");
@@ -457,12 +457,12 @@ export function ObjectDetail({
 	});
 
 	const currentUserGroups = currentUserGroupsQuery.data ?? [];
-	const permissionEntries = namespacePermissionsQuery.data ?? [];
+	const permissionEntries = collectionPermissionsQuery.data ?? [];
 	const canCheckPermissionMembership = Boolean(currentUsername);
 	const permissionCheckPending =
 		!canEditAnything &&
 		canCheckPermissionMembership &&
-		(namespacePermissionsQuery.isLoading || currentUserGroupsQuery.isLoading);
+		(collectionPermissionsQuery.isLoading || currentUserGroupsQuery.isLoading);
 	const canEditObject =
 		Boolean(objectQuery.data) &&
 		(canEditAnything ||
@@ -522,11 +522,11 @@ export function ObjectDetail({
 						type: "object",
 						id: objectData.id,
 						name: objectData.name,
-						namespaceId: objectData.namespace_id,
-						namespaceName:
-							(namespacesQuery.data ?? []).find(
-								(namespace) => namespace.id === objectData.namespace_id,
-							)?.name ?? "Namespace",
+						collectionId: objectData.collection_id,
+						collectionName:
+							(collectionsQuery.data ?? []).find(
+								(collection) => collection.id === objectData.collection_id,
+							)?.name ?? "Collection",
 						classId: objectData.hubuum_class_id,
 						className: currentClass?.name,
 					},
@@ -541,7 +541,7 @@ export function ObjectDetail({
 				}),
 			);
 		};
-	}, [classesQuery.data, namespacesQuery.data, objectQuery.data]);
+	}, [classesQuery.data, collectionsQuery.data, objectQuery.data]);
 
 	function resetFieldDraft(field: EditableField, objectData: HubuumObject) {
 		if (field === "name") {
@@ -554,8 +554,8 @@ export function ObjectDetail({
 			return;
 		}
 
-		if (field === "namespace") {
-			setNamespaceId(String(objectData.namespace_id));
+		if (field === "collection") {
+			setCollectionId(String(objectData.collection_id));
 			return;
 		}
 
@@ -570,7 +570,7 @@ export function ObjectDetail({
 
 		setName(objectData.name);
 		setDescription(objectData.description ?? "");
-		setNamespaceId(String(objectData.namespace_id));
+		setCollectionId(String(objectData.collection_id));
 		setDataInput(stringifyJson(objectData.data));
 		setEditingFields([]);
 		setFormError(null);
@@ -628,9 +628,9 @@ export function ObjectDetail({
 			return;
 		}
 
-		const parsedNamespaceId = Number.parseInt(namespaceId, 10);
-		if (!Number.isFinite(parsedNamespaceId) || parsedNamespaceId < 1) {
-			setFormError("Namespace ID is required.");
+		const parsedCollectionId = Number.parseInt(collectionId, 10);
+		if (!Number.isFinite(parsedCollectionId) || parsedCollectionId < 1) {
+			setFormError("Collection ID is required.");
 			return;
 		}
 
@@ -639,7 +639,7 @@ export function ObjectDetail({
 			description: description.trim(),
 			data: parsedData,
 			hubuum_class_id: classId,
-			namespace_id: parsedNamespaceId,
+			collection_id: parsedCollectionId,
 		};
 
 		updateMutation.mutate(payload);
@@ -715,17 +715,17 @@ export function ObjectDetail({
 		(classesQuery.data ?? []).find(
 			(item) => item.id === objectData.hubuum_class_id,
 		) ?? null;
-	const hasNamespaceOptions = namespaces.length > 0;
-	const hasNamespaceSelection = namespaces.some(
-		(namespace) => String(namespace.id) === namespaceId,
+	const hasCollectionOptions = collections.length > 0;
+	const hasCollectionSelection = collections.some(
+		(collection) => String(collection.id) === collectionId,
 	);
 	const classNameById = new Map<number, string>();
 	for (const item of classesQuery.data ?? []) {
 		classNameById.set(item.id, item.name);
 	}
-	const namespaceNameById = new Map<number, string>();
-	for (const namespace of namespaces) {
-		namespaceNameById.set(namespace.id, namespace.name);
+	const collectionNameById = new Map<number, string>();
+	for (const collection of collections) {
+		collectionNameById.set(collection.id, collection.name);
 	}
 	const objectContextById = new Map<
 		number,
@@ -755,8 +755,8 @@ export function ObjectDetail({
 	const ignoredClassOptions = (classesQuery.data ?? [])
 		.filter((item) => item.id !== objectData.hubuum_class_id)
 		.sort((left, right) => left.name.localeCompare(right.name));
-	const namespaceLabel =
-		namespaceNameById.get(objectData.namespace_id) ?? "Namespace";
+	const collectionLabel =
+		collectionNameById.get(objectData.collection_id) ?? "Collection";
 	const editAccessMessage = canEditAnything
 		? null
 		: permissionCheckPending
@@ -764,7 +764,7 @@ export function ObjectDetail({
 			: canEditObject
 				? "Toggle edit only on the fields you want to change."
 				: canCheckPermissionMembership
-					? "You can view this object, but editing is unavailable because your access does not include UpdateObject on this namespace."
+					? "You can view this object, but editing is unavailable because your access does not include UpdateObject on this collection."
 					: "Could not identify the current user. Showing a read-only object view.";
 
 	function renderObjectLabel(relatedObjectId: number) {
@@ -900,7 +900,7 @@ export function ObjectDetail({
 				objectId={objectId}
 				objectName={objectData.name}
 				classId={classId}
-				namespaceId={objectData.namespace_id}
+				collectionId={objectData.collection_id}
 			/>
 			<form
 				className="card stack"
@@ -1003,48 +1003,48 @@ export function ObjectDetail({
 						</section>
 
 						<section
-							className={`object-detail-row object-detail-row--compact${editingFields.includes("namespace") ? " is-editing" : ""}`}
+							className={`object-detail-row object-detail-row--compact${editingFields.includes("collection") ? " is-editing" : ""}`}
 						>
-							<div className="object-detail-label">Namespace</div>
+							<div className="object-detail-label">Collection</div>
 							<div className="object-detail-body">
-								{editingFields.includes("namespace") ? (
+								{editingFields.includes("collection") ? (
 									<div className="control-field">
 										<label
-											htmlFor="object-detail-namespace"
+											htmlFor="object-detail-collection"
 											className="sr-only"
 										>
-											Namespace
+											Collection
 										</label>
-										{hasNamespaceOptions ? (
+										{hasCollectionOptions ? (
 											<select
-												id="object-detail-namespace"
+												id="object-detail-collection"
 												required
-												value={hasNamespaceSelection ? namespaceId : ""}
-												onChange={(event) => setNamespaceId(event.target.value)}
+												value={hasCollectionSelection ? collectionId : ""}
+												onChange={(event) => setCollectionId(event.target.value)}
 											>
-												{!hasNamespaceSelection ? (
-													<option value="">Select a namespace...</option>
+												{!hasCollectionSelection ? (
+													<option value="">Select a collection...</option>
 												) : null}
-												{namespaces.map((namespace) => (
-													<option key={namespace.id} value={namespace.id}>
-														{namespace.name}
+												{collections.map((collection) => (
+													<option key={collection.id} value={collection.id}>
+														{collection.name}
 													</option>
 												))}
 											</select>
 										) : (
 											<input
-												id="object-detail-namespace"
+												id="object-detail-collection"
 												required
 												type="number"
 												min={1}
-												value={namespaceId}
-												onChange={(event) => setNamespaceId(event.target.value)}
+												value={collectionId}
+												onChange={(event) => setCollectionId(event.target.value)}
 												placeholder={
-													namespacesQuery.isLoading
-														? "Loading namespaces..."
-														: "Enter namespace ID"
+													collectionsQuery.isLoading
+														? "Loading collections..."
+														: "Enter collection ID"
 												}
-												disabled={namespacesQuery.isLoading}
+												disabled={collectionsQuery.isLoading}
 											/>
 										)}
 									</div>
@@ -1052,18 +1052,18 @@ export function ObjectDetail({
 									<button
 										type="button"
 										className="object-inline-edit"
-										onClick={() => toggleFieldEditing("namespace", objectData)}
+										onClick={() => toggleFieldEditing("collection", objectData)}
 										disabled={isSavingOrDeleting}
 									>
 										<span className="object-detail-value">
-											{namespaceLabel}
+											{collectionLabel}
 										</span>
 										<span className="object-inline-edit-icon">
 											<InlineEditIcon />
 										</span>
 									</button>
 								) : (
-									<div className="object-detail-value">{namespaceLabel}</div>
+									<div className="object-detail-value">{collectionLabel}</div>
 								)}
 							</div>
 						</section>
@@ -1116,15 +1116,15 @@ export function ObjectDetail({
 						Could not load class names. Showing class ID only.
 					</div>
 				) : null}
-				{namespacesQuery.isError ? (
+				{collectionsQuery.isError ? (
 					<div className="muted">
-						Could not load namespaces automatically. Manual namespace ID entry
+						Could not load collections automatically. Manual collection ID entry
 						is enabled.
 					</div>
 				) : null}
-				{namespacePermissionsQuery.isError ? (
+				{collectionPermissionsQuery.isError ? (
 					<div className="muted">
-						Could not verify namespace update permissions. Editing is hidden
+						Could not verify collection update permissions. Editing is hidden
 						until that check succeeds.
 					</div>
 				) : null}
@@ -1168,7 +1168,7 @@ export function ObjectDetail({
 			</form>
 
 			<RemoteInvocationsPanel
-				namespaceId={objectData.namespace_id}
+				collectionId={objectData.collection_id}
 				subject={{ type: "object", class_id: classId, object_id: objectId }}
 				subjectLabel={`object "${objectData.name}"`}
 				subjectType="object"

@@ -9,8 +9,8 @@ import {
 	normalizeCorrelationId,
 } from "@/lib/correlation";
 import {
-	type CountsWithOptionalNamespaces,
-	getTotalNamespaces,
+	type CountsWithOptionalCollections,
+	getTotalCollections,
 	tryFetchMetaCounts,
 } from "@/lib/meta";
 
@@ -35,7 +35,7 @@ type RecommendedAction = {
 };
 
 // Icon components for action cards
-function IconNamespace({ className }: { className?: string }) {
+function IconCollection({ className }: { className?: string }) {
 	return (
 		<svg
 			className={className}
@@ -48,7 +48,7 @@ function IconNamespace({ className }: { className?: string }) {
 			strokeLinecap="round"
 			strokeLinejoin="round"
 			role="img"
-			aria-label="Namespace icon"
+			aria-label="Collection icon"
 		>
 			<path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />
 		</svg>
@@ -204,7 +204,7 @@ function IconUser({ className }: { className?: string }) {
 }
 
 function getRecommendedAction(
-	counts: CountsWithOptionalNamespaces | null,
+	counts: CountsWithOptionalCollections | null,
 ): RecommendedAction {
 	if (!counts) {
 		return {
@@ -213,24 +213,24 @@ function getRecommendedAction(
 				"Pick the area you want to work in. Live counts aren't available for your account, but every workspace area is still reachable below.",
 			primaryHref: "/objects",
 			primaryLabel: "Open objects",
-			secondaryHref: "/namespaces",
-			secondaryLabel: "Open namespaces",
+			secondaryHref: "/collections",
+			secondaryLabel: "Open collections",
 		};
 	}
 
-	const totalNamespaces = getTotalNamespaces(counts);
+	const totalCollections = getTotalCollections(counts);
 	const totalClasses = counts.total_classes;
 	const totalObjects = counts.total_objects;
 
-	if (totalNamespaces === 0) {
+	if (totalCollections === 0) {
 		return {
-			title: "Start by creating a namespace",
+			title: "Start by creating a collection",
 			description:
-				"Namespaces are the entry point for permissions, classes, and everything else in the workspace.",
-			primaryHref: "/namespaces?create=1",
-			primaryLabel: "Create namespace",
-			secondaryHref: "/namespaces",
-			secondaryLabel: "Open namespaces",
+				"Collections are the entry point for permissions, classes, and everything else in the workspace.",
+			primaryHref: "/collections?create=1",
+			primaryLabel: "Create collection",
+			secondaryHref: "/collections",
+			secondaryLabel: "Open collections",
 		};
 	}
 
@@ -238,7 +238,7 @@ function getRecommendedAction(
 		return {
 			title: "Define your first class",
 			description:
-				"Once a namespace exists, classes give your objects a schema and a place to live.",
+				"Once a collection exists, classes give your objects a schema and a place to live.",
 			primaryHref: "/classes?create=1",
 			primaryLabel: "Create class",
 			secondaryHref: "/classes",
@@ -270,34 +270,34 @@ function getRecommendedAction(
 }
 
 function getActionCards(
-	counts: CountsWithOptionalNamespaces | null,
+	counts: CountsWithOptionalCollections | null,
 	canViewAdmin: boolean,
 ): ActionCard[] {
-	const totalNamespaces = counts ? getTotalNamespaces(counts) : 0;
+	const totalCollections = counts ? getTotalCollections(counts) : 0;
 	const totalClasses = counts?.total_classes ?? 0;
 	const totalObjects = counts?.total_objects ?? 0;
 
 	const cards: ActionCard[] = [
 		{
-			title: "Namespaces",
+			title: "Collections",
 			description: !counts
-				? "Organize ownership and permissions through namespaces."
-				: totalNamespaces === 0
-					? "No namespaces exist yet. Start here to establish ownership and permissions."
-					: `${totalNamespaces} namespace${totalNamespaces === 1 ? "" : "s"} available for organizing classes and access.`,
-			primaryHref: "/namespaces?create=1",
-			primaryLabel: "Create namespace",
-			secondaryHref: "/namespaces",
-			secondaryLabel: "Browse namespaces",
-			icon: <IconNamespace className="action-card-icon" />,
-			count: counts && totalNamespaces > 0 ? totalNamespaces : undefined,
+				? "Organize ownership and permissions through collections."
+				: totalCollections === 0
+					? "No collections exist yet. Start here to establish ownership and permissions."
+					: `${totalCollections} collection${totalCollections === 1 ? "" : "s"} available for organizing classes and access.`,
+			primaryHref: "/collections?create=1",
+			primaryLabel: "Create collection",
+			secondaryHref: "/collections",
+			secondaryLabel: "Browse collections",
+			icon: <IconCollection className="action-card-icon" />,
+			count: counts && totalCollections > 0 ? totalCollections : undefined,
 		},
 		{
 			title: "Classes",
 			description: !counts
 				? "Classes give your objects a schema and a place to live."
-				: totalNamespaces === 0
-					? "Classes depend on namespaces, so create a namespace first."
+				: totalCollections === 0
+					? "Classes depend on collections, so create a collection first."
 					: totalClasses === 0
 						? "No classes yet. Define one to describe the objects your team will manage."
 						: `${totalClasses} class${totalClasses === 1 ? "" : "es"} defined across the workspace.`,

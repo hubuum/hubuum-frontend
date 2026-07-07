@@ -17,10 +17,10 @@ fields match all events for that dimension.
 export interface EventSubscriptionFilter {
   actor_kinds?: string[];
   actor_user_ids?: number[];
+  collection_ids?: number[];
   correlation_ids?: string[];
   entity_ids?: number[];
   entity_names?: string[];
-  namespace_ids?: number[];
-  related_namespace_ids?: number[];
+  related_collection_ids?: number[];
   request_ids?: string[];
 }

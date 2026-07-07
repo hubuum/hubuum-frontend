@@ -14,6 +14,8 @@ export interface EventResponse {
   after?: unknown;
   before?: unknown;
   /** @nullable */
+  collection_id?: number | null;
+  /** @nullable */
   correlation_id?: string | null;
   /** @nullable */
   entity_id?: number | null;
@@ -23,8 +25,6 @@ export interface EventResponse {
   event_id: string;
   id: number;
   metadata: unknown;
-  /** @nullable */
-  namespace_id?: number | null;
   occurred_at: string;
   /** @nullable */
   request_id?: string | null;

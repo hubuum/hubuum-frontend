@@ -10,7 +10,7 @@ export type ReportScopeKind = typeof ReportScopeKind[keyof typeof ReportScopeKin
 
 
 export const ReportScopeKind = {
-  namespaces: 'namespaces',
+  collections: 'collections',
   classes: 'classes',
   objects_in_class: 'objects_in_class',
   class_relations: 'class_relations',

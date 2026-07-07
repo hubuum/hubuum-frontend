@@ -10,7 +10,7 @@ export type RemoteTargetSubjectType = typeof RemoteTargetSubjectType[keyof typeo
 
 
 export const RemoteTargetSubjectType = {
-  namespace: 'namespace',
+  collection: 'collection',
   class: 'class',
   object: 'object',
   class_relation: 'class_relation',

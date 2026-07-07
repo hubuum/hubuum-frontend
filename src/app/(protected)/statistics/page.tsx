@@ -8,7 +8,7 @@ import {
 	normalizeCorrelationId,
 } from "@/lib/correlation";
 import {
-	getTotalNamespaces,
+	getTotalCollections,
 	tryFetchSystemMetaSnapshot,
 } from "@/lib/meta";
 
@@ -99,7 +99,7 @@ export default async function StatisticsPage() {
 	}
 
 	const { counts, db, tasks } = snapshot;
-	const totalNamespaces = getTotalNamespaces(counts);
+	const totalCollections = getTotalCollections(counts);
 
 	return (
 		<section className="stack">
@@ -126,8 +126,8 @@ export default async function StatisticsPage() {
 							<strong>{counts.total_objects}</strong>
 						</li>
 						<li>
-							<span>Total namespaces</span>
-							<strong>{totalNamespaces}</strong>
+							<span>Total collections</span>
+							<strong>{totalCollections}</strong>
 						</li>
 					</ul>
 				</article>

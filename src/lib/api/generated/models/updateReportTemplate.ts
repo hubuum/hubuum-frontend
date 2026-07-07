@@ -15,6 +15,8 @@ import type { ReportTemplateKind } from './reportTemplateKind';
 export interface UpdateReportTemplate {
   /** @nullable */
   class_id?: number | null;
+  /** @nullable */
+  collection_id?: number | null;
   default_limits?: null | ReportLimits;
   default_missing_data_policy?: null | ReportMissingDataPolicy;
   /** @nullable */
@@ -25,8 +27,6 @@ export interface UpdateReportTemplate {
   kind?: null | ReportTemplateKind;
   /** @nullable */
   name?: string | null;
-  /** @nullable */
-  namespace_id?: number | null;
   relation_context?: null | ReportRelationContext;
   scope_kind?: null | ReportScopeKind;
   /** @nullable */

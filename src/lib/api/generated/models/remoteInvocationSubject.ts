@@ -5,15 +5,15 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
+import type { CollectionID } from './collectionID';
 import type { HubuumClassID } from './hubuumClassID';
 import type { HubuumClassRelationID } from './hubuumClassRelationID';
 import type { HubuumObjectID } from './hubuumObjectID';
 import type { HubuumObjectRelationID } from './hubuumObjectRelationID';
-import type { NamespaceID } from './namespaceID';
 
 export type RemoteInvocationSubject = {
-  namespace_id: NamespaceID;
-  type: 'namespace';
+  collection_id: CollectionID;
+  type: 'collection';
 } | {
   class_id: HubuumClassID;
   type: 'class';

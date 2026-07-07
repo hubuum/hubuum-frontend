@@ -7,6 +7,7 @@
  */
 
 export interface Permission {
+  collection_id: number;
   created_at: string;
   group_id: number;
   has_create_class: boolean;
@@ -15,10 +16,10 @@ export interface Permission {
   has_create_object_relation: boolean;
   has_create_remote_target: boolean;
   has_create_template: boolean;
-  has_delegate_namespace: boolean;
+  has_delegate_collection: boolean;
   has_delete_class: boolean;
   has_delete_class_relation: boolean;
-  has_delete_namespace: boolean;
+  has_delete_collection: boolean;
   has_delete_object: boolean;
   has_delete_object_relation: boolean;
   has_delete_remote_target: boolean;
@@ -28,19 +29,18 @@ export interface Permission {
   has_read_audit: boolean;
   has_read_class: boolean;
   has_read_class_relation: boolean;
-  has_read_namespace: boolean;
+  has_read_collection: boolean;
   has_read_object: boolean;
   has_read_object_relation: boolean;
   has_read_remote_target: boolean;
   has_read_template: boolean;
   has_update_class: boolean;
   has_update_class_relation: boolean;
-  has_update_namespace: boolean;
+  has_update_collection: boolean;
   has_update_object: boolean;
   has_update_object_relation: boolean;
   has_update_remote_target: boolean;
   has_update_template: boolean;
   id: number;
-  namespace_id: number;
   updated_at: string;
 }

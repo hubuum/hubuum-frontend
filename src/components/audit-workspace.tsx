@@ -45,7 +45,7 @@ export function AuditWorkspace() {
 	});
 	const [entityType, setEntityType] = useState("");
 	const [entityId, setEntityId] = useState("");
-	const [namespaceId, setNamespaceId] = useState("");
+	const [collectionId, setCollectionId] = useState("");
 	const [action, setAction] = useState("");
 	const [actorKind, setActorKind] = useState("");
 	const [actorUserId, setActorUserId] = useState("");
@@ -69,7 +69,7 @@ export function AuditWorkspace() {
 			sort: "-occurred_at,-id",
 			entity_type: entityType.trim() || undefined,
 			entity_id: parseOptionalNumber(entityId),
-			namespace_id: parseOptionalNumber(namespaceId),
+			collection_id: parseOptionalNumber(collectionId),
 			action: action.trim() || undefined,
 			actor_kind: actorKind.trim() || undefined,
 			actor_user_id: parseOptionalNumber(actorUserId),
@@ -82,7 +82,7 @@ export function AuditWorkspace() {
 		setCursor("");
 		setEntityType("");
 		setEntityId("");
-		setNamespaceId("");
+		setCollectionId("");
 		setAction("");
 		setActorKind("");
 		setActorUserId("");
@@ -100,7 +100,7 @@ export function AuditWorkspace() {
 				</div>
 				<p className="muted">
 					Browse visible audit events from the backend event stream. Results are
-					scoped by your account and namespace permissions.
+					scoped by your account and collection permissions.
 				</p>
 			</header>
 
@@ -111,7 +111,7 @@ export function AuditWorkspace() {
 						<input
 							value={entityType}
 							onChange={(event) => setEntityType(event.target.value)}
-							placeholder="namespace, class, object"
+							placeholder="collection, class, object"
 						/>
 					</label>
 					<label>
@@ -123,10 +123,10 @@ export function AuditWorkspace() {
 						/>
 					</label>
 					<label>
-						<span>Namespace ID</span>
+						<span>Collection ID</span>
 						<input
-							value={namespaceId}
-							onChange={(event) => setNamespaceId(event.target.value)}
+							value={collectionId}
+							onChange={(event) => setCollectionId(event.target.value)}
 							inputMode="numeric"
 						/>
 					</label>
@@ -232,7 +232,7 @@ export function AuditWorkspace() {
 									<th>Entity</th>
 									<th>Action</th>
 									<th>Actor</th>
-									<th>Namespace</th>
+									<th>Collection</th>
 									<th>Summary</th>
 									<th>Correlation</th>
 								</tr>
@@ -248,7 +248,7 @@ export function AuditWorkspace() {
 										</td>
 										<td>{event.action}</td>
 										<td>{formatActor(event.actor_kind, event.actor_user_id)}</td>
-										<td>{event.namespace_id ?? "n/a"}</td>
+										<td>{event.collection_id ?? "n/a"}</td>
 										<td>{event.summary}</td>
 										<td>{event.correlation_id ?? "n/a"}</td>
 									</tr>

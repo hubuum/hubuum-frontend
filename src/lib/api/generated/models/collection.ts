@@ -6,17 +6,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface NamespaceHistory {
-  /** @nullable */
-  actor_id?: number | null;
+export interface Collection {
   created_at: string;
   description: string;
-  history_id: number;
   id: number;
   name: string;
-  op: string;
   updated_at: string;
-  valid_from: string;
-  /** @nullable */
-  valid_to?: string | null;
 }

@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type GetApiV1NamespacesByNamespaceIdEventsParams = {
+export type GetApiV1CollectionsByCollectionIdEventsParams = {
 /**
  * Optional action filter
  */

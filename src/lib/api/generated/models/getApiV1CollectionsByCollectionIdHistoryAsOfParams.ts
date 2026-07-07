@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.0.1
  */
 
+export type GetApiV1CollectionsByCollectionIdHistoryAsOfParams = {
 /**
- * Identifier wrapper for a [`Namespace`].
+ * RFC3339 timestamp
  */
-export type NamespaceID = number;
+at: string;
+};

@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type GetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionParams = {
+export type GetApiV1CollectionsParams = {
 /**
  * Maximum number of items to return. Defaults to 100. Maximum is 250.
  */

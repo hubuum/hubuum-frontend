@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface UpdateNamespace {
+export interface UpdateCollection {
   /** @nullable */
   description?: string | null;
   /** @nullable */

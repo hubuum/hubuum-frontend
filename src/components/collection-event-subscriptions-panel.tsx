@@ -4,11 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { JsonViewer } from "@/components/json-viewer";
 import {
-	createNamespaceEventSubscription,
-	deleteNamespaceEventSubscription,
+	createCollectionEventSubscription,
+	deleteCollectionEventSubscription,
 	fetchEventSinks,
-	fetchNamespaceEventSubscriptions,
-	updateNamespaceEventSubscription,
+	fetchCollectionEventSubscriptions,
+	updateCollectionEventSubscription,
 } from "@/lib/api/events";
 import type {
 	EventSink,
@@ -19,8 +19,8 @@ import type {
 	UpdateEventSubscription,
 } from "@/lib/api/generated/models";
 
-type NamespaceEventSubscriptionsPanelProps = {
-	namespaceId: number;
+type CollectionEventSubscriptionsPanelProps = {
+	collectionId: number;
 	canManage: boolean;
 	isPermissionPending: boolean;
 };
@@ -37,11 +37,11 @@ type SubscriptionFormState = {
 	entityIds: string;
 	entityNames: string;
 	entityTypes: string[];
-	includeCurrentNamespace: boolean;
+	includeCurrentCollection: boolean;
 	name: string;
-	namespaceIds: string;
+	collectionIds: string;
 	recipients: string;
-	relatedNamespaceIds: string;
+	relatedCollectionIds: string;
 	requestIds: string;
 	routingJson: string;
 	routingMode: "structured" | "json";
@@ -51,7 +51,7 @@ type SubscriptionFormState = {
 };
 
 const ENTITY_TYPE_OPTIONS = [
-	"namespace",
+	"collection",
 	"class",
 	"object",
 	"class_relation",
@@ -86,11 +86,11 @@ const EMPTY_FORM: SubscriptionFormState = {
 	entityIds: "",
 	entityNames: "",
 	entityTypes: [],
-	includeCurrentNamespace: true,
+	includeCurrentCollection: true,
 	name: "",
-	namespaceIds: "",
+	collectionIds: "",
 	recipients: "",
-	relatedNamespaceIds: "",
+	relatedCollectionIds: "",
 	requestIds: "",
 	routingJson: "{}",
 	routingMode: "structured",
@@ -221,12 +221,12 @@ function routingToFormFields(
 function subscriptionToForm(
 	subscription: EventSubscription,
 	sinkKind: EventSinkKind | undefined,
-	namespaceId: number,
+	collectionId: number,
 ): SubscriptionFormState {
 	const filter = subscription.filter ?? {};
-	const namespaceIds = filter.namespace_ids ?? [];
-	const includeCurrentNamespace = namespaceIds.includes(namespaceId);
-	const otherNamespaceIds = namespaceIds.filter((id) => id !== namespaceId);
+	const collectionIds = filter.collection_ids ?? [];
+	const includeCurrentCollection = collectionIds.includes(collectionId);
+	const otherCollectionIds = collectionIds.filter((id) => id !== collectionId);
 	return {
 		...EMPTY_FORM,
 		...routingToFormFields(subscription.routing, sinkKind),
@@ -239,10 +239,10 @@ function subscriptionToForm(
 		entityIds: (filter.entity_ids ?? []).join(", "),
 		entityNames: (filter.entity_names ?? []).join(", "),
 		entityTypes: subscription.entity_types,
-		includeCurrentNamespace,
+		includeCurrentCollection,
 		name: subscription.name,
-		namespaceIds: otherNamespaceIds.join(", "),
-		relatedNamespaceIds: (filter.related_namespace_ids ?? []).join(", "),
+		collectionIds: otherCollectionIds.join(", "),
+		relatedCollectionIds: (filter.related_collection_ids ?? []).join(", "),
 		requestIds: (filter.request_ids ?? []).join(", "),
 		sinkId: String(subscription.sink_id),
 	};
@@ -250,23 +250,23 @@ function subscriptionToForm(
 
 function buildFilter(
 	form: SubscriptionFormState,
-	namespaceId: number,
+	collectionId: number,
 ): EventSubscriptionFilter | undefined {
-	const namespaceIds = mergeUniqueNumbers(
-		form.includeCurrentNamespace ? [namespaceId] : undefined,
-		parseNumberTokens(form.namespaceIds, "Namespace filters"),
+	const collectionIds = mergeUniqueNumbers(
+		form.includeCurrentCollection ? [collectionId] : undefined,
+		parseNumberTokens(form.collectionIds, "Collection filters"),
 	);
 	const filter: EventSubscriptionFilter = {};
-	if (namespaceIds) {
-		filter.namespace_ids = namespaceIds;
+	if (collectionIds) {
+		filter.collection_ids = collectionIds;
 	}
 
-	const relatedNamespaceIds = parseNumberTokens(
-		form.relatedNamespaceIds,
-		"Related namespace filters",
+	const relatedCollectionIds = parseNumberTokens(
+		form.relatedCollectionIds,
+		"Related collection filters",
 	);
-	if (relatedNamespaceIds) {
-		filter.related_namespace_ids = relatedNamespaceIds;
+	if (relatedCollectionIds) {
+		filter.related_collection_ids = relatedCollectionIds;
 	}
 
 	const entityIds = parseNumberTokens(form.entityIds, "Entity filters");
@@ -342,7 +342,7 @@ function buildRouting(
 
 function buildPayload(
 	form: SubscriptionFormState,
-	namespaceId: number,
+	collectionId: number,
 	selectedSink: EventSink | undefined,
 ): NewEventSubscription {
 	const sinkId = Number.parseInt(form.sinkId, 10);
@@ -368,7 +368,7 @@ function buildPayload(
 		description: form.description.trim(),
 		enabled: form.enabled,
 		entity_types: form.entityTypes,
-		filter: buildFilter(form, namespaceId),
+		filter: buildFilter(form, collectionId),
 		name,
 		routing: buildRouting(form, selectedSink?.kind),
 		sink_id: sinkId,
@@ -381,11 +381,11 @@ function formatFilterSummary(filter: EventSubscriptionFilter | undefined): strin
 	}
 
 	const parts: string[] = [];
-	if (filter.namespace_ids?.length) {
-		parts.push(`namespaces ${filter.namespace_ids.join(", ")}`);
+	if (filter.collection_ids?.length) {
+		parts.push(`collections ${filter.collection_ids.join(", ")}`);
 	}
-	if (filter.related_namespace_ids?.length) {
-		parts.push(`related ${filter.related_namespace_ids.join(", ")}`);
+	if (filter.related_collection_ids?.length) {
+		parts.push(`related ${filter.related_collection_ids.join(", ")}`);
 	}
 	if (filter.entity_ids?.length) {
 		parts.push(`entities ${filter.entity_ids.join(", ")}`);
@@ -409,11 +409,11 @@ function formatFilterSummary(filter: EventSubscriptionFilter | undefined): strin
 	return parts.join(" · ");
 }
 
-export function NamespaceEventSubscriptionsPanel({
-	namespaceId,
+export function CollectionEventSubscriptionsPanel({
+	collectionId,
 	canManage,
 	isPermissionPending,
-}: NamespaceEventSubscriptionsPanelProps) {
+}: CollectionEventSubscriptionsPanelProps) {
 	const queryClient = useQueryClient();
 	const [isEditorOpen, setEditorOpen] = useState(false);
 	const [editingSubscriptionId, setEditingSubscriptionId] = useState<number | null>(
@@ -423,12 +423,12 @@ export function NamespaceEventSubscriptionsPanel({
 	const [formError, setFormError] = useState<string | null>(null);
 
 	const subscriptionsQuery = useQuery({
-		queryKey: ["namespace-event-subscriptions", namespaceId],
-		queryFn: () => fetchNamespaceEventSubscriptions(namespaceId),
+		queryKey: ["collection-event-subscriptions", collectionId],
+		queryFn: () => fetchCollectionEventSubscriptions(collectionId),
 		enabled: canManage,
 	});
 	const sinksQuery = useQuery({
-		queryKey: ["event-sinks", "namespace-subscriptions"],
+		queryKey: ["event-sinks", "collection-subscriptions"],
 		queryFn: fetchEventSinks,
 		enabled: canManage,
 	});
@@ -441,10 +441,10 @@ export function NamespaceEventSubscriptionsPanel({
 
 	const createMutation = useMutation({
 		mutationFn: (payload: NewEventSubscription) =>
-			createNamespaceEventSubscription(namespaceId, payload),
+			createCollectionEventSubscription(collectionId, payload),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
-				queryKey: ["namespace-event-subscriptions", namespaceId],
+				queryKey: ["collection-event-subscriptions", collectionId],
 			});
 			setEditorOpen(false);
 			setEditingSubscriptionId(null);
@@ -467,10 +467,10 @@ export function NamespaceEventSubscriptionsPanel({
 			subscriptionId: number;
 			payload: UpdateEventSubscription;
 		}) =>
-			updateNamespaceEventSubscription(namespaceId, subscriptionId, payload),
+			updateCollectionEventSubscription(collectionId, subscriptionId, payload),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
-				queryKey: ["namespace-event-subscriptions", namespaceId],
+				queryKey: ["collection-event-subscriptions", collectionId],
 			});
 			setEditorOpen(false);
 			setEditingSubscriptionId(null);
@@ -487,10 +487,10 @@ export function NamespaceEventSubscriptionsPanel({
 
 	const deleteMutation = useMutation({
 		mutationFn: (subscriptionId: number) =>
-			deleteNamespaceEventSubscription(namespaceId, subscriptionId),
+			deleteCollectionEventSubscription(collectionId, subscriptionId),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
-				queryKey: ["namespace-event-subscriptions", namespaceId],
+				queryKey: ["collection-event-subscriptions", collectionId],
 			});
 		},
 	});
@@ -531,7 +531,7 @@ export function NamespaceEventSubscriptionsPanel({
 
 	function startEdit(subscription: EventSubscription) {
 		const sink = sinkLookup.get(subscription.sink_id);
-		setForm(subscriptionToForm(subscription, sink?.kind, namespaceId));
+		setForm(subscriptionToForm(subscription, sink?.kind, collectionId));
 		setEditingSubscriptionId(subscription.id);
 		setFormError(null);
 		setEditorOpen(true);
@@ -549,7 +549,7 @@ export function NamespaceEventSubscriptionsPanel({
 
 		let payload: NewEventSubscription;
 		try {
-			payload = buildPayload(form, namespaceId, selectedSink);
+			payload = buildPayload(form, collectionId, selectedSink);
 		} catch (error) {
 			setFormError(error instanceof Error ? error.message : "Invalid form.");
 			return;
@@ -583,7 +583,7 @@ export function NamespaceEventSubscriptionsPanel({
 				<div className="stack action-card-header">
 					<h3>Event subscriptions</h3>
 					<p className="muted">
-						Namespace-scoped rules that fan matching audit events out to a
+						Collection-scoped rules that fan matching audit events out to a
 						configured sink.
 					</p>
 				</div>
@@ -607,7 +607,7 @@ export function NamespaceEventSubscriptionsPanel({
 			{!isPermissionPending && !canManage ? (
 				<div className="empty-state">
 					Event subscription management is not available with your current
-					namespace permissions.
+					collection permissions.
 				</div>
 			) : null}
 
@@ -757,31 +757,31 @@ export function NamespaceEventSubscriptionsPanel({
 							<label className="checkbox-row">
 								<input
 									type="checkbox"
-									checked={form.includeCurrentNamespace}
+									checked={form.includeCurrentCollection}
 									onChange={(event) =>
 										patchForm({
-											includeCurrentNamespace: event.target.checked,
+											includeCurrentCollection: event.target.checked,
 										})
 									}
 								/>
-								<span>Current namespace</span>
+								<span>Current collection</span>
 							</label>
 							<label>
-								<span>Other namespace IDs</span>
+								<span>Other collection IDs</span>
 								<input
-									value={form.namespaceIds}
+									value={form.collectionIds}
 									onChange={(event) =>
-										patchForm({ namespaceIds: event.target.value })
+										patchForm({ collectionIds: event.target.value })
 									}
 									placeholder="12, 34"
 								/>
 							</label>
 							<label>
-								<span>Related namespace IDs</span>
+								<span>Related collection IDs</span>
 								<input
-									value={form.relatedNamespaceIds}
+									value={form.relatedCollectionIds}
 									onChange={(event) =>
-										patchForm({ relatedNamespaceIds: event.target.value })
+										patchForm({ relatedCollectionIds: event.target.value })
 									}
 									placeholder="56, 78"
 								/>

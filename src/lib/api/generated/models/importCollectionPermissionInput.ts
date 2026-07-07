@@ -5,15 +5,15 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
+import type { CollectionKey } from './collectionKey';
 import type { GroupKey } from './groupKey';
-import type { NamespaceKey } from './namespaceKey';
 import type { Permissions } from './permissions';
 
-export interface ImportNamespacePermissionInput {
-  group_key: GroupKey;
-  namespace_key?: null | NamespaceKey;
+export interface ImportCollectionPermissionInput {
+  collection_key?: null | CollectionKey;
   /** @nullable */
-  namespace_ref?: string | null;
+  collection_ref?: string | null;
+  group_key: GroupKey;
   permissions: Permissions[];
   /** @nullable */
   ref?: string | null;

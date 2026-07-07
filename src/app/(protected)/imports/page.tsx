@@ -14,7 +14,7 @@ export default async function ImportsPage() {
 		normalizeCorrelationId(requestHeaders.get(CORRELATION_ID_HEADER)) ??
 		undefined;
 	const session = await requireServerSession();
-	const canCreateNamespaces = await hasAdminAccess(session.token, correlationId);
+	const canCreateCollections = await hasAdminAccess(session.token, correlationId);
 
-	return <ImportsWorkspace canCreateNamespaces={canCreateNamespaces} />;
+	return <ImportsWorkspace canCreateCollections={canCreateCollections} />;
 }

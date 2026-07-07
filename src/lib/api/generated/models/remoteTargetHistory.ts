@@ -15,6 +15,7 @@ export interface RemoteTargetHistory {
   body_template?: string | null;
   /** @nullable */
   class_id?: number | null;
+  collection_id: number;
   created_at: string;
   description: string;
   enabled: boolean;
@@ -23,7 +24,6 @@ export interface RemoteTargetHistory {
   id: number;
   method: string;
   name: string;
-  namespace_id: number;
   op: string;
   timeout_ms: number;
   updated_at: string;

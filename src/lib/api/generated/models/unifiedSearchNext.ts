@@ -10,7 +10,7 @@ export interface UnifiedSearchNext {
   /** @nullable */
   classes?: string | null;
   /** @nullable */
-  namespaces?: string | null;
+  collections?: string | null;
   /** @nullable */
   objects?: string | null;
 }

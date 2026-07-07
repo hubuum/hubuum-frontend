@@ -26,7 +26,7 @@ const shortcuts: Shortcut[] = [
 	{ keys: ["N"], description: "Go to the next page in the active paged view" },
 	{ keys: ["P"], description: "Go to the previous page in the active paged view" },
 	{ keys: ["G", "H"], description: "Go to Home" },
-	{ keys: ["G", "N"], description: "Go to Namespaces" },
+	{ keys: ["G", "N"], description: "Go to Collections" },
 	{ keys: ["G", "C"], description: "Go to Classes" },
 	{ keys: ["G", "O"], description: "Go to Objects" },
 	{ keys: ["G", "R"], description: "Go to Relations" },

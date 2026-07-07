@@ -15,7 +15,7 @@ export type QueryFieldDefinition = {
 };
 
 export const SCOPE_QUERY_FIELDS: Record<ReportScopeKind, QueryFieldDefinition[]> = {
-	namespaces: [
+	collections: [
 		{ key: "id", kind: "number", sortable: true },
 		{ key: "name", kind: "string", sortable: true },
 		{ key: "description", kind: "string", sortable: false },
@@ -25,8 +25,8 @@ export const SCOPE_QUERY_FIELDS: Record<ReportScopeKind, QueryFieldDefinition[]>
 	],
 	classes: [
 		{ key: "id", kind: "number", sortable: true },
-		{ key: "namespaces", kind: "number", sortable: true },
-		{ key: "namespace_id", kind: "number", sortable: true },
+		{ key: "collections", kind: "number", sortable: true },
+		{ key: "collection_id", kind: "number", sortable: true },
 		{ key: "name", kind: "string", sortable: true },
 		{ key: "description", kind: "string", sortable: false },
 		{ key: "validate_schema", kind: "boolean", sortable: false },
@@ -39,8 +39,8 @@ export const SCOPE_QUERY_FIELDS: Record<ReportScopeKind, QueryFieldDefinition[]>
 		{ key: "id", kind: "number", sortable: true },
 		{ key: "name", kind: "string", sortable: true },
 		{ key: "description", kind: "string", sortable: false },
-		{ key: "namespaces", kind: "number", sortable: true },
-		{ key: "namespace_id", kind: "number", sortable: true },
+		{ key: "collections", kind: "number", sortable: true },
+		{ key: "collection_id", kind: "number", sortable: true },
 		{ key: "classes", kind: "number", sortable: true },
 		{ key: "class_id", kind: "number", sortable: true },
 		{ key: "json_data", kind: "json", sortable: false },
@@ -71,8 +71,8 @@ export const SCOPE_QUERY_FIELDS: Record<ReportScopeKind, QueryFieldDefinition[]>
 		{ key: "id", kind: "number", sortable: true },
 		{ key: "name", kind: "string", sortable: true },
 		{ key: "description", kind: "string", sortable: true },
-		{ key: "namespace_id", kind: "number", sortable: true },
-		{ key: "namespaces", kind: "number", sortable: true },
+		{ key: "collection_id", kind: "number", sortable: true },
+		{ key: "collections", kind: "number", sortable: true },
 		{ key: "class_id", kind: "number", sortable: true },
 		{ key: "classes", kind: "number", sortable: true },
 		{ key: "created_at", kind: "date", sortable: true },
@@ -81,8 +81,8 @@ export const SCOPE_QUERY_FIELDS: Record<ReportScopeKind, QueryFieldDefinition[]>
 		{ key: "to_objects", kind: "number", sortable: true },
 		{ key: "from_classes", kind: "number", sortable: true },
 		{ key: "to_classes", kind: "number", sortable: true },
-		{ key: "from_namespaces", kind: "number", sortable: true },
-		{ key: "to_namespaces", kind: "number", sortable: true },
+		{ key: "from_collections", kind: "number", sortable: true },
+		{ key: "to_collections", kind: "number", sortable: true },
 		{ key: "from_name", kind: "string", sortable: true },
 		{ key: "to_name", kind: "string", sortable: true },
 		{ key: "from_description", kind: "string", sortable: true },

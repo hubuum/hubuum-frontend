@@ -8,11 +8,11 @@
 import type { GroupGrant } from './groupGrant';
 
 /**
- * A principal's effective permissions on a single namespace, broken down by the
+ * A principal's effective permissions on a single collection, broken down by the
 group that grants them.
  */
-export interface PrincipalNamespacePermissions {
+export interface PrincipalCollectionPermissions {
+  collection_id: number;
+  collection_name: string;
   grants: GroupGrant[];
-  namespace_id: number;
-  namespace_name: string;
 }

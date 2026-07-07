@@ -13,12 +13,12 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
 	getApiV1Classes,
-	getApiV1Namespaces,
+	getApiV1Collections,
 	postApiV1Classes,
 } from "@/lib/api/generated/client";
 import type {
 	HubuumClassExpanded,
-	Namespace,
+	Collection,
 	NewHubuumClass,
 } from "@/lib/api/generated/models";
 import {
@@ -87,8 +87,8 @@ async function fetchClasses(
 	};
 }
 
-async function fetchNamespaces(): Promise<Namespace[]> {
-	const response = await getApiV1Namespaces(
+async function fetchCollections(): Promise<Collection[]> {
+	const response = await getApiV1Collections(
 		{ limit: 250 },
 		{
 			credentials: "include",
@@ -97,7 +97,7 @@ async function fetchNamespaces(): Promise<Namespace[]> {
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load namespaces."),
+			getApiErrorMessage(response.data, "Failed to load collections."),
 		);
 	}
 
@@ -112,7 +112,7 @@ export function ClassesTable() {
 	const confirm = useConfirm();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
-	const [namespaceId, setNamespaceId] = useState("");
+	const [collectionId, setCollectionId] = useState("");
 	const [validateSchema, setValidateSchema] = useState(false);
 	const [jsonSchemaInput, setJsonSchemaInput] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
@@ -135,12 +135,12 @@ export function ClassesTable() {
 		queryFn: () =>
 			fetchClasses(pagination.limit, pagination.cursor, getSortParam()),
 	});
-	const namespacesQuery = useQuery({
-		queryKey: ["namespaces", "class-form"],
-		queryFn: fetchNamespaces,
+	const collectionsQuery = useQuery({
+		queryKey: ["collections", "class-form"],
+		queryFn: fetchCollections,
 	});
-	const namespaces = namespacesQuery.data ?? [];
-	const canCreateClass = namespaces.length > 0;
+	const collections = collectionsQuery.data ?? [];
+	const canCreateClass = collections.length > 0;
 
 	useEffect(() => {
 		if (searchParams.get("create") !== "1") {
@@ -160,12 +160,12 @@ export function ClassesTable() {
 	}, [searchParams]);
 
 	useEffect(() => {
-		if (namespaceId || !namespaces.length) {
+		if (collectionId || !collections.length) {
 			return;
 		}
 
-		setNamespaceId(String(namespaces[0].id));
-	}, [namespaceId, namespaces]);
+		setCollectionId(String(collections[0].id));
+	}, [collectionId, collections]);
 
 	const createMutation = useMutation({
 		mutationFn: async (payload: NewHubuumClass) => {
@@ -265,14 +265,14 @@ export function ClassesTable() {
 
 		if (!canCreateClass) {
 			setFormError(
-				"No namespaces available. You need namespace permissions before creating a class.",
+				"No collections available. You need collection permissions before creating a class.",
 			);
 			return;
 		}
 
-		const parsedNamespaceId = Number.parseInt(namespaceId, 10);
-		if (!Number.isFinite(parsedNamespaceId) || parsedNamespaceId < 1) {
-			setFormError("Namespace is required.");
+		const parsedCollectionId = Number.parseInt(collectionId, 10);
+		if (!Number.isFinite(parsedCollectionId) || parsedCollectionId < 1) {
+			setFormError("Collection is required.");
 			return;
 		}
 
@@ -289,7 +289,7 @@ export function ClassesTable() {
 		const payload: NewHubuumClass = {
 			name: name.trim(),
 			description: description.trim(),
-			namespace_id: parsedNamespaceId,
+			collection_id: parsedCollectionId,
 			validate_schema: validateSchema,
 		};
 
@@ -451,19 +451,19 @@ export function ClassesTable() {
 					</label>
 
 					<label className="control-field">
-						<span>Namespace</span>
+						<span>Collection</span>
 						<select
 							required
-							value={namespaceId}
-							onChange={(event) => setNamespaceId(event.target.value)}
+							value={collectionId}
+							onChange={(event) => setCollectionId(event.target.value)}
 							disabled={!canCreateClass}
 						>
 							{!canCreateClass ? (
-								<option value="">No namespaces available</option>
+								<option value="">No collections available</option>
 							) : null}
-							{namespaces.map((namespace) => (
-								<option key={namespace.id} value={namespace.id}>
-									{namespace.name} (#{namespace.id})
+							{collections.map((collection) => (
+								<option key={collection.id} value={collection.id}>
+									{collection.name} (#{collection.id})
 								</option>
 							))}
 						</select>
@@ -583,14 +583,14 @@ export function ClassesTable() {
 						description={
 							searchTerm
 								? "Clear the filter to return to the full class list."
-								: "Create a class in a namespace before adding objects."
+								: "Create a class in a collection before adding objects."
 						}
 						action={
 							searchTerm ? null : (
 								<button
 									type="button"
 									onClick={() => setCreateModalOpen(true)}
-									disabled={namespaces.length === 0}
+									disabled={collections.length === 0}
 								>
 									New class
 								</button>
@@ -619,9 +619,9 @@ export function ClassesTable() {
 								</th>
 								<th
 									className="sortable"
-									onClick={() => setSort("namespace_id")}
+									onClick={() => setSort("collection_id")}
 								>
-									Namespace{renderSortIndicator("namespace_id")}
+									Collection{renderSortIndicator("collection_id")}
 								</th>
 								<th className="sortable" onClick={() => setSort("description")}>
 									Description{renderSortIndicator("description")}
@@ -668,7 +668,7 @@ export function ClassesTable() {
 											</Link>
 										</td>
 										<td>
-											{item.namespace.name} (#{item.namespace.id})
+											{item.collection.name} (#{item.collection.id})
 										</td>
 										<td>{item.description || "-"}</td>
 									</tr>

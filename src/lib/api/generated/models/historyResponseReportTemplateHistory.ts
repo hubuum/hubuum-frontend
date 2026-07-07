@@ -14,6 +14,7 @@ export type HistoryResponseReportTemplateHistory = ({
   actor_id?: number | null;
   /** @nullable */
   class_id?: number | null;
+  collection_id: number;
   content_type: string;
   created_at: string;
   default_limits?: unknown;
@@ -27,7 +28,6 @@ export type HistoryResponseReportTemplateHistory = ({
   include?: unknown;
   kind: string;
   name: string;
-  namespace_id: number;
   op: string;
   relation_context?: unknown;
   /** @nullable */

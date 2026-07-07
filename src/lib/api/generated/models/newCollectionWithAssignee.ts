@@ -7,13 +7,13 @@
  */
 
 /**
- * A new namespace, with an assignee. Used for creating new namespace entries
+ * A new collection, with an assignee. Used for creating new collection entries
 into the database and assign all permissions to the group given as group_id.
 
-This wraps the NewNamespace struct and uses the group_id to grant all permissions
+This wraps the NewCollection struct and uses the group_id to grant all permissions
 to the group in a single transaction.
  */
-export interface NewNamespaceWithAssignee {
+export interface NewCollectionWithAssignee {
   description: string;
   group_id: number;
   name: string;

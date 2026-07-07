@@ -10,30 +10,30 @@ import {
 	useState,
 } from "react";
 import { EmptyState } from "@/components/empty-state";
-import { NamespaceEventSubscriptionsPanel } from "@/components/namespace-event-subscriptions-panel";
-import { NamespaceDetailTracker } from "@/components/namespace-detail-tracker";
+import { CollectionEventSubscriptionsPanel } from "@/components/collection-event-subscriptions-panel";
+import { CollectionDetailTracker } from "@/components/collection-detail-tracker";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
-	deleteApiV1NamespacesByNamespaceId,
-	deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
+	deleteApiV1CollectionsByCollectionId,
+	deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupId,
 	getApiV1IamGroups,
 	getApiV1IamMeGroups,
-	getApiV1NamespacesByNamespaceId,
-	getApiV1NamespacesByNamespaceIdPermissions,
-	getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
-	patchApiV1NamespacesByNamespaceId,
-	putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId,
+	getApiV1CollectionsByCollectionId,
+	getApiV1CollectionsByCollectionIdPermissions,
+	getApiV1CollectionsByCollectionIdPermissionsGroupByGroupId,
+	patchApiV1CollectionsByCollectionId,
+	putApiV1CollectionsByCollectionIdPermissionsGroupByGroupId,
 } from "@/lib/api/generated/client";
 import type {
 	Group,
 	GroupPermission,
-	Namespace,
+	Collection,
 	Permission,
 	Permissions as PermissionName,
-	UpdateNamespace,
+	UpdateCollection,
 } from "@/lib/api/generated/models";
 import { Permissions as PermissionValues } from "@/lib/api/generated/models/permissions";
 import {
@@ -42,16 +42,16 @@ import {
 	TITLE_STATE_EVENT,
 } from "@/lib/create-events";
 
-type NamespaceDetailProps = {
-	namespaceId: number;
+type CollectionDetailProps = {
+	collectionId: number;
 	currentUsername: string | null;
 };
 
 type PermissionFlagField =
-	| "has_read_namespace"
-	| "has_update_namespace"
-	| "has_delete_namespace"
-	| "has_delegate_namespace"
+	| "has_read_collection"
+	| "has_update_collection"
+	| "has_delete_collection"
+	| "has_delegate_collection"
 	| "has_create_class"
 	| "has_read_class"
 	| "has_update_class"
@@ -88,7 +88,7 @@ type PermissionDefinition = {
 };
 
 type PermissionSection =
-	| "namespace"
+	| "collection"
 	| "class"
 	| "object"
 	| "class_relation"
@@ -103,7 +103,7 @@ type EditableField = "name" | "description";
 const ALL_EDITABLE_FIELDS: EditableField[] = ["name", "description"];
 
 const PERMISSION_SECTION_LABELS: Record<PermissionSection, string> = {
-	namespace: "Namespace",
+	collection: "Collection",
 	class: "Classes",
 	object: "Objects",
 	class_relation: "Class relations",
@@ -115,7 +115,7 @@ const PERMISSION_SECTION_LABELS: Record<PermissionSection, string> = {
 };
 
 const PERMISSION_SECTION_ORDER: PermissionSection[] = [
-	"namespace",
+	"collection",
 	"class",
 	"object",
 	"class_relation",
@@ -129,27 +129,27 @@ const PERMISSION_SECTION_ORDER: PermissionSection[] = [
 const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
 	{
 		value: PermissionValues.ReadCollection,
-		label: "Read namespace",
-		field: "has_read_namespace",
-		section: "namespace",
+		label: "Read collection",
+		field: "has_read_collection",
+		section: "collection",
 	},
 	{
 		value: PermissionValues.UpdateCollection,
-		label: "Update namespace",
-		field: "has_update_namespace",
-		section: "namespace",
+		label: "Update collection",
+		field: "has_update_collection",
+		section: "collection",
 	},
 	{
 		value: PermissionValues.DeleteCollection,
-		label: "Delete namespace",
-		field: "has_delete_namespace",
-		section: "namespace",
+		label: "Delete collection",
+		field: "has_delete_collection",
+		section: "collection",
 	},
 	{
 		value: PermissionValues.DelegateCollection,
-		label: "Delegate namespace",
-		field: "has_delegate_namespace",
-		section: "namespace",
+		label: "Delegate collection",
+		field: "has_delegate_collection",
+		section: "collection",
 	},
 	{
 		value: PermissionValues.CreateClass,
@@ -315,14 +315,14 @@ const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
 	},
 ];
 
-async function fetchNamespace(namespaceId: number): Promise<Namespace> {
-	const response = await getApiV1NamespacesByNamespaceId(namespaceId, {
+async function fetchCollection(collectionId: number): Promise<Collection> {
+	const response = await getApiV1CollectionsByCollectionId(collectionId, {
 		credentials: "include",
 	});
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load namespace."),
+			getApiErrorMessage(response.data, "Failed to load collection."),
 		);
 	}
 
@@ -343,11 +343,11 @@ async function fetchGroups(): Promise<Group[]> {
 	return response.data;
 }
 
-async function fetchNamespacePermissions(
-	namespaceId: number,
+async function fetchCollectionPermissions(
+	collectionId: number,
 ): Promise<GroupPermission[]> {
-	const response = await getApiV1NamespacesByNamespaceIdPermissions(
-		namespaceId,
+	const response = await getApiV1CollectionsByCollectionIdPermissions(
+		collectionId,
 		undefined,
 		{
 			credentials: "include",
@@ -358,7 +358,7 @@ async function fetchNamespacePermissions(
 		throw new Error(
 			getApiErrorMessage(
 				response.data,
-				"Failed to load namespace permissions.",
+				"Failed to load collection permissions.",
 			),
 		);
 	}
@@ -366,14 +366,14 @@ async function fetchNamespacePermissions(
 	return response.data;
 }
 
-async function putNamespacePermissions(
-	namespaceId: number,
+async function putCollectionPermissions(
+	collectionId: number,
 	groupId: number,
 	permissions: PermissionName[],
 ): Promise<void> {
 	const response =
-		await putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId(
-			namespaceId,
+		await putApiV1CollectionsByCollectionIdPermissionsGroupByGroupId(
+			collectionId,
 			groupId,
 			permissions,
 			{
@@ -388,7 +388,7 @@ async function putNamespacePermissions(
 	throw new Error(
 		getApiErrorMessage(
 			response.data,
-			"Failed to update namespace permissions.",
+			"Failed to update collection permissions.",
 		),
 	);
 }
@@ -440,7 +440,7 @@ function summarizePermissions(permissionSet: Set<PermissionName>): string {
 			.map((definition) =>
 				definition.label
 					.replace(/^(Read|Update|Delete|Create|Delegate)\s+/i, "$1 ")
-					.replace(/\s+(namespace|class|object|relation|template)$/i, ""),
+					.replace(/\s+(collection|class|object|relation|template)$/i, ""),
 			);
 
 		if (enabledLabels.length === 0) {
@@ -535,10 +535,10 @@ function InlineEditIcon() {
 	);
 }
 
-export function NamespaceDetail({
-	namespaceId,
+export function CollectionDetail({
+	collectionId,
 	currentUsername,
-}: NamespaceDetailProps) {
+}: CollectionDetailProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
@@ -564,17 +564,17 @@ export function NamespaceDetail({
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
-	const namespaceQuery = useQuery({
-		queryKey: ["namespace", namespaceId],
-		queryFn: async () => fetchNamespace(namespaceId),
+	const collectionQuery = useQuery({
+		queryKey: ["collection", collectionId],
+		queryFn: async () => fetchCollection(collectionId),
 	});
 	const groupsQuery = useQuery({
-		queryKey: ["groups", "namespace-permissions", namespaceId],
+		queryKey: ["groups", "collection-permissions", collectionId],
 		queryFn: fetchGroups,
 	});
 	const permissionsQuery = useQuery({
-		queryKey: ["namespace", namespaceId, "permissions"],
-		queryFn: async () => fetchNamespacePermissions(namespaceId),
+		queryKey: ["collection", collectionId, "permissions"],
+		queryFn: async () => fetchCollectionPermissions(collectionId),
 	});
 	const currentUserGroupsQuery = useQuery({
 		queryKey: ["permissions", "current-user-groups", currentUsername],
@@ -587,9 +587,9 @@ export function NamespaceDetail({
 		},
 	});
 	const updateMutation = useMutation({
-		mutationFn: async (payload: UpdateNamespace) => {
-			const response = await patchApiV1NamespacesByNamespaceId(
-				namespaceId,
+		mutationFn: async (payload: UpdateCollection) => {
+			const response = await patchApiV1CollectionsByCollectionId(
+				collectionId,
 				payload,
 				{
 					credentials: "include",
@@ -598,47 +598,47 @@ export function NamespaceDetail({
 
 			if (response.status !== 202) {
 				throw new Error(
-					getApiErrorMessage(response.data, "Failed to update namespace."),
+					getApiErrorMessage(response.data, "Failed to update collection."),
 				);
 			}
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
-				queryKey: ["namespace", namespaceId],
+				queryKey: ["collection", collectionId],
 			});
-			await queryClient.invalidateQueries({ queryKey: ["namespaces"] });
+			await queryClient.invalidateQueries({ queryKey: ["collections"] });
 			setEditingFields([]);
 			setFormError(null);
-			setFormSuccess("Namespace updated.");
+			setFormSuccess("Collection updated.");
 		},
 		onError: (error) => {
 			setFormSuccess(null);
 			setFormError(
-				error instanceof Error ? error.message : "Failed to update namespace.",
+				error instanceof Error ? error.message : "Failed to update collection.",
 			);
 		},
 	});
 	const deleteMutation = useMutation({
 		mutationFn: async () => {
-			const response = await deleteApiV1NamespacesByNamespaceId(namespaceId, {
+			const response = await deleteApiV1CollectionsByCollectionId(collectionId, {
 				credentials: "include",
 			});
 
 			if (response.status !== 204) {
 				throw new Error(
-					getApiErrorMessage(response.data, "Failed to delete namespace."),
+					getApiErrorMessage(response.data, "Failed to delete collection."),
 				);
 			}
 		},
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: ["namespaces"] });
-			router.push("/namespaces");
+			await queryClient.invalidateQueries({ queryKey: ["collections"] });
+			router.push("/collections");
 			router.refresh();
 		},
 		onError: (error) => {
 			setFormSuccess(null);
 			setFormError(
-				error instanceof Error ? error.message : "Failed to delete namespace.",
+				error instanceof Error ? error.message : "Failed to delete collection.",
 			);
 		},
 	});
@@ -648,15 +648,15 @@ export function NamespaceDetail({
 			permissions: PermissionName[];
 			mode: "create" | "edit";
 		}) => {
-			await putNamespacePermissions(
-				namespaceId,
+			await putCollectionPermissions(
+				collectionId,
 				payload.groupId,
 				payload.permissions,
 			);
 
 			const verificationResponse =
-				await getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId(
-					namespaceId,
+				await getApiV1CollectionsByCollectionIdPermissionsGroupByGroupId(
+					collectionId,
 					payload.groupId,
 					{
 						credentials: "include",
@@ -684,7 +684,7 @@ export function NamespaceDetail({
 		},
 		onSuccess: async (_, payload) => {
 			await queryClient.refetchQueries({
-				queryKey: ["namespace", namespaceId, "permissions"],
+				queryKey: ["collection", collectionId, "permissions"],
 				exact: true,
 				type: "active",
 			});
@@ -711,15 +711,15 @@ export function NamespaceDetail({
 			setPermissionsError(
 				error instanceof Error
 					? error.message
-					: "Failed to update namespace permissions.",
+					: "Failed to update collection permissions.",
 			);
 		},
 	});
 	const revokePermissionsMutation = useMutation({
 		mutationFn: async (groupId: number) => {
 			const response =
-				await deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId(
-					namespaceId,
+				await deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupId(
+					collectionId,
 					groupId,
 					{
 						credentials: "include",
@@ -730,7 +730,7 @@ export function NamespaceDetail({
 				throw new Error(
 					getApiErrorMessage(
 						response.data,
-						"Failed to revoke namespace permissions.",
+						"Failed to revoke collection permissions.",
 					),
 				);
 			}
@@ -742,7 +742,7 @@ export function NamespaceDetail({
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
-				queryKey: ["namespace", namespaceId, "permissions"],
+				queryKey: ["collection", collectionId, "permissions"],
 			});
 			setPermissionsError(null);
 			setPermissionsSuccess("Permissions revoked.");
@@ -759,7 +759,7 @@ export function NamespaceDetail({
 			setPermissionsError(
 				error instanceof Error
 					? error.message
-					: "Failed to revoke namespace permissions.",
+					: "Failed to revoke collection permissions.",
 			);
 		},
 		onSettled: () => {
@@ -768,32 +768,32 @@ export function NamespaceDetail({
 	});
 
 	useEffect(() => {
-		if (!namespaceQuery.data) {
+		if (!collectionQuery.data) {
 			return;
 		}
 
 		if (!initialized || editingFields.length === 0) {
-			setName(namespaceQuery.data.name);
-			setDescription(namespaceQuery.data.description ?? "");
+			setName(collectionQuery.data.name);
+			setDescription(collectionQuery.data.description ?? "");
 			setInitialized(true);
 		}
-	}, [editingFields.length, initialized, namespaceQuery.data]);
+	}, [editingFields.length, initialized, collectionQuery.data]);
 
-	function resetFieldDraft(field: EditableField, namespaceData: Namespace) {
+	function resetFieldDraft(field: EditableField, collectionData: Collection) {
 		if (field === "name") {
-			setName(namespaceData.name);
+			setName(collectionData.name);
 			return;
 		}
 
-		setDescription(namespaceData.description ?? "");
+		setDescription(collectionData.description ?? "");
 	}
 
-	function toggleFieldEditing(field: EditableField, namespaceData: Namespace) {
+	function toggleFieldEditing(field: EditableField, collectionData: Collection) {
 		setFormError(null);
 		setFormSuccess(null);
 
 		if (editingFields.includes(field)) {
-			resetFieldDraft(field, namespaceData);
+			resetFieldDraft(field, collectionData);
 			setEditingFields((current) =>
 				current.filter((currentField) => currentField !== field),
 			);
@@ -817,21 +817,21 @@ export function NamespaceDetail({
 	}, [hasActiveEdits, isSavingOrDeleting]);
 
 	const cancelActiveEdits = useCallback(() => {
-		const namespaceData = namespaceQuery.data;
-		if (!namespaceData || editingFields.length === 0) {
+		const collectionData = collectionQuery.data;
+		if (!collectionData || editingFields.length === 0) {
 			return;
 		}
 
-		setName(namespaceData.name);
-		setDescription(namespaceData.description ?? "");
+		setName(collectionData.name);
+		setDescription(collectionData.description ?? "");
 		setEditingFields([]);
 		setFormError(null);
 		setFormSuccess(null);
-	}, [editingFields.length, namespaceQuery.data]);
+	}, [editingFields.length, collectionQuery.data]);
 
 	useEffect(() => {
 		const detail: EditStateEventDetail = {
-			label: "Edit namespace",
+			label: "Edit collection",
 			editHandler:
 				!hasActiveEdits && !isSavingOrDeleting ? beginGlobalEdit : null,
 		};
@@ -841,26 +841,26 @@ export function NamespaceDetail({
 		return () => {
 			window.dispatchEvent(
 				new CustomEvent(EDIT_STATE_EVENT, {
-					detail: { label: "Edit namespace", editHandler: null },
+					detail: { label: "Edit collection", editHandler: null },
 				}),
 			);
 		};
 	}, [beginGlobalEdit, hasActiveEdits, isSavingOrDeleting]);
 
 	useEffect(() => {
-		const namespaceData = namespaceQuery.data;
-		if (!namespaceData) {
+		const collectionData = collectionQuery.data;
+		if (!collectionData) {
 			return;
 		}
 
 		window.dispatchEvent(
 			new CustomEvent(TITLE_STATE_EVENT, {
 				detail: {
-					title: namespaceData.name,
+					title: collectionData.name,
 					pin: {
-						type: "namespace",
-						id: namespaceData.id,
-						name: namespaceData.name,
+						type: "collection",
+						id: collectionData.id,
+						name: collectionData.name,
 					},
 				},
 			}),
@@ -873,7 +873,7 @@ export function NamespaceDetail({
 				}),
 			);
 		};
-	}, [namespaceQuery.data]);
+	}, [collectionQuery.data]);
 
 	useEffect(() => {
 		if (!hasActiveEdits) {
@@ -936,10 +936,10 @@ export function NamespaceDetail({
 	async function onDelete() {
 		setFormError(null);
 		setFormSuccess(null);
-		const namespaceLabel = namespaceQuery.data?.name ?? "this namespace";
+		const collectionLabel = collectionQuery.data?.name ?? "this collection";
 		const confirmed = await confirm({
-			title: `Delete ${namespaceLabel}?`,
-			description: "This removes the namespace and cannot be undone.",
+			title: `Delete ${collectionLabel}?`,
+			description: "This removes the collection and cannot be undone.",
 			confirmLabel: "Delete",
 			tone: "danger",
 		});
@@ -1106,7 +1106,7 @@ export function NamespaceDetail({
 		const confirmed = await confirm({
 			title: `Revoke permissions for group #${groupId}?`,
 			description:
-				"This removes every namespace permission granted to the group.",
+				"This removes every collection permission granted to the group.",
 			confirmLabel: "Revoke",
 			tone: "danger",
 		});
@@ -1131,7 +1131,7 @@ export function NamespaceDetail({
 	);
 	const canManagePermissions = permissionEntries.some(
 		(entry) =>
-			isPermissionEnabled(entry.permission, "has_delegate_namespace") &&
+			isPermissionEnabled(entry.permission, "has_delegate_collection") &&
 			currentUserGroupIds.has(entry.group.id),
 	);
 	const canManageEventSubscriptions = permissionEntries.some(
@@ -1175,33 +1175,33 @@ export function NamespaceDetail({
 		usingGroupSelect,
 	]);
 
-	if (namespaceQuery.isLoading) {
-		return <div className="card">Loading namespace...</div>;
+	if (collectionQuery.isLoading) {
+		return <div className="card">Loading collection...</div>;
 	}
 
-	if (namespaceQuery.isError) {
+	if (collectionQuery.isError) {
 		return (
 			<div className="card error-banner">
-				Failed to load namespace.{" "}
-				{namespaceQuery.error instanceof Error
-					? namespaceQuery.error.message
+				Failed to load collection.{" "}
+				{collectionQuery.error instanceof Error
+					? collectionQuery.error.message
 					: "Unknown error"}
 			</div>
 		);
 	}
 
-	const namespaceData = namespaceQuery.data;
-	if (!namespaceData) {
+	const collectionData = collectionQuery.data;
+	if (!collectionData) {
 		return (
-			<div className="card error-banner">Namespace data is unavailable.</div>
+			<div className="card error-banner">Collection data is unavailable.</div>
 		);
 	}
 
 	return (
 		<>
-			<NamespaceDetailTracker
-				namespaceId={namespaceId}
-				namespaceName={namespaceData.name}
+			<CollectionDetailTracker
+				collectionId={collectionId}
+				collectionName={collectionData.name}
 			/>
 			<section className="stack">
 				<form
@@ -1213,13 +1213,13 @@ export function NamespaceDetail({
 						<div className="object-meta-item">
 							<span className="object-meta-label">Created</span>
 							<span className="object-meta-value">
-								{formatTimestamp(namespaceData.created_at)}
+								{formatTimestamp(collectionData.created_at)}
 							</span>
 						</div>
 						<div className="object-meta-item">
 							<span className="object-meta-label">Updated</span>
 							<span className="object-meta-value">
-								{formatTimestamp(namespaceData.updated_at)}
+								{formatTimestamp(collectionData.updated_at)}
 							</span>
 						</div>
 						<div className="object-meta-item">
@@ -1240,7 +1240,7 @@ export function NamespaceDetail({
 							<div className="object-detail-body">
 								{editingFields.includes("name") ? (
 									<label className="control-field">
-										<span className="sr-only">Namespace name</span>
+										<span className="sr-only">Collection name</span>
 										<input
 											required
 											value={name}
@@ -1251,10 +1251,10 @@ export function NamespaceDetail({
 									<button
 										type="button"
 										className="object-inline-edit"
-										onClick={() => toggleFieldEditing("name", namespaceData)}
+										onClick={() => toggleFieldEditing("name", collectionData)}
 									>
 										<span className="object-detail-value">
-											{renderFieldText(namespaceData.name)}
+											{renderFieldText(collectionData.name)}
 										</span>
 										<span className="object-inline-edit-icon">
 											<InlineEditIcon />
@@ -1267,7 +1267,7 @@ export function NamespaceDetail({
 									<button
 										type="button"
 										className="ghost"
-										onClick={() => toggleFieldEditing("name", namespaceData)}
+										onClick={() => toggleFieldEditing("name", collectionData)}
 									>
 										Cancel
 									</button>
@@ -1282,7 +1282,7 @@ export function NamespaceDetail({
 							<div className="object-detail-body">
 								{editingFields.includes("description") ? (
 									<label className="control-field">
-										<span className="sr-only">Namespace description</span>
+										<span className="sr-only">Collection description</span>
 										<input
 											required
 											value={description}
@@ -1294,11 +1294,11 @@ export function NamespaceDetail({
 										type="button"
 										className="object-inline-edit"
 										onClick={() =>
-											toggleFieldEditing("description", namespaceData)
+											toggleFieldEditing("description", collectionData)
 										}
 									>
 										<span className="object-detail-value">
-											{renderFieldText(namespaceData.description ?? "")}
+											{renderFieldText(collectionData.description ?? "")}
 										</span>
 										<span className="object-inline-edit-icon">
 											<InlineEditIcon />
@@ -1312,7 +1312,7 @@ export function NamespaceDetail({
 										type="button"
 										className="ghost"
 										onClick={() =>
-											toggleFieldEditing("description", namespaceData)
+											toggleFieldEditing("description", collectionData)
 										}
 									>
 										Cancel
@@ -1350,38 +1350,38 @@ export function NamespaceDetail({
 								onClick={onDelete}
 								disabled={deleteMutation.isPending}
 							>
-								{deleteMutation.isPending ? "Deleting..." : "Delete namespace"}
+								{deleteMutation.isPending ? "Deleting..." : "Delete collection"}
 							</button>
 						)}
 					</div>
 				</form>
 
 				<RemoteInvocationsPanel
-					namespaceId={namespaceId}
-					subject={{ type: "namespace", namespace_id: namespaceId }}
-					subjectLabel={`namespace "${namespaceData.name}"`}
-					subjectType="namespace"
+					collectionId={collectionId}
+					subject={{ type: "collection", collection_id: collectionId }}
+					subjectLabel={`collection "${collectionData.name}"`}
+					subjectType="collection"
 				/>
 
 				<ResourceActivityPanel
-					scope={{ type: "namespace", namespaceId }}
-					title="Namespace audit and history"
+					scope={{ type: "collection", collectionId }}
+					title="Collection audit and history"
 				/>
 
-				<NamespaceEventSubscriptionsPanel
-					namespaceId={namespaceId}
+				<CollectionEventSubscriptionsPanel
+					collectionId={collectionId}
 					canManage={canManageEventSubscriptions}
 					isPermissionPending={checkingPermissionMembership}
 				/>
 
 				<section className="card stack">
 					<header className="stack">
-						<h3>Namespace Permissions</h3>
+						<h3>Collection Permissions</h3>
 						<p className="muted">
 							{checkingPermissionMembership
-								? "Checking whether you can modify namespace permissions..."
+								? "Checking whether you can modify collection permissions..."
 								: canManagePermissions
-									? "You can grant, update, and revoke permission sets for groups on this namespace."
+									? "You can grant, update, and revoke permission sets for groups on this collection."
 									: canCheckPermissionMembership
 										? "You can view permissions, but you cannot modify them with your current access."
 										: "Could not identify the current user. Showing read-only permissions."}
@@ -1422,10 +1422,10 @@ export function NamespaceDetail({
 					) : null}
 
 					{permissionsQuery.isLoading ? (
-						<div className="muted">Loading namespace permissions...</div>
+						<div className="muted">Loading collection permissions...</div>
 					) : permissionsQuery.isError ? (
 						<div className="error-banner">
-							Failed to load namespace permissions.{" "}
+							Failed to load collection permissions.{" "}
 							{permissionsQuery.error instanceof Error
 								? permissionsQuery.error.message
 								: "Unknown error"}
@@ -1433,7 +1433,7 @@ export function NamespaceDetail({
 					) : !hasAnyPermissionRows ? (
 						<EmptyState
 							title="No group permissions assigned."
-							description="Grant permissions to a group before members can use this namespace through group access."
+							description="Grant permissions to a group before members can use this collection through group access."
 							action={
 								canManagePermissions ? (
 									<button

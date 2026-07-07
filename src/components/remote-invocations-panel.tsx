@@ -17,7 +17,7 @@ import {
 import { useToast } from "@/lib/toast-context";
 
 type RemoteInvocationsPanelProps = {
-	namespaceId: number;
+	collectionId: number;
 	subject: RemoteInvocationSubject;
 	subjectLabel: string;
 	subjectType: RemoteTargetSubjectType;
@@ -51,7 +51,7 @@ function makeIdempotencyKey(targetId: number): string {
 }
 
 export function RemoteInvocationsPanel({
-	namespaceId,
+	collectionId,
 	subject,
 	subjectLabel,
 	subjectType,
@@ -63,14 +63,14 @@ export function RemoteInvocationsPanel({
 	const [search, setSearch] = useState("");
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [drafts, setDrafts] = useState<Record<number, DraftState>>({});
-	const reloadKey = `${namespaceId}:${subjectType}`;
+	const reloadKey = `${collectionId}:${subjectType}`;
 
 	const loadMutation = useMutation({
 		mutationFn: async (cursor?: string | null) =>
 			fetchRemoteTargetsPage({
 				cursor: cursor ?? undefined,
 				limit: 100,
-				namespaceId,
+				collectionId,
 			}),
 		onSuccess: (page, cursor) => {
 			setTargets((current) => (cursor ? [...current, ...page.targets] : page.targets));
@@ -131,8 +131,8 @@ export function RemoteInvocationsPanel({
 	}, [reloadKey, loadMutation.mutate]);
 
 	const invokableTargets = useMemo(
-		() => filterInvokableTargets(targets, namespaceId, subjectType, targetClassId),
-		[namespaceId, subjectType, targetClassId, targets],
+		() => filterInvokableTargets(targets, collectionId, subjectType, targetClassId),
+		[collectionId, subjectType, targetClassId, targets],
 	);
 	const visibleTargets = useMemo(() => {
 		const needle = search.trim().toLowerCase();

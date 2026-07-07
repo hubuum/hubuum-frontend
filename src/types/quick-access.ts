@@ -1,5 +1,5 @@
 export type RecentItemType =
-	| "namespace"
+	| "collection"
 	| "class"
 	| "object"
 	| "task"
@@ -13,27 +13,21 @@ export interface RecentItem {
 	name: string;
 	timestamp: number;
 	classId?: number;
-	namespaceId?: number;
+	collectionId?: number;
 }
 
-export interface PinnedClass {
-	classId: number;
-	className: string;
-	namespaceName: string;
-}
-
-export type PinnedItemType = "namespace" | "class" | "object";
+export type PinnedItemType = "collection" | "class" | "object";
 export type ClassPinAction = "view" | "create";
 
 export interface PinnedItem {
 	type: PinnedItemType;
-	id: number; // namespace/class/object ID
+	id: number; // collection/class/object ID
 	name: string; // entity name only (for display)
 	timestamp: number; // when pinned
 
 	// Type-specific fields (discriminated union pattern)
-	namespaceId?: number; // for class and object pins
-	namespaceName?: string; // for class and object pins (tooltip)
+	collectionId?: number; // for class and object pins
+	collectionName?: string; // for class and object pins (tooltip)
 	classId?: number; // for object pins
 	className?: string; // for object pins (tooltip)
 	action?: ClassPinAction; // only for class pins

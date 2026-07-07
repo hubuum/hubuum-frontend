@@ -1,5 +1,5 @@
 export type CreateSection =
-	| "namespaces"
+	| "collections"
 	| "classes"
 	| "objects"
 	| "relations"
@@ -26,7 +26,7 @@ export type TitleStateEventDetail = {
 	title: string | null;
 	pin:
 		| {
-				type: "namespace";
+				type: "collection";
 				id: number;
 				name: string;
 		  }
@@ -34,15 +34,15 @@ export type TitleStateEventDetail = {
 				type: "class";
 				id: number;
 				name: string;
-				namespaceId: number;
-				namespaceName: string;
+				collectionId: number;
+				collectionName: string;
 		  }
 		| {
 				type: "object";
 				id: number;
 				name: string;
-				namespaceId: number;
-				namespaceName: string;
+				collectionId: number;
+				collectionName: string;
 				classId: number;
 				className?: string;
 		  }

@@ -16,12 +16,12 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1Classes,
 	getApiV1ClassesByClassIdTrailing,
-	getApiV1Namespaces,
+	getApiV1Collections,
 } from "@/lib/api/generated/client";
 import type {
 	HubuumClassExpanded,
 	HubuumObject,
-	Namespace,
+	Collection,
 } from "@/lib/api/generated/models";
 import {
 	createReportTemplate,
@@ -62,7 +62,7 @@ import {
 type TemplateEditorState = {
 	mode: "create" | "edit";
 	templateId: number | null;
-	namespaceId: string;
+	collectionId: string;
 	name: string;
 	description: string;
 	contentType: StoredReportContentType;
@@ -112,14 +112,14 @@ const TEMPLATE_HELP = [
 	"Relations: item.related.<alias> (includes), item.reachable.*/paths.* (when hydrated) — each is a list, e.g. item.related.room[0].name.",
 	"Helpers: coalesce(...), | tojson, | csv_cell, | default(...), | default_if_empty(...), | format_datetime(...), | join_nonempty(...).",
 	"HTML templates are autoescaped; use | tojson or | csv_cell for sensitive values in text/CSV.",
-	"include/import/extends resolve within the same namespace (e.g. layout.*, macros.*, partial.*, report.*).",
+	"include/import/extends resolve within the same collection (e.g. layout.*, macros.*, partial.*, report.*).",
 	"Stored templates support text/plain, text/html, and text/csv.",
 ] as const;
 
 const DEFAULT_TEMPLATE_EDITOR: TemplateEditorState = {
 	mode: "create",
 	templateId: null,
-	namespaceId: "",
+	collectionId: "",
 	name: "",
 	description: "",
 	contentType: "text/plain",
@@ -222,7 +222,7 @@ function buildTemplateEditorState(
 	return {
 		mode: "edit",
 		templateId: template.id,
-		namespaceId: String(template.namespace_id),
+		collectionId: String(template.collection_id),
 		name: template.name,
 		description: template.description,
 		contentType:
@@ -389,14 +389,14 @@ function downloadReportResult(
 	URL.revokeObjectURL(url);
 }
 
-async function fetchNamespaces(): Promise<Namespace[]> {
-	const response = await getApiV1Namespaces(undefined, {
+async function fetchCollections(): Promise<Collection[]> {
+	const response = await getApiV1Collections(undefined, {
 		credentials: "include",
 	});
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load namespaces."),
+			getApiErrorMessage(response.data, "Failed to load collections."),
 		);
 	}
 
@@ -439,7 +439,7 @@ export function ReportsWorkspace() {
 	const [editorError, setEditorError] = useState<string | null>(null);
 	const [selectedTemplateId, setSelectedTemplateId] = useState("");
 	const [runMode, setRunMode] = useState<"json" | "template">("json");
-	const [scopeKind, setScopeKind] = useState<ReportScopeKind>("namespaces");
+	const [scopeKind, setScopeKind] = useState<ReportScopeKind>("collections");
 	const [classId, setClassId] = useState("");
 	const [objectId, setObjectId] = useState("");
 	const [advancedQueryText, setAdvancedQueryText] = useState("");
@@ -472,9 +472,9 @@ export function ReportsWorkspace() {
 		queryFn: ({ pageParam }) => listReportTemplates(pageParam),
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
 	});
-	const namespacesQuery = useQuery({
-		queryKey: ["namespaces", "reports"],
-		queryFn: fetchNamespaces,
+	const collectionsQuery = useQuery({
+		queryKey: ["collections", "reports"],
+		queryFn: fetchCollections,
 	});
 	const classesQuery = useQuery({
 		queryKey: ["classes", "reports"],
@@ -516,9 +516,9 @@ export function ReportsWorkspace() {
 	);
 	const editorTemplateNames = useMemo(() => {
 		if (!editorState) return [];
-		const ns = parsePositiveInteger(editorState.namespaceId);
+		const ns = parsePositiveInteger(editorState.collectionId);
 		return templates
-			.filter((t) => t.namespace_id === ns && t.id !== editorState.templateId)
+			.filter((t) => t.collection_id === ns && t.id !== editorState.templateId)
 			.map((t) => t.name);
 	}, [editorState, templates]);
 	const selectedTemplate = useMemo(
@@ -621,14 +621,14 @@ export function ReportsWorkspace() {
 
 	const saveTemplateMutation = useMutation({
 		mutationFn: async (draft: TemplateEditorState) => {
-			const namespaceId = parsePositiveInteger(draft.namespaceId);
-			if (!namespaceId) throw new Error("Namespace is required.");
+			const collectionId = parsePositiveInteger(draft.collectionId);
+			if (!collectionId) throw new Error("Collection is required.");
 			if (!draft.name.trim()) throw new Error("Name is required.");
 			if (!draft.description.trim()) throw new Error("Description is required.");
 			if (!draft.templateBody.trim()) throw new Error("Template body is required.");
 
 			const base = {
-				namespace_id: namespaceId,
+				collection_id: collectionId,
 				name: draft.name.trim(),
 				description: draft.description.trim(),
 				content_type: draft.contentType,
@@ -765,8 +765,8 @@ export function ReportsWorkspace() {
 	function openCreateModal() {
 		setEditorState({
 			...DEFAULT_TEMPLATE_EDITOR,
-			namespaceId: namespacesQuery.data?.length
-				? String(namespacesQuery.data[0].id)
+			collectionId: collectionsQuery.data?.length
+				? String(collectionsQuery.data[0].id)
 				: "",
 		});
 		setEditorError(null);
@@ -1039,7 +1039,7 @@ export function ReportsWorkspace() {
 		}
 	}
 
-	const namespaceOptions = namespacesQuery.data ?? [];
+	const collectionOptions = collectionsQuery.data ?? [];
 	const classOptions = classesQuery.data ?? [];
 	const objectOptions = objectsQuery.data ?? [];
 
@@ -1063,7 +1063,7 @@ export function ReportsWorkspace() {
 							<div className="stack action-card-header">
 								<h3>Template library</h3>
 								<p className="muted">
-									Stored templates are namespace-scoped and control text output
+									Stored templates are collection-scoped and control text output
 									format.
 								</p>
 							</div>
@@ -1086,7 +1086,7 @@ export function ReportsWorkspace() {
 						{!templatesQuery.isLoading && !templates.length ? (
 							<EmptyState
 								title="No report templates available yet."
-								description="Create a template to save reusable report logic for a namespace or class."
+								description="Create a template to save reusable report logic for a collection or class."
 								action={
 									<button type="button" onClick={openCreateModal}>
 										New template
@@ -1105,7 +1105,7 @@ export function ReportsWorkspace() {
 										<div>
 											<h4>{template.name}</h4>
 											<p className="muted">
-												Namespace #{template.namespace_id} ·{" "}
+												Collection #{template.collection_id} ·{" "}
 												{template.content_type}
 											</p>
 										</div>
@@ -1209,7 +1209,7 @@ export function ReportsWorkspace() {
 											setScopeKind(event.target.value as ReportScopeKind)
 										}
 									>
-										<option value="namespaces">Namespaces</option>
+										<option value="collections">Collections</option>
 										<option value="classes">Classes</option>
 										<option value="objects_in_class">Objects in class</option>
 										<option value="class_relations">Class relations</option>
@@ -2013,37 +2013,37 @@ export function ReportsWorkspace() {
 					>
 						<div className="form-grid">
 							<div className="control-field">
-								<label htmlFor="report-template-namespace">Namespace</label>
-								{namespaceOptions.length > 0 ? (
+								<label htmlFor="report-template-collection">Collection</label>
+								{collectionOptions.length > 0 ? (
 									<select
-										id="report-template-namespace"
-										value={editorState.namespaceId}
+										id="report-template-collection"
+										value={editorState.collectionId}
 										onChange={(event) =>
 											setEditorState({
 												...editorState,
-												namespaceId: event.target.value,
+												collectionId: event.target.value,
 											})
 										}
 									>
-										{namespaceOptions.map((namespace) => (
-											<option key={namespace.id} value={namespace.id}>
-												{namespace.name} (#{namespace.id})
+										{collectionOptions.map((collection) => (
+											<option key={collection.id} value={collection.id}>
+												{collection.name} (#{collection.id})
 											</option>
 										))}
 									</select>
 								) : (
 									<input
-										id="report-template-namespace"
+										id="report-template-collection"
 										type="number"
 										min={1}
-										value={editorState.namespaceId}
+										value={editorState.collectionId}
 										onChange={(event) =>
 											setEditorState({
 												...editorState,
-												namespaceId: event.target.value,
+												collectionId: event.target.value,
 											})
 										}
-										placeholder="Enter namespace ID"
+										placeholder="Enter collection ID"
 									/>
 								)}
 							</div>
@@ -2127,7 +2127,7 @@ export function ReportsWorkspace() {
 												})
 											}
 										>
-											<option value="namespaces">Namespaces</option>
+											<option value="collections">Collections</option>
 											<option value="classes">Classes</option>
 											<option value="objects_in_class">Objects in class</option>
 											<option value="class_relations">Class relations</option>

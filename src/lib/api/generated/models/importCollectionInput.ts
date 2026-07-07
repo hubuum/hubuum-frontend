@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface NamespaceKey {
+export interface ImportCollectionInput {
+  description: string;
   name: string;
+  /** @nullable */
+  ref?: string | null;
 }

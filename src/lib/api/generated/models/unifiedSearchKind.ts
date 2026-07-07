@@ -10,7 +10,7 @@ export type UnifiedSearchKind = typeof UnifiedSearchKind[keyof typeof UnifiedSea
 
 
 export const UnifiedSearchKind = {
-  namespace: 'namespace',
+  collection: 'collection',
   class: 'class',
   object: 'object',
 } as const;

@@ -7,12 +7,12 @@
  */
 
 export interface HubuumObject {
+  collection_id: number;
   created_at: string;
   data: unknown;
   description: string;
   hubuum_class_id: number;
   id: number;
   name: string;
-  namespace_id: number;
   updated_at: string;
 }

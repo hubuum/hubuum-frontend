@@ -6,9 +6,6 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface ImportNamespaceInput {
-  description: string;
+export interface CollectionKey {
   name: string;
-  /** @nullable */
-  ref?: string | null;
 }

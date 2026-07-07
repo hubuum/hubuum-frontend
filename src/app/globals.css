@@ -2016,7 +2016,7 @@ th.resizable {
 	width: 14rem;
 }
 
-#objects-table .object-namespace-column {
+#objects-table .object-collection-column {
 	width: 15rem;
 }
 
@@ -3728,7 +3728,7 @@ html[data-density="compact"] #objects-table .object-name-column {
 	width: 12rem;
 }
 
-html[data-density="compact"] #objects-table .object-namespace-column {
+html[data-density="compact"] #objects-table .object-collection-column {
 	width: 12rem;
 }
 

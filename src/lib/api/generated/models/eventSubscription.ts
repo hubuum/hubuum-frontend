@@ -9,6 +9,7 @@ import type { EventSubscriptionFilter } from './eventSubscriptionFilter';
 
 export interface EventSubscription {
   actions: string[];
+  collection_id: number;
   created_at: string;
   description: string;
   enabled: boolean;
@@ -16,7 +17,6 @@ export interface EventSubscription {
   filter?: EventSubscriptionFilter;
   id: number;
   name: string;
-  namespace_id: number;
   routing: unknown;
   sink_id: number;
   updated_at: string;

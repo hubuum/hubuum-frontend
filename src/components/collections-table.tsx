@@ -10,15 +10,15 @@ import { TablePagination } from "@/components/table-pagination";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
-	deleteApiV1NamespacesByNamespaceId,
+	deleteApiV1CollectionsByCollectionId,
 	getApiV1IamGroups,
-	getApiV1Namespaces,
-	postApiV1Namespaces,
+	getApiV1Collections,
+	postApiV1Collections,
 } from "@/lib/api/generated/client";
 import type {
 	Group,
-	Namespace,
-	NewNamespaceWithAssignee,
+	Collection,
+	NewCollectionWithAssignee,
 } from "@/lib/api/generated/models";
 import {
 	DESELECT_ALL_EVENT,
@@ -48,19 +48,19 @@ function IconSearch() {
 	);
 }
 
-type NamespacesPageData = {
-	namespaces: Namespace[];
+type CollectionsPageData = {
+	collections: Collection[];
 	nextCursor: string | null;
 	prevCursor: string | null;
 	totalCount: number | null;
 };
 
-async function fetchNamespaces(
+async function fetchCollections(
 	limit: number,
 	cursor?: string,
 	sort?: string,
-): Promise<NamespacesPageData> {
-	const response = await getApiV1Namespaces(
+): Promise<CollectionsPageData> {
+	const response = await getApiV1Collections(
 		{ limit, cursor, sort },
 		{
 			credentials: "include",
@@ -69,7 +69,7 @@ async function fetchNamespaces(
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load namespaces."),
+			getApiErrorMessage(response.data, "Failed to load collections."),
 		);
 	}
 
@@ -79,7 +79,7 @@ async function fetchNamespaces(
 	const totalCount = totalCountHeader ? Number.parseInt(totalCountHeader, 10) : null;
 
 	return {
-		namespaces: response.data,
+		collections: response.data,
 		nextCursor,
 		prevCursor,
 		totalCount: Number.isFinite(totalCount) ? totalCount : null,
@@ -100,7 +100,7 @@ async function fetchGroups(): Promise<Group[]> {
 	return response.data;
 }
 
-export function NamespacesTable() {
+export function CollectionsTable() {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -111,7 +111,7 @@ export function NamespacesTable() {
 	const [groupId, setGroupId] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
-	const [selectedNamespaceIds, setSelectedNamespaceIds] = useState<number[]>(
+	const [selectedCollectionIds, setSelectedCollectionIds] = useState<number[]>(
 		[],
 	);
 	const [tableError, setTableError] = useState<string | null>(null);
@@ -121,61 +121,61 @@ export function NamespacesTable() {
 		searchParams.get("search") ?? "",
 	);
 
-	useResizableTable({ tableId: "namespaces-table", storageKey: "namespaces" });
+	useResizableTable({ tableId: "collections-table", storageKey: "collections" });
 
 	const pagination = useCursorPagination({ defaultLimit: 100 });
 	const { sortState, setSort, getSortParam } = useTableSort();
 
 	const query = useQuery({
 		queryKey: [
-			"namespaces",
+			"collections",
 			pagination.cursor,
 			pagination.limit,
 			getSortParam(),
 		],
 		queryFn: () =>
-			fetchNamespaces(pagination.limit, pagination.cursor, getSortParam()),
+			fetchCollections(pagination.limit, pagination.cursor, getSortParam()),
 	});
 	const groupsQuery = useQuery({
-		queryKey: ["groups", "namespace-form"],
+		queryKey: ["groups", "collection-form"],
 		queryFn: fetchGroups,
 	});
 	const createMutation = useMutation({
-		mutationFn: async (payload: NewNamespaceWithAssignee) => {
-			const response = await postApiV1Namespaces(payload, {
+		mutationFn: async (payload: NewCollectionWithAssignee) => {
+			const response = await postApiV1Collections(payload, {
 				credentials: "include",
 			});
 
 			if (response.status !== 201) {
 				throw new Error(
-					getApiErrorMessage(response.data, "Failed to create namespace."),
+					getApiErrorMessage(response.data, "Failed to create collection."),
 				);
 			}
 		},
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: ["namespaces"] });
+			await queryClient.invalidateQueries({ queryKey: ["collections"] });
 			setName("");
 			setDescription("");
 			if (groupsQuery.data?.length) {
 				setGroupId(String(groupsQuery.data[0].id));
 			}
 			setFormError(null);
-			setFormSuccess("Namespace created.");
+			setFormSuccess("Collection created.");
 			setCreateModalOpen(false);
 		},
 		onError: (error) => {
 			setFormSuccess(null);
 			setFormError(
-				error instanceof Error ? error.message : "Failed to create namespace.",
+				error instanceof Error ? error.message : "Failed to create collection.",
 			);
 		},
 	});
 	const deleteMutation = useMutation({
-		mutationFn: async (namespaceIds: number[]) => {
+		mutationFn: async (collectionIds: number[]) => {
 			const results = await Promise.all(
-				namespaceIds.map(async (namespaceId) => {
-					const response = await deleteApiV1NamespacesByNamespaceId(
-						namespaceId,
+				collectionIds.map(async (collectionId) => {
+					const response = await deleteApiV1CollectionsByCollectionId(
+						collectionId,
 						{
 							credentials: "include",
 						},
@@ -183,7 +183,7 @@ export function NamespacesTable() {
 
 					if (response.status !== 204) {
 						throw new Error(
-							`#${namespaceId}: ${getApiErrorMessage(response.data, "Failed to delete namespace.")}`,
+							`#${collectionId}: ${getApiErrorMessage(response.data, "Failed to delete collection.")}`,
 						);
 					}
 				}),
@@ -191,26 +191,26 @@ export function NamespacesTable() {
 			return results.length;
 		},
 		onSuccess: async (count) => {
-			await queryClient.invalidateQueries({ queryKey: ["namespaces"] });
+			await queryClient.invalidateQueries({ queryKey: ["collections"] });
 			await queryClient.invalidateQueries({
-				queryKey: ["namespaces", "class-form"],
+				queryKey: ["collections", "class-form"],
 			});
-			setSelectedNamespaceIds([]);
+			setSelectedCollectionIds([]);
 			setTableError(null);
-			setTableSuccess(`${count} namespace${count === 1 ? "" : "s"} deleted.`);
+			setTableSuccess(`${count} collection${count === 1 ? "" : "s"} deleted.`);
 		},
 		onError: (error) => {
 			setTableSuccess(null);
 			setTableError(
 				error instanceof Error
 					? error.message
-					: "Failed to delete selected namespaces.",
+					: "Failed to delete selected collections.",
 			);
 		},
 	});
 
-	const deleteSelectedNamespaces = useCallback(async () => {
-		if (!selectedNamespaceIds.length) {
+	const deleteSelectedCollections = useCallback(async () => {
+		if (!selectedCollectionIds.length) {
 			return;
 		}
 
@@ -218,11 +218,11 @@ export function NamespacesTable() {
 		setTableSuccess(null);
 
 		const confirmed = await confirm({
-			title: `Delete ${selectedNamespaceIds.length} selected namespace${
-				selectedNamespaceIds.length === 1 ? "" : "s"
+			title: `Delete ${selectedCollectionIds.length} selected collection${
+				selectedCollectionIds.length === 1 ? "" : "s"
 			}?`,
 			description:
-				"This removes the selected namespaces and cannot be undone.",
+				"This removes the selected collections and cannot be undone.",
 			confirmLabel: "Delete",
 			tone: "danger",
 		});
@@ -230,8 +230,8 @@ export function NamespacesTable() {
 			return;
 		}
 
-		deleteMutation.mutate([...selectedNamespaceIds]);
-	}, [confirm, selectedNamespaceIds, deleteMutation]);
+		deleteMutation.mutate([...selectedCollectionIds]);
+	}, [confirm, selectedCollectionIds, deleteMutation]);
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -253,34 +253,34 @@ export function NamespacesTable() {
 
 	const groups = groupsQuery.data ?? [];
 	const pageData = query.data;
-	const namespaces = pageData?.namespaces ?? [];
+	const collections = pageData?.collections ?? [];
 	const searchTerm = normalizeSearchTerm(searchParams.get("search"));
-	const filteredNamespaces = useMemo(
+	const filteredCollections = useMemo(
 		() =>
-			namespaces.filter((namespace) =>
+			collections.filter((collection) =>
 				matchesFreeTextSearch(
 					searchTerm,
-					namespace.name,
-					namespace.description,
+					collection.name,
+					collection.description,
 				),
 			),
-		[namespaces, searchTerm],
+		[collections, searchTerm],
 	);
 	const allSelected =
-		filteredNamespaces.length > 0 &&
-		selectedNamespaceIds.length === filteredNamespaces.length;
+		filteredCollections.length > 0 &&
+		selectedCollectionIds.length === filteredCollections.length;
 
 	const shiftSelect = useShiftSelect({
-		items: filteredNamespaces,
-		selectedIds: selectedNamespaceIds,
-		setSelectedIds: setSelectedNamespaceIds,
-		getId: (namespace) => namespace.id,
+		items: filteredCollections,
+		selectedIds: selectedCollectionIds,
+		setSelectedIds: setSelectedCollectionIds,
+		getId: (collection) => collection.id,
 	});
 
 	const keyboardNav = useTableKeyboardNav({
-		items: filteredNamespaces,
-		getId: (namespace) => namespace.id,
-		onOpen: (namespace) => router.push(`/namespaces/${namespace.id}`),
+		items: filteredCollections,
+		getId: (collection) => collection.id,
+		onOpen: (collection) => router.push(`/collections/${collection.id}`),
 	});
 
 	useEffect(() => {
@@ -309,25 +309,25 @@ export function NamespacesTable() {
 	}, [groupId, groups]);
 
 	useEffect(() => {
-		if (!selectedNamespaceIds.length) {
+		if (!selectedCollectionIds.length) {
 			return;
 		}
 
 		const existingIds = new Set(
-			filteredNamespaces.map((namespace) => namespace.id),
+			filteredCollections.map((collection) => collection.id),
 		);
-		setSelectedNamespaceIds((current) => {
-			const next = current.filter((namespaceId) =>
-				existingIds.has(namespaceId),
+		setSelectedCollectionIds((current) => {
+			const next = current.filter((collectionId) =>
+				existingIds.has(collectionId),
 			);
 			return next.length === current.length ? current : next;
 		});
-	}, [filteredNamespaces, selectedNamespaceIds]);
+	}, [filteredCollections, selectedCollectionIds]);
 
 	useEffect(() => {
 		const onOpenCreate = (event: Event) => {
 			const customEvent = event as CustomEvent<OpenCreateEventDetail>;
-			if (customEvent.detail?.section !== "namespaces") {
+			if (customEvent.detail?.section !== "collections") {
 				return;
 			}
 
@@ -340,12 +340,12 @@ export function NamespacesTable() {
 
 	useEffect(() => {
 		const onDeselectAll = () => {
-			setSelectedNamespaceIds([]);
+			setSelectedCollectionIds([]);
 		};
 
 		const onSelectAll = () => {
-			setSelectedNamespaceIds(
-				filteredNamespaces.map((namespace) => namespace.id),
+			setSelectedCollectionIds(
+				filteredCollections.map((collection) => collection.id),
 			);
 		};
 
@@ -355,28 +355,28 @@ export function NamespacesTable() {
 			window.removeEventListener(DESELECT_ALL_EVENT, onDeselectAll);
 			window.removeEventListener(SELECT_ALL_EVENT, onSelectAll);
 		};
-	}, [filteredNamespaces]);
+	}, [filteredCollections]);
 
 	useEffect(() => {
 		window.dispatchEvent(
 			new CustomEvent(SELECTION_STATE_EVENT, {
 				detail: {
-					count: selectedNamespaceIds.length,
+					count: selectedCollectionIds.length,
 					deleteHandler:
-						selectedNamespaceIds.length > 0 ? deleteSelectedNamespaces : null,
+						selectedCollectionIds.length > 0 ? deleteSelectedCollections : null,
 				},
 			}),
 		);
-	}, [selectedNamespaceIds.length, deleteSelectedNamespaces]);
+	}, [selectedCollectionIds.length, deleteSelectedCollections]);
 
 	if (query.isLoading) {
-		return <div className="card">Loading namespaces...</div>;
+		return <div className="card">Loading collections...</div>;
 	}
 
 	if (query.isError) {
 		return (
 			<div className="card error-banner">
-				Failed to load namespaces.{" "}
+				Failed to load collections.{" "}
 				{query.error instanceof Error ? query.error.message : "Unknown error"}
 			</div>
 		);
@@ -421,7 +421,7 @@ export function NamespacesTable() {
 		);
 	}
 
-	function renderCreateNamespaceForm() {
+	function renderCreateCollectionForm() {
 		return (
 			<form className="stack" onSubmit={onSubmit}>
 				<div className="form-grid">
@@ -470,7 +470,7 @@ export function NamespacesTable() {
 							required
 							value={description}
 							onChange={(event) => setDescription(event.target.value)}
-							placeholder="Namespace purpose"
+							placeholder="Collection purpose"
 						/>
 					</label>
 				</div>
@@ -486,7 +486,7 @@ export function NamespacesTable() {
 
 				<div className="form-actions">
 					<button type="submit" disabled={createMutation.isPending}>
-						{createMutation.isPending ? "Creating..." : "Create namespace"}
+						{createMutation.isPending ? "Creating..." : "Create collection"}
 					</button>
 				</div>
 			</form>
@@ -497,22 +497,22 @@ export function NamespacesTable() {
 		<div className="stack">
 			<CreateModal
 				open={isCreateModalOpen}
-				title="Create namespace"
+				title="Create collection"
 				onClose={() => setCreateModalOpen(false)}
 			>
-				{renderCreateNamespaceForm()}
+				{renderCreateCollectionForm()}
 			</CreateModal>
 
 			<div className="card table-wrap">
 				<div className="table-header">
 					<div className="table-title-row">
-						<h3>Namespace catalog</h3>
+						<h3>Collection catalog</h3>
 						<span className="muted table-count">
 							{searchTerm
-								? `${filteredNamespaces.length} shown of ${namespaces.length}`
-								: `${namespaces.length} loaded`}
-							{selectedNamespaceIds.length
-								? ` · ${selectedNamespaceIds.length} selected`
+								? `${filteredCollections.length} shown of ${collections.length}`
+								: `${collections.length} loaded`}
+							{selectedCollectionIds.length
+								? ` · ${selectedCollectionIds.length} selected`
 								: ""}
 						</span>
 					</div>
@@ -520,7 +520,7 @@ export function NamespacesTable() {
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
 								<input
-									aria-label="Filter loaded namespaces"
+									aria-label="Filter loaded collections"
 									className="table-filter-input"
 									value={searchInput}
 									onChange={(event) => setSearchInput(event.target.value)}
@@ -531,7 +531,7 @@ export function NamespacesTable() {
 										type="button"
 										className="ghost table-filter-clear"
 										onClick={clearFilter}
-										aria-label="Clear namespace filter"
+										aria-label="Clear collection filter"
 									>
 										Clear
 									</button>
@@ -540,7 +540,7 @@ export function NamespacesTable() {
 							<button
 								type="submit"
 								className="ghost icon-button"
-								aria-label="Filter namespaces"
+								aria-label="Filter collections"
 							>
 								<IconSearch />
 							</button>
@@ -549,34 +549,34 @@ export function NamespacesTable() {
 				</div>
 				{tableError ? <div className="error-banner">{tableError}</div> : null}
 				{tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
-				{filteredNamespaces.length === 0 ? (
+				{filteredCollections.length === 0 ? (
 					<EmptyState
 						title={
 							searchTerm
-								? `No namespaces match "${searchTerm}".`
-								: "No namespaces available."
+								? `No collections match "${searchTerm}".`
+								: "No collections available."
 						}
 						description={
 							searchTerm
-								? "Clear the filter to return to the full namespace list."
-								: "Create a namespace to establish ownership, permissions, classes, and objects."
+								? "Clear the filter to return to the full collection list."
+								: "Create a collection to establish ownership, permissions, classes, and objects."
 						}
 						action={
 							searchTerm ? null : (
 								<button type="button" onClick={() => setCreateModalOpen(true)}>
-									New namespace
+									New collection
 								</button>
 							)
 						}
 					/>
 				) : (
-					<table id="namespaces-table">
+					<table id="collections-table">
 						<thead>
 							<tr>
 								<th className="check-col">
 									<input
 										type="checkbox"
-										aria-label="Select all namespaces"
+										aria-label="Select all collections"
 										checked={allSelected}
 										onChange={(event) =>
 											shiftSelect.handleSelectAll(event.target.checked)
@@ -595,9 +595,9 @@ export function NamespacesTable() {
 							</tr>
 						</thead>
 						<tbody>
-							{filteredNamespaces.map((namespace, index) => {
-								const isSelected = selectedNamespaceIds.includes(namespace.id);
-								const isFocused = keyboardNav.focusedId === namespace.id;
+							{filteredCollections.map((collection, index) => {
+								const isSelected = selectedCollectionIds.includes(collection.id);
+								const isFocused = keyboardNav.focusedId === collection.id;
 								const rowClassName = [
 									isSelected ? "table-row-selected" : "",
 									isFocused ? "table-row-focused" : "",
@@ -607,34 +607,34 @@ export function NamespacesTable() {
 
 								return (
 									<tr
-										key={namespace.id}
+										key={collection.id}
 										className={rowClassName}
 										data-table-row-index={index}
 									>
 										<td className="check-col">
 											<input
 												type="checkbox"
-												aria-label={`Select namespace ${namespace.name}`}
+												aria-label={`Select collection ${collection.name}`}
 												checked={isSelected}
 												onChange={(event) =>
 													shiftSelect.handleClick(
-														namespace.id,
+														collection.id,
 														event.target.checked,
 														(event.nativeEvent as MouseEvent).shiftKey,
 													)
 												}
 											/>
 										</td>
-										<td>{namespace.id}</td>
+										<td>{collection.id}</td>
 										<td>
 											<Link
-												href={`/namespaces/${namespace.id}`}
+												href={`/collections/${collection.id}`}
 												className="row-link"
 											>
-												{namespace.name}
+												{collection.name}
 											</Link>
 										</td>
-										<td>{namespace.description || "-"}</td>
+										<td>{collection.description || "-"}</td>
 									</tr>
 								);
 							})}
@@ -653,7 +653,7 @@ export function NamespacesTable() {
 							pagination.goToPrevPage(pageData.prevCursor ?? undefined)
 						}
 						onFirstPage={pagination.goToFirstPage}
-						currentCount={namespaces.length}
+						currentCount={collections.length}
 						totalCount={pageData.totalCount}
 					/>
 				) : null}

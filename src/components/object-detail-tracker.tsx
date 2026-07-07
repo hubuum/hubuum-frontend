@@ -8,14 +8,14 @@ interface ObjectDetailTrackerProps {
 	objectId: number;
 	objectName: string;
 	classId: number;
-	namespaceId: number;
+	collectionId: number;
 }
 
 export function ObjectDetailTracker({
 	objectId,
 	objectName,
 	classId,
-	namespaceId,
+	collectionId,
 }: ObjectDetailTrackerProps) {
 	useEffect(() => {
 		trackRecentItem({
@@ -23,9 +23,9 @@ export function ObjectDetailTracker({
 			id: objectId,
 			name: objectName,
 			classId,
-			namespaceId,
+			collectionId,
 		});
-	}, [objectId, objectName, classId, namespaceId]);
+	}, [objectId, objectName, classId, collectionId]);
 
 	return null;
 }

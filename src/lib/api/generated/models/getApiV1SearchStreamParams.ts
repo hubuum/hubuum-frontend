@@ -12,7 +12,7 @@ export type GetApiV1SearchStreamParams = {
  */
 q: string;
 /**
- * Comma-separated kinds: namespace,class,object
+ * Comma-separated kinds: collection,class,object
  */
 kinds?: string;
 /**
@@ -21,9 +21,9 @@ kinds?: string;
  */
 limit_per_kind?: number;
 /**
- * Opaque cursor for namespace results
+ * Opaque cursor for collection results
  */
-cursor_namespaces?: string;
+cursor_collections?: string;
 /**
  * Opaque cursor for class results
  */

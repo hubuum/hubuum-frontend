@@ -8,12 +8,12 @@
 
 export interface UpdateHubuumClass {
   /** @nullable */
+  collection_id?: number | null;
+  /** @nullable */
   description?: string | null;
   json_schema?: unknown;
   /** @nullable */
   name?: string | null;
-  /** @nullable */
-  namespace_id?: number | null;
   /** @nullable */
   validate_schema?: boolean | null;
 }

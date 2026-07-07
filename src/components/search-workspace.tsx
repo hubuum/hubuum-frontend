@@ -27,8 +27,8 @@ type SearchGroupOption = {
 
 type ClassContext = {
 	className: string;
-	namespaceId: number;
-	namespaceName: string;
+	collectionId: number;
+	collectionName: string;
 };
 
 type SearchWorkspaceState = {
@@ -41,9 +41,9 @@ type SearchWorkspaceState = {
 
 const SEARCH_GROUPS: SearchGroupOption[] = [
 	{
-		group: "namespaces",
-		kind: "namespace",
-		label: "Namespaces",
+		group: "collections",
+		kind: "collection",
+		label: "Collections",
 	},
 	{
 		group: "classes",
@@ -129,7 +129,7 @@ function mergeResults(
 	appendedResults: UnifiedSearchResults,
 ): UnifiedSearchResults {
 	return {
-		namespaces: [...baseResults.namespaces, ...appendedResults.namespaces],
+		collections: [...baseResults.collections, ...appendedResults.collections],
 		classes: [...baseResults.classes, ...appendedResults.classes],
 		objects: [...baseResults.objects, ...appendedResults.objects],
 	};
@@ -152,8 +152,8 @@ async function fetchClassContextByIds(
 				classId,
 				context: {
 					className: response.data.name,
-					namespaceId: response.data.namespace.id,
-					namespaceName: response.data.namespace.name,
+					collectionId: response.data.collection.id,
+					collectionName: response.data.collection.name,
 				},
 			};
 		}),
@@ -237,10 +237,10 @@ export function SearchWorkspace() {
 		const baseNext =
 			searchQueryResult.data?.next ?? createEmptyUnifiedSearchNext();
 		return {
-			namespaces:
-				activeSearchState.nextOverrides.namespaces !== undefined
-					? activeSearchState.nextOverrides.namespaces
-					: (baseNext.namespaces ?? null),
+			collections:
+				activeSearchState.nextOverrides.collections !== undefined
+					? activeSearchState.nextOverrides.collections
+					: (baseNext.collections ?? null),
 			classes:
 				activeSearchState.nextOverrides.classes !== undefined
 					? activeSearchState.nextOverrides.classes
@@ -258,8 +258,8 @@ export function SearchWorkspace() {
 		for (const classItem of mergedResults.classes) {
 			contextById[classItem.id] = {
 				className: classItem.name,
-				namespaceId: classItem.namespace.id,
-				namespaceName: classItem.namespace.name,
+				collectionId: classItem.collection.id,
+				collectionName: classItem.collection.name,
 			};
 		}
 
@@ -292,7 +292,7 @@ export function SearchWorkspace() {
 	}, [classContextQuery.data, searchClassContext]);
 
 	const totalLoadedResults =
-		mergedResults.namespaces.length +
+		mergedResults.collections.length +
 		mergedResults.classes.length +
 		mergedResults.objects.length;
 
@@ -377,7 +377,7 @@ export function SearchWorkspace() {
 				q: searchQuery,
 				kind,
 				limitPerKind: DEFAULT_UNIFIED_SEARCH_LIMIT,
-				cursorNamespaces: group === "namespaces" ? nextCursor : null,
+				cursorCollections: group === "collections" ? nextCursor : null,
 				cursorClasses: group === "classes" ? nextCursor : null,
 				cursorObjects: group === "objects" ? nextCursor : null,
 				searchClassSchema,
@@ -401,7 +401,7 @@ export function SearchWorkspace() {
 				};
 
 				switch (nextPage.kind) {
-					case "namespace":
+					case "collection":
 						return {
 							...baseState,
 							key: searchStateKey,
@@ -409,8 +409,8 @@ export function SearchWorkspace() {
 							nextOverrides,
 							appendedResults: {
 								...baseState.appendedResults,
-								namespaces: [
-									...baseState.appendedResults.namespaces,
+								collections: [
+									...baseState.appendedResults.collections,
 									...nextPage.results,
 								],
 							},
@@ -483,7 +483,7 @@ export function SearchWorkspace() {
 		}
 	}
 
-	function renderNamespaceTable() {
+	function renderCollectionTable() {
 		return (
 			<table>
 				<thead>
@@ -495,16 +495,16 @@ export function SearchWorkspace() {
 					</tr>
 				</thead>
 				<tbody>
-					{mergedResults.namespaces.map((namespace) => (
-						<tr key={`namespace-${namespace.id}`}>
-							<td>#{namespace.id}</td>
+					{mergedResults.collections.map((collection) => (
+						<tr key={`collection-${collection.id}`}>
+							<td>#{collection.id}</td>
 							<td>
-								<Link href={`/namespaces/${namespace.id}`} className="row-link">
-									{namespace.name}
+								<Link href={`/collections/${collection.id}`} className="row-link">
+									{collection.name}
 								</Link>
 							</td>
-							<td>{namespace.description || "-"}</td>
-							<td>{formatTimestamp(namespace.updated_at)}</td>
+							<td>{collection.description || "-"}</td>
+							<td>{formatTimestamp(collection.updated_at)}</td>
 						</tr>
 					))}
 				</tbody>
@@ -519,7 +519,7 @@ export function SearchWorkspace() {
 					<tr>
 						<th>ID</th>
 						<th>Name</th>
-						<th>Namespace</th>
+						<th>Collection</th>
 						<th>Description</th>
 					</tr>
 				</thead>
@@ -533,7 +533,7 @@ export function SearchWorkspace() {
 								</Link>
 							</td>
 							<td>
-								{classItem.namespace.name} (#{classItem.namespace.id})
+								{classItem.collection.name} (#{classItem.collection.id})
 							</td>
 							<td>{classItem.description || "-"}</td>
 						</tr>
@@ -551,7 +551,7 @@ export function SearchWorkspace() {
 						<th>ID</th>
 						<th>Name</th>
 						<th>Class</th>
-						<th>Namespace</th>
+						<th>Collection</th>
 						<th>Description</th>
 						<th>Data</th>
 					</tr>
@@ -561,11 +561,11 @@ export function SearchWorkspace() {
 						const classContext = classContextById[objectItem.hubuum_class_id];
 						const classLabel =
 							classContext?.className ?? `Class #${objectItem.hubuum_class_id}`;
-						const namespaceId =
-							classContext?.namespaceId ?? objectItem.namespace_id;
-						const namespaceLabel =
-							classContext?.namespaceName ??
-							`Namespace #${objectItem.namespace_id}`;
+						const collectionId =
+							classContext?.collectionId ?? objectItem.collection_id;
+						const collectionLabel =
+							classContext?.collectionName ??
+							`Collection #${objectItem.collection_id}`;
 
 						return (
 							<tr key={`object-${objectItem.hubuum_class_id}-${objectItem.id}`}>
@@ -582,7 +582,7 @@ export function SearchWorkspace() {
 									{classLabel} (#{objectItem.hubuum_class_id})
 								</td>
 								<td>
-									{namespaceLabel} (#{namespaceId})
+									{collectionLabel} (#{collectionId})
 								</td>
 								<td>{objectItem.description || "-"}</td>
 								<td className="search-data-cell">
@@ -603,8 +603,8 @@ export function SearchWorkspace() {
 		}
 
 		const items =
-			group === "namespaces"
-				? mergedResults.namespaces
+			group === "collections"
+				? mergedResults.collections
 				: group === "classes"
 					? mergedResults.classes
 					: mergedResults.objects;
@@ -644,8 +644,8 @@ export function SearchWorkspace() {
 
 				{items.length > 0 ? (
 					<div className="table-wrap search-table-wrap">
-						{group === "namespaces"
-							? renderNamespaceTable()
+						{group === "collections"
+							? renderCollectionTable()
 							: group === "classes"
 								? renderClassesTable()
 								: renderObjectsTable()}
@@ -706,7 +706,7 @@ export function SearchWorkspace() {
 					<p className="eyebrow">Search</p>
 					<h2>Unified search</h2>
 					<p className="muted search-summary">
-						Use the top bar to search across namespaces, classes, and objects.
+						Use the top bar to search across collections, classes, and objects.
 					</p>
 				</header>
 

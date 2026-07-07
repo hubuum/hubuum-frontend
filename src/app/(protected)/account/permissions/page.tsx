@@ -11,7 +11,7 @@ export default async function AccountPermissionsPage() {
 				<p className="eyebrow">Account</p>
 				<h2>Permissions</h2>
 				<p className="muted">
-					Your effective permissions across namespaces, by granting group.
+					Your effective permissions across collections, by granting group.
 				</p>
 			</header>
 			<AccountTabs />

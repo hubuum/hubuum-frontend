@@ -16,6 +16,7 @@ import type { ReportTemplateKind } from './reportTemplateKind';
 export interface ReportTemplate {
   /** @nullable */
   class_id?: number | null;
+  collection_id: number;
   content_type: ReportContentType;
   created_at: string;
   default_limits?: null | ReportLimits;
@@ -27,7 +28,6 @@ export interface ReportTemplate {
   include?: null | ReportInclude;
   kind: ReportTemplateKind;
   name: string;
-  namespace_id: number;
   relation_context?: null | ReportRelationContext;
   scope_kind?: null | ReportScopeKind;
   template: string;

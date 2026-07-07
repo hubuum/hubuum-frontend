@@ -7,7 +7,7 @@ export type ScopeGroup = {
 
 export const SCOPE_GROUPS: ScopeGroup[] = [
 	{
-		label: "Collections (namespaces)",
+		label: "Collections (collections)",
 		scopes: [
 			Permissions.ReadCollection,
 			Permissions.UpdateCollection,

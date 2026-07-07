@@ -19,7 +19,7 @@ export type RemoteTargetListPage = {
 export type ListRemoteTargetsOptions = {
 	cursor?: string;
 	limit?: number;
-	namespaceId?: number;
+	collectionId?: number;
 	sort?: string;
 };
 
@@ -76,14 +76,14 @@ export function parseJsonObjectInput(
 
 export function filterInvokableTargets(
 	targets: readonly RemoteTarget[],
-	namespaceId: number,
+	collectionId: number,
 	subjectType: RemoteTargetSubjectType,
 	classId?: number,
 ): RemoteTarget[] {
 	return targets.filter(
 		(target) =>
 			target.enabled &&
-			target.namespace_id === namespaceId &&
+			target.collection_id === collectionId &&
 			target.allowed_subject_types.includes(subjectType) &&
 			(subjectType !== "object" ||
 				(typeof classId === "number" && target.class_id === classId)),
@@ -100,8 +100,8 @@ export async function fetchRemoteTargetsPage(
 	if (options.cursor?.trim()) {
 		params.set("cursor", options.cursor.trim());
 	}
-	if (typeof options.namespaceId === "number") {
-		params.set("namespace_id", String(options.namespaceId));
+	if (typeof options.collectionId === "number") {
+		params.set("collection_id", String(options.collectionId));
 	}
 
 	const response = await fetch(

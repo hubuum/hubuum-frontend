@@ -7,10 +7,10 @@
  */
 
 export interface NewHubuumClass {
+  collection_id: number;
   description: string;
   json_schema?: unknown;
   name: string;
-  namespace_id: number;
   /** @nullable */
   validate_schema?: boolean | null;
 }

@@ -9,7 +9,7 @@
 /**
  * A serialized history row plus the resolved username of its actor (if any).
  */
-export type HistoryResponseNamespaceHistory = ({
+export type HistoryResponseCollectionHistory = ({
   /** @nullable */
   actor_id?: number | null;
   created_at: string;

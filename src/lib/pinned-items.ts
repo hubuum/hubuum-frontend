@@ -1,45 +1,7 @@
-import type { PinnedClass } from "@/types/quick-access";
 import type { PinnedItem, PinnedItemType, ClassPinAction } from "@/types/quick-access";
 
 const PINNED_ITEMS_KEY = "hubuum.pinned-items";
-const PINNED_CLASSES_KEY = "hubuum.pinned-classes"; // old key for migration
 const MAX_PINNED_ITEMS = 10;
-
-// Migration: Convert old PinnedClass[] to new PinnedItem[]
-function migrateOldPinnedClasses(): PinnedItem[] | null {
-	if (typeof window === "undefined") {
-		return null;
-	}
-
-	try {
-		const oldData = window.localStorage.getItem(PINNED_CLASSES_KEY);
-		if (!oldData) {
-			return null;
-		}
-
-		const oldClasses = JSON.parse(oldData) as PinnedClass[];
-		if (!Array.isArray(oldClasses)) {
-			return null;
-		}
-
-		const migrated: PinnedItem[] = oldClasses.map((old) => ({
-			type: "class" as const,
-			id: old.classId,
-			name: old.className,
-			timestamp: Date.now(),
-			namespaceId: undefined,
-			namespaceName: old.namespaceName,
-			action: "create" as const, // preserve current behavior
-		}));
-
-		window.localStorage.setItem(PINNED_ITEMS_KEY, JSON.stringify(migrated));
-		window.localStorage.removeItem(PINNED_CLASSES_KEY);
-
-		return migrated;
-	} catch {
-		return null;
-	}
-}
 
 export function getPinnedItems(): PinnedItem[] {
 	if (typeof window === "undefined") {
@@ -49,8 +11,7 @@ export function getPinnedItems(): PinnedItem[] {
 	try {
 		const stored = window.localStorage.getItem(PINNED_ITEMS_KEY);
 		if (!stored) {
-			const migrated = migrateOldPinnedClasses();
-			return migrated ?? [];
+			return [];
 		}
 
 		const items = JSON.parse(stored) as PinnedItem[];
