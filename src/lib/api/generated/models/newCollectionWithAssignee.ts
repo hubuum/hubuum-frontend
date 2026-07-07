@@ -17,4 +17,6 @@ export interface NewCollectionWithAssignee {
   description: string;
   group_id: number;
   name: string;
+  /** @nullable */
+  parent_collection_id?: number | null;
 }

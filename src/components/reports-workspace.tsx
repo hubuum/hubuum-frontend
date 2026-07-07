@@ -24,6 +24,10 @@ import type {
 	Collection,
 } from "@/lib/api/generated/models";
 import {
+	buildCollectionHierarchy,
+	formatCollectionOption,
+} from "@/lib/collection-hierarchy";
+import {
 	createReportTemplate,
 	deleteReportTemplate,
 	fetchReportOutput,
@@ -1040,6 +1044,10 @@ export function ReportsWorkspace() {
 	}
 
 	const collectionOptions = collectionsQuery.data ?? [];
+	const collectionHierarchy = useMemo(
+		() => buildCollectionHierarchy(collectionOptions),
+		[collectionOptions],
+	);
 	const classOptions = classesQuery.data ?? [];
 	const objectOptions = objectsQuery.data ?? [];
 
@@ -2027,7 +2035,10 @@ export function ReportsWorkspace() {
 									>
 										{collectionOptions.map((collection) => (
 											<option key={collection.id} value={collection.id}>
-												{collection.name} (#{collection.id})
+												{formatCollectionOption(
+													collection,
+													collectionHierarchy.byId,
+												)}
 											</option>
 										))}
 									</select>

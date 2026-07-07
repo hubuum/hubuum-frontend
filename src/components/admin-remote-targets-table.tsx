@@ -27,6 +27,10 @@ import {
 	parseJsonObjectInput,
 } from "@/lib/api/remote-targets";
 import {
+	buildCollectionHierarchy,
+	formatCollectionOption,
+} from "@/lib/collection-hierarchy";
+import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
@@ -395,6 +399,10 @@ export function AdminRemoteTargetsTable() {
 	const collectionsById = useMemo(() => {
 		return new Map((collectionsQuery.data ?? []).map((collection) => [collection.id, collection]));
 	}, [collectionsQuery.data]);
+	const collectionHierarchy = useMemo(
+		() => buildCollectionHierarchy(collectionsQuery.data ?? []),
+		[collectionsQuery.data],
+	);
 	const classesById = useMemo(() => {
 		return new Map((classesQuery.data ?? []).map((hubuumClass) => [hubuumClass.id, hubuumClass]));
 	}, [classesQuery.data]);
@@ -532,7 +540,10 @@ export function AdminRemoteTargetsTable() {
 									<option value="">Select a collection</option>
 									{collectionsQuery.data.map((collection) => (
 										<option key={collection.id} value={collection.id}>
-											{collection.name}
+											{formatCollectionOption(
+												collection,
+												collectionHierarchy.byId,
+											)}
 										</option>
 									))}
 								</select>

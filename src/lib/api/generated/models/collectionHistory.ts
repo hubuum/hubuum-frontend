@@ -15,6 +15,8 @@ export interface CollectionHistory {
   id: number;
   name: string;
   op: string;
+  /** @nullable */
+  parent_collection_id?: number | null;
   updated_at: string;
   valid_from: string;
   /** @nullable */

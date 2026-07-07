@@ -8,7 +8,7 @@
 import type { GroupGrant } from './groupGrant';
 
 /**
- * A principal's effective permissions on a single collection, broken down by the
+ * A principal's direct permission rows on a single collection, broken down by the
 group that grants them.
  */
 export interface PrincipalCollectionPermissions {

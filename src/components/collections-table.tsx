@@ -21,6 +21,13 @@ import type {
 	NewCollectionWithAssignee,
 } from "@/lib/api/generated/models";
 import {
+	buildCollectionHierarchy,
+	formatCollectionOption,
+	formatCollectionPath,
+	getCollectionPath,
+	isRootCollection,
+} from "@/lib/collection-hierarchy";
+import {
 	DESELECT_ALL_EVENT,
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
@@ -109,6 +116,7 @@ export function CollectionsTable() {
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [groupId, setGroupId] = useState("");
+	const [parentCollectionId, setParentCollectionId] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
 	const [selectedCollectionIds, setSelectedCollectionIds] = useState<number[]>(
@@ -156,6 +164,10 @@ export function CollectionsTable() {
 			await queryClient.invalidateQueries({ queryKey: ["collections"] });
 			setName("");
 			setDescription("");
+			const rootCollection = (query.data?.collections ?? []).find(
+				isRootCollection,
+			);
+			setParentCollectionId(rootCollection ? String(rootCollection.id) : "");
 			if (groupsQuery.data?.length) {
 				setGroupId(String(groupsQuery.data[0].id));
 			}
@@ -209,6 +221,29 @@ export function CollectionsTable() {
 		},
 	});
 
+	const groups = groupsQuery.data ?? [];
+	const pageData = query.data;
+	const collections = pageData?.collections ?? [];
+	const hierarchy = useMemo(
+		() => buildCollectionHierarchy(collections),
+		[collections],
+	);
+	const rootCollection = collections.find(isRootCollection);
+	const treeRows = useMemo(
+		() => hierarchy.flatNodes.map((node) => node.collection),
+		[hierarchy.flatNodes],
+	);
+	const depthByCollectionId = useMemo(
+		() =>
+			new Map(
+				hierarchy.flatNodes.map((node) => [
+					node.collection.id,
+					node.depth,
+				]),
+			),
+		[hierarchy.flatNodes],
+	);
+
 	const deleteSelectedCollections = useCallback(async () => {
 		if (!selectedCollectionIds.length) {
 			return;
@@ -216,6 +251,23 @@ export function CollectionsTable() {
 
 		setTableError(null);
 		setTableSuccess(null);
+
+		const selectedCollections = selectedCollectionIds
+			.map((collectionId) => hierarchy.byId.get(collectionId))
+			.filter((collection): collection is Collection => Boolean(collection));
+		const blockedCollections = selectedCollections.filter(
+			(collection) =>
+				isRootCollection(collection) ||
+				(hierarchy.childrenByParentId.get(collection.id)?.length ?? 0) > 0,
+		);
+		if (blockedCollections.length > 0) {
+			setTableError(
+				`Cannot delete ${blockedCollections
+					.map((collection) => `${collection.name} (#${collection.id})`)
+					.join(", ")}. Root collections and collections with child collections must be kept or emptied first.`,
+			);
+			return;
+		}
 
 		const confirmed = await confirm({
 			title: `Delete ${selectedCollectionIds.length} selected collection${
@@ -231,7 +283,13 @@ export function CollectionsTable() {
 		}
 
 		deleteMutation.mutate([...selectedCollectionIds]);
-	}, [confirm, selectedCollectionIds, deleteMutation]);
+	}, [
+		confirm,
+		hierarchy.byId,
+		hierarchy.childrenByParentId,
+		selectedCollectionIds,
+		deleteMutation,
+	]);
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -244,27 +302,50 @@ export function CollectionsTable() {
 			return;
 		}
 
+		const trimmedParentCollectionId = parentCollectionId.trim();
+		let parentCollectionPayload: number | null = null;
+		if (trimmedParentCollectionId) {
+			const parsedParentCollectionId = Number.parseInt(
+				trimmedParentCollectionId,
+				10,
+			);
+			if (!Number.isFinite(parsedParentCollectionId) || parsedParentCollectionId < 1) {
+				setFormError("Parent collection must be a positive integer.");
+				return;
+			}
+			parentCollectionPayload = parsedParentCollectionId;
+		}
+
 		createMutation.mutate({
 			name: name.trim(),
 			description: description.trim(),
 			group_id: parsedGroupId,
+			parent_collection_id: parentCollectionPayload,
 		});
 	}
 
-	const groups = groupsQuery.data ?? [];
-	const pageData = query.data;
-	const collections = pageData?.collections ?? [];
 	const searchTerm = normalizeSearchTerm(searchParams.get("search"));
 	const filteredCollections = useMemo(
 		() =>
-			collections.filter((collection) =>
-				matchesFreeTextSearch(
+			treeRows.filter((collection) => {
+				const parent =
+					collection.parent_collection_id === null ||
+					collection.parent_collection_id === undefined
+						? null
+						: hierarchy.byId.get(collection.parent_collection_id);
+				const pathLabel = formatCollectionPath(
+					getCollectionPath(collection, hierarchy.byId),
+				);
+				return matchesFreeTextSearch(
 					searchTerm,
+					String(collection.id),
 					collection.name,
 					collection.description,
-				),
-			),
-		[collections, searchTerm],
+					parent?.name,
+					pathLabel,
+				);
+			}),
+		[hierarchy.byId, searchTerm, treeRows],
 	);
 	const allSelected =
 		filteredCollections.length > 0 &&
@@ -307,6 +388,14 @@ export function CollectionsTable() {
 
 		setGroupId(String(groups[0].id));
 	}, [groupId, groups]);
+
+	useEffect(() => {
+		if (parentCollectionId || !rootCollection) {
+			return;
+		}
+
+		setParentCollectionId(String(rootCollection.id));
+	}, [parentCollectionId, rootCollection]);
 
 	useEffect(() => {
 		if (!selectedCollectionIds.length) {
@@ -464,6 +553,45 @@ export function CollectionsTable() {
 						)}
 					</div>
 
+					<label
+						className="control-field control-field--wide"
+						htmlFor="collection-parent"
+					>
+						<span>Parent collection</span>
+						{collections.length > 0 ? (
+							<select
+								id="collection-parent"
+								value={parentCollectionId}
+								onChange={(event) =>
+									setParentCollectionId(event.target.value)
+								}
+							>
+								<option value="">Root collection</option>
+								{treeRows.map((collection) => (
+									<option key={collection.id} value={collection.id}>
+										{formatCollectionOption(collection, hierarchy.byId)}
+									</option>
+								))}
+							</select>
+						) : (
+							<input
+								id="collection-parent"
+								type="number"
+								min={1}
+								value={parentCollectionId}
+								onChange={(event) =>
+									setParentCollectionId(event.target.value)
+								}
+								placeholder={
+									query.isLoading
+										? "Loading collections..."
+										: "Optional parent collection ID"
+								}
+								disabled={query.isLoading}
+							/>
+						)}
+					</label>
+
 					<label className="control-field control-field--wide">
 						<span>Description</span>
 						<input
@@ -589,6 +717,8 @@ export function CollectionsTable() {
 								<th className="sortable" onClick={() => setSort("name")}>
 									Name{renderSortIndicator("name")}
 								</th>
+								<th>Parent</th>
+								<th>Children</th>
 								<th className="sortable" onClick={() => setSort("description")}>
 									Description{renderSortIndicator("description")}
 								</th>
@@ -598,6 +728,17 @@ export function CollectionsTable() {
 							{filteredCollections.map((collection, index) => {
 								const isSelected = selectedCollectionIds.includes(collection.id);
 								const isFocused = keyboardNav.focusedId === collection.id;
+								const depth = depthByCollectionId.get(collection.id) ?? 0;
+								const parent =
+									collection.parent_collection_id === null ||
+									collection.parent_collection_id === undefined
+										? null
+										: hierarchy.byId.get(collection.parent_collection_id);
+								const childCount =
+									hierarchy.childrenByParentId.get(collection.id)?.length ?? 0;
+								const pathLabel = formatCollectionPath(
+									getCollectionPath(collection, hierarchy.byId),
+								);
 								const rowClassName = [
 									isSelected ? "table-row-selected" : "",
 									isFocused ? "table-row-focused" : "",
@@ -630,10 +771,27 @@ export function CollectionsTable() {
 											<Link
 												href={`/collections/${collection.id}`}
 												className="row-link"
+												title={pathLabel}
+												style={{
+													paddingLeft: depth > 0 ? `${depth * 1.25}rem` : 0,
+												}}
 											>
 												{collection.name}
 											</Link>
 										</td>
+										<td>
+											{parent ? (
+												<Link
+													href={`/collections/${parent.id}`}
+													className="row-link"
+												>
+													{parent.name} (#{parent.id})
+												</Link>
+											) : (
+												<span className="muted">Root</span>
+											)}
+										</td>
+										<td>{childCount}</td>
 										<td>{collection.description || "-"}</td>
 									</tr>
 								);

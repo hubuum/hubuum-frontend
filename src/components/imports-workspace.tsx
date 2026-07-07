@@ -18,6 +18,11 @@ import {
 import type { Group, Collection } from "@/lib/api/generated/models";
 import { createImportTask, type ImportRequest } from "@/lib/api/tasking";
 import {
+	buildCollectionHierarchy,
+	formatCollectionOption,
+	getDuplicateCollectionNames,
+} from "@/lib/collection-hierarchy";
+import {
 	buildImportSubmissionPayload,
 	getImportCollectionSuggestion,
 	type CollectionMode,
@@ -189,11 +194,24 @@ export function ImportsWorkspace({
 		queryFn: fetchCollections,
 	});
 	const collectionOptions = collectionsQuery.data ?? [];
+	const collectionHierarchy = useMemo(
+		() => buildCollectionHierarchy(collectionOptions),
+		[collectionOptions],
+	);
+	const duplicateCollectionNames = useMemo(
+		() => getDuplicateCollectionNames(collectionOptions),
+		[collectionOptions],
+	);
 	const isExistingCollectionMode = collectionMode === "existing_override";
 	const requiresTargetCollection = collectionMode !== "file";
 	const requiresCollectionDescription = collectionMode === "create_override";
 	const canUsePermissionControls =
 		canCreateCollections && !isExistingCollectionMode;
+	const targetCollectionNameKey = targetCollectionName.trim().toLocaleLowerCase();
+	const hasAmbiguousTargetCollection =
+		isExistingCollectionMode &&
+		targetCollectionNameKey !== "" &&
+		duplicateCollectionNames.has(targetCollectionNameKey);
 	const hasVisibleTargetCollection =
 		collectionMode !== "existing_override" ||
 		collectionOptions.some((collection) => collection.name === targetCollectionName);
@@ -201,6 +219,7 @@ export function ImportsWorkspace({
 		!requiresTargetCollection ||
 		(targetCollectionName.trim() !== "" &&
 			hasVisibleTargetCollection &&
+			!hasAmbiguousTargetCollection &&
 			(!requiresCollectionDescription ||
 				targetCollectionDescription.trim() !== ""));
 	const filePermissionGroupValidation = useMemo(
@@ -452,7 +471,7 @@ export function ImportsWorkspace({
 					</option>
 					{collectionOptions.map((collection) => (
 						<option key={collection.id} value={collection.name}>
-							{collection.name} (#{collection.id})
+							{formatCollectionOption(collection, collectionHierarchy.byId)}
 						</option>
 					))}
 				</select>
@@ -460,6 +479,12 @@ export function ImportsWorkspace({
 					<span className="field-note field-note--warning">
 						The import references {targetCollectionName}, but that collection is
 						not visible to your account.
+					</span>
+				) : hasAmbiguousTargetCollection ? (
+					<span className="field-note field-note--warning">
+						Multiple visible collections are named {targetCollectionName}. The
+						import API matches existing collections by name, so choose a unique
+						collection name before submitting.
 					</span>
 				) : null}
 			</label>

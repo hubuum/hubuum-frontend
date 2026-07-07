@@ -22,6 +22,10 @@ import type {
 	NewHubuumClass,
 } from "@/lib/api/generated/models";
 import {
+	buildCollectionHierarchy,
+	formatCollectionOption,
+} from "@/lib/collection-hierarchy";
+import {
 	DESELECT_ALL_EVENT,
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
@@ -140,6 +144,10 @@ export function ClassesTable() {
 		queryFn: fetchCollections,
 	});
 	const collections = collectionsQuery.data ?? [];
+	const collectionHierarchy = useMemo(
+		() => buildCollectionHierarchy(collections),
+		[collections],
+	);
 	const canCreateClass = collections.length > 0;
 
 	useEffect(() => {
@@ -463,7 +471,10 @@ export function ClassesTable() {
 							) : null}
 							{collections.map((collection) => (
 								<option key={collection.id} value={collection.id}>
-									{collection.name} (#{collection.id})
+									{formatCollectionOption(
+										collection,
+										collectionHierarchy.byId,
+									)}
 								</option>
 							))}
 						</select>

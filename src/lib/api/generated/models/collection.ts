@@ -11,5 +11,7 @@ export interface Collection {
   description: string;
   id: number;
   name: string;
+  /** @nullable */
+  parent_collection_id?: number | null;
   updated_at: string;
 }

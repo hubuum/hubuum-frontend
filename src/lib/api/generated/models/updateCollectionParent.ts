@@ -6,8 +6,6 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface CollectionKey {
-  name: string;
-  /** @nullable */
-  path?: string[] | null;
+export interface UpdateCollectionParent {
+  parent_collection_id: number;
 }

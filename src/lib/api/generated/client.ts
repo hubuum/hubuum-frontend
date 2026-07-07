@@ -11,6 +11,7 @@ import type {
   Collection,
   CountsResponse,
   DbStateResponse,
+  EffectiveGroupPermission,
   EventDelivery,
   EventDeliveryHealthResponse,
   EventDeliveryUpdateResponse,
@@ -118,6 +119,7 @@ import type {
   TaskResponse,
   UnifiedSearchResponse,
   UpdateCollection,
+  UpdateCollectionParent,
   UpdateEventSink,
   UpdateEventSubscription,
   UpdateGroup,
@@ -2914,6 +2916,116 @@ export const patchApiV1CollectionsByCollectionId = async (collectionId: number,
 
 
 /**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/ancestors.
+ * @summary Get Api V1 Collections By Collection Id Ancestors
+ */
+export type getApiV1CollectionsByCollectionIdAncestorsResponse200 = {
+  data: Collection[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdAncestorsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdAncestorsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdAncestorsResponseSuccess = (getApiV1CollectionsByCollectionIdAncestorsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdAncestorsResponseError = (getApiV1CollectionsByCollectionIdAncestorsResponse401 | getApiV1CollectionsByCollectionIdAncestorsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdAncestorsResponse = (getApiV1CollectionsByCollectionIdAncestorsResponseSuccess | getApiV1CollectionsByCollectionIdAncestorsResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdAncestorsUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/ancestors`
+}
+
+export const getApiV1CollectionsByCollectionIdAncestors = async (collectionId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdAncestorsResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdAncestorsUrl(collectionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdAncestorsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdAncestorsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/children.
+ * @summary Get Api V1 Collections By Collection Id Children
+ */
+export type getApiV1CollectionsByCollectionIdChildrenResponse200 = {
+  data: Collection[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdChildrenResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdChildrenResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdChildrenResponseSuccess = (getApiV1CollectionsByCollectionIdChildrenResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdChildrenResponseError = (getApiV1CollectionsByCollectionIdChildrenResponse401 | getApiV1CollectionsByCollectionIdChildrenResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdChildrenResponse = (getApiV1CollectionsByCollectionIdChildrenResponseSuccess | getApiV1CollectionsByCollectionIdChildrenResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdChildrenUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/children`
+}
+
+export const getApiV1CollectionsByCollectionIdChildren = async (collectionId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdChildrenResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdChildrenUrl(collectionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdChildrenResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdChildrenResponse
+}
+
+
+
+/**
  * Auto-generated documentation for GET /api/v1/collections/{collection_id}/event-subscriptions.
  * @summary Get Api V1 Collections By Collection Id Event Subscriptions
  */
@@ -3517,6 +3629,78 @@ export const getApiV1CollectionsByCollectionIdHistoryAsOf = async (collectionId:
 
 
 /**
+ * Auto-generated documentation for PUT /api/v1/collections/{collection_id}/parent.
+ * @summary Put Api V1 Collections By Collection Id Parent
+ */
+export type putApiV1CollectionsByCollectionIdParentResponse202 = {
+  data: Collection
+  status: 202
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponseSuccess = (putApiV1CollectionsByCollectionIdParentResponse202) & {
+  headers: Headers;
+};
+export type putApiV1CollectionsByCollectionIdParentResponseError = (putApiV1CollectionsByCollectionIdParentResponse400 | putApiV1CollectionsByCollectionIdParentResponse401 | putApiV1CollectionsByCollectionIdParentResponse403 | putApiV1CollectionsByCollectionIdParentResponse404 | putApiV1CollectionsByCollectionIdParentResponse409) & {
+  headers: Headers;
+};
+
+export type putApiV1CollectionsByCollectionIdParentResponse = (putApiV1CollectionsByCollectionIdParentResponseSuccess | putApiV1CollectionsByCollectionIdParentResponseError)
+
+export const getPutApiV1CollectionsByCollectionIdParentUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/parent`
+}
+
+export const putApiV1CollectionsByCollectionIdParent = async (collectionId: number,
+    updateCollectionParent: UpdateCollectionParent, options?: RequestInit): Promise<putApiV1CollectionsByCollectionIdParentResponse> => {
+
+  const res = await fetch(getPutApiV1CollectionsByCollectionIdParentUrl(collectionId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateCollectionParent,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1CollectionsByCollectionIdParentResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1CollectionsByCollectionIdParentResponse
+}
+
+
+
+/**
  * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List all groups who have permissions for a collection
  */
@@ -3576,6 +3760,120 @@ export const getApiV1CollectionsByCollectionIdPermissions = async (collectionId:
 
   const data: getApiV1CollectionsByCollectionIdPermissionsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdPermissionsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/effective/group/{group_id}.
+ * @summary Get Api V1 Collections By Collection Id Permissions Effective Group By Group Id
+ */
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse200 = {
+  data: EffectiveGroupPermission[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponseSuccess = (getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponseError = (getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse401 | getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse = (getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponseSuccess | getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdUrl = (collectionId: number,
+    groupId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/effective/group/${groupId}`
+}
+
+export const getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupId = async (collectionId: number,
+    groupId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdUrl(collectionId,groupId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/effective/principal/{principal_id}.
+ * @summary Get Api V1 Collections By Collection Id Permissions Effective Principal By Principal Id
+ */
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse200 = {
+  data: EffectiveGroupPermission[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponseSuccess = (getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponseError = (getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse401 | getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse = (getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponseSuccess | getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdUrl = (collectionId: number,
+    principalId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/effective/principal/${principalId}`
+}
+
+export const getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalId = async (collectionId: number,
+    principalId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdUrl(collectionId,principalId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse
 }
 
 

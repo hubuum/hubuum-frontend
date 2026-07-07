@@ -109,6 +109,24 @@ metadata\.owner    -> literal key { "metadata.owner": ... }
 path\\.segment     -> literal key { "path\\segment": ... }
 ```
 
+## Collection hierarchy
+
+Collections are hierarchical. The frontend shows parent/path information in
+collection lists, lets users create collections under a parent, and supports
+moving non-root collections to another visible parent. The root collection
+cannot be moved or deleted, and collections with direct children must have those
+children moved or deleted before the collection can be deleted.
+
+Collection permission management distinguishes direct rows from effective
+permissions. Direct rows are editable on the collection detail page. Effective
+permissions include inherited grants from ancestor collections and are shown as
+read-only context for the current principal.
+
+Collection names are unique among siblings, not globally. UI selectors prefer
+path-aware labels where the API uses collection IDs. Import overrides still use
+the backend's name-based `CollectionKey`, so the frontend blocks existing
+collection overrides when multiple visible collections share the selected name.
+
 ## Quick start
 
 1. Install dependencies:

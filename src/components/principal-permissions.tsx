@@ -60,7 +60,7 @@ export function PrincipalPermissions({
 	if (collections.length === 0) {
 		return (
 			<div className="card muted">
-				No effective permissions on any collection.
+				No direct permissions on any collection.
 			</div>
 		);
 	}

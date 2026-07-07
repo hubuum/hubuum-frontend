@@ -8,7 +8,7 @@
 import type { Permissions } from './permissions';
 
 /**
- * One group's contribution to a principal's effective permissions on a collection.
+ * One group's direct permission row contribution on a collection.
  */
 export interface GroupGrant {
   group_id: number;

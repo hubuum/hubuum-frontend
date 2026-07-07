@@ -5,10 +5,14 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
+import type { CollectionKey } from './collectionKey';
 
 export interface ImportCollectionInput {
   description: string;
   name: string;
+  parent_collection_key?: null | CollectionKey;
+  /** @nullable */
+  parent_collection_ref?: string | null;
   /** @nullable */
   ref?: string | null;
 }
