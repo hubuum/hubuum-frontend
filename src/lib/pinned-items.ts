@@ -2,6 +2,53 @@ import type { PinnedItem, PinnedItemType, ClassPinAction } from "@/types/quick-a
 
 const PINNED_ITEMS_KEY = "hubuum.pinned-items";
 const MAX_PINNED_ITEMS = 10;
+const PINNED_ITEM_TYPES = new Set(["collection", "class", "object"]);
+
+function isPositiveInteger(value: unknown): value is number {
+	return Number.isInteger(value) && Number(value) > 0;
+}
+
+function normalizePinnedItem(value: unknown): PinnedItem | null {
+	if (!value || typeof value !== "object") {
+		return null;
+	}
+
+	const item = value as Record<string, unknown>;
+	const type = item.type;
+	if (typeof type !== "string" || !PINNED_ITEM_TYPES.has(type)) {
+		return null;
+	}
+	if (!isPositiveInteger(item.id)) {
+		return null;
+	}
+	if (type === "object" && !isPositiveInteger(item.classId)) {
+		return null;
+	}
+
+	const action = item.action === "create" ? "create" : "view";
+	const name = typeof item.name === "string" && item.name.trim()
+		? item.name
+		: `${type} ${item.id}`;
+	const timestamp = typeof item.timestamp === "number" && Number.isFinite(item.timestamp)
+		? item.timestamp
+		: Date.now();
+
+	return {
+		type: type as PinnedItem["type"],
+		id: item.id,
+		name,
+		timestamp,
+		...(isPositiveInteger(item.collectionId)
+			? { collectionId: item.collectionId }
+			: {}),
+		...(typeof item.collectionName === "string"
+			? { collectionName: item.collectionName }
+			: {}),
+		...(isPositiveInteger(item.classId) ? { classId: item.classId } : {}),
+		...(typeof item.className === "string" ? { className: item.className } : {}),
+		...(type === "class" ? { action } : {}),
+	};
+}
 
 export function getPinnedItems(): PinnedItem[] {
 	if (typeof window === "undefined") {
@@ -14,8 +61,19 @@ export function getPinnedItems(): PinnedItem[] {
 			return [];
 		}
 
-		const items = JSON.parse(stored) as PinnedItem[];
-		return Array.isArray(items) ? items : [];
+		const parsed = JSON.parse(stored);
+		if (!Array.isArray(parsed)) {
+			return [];
+		}
+
+		const items = parsed
+			.map(normalizePinnedItem)
+			.filter((item): item is PinnedItem => item !== null)
+			.slice(0, MAX_PINNED_ITEMS);
+		if (items.length !== parsed.length || JSON.stringify(items) !== stored) {
+			window.localStorage.setItem(PINNED_ITEMS_KEY, JSON.stringify(items));
+		}
+		return items;
 	} catch {
 		return [];
 	}
