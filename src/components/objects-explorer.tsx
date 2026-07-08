@@ -631,6 +631,22 @@ function normalizeCustomDataField(value: unknown): CustomDataField | null {
 	};
 }
 
+function persistCustomDataFields(
+	storageKey: string | null,
+	fields: CustomDataField[],
+): boolean {
+	if (!storageKey || typeof window === "undefined") {
+		return false;
+	}
+
+	try {
+		window.localStorage.setItem(storageKey, JSON.stringify(fields));
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function formatDataPreviewValue(value: unknown): string {
 	if (value === null) {
 		return "null";
@@ -1678,6 +1694,11 @@ export function ObjectsExplorer() {
 	function addCustomDataField(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
+		if (!customDataFieldsStorageKey) {
+			showToast("Select a class before adding custom data fields.", "error");
+			return;
+		}
+
 		const label = customDataFieldLabel.trim();
 		const expression = customDataFieldExpression.trim();
 		const paths = parseCustomDataFieldExpression(expression);
@@ -1706,8 +1727,13 @@ export function ObjectsExplorer() {
 			paths,
 			scope: "user",
 		};
+		const nextFields = [...customDataFields, nextField];
+		if (!persistCustomDataFields(customDataFieldsStorageKey, nextFields)) {
+			showToast("Could not save custom data fields in this browser.", "error");
+			return;
+		}
 
-		setCustomDataFields((current) => [...current, nextField]);
+		setCustomDataFields(nextFields);
 		setSelectedDataColumns((current) =>
 			current.includes(id) || current.length >= MAX_SELECTED_DATA_COLUMNS
 				? current
@@ -1719,9 +1745,13 @@ export function ObjectsExplorer() {
 	}
 
 	function deleteCustomDataField(fieldId: string) {
-		setCustomDataFields((current) =>
-			current.filter((field) => field.id !== fieldId),
-		);
+		const nextFields = customDataFields.filter((field) => field.id !== fieldId);
+		if (!persistCustomDataFields(customDataFieldsStorageKey, nextFields)) {
+			showToast("Could not save custom data fields in this browser.", "error");
+			return;
+		}
+
+		setCustomDataFields(nextFields);
 		setSelectedDataColumns((current) =>
 			current.filter((columnId) => columnId !== fieldId),
 		);
@@ -2031,14 +2061,7 @@ export function ObjectsExplorer() {
 										onSubmit={addCustomDataField}
 									>
 										<div className="custom-data-field-scope">
-											<label>
-												<input type="radio" checked readOnly />
-												<span>Only me</span>
-											</label>
-											<label title="System-wide custom fields need a backend settings endpoint.">
-												<input type="radio" disabled />
-												<span>System-wide</span>
-											</label>
+											<span className="muted">Saved for this browser only.</span>
 										</div>
 										<label className="control-field">
 											<span>Label</span>
