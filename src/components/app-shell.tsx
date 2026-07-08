@@ -552,16 +552,16 @@ const workspaceLinks: NavItem[] = [
 		hint: "Relations: connect classes and objects",
 	},
 	{
-		href: "/exports",
-		label: "Exports",
-		icon: <IconReport />,
-		hint: "Exports: manage templates and render scoped output",
-	},
-	{
 		href: "/imports",
 		label: "Imports",
 		icon: <IconImport />,
 		hint: "Imports: submit JSON imports and monitor task execution",
+	},
+	{
+		href: "/exports",
+		label: "Exports",
+		icon: <IconReport />,
+		hint: "Exports: manage templates and render scoped output",
 	},
 	{
 		href: "/tasks",
