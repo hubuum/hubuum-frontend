@@ -141,8 +141,8 @@ async function main() {
   const openapi = await request("GET", "/api-doc/openapi.json");
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
-    openapi.data.paths?.["/api/v1/namespaces/{namespace_id}/event-subscriptions"],
-    "OpenAPI is missing namespace event subscriptions.",
+    openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
+    "OpenAPI is missing collection event subscriptions.",
   );
   pass("server OpenAPI exposes events and subscriptions");
 
@@ -163,17 +163,17 @@ async function main() {
   expectId(group.data, "Created group");
   pass("created IAM group");
 
-  const namespace = await request("POST", "/api/v1/namespaces", {
+  const collection = await request("POST", "/api/v1/collections", {
     ...auth,
     body: {
       description: "Created by frontend live backend contract tests",
       group_id: group.data.id,
-      name: `live_namespace_${suffix}`,
+      name: `live_collection_${suffix}`,
     },
     expected: 201,
   });
-  expectId(namespace.data, "Created namespace");
-  pass("created namespace with group permissions");
+  expectId(collection.data, "Created collection");
+  pass("created collection with group permissions");
 
   const hubuumClass = await request("POST", "/api/v1/classes", {
     ...auth,
@@ -181,7 +181,7 @@ async function main() {
       description: "Created by frontend live backend contract tests",
       json_schema: {},
       name: `live_class_${suffix}`,
-      namespace_id: namespace.data.id,
+      collection_id: collection.data.id,
       validate_schema: false,
     },
     expected: 201,
@@ -196,7 +196,7 @@ async function main() {
       description: "Created by frontend live backend contract tests",
       hubuum_class_id: hubuumClass.data.id,
       name: `live_object_${suffix}`,
-      namespace_id: namespace.data.id,
+      collection_id: collection.data.id,
     },
     expected: 201,
   });
@@ -236,19 +236,19 @@ async function main() {
   pass("added limited user to limited group");
 
   let limitedToken = await loginAs(limitedUser.data.name, limitedPassword);
-  const limitedEventsBeforeReadAudit = await request("GET", `/api/v1/namespaces/${namespace.data.id}/events`, {
+  const limitedEventsBeforeReadAudit = await request("GET", `/api/v1/collections/${collection.data.id}/events`, {
     token: limitedToken,
   });
   expectArray(limitedEventsBeforeReadAudit.data, "Limited events before ReadAudit");
   assert(
     limitedEventsBeforeReadAudit.data.length === 0,
-    "Limited user without ReadAudit should not see namespace events.",
+    "Limited user without ReadAudit should not see collection events.",
   );
-  pass("limited user without ReadAudit receives no namespace events");
+  pass("limited user without ReadAudit receives no collection events");
 
   await request(
     "PUT",
-    `/api/v1/namespaces/${namespace.data.id}/permissions/group/${limitedGroup.data.id}`,
+    `/api/v1/collections/${collection.data.id}/permissions/group/${limitedGroup.data.id}`,
     {
       ...auth,
       body: ["ReadAudit"],
@@ -259,7 +259,7 @@ async function main() {
 
   const limitedGroupPermissions = await request(
     "GET",
-    `/api/v1/namespaces/${namespace.data.id}/permissions/group/${limitedGroup.data.id}`,
+    `/api/v1/collections/${collection.data.id}/permissions/group/${limitedGroup.data.id}`,
     auth,
   );
   assert(
@@ -283,27 +283,27 @@ async function main() {
   );
   pass("limited user effective permissions include ReadAudit but not ManageEventSubscription");
 
-  const limitedEventsAfterReadAudit = await request("GET", `/api/v1/namespaces/${namespace.data.id}/events`, {
+  const limitedEventsAfterReadAudit = await request("GET", `/api/v1/collections/${collection.data.id}/events`, {
     token: limitedToken,
   });
   expectArray(limitedEventsAfterReadAudit.data, "Limited events after ReadAudit");
   assert(
     limitedEventsAfterReadAudit.data.length > 0,
-    "Limited user with ReadAudit should see namespace events.",
+    "Limited user with ReadAudit should see collection events.",
   );
-  pass("limited user with ReadAudit can read namespace events");
+  pass("limited user with ReadAudit can read collection events");
 
   const principalPermissions = await request(
     "GET",
-    `/api/v1/namespaces/${namespace.data.id}/permissions/principal/${limitedUser.data.id}`,
+    `/api/v1/collections/${collection.data.id}/permissions/principal/${limitedUser.data.id}`,
     { ...auth, query: { limit: 25 } },
   );
-  expectArray(principalPermissions.data, "Principal namespace permissions");
-  pass("listed limited user's effective namespace permissions");
+  expectArray(principalPermissions.data, "Principal collection permissions");
+  pass("listed limited user's effective collection permissions");
 
   const readAuditGroups = await request(
     "GET",
-    `/api/v1/namespaces/${namespace.data.id}/has_permissions/ReadAudit`,
+    `/api/v1/collections/${collection.data.id}/has_permissions/ReadAudit`,
     { ...auth, query: { limit: 25 } },
   );
   expectArray(readAuditGroups.data, "Groups with ReadAudit");
@@ -312,8 +312,8 @@ async function main() {
   const globalEvents = await request("GET", "/api/v1/events", {
     ...auth,
     query: {
-      entity_id: namespace.data.id,
-      entity_type: "namespace",
+      entity_id: collection.data.id,
+      entity_type: "collection",
       limit: 25,
       sort: "-occurred_at",
     },
@@ -344,22 +344,22 @@ async function main() {
       action: "created",
       actor_kind: "user",
       actor_user_id: adminUserId,
-      entity_type: "namespace",
+      entity_type: "collection",
       limit: 10,
-      namespace_id: namespace.data.id,
+      collection_id: collection.data.id,
       sort: "-occurred_at",
     },
   });
   expectArray(filteredEvents.data, "Filtered events");
-  assert(filteredEvents.data.length > 0, "Filtered events should include namespace creation.");
-  pass("read event feed with action, actor, entity type, and namespace filters");
+  assert(filteredEvents.data.length > 0, "Filtered events should include collection creation.");
+  pass("read event feed with action, actor, entity type, and collection filters");
 
-  const namespaceEvents = await request("GET", `/api/v1/namespaces/${namespace.data.id}/events`, {
+  const collectionEvents = await request("GET", `/api/v1/collections/${collection.data.id}/events`, {
     ...auth,
     query: { limit: 25, sort: "-occurred_at" },
   });
-  expectArray(namespaceEvents.data, "Namespace events");
-  pass("read namespace event feed");
+  expectArray(collectionEvents.data, "Collection events");
+  pass("read collection event feed");
 
   const groupEvents = await request("GET", `/api/v1/iam/groups/${group.data.id}/events`, {
     ...auth,
@@ -386,13 +386,13 @@ async function main() {
   expectArray(objectEvents.data, "Object events");
   pass("read object event feed");
 
-  const namespaceHistory = await request("GET", `/api/v1/namespaces/${namespace.data.id}/history`, {
+  const collectionHistory = await request("GET", `/api/v1/collections/${collection.data.id}/history`, {
     ...auth,
     query: { limit: 25 },
   });
-  expectArray(namespaceHistory.data, "Namespace history");
-  assert(hasHeader(namespaceHistory.headers, "x-total-count"), "Namespace history should include X-Total-Count.");
-  pass("read namespace history");
+  expectArray(collectionHistory.data, "Collection history");
+  assert(hasHeader(collectionHistory.headers, "x-total-count"), "Collection history should include X-Total-Count.");
+  pass("read collection history");
 
   const classHistory = await request("GET", `/api/v1/classes/${hubuumClass.data.id}/history`, {
     ...auth,
@@ -468,19 +468,19 @@ async function main() {
 
   const deliverySubscription = await request(
     "POST",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions`,
     {
       ...auth,
       body: {
         actions: ["updated"],
         description: "Delivery lifecycle subscription",
         enabled: true,
-        entity_types: ["namespace"],
+        entity_types: ["collection"],
         filter: {
           actor_kinds: ["user"],
           actor_user_ids: [adminUserId],
-          entity_ids: [namespace.data.id],
-          namespace_ids: [namespace.data.id],
+          entity_ids: [collection.data.id],
+          collection_ids: [collection.data.id],
         },
         name: `live_delivery_subscription_${suffix}`,
         routing: { url: "https://example.test/events" },
@@ -507,17 +507,17 @@ async function main() {
 
   const disabledSubscription = await request(
     "POST",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions`,
     {
       ...auth,
       body: {
         actions: ["updated"],
         description: "Disabled sink subscription",
         enabled: true,
-        entity_types: ["namespace"],
+        entity_types: ["collection"],
         filter: {
-          entity_ids: [namespace.data.id],
-          namespace_ids: [namespace.data.id],
+          entity_ids: [collection.data.id],
+          collection_ids: [collection.data.id],
         },
         name: `live_disabled_sink_subscription_${suffix}`,
         routing: { url: "https://example.test/events" },
@@ -531,14 +531,14 @@ async function main() {
 
   await request(
     "POST",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions`,
     {
       expected: 403,
       token: limitedToken,
       body: {
         actions: ["created"],
         enabled: true,
-        entity_types: ["namespace"],
+        entity_types: ["collection"],
         name: `limited_denied_subscription_${suffix}`,
         routing: { url: "https://example.test/events" },
         sink_id: sink.data.id,
@@ -549,7 +549,7 @@ async function main() {
 
   await request(
     "POST",
-    `/api/v1/namespaces/${namespace.data.id}/permissions/group/${limitedGroup.data.id}/ManageEventSubscription`,
+    `/api/v1/collections/${collection.data.id}/permissions/group/${limitedGroup.data.id}/ManageEventSubscription`,
     { ...auth, expected: [200, 201, 204] },
   );
   pass("granted limited group ManageEventSubscription");
@@ -557,17 +557,17 @@ async function main() {
   limitedToken = await loginAs(limitedUser.data.name, limitedPassword);
   const limitedSubscription = await request(
     "POST",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions`,
     {
       expected: 201,
       token: limitedToken,
       body: {
         actions: ["created"],
         enabled: true,
-        entity_types: ["namespace"],
+        entity_types: ["collection"],
         filter: {
           actor_kinds: ["user"],
-          namespace_ids: [namespace.data.id],
+          collection_ids: [collection.data.id],
         },
         name: `limited_allowed_subscription_${suffix}`,
         routing: { url: "https://example.test/events" },
@@ -580,29 +580,29 @@ async function main() {
 
   await request(
     "DELETE",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions/${limitedSubscription.data.id}`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions/${limitedSubscription.data.id}`,
     { expected: 204, token: limitedToken },
   );
   pass("limited user with ManageEventSubscription can delete subscription");
 
-  const namespaceUpdatedName = `live_namespace_updated_${suffix}`;
+  const collectionUpdatedName = `live_collection_updated_${suffix}`;
   const classUpdatedName = `live_class_updated_${suffix}`;
   const objectUpdatedName = `live_object_updated_${suffix}`;
 
-  const patchedNamespace = await request("PATCH", `/api/v1/namespaces/${namespace.data.id}`, {
+  const patchedCollection = await request("PATCH", `/api/v1/collections/${collection.data.id}`, {
     ...auth,
     body: {
       description: "Updated by frontend live backend contract tests",
-      name: namespaceUpdatedName,
+      name: collectionUpdatedName,
     },
     expected: [200, 202],
   });
-  assert(patchedNamespace.data.name === namespaceUpdatedName, "Namespace patch should update name.");
-  pass("patched namespace for history and delivery checks");
+  assert(patchedCollection.data.name === collectionUpdatedName, "Collection patch should update name.");
+  pass("patched collection for history and delivery checks");
 
   const firstDelivery = await waitForDelivery(token, deliverySubscription.data.id);
   expectId(firstDelivery, "Generated event delivery");
-  pass("created event delivery from namespace update");
+  pass("created event delivery from collection update");
 
   const disabledDeliveries = (await listDeliveries(token)).data.filter(
     (delivery) => delivery.subscription_id === disabledSubscription.data.id,
@@ -610,11 +610,11 @@ async function main() {
   assert(disabledDeliveries.length === 0, "Disabled sink subscription should not create deliveries.");
   pass("disabled sink subscription does not fan out deliveries");
 
-  await request("PATCH", `/api/v1/namespaces/${namespace.data.id}`, {
+  await request("PATCH", `/api/v1/collections/${collection.data.id}`, {
     ...auth,
     body: {
       description: "Updated again by frontend live backend contract tests",
-      name: `${namespaceUpdatedName}_again`,
+      name: `${collectionUpdatedName}_again`,
     },
     expected: [200, 202],
   });
@@ -679,37 +679,37 @@ async function main() {
   assert(patchedObject.data.name === objectUpdatedName, "Object patch should update name.");
   pass("patched object for history checks");
 
-  const namespaceHistoryAfterPatch = await request(
+  const collectionHistoryAfterPatch = await request(
     "GET",
-    `/api/v1/namespaces/${namespace.data.id}/history`,
+    `/api/v1/collections/${collection.data.id}/history`,
     { ...auth, query: { limit: 1 } },
   );
-  expectArray(namespaceHistoryAfterPatch.data, "Namespace history after patch");
+  expectArray(collectionHistoryAfterPatch.data, "Collection history after patch");
   assert(
-    Number(namespaceHistoryAfterPatch.headers.get("x-total-count") ?? "0") >= 2,
-    "Namespace history should contain multiple versions after patch.",
+    Number(collectionHistoryAfterPatch.headers.get("x-total-count") ?? "0") >= 2,
+    "Collection history should contain multiple versions after patch.",
   );
-  pass("verified namespace history records multiple versions");
+  pass("verified collection history records multiple versions");
 
-  const historyCursor = namespaceHistoryAfterPatch.headers.get("x-next-cursor");
+  const historyCursor = collectionHistoryAfterPatch.headers.get("x-next-cursor");
   if (historyCursor) {
-    const namespaceHistoryPageTwo = await request(
+    const collectionHistoryPageTwo = await request(
       "GET",
-      `/api/v1/namespaces/${namespace.data.id}/history`,
+      `/api/v1/collections/${collection.data.id}/history`,
       { ...auth, query: { cursor: historyCursor, limit: 1 } },
     );
-    expectArray(namespaceHistoryPageTwo.data, "Second namespace history page");
+    expectArray(collectionHistoryPageTwo.data, "Second collection history page");
   }
-  pass("validated namespace history cursor pagination headers");
+  pass("validated collection history cursor pagination headers");
 
-  const namespaceAsOf = await request(
+  const collectionAsOf = await request(
     "GET",
-    `/api/v1/namespaces/${namespace.data.id}/history/as-of`,
+    `/api/v1/collections/${collection.data.id}/history/as-of`,
     { ...auth, query: { at: asOfBeforeUpdates } },
   );
-  expectId(namespaceAsOf.data, "Namespace as-of history");
-  assert(namespaceAsOf.data.name === namespace.data.name, "Namespace as-of should return original name.");
-  pass("read namespace as-of history");
+  expectId(collectionAsOf.data, "Collection as-of history");
+  assert(collectionAsOf.data.name === collection.data.name, "Collection as-of should return original name.");
+  pass("read collection as-of history");
 
   const classAsOf = await request("GET", `/api/v1/classes/${hubuumClass.data.id}/history/as-of`, {
     ...auth,
@@ -732,15 +732,15 @@ async function main() {
     actions: ["created"],
     description: "Created by frontend live backend contract tests",
     enabled: true,
-    entity_types: ["namespace"],
+    entity_types: ["collection"],
     filter: {
       actor_kinds: ["user"],
       actor_user_ids: [adminUserId],
       correlation_ids: ["00000000-0000-4000-8000-000000000001"],
-      entity_ids: [namespace.data.id],
-      entity_names: [namespace.data.name],
-      namespace_ids: [namespace.data.id],
-      related_namespace_ids: [namespace.data.id],
+      entity_ids: [collection.data.id],
+      entity_names: [collection.data.name],
+      collection_ids: [collection.data.id],
+      related_collection_ids: [collection.data.id],
       request_ids: ["00000000-0000-4000-8000-000000000002"],
     },
     name: `live_subscription_${suffix}`,
@@ -749,7 +749,7 @@ async function main() {
   };
   const subscription = await request(
     "POST",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions`,
     {
       ...auth,
       body: subscriptionPayload,
@@ -758,22 +758,22 @@ async function main() {
   );
   expectId(subscription.data, "Created event subscription");
   assert(
-    subscription.data.filter?.namespace_ids?.includes(namespace.data.id),
-    "Created subscription did not preserve namespace filter.",
+    subscription.data.filter?.collection_ids?.includes(collection.data.id),
+    "Created subscription did not preserve collection filter.",
   );
   assert(
     subscription.data.filter?.actor_user_ids?.includes(adminUserId),
     "Created subscription did not preserve actor user filter.",
   );
   assert(
-    subscription.data.filter?.entity_names?.includes(namespace.data.name),
+    subscription.data.filter?.entity_names?.includes(collection.data.name),
     "Created subscription did not preserve entity name filter.",
   );
-  pass("created namespace event subscription with full filter matrix and routing");
+  pass("created collection event subscription with full filter matrix and routing");
 
   const subscriptions = await request(
     "GET",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions`,
     auth,
   );
   expectArray(subscriptions.data, "Event subscriptions");
@@ -781,54 +781,54 @@ async function main() {
     subscriptions.data.some((item) => item.id === subscription.data.id),
     "Subscription list did not include created subscription.",
   );
-  pass("listed namespace event subscriptions");
+  pass("listed collection event subscriptions");
 
   const loadedSubscription = await request(
     "GET",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions/${subscription.data.id}`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions/${subscription.data.id}`,
     auth,
   );
   expectId(loadedSubscription.data, "Loaded event subscription");
-  pass("loaded namespace event subscription");
+  pass("loaded collection event subscription");
 
   const patchedSubscription = await request(
     "PATCH",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions/${subscription.data.id}`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions/${subscription.data.id}`,
     {
       ...auth,
       body: {
         enabled: false,
         filter: {
           actor_kinds: ["user"],
-          entity_ids: [namespace.data.id],
-          namespace_ids: [namespace.data.id],
+          entity_ids: [collection.data.id],
+          collection_ids: [collection.data.id],
         },
       },
     },
   );
   assert(patchedSubscription.data.enabled === false, "Patched subscription should be disabled.");
   assert(
-    patchedSubscription.data.filter?.entity_ids?.includes(namespace.data.id),
+    patchedSubscription.data.filter?.entity_ids?.includes(collection.data.id),
     "Patched subscription did not preserve entity id filter.",
   );
-  pass("patched namespace event subscription filter");
+  pass("patched collection event subscription filter");
 
   await request(
     "DELETE",
-    `/api/v1/namespaces/${namespace.data.id}/permissions/group/${limitedGroup.data.id}/ManageEventSubscription`,
+    `/api/v1/collections/${collection.data.id}/permissions/group/${limitedGroup.data.id}/ManageEventSubscription`,
     { ...auth, expected: [200, 204] },
   );
   limitedToken = await loginAs(limitedUser.data.name, limitedPassword);
   await request(
     "POST",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions`,
     {
       expected: 403,
       token: limitedToken,
       body: {
         actions: ["created"],
         enabled: true,
-        entity_types: ["namespace"],
+        entity_types: ["collection"],
         name: `limited_denied_again_subscription_${suffix}`,
         routing: { url: "https://example.test/events" },
         sink_id: sink.data.id,
@@ -839,7 +839,7 @@ async function main() {
 
   const invalidSubscription = await request(
     "POST",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions`,
     {
       ...auth,
       body: {
@@ -856,7 +856,7 @@ async function main() {
 
   await request(
     "POST",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions`,
     {
       ...auth,
       body: {
@@ -883,21 +883,21 @@ async function main() {
 
   await request(
     "DELETE",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions/${subscription.data.id}`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions/${subscription.data.id}`,
     { ...auth, expected: 204 },
   );
-  pass("deleted namespace event subscription");
+  pass("deleted collection event subscription");
 
   await request(
     "DELETE",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions/${deliverySubscription.data.id}`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions/${deliverySubscription.data.id}`,
     { ...auth, expected: 204 },
   );
   pass("deleted delivery lifecycle subscription");
 
   await request(
     "DELETE",
-    `/api/v1/namespaces/${namespace.data.id}/event-subscriptions/${disabledSubscription.data.id}`,
+    `/api/v1/collections/${collection.data.id}/event-subscriptions/${disabledSubscription.data.id}`,
     { ...auth, expected: 204 },
   );
   pass("deleted disabled-sink subscription");
