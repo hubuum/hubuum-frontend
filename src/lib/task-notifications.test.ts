@@ -119,9 +119,9 @@ describe("toastForTransition", () => {
 	});
 
 	it("maps failed to an error toast", () => {
-		const t = makeTask({ id: 41, kind: "report", status: "failed" });
+		const t = makeTask({ id: 41, kind: "export", status: "failed" });
 		expect(toastForTransition(t)).toEqual({
-			message: "Report #41 failed",
+			message: "Export #41 failed",
 			type: "error",
 		});
 	});

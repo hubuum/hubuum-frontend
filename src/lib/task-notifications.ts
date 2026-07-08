@@ -71,7 +71,6 @@ export function countUnread(
 
 const TASK_KIND_LABELS: Record<string, string> = {
 	import: "Import",
-	report: "Report",
 	export: "Export",
 	reindex: "Reindex",
 	remote_call: "Remote invocation",

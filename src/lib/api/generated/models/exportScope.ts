@@ -5,8 +5,12 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
+import type { ExportScopeKind } from './exportScopeKind';
 
-export interface ReportRelationContext {
+export interface ExportScope {
   /** @nullable */
-  depth?: number | null;
+  class_id?: number | null;
+  kind: ExportScopeKind;
+  /** @nullable */
+  object_id?: number | null;
 }

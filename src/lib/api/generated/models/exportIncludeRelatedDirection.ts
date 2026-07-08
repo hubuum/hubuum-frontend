@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ReportIncludeRelatedDirection = typeof ReportIncludeRelatedDirection[keyof typeof ReportIncludeRelatedDirection];
+export type ExportIncludeRelatedDirection = typeof ExportIncludeRelatedDirection[keyof typeof ExportIncludeRelatedDirection];
 
 
-export const ReportIncludeRelatedDirection = {
+export const ExportIncludeRelatedDirection = {
   any: 'any',
   outgoing: 'outgoing',
   incoming: 'incoming',

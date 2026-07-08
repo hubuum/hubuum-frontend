@@ -11,7 +11,6 @@ export type TaskKind = typeof TaskKind[keyof typeof TaskKind];
 
 export const TaskKind = {
   import: 'import',
-  report: 'report',
   export: 'export',
   reindex: 'reindex',
   remote_call: 'remote_call',

@@ -6,7 +6,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface ReportTemplateHistory {
+/**
+ * A serialized history row plus the resolved username of its actor (if any).
+ */
+export type HistoryResponseExportTemplateHistory = ({
   /** @nullable */
   actor_id?: number | null;
   /** @nullable */
@@ -34,4 +37,7 @@ export interface ReportTemplateHistory {
   valid_from: string;
   /** @nullable */
   valid_to?: string | null;
-}
+}) & ({
+  /** @nullable */
+  actor_username?: string | null;
+});

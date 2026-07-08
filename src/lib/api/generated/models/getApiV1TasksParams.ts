@@ -8,7 +8,7 @@
 
 export type GetApiV1TasksParams = {
 /**
- * Optional task kind filter (import|report|export|reindex)
+ * Optional task kind filter (import|export|reindex|remote_call)
  */
 kind: string;
 /**

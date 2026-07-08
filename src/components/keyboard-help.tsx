@@ -30,7 +30,7 @@ const shortcuts: Shortcut[] = [
 	{ keys: ["G", "C"], description: "Go to Classes" },
 	{ keys: ["G", "O"], description: "Go to Objects" },
 	{ keys: ["G", "R"], description: "Go to Relations" },
-	{ keys: ["G", "E"], description: "Go to Reports" },
+	{ keys: ["G", "E"], description: "Go to Exports" },
 	{ keys: ["G", "I"], description: "Go to Imports" },
 	{ keys: ["G", "T"], description: "Go to Tasks" },
 	{ keys: ["G", "S"], description: "Go to Statistics" },

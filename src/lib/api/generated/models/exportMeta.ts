@@ -5,13 +5,13 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
-import type { ReportContentType } from './reportContentType';
-import type { ReportScope } from './reportScope';
+import type { ExportContentType } from './exportContentType';
+import type { ExportScope } from './exportScope';
 
-export interface ReportMeta {
-  content_type: ReportContentType;
+export interface ExportMeta {
+  content_type: ExportContentType;
   /** @minimum 0 */
   count: number;
-  scope: ReportScope;
+  scope: ExportScope;
   truncated: boolean;
 }

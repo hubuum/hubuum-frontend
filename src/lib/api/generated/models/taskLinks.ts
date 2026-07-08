@@ -9,12 +9,12 @@
 export interface TaskLinks {
   events: string;
   /** @nullable */
+  export?: string | null;
+  /** @nullable */
+  export_output?: string | null;
+  /** @nullable */
   import?: string | null;
   /** @nullable */
   import_results?: string | null;
-  /** @nullable */
-  report?: string | null;
-  /** @nullable */
-  report_output?: string | null;
   task: string;
 }

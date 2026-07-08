@@ -5,11 +5,11 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
-import type { ReportMeta } from './reportMeta';
-import type { ReportWarning } from './reportWarning';
+import type { ExportMeta } from './exportMeta';
+import type { ExportWarning } from './exportWarning';
 
-export interface ReportJsonResponse {
+export interface ExportJsonResponse {
   items: unknown[];
-  meta: ReportMeta;
-  warnings: ReportWarning[];
+  meta: ExportMeta;
+  warnings: ExportWarning[];
 }

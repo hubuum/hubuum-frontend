@@ -130,7 +130,7 @@ function IconReport({ className }: { className?: string }) {
 			strokeLinecap="round"
 			strokeLinejoin="round"
 			role="img"
-			aria-label="Report icon"
+			aria-label="Export icon"
 		>
 			<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
 			<path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
@@ -337,13 +337,13 @@ function getActionCards(
 			icon: <IconRelation className="action-card-icon" />,
 		},
 		{
-			title: "Reports",
+			title: "Exports",
 			description:
 				counts && totalClasses === 0
-					? "Reports become useful once you have real collections to query, but you can prepare templates ahead of time."
-					: "Create stored templates and run scoped reports without leaving the workspace.",
-			primaryHref: "/reports",
-			primaryLabel: "Open reports",
+					? "Exports become useful once you have real collections to query, but you can prepare templates ahead of time."
+					: "Create stored templates and run scoped exports without leaving the workspace.",
+			primaryHref: "/exports",
+			primaryLabel: "Open exports",
 			icon: <IconReport className="action-card-icon" />,
 		},
 		{

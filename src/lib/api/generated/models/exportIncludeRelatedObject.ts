@@ -5,17 +5,17 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
-import type { ReportIncludeRelatedDirection } from './reportIncludeRelatedDirection';
-import type { ReportIncludeRelatedSort } from './reportIncludeRelatedSort';
+import type { ExportIncludeRelatedDirection } from './exportIncludeRelatedDirection';
+import type { ExportIncludeRelatedSort } from './exportIncludeRelatedSort';
 
-export interface ReportIncludeRelatedObject {
+export interface ExportIncludeRelatedObject {
   class_id: number;
   /** @nullable */
   class_relation_id?: number | null;
-  direction?: null | ReportIncludeRelatedDirection;
+  direction?: null | ExportIncludeRelatedDirection;
   /** @nullable */
   limit?: number | null;
   /** @nullable */
   max_depth?: number | null;
-  sort?: null | ReportIncludeRelatedSort;
+  sort?: null | ExportIncludeRelatedSort;
 }

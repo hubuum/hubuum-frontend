@@ -6,12 +6,12 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface ReportTaskDetails {
+export interface ExportTaskDetails {
   output_available: boolean;
   /** @nullable */
   output_content_type?: string | null;
   /** True when output was produced but has since passed its retention window. Distinguishes an
-expired report from one that was never generated (both have `output_available = false`). */
+expired export from one that was never generated (both have `output_available = false`). */
   output_expired: boolean;
   /** @nullable */
   output_expires_at?: string | null;

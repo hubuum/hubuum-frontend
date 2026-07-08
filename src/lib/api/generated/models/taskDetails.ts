@@ -5,10 +5,10 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
+import type { ExportTaskDetails } from './exportTaskDetails';
 import type { ImportTaskDetails } from './importTaskDetails';
-import type { ReportTaskDetails } from './reportTaskDetails';
 
 export interface TaskDetails {
+  export?: null | ExportTaskDetails;
   import?: null | ImportTaskDetails;
-  report?: null | ReportTaskDetails;
 }

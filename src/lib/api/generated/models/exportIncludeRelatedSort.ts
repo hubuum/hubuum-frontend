@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ReportIncludeRelatedSort = typeof ReportIncludeRelatedSort[keyof typeof ReportIncludeRelatedSort];
+export type ExportIncludeRelatedSort = typeof ExportIncludeRelatedSort[keyof typeof ExportIncludeRelatedSort];
 
 
-export const ReportIncludeRelatedSort = {
+export const ExportIncludeRelatedSort = {
   path: 'path',
   name: 'name',
   created_at: 'created_at',

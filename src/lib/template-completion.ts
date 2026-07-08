@@ -225,17 +225,17 @@ function completionsForKind(kind: Kind, options: TemplateCompletionOptions): Com
 				{ label: "count", detail: "Number of rows", type: "property" },
 				{ label: "content_type", detail: "Output content type", type: "property" },
 				{ label: "truncated", detail: "Whether the result was truncated", type: "property" },
-				{ label: "scope", detail: "Report scope", type: "property" },
+				{ label: "scope", detail: "Export scope", type: "property" },
 			];
 		case "scope":
 			return [
-				{ label: "kind", detail: "Report scope kind", type: "property" },
+				{ label: "kind", detail: "Export scope kind", type: "property" },
 				{ label: "class_id", detail: "Class id for class-bound scopes", type: "property" },
 				{ label: "object_id", detail: "Object id for object-bound scopes", type: "property" },
 			];
 		case "request":
 			return [
-				{ label: "scope", detail: "Submitted report scope", type: "property" },
+				{ label: "scope", detail: "Submitted export scope", type: "property" },
 				{ label: "query", detail: "Submitted query string", type: "property" },
 			];
 		case "relatedMap":
@@ -253,10 +253,10 @@ function completionsForKind(kind: Kind, options: TemplateCompletionOptions): Com
 
 function rootCompletions(options: TemplateCompletionOptions, loopVars: Set<string>): Completion[] {
 	const vars: Completion[] = [
-		{ label: "items", detail: "Array of report rows", type: "variable", boost: 4 },
-		{ label: "meta", detail: "Report metadata", type: "variable", boost: 3 },
-		{ label: "warnings", detail: "Report warnings", type: "variable" },
-		{ label: "request", detail: "Submitted report request context", type: "variable" },
+		{ label: "items", detail: "Array of export rows", type: "variable", boost: 4 },
+		{ label: "meta", detail: "Export metadata", type: "variable", boost: 3 },
+		{ label: "warnings", detail: "Export warnings", type: "variable" },
+		{ label: "request", detail: "Submitted export request context", type: "variable" },
 	];
 	if (options.scopeKind === "related_objects") {
 		vars.push({ label: "source", detail: "Hydrated root object", type: "variable", boost: 3 });

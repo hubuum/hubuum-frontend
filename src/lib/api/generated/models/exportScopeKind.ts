@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ReportScopeKind = typeof ReportScopeKind[keyof typeof ReportScopeKind];
+export type ExportScopeKind = typeof ExportScopeKind[keyof typeof ExportScopeKind];
 
 
-export const ReportScopeKind = {
+export const ExportScopeKind = {
   collections: 'collections',
   classes: 'classes',
   objects_in_class: 'objects_in_class',

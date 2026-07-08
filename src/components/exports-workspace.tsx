@@ -116,7 +116,7 @@ const TEMPLATE_HELP = [
 	"Relations: item.related.<alias> (includes), item.reachable.*/paths.* (when hydrated) — each is a list, e.g. item.related.room[0].name.",
 	"Helpers: coalesce(...), | tojson, | csv_cell, | default(...), | default_if_empty(...), | format_datetime(...), | join_nonempty(...).",
 	"HTML templates are autoescaped; use | tojson or | csv_cell for sensitive values in text/CSV.",
-	"include/import/extends resolve within the same collection (e.g. layout.*, macros.*, partial.*, report.*).",
+	"include/import/extends resolve within the same collection (e.g. layout.*, macros.*, partial.*, export.*).",
 	"Stored templates support text/plain, text/html, and text/csv.",
 ] as const;
 
@@ -129,7 +129,7 @@ const DEFAULT_TEMPLATE_EDITOR: TemplateEditorState = {
 	contentType: "text/plain",
 	templateBody: `{% for item in items %}{{ item.name }}
 {% endfor %}`,
-	kind: "report",
+	kind: "export",
 	scopeKind: "objects_in_class",
 	classId: "",
 	defaultQuery: "",
@@ -435,7 +435,7 @@ async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
 	return Array.isArray(response.data) ? (response.data as HubuumObject[]) : [];
 }
 
-export function ReportsWorkspace() {
+export function ExportsWorkspace() {
 	const queryClient = useQueryClient();
 	const [editorState, setEditorState] = useState<TemplateEditorState | null>(
 		null,
@@ -471,37 +471,37 @@ export function ReportsWorkspace() {
 	const [includeRows, setIncludeRows] = useState<IncludeBuilderRow[]>([]);
 
 	const templatesQuery = useInfiniteQuery({
-		queryKey: ["report-templates"],
+		queryKey: ["export-templates"],
 		initialPageParam: null as string | null,
 		queryFn: ({ pageParam }) => listReportTemplates(pageParam),
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
 	});
 	const collectionsQuery = useQuery({
-		queryKey: ["collections", "reports"],
+		queryKey: ["collections", "exports"],
 		queryFn: fetchCollections,
 	});
 	const classesQuery = useQuery({
-		queryKey: ["classes", "reports"],
+		queryKey: ["classes", "exports"],
 		queryFn: fetchClasses,
 	});
 	const parsedClassId = useMemo(() => parsePositiveInteger(classId), [classId]);
 	const objectsQuery = useQuery({
-		queryKey: ["report-objects", parsedClassId],
+		queryKey: ["export-objects", parsedClassId],
 		queryFn: () => fetchObjectsByClass(parsedClassId ?? 0),
 		enabled: parsedClassId !== null,
 	});
 	const reportRunsQuery = useQuery({
-		queryKey: ["report-runs", "recent"],
+		queryKey: ["export-runs", "recent"],
 		queryFn: () =>
 			fetchTasks({
-				kind: "report",
+				kind: "export",
 				status: "succeeded",
 				limit: 10,
 				sort: "created_at.desc,id.desc",
 			}),
 	});
 	const reportTaskQuery = useQuery({
-		queryKey: ["report-task", lastReportTask?.id ?? null],
+		queryKey: ["export-task", lastReportTask?.id ?? null],
 		queryFn: () => fetchReportTask(lastReportTask?.id ?? 0),
 		enabled: lastReportTask !== null,
 		refetchInterval: (query) =>
@@ -515,7 +515,7 @@ export function ReportsWorkspace() {
 		[templatesQuery.data?.pages],
 	);
 	const runnableTemplates = useMemo(
-		() => templates.filter((template) => template.kind === "report"),
+		() => templates.filter((template) => template.kind === "export"),
 		[templates],
 	);
 	const editorTemplateNames = useMemo(() => {
@@ -548,12 +548,12 @@ export function ReportsWorkspace() {
 	const successfulReportRuns = useMemo(
 		() =>
 			(reportRunsQuery.data?.tasks ?? []).filter(
-				(task) => task.details?.report?.output_available === true,
+				(task) => task.details?.export?.output_available === true,
 			),
 		[reportRunsQuery.data?.tasks],
 	);
 	const activeReportTask = reportTaskQuery.data ?? lastReportTask;
-	const reportDetails = activeReportTask?.details?.report ?? null;
+	const reportDetails = activeReportTask?.details?.export ?? null;
 	const reportTerminal =
 		activeReportTask != null && isTerminalTaskStatus(activeReportTask.status);
 	const reportFailed =
@@ -562,7 +562,7 @@ export function ReportsWorkspace() {
 			activeReportTask.status === "cancelled");
 	const reportPartial = activeReportTask?.status === "partially_succeeded";
 	const reportOutputQuery = useQuery({
-		queryKey: ["report-output", activeReportTask?.id ?? null],
+		queryKey: ["export-output", activeReportTask?.id ?? null],
 		queryFn: () =>
 			fetchReportOutput(
 				activeReportTask?.id ?? 0,
@@ -600,7 +600,7 @@ export function ReportsWorkspace() {
 			setRunnerError(
 				reportOutputQuery.error instanceof Error
 					? reportOutputQuery.error.message
-					: "Failed to fetch report output.",
+					: "Failed to fetch export output.",
 			);
 		}
 	}, [reportOutputQuery.error, reportOutputQuery.isError]);
@@ -641,7 +641,7 @@ export function ReportsWorkspace() {
 			};
 
 			let reportFields: Partial<NewReportTemplate> = {};
-			if (draft.kind === "report") {
+			if (draft.kind === "export") {
 				const scopeNeedsClass =
 					draft.scopeKind === "objects_in_class" ||
 					draft.scopeKind === "related_objects";
@@ -683,7 +683,7 @@ export function ReportsWorkspace() {
 					default_limits: defaultLimits,
 				};
 			} else if (draft.mode === "edit") {
-				// Switching an existing template to a fragment: clear the report-only
+				// Switching an existing template to a fragment: clear the export-only
 				// fields on the record (PATCH null) so it satisfies backend scoping
 				// constraints. On create, these are simply omitted.
 				reportFields = {
@@ -707,7 +707,7 @@ export function ReportsWorkspace() {
 			);
 		},
 		onSuccess: async (template) => {
-			await queryClient.invalidateQueries({ queryKey: ["report-templates"] });
+			await queryClient.invalidateQueries({ queryKey: ["export-templates"] });
 			setSelectedTemplateId(String(template.id));
 			setEditorState(null);
 			setEditorError(null);
@@ -716,7 +716,7 @@ export function ReportsWorkspace() {
 			setEditorError(
 				error instanceof Error
 					? error.message
-					: "Failed to save report template.",
+					: "Failed to save export template.",
 			);
 		},
 	});
@@ -724,7 +724,7 @@ export function ReportsWorkspace() {
 	const deleteTemplateMutation = useMutation({
 		mutationFn: deleteReportTemplate,
 		onSuccess: async (_, templateId) => {
-			await queryClient.invalidateQueries({ queryKey: ["report-templates"] });
+			await queryClient.invalidateQueries({ queryKey: ["export-templates"] });
 			if (selectedTemplateId === String(templateId)) {
 				setSelectedTemplateId("");
 			}
@@ -738,13 +738,13 @@ export function ReportsWorkspace() {
 			setLastReportTask(task);
 			setLastResult(null);
 			setResultActionFeedback(null);
-			void queryClient.invalidateQueries({ queryKey: ["report-runs"] });
+			void queryClient.invalidateQueries({ queryKey: ["export-runs"] });
 		},
 		onError: (error) => {
 			setLastResult(null);
 			setLastReportTask(null);
 			setResultActionFeedback(null);
-			setRunnerError(error instanceof Error ? error.message : "Failed to submit report.");
+			setRunnerError(error instanceof Error ? error.message : "Failed to submit export.");
 		},
 	});
 
@@ -756,13 +756,13 @@ export function ReportsWorkspace() {
 			setLastReportTask(task);
 			setLastResult(null);
 			setResultActionFeedback(null);
-			void queryClient.invalidateQueries({ queryKey: ["report-runs"] });
+			void queryClient.invalidateQueries({ queryKey: ["export-runs"] });
 		},
 		onError: (error) => {
 			setLastResult(null);
 			setLastReportTask(null);
 			setResultActionFeedback(null);
-			setRunnerError(error instanceof Error ? error.message : "Failed to run template report.");
+			setRunnerError(error instanceof Error ? error.message : "Failed to run template export.");
 		},
 	});
 
@@ -798,20 +798,20 @@ export function ReportsWorkspace() {
 		if (!tab) {
 			setReportRunFeedback({
 				tone: "danger",
-				message: "Could not open a new browser tab for the report output.",
+				message: "Could not open a new browser tab for the export output.",
 			});
 			return;
 		}
 
-		tab.document.title = `Report ${task.id}`;
-		tab.document.body.textContent = "Loading report output...";
+		tab.document.title = `Export ${task.id}`;
+		tab.document.body.textContent = "Loading export output...";
 
 		setReportRunActionId(task.id);
 		setReportRunFeedback(null);
 		try {
 			const result = await fetchReportOutput(
 				task.id,
-				task.details?.report?.output_content_type,
+				task.details?.export?.output_content_type,
 			);
 			const text = getResultText(result);
 			const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
@@ -825,7 +825,7 @@ export function ReportsWorkspace() {
 				message:
 					error instanceof Error
 						? error.message
-						: "Failed to open report output.",
+						: "Failed to open export output.",
 			});
 		} finally {
 			setReportRunActionId(null);
@@ -833,15 +833,15 @@ export function ReportsWorkspace() {
 	}
 
 	async function downloadReportRun(task: TaskResponse) {
-		const contentType = task.details?.report?.output_content_type;
+		const contentType = task.details?.export?.output_content_type;
 		setReportRunActionId(task.id);
 		setReportRunFeedback(null);
 		try {
 			const result = await fetchReportOutput(task.id, contentType);
-			downloadReportResult(result, `report-${task.id}`, getResultText(result));
+			downloadReportResult(result, `export-${task.id}`, getResultText(result));
 			setReportRunFeedback({
 				tone: "success",
-				message: `Report #${task.id} downloaded.`,
+				message: `Export #${task.id} downloaded.`,
 			});
 		} catch (error) {
 			setReportRunFeedback({
@@ -849,7 +849,7 @@ export function ReportsWorkspace() {
 				message:
 					error instanceof Error
 						? error.message
-						: "Failed to download report output.",
+						: "Failed to download export output.",
 			});
 		} finally {
 			setReportRunActionId(null);
@@ -1055,16 +1055,16 @@ export function ReportsWorkspace() {
 		<section className="stack">
 			<header className="stack action-card-header">
 				<div className="stack action-card-header">
-					<p className="eyebrow">Reports</p>
-					<h2>Templates and report runner</h2>
+					<p className="eyebrow">Exports</p>
+					<h2>Templates and export runner</h2>
 				</div>
 				<p className="muted">
-					Manage stored templates, then run server-side reports as JSON, plain
+					Manage stored templates, then run server-side export as JSON, plain
 					text, HTML, or CSV.
 				</p>
 			</header>
 
-			<div className="reports-layout">
+			<div className="export-layout">
 				<section className="stack">
 					<article className="card stack panel-card">
 						<div className="panel-header">
@@ -1093,8 +1093,8 @@ export function ReportsWorkspace() {
 						) : null}
 						{!templatesQuery.isLoading && !templates.length ? (
 							<EmptyState
-								title="No report templates available yet."
-								description="Create a template to save reusable report logic for a collection or class."
+								title="No export templates available yet."
+								description="Create a template to save reusable export logic for a collection or class."
 								action={
 									<button type="button" onClick={openCreateModal}>
 										New template
@@ -1182,7 +1182,7 @@ export function ReportsWorkspace() {
 				<section className="stack">
 					<article className="card stack panel-card">
 						<div className="stack action-card-header">
-							<h3>Report runner</h3>
+							<h3>Export runner</h3>
 							<p className="muted">
 								Build a scope-aware query, then return JSON or render a stored
 								template.
@@ -1195,7 +1195,7 @@ export function ReportsWorkspace() {
 								className={runMode === "json" ? "" : "ghost"}
 								onClick={() => { setRunMode("json"); setRunnerError(null); }}
 							>
-								JSON report
+								JSON export
 							</button>
 							<button
 								type="button"
@@ -1229,10 +1229,10 @@ export function ReportsWorkspace() {
 								{scopeKind === "objects_in_class" ||
 								scopeKind === "related_objects" ? (
 									<div className="control-field">
-										<label htmlFor="report-class">Class</label>
+										<label htmlFor="export-class">Class</label>
 										{classOptions.length > 0 ? (
 											<select
-												id="report-class"
+												id="export-class"
 												value={classId}
 												onChange={(event) => setClassId(event.target.value)}
 											>
@@ -1245,7 +1245,7 @@ export function ReportsWorkspace() {
 											</select>
 										) : (
 											<input
-												id="report-class"
+												id="export-class"
 												type="number"
 												min={1}
 												value={classId}
@@ -1258,10 +1258,10 @@ export function ReportsWorkspace() {
 
 								{scopeKind === "related_objects" ? (
 									<div className="control-field">
-										<label htmlFor="report-object">Object</label>
+										<label htmlFor="export-object">Object</label>
 										{objectOptions.length > 0 ? (
 											<select
-												id="report-object"
+												id="export-object"
 												value={objectId}
 												onChange={(event) => setObjectId(event.target.value)}
 											>
@@ -1274,7 +1274,7 @@ export function ReportsWorkspace() {
 											</select>
 										) : (
 											<input
-												id="report-object"
+												id="export-object"
 												type="number"
 												min={1}
 												value={objectId}
@@ -1572,7 +1572,7 @@ export function ReportsWorkspace() {
 								<button type="submit" disabled={runReportMutation.isPending}>
 									{runReportMutation.isPending
 										? "Submitting..."
-										: "Run report"}
+										: "Run export"}
 								</button>
 							</div>
 						</form>
@@ -1586,7 +1586,7 @@ export function ReportsWorkspace() {
 									value={selectedTemplateId}
 									onChange={(event) => setSelectedTemplateId(event.target.value)}
 								>
-									<option value="">Select a report template</option>
+									<option value="">Select an export template</option>
 									{runnableTemplates.map((template) => (
 										<option key={template.id} value={template.id}>
 											{template.name} ({template.content_type})
@@ -1688,20 +1688,20 @@ export function ReportsWorkspace() {
 					<article className="card stack panel-card">
 						<div className="panel-header">
 							<div className="stack action-card-header">
-								<h3>Recent report runs</h3>
+								<h3>Recent export runs</h3>
 								<p className="muted">
-									Open completed report output while the backend still has it
+									Open completed export output while the backend still has it
 									stored.
 								</p>
 							</div>
 						</div>
 
 						{reportRunsQuery.isLoading ? (
-							<div className="muted">Loading recent report runs...</div>
+							<div className="muted">Loading recent export runs...</div>
 						) : null}
 						{reportRunsQuery.isError ? (
 							<div className="error-banner">
-								Failed to load recent report runs.{" "}
+								Failed to load recent export runs.{" "}
 								{reportRunsQuery.error instanceof Error
 									? reportRunsQuery.error.message
 									: "Unknown error"}
@@ -1711,7 +1711,7 @@ export function ReportsWorkspace() {
 						!reportRunsQuery.isError &&
 						successfulReportRuns.length === 0 ? (
 							<div className="empty-state">
-								No successful report runs with stored output found.
+								No successful export runs with stored output found.
 							</div>
 						) : null}
 						{reportRunFeedback ? (
@@ -1738,17 +1738,17 @@ export function ReportsWorkspace() {
 									</thead>
 									<tbody>
 										{successfulReportRuns.map((task) => {
-											const taskReportDetails = task.details?.report ?? null;
+											const taskReportDetails = task.details?.export ?? null;
 											const isActionPending = reportRunActionId === task.id;
 											return (
 												<tr key={task.id}>
 													<td>
 														<div className="stack table-cell-stack">
-															<strong>Report #{task.id}</strong>
+															<strong>Export #{task.id}</strong>
 															<span className="muted">
 																{taskReportDetails?.template_name ??
 																	task.summary ??
-																	"Ad-hoc report"}
+																	"Ad-hoc export"}
 															</span>
 														</div>
 													</td>
@@ -1796,7 +1796,7 @@ export function ReportsWorkspace() {
 							<div className="stack action-card-header">
 								<h3>Result console</h3>
 								<p className="muted">
-									Reports run as background tasks. When the task finishes, the
+									Exports run as background tasks. When the task finishes, the
 									stored output is fetched here for preview, copy, or download.
 								</p>
 							</div>
@@ -1834,14 +1834,14 @@ export function ReportsWorkspace() {
 						{activeReportTask &&
 						!isTerminalTaskStatus(activeReportTask.status) ? (
 							<div className="info-banner">
-								Report task is {activeReportTask.status}. This page is polling
+								Export task is {activeReportTask.status}. This page is polling
 								for completion.
 							</div>
 						) : null}
 
 						{reportFailed ? (
 							<div className="error-banner">
-								Report {activeReportTask?.status}.{" "}
+								Export {activeReportTask?.status}.{" "}
 								{activeReportTask?.summary?.trim()
 									? activeReportTask.summary
 									: "The task did not produce output."}
@@ -1852,7 +1852,7 @@ export function ReportsWorkspace() {
 						reportDetails?.output_available !== true &&
 						!lastResult ? (
 							<div className="info-banner">
-								Report partially succeeded.{" "}
+								Export partially succeeded.{" "}
 								{activeReportTask?.summary?.trim()
 									? activeReportTask.summary
 									: "Some items failed and no full output is available."}
@@ -1865,7 +1865,7 @@ export function ReportsWorkspace() {
 						reportDetails?.output_available !== true &&
 						!lastResult ? (
 							<div className="empty-state">
-								No stored report output is available for this task.
+								No stored export output is available for this task.
 							</div>
 						) : null}
 
@@ -1875,7 +1875,7 @@ export function ReportsWorkspace() {
 
 						{!activeReportTask && !lastResult ? (
 							<div className="empty-state">
-								Run a report to inspect the response.
+								Run an export to inspect the response.
 							</div>
 						) : null}
 						{lastResult && lastResultView ? (
@@ -1904,7 +1904,7 @@ export function ReportsWorkspace() {
 											onClick={() =>
 												downloadReportResult(
 													lastResult,
-													`report-${scopeKind}`,
+													`export-${scopeKind}`,
 													lastResultView.fullText,
 												)
 											}
@@ -1992,7 +1992,7 @@ export function ReportsWorkspace() {
 										className="html-preview"
 										sandbox=""
 										srcDoc={lastResultView.fullText}
-										title="Report HTML preview"
+										title="Export HTML preview"
 									/>
 								) : null}
 							</div>
@@ -2005,8 +2005,8 @@ export function ReportsWorkspace() {
 				open={editorState !== null}
 				title={
 					editorState?.mode === "edit"
-						? "Edit report template"
-						: "Create report template"
+						? "Edit export template"
+						: "Create export template"
 				}
 				onClose={closeEditor}
 			>
@@ -2021,10 +2021,10 @@ export function ReportsWorkspace() {
 					>
 						<div className="form-grid">
 							<div className="control-field">
-								<label htmlFor="report-template-collection">Collection</label>
+								<label htmlFor="export-template-collection">Collection</label>
 								{collectionOptions.length > 0 ? (
 									<select
-										id="report-template-collection"
+										id="export-template-collection"
 										value={editorState.collectionId}
 										onChange={(event) =>
 											setEditorState({
@@ -2044,7 +2044,7 @@ export function ReportsWorkspace() {
 									</select>
 								) : (
 									<input
-										id="report-template-collection"
+										id="export-template-collection"
 										type="number"
 										min={1}
 										value={editorState.collectionId}
@@ -2120,12 +2120,12 @@ export function ReportsWorkspace() {
 										})
 									}
 								>
-									<option value="report">report (executable)</option>
+									<option value="export">export (executable)</option>
 									<option value="fragment">fragment (include/import/extends)</option>
 								</select>
 							</label>
 
-							{editorState.kind === "report" ? (
+							{editorState.kind === "export" ? (
 								<>
 									<label className="control-field">
 										<span>Scope</span>
@@ -2277,9 +2277,9 @@ export function ReportsWorkspace() {
 							placeholder={`{% for item in items %}{{ item.name }}
 {% endfor %}`}
 							disabled={saveTemplateMutation.isPending}
-							scopeKind={editorState.kind === "report" ? editorState.scopeKind : undefined}
+							scopeKind={editorState.kind === "export" ? editorState.scopeKind : undefined}
 							relationHydrated={
-								editorState.kind === "report" &&
+								editorState.kind === "export" &&
 								(editorState.scopeKind === "related_objects" ||
 									(editorState.scopeKind === "objects_in_class" &&
 										editorState.depth.trim() !== ""))

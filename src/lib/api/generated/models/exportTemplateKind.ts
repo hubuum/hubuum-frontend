@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ReportTemplateKind = typeof ReportTemplateKind[keyof typeof ReportTemplateKind];
+export type ExportTemplateKind = typeof ExportTemplateKind[keyof typeof ExportTemplateKind];
 
 
-export const ReportTemplateKind = {
-  report: 'report',
+export const ExportTemplateKind = {
+  export: 'export',
   fragment: 'fragment',
 } as const;

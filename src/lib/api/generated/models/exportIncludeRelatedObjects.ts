@@ -5,9 +5,9 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
-import type { ReportIncludeRelatedObject } from './reportIncludeRelatedObject';
+import type { ExportIncludeRelatedObject } from './exportIncludeRelatedObject';
 
 /**
  * @nullable
  */
-export type ReportIncludeRelatedObjects = {[key: string]: ReportIncludeRelatedObject} | null;
+export type ExportIncludeRelatedObjects = {[key: string]: ExportIncludeRelatedObject} | null;

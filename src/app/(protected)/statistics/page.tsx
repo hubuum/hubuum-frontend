@@ -202,15 +202,15 @@ export default async function StatisticsPage() {
 							</strong>
 						</li>
 						<li>
-							<span>Import / report tasks</span>
+							<span>Import / export tasks</span>
 							<strong>
-								{tasks.import_tasks} / {tasks.report_tasks}
+								{tasks.import_tasks} / {tasks.export_tasks}
 							</strong>
 						</li>
 						<li>
-							<span>Export / reindex tasks</span>
+							<span>Reindex tasks</span>
 							<strong>
-								{tasks.export_tasks} / {tasks.reindex_tasks}
+								{tasks.reindex_tasks}
 							</strong>
 						</li>
 						<li>

@@ -5,12 +5,12 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
-import type { ReportLimits } from './reportLimits';
-import type { ReportMissingDataPolicy } from './reportMissingDataPolicy';
+import type { ExportLimits } from './exportLimits';
+import type { ExportMissingDataPolicy } from './exportMissingDataPolicy';
 
-export interface ReportTemplateRunRequest {
-  limits?: null | ReportLimits;
-  missing_data_policy?: null | ReportMissingDataPolicy;
+export interface ExportTemplateRunRequest {
+  limits?: null | ExportLimits;
+  missing_data_policy?: null | ExportMissingDataPolicy;
   /** @nullable */
   object_id?: number | null;
   /** @nullable */

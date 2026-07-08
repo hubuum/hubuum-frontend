@@ -76,7 +76,7 @@ const GO_TO_ROUTES: Record<string, string> = {
 	c: "/classes",
 	o: "/objects",
 	r: "/relations",
-	e: "/reports",
+	e: "/exports",
 	i: "/imports",
 	t: "/tasks",
 	s: "/statistics",
@@ -170,8 +170,8 @@ function getSectionLabel(pathname: string): string {
 	if (pathname.startsWith("/search")) {
 		return "Search";
 	}
-	if (pathname.startsWith("/reports")) {
-		return "Reports";
+	if (pathname.startsWith("/exports")) {
+		return "Exports";
 	}
 	if (pathname.startsWith("/imports")) {
 		return "Imports";
@@ -552,10 +552,10 @@ const workspaceLinks: NavItem[] = [
 		hint: "Relations: connect classes and objects",
 	},
 	{
-		href: "/reports",
-		label: "Reports",
+		href: "/exports",
+		label: "Exports",
 		icon: <IconReport />,
-		hint: "Reports: manage templates and render scoped output",
+		hint: "Exports: manage templates and render scoped output",
 	},
 	{
 		href: "/imports",

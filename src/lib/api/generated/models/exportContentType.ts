@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ReportContentType = typeof ReportContentType[keyof typeof ReportContentType];
+export type ExportContentType = typeof ExportContentType[keyof typeof ExportContentType];
 
 
-export const ReportContentType = {
+export const ExportContentType = {
   'application/json': 'application/json',
   'text/plain': 'text/plain',
   'text/html': 'text/html',

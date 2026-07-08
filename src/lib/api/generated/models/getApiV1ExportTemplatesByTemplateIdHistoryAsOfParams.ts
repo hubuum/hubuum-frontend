@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.0.1
  */
 
+export type GetApiV1ExportTemplatesByTemplateIdHistoryAsOfParams = {
 /**
- * Identifier wrapper for a [`ReportTemplate`].
+ * RFC3339 timestamp
  */
-export type ReportTemplateID = number;
+at: string;
+};

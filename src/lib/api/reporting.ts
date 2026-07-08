@@ -1,53 +1,51 @@
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
-	deleteApiV1TemplatesByTemplateId,
-	getApiV1ReportsByTaskId,
-	getApiV1Templates,
-	patchApiV1TemplatesByTemplateId,
-	postApiV1Reports,
-	postApiV1Templates,
-	postApiV1TemplatesByTemplateIdReports,
+	deleteApiV1ExportTemplatesByTemplateId,
+	getApiV1ExportTemplates,
+	getApiV1ExportsByTaskId,
+	patchApiV1ExportTemplatesByTemplateId,
+	postApiV1ExportTemplates,
+	postApiV1ExportTemplatesByTemplateIdExports,
+	postApiV1Exports,
 } from "@/lib/api/generated/client";
 import type {
-	GetApiV1TemplatesParams,
-	NewReportTemplate,
-	ReportContentType,
-	ReportInclude,
-	ReportIncludeRelatedDirection,
-	ReportIncludeRelatedObject,
-	ReportIncludeRelatedSort,
-	ReportJsonResponse,
-	ReportLimits,
-	ReportMissingDataPolicy,
-	ReportRelationContext,
-	ReportRequest,
-	ReportScopeKind,
-	ReportTemplate,
-	ReportTemplateKind,
-	ReportTemplateRunRequest,
+	ExportContentType,
+	ExportInclude,
+	ExportIncludeRelatedDirection,
+	ExportIncludeRelatedObject,
+	ExportIncludeRelatedSort,
+	ExportJsonResponse,
+	ExportLimits,
+	ExportMissingDataPolicy,
+	ExportRelationContext,
+	ExportRequest,
+	ExportScopeKind,
+	ExportTemplate,
+	ExportTemplateKind,
+	ExportTemplateRunRequest,
+	GetApiV1ExportTemplatesParams,
+	NewExportTemplate,
 	TaskResponse,
-	UpdateReportTemplate,
+	UpdateExportTemplate,
 } from "@/lib/api/generated/models";
 
-export type {
-	NewReportTemplate,
-	ReportContentType,
-	ReportInclude,
-	ReportIncludeRelatedDirection,
-	ReportIncludeRelatedObject,
-	ReportIncludeRelatedSort,
-	ReportJsonResponse,
-	ReportLimits,
-	ReportMissingDataPolicy,
-	ReportRelationContext,
-	ReportRequest,
-	ReportScopeKind,
-	ReportTemplate,
-	ReportTemplateKind,
-	ReportTemplateRunRequest,
-	TaskResponse,
-	UpdateReportTemplate,
-};
+export type NewReportTemplate = NewExportTemplate;
+export type ReportContentType = ExportContentType;
+export type ReportInclude = ExportInclude;
+export type ReportIncludeRelatedDirection = ExportIncludeRelatedDirection;
+export type ReportIncludeRelatedObject = ExportIncludeRelatedObject;
+export type ReportIncludeRelatedSort = ExportIncludeRelatedSort;
+export type ReportJsonResponse = ExportJsonResponse;
+export type ReportLimits = ExportLimits;
+export type ReportMissingDataPolicy = ExportMissingDataPolicy;
+export type ReportRelationContext = ExportRelationContext;
+export type ReportRequest = ExportRequest;
+export type ReportScopeKind = ExportScopeKind;
+export type ReportTemplate = ExportTemplate;
+export type ReportTemplateKind = ExportTemplateKind;
+export type ReportTemplateRunRequest = ExportTemplateRunRequest;
+export type UpdateReportTemplate = UpdateExportTemplate;
+export type { TaskResponse };
 
 export type StoredReportContentType = Exclude<
 	ReportContentType,
@@ -99,7 +97,7 @@ function toReportContentType(value: string | null): ReportContentType {
 export async function listReportTemplates(
 	cursor?: string | null,
 ): Promise<ReportTemplatePage> {
-	const params: GetApiV1TemplatesParams = {
+	const params: GetApiV1ExportTemplatesParams = {
 		limit: 100,
 		sort: "updated_at.desc",
 	};
@@ -108,13 +106,13 @@ export async function listReportTemplates(
 		params.cursor = cursor;
 	}
 
-	const response = await getApiV1Templates(params, {
+	const response = await getApiV1ExportTemplates(params, {
 		credentials: "include",
 	});
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load report templates."),
+			getApiErrorMessage(response.data, "Failed to load export templates."),
 		);
 	}
 
@@ -127,13 +125,13 @@ export async function listReportTemplates(
 export async function createReportTemplate(
 	payload: NewReportTemplate,
 ): Promise<ReportTemplate> {
-	const response = await postApiV1Templates(payload, {
+	const response = await postApiV1ExportTemplates(payload, {
 		credentials: "include",
 	});
 
 	if (response.status !== 201) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to create report template."),
+			getApiErrorMessage(response.data, "Failed to create export template."),
 		);
 	}
 
@@ -144,13 +142,17 @@ export async function updateReportTemplate(
 	templateId: number,
 	payload: UpdateReportTemplate,
 ): Promise<ReportTemplate> {
-	const response = await patchApiV1TemplatesByTemplateId(templateId, payload, {
-		credentials: "include",
-	});
+	const response = await patchApiV1ExportTemplatesByTemplateId(
+		templateId,
+		payload,
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to update report template."),
+			getApiErrorMessage(response.data, "Failed to update export template."),
 		);
 	}
 
@@ -158,13 +160,13 @@ export async function updateReportTemplate(
 }
 
 export async function deleteReportTemplate(templateId: number): Promise<void> {
-	const response = await deleteApiV1TemplatesByTemplateId(templateId, {
+	const response = await deleteApiV1ExportTemplatesByTemplateId(templateId, {
 		credentials: "include",
 	});
 
 	if (response.status !== 204) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to delete report template."),
+			getApiErrorMessage(response.data, "Failed to delete export template."),
 		);
 	}
 }
@@ -178,19 +180,19 @@ export async function submitJsonReportTask(
 		headers.set("Idempotency-Key", idempotencyKey.trim());
 	}
 
-	const response = await postApiV1Reports(request, {
+	const response = await postApiV1Exports(request, {
 		credentials: "include",
 		headers,
 	});
 
 	if ((response.status as number) === 429) {
 		throw new Error(
-			"Too many active report tasks. Wait for one to finish, then try again.",
+			"Too many active export tasks. Wait for one to finish, then try again.",
 		);
 	}
 	if (response.status !== 202) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to submit report."),
+			getApiErrorMessage(response.data, "Failed to submit export."),
 		);
 	}
 	return response.data;
@@ -206,7 +208,7 @@ export async function runTemplateReport(
 		headers.set("Idempotency-Key", idempotencyKey.trim());
 	}
 
-	const response = await postApiV1TemplatesByTemplateIdReports(
+	const response = await postApiV1ExportTemplatesByTemplateIdExports(
 		templateId,
 		overrides,
 		{ credentials: "include", headers },
@@ -214,25 +216,25 @@ export async function runTemplateReport(
 
 	if ((response.status as number) === 429) {
 		throw new Error(
-			"Too many active report tasks. Wait for one to finish, then try again.",
+			"Too many active export tasks. Wait for one to finish, then try again.",
 		);
 	}
 	if (response.status !== 202) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to run template report."),
+			getApiErrorMessage(response.data, "Failed to run template export."),
 		);
 	}
 	return response.data;
 }
 
 export async function fetchReportTask(taskId: number): Promise<TaskResponse> {
-	const response = await getApiV1ReportsByTaskId(taskId, {
+	const response = await getApiV1ExportsByTaskId(taskId, {
 		credentials: "include",
 	});
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load report task."),
+			getApiErrorMessage(response.data, "Failed to load export task."),
 		);
 	}
 
@@ -249,7 +251,7 @@ export async function fetchReportOutput(
 	}
 
 	const response = await fetch(
-		`/_hubuum-bff/hubuum/api/v1/reports/${taskId}/output`,
+		`/_hubuum-bff/hubuum/api/v1/exports/${taskId}/output`,
 		{
 			credentials: "include",
 			headers,
@@ -259,21 +261,21 @@ export async function fetchReportOutput(
 	const contentType = toReportContentType(response.headers.get("content-type"));
 	const warningCount =
 		Number.parseInt(
-			response.headers.get("x-hubuum-report-warnings") ?? "0",
+			response.headers.get("x-hubuum-export-warnings") ?? "0",
 			10,
 		) || 0;
 	const truncated =
-		response.headers.get("x-hubuum-report-truncated") === "true";
+		response.headers.get("x-hubuum-export-truncated") === "true";
 
 	if (response.status === 404 || response.status === 410) {
 		throw new Error(
-			"This report output has expired or was cleaned up. Re-run the report to generate it again.",
+			"This export output has expired or was cleaned up. Re-run the export to generate it again.",
 		);
 	}
 
 	if (!response.ok) {
 		const payload = await parseBody(response);
-		throw new Error(getApiErrorMessage(payload, "Failed to fetch report output."));
+		throw new Error(getApiErrorMessage(payload, "Failed to fetch export output."));
 	}
 
 	if (contentType === "application/json") {

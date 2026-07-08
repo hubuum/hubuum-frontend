@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ReportMissingDataPolicy = typeof ReportMissingDataPolicy[keyof typeof ReportMissingDataPolicy];
+export type ExportMissingDataPolicy = typeof ExportMissingDataPolicy[keyof typeof ExportMissingDataPolicy];
 
 
-export const ReportMissingDataPolicy = {
+export const ExportMissingDataPolicy = {
   strict: 'strict',
   null: 'null',
   omit: 'omit',
