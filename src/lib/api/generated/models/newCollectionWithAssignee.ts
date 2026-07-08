@@ -5,6 +5,7 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
+import type { CollectionID } from './collectionID';
 
 /**
  * A new collection, with an assignee. Used for creating new collection entries
@@ -17,6 +18,5 @@ export interface NewCollectionWithAssignee {
   description: string;
   group_id: number;
   name: string;
-  /** @nullable */
-  parent_collection_id?: number | null;
+  parent_collection_id?: null | CollectionID;
 }

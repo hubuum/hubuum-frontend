@@ -5,7 +5,8 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
+import type { CollectionID } from './collectionID';
 
 export interface UpdateCollectionParent {
-  parent_collection_id: number;
+  parent_collection_id: CollectionID;
 }
