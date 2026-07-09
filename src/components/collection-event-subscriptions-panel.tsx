@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { JsonViewer } from "@/components/json-viewer";
+import { TableExportMenu } from "@/components/table-export-menu";
 import {
 	createCollectionEventSubscription,
 	deleteCollectionEventSubscription,
@@ -140,7 +141,9 @@ function optionalStringTokens(value: string): string[] | undefined {
 	return tokens.length > 0 ? tokens : undefined;
 }
 
-function mergeUniqueNumbers(...groups: (number[] | undefined)[]): number[] | undefined {
+function mergeUniqueNumbers(
+	...groups: (number[] | undefined)[]
+): number[] | undefined {
 	const values = groups.flatMap((group) => group ?? []);
 	if (values.length === 0) {
 		return undefined;
@@ -179,8 +182,12 @@ function getSinkLabel(sink: EventSink): string {
 	return `${sink.name} (#${sink.id}) · ${sink.kind}${sink.enabled ? "" : " · disabled"}`;
 }
 
-function getDefaultRoutingMode(sinkKind: EventSinkKind | undefined): "structured" | "json" {
-	return sinkKind === "webhook" || sinkKind === "email" || sinkKind === "valkey_stream"
+function getDefaultRoutingMode(
+	sinkKind: EventSinkKind | undefined,
+): "structured" | "json" {
+	return sinkKind === "webhook" ||
+		sinkKind === "email" ||
+		sinkKind === "valkey_stream"
 		? "structured"
 		: "json";
 }
@@ -190,13 +197,7 @@ function routingToFormFields(
 	sinkKind: EventSinkKind | undefined,
 ): Pick<
 	SubscriptionFormState,
-	| "bcc"
-	| "cc"
-	| "recipients"
-	| "routingJson"
-	| "routingMode"
-	| "stream"
-	| "url"
+	"bcc" | "cc" | "recipients" | "routingJson" | "routingMode" | "stream" | "url"
 > {
 	const object =
 		typeof routing === "object" && routing !== null && !Array.isArray(routing)
@@ -324,8 +325,12 @@ function buildRouting(
 		}
 		return {
 			recipients,
-			...(optionalStringTokens(form.cc) ? { cc: optionalStringTokens(form.cc) } : {}),
-			...(optionalStringTokens(form.bcc) ? { bcc: optionalStringTokens(form.bcc) } : {}),
+			...(optionalStringTokens(form.cc)
+				? { cc: optionalStringTokens(form.cc) }
+				: {}),
+			...(optionalStringTokens(form.bcc)
+				? { bcc: optionalStringTokens(form.bcc) }
+				: {}),
 		};
 	}
 
@@ -375,7 +380,9 @@ function buildPayload(
 	};
 }
 
-function formatFilterSummary(filter: EventSubscriptionFilter | undefined): string {
+function formatFilterSummary(
+	filter: EventSubscriptionFilter | undefined,
+): string {
 	if (!filter || Object.keys(filter).length === 0) {
 		return "No extra filters";
 	}
@@ -416,9 +423,9 @@ export function CollectionEventSubscriptionsPanel({
 }: CollectionEventSubscriptionsPanelProps) {
 	const queryClient = useQueryClient();
 	const [isEditorOpen, setEditorOpen] = useState(false);
-	const [editingSubscriptionId, setEditingSubscriptionId] = useState<number | null>(
-		null,
-	);
+	const [editingSubscriptionId, setEditingSubscriptionId] = useState<
+		number | null
+	>(null);
 	const [form, setForm] = useState<SubscriptionFormState>(EMPTY_FORM);
 	const [formError, setFormError] = useState<string | null>(null);
 
@@ -575,7 +582,56 @@ export function CollectionEventSubscriptionsPanel({
 	}
 
 	const actionPending =
-		createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+		createMutation.isPending ||
+		updateMutation.isPending ||
+		deleteMutation.isPending;
+	const subscriptions = subscriptionsQuery.data ?? [];
+	const subscriptionsExportView = {
+		id: `collection-${collectionId}-event-subscriptions`,
+		fileName: `collection-${collectionId}-event-subscriptions`,
+		sheetName: "Event subscriptions",
+		columns: [
+			{
+				key: "name",
+				label: "Name",
+				getValue: (subscription: EventSubscription) =>
+					`${subscription.name} (#${subscription.id})`,
+			},
+			{
+				key: "sink",
+				label: "Sink",
+				getValue: (subscription: EventSubscription) => {
+					const sink = sinkLookup.get(subscription.sink_id);
+					return sink ? getSinkLabel(sink) : `#${subscription.sink_id}`;
+				},
+			},
+			{
+				key: "match",
+				label: "Match",
+				getValue: (subscription: EventSubscription) =>
+					`${subscription.entity_types.join(", ")} · ${subscription.actions.join(", ")}`,
+			},
+			{
+				key: "filters",
+				label: "Filters",
+				getValue: (subscription: EventSubscription) =>
+					formatFilterSummary(subscription.filter),
+			},
+			{
+				key: "enabled",
+				label: "Enabled",
+				getValue: (subscription: EventSubscription) =>
+					subscription.enabled ? "yes" : "no",
+			},
+			{
+				key: "updated",
+				label: "Updated",
+				getValue: (subscription: EventSubscription) =>
+					formatTimestamp(subscription.updated_at),
+			},
+		],
+		rows: subscriptions,
+	};
 
 	return (
 		<article className="card stack panel-card">
@@ -587,16 +643,23 @@ export function CollectionEventSubscriptionsPanel({
 						configured sink.
 					</p>
 				</div>
-				{canManage ? (
-					<button
-						type="button"
-						className="secondary"
-						onClick={startCreate}
-						disabled={isEditorOpen || sinksQuery.isLoading}
-					>
-						New subscription
-					</button>
-				) : null}
+				<div className="action-row">
+					<TableExportMenu
+						view={subscriptionsExportView}
+						disabled={subscriptionsQuery.isFetching}
+						compact
+					/>
+					{canManage ? (
+						<button
+							type="button"
+							className="secondary"
+							onClick={startCreate}
+							disabled={isEditorOpen || sinksQuery.isLoading}
+						>
+							New subscription
+						</button>
+					) : null}
+				</div>
 			</div>
 
 			{isPermissionPending ? (
@@ -849,10 +912,7 @@ export function CollectionEventSubscriptionsPanel({
 										}`}
 										onClick={() =>
 											patchForm({
-												actorKinds: toggleListValue(
-													form.actorKinds,
-													actorKind,
-												),
+												actorKinds: toggleListValue(form.actorKinds, actorKind),
 											})
 										}
 									>
@@ -890,9 +950,7 @@ export function CollectionEventSubscriptionsPanel({
 									<input
 										type="url"
 										value={form.url}
-										onChange={(event) =>
-											patchForm({ url: event.target.value })
-										}
+										onChange={(event) => patchForm({ url: event.target.value })}
 									/>
 								</label>
 							) : selectedSink?.kind === "email" ? (
@@ -911,7 +969,9 @@ export function CollectionEventSubscriptionsPanel({
 										<span>CC</span>
 										<input
 											value={form.cc}
-											onChange={(event) => patchForm({ cc: event.target.value })}
+											onChange={(event) =>
+												patchForm({ cc: event.target.value })
+											}
 										/>
 									</label>
 									<label>
@@ -982,7 +1042,7 @@ export function CollectionEventSubscriptionsPanel({
 				<div className="empty-state">No event subscriptions configured.</div>
 			) : null}
 
-			{subscriptionsQuery.data?.length ? (
+			{subscriptions.length ? (
 				<div className="table-wrap">
 					<table>
 						<thead>
@@ -997,7 +1057,7 @@ export function CollectionEventSubscriptionsPanel({
 							</tr>
 						</thead>
 						<tbody>
-							{subscriptionsQuery.data.map((subscription) => {
+							{subscriptions.map((subscription) => {
 								const sink = sinkLookup.get(subscription.sink_id);
 								return (
 									<tr key={subscription.id}>
@@ -1005,7 +1065,9 @@ export function CollectionEventSubscriptionsPanel({
 											<strong>{subscription.name}</strong>
 											<div className="muted">#{subscription.id}</div>
 										</td>
-										<td>{sink ? getSinkLabel(sink) : `#${subscription.sink_id}`}</td>
+										<td>
+											{sink ? getSinkLabel(sink) : `#${subscription.sink_id}`}
+										</td>
 										<td>
 											{subscription.entity_types.join(", ")} ·{" "}
 											{subscription.actions.join(", ")}

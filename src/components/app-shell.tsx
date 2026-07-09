@@ -18,6 +18,7 @@ import { KeyboardHelp } from "@/components/keyboard-help";
 import { LogoutButton } from "@/components/logout-button";
 import { PinButton } from "@/components/pin-button";
 import { ToastContainer } from "@/components/toast-container";
+import { BrandMark } from "@/components/brand-mark";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV1Classes } from "@/lib/api/generated/client";
 import type { HubuumClassExpanded, HubuumObject } from "@/lib/api/generated/models";
@@ -47,6 +48,7 @@ import {
 	triggerActivePaginationPrevPage,
 } from "@/lib/pagination-shortcuts";
 import { normalizeSearchTerm } from "@/lib/resource-search";
+import { OBJECT_SERVER_FILTERS_QUERY_KEY } from "@/lib/object-server-filters";
 
 type AppShellProps = {
 	canViewAdmin: boolean;
@@ -58,6 +60,8 @@ type ThemePreference = "system" | "light" | "dark";
 
 type DensityPreference = "comfortable" | "compact";
 
+type AccentPreference = "teal" | "blue" | "violet" | "amber" | "rose";
+
 type NavItem = {
 	href: string;
 	label: string;
@@ -68,6 +72,17 @@ type NavItem = {
 const SIDEBAR_COLLAPSED_KEY = "hubuum.sidebar.collapsed";
 const THEME_PREFERENCE_KEY = "hubuum.theme";
 const DENSITY_PREFERENCE_KEY = "hubuum.density";
+const ACCENT_PREFERENCE_KEY = "hubuum.accent";
+const ACCENT_OPTIONS: Array<{
+	value: AccentPreference;
+	label: string;
+}> = [
+	{ value: "teal", label: "Teal" },
+	{ value: "blue", label: "Blue" },
+	{ value: "violet", label: "Violet" },
+	{ value: "amber", label: "Amber" },
+	{ value: "rose", label: "Rose" },
+];
 const GO_TO_SHORTCUT_TIMEOUT_MS = 1500;
 const GO_TO_ROUTES: Record<string, string> = {
 	a: "/audit",
@@ -150,6 +165,10 @@ function resolveTheme(preference: ThemePreference): "light" | "dark" {
 
 function isThemePreference(value: string | null): value is ThemePreference {
 	return value === "system" || value === "light" || value === "dark";
+}
+
+function isAccentPreference(value: string | null): value is AccentPreference {
+	return ACCENT_OPTIONS.some((option) => option.value === value);
 }
 
 function isLinkActive(pathname: string, href: string): boolean {
@@ -520,13 +539,16 @@ function IconEdit() {
 	);
 }
 
-const workspaceLinks: NavItem[] = [
+const overviewLinks: NavItem[] = [
 	{
 		href: "/app",
 		label: "Home",
 		icon: <IconHome />,
 		hint: "Home: start from the task you want to complete",
 	},
+];
+
+const dataModelLinks: NavItem[] = [
 	{
 		href: "/collections",
 		label: "Collections",
@@ -551,6 +573,9 @@ const workspaceLinks: NavItem[] = [
 		icon: <IconRelation />,
 		hint: "Relations: connect classes and objects",
 	},
+];
+
+const workflowLinks: NavItem[] = [
 	{
 		href: "/imports",
 		label: "Imports",
@@ -569,6 +594,9 @@ const workspaceLinks: NavItem[] = [
 		icon: <IconTasks />,
 		hint: "Tasks: monitor active background work and resume task detail pages",
 	},
+];
+
+const observeLinks: NavItem[] = [
 	{
 		href: "/audit",
 		label: "Audit",
@@ -715,6 +743,8 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		useState<ThemePreference>("system");
 	const [densityPreference, setDensityPreference] =
 		useState<DensityPreference>("comfortable");
+	const [accentPreference, setAccentPreference] =
+		useState<AccentPreference>("teal");
 	const [searchInput, setSearchInput] = useState("");
 	const [selectionCount, setSelectionCount] = useState(0);
 	const [deleteHandler, setDeleteHandler] = useState<(() => void) | null>(null);
@@ -789,6 +819,11 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		if (storedDensity === "compact" || storedDensity === "comfortable") {
 			setDensityPreference(storedDensity);
 		}
+
+		const storedAccent = window.localStorage.getItem(ACCENT_PREFERENCE_KEY);
+		if (isAccentPreference(storedAccent)) {
+			setAccentPreference(storedAccent);
+		}
 	}, []);
 
 	useEffect(() => {
@@ -834,6 +869,11 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		window.localStorage.setItem(DENSITY_PREFERENCE_KEY, densityPreference);
 		document.documentElement.setAttribute("data-density", densityPreference);
 	}, [densityPreference]);
+
+	useEffect(() => {
+		window.localStorage.setItem(ACCENT_PREFERENCE_KEY, accentPreference);
+		document.documentElement.setAttribute("data-accent", accentPreference);
+	}, [accentPreference]);
 
 	useEffect(() => {
 		if (!pathname) {
@@ -1194,6 +1234,9 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		} else {
 			params.delete("classId");
 		}
+		params.delete("cursor");
+		params.delete("search");
+		params.delete(OBJECT_SERVER_FILTERS_QUERY_KEY);
 
 		const query = params.toString();
 		router.push(query ? `/objects?${query}` : "/objects");
@@ -1270,21 +1313,55 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		router.push(query ? `/search?${query}` : "/search");
 	}
 
+	function renderNavigationLinks(items: NavItem[]) {
+		return items.map((item) => {
+			const isActive = isLinkActive(pathname, item.href);
+
+			return (
+				<Link
+					key={item.href}
+					href={item.href}
+					className={`sidebar-link ${isActive ? "active" : ""}`}
+					aria-label={item.hint}
+					aria-current={isActive ? "page" : undefined}
+					data-tooltip={item.hint}
+				>
+					<span
+						className={`sidebar-icon ${
+							item.href === "/tasks" && taskBadgeLabel && isSidebarCollapsed
+								? "sidebar-icon--badged"
+								: ""
+						}`}
+					>
+						{item.icon}
+						{item.href === "/tasks" && isSidebarCollapsed
+							? renderTaskBadge()
+							: null}
+					</span>
+					<span className="sidebar-text">{item.label}</span>
+					{item.href === "/tasks" && !isSidebarCollapsed
+						? renderTaskBadge()
+						: null}
+				</Link>
+			);
+		});
+	}
+
 	return (
 		<div className={shellClassName}>
+			<a className="skip-link" href="#main-content">
+				Skip to content
+			</a>
 			<div className="app-layout">
 				<aside className="sidebar card" aria-label="Primary navigation">
 					<div className="sidebar-main">
 						<div className="sidebar-header">
-							<div className="sidebar-brand">
-								<p className="eyebrow sidebar-label">Hubuum</p>
-								<h1 className="sidebar-title">Console</h1>
-							</div>
+							<BrandMark href="/app" />
 						</div>
 
 						<nav>
 							<div className="sidebar-group">
-								<p className="sidebar-label">Workspace</p>
+								<p className="sidebar-label">Overview</p>
 								{isSidebarCollapsed ? (
 									<button
 										type="button"
@@ -1299,73 +1376,33 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 										<span className="sidebar-text">Expand sidebar</span>
 									</button>
 								) : null}
-								{workspaceLinks.map((item) => (
-									<Link
-										key={item.href}
-										href={item.href}
-										className={`sidebar-link ${isLinkActive(pathname, item.href) ? "active" : ""}`}
-										aria-label={item.hint}
-										data-tooltip={item.hint}
-									>
-										<span
-											className={`sidebar-icon ${
-												item.href === "/tasks" &&
-												taskBadgeLabel &&
-												isSidebarCollapsed
-													? "sidebar-icon--badged"
-													: ""
-											}`}
-										>
-											{item.icon}
-											{item.href === "/tasks" && isSidebarCollapsed
-												? renderTaskBadge()
-												: null}
-										</span>
-										<span className="sidebar-text">{item.label}</span>
-										{item.href === "/tasks" && !isSidebarCollapsed
-											? renderTaskBadge()
-											: null}
-									</Link>
-								))}
+								{renderNavigationLinks(overviewLinks)}
+							</div>
+
+							<div className="sidebar-group">
+								<p className="sidebar-label">Data model</p>
+								{renderNavigationLinks(dataModelLinks)}
+							</div>
+
+							<div className="sidebar-group">
+								<p className="sidebar-label">Workflows</p>
+								{renderNavigationLinks(workflowLinks)}
 							</div>
 
 							{canViewAdmin ? (
 								<div className="sidebar-group">
-									<p className="sidebar-label">Admin</p>
-									{adminLinks.map((item) => (
-										<Link
-											key={item.href}
-											href={item.href}
-											className={`sidebar-link ${isLinkActive(pathname, item.href) ? "active" : ""}`}
-											aria-label={item.hint}
-											data-tooltip={item.hint}
-										>
-											<span className="sidebar-icon">{item.icon}</span>
-											<span className="sidebar-text">{item.label}</span>
-										</Link>
-									))}
+									<p className="sidebar-label">Administration</p>
+									{renderNavigationLinks(adminLinks)}
 								</div>
 							) : null}
 
-							{canViewAdmin ? (
-								<div className="sidebar-group">
-									{!isSidebarCollapsed ? (
-										<p className="sidebar-label">System</p>
-									) : null}
-									{systemLinks.map((item) => (
-										<Link
-											key={item.href}
-											href={item.href}
-											className={`sidebar-link ${isLinkActive(pathname, item.href) ? "active" : ""}`}
-											aria-label={item.hint}
-											data-tooltip={item.hint}
-										>
-											<span className="sidebar-icon">{item.icon}</span>
-											<span className="sidebar-text">{item.label}</span>
-										</Link>
-									))}
-								</div>
-							) : null}
+							<div className="sidebar-group">
+								<p className="sidebar-label">Observe</p>
+								{renderNavigationLinks([
+									...observeLinks,
+									...(canViewAdmin ? systemLinks : []),
+								])}
+							</div>
 
 							{!isSidebarCollapsed ? (
 								<div className="sidebar-group desktop-only">
@@ -1399,7 +1436,12 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 							</button>
 
 							<div className="topbar-title-row">
-								<p className="topbar-heading">{detailTitle ?? sectionLabel}</p>
+								<div className="topbar-title-stack">
+									<span className="topbar-caption">
+										{pathname.startsWith("/admin") ? "Administration" : "Workspace"}
+									</span>
+									<h1 className="topbar-heading">{detailTitle ?? sectionLabel}</h1>
+								</div>
 								{detailPin ? (
 									<PinButton
 										type={detailPin.type}
@@ -1658,11 +1700,14 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 								onClick={() => setUserMenuOpen((current) => !current)}
 								aria-haspopup="menu"
 								aria-expanded={isUserMenuOpen}
+								aria-label={`Open account menu for ${currentUsername ?? "current user"}`}
 							>
 								<span className="user-avatar">
 									<IconUser />
 								</span>
-								<span className="user-trigger-text">Account</span>
+								<span className="user-trigger-text">
+									{currentUsername ?? "Account"}
+								</span>
 								<span className="user-chevron">
 									<IconChevron />
 								</span>
@@ -1718,6 +1763,28 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 									</div>
 
 									<div className="menu-group">
+										<p className="menu-label">Accent color</p>
+										<div className="accent-options">
+											{ACCENT_OPTIONS.map((option) => (
+												<button
+													key={option.value}
+													type="button"
+													className={`accent-option ${accentPreference === option.value ? "is-selected" : ""}`}
+													onClick={() => setAccentPreference(option.value)}
+													aria-pressed={accentPreference === option.value}
+													title={`${option.label} accent`}
+												>
+													<span
+														className={`accent-swatch accent-swatch--${option.value}`}
+														aria-hidden="true"
+													/>
+													<span>{option.label}</span>
+												</button>
+											))}
+										</div>
+									</div>
+
+									<div className="menu-group">
 										<Link
 											className="menu-item"
 											href="/account"
@@ -1736,7 +1803,7 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 						</div>
 					</header>
 
-					<main className="content">{children}</main>
+					<main className="content" id="main-content">{children}</main>
 				</div>
 			</div>
 
@@ -1752,12 +1819,15 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 			{selectionCount > 0 && deleteHandler ? (
 				<button
 					type="button"
-					className="fab fab--delete"
+					className="fab fab--extended fab--delete"
 					onClick={deleteHandler}
 					aria-label={`Delete ${selectionCount} selected item${selectionCount === 1 ? "" : "s"}`}
 					title={`Delete ${selectionCount} selected`}
 				>
 					<IconDelete />
+					<span className="fab-text">
+						Delete {selectionCount} selected
+					</span>
 					{selectionCount > 1 ? (
 						<span className="fab-badge">{selectionCount}</span>
 					) : null}
@@ -1776,7 +1846,7 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 			) : createSection ? (
 				<button
 					type="button"
-					className="fab fab--extended"
+					className="fab fab--extended fab--create"
 					onClick={openCreateModal}
 					aria-label={getCreateLabel(createSection, relationsView)}
 					title={`${getCreateLabel(createSection, relationsView)} (C)`}

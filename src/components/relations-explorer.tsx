@@ -3,8 +3,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	ChangeEvent,
+	FormEvent,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { CreateModal } from "@/components/create-modal";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -1270,6 +1278,140 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		);
 	}
 
+	const directClassRelationsExportView = {
+		id: `class-${parsedSourceClassId ?? "unselected"}-direct-relations`,
+		fileName: `class-${parsedSourceClassId ?? "unselected"}-direct-relations`,
+		sheetName: "Direct class relations",
+		columns: [
+			{
+				key: "id",
+				label: "ID",
+				getValue: (relation: HubuumClassRelation) => relation.id,
+			},
+			{
+				key: "endpoint",
+				label: "Endpoint",
+				getValue: (relation: HubuumClassRelation) => {
+					const currentClassId =
+						parsedSourceClassId ?? relation.from_hubuum_class_id;
+					return renderClassById(currentClassId);
+				},
+			},
+			{
+				key: "connected_class",
+				label: "Connected class",
+				getValue: (relation: HubuumClassRelation) => {
+					const currentClassId =
+						parsedSourceClassId ?? relation.from_hubuum_class_id;
+					const connectedClassId =
+						relation.from_hubuum_class_id === currentClassId
+							? relation.to_hubuum_class_id
+							: relation.from_hubuum_class_id;
+					return renderClassById(connectedClassId);
+				},
+			},
+		],
+		rows: classDirectRelations,
+	};
+	const connectedClassesExportView = {
+		id: `class-${parsedSourceClassId ?? "unselected"}-connected-classes`,
+		fileName: `class-${parsedSourceClassId ?? "unselected"}-connected-classes`,
+		sheetName: "Connected classes",
+		columns: [
+			{
+				key: "class",
+				label: "Class",
+				getValue: (connectedClass: HubuumClassWithPath) =>
+					renderClassById(connectedClass.id),
+			},
+			{
+				key: "collection",
+				label: "Collection",
+				getValue: (connectedClass: HubuumClassWithPath) =>
+					renderCollectionById(connectedClass.collection_id),
+			},
+			{
+				key: "hops",
+				label: "Hops",
+				getValue: (connectedClass: HubuumClassWithPath) =>
+					Math.max(
+						getDisplayClassPath(connectedClass.path, connectedClass.id).length -
+							1,
+						0,
+					),
+			},
+			{
+				key: "path",
+				label: "Path",
+				getValue: (connectedClass: HubuumClassWithPath) => {
+					const path = getDisplayClassPath(
+						connectedClass.path,
+						connectedClass.id,
+					);
+					return path.length
+						? path.map((classId) => renderClassById(classId)).join(" / ")
+						: "-";
+				},
+			},
+		],
+		rows: connectedClasses,
+	};
+	const directObjectRelationsExportView = {
+		id: `object-${parsedResolvedSourceObjectId ?? "unselected"}-direct-relations`,
+		fileName: `object-${parsedResolvedSourceObjectId ?? "unselected"}-direct-relations`,
+		sheetName: "Direct object relations",
+		columns: [
+			{
+				key: "related_object",
+				label: "Related object",
+				getValue: (relation: HubuumObjectRelation) => {
+					const relatedObjectId =
+						relation.from_hubuum_object_id === parsedResolvedSourceObjectId
+							? relation.to_hubuum_object_id
+							: relation.from_hubuum_object_id;
+					return renderObjectById(relatedObjectId);
+				},
+			},
+			{
+				key: "relation",
+				label: "Relation",
+				getValue: (relation: HubuumObjectRelation) =>
+					renderObjectRelationLabel(relation),
+			},
+		],
+		rows: objectDirectRelations,
+	};
+	const reachableObjectsExportView = {
+		id: `object-${parsedResolvedSourceObjectId ?? "unselected"}-reachable-objects`,
+		fileName: `object-${parsedResolvedSourceObjectId ?? "unselected"}-reachable-objects`,
+		sheetName: "Reachable objects",
+		columns: [
+			{
+				key: "object",
+				label: "Object",
+				getValue: (relation: HubuumObjectWithPath) =>
+					renderObjectById(relation.id),
+			},
+			{
+				key: "collection",
+				label: "Collection",
+				getValue: (relation: HubuumObjectWithPath) =>
+					renderCollectionById(relation.collection_id),
+			},
+			{
+				key: "path",
+				label: "Path",
+				getValue: (relation: HubuumObjectWithPath) => {
+					const path = getDisplayObjectPath(relation.path, relation.id);
+					return path.length
+						? path.map((objectId) => renderObjectById(objectId)).join(" / ")
+						: "-";
+				},
+			},
+		],
+		rows: relatedObjects,
+	};
+
 	function onClassRelationsViewChange(event: ChangeEvent<HTMLSelectElement>) {
 		const nextView =
 			event.target.value === "connected" ? "connected" : "direct";
@@ -1458,8 +1600,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 				{!classRelationsQuery.isLoading &&
 				!objectRelationTargetClassOptions.length ? (
 					<div className="muted">
-						Create a class relation for this current class before adding
-						object relations.
+						Create a class relation for this current class before adding object
+						relations.
 					</div>
 				) : null}
 				{objectRelationSuccess ? (
@@ -1520,6 +1662,19 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 							</span>
 						</div>
 						<div className="table-tools">
+							{classRelationsView === "direct" ? (
+								<TableExportMenu
+									view={directClassRelationsExportView}
+									disabled={classRelationsQuery.isFetching}
+									compact
+								/>
+							) : (
+								<TableExportMenu
+									view={connectedClassesExportView}
+									disabled={classConnectedClassesQuery.isFetching}
+									compact
+								/>
+							)}
 							<select
 								aria-label="Class relations view"
 								value={classRelationsView}
@@ -1590,41 +1745,41 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 												: relation.from_hubuum_class_id;
 
 										return (
-										<tr key={relation.id}>
-											<td className="check-col">
-												<input
-													type="checkbox"
-													aria-label={`Select class relation ${relation.id}`}
-													checked={selectedClassRelationIds.includes(
-														relation.id,
-													)}
-													onChange={(event) =>
-														classRelationsShiftSelect.handleClick(
+											<tr key={relation.id}>
+												<td className="check-col">
+													<input
+														type="checkbox"
+														aria-label={`Select class relation ${relation.id}`}
+														checked={selectedClassRelationIds.includes(
 															relation.id,
-															event.target.checked,
-															(event.nativeEvent as MouseEvent).shiftKey,
-														)
-													}
-												/>
-											</td>
-											<td>{relation.id}</td>
-											<td>
-												<Link
-													href={`/classes/${currentClassId}`}
-													className="row-link"
-												>
-													{renderClassById(currentClassId)}
-												</Link>
-											</td>
-											<td>
-												<Link
-													href={`/classes/${connectedClassId}`}
-													className="row-link"
-												>
-													{renderClassById(connectedClassId)}
-												</Link>
-											</td>
-										</tr>
+														)}
+														onChange={(event) =>
+															classRelationsShiftSelect.handleClick(
+																relation.id,
+																event.target.checked,
+																(event.nativeEvent as MouseEvent).shiftKey,
+															)
+														}
+													/>
+												</td>
+												<td>{relation.id}</td>
+												<td>
+													<Link
+														href={`/classes/${currentClassId}`}
+														className="row-link"
+													>
+														{renderClassById(currentClassId)}
+													</Link>
+												</td>
+												<td>
+													<Link
+														href={`/classes/${connectedClassId}`}
+														className="row-link"
+													>
+														{renderClassById(connectedClassId)}
+													</Link>
+												</td>
+											</tr>
 										);
 									})}
 								</tbody>
@@ -1657,7 +1812,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 										key={`${connectedClass.id}-${connectedClass.path.join("-")}`}
 									>
 										<td>{renderClassLink(connectedClass.id)}</td>
-										<td>{renderCollectionById(connectedClass.collection_id)}</td>
+										<td>
+											{renderCollectionById(connectedClass.collection_id)}
+										</td>
 										<td>
 											{Math.max(
 												getDisplayClassPath(
@@ -1702,6 +1859,22 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 							</span>
 						</div>
 						<div className="table-tools">
+							{objectRelationsView === "direct" ? (
+								<TableExportMenu
+									view={directObjectRelationsExportView}
+									disabled={
+										objectDirectRelationsQuery.isFetching ||
+										relatedObjectsQuery.isFetching
+									}
+									compact
+								/>
+							) : (
+								<TableExportMenu
+									view={reachableObjectsExportView}
+									disabled={relatedObjectsQuery.isFetching}
+									compact
+								/>
+							)}
 							<select
 								aria-label="Object relations view"
 								value={objectRelationsView}
@@ -1814,9 +1987,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 								: "Unknown error"}
 						</div>
 					) : relatedObjects.length === 0 ? (
-						<div className="muted">
-							No reachable objects for this object.
-						</div>
+						<div className="muted">No reachable objects for this object.</div>
 					) : (
 						<table>
 							<thead>

@@ -60,8 +60,11 @@ export function LoginForm() {
 				void submitLogin();
 			}}
 		>
-			<h1>Welcome back</h1>
-			<p className="muted">Sign in with your Hubuum credentials.</p>
+			<div className="login-heading">
+				<p className="eyebrow">Workspace access</p>
+				<h1>Welcome back</h1>
+				<p className="muted">Sign in to continue to your Hubuum workspace.</p>
+			</div>
 
 			<label htmlFor="username">Username</label>
 			<input
@@ -69,6 +72,7 @@ export function LoginForm() {
 				name="username"
 				type="text"
 				autoComplete="username"
+				placeholder="Enter your username"
 				value={username}
 				onChange={(event) => setUsername(event.target.value)}
 				required
@@ -80,6 +84,7 @@ export function LoginForm() {
 				name="password"
 				type="password"
 				autoComplete="current-password"
+				placeholder="Enter your password"
 				value={password}
 				onChange={(event) => setPassword(event.target.value)}
 				required
@@ -87,8 +92,11 @@ export function LoginForm() {
 
 			{error ? <div className="error-banner">{error}</div> : null}
 
-			<button type="submit" disabled={isSubmitting}>
-				{isSubmitting ? "Signing in..." : "Sign in"}
+			<button className="login-submit" type="submit" disabled={isSubmitting}>
+				<span>{isSubmitting ? "Signing in..." : "Enter workspace"}</span>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<path d="M13.2 5.2 20 12l-6.8 6.8-1.4-1.4 4.4-4.4H4v-2h12.2l-4.4-4.4z" />
+				</svg>
 			</button>
 		</form>
 	);

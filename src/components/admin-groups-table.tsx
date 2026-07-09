@@ -2,8 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -17,6 +18,7 @@ import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
+import type { TableExportView } from "@/lib/table-export";
 
 async function fetchGroups(): Promise<Group[]> {
 	const response = await getApiV1IamGroups(undefined, {
@@ -166,6 +168,46 @@ export function AdminGroupsTable() {
 	}, []);
 	const allSelected =
 		groups.length > 0 && selectedGroupIds.length === groups.length;
+	const exportView = useMemo<TableExportView<Group>>(
+		() => ({
+			id: "admin-groups",
+			fileName: "group-directory-view",
+			sheetName: "Groups",
+			columns: [
+				{ key: "id", label: "ID", getValue: (group) => group.id },
+				{
+					key: "groupname",
+					label: "Group name",
+					getValue: (group) => group.groupname,
+				},
+				{
+					key: "description",
+					label: "Description",
+					getValue: (group) => group.description,
+				},
+				{
+					key: "members",
+					label: "Members",
+					getValue: (group) =>
+						memberCountsQuery.isLoading
+							? null
+							: (memberCountsQuery.data?.[group.id] ?? 0),
+				},
+				{
+					key: "created_at",
+					label: "Created",
+					getValue: (group) => new Date(group.created_at),
+				},
+				{
+					key: "updated_at",
+					label: "Updated",
+					getValue: (group) => new Date(group.updated_at),
+				},
+			],
+			rows: groups,
+		}),
+		[groups, memberCountsQuery.data, memberCountsQuery.isLoading],
+	);
 
 	useEffect(() => {
 		if (!selectedGroupIds.length) {
@@ -303,7 +345,7 @@ export function AdminGroupsTable() {
 				{renderCreateGroupForm()}
 			</CreateModal>
 
-			<div className="card table-wrap">
+			<div className="card">
 				<div className="table-header">
 					<h3>Group directory</h3>
 					<div className="table-tools">
@@ -313,6 +355,7 @@ export function AdminGroupsTable() {
 								? ` • ${selectedGroupIds.length} selected`
 								: ""}
 						</span>
+						<TableExportMenu view={exportView} compact />
 						<button
 							type="button"
 							className="danger"
@@ -336,56 +379,61 @@ export function AdminGroupsTable() {
 					</div>
 				) : null}
 
-				<table>
-					<thead>
-						<tr>
-							<th className="check-col">
-								<input
-									type="checkbox"
-									aria-label="Select all groups"
-									checked={allSelected}
-									onChange={(event) => toggleAllGroups(event.target.checked)}
-								/>
-							</th>
-							<th>ID</th>
-							<th>Group name</th>
-							<th>Description</th>
-							<th>Members</th>
-							<th>Created</th>
-							<th>Updated</th>
-						</tr>
-					</thead>
-					<tbody>
-						{groups.map((group) => (
-							<tr key={group.id}>
-								<td className="check-col">
+				<div className="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th className="check-col">
 									<input
 										type="checkbox"
-										aria-label={`Select group ${group.groupname}`}
-										checked={selectedGroupIds.includes(group.id)}
-										onChange={(event) =>
-											toggleGroup(group.id, event.target.checked)
-										}
+										aria-label="Select all groups"
+										checked={allSelected}
+										onChange={(event) => toggleAllGroups(event.target.checked)}
 									/>
-								</td>
-								<td>{group.id}</td>
-								<td>
-									<Link className="row-link" href={`/admin/groups/${group.id}`}>
-										{group.groupname}
-									</Link>
-								</td>
-								<td>{group.description || "-"}</td>
-								<td>
-									{memberCountsQuery.isLoading
-										? "…"
-										: (memberCountsQuery.data?.[group.id] ?? 0)}
-								</td>
-								<td>{new Date(group.created_at).toLocaleString()}</td>
-								<td>{new Date(group.updated_at).toLocaleString()}</td>
+								</th>
+								<th>ID</th>
+								<th>Group name</th>
+								<th>Description</th>
+								<th>Members</th>
+								<th>Created</th>
+								<th>Updated</th>
 							</tr>
-						))}
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							{groups.map((group) => (
+								<tr key={group.id}>
+									<td className="check-col">
+										<input
+											type="checkbox"
+											aria-label={`Select group ${group.groupname}`}
+											checked={selectedGroupIds.includes(group.id)}
+											onChange={(event) =>
+												toggleGroup(group.id, event.target.checked)
+											}
+										/>
+									</td>
+									<td>{group.id}</td>
+									<td>
+										<Link
+											className="row-link"
+											href={`/admin/groups/${group.id}`}
+										>
+											{group.groupname}
+										</Link>
+									</td>
+									<td>{group.description || "-"}</td>
+									<td>
+										{memberCountsQuery.isLoading
+											? "…"
+											: (memberCountsQuery.data?.[group.id] ?? 0)}
+									</td>
+									<td>{new Date(group.created_at).toLocaleString()}</td>
+									<td>{new Date(group.updated_at).toLocaleString()}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
 	);

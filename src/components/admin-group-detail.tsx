@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useConfirm } from "@/lib/confirm-context";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamGroupsByGroupIdMembersByPrincipalId,
@@ -17,7 +17,9 @@ import type {
 	PrincipalMemberResponse,
 	UserResponse,
 } from "@/lib/api/generated/models";
+import { useConfirm } from "@/lib/confirm-context";
 import { trackRecentItem } from "@/lib/recent-items";
+import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 
 type AdminGroupDetailProps = {
 	groupId: number;
@@ -199,6 +201,21 @@ function resolveUserFromInput(
 		) ?? null
 	);
 }
+
+const memberExportColumns: TableExportColumn<PrincipalMemberResponse>[] = [
+	{
+		key: "id",
+		label: "ID",
+		getValue: (member) => member.principal_id,
+	},
+	{ key: "name", label: "Name", getValue: (member) => member.name },
+	{
+		key: "kind",
+		label: "Kind",
+		getValue: (member) =>
+			member.kind === "service_account" ? "Service account" : "Human",
+	},
+];
 
 export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	const queryClient = useQueryClient();
@@ -510,6 +527,13 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 
 	const isMembershipUpdating =
 		addMemberMutation.isPending || removeMemberMutation.isPending;
+	const memberExportView: TableExportView<PrincipalMemberResponse> = {
+		id: `admin.group.${group.id}.members`,
+		fileName: `${group.groupname}-members-view`,
+		sheetName: "Group members",
+		columns: memberExportColumns,
+		rows: members,
+	};
 
 	return (
 		<section className="stack">
@@ -634,10 +658,15 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 				) : null}
 
 				{!membersQuery.isLoading && members.length > 0 ? (
-					<div className="table-wrap">
+					<>
 						<div className="table-header">
 							<h4>Current members</h4>
 							<div className="table-tools">
+								<TableExportMenu
+									view={memberExportView}
+									disabled={membersQuery.isFetching}
+									compact
+								/>
 								<span className="muted">
 									{selectedMemberIds.length
 										? `${selectedMemberIds.length} selected`
@@ -657,57 +686,59 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 								</button>
 							</div>
 						</div>
-						<table>
-							<thead>
-								<tr>
-									<th className="check-col">
-										<input
-											type="checkbox"
-											aria-label="Select all members"
-											checked={allMembersSelected}
-											onChange={(event) =>
-												toggleAllMembers(event.target.checked)
-											}
-										/>
-									</th>
-									<th>ID</th>
-									<th>Name</th>
-									<th>Kind</th>
-								</tr>
-							</thead>
-							<tbody>
-								{members.map((member) => (
-									<tr key={member.principal_id}>
-										<td className="check-col">
+						<div className="table-wrap">
+							<table>
+								<thead>
+									<tr>
+										<th className="check-col">
 											<input
 												type="checkbox"
-												aria-label={`Select member ${member.name}`}
-												checked={selectedMemberIds.includes(
-													member.principal_id,
-												)}
+												aria-label="Select all members"
+												checked={allMembersSelected}
 												onChange={(event) =>
-													toggleMember(
-														member.principal_id,
-														event.target.checked,
-													)
+													toggleAllMembers(event.target.checked)
 												}
-												disabled={isMembershipUpdating}
 											/>
-										</td>
-										<td>{member.principal_id}</td>
-										<td>{member.name}</td>
-										<td>
-											<span className="badge">
-												{member.kind === "service_account"
-													? "Service account"
-													: "Human"}
-											</span>
-										</td>
+										</th>
+										<th>ID</th>
+										<th>Name</th>
+										<th>Kind</th>
 									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
+								</thead>
+								<tbody>
+									{members.map((member) => (
+										<tr key={member.principal_id}>
+											<td className="check-col">
+												<input
+													type="checkbox"
+													aria-label={`Select member ${member.name}`}
+													checked={selectedMemberIds.includes(
+														member.principal_id,
+													)}
+													onChange={(event) =>
+														toggleMember(
+															member.principal_id,
+															event.target.checked,
+														)
+													}
+													disabled={isMembershipUpdating}
+												/>
+											</td>
+											<td>{member.principal_id}</td>
+											<td>{member.name}</td>
+											<td>
+												<span className="badge">
+													{member.kind === "service_account"
+														? "Service account"
+														: "Human"}
+												</span>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</>
 				) : null}
 			</section>
 		</section>

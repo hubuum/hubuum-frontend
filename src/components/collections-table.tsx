@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -43,6 +44,7 @@ import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
 import { useTableSort } from "@/lib/use-table-sort";
+import type { TableExportView } from "@/lib/table-export";
 
 function IconSearch() {
 	return (
@@ -83,7 +85,9 @@ async function fetchCollections(
 	const nextCursor = response.headers.get("X-Next-Cursor");
 	const prevCursor = response.headers.get("X-Prev-Cursor");
 	const totalCountHeader = response.headers.get("X-Total-Count");
-	const totalCount = totalCountHeader ? Number.parseInt(totalCountHeader, 10) : null;
+	const totalCount = totalCountHeader
+		? Number.parseInt(totalCountHeader, 10)
+		: null;
 
 	return {
 		collections: response.data,
@@ -129,7 +133,10 @@ export function CollectionsTable() {
 		searchParams.get("search") ?? "",
 	);
 
-	useResizableTable({ tableId: "collections-table", storageKey: "collections" });
+	useResizableTable({
+		tableId: "collections-table",
+		storageKey: "collections",
+	});
 
 	const pagination = useCursorPagination({ defaultLimit: 100 });
 	const { sortState, setSort, getSortParam } = useTableSort();
@@ -236,10 +243,7 @@ export function CollectionsTable() {
 	const depthByCollectionId = useMemo(
 		() =>
 			new Map(
-				hierarchy.flatNodes.map((node) => [
-					node.collection.id,
-					node.depth,
-				]),
+				hierarchy.flatNodes.map((node) => [node.collection.id, node.depth]),
 			),
 		[hierarchy.flatNodes],
 	);
@@ -264,7 +268,9 @@ export function CollectionsTable() {
 			setTableError(
 				`Cannot delete ${blockedCollections
 					.map((collection) => `${collection.name} (#${collection.id})`)
-					.join(", ")}. Root collections and collections with child collections must be kept or emptied first.`,
+					.join(
+						", ",
+					)}. Root collections and collections with child collections must be kept or emptied first.`,
 			);
 			return;
 		}
@@ -309,7 +315,10 @@ export function CollectionsTable() {
 				trimmedParentCollectionId,
 				10,
 			);
-			if (!Number.isFinite(parsedParentCollectionId) || parsedParentCollectionId < 1) {
+			if (
+				!Number.isFinite(parsedParentCollectionId) ||
+				parsedParentCollectionId < 1
+			) {
 				setFormError("Parent collection must be a positive integer.");
 				return;
 			}
@@ -346,6 +355,46 @@ export function CollectionsTable() {
 				);
 			}),
 		[hierarchy.byId, searchTerm, treeRows],
+	);
+	const exportView = useMemo<TableExportView<Collection>>(
+		() => ({
+			id: "collections",
+			fileName: "collections-view",
+			sheetName: "Collections",
+			columns: [
+				{ key: "id", label: "ID", getValue: (collection) => collection.id },
+				{
+					key: "name",
+					label: "Name",
+					getValue: (collection) => collection.name,
+				},
+				{
+					key: "parent",
+					label: "Parent",
+					getValue: (collection) => {
+						const parentId = collection.parent_collection_id;
+						const parent =
+							parentId === null || parentId === undefined
+								? null
+								: hierarchy.byId.get(parentId);
+						return parent ? `${parent.name} (#${parent.id})` : "Root";
+					},
+				},
+				{
+					key: "children",
+					label: "Children",
+					getValue: (collection) =>
+						hierarchy.childrenByParentId.get(collection.id)?.length ?? 0,
+				},
+				{
+					key: "description",
+					label: "Description",
+					getValue: (collection) => collection.description,
+				},
+			],
+			rows: filteredCollections,
+		}),
+		[filteredCollections, hierarchy.byId, hierarchy.childrenByParentId],
 	);
 	const allSelected =
 		filteredCollections.length > 0 &&
@@ -471,7 +520,6 @@ export function CollectionsTable() {
 		);
 	}
 
-
 	function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
@@ -562,9 +610,7 @@ export function CollectionsTable() {
 							<select
 								id="collection-parent"
 								value={parentCollectionId}
-								onChange={(event) =>
-									setParentCollectionId(event.target.value)
-								}
+								onChange={(event) => setParentCollectionId(event.target.value)}
 							>
 								<option value="">Root collection</option>
 								{treeRows.map((collection) => (
@@ -579,9 +625,7 @@ export function CollectionsTable() {
 								type="number"
 								min={1}
 								value={parentCollectionId}
-								onChange={(event) =>
-									setParentCollectionId(event.target.value)
-								}
+								onChange={(event) => setParentCollectionId(event.target.value)}
 								placeholder={
 									query.isLoading
 										? "Loading collections..."
@@ -631,20 +675,24 @@ export function CollectionsTable() {
 				{renderCreateCollectionForm()}
 			</CreateModal>
 
-			<div className="card table-wrap">
+			<div className="card resource-index">
 				<div className="table-header">
-					<div className="table-title-row">
-						<h3>Collection catalog</h3>
-						<span className="muted table-count">
-							{searchTerm
-								? `${filteredCollections.length} shown of ${collections.length}`
-								: `${collections.length} loaded`}
-							{selectedCollectionIds.length
-								? ` · ${selectedCollectionIds.length} selected`
-								: ""}
-						</span>
+					<div className="resource-index-title">
+						<p className="eyebrow">Data model</p>
+						<div className="table-title-row">
+							<h2>Collections</h2>
+							<span className="muted table-count">
+								{searchTerm
+									? `${filteredCollections.length} shown of ${collections.length}`
+									: `${collections.length} loaded`}
+								{selectedCollectionIds.length
+									? ` · ${selectedCollectionIds.length} selected`
+									: ""}
+							</span>
+						</div>
 					</div>
 					<div className="table-tools">
+						<TableExportMenu view={exportView} compact />
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
 								<input
@@ -698,108 +746,119 @@ export function CollectionsTable() {
 						}
 					/>
 				) : (
-					<table id="collections-table">
-						<thead>
-							<tr>
-								<th className="check-col">
-									<input
-										type="checkbox"
-										aria-label="Select all collections"
-										checked={allSelected}
-										onChange={(event) =>
-											shiftSelect.handleSelectAll(event.target.checked)
-										}
-									/>
-								</th>
-								<th className="sortable" onClick={() => setSort("id")}>
-									ID{renderSortIndicator("id")}
-								</th>
-								<th className="sortable" onClick={() => setSort("name")}>
-									Name{renderSortIndicator("name")}
-								</th>
-								<th>Parent</th>
-								<th>Children</th>
-								<th className="sortable" onClick={() => setSort("description")}>
-									Description{renderSortIndicator("description")}
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{filteredCollections.map((collection, index) => {
-								const isSelected = selectedCollectionIds.includes(collection.id);
-								const isFocused = keyboardNav.focusedId === collection.id;
-								const depth = depthByCollectionId.get(collection.id) ?? 0;
-								const parent =
-									collection.parent_collection_id === null ||
-									collection.parent_collection_id === undefined
-										? null
-										: hierarchy.byId.get(collection.parent_collection_id);
-								const childCount =
-									hierarchy.childrenByParentId.get(collection.id)?.length ?? 0;
-								const pathLabel = formatCollectionPath(
-									getCollectionPath(collection, hierarchy.byId),
-								);
-								const rowClassName = [
-									isSelected ? "table-row-selected" : "",
-									isFocused ? "table-row-focused" : "",
-								]
-									.filter(Boolean)
-									.join(" ");
-
-								return (
-									<tr
-										key={collection.id}
-										className={rowClassName}
-										data-table-row-index={index}
+					<div className="table-wrap">
+						<table id="collections-table">
+							<thead>
+								<tr>
+									<th className="check-col">
+										<input
+											type="checkbox"
+											aria-label="Select all collections"
+											checked={allSelected}
+											onChange={(event) =>
+												shiftSelect.handleSelectAll(event.target.checked)
+											}
+										/>
+									</th>
+									<th className="sortable" onClick={() => setSort("id")}>
+										ID{renderSortIndicator("id")}
+									</th>
+									<th className="sortable" onClick={() => setSort("name")}>
+										Name{renderSortIndicator("name")}
+									</th>
+									<th>Parent</th>
+									<th>Children</th>
+									<th
+										className="sortable"
+										onClick={() => setSort("description")}
 									>
-										<td className="check-col">
-											<input
-												type="checkbox"
-												aria-label={`Select collection ${collection.name}`}
-												checked={isSelected}
-												onChange={(event) =>
-													shiftSelect.handleClick(
-														collection.id,
-														event.target.checked,
-														(event.nativeEvent as MouseEvent).shiftKey,
-													)
-												}
-											/>
-										</td>
-										<td>{collection.id}</td>
-										<td>
-											<Link
-												href={`/collections/${collection.id}`}
-												className="row-link"
-												title={pathLabel}
-												style={{
-													paddingLeft: depth > 0 ? `${depth * 1.25}rem` : 0,
-												}}
-											>
-												{collection.name}
-											</Link>
-										</td>
-										<td>
-											{parent ? (
+										Description{renderSortIndicator("description")}
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{filteredCollections.map((collection, index) => {
+									const isSelected = selectedCollectionIds.includes(
+										collection.id,
+									);
+									const isFocused = keyboardNav.focusedId === collection.id;
+									const depth = depthByCollectionId.get(collection.id) ?? 0;
+									const parent =
+										collection.parent_collection_id === null ||
+										collection.parent_collection_id === undefined
+											? null
+											: hierarchy.byId.get(collection.parent_collection_id);
+									const childCount =
+										hierarchy.childrenByParentId.get(collection.id)?.length ??
+										0;
+									const pathLabel = formatCollectionPath(
+										getCollectionPath(collection, hierarchy.byId),
+									);
+									const rowClassName = [
+										isSelected ? "table-row-selected" : "",
+										isFocused ? "table-row-focused" : "",
+									]
+										.filter(Boolean)
+										.join(" ");
+
+									return (
+										<tr
+											key={collection.id}
+											className={rowClassName}
+											data-table-row-index={index}
+										>
+											<td className="check-col">
+												<input
+													type="checkbox"
+													aria-label={`Select collection ${collection.name}`}
+													checked={isSelected}
+													onChange={(event) =>
+														shiftSelect.handleClick(
+															collection.id,
+															event.target.checked,
+															(event.nativeEvent as MouseEvent).shiftKey,
+														)
+													}
+												/>
+											</td>
+											<td>{collection.id}</td>
+											<td>
 												<Link
-													href={`/collections/${parent.id}`}
+													href={`/collections/${collection.id}`}
 													className="row-link"
+													title={pathLabel}
+													style={{
+														paddingLeft: depth > 0 ? `${depth * 1.25}rem` : 0,
+													}}
 												>
-													{parent.name} (#{parent.id})
+													{collection.name}
 												</Link>
-											) : (
-												<span className="muted">Root</span>
-											)}
-										</td>
-										<td>{childCount}</td>
-										<td>{collection.description || "-"}</td>
-									</tr>
-								);
-							})}
-						</tbody>
-					</table>
+											</td>
+											<td>
+												{parent ? (
+													<Link
+														href={`/collections/${parent.id}`}
+														className="row-link"
+													>
+														{parent.name} (#{parent.id})
+													</Link>
+												) : (
+													<span className="muted">Root</span>
+												)}
+											</td>
+											<td>{childCount}</td>
+											<td>{collection.description || "-"}</td>
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
 				)}
-				{pageData && (pageData.nextCursor || pageData.prevCursor || pagination.hasPrevPage) ? (
+				{pageData &&
+				(pageData.nextCursor ||
+					pageData.prevCursor ||
+					pagination.hasPrevPage) ? (
 					<TablePagination
 						hasNextPage={!!pageData.nextCursor}
 						hasPrevPage={pagination.hasPrevPage || !!pageData.prevCursor}

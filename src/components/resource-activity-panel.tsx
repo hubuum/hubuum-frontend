@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { FormEvent, useMemo, useState } from "react";
 import { JsonViewer } from "@/components/json-viewer";
+import { TableExportMenu } from "@/components/table-export-menu";
 import {
 	fetchResourceEventsPage,
 	fetchResourceHistoryAsOf,
@@ -32,7 +33,9 @@ function formatTimestamp(value: string | null | undefined): string {
 	}
 }
 
-function formatActor(record: Pick<EventRecord, "actor_kind" | "actor_user_id">): string {
+function formatActor(
+	record: Pick<EventRecord, "actor_kind" | "actor_user_id">,
+): string {
 	if (record.actor_user_id == null) {
 		return record.actor_kind;
 	}
@@ -132,6 +135,81 @@ export function ResourceActivityPanel({
 		setAsOfTimestamp(normalized);
 	}
 
+	const events = eventsQuery.data?.items ?? [];
+	const eventExportView = {
+		id: `${stableScopeKey}-audit-events`,
+		fileName: `${stableScopeKey}-audit-events`,
+		sheetName: "Audit events",
+		columns: [
+			{
+				key: "time",
+				label: "Time",
+				getValue: (event: EventRecord) => formatTimestamp(event.occurred_at),
+			},
+			{
+				key: "action",
+				label: "Action",
+				getValue: (event: EventRecord) =>
+					`${event.entity_type}.${event.action}`,
+			},
+			{
+				key: "actor",
+				label: "Actor",
+				getValue: (event: EventRecord) => formatActor(event),
+			},
+			{
+				key: "summary",
+				label: "Summary",
+				getValue: (event: EventRecord) => event.summary,
+			},
+			{
+				key: "event_id",
+				label: "Event ID",
+				getValue: (event: EventRecord) => event.event_id,
+			},
+		],
+		rows: events,
+	};
+	const history = historyQuery.data?.items ?? [];
+	const historyExportView = {
+		id: `${stableScopeKey}-version-history`,
+		fileName: `${stableScopeKey}-version-history`,
+		sheetName: "Version history",
+		columns: [
+			{
+				key: "version",
+				label: "Version",
+				getValue: (record: HistoryRecord) => `#${record.history_id}`,
+			},
+			{
+				key: "operation",
+				label: "Operation",
+				getValue: (record: HistoryRecord) => record.op,
+			},
+			{
+				key: "valid_from",
+				label: "Valid from",
+				getValue: (record: HistoryRecord) => formatTimestamp(record.valid_from),
+			},
+			{
+				key: "valid_to",
+				label: "Valid to",
+				getValue: (record: HistoryRecord) => formatTimestamp(record.valid_to),
+			},
+			{
+				key: "actor",
+				label: "Actor",
+				getValue: (record: HistoryRecord) => formatHistoryActor(record),
+			},
+			{
+				key: "name",
+				label: "Name",
+				getValue: (record: HistoryRecord) => record.name,
+			},
+		],
+		rows: history,
+	};
+
 	return (
 		<article className="card stack panel-card">
 			<div className="panel-header">
@@ -155,6 +233,11 @@ export function ResourceActivityPanel({
 						</p>
 					</div>
 					<div className="action-row">
+						<TableExportMenu
+							view={eventExportView}
+							disabled={eventsQuery.isFetching}
+							compact
+						/>
 						<button
 							type="button"
 							className="secondary"
@@ -167,9 +250,7 @@ export function ResourceActivityPanel({
 							type="button"
 							className="secondary"
 							disabled={!eventsQuery.data?.nextCursor || eventsQuery.isFetching}
-							onClick={() =>
-								setEventCursor(eventsQuery.data?.nextCursor ?? "")
-							}
+							onClick={() => setEventCursor(eventsQuery.data?.nextCursor ?? "")}
 						>
 							Next page
 						</button>
@@ -205,7 +286,7 @@ export function ResourceActivityPanel({
 								</tr>
 							</thead>
 							<tbody>
-								{eventsQuery.data.items.map((event) => (
+								{events.map((event) => (
 									<tr key={event.id}>
 										<td>{formatTimestamp(event.occurred_at)}</td>
 										<td>
@@ -229,6 +310,11 @@ export function ResourceActivityPanel({
 						<p className="muted">Stored state changes for this resource.</p>
 					</div>
 					<div className="action-row">
+						<TableExportMenu
+							view={historyExportView}
+							disabled={historyQuery.isFetching}
+							compact
+						/>
 						<button
 							type="button"
 							className="secondary"
@@ -240,7 +326,9 @@ export function ResourceActivityPanel({
 						<button
 							type="button"
 							className="secondary"
-							disabled={!historyQuery.data?.nextCursor || historyQuery.isFetching}
+							disabled={
+								!historyQuery.data?.nextCursor || historyQuery.isFetching
+							}
 							onClick={() =>
 								setHistoryCursor(historyQuery.data?.nextCursor ?? "")
 							}
@@ -280,7 +368,7 @@ export function ResourceActivityPanel({
 								</tr>
 							</thead>
 							<tbody>
-								{historyQuery.data.items.map((record) => (
+								{history.map((record) => (
 									<tr key={record.history_id}>
 										<td>#{record.history_id}</td>
 										<td>{record.op}</td>
@@ -341,7 +429,9 @@ export function ResourceActivityPanel({
 							</div>
 							<div>
 								<strong>Actor</strong>
-								<p className="muted">{formatHistoryActor(snapshotQuery.data)}</p>
+								<p className="muted">
+									{formatHistoryActor(snapshotQuery.data)}
+								</p>
 							</div>
 						</div>
 						<JsonViewer value={getSnapshotValue(snapshotQuery.data)} />

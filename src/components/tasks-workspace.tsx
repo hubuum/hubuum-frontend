@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import { TableExportMenu } from "@/components/table-export-menu";
 import {
 	fetchTasks,
 	isTerminalTaskStatus,
@@ -86,6 +87,40 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 		() => summarizeTaskActivity(issuedTasksQuery.data ?? []),
 		[issuedTasksQuery.data],
 	);
+	const issuedTasks = issuedTasksQuery.data ?? [];
+	const issuedTasksExportView = {
+		id: "tasks-issued",
+		fileName: "issued-tasks",
+		sheetName: "Issued tasks",
+		columns: [
+			{
+				key: "id",
+				label: "ID",
+				getValue: (task: TaskRecord) => `#${task.id}`,
+			},
+			{
+				key: "kind",
+				label: "Kind",
+				getValue: (task: TaskRecord) => getTaskLabel(task),
+			},
+			{
+				key: "status",
+				label: "Status",
+				getValue: (task: TaskRecord) => task.status,
+			},
+			{
+				key: "created",
+				label: "Created",
+				getValue: (task: TaskRecord) => formatTimestamp(task.created_at),
+			},
+			{
+				key: "summary",
+				label: "Summary",
+				getValue: (task: TaskRecord) => task.summary ?? "n/a",
+			},
+		],
+		rows: issuedTasks,
+	};
 
 	function handleLoadTask(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -116,8 +151,8 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 						<div className="stack action-card-header">
 							<h3>Recent task activity</h3>
 							<p className="muted">
-								This panel polls the v1 task list automatically. Counts are based
-								on the recent tasks returned for your account.
+								This panel polls the v1 task list automatically. Counts are
+								based on the recent tasks returned for your account.
 							</p>
 						</div>
 
@@ -191,12 +226,19 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 
 				<section className="stack">
 					<article className="card stack panel-card">
-						<div className="stack action-card-header">
-							<h3>Issued tasks</h3>
-							<p className="muted">
-								Recent task submissions loaded from the server. Click any row to
-								reopen its detailed task page.
-							</p>
+						<div className="panel-header">
+							<div className="stack action-card-header">
+								<h3>Issued tasks</h3>
+								<p className="muted">
+									Recent task submissions loaded from the server. Click any row
+									to reopen its detailed task page.
+								</p>
+							</div>
+							<TableExportMenu
+								view={issuedTasksExportView}
+								disabled={issuedTasksQuery.isFetching}
+								compact
+							/>
 						</div>
 
 						{issuedTasksQuery.isLoading ? (
@@ -232,7 +274,7 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 										</tr>
 									</thead>
 									<tbody>
-										{issuedTasksQuery.data.map((task) => (
+										{issuedTasks.map((task) => (
 											<tr key={task.id}>
 												<td>
 													<Link className="row-link" href={`/tasks/${task.id}`}>

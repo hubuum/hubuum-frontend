@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useConfirm } from "@/lib/confirm-context";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamUsersByUserId,
@@ -17,7 +17,9 @@ import type {
 	UpdateUser,
 	UserResponse,
 } from "@/lib/api/generated/models";
+import { useConfirm } from "@/lib/confirm-context";
 import { trackRecentItem } from "@/lib/recent-items";
+import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 
 type AdminUserDetailProps = {
 	userId: number;
@@ -50,6 +52,16 @@ async function fetchUserGroups(userId: number): Promise<Group[]> {
 
 	return response.data;
 }
+
+const groupMembershipExportColumns: TableExportColumn<Group>[] = [
+	{ key: "id", label: "ID", getValue: (group) => group.id },
+	{ key: "group", label: "Group", getValue: (group) => group.groupname },
+	{
+		key: "description",
+		label: "Description",
+		getValue: (group) => group.description || "-",
+	},
+];
 
 export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	const router = useRouter();
@@ -237,6 +249,13 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	if (!user) {
 		return <div className="card error-banner">User data is unavailable.</div>;
 	}
+	const groupMembershipExportView: TableExportView<Group> = {
+		id: `admin.user.${user.id}.groups`,
+		fileName: `${user.name}-group-memberships-view`,
+		sheetName: "Group memberships",
+		columns: groupMembershipExportColumns,
+		rows: sortedGroups,
+	};
 
 	return (
 		<section className="stack">
@@ -319,7 +338,14 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 			</form>
 
 			<section className="card stack">
-				<h3>Group memberships</h3>
+				<div className="table-header">
+					<h3>Group memberships</h3>
+					<TableExportMenu
+						view={groupMembershipExportView}
+						disabled={groupsQuery.isFetching}
+						compact
+					/>
+				</div>
 
 				{groupsQuery.isLoading ? (
 					<div className="muted">Loading groups...</div>

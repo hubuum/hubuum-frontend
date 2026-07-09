@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { BrandMark } from "@/components/brand-mark";
 import { LoginForm } from "@/components/login-form";
 import { getSessionFromServerCookies } from "@/lib/auth/session";
 
@@ -21,11 +22,35 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
 	return (
 		<main className="auth-page">
-			<div className="gradient-orb" />
-			<LoginForm />
-			<p className="muted footer-note">
-				{process.env.NEXT_PUBLIC_APP_NAME ?? "Hubuum Console"}
-			</p>
+			<div className="auth-grid" aria-hidden="true" />
+			<div className="gradient-orb gradient-orb--one" />
+			<div className="gradient-orb gradient-orb--two" />
+			<section className="auth-shell">
+				<aside className="auth-story">
+					<BrandMark />
+					<div className="auth-story-copy">
+						<p className="eyebrow">Connected knowledge</p>
+						<h2>Bring your data graph into focus.</h2>
+						<p>
+							Model, connect, and operate on your organisation&apos;s data from
+							one secure workspace.
+						</p>
+					</div>
+					<ol className="auth-capabilities" aria-label="Hubuum capabilities">
+						<li><strong>01</strong> Model</li>
+						<li><strong>02</strong> Connect</li>
+						<li><strong>03</strong> Operate</li>
+					</ol>
+				</aside>
+
+				<div className="auth-form-panel">
+					<LoginForm />
+					<p className="footer-note">
+						{process.env.NEXT_PUBLIC_APP_NAME ?? "Hubuum Console"} · Secure
+						workspace
+					</p>
+				</div>
+			</section>
 		</main>
 	);
 }

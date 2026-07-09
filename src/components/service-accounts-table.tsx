@@ -7,6 +7,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -28,6 +29,7 @@ import {
 	normalizeSearchTerm,
 } from "@/lib/resource-search";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
+import type { TableExportView } from "@/lib/table-export";
 
 function IconSearch() {
 	return (
@@ -63,7 +65,9 @@ async function fetchServiceAccounts(
 	}
 
 	const totalCountHeader = response.headers.get("X-Total-Count");
-	const totalCount = totalCountHeader ? Number.parseInt(totalCountHeader, 10) : null;
+	const totalCount = totalCountHeader
+		? Number.parseInt(totalCountHeader, 10)
+		: null;
 
 	return {
 		accounts: response.data,
@@ -105,8 +109,7 @@ export function ServiceAccountsTable() {
 
 	const query = useQuery({
 		queryKey: ["service-accounts", pagination.cursor, pagination.limit],
-		queryFn: () =>
-			fetchServiceAccounts(pagination.limit, pagination.cursor),
+		queryFn: () => fetchServiceAccounts(pagination.limit, pagination.cursor),
 	});
 	const groupsQuery = useQuery({
 		queryKey: ["groups", "service-account-owner"],
@@ -170,6 +173,39 @@ export function ServiceAccountsTable() {
 				),
 			),
 		[accounts, groupById, searchTerm],
+	);
+	const exportView = useMemo<TableExportView<ServiceAccountResponse>>(
+		() => ({
+			id: "service-accounts",
+			fileName: "service-accounts-view",
+			sheetName: "Service accounts",
+			columns: [
+				{ key: "id", label: "ID", getValue: (account) => account.id },
+				{ key: "name", label: "Name", getValue: (account) => account.name },
+				{
+					key: "owner_group",
+					label: "Owner group",
+					getValue: (account) => {
+						const ownerGroup = groupById.get(account.owner_group_id);
+						return ownerGroup
+							? `${ownerGroup.groupname} (#${ownerGroup.id})`
+							: `#${account.owner_group_id}`;
+					},
+				},
+				{
+					key: "status",
+					label: "Status",
+					getValue: (account) => (account.disabled_at ? "Disabled" : "Active"),
+				},
+				{
+					key: "created_at",
+					label: "Created",
+					getValue: (account) => new Date(account.created_at),
+				},
+			],
+			rows: filteredAccounts,
+		}),
+		[filteredAccounts, groupById],
 	);
 
 	useEffect(() => {
@@ -363,7 +399,7 @@ export function ServiceAccountsTable() {
 				{renderCreateForm()}
 			</CreateModal>
 
-			<div className="card table-wrap">
+			<div className="card">
 				<div className="table-header">
 					<div className="table-title-row">
 						<h3>Service accounts</h3>
@@ -374,6 +410,7 @@ export function ServiceAccountsTable() {
 						</span>
 					</div>
 					<div className="table-tools">
+						<TableExportMenu view={exportView} compact />
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
 								<input
@@ -425,42 +462,44 @@ export function ServiceAccountsTable() {
 						}
 					/>
 				) : (
-					<table>
-						<thead>
-							<tr>
-								<th>ID</th>
-								<th>Name</th>
-								<th>Owner group</th>
-								<th>Status</th>
-								<th>Created</th>
-							</tr>
-						</thead>
-						<tbody>
-							{filteredAccounts.map((account) => {
-								const ownerGroup = groupById.get(account.owner_group_id);
-								return (
-									<tr key={account.id}>
-										<td>{account.id}</td>
-										<td>
-											<Link
-												className="row-link"
-												href={`/admin/service-accounts/${account.id}`}
-											>
-												{account.name}
-											</Link>
-										</td>
-										<td>
-											{ownerGroup
-												? `${ownerGroup.groupname} (#${ownerGroup.id})`
-												: `#${account.owner_group_id}`}
-										</td>
-										<td>{account.disabled_at ? "Disabled" : "Active"}</td>
-										<td>{new Date(account.created_at).toLocaleString()}</td>
-									</tr>
-								);
-							})}
-						</tbody>
-					</table>
+					<div className="table-wrap">
+						<table>
+							<thead>
+								<tr>
+									<th>ID</th>
+									<th>Name</th>
+									<th>Owner group</th>
+									<th>Status</th>
+									<th>Created</th>
+								</tr>
+							</thead>
+							<tbody>
+								{filteredAccounts.map((account) => {
+									const ownerGroup = groupById.get(account.owner_group_id);
+									return (
+										<tr key={account.id}>
+											<td>{account.id}</td>
+											<td>
+												<Link
+													className="row-link"
+													href={`/admin/service-accounts/${account.id}`}
+												>
+													{account.name}
+												</Link>
+											</td>
+											<td>
+												{ownerGroup
+													? `${ownerGroup.groupname} (#${ownerGroup.id})`
+													: `#${account.owner_group_id}`}
+											</td>
+											<td>{account.disabled_at ? "Disabled" : "Active"}</td>
+											<td>{new Date(account.created_at).toLocaleString()}</td>
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
 				)}
 				{query.data &&
 				(query.data.nextCursor ||

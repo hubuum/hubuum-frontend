@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiV1ClassesByClassId } from "@/lib/api/generated/client";
 import {
 	createEmptyUnifiedSearchNext,
@@ -295,6 +296,132 @@ export function SearchWorkspace() {
 		mergedResults.collections.length +
 		mergedResults.classes.length +
 		mergedResults.objects.length;
+	const collectionExportView = {
+		id: `search-${searchQuery}-collections`,
+		fileName: `search-${searchQuery}-collections`,
+		sheetName: "Collections",
+		columns: [
+			{
+				key: "id",
+				label: "ID",
+				getValue: (collection: (typeof mergedResults.collections)[number]) =>
+					`#${collection.id}`,
+			},
+			{
+				key: "name",
+				label: "Name",
+				getValue: (collection: (typeof mergedResults.collections)[number]) =>
+					collection.name,
+			},
+			{
+				key: "description",
+				label: "Description",
+				getValue: (collection: (typeof mergedResults.collections)[number]) =>
+					collection.description || "-",
+			},
+			{
+				key: "updated",
+				label: "Updated",
+				getValue: (collection: (typeof mergedResults.collections)[number]) =>
+					formatTimestamp(collection.updated_at),
+			},
+		],
+		rows: mergedResults.collections,
+	};
+	const classExportView = {
+		id: `search-${searchQuery}-classes`,
+		fileName: `search-${searchQuery}-classes`,
+		sheetName: "Classes",
+		columns: [
+			{
+				key: "id",
+				label: "ID",
+				getValue: (classItem: (typeof mergedResults.classes)[number]) =>
+					`#${classItem.id}`,
+			},
+			{
+				key: "name",
+				label: "Name",
+				getValue: (classItem: (typeof mergedResults.classes)[number]) =>
+					classItem.name,
+			},
+			{
+				key: "collection",
+				label: "Collection",
+				getValue: (classItem: (typeof mergedResults.classes)[number]) =>
+					`${classItem.collection.name} (#${classItem.collection.id})`,
+			},
+			{
+				key: "description",
+				label: "Description",
+				getValue: (classItem: (typeof mergedResults.classes)[number]) =>
+					classItem.description || "-",
+			},
+		],
+		rows: mergedResults.classes,
+	};
+	const objectExportView = {
+		id: `search-${searchQuery}-objects`,
+		fileName: `search-${searchQuery}-objects`,
+		sheetName: "Objects",
+		columns: [
+			{
+				key: "id",
+				label: "ID",
+				getValue: (objectItem: (typeof mergedResults.objects)[number]) =>
+					`#${objectItem.id}`,
+			},
+			{
+				key: "name",
+				label: "Name",
+				getValue: (objectItem: (typeof mergedResults.objects)[number]) =>
+					objectItem.name,
+			},
+			{
+				key: "class",
+				label: "Class",
+				getValue: (objectItem: (typeof mergedResults.objects)[number]) => {
+					const context = getObjectDisplayContext(objectItem);
+					return `${context.classLabel} (#${objectItem.hubuum_class_id})`;
+				},
+			},
+			{
+				key: "collection",
+				label: "Collection",
+				getValue: (objectItem: (typeof mergedResults.objects)[number]) => {
+					const context = getObjectDisplayContext(objectItem);
+					return `${context.collectionLabel} (#${context.collectionId})`;
+				},
+			},
+			{
+				key: "description",
+				label: "Description",
+				getValue: (objectItem: (typeof mergedResults.objects)[number]) =>
+					objectItem.description || "-",
+			},
+			{
+				key: "data",
+				label: "Data",
+				getValue: (objectItem: (typeof mergedResults.objects)[number]) =>
+					stringifyDataPreview(objectItem.data),
+			},
+		],
+		rows: mergedResults.objects,
+	};
+
+	function getObjectDisplayContext(
+		objectItem: (typeof mergedResults.objects)[number],
+	) {
+		const classContext = classContextById[objectItem.hubuum_class_id];
+		return {
+			classLabel:
+				classContext?.className ?? `Class #${objectItem.hubuum_class_id}`,
+			collectionId: classContext?.collectionId ?? objectItem.collection_id,
+			collectionLabel:
+				classContext?.collectionName ??
+				`Collection #${objectItem.collection_id}`,
+		};
+	}
 
 	function updateSearchRoute(mutator: (params: URLSearchParams) => void) {
 		const params = new URLSearchParams(searchParams.toString());
@@ -499,7 +626,10 @@ export function SearchWorkspace() {
 						<tr key={`collection-${collection.id}`}>
 							<td>#{collection.id}</td>
 							<td>
-								<Link href={`/collections/${collection.id}`} className="row-link">
+								<Link
+									href={`/collections/${collection.id}`}
+									className="row-link"
+								>
 									{collection.name}
 								</Link>
 							</td>
@@ -558,14 +688,8 @@ export function SearchWorkspace() {
 				</thead>
 				<tbody>
 					{mergedResults.objects.map((objectItem) => {
-						const classContext = classContextById[objectItem.hubuum_class_id];
-						const classLabel =
-							classContext?.className ?? `Class #${objectItem.hubuum_class_id}`;
-						const collectionId =
-							classContext?.collectionId ?? objectItem.collection_id;
-						const collectionLabel =
-							classContext?.collectionName ??
-							`Collection #${objectItem.collection_id}`;
+						const { classLabel, collectionId, collectionLabel } =
+							getObjectDisplayContext(objectItem);
 
 						return (
 							<tr key={`object-${objectItem.hubuum_class_id}-${objectItem.id}`}>
@@ -610,6 +734,14 @@ export function SearchWorkspace() {
 					: mergedResults.objects;
 		const nextCursor = mergedNext[group];
 		const isLoadingMore = activeSearchState.loadingGroup === group;
+		const exportMenu =
+			group === "collections" ? (
+				<TableExportMenu view={collectionExportView} compact />
+			) : group === "classes" ? (
+				<TableExportMenu view={classExportView} compact />
+			) : (
+				<TableExportMenu view={objectExportView} compact />
+			);
 
 		return (
 			<section key={group} className="card search-section">
@@ -628,6 +760,7 @@ export function SearchWorkspace() {
 								{isLoadingMore ? "Loading..." : "Load more"}
 							</button>
 						) : null}
+						{exportMenu}
 					</div>
 				</div>
 

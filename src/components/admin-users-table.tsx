@@ -2,8 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -16,6 +17,7 @@ import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
+import type { TableExportView } from "@/lib/table-export";
 
 async function fetchUsers(): Promise<UserResponse[]> {
 	const response = await getApiV1IamUsers(undefined, {
@@ -130,6 +132,34 @@ export function AdminUsersTable() {
 	const users = query.data ?? [];
 	const allSelected =
 		users.length > 0 && selectedUserIds.length === users.length;
+	const exportView = useMemo<TableExportView<UserResponse>>(
+		() => ({
+			id: "admin-users",
+			fileName: "user-directory-view",
+			sheetName: "Users",
+			columns: [
+				{ key: "id", label: "ID", getValue: (user) => user.id },
+				{
+					key: "username",
+					label: "Username",
+					getValue: (user) => user.name,
+				},
+				{ key: "email", label: "Email", getValue: (user) => user.email },
+				{
+					key: "created_at",
+					label: "Created",
+					getValue: (user) => new Date(user.created_at),
+				},
+				{
+					key: "updated_at",
+					label: "Updated",
+					getValue: (user) => new Date(user.updated_at),
+				},
+			],
+			rows: users,
+		}),
+		[users],
+	);
 
 	useEffect(() => {
 		if (!selectedUserIds.length) {
@@ -300,7 +330,7 @@ export function AdminUsersTable() {
 				{renderCreateUserForm()}
 			</CreateModal>
 
-			<div className="card table-wrap">
+			<div className="card">
 				<div className="table-header">
 					<h3>User directory</h3>
 					<div className="table-tools">
@@ -310,6 +340,7 @@ export function AdminUsersTable() {
 								? ` • ${selectedUserIds.length} selected`
 								: ""}
 						</span>
+						<TableExportMenu view={exportView} compact />
 						<button
 							type="button"
 							className="danger"
@@ -325,50 +356,52 @@ export function AdminUsersTable() {
 				{tableError ? <div className="error-banner">{tableError}</div> : null}
 				{tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
 
-				<table>
-					<thead>
-						<tr>
-							<th className="check-col">
-								<input
-									type="checkbox"
-									aria-label="Select all users"
-									checked={allSelected}
-									onChange={(event) => toggleAllUsers(event.target.checked)}
-								/>
-							</th>
-							<th>ID</th>
-							<th>Username</th>
-							<th>Email</th>
-							<th>Created</th>
-							<th>Updated</th>
-						</tr>
-					</thead>
-					<tbody>
-						{users.map((user) => (
-							<tr key={user.id}>
-								<td className="check-col">
+				<div className="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th className="check-col">
 									<input
 										type="checkbox"
-										aria-label={`Select user ${user.name}`}
-										checked={selectedUserIds.includes(user.id)}
-										onChange={(event) =>
-											toggleUser(user.id, event.target.checked)
-										}
+										aria-label="Select all users"
+										checked={allSelected}
+										onChange={(event) => toggleAllUsers(event.target.checked)}
 									/>
-								</td>
-								<td>{user.id}</td>
-								<td>
-									<Link className="row-link" href={`/admin/users/${user.id}`}>
-										{user.name}
-									</Link>
-								</td>
-								<td>{user.email ?? "-"}</td>
-								<td>{new Date(user.created_at).toLocaleString()}</td>
-								<td>{new Date(user.updated_at).toLocaleString()}</td>
+								</th>
+								<th>ID</th>
+								<th>Username</th>
+								<th>Email</th>
+								<th>Created</th>
+								<th>Updated</th>
 							</tr>
-						))}
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							{users.map((user) => (
+								<tr key={user.id}>
+									<td className="check-col">
+										<input
+											type="checkbox"
+											aria-label={`Select user ${user.name}`}
+											checked={selectedUserIds.includes(user.id)}
+											onChange={(event) =>
+												toggleUser(user.id, event.target.checked)
+											}
+										/>
+									</td>
+									<td>{user.id}</td>
+									<td>
+										<Link className="row-link" href={`/admin/users/${user.id}`}>
+											{user.name}
+										</Link>
+									</td>
+									<td>{user.email ?? "-"}</td>
+									<td>{new Date(user.created_at).toLocaleString()}</td>
+									<td>{new Date(user.updated_at).toLocaleString()}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
 	);

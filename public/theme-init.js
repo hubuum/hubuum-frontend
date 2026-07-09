@@ -19,6 +19,19 @@
 	}
 
 	try {
+		const key = "hubuum.accent";
+		const stored = window.localStorage.getItem(key);
+		const accent = ["teal", "blue", "violet", "amber", "rose"].includes(
+			stored,
+		)
+			? stored
+			: "teal";
+		document.documentElement.setAttribute("data-accent", accent);
+	} catch {
+		// Ignore accent init errors and keep CSS defaults.
+	}
+
+	try {
 		const key = "hubuum.density";
 		const stored = window.localStorage.getItem(key);
 		const density = stored === "compact" ? "compact" : "comfortable";
