@@ -7,7 +7,7 @@ import {
 	getApiV1IamMePermissions,
 	getApiV1IamPrincipalsByPrincipalIdPermissions,
 } from "@/lib/api/generated/client";
-import type { PrincipalNamespacePermissions } from "@/lib/api/generated/models";
+import type { PrincipalCollectionPermissions } from "@/lib/api/generated/models";
 
 type PrincipalPermissionsProps = {
 	principalId: number | "me";
@@ -15,7 +15,7 @@ type PrincipalPermissionsProps = {
 
 async function fetchPermissions(
 	principalId: number | "me",
-): Promise<PrincipalNamespacePermissions[]> {
+): Promise<PrincipalCollectionPermissions[]> {
 	const response =
 		principalId === "me"
 			? await getApiV1IamMePermissions({ credentials: "include" })
@@ -55,23 +55,23 @@ export function PrincipalPermissions({
 		);
 	}
 
-	const namespaces = permissionsQuery.data ?? [];
+	const collections = permissionsQuery.data ?? [];
 
-	if (namespaces.length === 0) {
+	if (collections.length === 0) {
 		return (
 			<div className="card muted">
-				No effective permissions on any namespace.
+				No direct permissions on any collection.
 			</div>
 		);
 	}
 
 	return (
 		<section className="stack">
-			{namespaces.map((namespace) => (
-				<div key={namespace.namespace_id} className="card stack">
+			{collections.map((collection) => (
+				<div key={collection.collection_id} className="card stack">
 					<h4>
-						{namespace.namespace_name}{" "}
-						<span className="muted">#{namespace.namespace_id}</span>
+						{collection.collection_name}{" "}
+						<span className="muted">#{collection.collection_id}</span>
 					</h4>
 					<div className="table-wrap">
 						<table>
@@ -82,7 +82,7 @@ export function PrincipalPermissions({
 								</tr>
 							</thead>
 							<tbody>
-								{namespace.grants.map((grant) => (
+								{collection.grants.map((grant) => (
 									<tr key={grant.group_id}>
 										<td>
 											{grant.groupname}{" "}

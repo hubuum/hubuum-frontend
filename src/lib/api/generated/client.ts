@@ -8,14 +8,20 @@
 import type {
   ApiErrorResponse,
   ClearRateLimitResponse,
+  Collection,
   CountsResponse,
   DbStateResponse,
+  EffectiveGroupPermission,
   EventDelivery,
   EventDeliveryHealthResponse,
   EventDeliveryUpdateResponse,
   EventResponse,
   EventSink,
   EventSubscription,
+  ExportJsonResponse,
+  ExportRequest,
+  ExportTemplate,
+  ExportTemplateRunRequest,
   GetApiV0MetaLoginRateLimitParams,
   GetApiV1ClassesByClassIdByObjectIdEventsParams,
   GetApiV1ClassesByClassIdByObjectIdHistoryAsOfParams,
@@ -30,8 +36,19 @@ import type {
   GetApiV1ClassesByClassIdRelatedRelationsParams,
   GetApiV1ClassesByClassIdTrailingParams,
   GetApiV1ClassesParams,
+  GetApiV1CollectionsByCollectionIdEventsParams,
+  GetApiV1CollectionsByCollectionIdHasPermissionsByPermissionParams,
+  GetApiV1CollectionsByCollectionIdHistoryAsOfParams,
+  GetApiV1CollectionsByCollectionIdHistoryParams,
+  GetApiV1CollectionsByCollectionIdPermissionsParams,
+  GetApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdParams,
+  GetApiV1CollectionsParams,
   GetApiV1EventDeliveriesParams,
   GetApiV1EventsParams,
+  GetApiV1ExportTemplatesByTemplateIdEventsParams,
+  GetApiV1ExportTemplatesByTemplateIdHistoryAsOfParams,
+  GetApiV1ExportTemplatesByTemplateIdHistoryParams,
+  GetApiV1ExportTemplatesParams,
   GetApiV1IamGroupsByGroupIdEventsParams,
   GetApiV1IamGroupsByGroupIdMembersParams,
   GetApiV1IamGroupsParams,
@@ -42,13 +59,6 @@ import type {
   GetApiV1IamServiceAccountsParams,
   GetApiV1IamUsersByUserIdEventsParams,
   GetApiV1IamUsersParams,
-  GetApiV1NamespacesByNamespaceIdEventsParams,
-  GetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionParams,
-  GetApiV1NamespacesByNamespaceIdHistoryAsOfParams,
-  GetApiV1NamespacesByNamespaceIdHistoryParams,
-  GetApiV1NamespacesByNamespaceIdPermissionsParams,
-  GetApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdParams,
-  GetApiV1NamespacesParams,
   GetApiV1RelationsClassesParams,
   GetApiV1RelationsObjectsParams,
   GetApiV1RemoteTargetsByRemoteTargetIdHistoryAsOfParams,
@@ -57,17 +67,13 @@ import type {
   GetApiV1SearchParams,
   GetApiV1SearchStreamParams,
   GetApiV1TasksParams,
-  GetApiV1TemplatesByTemplateIdEventsParams,
-  GetApiV1TemplatesByTemplateIdHistoryAsOfParams,
-  GetApiV1TemplatesByTemplateIdHistoryParams,
-  GetApiV1TemplatesParams,
   Group,
   GroupPermission,
+  HistoryResponseCollectionHistory,
+  HistoryResponseExportTemplateHistory,
   HistoryResponseHubuumClassHistory,
   HistoryResponseHubuumObjectHistory,
-  HistoryResponseNamespaceHistory,
   HistoryResponseRemoteTargetHistory,
-  HistoryResponseReportTemplateHistory,
   HubuumClassExpanded,
   HubuumClassRelation,
   HubuumClassWithPath,
@@ -82,25 +88,24 @@ import type {
   LogoutTokenRequest,
   MeResponse,
   MessageResponse,
-  Namespace,
+  NewCollectionWithAssignee,
   NewEventSink,
   NewEventSubscription,
+  NewExportTemplate,
   NewGroup,
   NewHubuumClass,
   NewHubuumClassRelation,
   NewHubuumClassRelationFromClass,
   NewHubuumObject,
   NewHubuumObjectRelation,
-  NewNamespaceWithAssignee,
   NewRemoteTarget,
-  NewReportTemplate,
   NewServiceAccount,
   NewTokenRequest,
   NewUser,
   Permission,
   Permissions,
+  PrincipalCollectionPermissions,
   PrincipalMemberResponse,
-  PrincipalNamespacePermissions,
   PrincipalTokenMetadata,
   ProbeResponse,
   RelatedClassGraph,
@@ -108,23 +113,20 @@ import type {
   ReleaseRateLimitResponse,
   RemoteTarget,
   RemoteTargetInvokeRequest,
-  ReportJsonResponse,
-  ReportRequest,
-  ReportTemplate,
-  ReportTemplateRunRequest,
   ServiceAccountResponse,
   TaskEventResponse,
   TaskQueueStateResponse,
   TaskResponse,
   UnifiedSearchResponse,
+  UpdateCollection,
+  UpdateCollectionParent,
   UpdateEventSink,
   UpdateEventSubscription,
+  UpdateExportTemplate,
   UpdateGroup,
   UpdateHubuumClass,
   UpdateHubuumObject,
-  UpdateNamespace,
   UpdateRemoteTarget,
-  UpdateReportTemplate,
   UpdateServiceAccount,
   UpdateUser,
   UserResponse
@@ -168,15 +170,15 @@ export type postApiV0AuthLoginResponse = (postApiV0AuthLoginResponseSuccess | po
 export const getPostApiV0AuthLoginUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/auth/login`
 }
 
 export const postApiV0AuthLogin = async (loginUser: LoginUser, options?: RequestInit): Promise<postApiV0AuthLoginResponse> => {
-  
+
   const res = await fetch(getPostApiV0AuthLoginUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -186,11 +188,11 @@ export const postApiV0AuthLogin = async (loginUser: LoginUser, options?: Request
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV0AuthLoginResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV0AuthLoginResponse
 }
-  
+
 
 
 /**
@@ -224,28 +226,28 @@ export type postApiV0AuthLogoutResponse = (postApiV0AuthLogoutResponseSuccess | 
 export const getPostApiV0AuthLogoutUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/auth/logout`
 }
 
 export const postApiV0AuthLogout = async ( options?: RequestInit): Promise<postApiV0AuthLogoutResponse> => {
-  
+
   const res = await fetch(getPostApiV0AuthLogoutUrl(),
-  {      
+  {
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV0AuthLogoutResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV0AuthLogoutResponse
 }
-  
+
 
 
 /**
@@ -279,15 +281,15 @@ export type postApiV0AuthLogoutTokenResponse = (postApiV0AuthLogoutTokenResponse
 export const getPostApiV0AuthLogoutTokenUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/auth/logout/token`
 }
 
 export const postApiV0AuthLogoutToken = async (logoutTokenRequest: LogoutTokenRequest, options?: RequestInit): Promise<postApiV0AuthLogoutTokenResponse> => {
-  
+
   const res = await fetch(getPostApiV0AuthLogoutTokenUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -297,11 +299,11 @@ export const postApiV0AuthLogoutToken = async (logoutTokenRequest: LogoutTokenRe
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV0AuthLogoutTokenResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV0AuthLogoutTokenResponse
 }
-  
+
 
 
 /**
@@ -335,28 +337,28 @@ export type postApiV0AuthLogoutUidByUserIdResponse = (postApiV0AuthLogoutUidByUs
 export const getPostApiV0AuthLogoutUidByUserIdUrl = (userId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/auth/logout/uid/${userId}`
 }
 
 export const postApiV0AuthLogoutUidByUserId = async (userId: number, options?: RequestInit): Promise<postApiV0AuthLogoutUidByUserIdResponse> => {
-  
+
   const res = await fetch(getPostApiV0AuthLogoutUidByUserIdUrl(userId),
-  {      
+  {
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV0AuthLogoutUidByUserIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV0AuthLogoutUidByUserIdResponse
 }
-  
+
 
 
 /**
@@ -390,28 +392,28 @@ export type postApiV0AuthLogoutAllResponse = (postApiV0AuthLogoutAllResponseSucc
 export const getPostApiV0AuthLogoutAllUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/auth/logout_all`
 }
 
 export const postApiV0AuthLogoutAll = async ( options?: RequestInit): Promise<postApiV0AuthLogoutAllResponse> => {
-  
+
   const res = await fetch(getPostApiV0AuthLogoutAllUrl(),
-  {      
+  {
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV0AuthLogoutAllResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV0AuthLogoutAllResponse
 }
-  
+
 
 
 /**
@@ -440,28 +442,28 @@ export type getApiV0AuthValidateResponse = (getApiV0AuthValidateResponseSuccess 
 export const getGetApiV0AuthValidateUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/auth/validate`
 }
 
 export const getApiV0AuthValidate = async ( options?: RequestInit): Promise<getApiV0AuthValidateResponse> => {
-  
+
   const res = await fetch(getGetApiV0AuthValidateUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV0AuthValidateResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV0AuthValidateResponse
 }
-  
+
 
 
 /**
@@ -495,28 +497,28 @@ export type getApiV0MetaCountsResponse = (getApiV0MetaCountsResponseSuccess | ge
 export const getGetApiV0MetaCountsUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/meta/counts`
 }
 
 export const getApiV0MetaCounts = async ( options?: RequestInit): Promise<getApiV0MetaCountsResponse> => {
-  
+
   const res = await fetch(getGetApiV0MetaCountsUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV0MetaCountsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV0MetaCountsResponse
 }
-  
+
 
 
 /**
@@ -550,28 +552,28 @@ export type getApiV0MetaDbResponse = (getApiV0MetaDbResponseSuccess | getApiV0Me
 export const getGetApiV0MetaDbUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/meta/db`
 }
 
 export const getApiV0MetaDb = async ( options?: RequestInit): Promise<getApiV0MetaDbResponse> => {
-  
+
   const res = await fetch(getGetApiV0MetaDbUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV0MetaDbResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV0MetaDbResponse
 }
-  
+
 
 
 /**
@@ -606,7 +608,7 @@ export const getGetApiV0MetaLoginRateLimitUrl = (params?: GetApiV0MetaLoginRateL
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -618,22 +620,22 @@ export const getGetApiV0MetaLoginRateLimitUrl = (params?: GetApiV0MetaLoginRateL
 }
 
 export const getApiV0MetaLoginRateLimit = async (params?: GetApiV0MetaLoginRateLimitParams, options?: RequestInit): Promise<getApiV0MetaLoginRateLimitResponse> => {
-  
+
   const res = await fetch(getGetApiV0MetaLoginRateLimitUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV0MetaLoginRateLimitResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV0MetaLoginRateLimitResponse
 }
-  
+
 
 
 /**
@@ -667,28 +669,28 @@ export type deleteApiV0MetaLoginRateLimitResponse = (deleteApiV0MetaLoginRateLim
 export const getDeleteApiV0MetaLoginRateLimitUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/meta/login-rate-limit`
 }
 
 export const deleteApiV0MetaLoginRateLimit = async ( options?: RequestInit): Promise<deleteApiV0MetaLoginRateLimitResponse> => {
-  
+
   const res = await fetch(getDeleteApiV0MetaLoginRateLimitUrl(),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV0MetaLoginRateLimitResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV0MetaLoginRateLimitResponse
 }
-  
+
 
 
 /**
@@ -732,28 +734,28 @@ export type deleteApiV0MetaLoginRateLimitByIdResponse = (deleteApiV0MetaLoginRat
 export const getDeleteApiV0MetaLoginRateLimitByIdUrl = (id: string,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/meta/login-rate-limit/${id}`
 }
 
 export const deleteApiV0MetaLoginRateLimitById = async (id: string, options?: RequestInit): Promise<deleteApiV0MetaLoginRateLimitByIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV0MetaLoginRateLimitByIdUrl(id),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV0MetaLoginRateLimitByIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV0MetaLoginRateLimitByIdResponse
 }
-  
+
 
 
 /**
@@ -787,28 +789,28 @@ export type getApiV0MetaTasksResponse = (getApiV0MetaTasksResponseSuccess | getA
 export const getGetApiV0MetaTasksUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v0/meta/tasks`
 }
 
 export const getApiV0MetaTasks = async ( options?: RequestInit): Promise<getApiV0MetaTasksResponse> => {
-  
+
   const res = await fetch(getGetApiV0MetaTasksUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV0MetaTasksResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV0MetaTasksResponse
 }
-  
+
 
 
 /**
@@ -843,7 +845,7 @@ export const getGetApiV1ClassesUrl = (params?: GetApiV1ClassesParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -855,22 +857,22 @@ export const getGetApiV1ClassesUrl = (params?: GetApiV1ClassesParams,) => {
 }
 
 export const getApiV1Classes = async (params?: GetApiV1ClassesParams, options?: RequestInit): Promise<getApiV1ClassesResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesResponse
 }
-  
+
 
 
 /**
@@ -909,15 +911,15 @@ export type postApiV1ClassesResponse = (postApiV1ClassesResponseSuccess | postAp
 export const getPostApiV1ClassesUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes`
 }
 
 export const postApiV1Classes = async (newHubuumClass: NewHubuumClass, options?: RequestInit): Promise<postApiV1ClassesResponse> => {
-  
+
   const res = await fetch(getPostApiV1ClassesUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -927,11 +929,11 @@ export const postApiV1Classes = async (newHubuumClass: NewHubuumClass, options?:
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1ClassesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1ClassesResponse
 }
-  
+
 
 
 /**
@@ -965,28 +967,28 @@ export type getApiV1ClassesByClassIdResponse = (getApiV1ClassesByClassIdResponse
 export const getGetApiV1ClassesByClassIdUrl = (classId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}`
 }
 
 export const getApiV1ClassesByClassId = async (classId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdUrl(classId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdResponse
 }
-  
+
 
 
 /**
@@ -1020,28 +1022,28 @@ export type deleteApiV1ClassesByClassIdResponse = (deleteApiV1ClassesByClassIdRe
 export const getDeleteApiV1ClassesByClassIdUrl = (classId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}`
 }
 
 export const deleteApiV1ClassesByClassId = async (classId: number, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1ClassesByClassIdUrl(classId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1ClassesByClassIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdResponse
 }
-  
+
 
 
 /**
@@ -1080,16 +1082,16 @@ export type patchApiV1ClassesByClassIdResponse = (patchApiV1ClassesByClassIdResp
 export const getPatchApiV1ClassesByClassIdUrl = (classId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}`
 }
 
 export const patchApiV1ClassesByClassId = async (classId: number,
     updateHubuumClass: UpdateHubuumClass, options?: RequestInit): Promise<patchApiV1ClassesByClassIdResponse> => {
-  
+
   const res = await fetch(getPatchApiV1ClassesByClassIdUrl(classId),
-  {      
+  {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -1099,11 +1101,11 @@ export const patchApiV1ClassesByClassId = async (classId: number,
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: patchApiV1ClassesByClassIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1ClassesByClassIdResponse
 }
-  
+
 
 
 /**
@@ -1144,7 +1146,7 @@ export const getGetApiV1ClassesByClassIdTrailingUrl = (classId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -1157,22 +1159,22 @@ export const getGetApiV1ClassesByClassIdTrailingUrl = (classId: number,
 
 export const getApiV1ClassesByClassIdTrailing = async (classId: number,
     params?: GetApiV1ClassesByClassIdTrailingParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdTrailingResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdTrailingUrl(classId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdTrailingResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdTrailingResponse
 }
-  
+
 
 
 /**
@@ -1211,16 +1213,16 @@ export type postApiV1ClassesByClassIdTrailingResponse = (postApiV1ClassesByClass
 export const getPostApiV1ClassesByClassIdTrailingUrl = (classId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/`
 }
 
 export const postApiV1ClassesByClassIdTrailing = async (classId: number,
     newHubuumObject: NewHubuumObject, options?: RequestInit): Promise<postApiV1ClassesByClassIdTrailingResponse> => {
-  
+
   const res = await fetch(getPostApiV1ClassesByClassIdTrailingUrl(classId),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -1230,11 +1232,11 @@ export const postApiV1ClassesByClassIdTrailing = async (classId: number,
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1ClassesByClassIdTrailingResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdTrailingResponse
 }
-  
+
 
 
 /**
@@ -1270,7 +1272,7 @@ export const getGetApiV1ClassesByClassIdEventsUrl = (classId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -1283,22 +1285,22 @@ export const getGetApiV1ClassesByClassIdEventsUrl = (classId: number,
 
 export const getApiV1ClassesByClassIdEvents = async (classId: number,
     params?: GetApiV1ClassesByClassIdEventsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdEventsResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdEventsUrl(classId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdEventsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdEventsResponse
 }
-  
+
 
 
 /**
@@ -1339,7 +1341,7 @@ export const getGetApiV1ClassesByClassIdHistoryUrl = (classId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -1352,22 +1354,22 @@ export const getGetApiV1ClassesByClassIdHistoryUrl = (classId: number,
 
 export const getApiV1ClassesByClassIdHistory = async (classId: number,
     params?: GetApiV1ClassesByClassIdHistoryParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdHistoryResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdHistoryUrl(classId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdHistoryResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdHistoryResponse
 }
-  
+
 
 
 /**
@@ -1413,7 +1415,7 @@ export const getGetApiV1ClassesByClassIdHistoryAsOfUrl = (classId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -1426,22 +1428,22 @@ export const getGetApiV1ClassesByClassIdHistoryAsOfUrl = (classId: number,
 
 export const getApiV1ClassesByClassIdHistoryAsOf = async (classId: number,
     params: GetApiV1ClassesByClassIdHistoryAsOfParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdHistoryAsOfResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdHistoryAsOfUrl(classId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdHistoryAsOfResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdHistoryAsOfResponse
 }
-  
+
 
 
 /**
@@ -1481,29 +1483,29 @@ export const getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphUrl = (clas
     objectId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/objects/${objectId}/related/graph`
 }
 
 export const getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraph = async (classId: number,
     objectId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphUrl(classId,objectId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraphResponse
 }
-  
+
 
 
 /**
@@ -1545,7 +1547,7 @@ export const getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsUrl = (cl
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -1559,22 +1561,22 @@ export const getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsUrl = (cl
 export const getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjects = async (classId: number,
     objectId: number,
     params?: GetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsUrl(classId,objectId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse
 }
-  
+
 
 
 /**
@@ -1616,7 +1618,7 @@ export const getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsUrl = (
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -1630,22 +1632,22 @@ export const getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsUrl = (
 export const getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelations = async (classId: number,
     objectId: number,
     params?: GetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsUrl(classId,objectId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse
 }
-  
+
 
 
 /**
@@ -1681,7 +1683,7 @@ export const getGetApiV1ClassesByClassIdPermissionsUrl = (classId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -1694,22 +1696,22 @@ export const getGetApiV1ClassesByClassIdPermissionsUrl = (classId: number,
 
 export const getApiV1ClassesByClassIdPermissions = async (classId: number,
     params?: GetApiV1ClassesByClassIdPermissionsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdPermissionsResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdPermissionsUrl(classId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdPermissionsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdPermissionsResponse
 }
-  
+
 
 
 /**
@@ -1750,7 +1752,7 @@ export const getGetApiV1ClassesByClassIdRelatedClassesUrl = (classId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -1763,22 +1765,22 @@ export const getGetApiV1ClassesByClassIdRelatedClassesUrl = (classId: number,
 
 export const getApiV1ClassesByClassIdRelatedClasses = async (classId: number,
     params?: GetApiV1ClassesByClassIdRelatedClassesParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelatedClassesResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdRelatedClassesUrl(classId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdRelatedClassesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelatedClassesResponse
 }
-  
+
 
 
 /**
@@ -1817,28 +1819,28 @@ export type getApiV1ClassesByClassIdRelatedGraphResponse = (getApiV1ClassesByCla
 export const getGetApiV1ClassesByClassIdRelatedGraphUrl = (classId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/related/graph`
 }
 
 export const getApiV1ClassesByClassIdRelatedGraph = async (classId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelatedGraphResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdRelatedGraphUrl(classId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdRelatedGraphResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelatedGraphResponse
 }
-  
+
 
 
 /**
@@ -1879,7 +1881,7 @@ export const getGetApiV1ClassesByClassIdRelatedRelationsUrl = (classId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -1892,22 +1894,22 @@ export const getGetApiV1ClassesByClassIdRelatedRelationsUrl = (classId: number,
 
 export const getApiV1ClassesByClassIdRelatedRelations = async (classId: number,
     params?: GetApiV1ClassesByClassIdRelatedRelationsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelatedRelationsResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdRelatedRelationsUrl(classId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdRelatedRelationsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelatedRelationsResponse
 }
-  
+
 
 
 /**
@@ -1946,16 +1948,16 @@ export type postApiV1ClassesByClassIdRelationsResponse = (postApiV1ClassesByClas
 export const getPostApiV1ClassesByClassIdRelationsUrl = (classId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations`
 }
 
 export const postApiV1ClassesByClassIdRelations = async (classId: number,
     newHubuumClassRelationFromClass: NewHubuumClassRelationFromClass, options?: RequestInit): Promise<postApiV1ClassesByClassIdRelationsResponse> => {
-  
+
   const res = await fetch(getPostApiV1ClassesByClassIdRelationsUrl(classId),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -1965,11 +1967,11 @@ export const postApiV1ClassesByClassIdRelations = async (classId: number,
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1ClassesByClassIdRelationsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdRelationsResponse
 }
-  
+
 
 
 /**
@@ -2009,29 +2011,29 @@ export const getDeleteApiV1ClassesByClassIdRelationsByRelationIdUrl = (classId: 
     relationId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/${relationId}`
 }
 
 export const deleteApiV1ClassesByClassIdRelationsByRelationId = async (classId: number,
     relationId: number, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdRelationsByRelationIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1ClassesByClassIdRelationsByRelationIdUrl(classId,relationId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1ClassesByClassIdRelationsByRelationIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdRelationsByRelationIdResponse
 }
-  
+
 
 
 /**
@@ -2068,7 +2070,7 @@ export const getGetApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToOb
     toObjectId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${fromObjectId}/relations/${toClassId}/${toObjectId}`
 }
@@ -2077,22 +2079,22 @@ export const getApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjec
     fromObjectId: number,
     toClassId: number,
     toObjectId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdUrl(classId,fromObjectId,toClassId,toObjectId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse
 }
-  
+
 
 
 /**
@@ -2139,7 +2141,7 @@ export const getPostApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToO
     toObjectId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${fromObjectId}/relations/${toClassId}/${toObjectId}`
 }
@@ -2148,22 +2150,22 @@ export const postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObje
     fromObjectId: number,
     toClassId: number,
     toObjectId: number, options?: RequestInit): Promise<postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse> => {
-  
+
   const res = await fetch(getPostApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdUrl(classId,fromObjectId,toClassId,toObjectId),
-  {      
+  {
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse
 }
-  
+
 
 
 /**
@@ -2200,7 +2202,7 @@ export const getDeleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByT
     toObjectId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${fromObjectId}/relations/${toClassId}/${toObjectId}`
 }
@@ -2209,22 +2211,22 @@ export const deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToOb
     fromObjectId: number,
     toClassId: number,
     toObjectId: number, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdUrl(classId,fromObjectId,toClassId,toObjectId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse
 }
-  
+
 
 
 /**
@@ -2259,29 +2261,29 @@ export const getGetApiV1ClassesByClassIdByObjectIdUrl = (classId: number,
     objectId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${objectId}`
 }
 
 export const getApiV1ClassesByClassIdByObjectId = async (classId: number,
     objectId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdByObjectIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdByObjectIdUrl(classId,objectId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdByObjectIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdByObjectIdResponse
 }
-  
+
 
 
 /**
@@ -2316,29 +2318,29 @@ export const getDeleteApiV1ClassesByClassIdByObjectIdUrl = (classId: number,
     objectId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${objectId}`
 }
 
 export const deleteApiV1ClassesByClassIdByObjectId = async (classId: number,
     objectId: number, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdByObjectIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1ClassesByClassIdByObjectIdUrl(classId,objectId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1ClassesByClassIdByObjectIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdByObjectIdResponse
 }
-  
+
 
 
 /**
@@ -2378,7 +2380,7 @@ export const getPatchApiV1ClassesByClassIdByObjectIdUrl = (classId: number,
     objectId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${objectId}`
 }
@@ -2386,9 +2388,9 @@ export const getPatchApiV1ClassesByClassIdByObjectIdUrl = (classId: number,
 export const patchApiV1ClassesByClassIdByObjectId = async (classId: number,
     objectId: number,
     updateHubuumObject: UpdateHubuumObject, options?: RequestInit): Promise<patchApiV1ClassesByClassIdByObjectIdResponse> => {
-  
+
   const res = await fetch(getPatchApiV1ClassesByClassIdByObjectIdUrl(classId,objectId),
-  {      
+  {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -2398,11 +2400,11 @@ export const patchApiV1ClassesByClassIdByObjectId = async (classId: number,
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: patchApiV1ClassesByClassIdByObjectIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1ClassesByClassIdByObjectIdResponse
 }
-  
+
 
 
 /**
@@ -2439,7 +2441,7 @@ export const getGetApiV1ClassesByClassIdByObjectIdEventsUrl = (classId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -2453,22 +2455,22 @@ export const getGetApiV1ClassesByClassIdByObjectIdEventsUrl = (classId: number,
 export const getApiV1ClassesByClassIdByObjectIdEvents = async (classId: number,
     objectId: number,
     params?: GetApiV1ClassesByClassIdByObjectIdEventsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdByObjectIdEventsResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdByObjectIdEventsUrl(classId,objectId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdByObjectIdEventsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdByObjectIdEventsResponse
 }
-  
+
 
 
 /**
@@ -2510,7 +2512,7 @@ export const getGetApiV1ClassesByClassIdByObjectIdHistoryUrl = (classId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -2524,22 +2526,22 @@ export const getGetApiV1ClassesByClassIdByObjectIdHistoryUrl = (classId: number,
 export const getApiV1ClassesByClassIdByObjectIdHistory = async (classId: number,
     objectId: number,
     params?: GetApiV1ClassesByClassIdByObjectIdHistoryParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdByObjectIdHistoryResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdByObjectIdHistoryUrl(classId,objectId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdByObjectIdHistoryResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdByObjectIdHistoryResponse
 }
-  
+
 
 
 /**
@@ -2586,7 +2588,7 @@ export const getGetApiV1ClassesByClassIdByObjectIdHistoryAsOfUrl = (classId: num
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -2600,22 +2602,1771 @@ export const getGetApiV1ClassesByClassIdByObjectIdHistoryAsOfUrl = (classId: num
 export const getApiV1ClassesByClassIdByObjectIdHistoryAsOf = async (classId: number,
     objectId: number,
     params: GetApiV1ClassesByClassIdByObjectIdHistoryAsOfParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdByObjectIdHistoryAsOfResponse> => {
-  
+
   const res = await fetch(getGetApiV1ClassesByClassIdByObjectIdHistoryAsOfUrl(classId,objectId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ClassesByClassIdByObjectIdHistoryAsOfResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdByObjectIdHistoryAsOfResponse
 }
-  
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Collections
+ */
+export type getApiV1CollectionsResponse200 = {
+  data: Collection[]
+  status: 200
+}
+
+export type getApiV1CollectionsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1CollectionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsResponseSuccess = (getApiV1CollectionsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsResponseError = (getApiV1CollectionsResponse400 | getApiV1CollectionsResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsResponse = (getApiV1CollectionsResponseSuccess | getApiV1CollectionsResponseError)
+
+export const getGetApiV1CollectionsUrl = (params?: GetApiV1CollectionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/collections?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/collections`
+}
+
+export const getApiV1Collections = async (params?: GetApiV1CollectionsParams, options?: RequestInit): Promise<getApiV1CollectionsResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/collections.
+ * @summary Post Api V1 Collections
+ */
+export type postApiV1CollectionsResponse201 = {
+  data: Collection
+  status: 201
+}
+
+export type postApiV1CollectionsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1CollectionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1CollectionsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1CollectionsResponseSuccess = (postApiV1CollectionsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1CollectionsResponseError = (postApiV1CollectionsResponse400 | postApiV1CollectionsResponse401 | postApiV1CollectionsResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1CollectionsResponse = (postApiV1CollectionsResponseSuccess | postApiV1CollectionsResponseError)
+
+export const getPostApiV1CollectionsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections`
+}
+
+export const postApiV1Collections = async (newCollectionWithAssignee: NewCollectionWithAssignee, options?: RequestInit): Promise<postApiV1CollectionsResponse> => {
+
+  const res = await fetch(getPostApiV1CollectionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      newCollectionWithAssignee,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1CollectionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1CollectionsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}.
+ * @summary Get Api V1 Collections By Collection Id
+ */
+export type getApiV1CollectionsByCollectionIdResponse200 = {
+  data: Collection
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdResponseSuccess = (getApiV1CollectionsByCollectionIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdResponseError = (getApiV1CollectionsByCollectionIdResponse401 | getApiV1CollectionsByCollectionIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdResponse = (getApiV1CollectionsByCollectionIdResponseSuccess | getApiV1CollectionsByCollectionIdResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}`
+}
+
+export const getApiV1CollectionsByCollectionId = async (collectionId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdUrl(collectionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/collections/{collection_id}.
+ * @summary Delete Api V1 Collections By Collection Id
+ */
+export type deleteApiV1CollectionsByCollectionIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1CollectionsByCollectionIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1CollectionsByCollectionIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1CollectionsByCollectionIdResponseSuccess = (deleteApiV1CollectionsByCollectionIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1CollectionsByCollectionIdResponseError = (deleteApiV1CollectionsByCollectionIdResponse401 | deleteApiV1CollectionsByCollectionIdResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1CollectionsByCollectionIdResponse = (deleteApiV1CollectionsByCollectionIdResponseSuccess | deleteApiV1CollectionsByCollectionIdResponseError)
+
+export const getDeleteApiV1CollectionsByCollectionIdUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}`
+}
+
+export const deleteApiV1CollectionsByCollectionId = async (collectionId: number, options?: RequestInit): Promise<deleteApiV1CollectionsByCollectionIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1CollectionsByCollectionIdUrl(collectionId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1CollectionsByCollectionIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1CollectionsByCollectionIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/collections/{collection_id}.
+ * @summary Patch Api V1 Collections By Collection Id
+ */
+export type patchApiV1CollectionsByCollectionIdResponse202 = {
+  data: Collection
+  status: 202
+}
+
+export type patchApiV1CollectionsByCollectionIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1CollectionsByCollectionIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1CollectionsByCollectionIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1CollectionsByCollectionIdResponseSuccess = (patchApiV1CollectionsByCollectionIdResponse202) & {
+  headers: Headers;
+};
+export type patchApiV1CollectionsByCollectionIdResponseError = (patchApiV1CollectionsByCollectionIdResponse400 | patchApiV1CollectionsByCollectionIdResponse401 | patchApiV1CollectionsByCollectionIdResponse404) & {
+  headers: Headers;
+};
+
+export type patchApiV1CollectionsByCollectionIdResponse = (patchApiV1CollectionsByCollectionIdResponseSuccess | patchApiV1CollectionsByCollectionIdResponseError)
+
+export const getPatchApiV1CollectionsByCollectionIdUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}`
+}
+
+export const patchApiV1CollectionsByCollectionId = async (collectionId: number,
+    updateCollection: UpdateCollection, options?: RequestInit): Promise<patchApiV1CollectionsByCollectionIdResponse> => {
+
+  const res = await fetch(getPatchApiV1CollectionsByCollectionIdUrl(collectionId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateCollection,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1CollectionsByCollectionIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1CollectionsByCollectionIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/ancestors.
+ * @summary Get Api V1 Collections By Collection Id Ancestors
+ */
+export type getApiV1CollectionsByCollectionIdAncestorsResponse200 = {
+  data: Collection[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdAncestorsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdAncestorsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdAncestorsResponseSuccess = (getApiV1CollectionsByCollectionIdAncestorsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdAncestorsResponseError = (getApiV1CollectionsByCollectionIdAncestorsResponse401 | getApiV1CollectionsByCollectionIdAncestorsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdAncestorsResponse = (getApiV1CollectionsByCollectionIdAncestorsResponseSuccess | getApiV1CollectionsByCollectionIdAncestorsResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdAncestorsUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/ancestors`
+}
+
+export const getApiV1CollectionsByCollectionIdAncestors = async (collectionId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdAncestorsResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdAncestorsUrl(collectionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdAncestorsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdAncestorsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/children.
+ * @summary Get Api V1 Collections By Collection Id Children
+ */
+export type getApiV1CollectionsByCollectionIdChildrenResponse200 = {
+  data: Collection[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdChildrenResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdChildrenResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdChildrenResponseSuccess = (getApiV1CollectionsByCollectionIdChildrenResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdChildrenResponseError = (getApiV1CollectionsByCollectionIdChildrenResponse401 | getApiV1CollectionsByCollectionIdChildrenResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdChildrenResponse = (getApiV1CollectionsByCollectionIdChildrenResponseSuccess | getApiV1CollectionsByCollectionIdChildrenResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdChildrenUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/children`
+}
+
+export const getApiV1CollectionsByCollectionIdChildren = async (collectionId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdChildrenResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdChildrenUrl(collectionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdChildrenResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdChildrenResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/event-subscriptions.
+ * @summary Get Api V1 Collections By Collection Id Event Subscriptions
+ */
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsResponse200 = {
+  data: EventSubscription[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsResponseSuccess = (getApiV1CollectionsByCollectionIdEventSubscriptionsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsResponseError = (getApiV1CollectionsByCollectionIdEventSubscriptionsResponse400 | getApiV1CollectionsByCollectionIdEventSubscriptionsResponse401 | getApiV1CollectionsByCollectionIdEventSubscriptionsResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsResponse = (getApiV1CollectionsByCollectionIdEventSubscriptionsResponseSuccess | getApiV1CollectionsByCollectionIdEventSubscriptionsResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdEventSubscriptionsUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-subscriptions`
+}
+
+export const getApiV1CollectionsByCollectionIdEventSubscriptions = async (collectionId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdEventSubscriptionsResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdEventSubscriptionsUrl(collectionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdEventSubscriptionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdEventSubscriptionsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/collections/{collection_id}/event-subscriptions.
+ * @summary Post Api V1 Collections By Collection Id Event Subscriptions
+ */
+export type postApiV1CollectionsByCollectionIdEventSubscriptionsResponse201 = {
+  data: EventSubscription
+  status: 201
+}
+
+export type postApiV1CollectionsByCollectionIdEventSubscriptionsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1CollectionsByCollectionIdEventSubscriptionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1CollectionsByCollectionIdEventSubscriptionsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1CollectionsByCollectionIdEventSubscriptionsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1CollectionsByCollectionIdEventSubscriptionsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1CollectionsByCollectionIdEventSubscriptionsResponseSuccess = (postApiV1CollectionsByCollectionIdEventSubscriptionsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1CollectionsByCollectionIdEventSubscriptionsResponseError = (postApiV1CollectionsByCollectionIdEventSubscriptionsResponse400 | postApiV1CollectionsByCollectionIdEventSubscriptionsResponse401 | postApiV1CollectionsByCollectionIdEventSubscriptionsResponse403 | postApiV1CollectionsByCollectionIdEventSubscriptionsResponse404 | postApiV1CollectionsByCollectionIdEventSubscriptionsResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1CollectionsByCollectionIdEventSubscriptionsResponse = (postApiV1CollectionsByCollectionIdEventSubscriptionsResponseSuccess | postApiV1CollectionsByCollectionIdEventSubscriptionsResponseError)
+
+export const getPostApiV1CollectionsByCollectionIdEventSubscriptionsUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-subscriptions`
+}
+
+export const postApiV1CollectionsByCollectionIdEventSubscriptions = async (collectionId: number,
+    newEventSubscription: NewEventSubscription, options?: RequestInit): Promise<postApiV1CollectionsByCollectionIdEventSubscriptionsResponse> => {
+
+  const res = await fetch(getPostApiV1CollectionsByCollectionIdEventSubscriptionsUrl(collectionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      newEventSubscription,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1CollectionsByCollectionIdEventSubscriptionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1CollectionsByCollectionIdEventSubscriptionsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/event-subscriptions/{subscription_id}.
+ * @summary Get Api V1 Collections By Collection Id Event Subscriptions By Subscription Id
+ */
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse200 = {
+  data: EventSubscription
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseSuccess = (getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseError = (getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse401 | getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse403 | getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse = (getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseSuccess | getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdUrl = (collectionId: number,
+    subscriptionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-subscriptions/${subscriptionId}`
+}
+
+export const getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId = async (collectionId: number,
+    subscriptionId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdUrl(collectionId,subscriptionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/collections/{collection_id}/event-subscriptions/{subscription_id}.
+ * @summary Delete Api V1 Collections By Collection Id Event Subscriptions By Subscription Id
+ */
+export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseSuccess = (deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseError = (deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse401 | deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse403 | deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse = (deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseSuccess | deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseError)
+
+export const getDeleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdUrl = (collectionId: number,
+    subscriptionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-subscriptions/${subscriptionId}`
+}
+
+export const deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId = async (collectionId: number,
+    subscriptionId: number, options?: RequestInit): Promise<deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdUrl(collectionId,subscriptionId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/collections/{collection_id}/event-subscriptions/{subscription_id}.
+ * @summary Patch Api V1 Collections By Collection Id Event Subscriptions By Subscription Id
+ */
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse200 = {
+  data: EventSubscription
+  status: 200
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseSuccess = (patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseError = (patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse400 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse401 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse403 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse404 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse409) & {
+  headers: Headers;
+};
+
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse = (patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseSuccess | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseError)
+
+export const getPatchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdUrl = (collectionId: number,
+    subscriptionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-subscriptions/${subscriptionId}`
+}
+
+export const patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId = async (collectionId: number,
+    subscriptionId: number,
+    updateEventSubscription: UpdateEventSubscription, options?: RequestInit): Promise<patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse> => {
+
+  const res = await fetch(getPatchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdUrl(collectionId,subscriptionId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateEventSubscription,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/events.
+ * @summary Get Api V1 Collections By Collection Id Events
+ */
+export type getApiV1CollectionsByCollectionIdEventsResponse200 = {
+  data: EventResponse[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdEventsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1CollectionsByCollectionIdEventsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdEventsResponseSuccess = (getApiV1CollectionsByCollectionIdEventsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdEventsResponseError = (getApiV1CollectionsByCollectionIdEventsResponse400 | getApiV1CollectionsByCollectionIdEventsResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdEventsResponse = (getApiV1CollectionsByCollectionIdEventsResponseSuccess | getApiV1CollectionsByCollectionIdEventsResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdEventsUrl = (collectionId: number,
+    params?: GetApiV1CollectionsByCollectionIdEventsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/events?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/events`
+}
+
+export const getApiV1CollectionsByCollectionIdEvents = async (collectionId: number,
+    params?: GetApiV1CollectionsByCollectionIdEventsParams, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdEventsResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdEventsUrl(collectionId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdEventsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdEventsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/has_permissions/{permission}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary List all groups that have any permissions on a collection
+ */
+export type getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse200 = {
+  data: Group[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponseSuccess = (getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponseError = (getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse401 | getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse = (getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponseSuccess | getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdHasPermissionsByPermissionUrl = (collectionId: number,
+    permission: Permissions,
+    params?: GetApiV1CollectionsByCollectionIdHasPermissionsByPermissionParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/has_permissions/${permission}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/has_permissions/${permission}`
+}
+
+export const getApiV1CollectionsByCollectionIdHasPermissionsByPermission = async (collectionId: number,
+    permission: Permissions,
+    params?: GetApiV1CollectionsByCollectionIdHasPermissionsByPermissionParams, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdHasPermissionsByPermissionUrl(collectionId,permission,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Collections By Collection Id History
+ */
+export type getApiV1CollectionsByCollectionIdHistoryResponse200 = {
+  data: HistoryResponseCollectionHistory[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdHistoryResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdHistoryResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1CollectionsByCollectionIdHistoryResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdHistoryResponseSuccess = (getApiV1CollectionsByCollectionIdHistoryResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdHistoryResponseError = (getApiV1CollectionsByCollectionIdHistoryResponse401 | getApiV1CollectionsByCollectionIdHistoryResponse403 | getApiV1CollectionsByCollectionIdHistoryResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdHistoryResponse = (getApiV1CollectionsByCollectionIdHistoryResponseSuccess | getApiV1CollectionsByCollectionIdHistoryResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdHistoryUrl = (collectionId: number,
+    params?: GetApiV1CollectionsByCollectionIdHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/history?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/history`
+}
+
+export const getApiV1CollectionsByCollectionIdHistory = async (collectionId: number,
+    params?: GetApiV1CollectionsByCollectionIdHistoryParams, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdHistoryResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdHistoryUrl(collectionId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdHistoryResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdHistoryResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/history/as-of.
+ * @summary Get Api V1 Collections By Collection Id History As Of
+ */
+export type getApiV1CollectionsByCollectionIdHistoryAsOfResponse200 = {
+  data: HistoryResponseCollectionHistory
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdHistoryAsOfResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1CollectionsByCollectionIdHistoryAsOfResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdHistoryAsOfResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1CollectionsByCollectionIdHistoryAsOfResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdHistoryAsOfResponseSuccess = (getApiV1CollectionsByCollectionIdHistoryAsOfResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdHistoryAsOfResponseError = (getApiV1CollectionsByCollectionIdHistoryAsOfResponse400 | getApiV1CollectionsByCollectionIdHistoryAsOfResponse401 | getApiV1CollectionsByCollectionIdHistoryAsOfResponse403 | getApiV1CollectionsByCollectionIdHistoryAsOfResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdHistoryAsOfResponse = (getApiV1CollectionsByCollectionIdHistoryAsOfResponseSuccess | getApiV1CollectionsByCollectionIdHistoryAsOfResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdHistoryAsOfUrl = (collectionId: number,
+    params: GetApiV1CollectionsByCollectionIdHistoryAsOfParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/history/as-of?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/history/as-of`
+}
+
+export const getApiV1CollectionsByCollectionIdHistoryAsOf = async (collectionId: number,
+    params: GetApiV1CollectionsByCollectionIdHistoryAsOfParams, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdHistoryAsOfResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdHistoryAsOfUrl(collectionId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdHistoryAsOfResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdHistoryAsOfResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for PUT /api/v1/collections/{collection_id}/parent.
+ * @summary Put Api V1 Collections By Collection Id Parent
+ */
+export type putApiV1CollectionsByCollectionIdParentResponse202 = {
+  data: Collection
+  status: 202
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type putApiV1CollectionsByCollectionIdParentResponseSuccess = (putApiV1CollectionsByCollectionIdParentResponse202) & {
+  headers: Headers;
+};
+export type putApiV1CollectionsByCollectionIdParentResponseError = (putApiV1CollectionsByCollectionIdParentResponse400 | putApiV1CollectionsByCollectionIdParentResponse401 | putApiV1CollectionsByCollectionIdParentResponse403 | putApiV1CollectionsByCollectionIdParentResponse404 | putApiV1CollectionsByCollectionIdParentResponse409) & {
+  headers: Headers;
+};
+
+export type putApiV1CollectionsByCollectionIdParentResponse = (putApiV1CollectionsByCollectionIdParentResponseSuccess | putApiV1CollectionsByCollectionIdParentResponseError)
+
+export const getPutApiV1CollectionsByCollectionIdParentUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/parent`
+}
+
+export const putApiV1CollectionsByCollectionIdParent = async (collectionId: number,
+    updateCollectionParent: UpdateCollectionParent, options?: RequestInit): Promise<putApiV1CollectionsByCollectionIdParentResponse> => {
+
+  const res = await fetch(getPutApiV1CollectionsByCollectionIdParentUrl(collectionId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateCollectionParent,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1CollectionsByCollectionIdParentResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1CollectionsByCollectionIdParentResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary List all groups who have permissions for a collection
+ */
+export type getApiV1CollectionsByCollectionIdPermissionsResponse200 = {
+  data: GroupPermission[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsResponseSuccess = (getApiV1CollectionsByCollectionIdPermissionsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdPermissionsResponseError = (getApiV1CollectionsByCollectionIdPermissionsResponse401 | getApiV1CollectionsByCollectionIdPermissionsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdPermissionsResponse = (getApiV1CollectionsByCollectionIdPermissionsResponseSuccess | getApiV1CollectionsByCollectionIdPermissionsResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdPermissionsUrl = (collectionId: number,
+    params?: GetApiV1CollectionsByCollectionIdPermissionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions`
+}
+
+export const getApiV1CollectionsByCollectionIdPermissions = async (collectionId: number,
+    params?: GetApiV1CollectionsByCollectionIdPermissionsParams, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdPermissionsResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdPermissionsUrl(collectionId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdPermissionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdPermissionsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/effective/group/{group_id}.
+ * @summary Get Api V1 Collections By Collection Id Permissions Effective Group By Group Id
+ */
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse200 = {
+  data: EffectiveGroupPermission[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponseSuccess = (getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponseError = (getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse401 | getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse = (getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponseSuccess | getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdUrl = (collectionId: number,
+    groupId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/effective/group/${groupId}`
+}
+
+export const getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupId = async (collectionId: number,
+    groupId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdUrl(collectionId,groupId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdPermissionsEffectiveGroupByGroupIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/effective/principal/{principal_id}.
+ * @summary Get Api V1 Collections By Collection Id Permissions Effective Principal By Principal Id
+ */
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse200 = {
+  data: EffectiveGroupPermission[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponseSuccess = (getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponseError = (getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse401 | getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse = (getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponseSuccess | getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdUrl = (collectionId: number,
+    principalId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/effective/principal/${principalId}`
+}
+
+export const getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalId = async (collectionId: number,
+    principalId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdUrl(collectionId,principalId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/group/{group_id}.
+ * @summary List all permissions for a given group on a collection
+ */
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse200 = {
+  data: Permission
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess = (getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError = (getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 | getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse = (getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess | getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl = (collectionId: number,
+    groupId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/group/${groupId}`
+}
+
+export const getApiV1CollectionsByCollectionIdPermissionsGroupByGroupId = async (collectionId: number,
+    groupId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl(collectionId,groupId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for PUT /api/v1/collections/{collection_id}/permissions/group/{group_id}.
+ * @summary Replace all permissions for a group on a collection
+This removes any existing permissions and applies the new set.
+ */
+export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse200 = {
+  data: void
+  status: 200
+}
+
+export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess = (putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse200) & {
+  headers: Headers;
+};
+export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError = (putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse400 | putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 | putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404) & {
+  headers: Headers;
+};
+
+export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse = (putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess | putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError)
+
+export const getPutApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl = (collectionId: number,
+    groupId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/group/${groupId}`
+}
+
+export const putApiV1CollectionsByCollectionIdPermissionsGroupByGroupId = async (collectionId: number,
+    groupId: number,
+    permissions: Permissions[], options?: RequestInit): Promise<putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse> => {
+
+  const res = await fetch(getPutApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl(collectionId,groupId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      permissions,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/collections/{collection_id}/permissions/group/{group_id}.
+ * @summary Post a permission set to a group on a collection
+This will create a new entry if the group had no permissions,
+or add to the existing entry if it did.
+The body should be a JSON array of permissions:
+```json
+[
+  "CreateObject",
+  "ReadCollection"
+]
+```
+ */
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse201 = {
+  data: void
+  status: 201
+}
+
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse201) & {
+  headers: Headers;
+};
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse400 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404) & {
+  headers: Headers;
+};
+
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError)
+
+export const getPostApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl = (collectionId: number,
+    groupId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/group/${groupId}`
+}
+
+export const postApiV1CollectionsByCollectionIdPermissionsGroupByGroupId = async (collectionId: number,
+    groupId: number,
+    permissions: Permissions[], options?: RequestInit): Promise<postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse> => {
+
+  const res = await fetch(getPostApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl(collectionId,groupId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      permissions,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/collections/{collection_id}/permissions/group/{group_id}.
+ * @summary Revoke a permission set from a group on a collection
+ */
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 | deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess | deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError)
+
+export const getDeleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl = (collectionId: number,
+    groupId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/group/${groupId}`
+}
+
+export const deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupId = async (collectionId: number,
+    groupId: number, options?: RequestInit): Promise<deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl(collectionId,groupId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/group/{group_id}/{permission}.
+ * @summary Check a specific permission for a group on a collection
+ */
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse204 = {
+  data: void
+  status: 204
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseSuccess = (getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse204) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseError = (getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse = (getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseSuccess | getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionUrl = (collectionId: number,
+    groupId: number,
+    permission: Permissions,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/group/${groupId}/${permission}`
+}
+
+export const getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermission = async (collectionId: number,
+    groupId: number,
+    permission: Permissions, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionUrl(collectionId,groupId,permission),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/collections/{collection_id}/permissions/group/{group_id}/{permission}.
+ * @summary Grant a specific permission to a group on a collection
+If the group previously had no permissions, a new entry is created
+ */
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse201 = {
+  data: void
+  status: 201
+}
+
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseSuccess = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse201) & {
+  headers: Headers;
+};
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseError = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse401 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse404) & {
+  headers: Headers;
+};
+
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseSuccess | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseError)
+
+export const getPostApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionUrl = (collectionId: number,
+    groupId: number,
+    permission: Permissions,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/group/${groupId}/${permission}`
+}
+
+export const postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermission = async (collectionId: number,
+    groupId: number,
+    permission: Permissions, options?: RequestInit): Promise<postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse> => {
+
+  const res = await fetch(getPostApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionUrl(collectionId,groupId,permission),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/collections/{collection_id}/permissions/group/{group_id}/{permission}.
+ * @summary Revoke a specific permission from a group on a collection
+ */
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseSuccess = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseError = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse401 | deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseSuccess | deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseError)
+
+export const getDeleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionUrl = (collectionId: number,
+    groupId: number,
+    permission: Permissions,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/group/${groupId}/${permission}`
+}
+
+export const deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermission = async (collectionId: number,
+    groupId: number,
+    permission: Permissions, options?: RequestInit): Promise<deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse> => {
+
+  const res = await fetch(getDeleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionUrl(collectionId,groupId,permission),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/principal/{principal_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary List all permissions for a principal on a collection
+ */
+export type getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse200 = {
+  data: GroupPermission[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponseSuccess = (getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponseError = (getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse401 | getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse = (getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponseSuccess | getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdUrl = (collectionId: number,
+    principalId: number,
+    params?: GetApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/principal/${principalId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/permissions/principal/${principalId}`
+}
+
+export const getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalId = async (collectionId: number,
+    principalId: number,
+    params?: GetApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdParams, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdUrl(collectionId,principalId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse
+}
+
 
 
 /**
@@ -2655,7 +4406,7 @@ export const getGetApiV1EventDeliveriesUrl = (params: GetApiV1EventDeliveriesPar
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -2667,22 +4418,22 @@ export const getGetApiV1EventDeliveriesUrl = (params: GetApiV1EventDeliveriesPar
 }
 
 export const getApiV1EventDeliveries = async (params: GetApiV1EventDeliveriesParams, options?: RequestInit): Promise<getApiV1EventDeliveriesResponse> => {
-  
+
   const res = await fetch(getGetApiV1EventDeliveriesUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1EventDeliveriesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1EventDeliveriesResponse
 }
-  
+
 
 
 /**
@@ -2716,28 +4467,28 @@ export type getApiV1EventDeliveriesHealthResponse = (getApiV1EventDeliveriesHeal
 export const getGetApiV1EventDeliveriesHealthUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/event-deliveries/health`
 }
 
 export const getApiV1EventDeliveriesHealth = async ( options?: RequestInit): Promise<getApiV1EventDeliveriesHealthResponse> => {
-  
+
   const res = await fetch(getGetApiV1EventDeliveriesHealthUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1EventDeliveriesHealthResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1EventDeliveriesHealthResponse
 }
-  
+
 
 
 /**
@@ -2776,28 +4527,28 @@ export type getApiV1EventDeliveriesByDeliveryIdResponse = (getApiV1EventDeliveri
 export const getGetApiV1EventDeliveriesByDeliveryIdUrl = (deliveryId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/event-deliveries/${deliveryId}`
 }
 
 export const getApiV1EventDeliveriesByDeliveryId = async (deliveryId: number, options?: RequestInit): Promise<getApiV1EventDeliveriesByDeliveryIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1EventDeliveriesByDeliveryIdUrl(deliveryId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1EventDeliveriesByDeliveryIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1EventDeliveriesByDeliveryIdResponse
 }
-  
+
 
 
 /**
@@ -2836,28 +4587,28 @@ export type postApiV1EventDeliveriesByDeliveryIdDeadResponse = (postApiV1EventDe
 export const getPostApiV1EventDeliveriesByDeliveryIdDeadUrl = (deliveryId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/event-deliveries/${deliveryId}/dead`
 }
 
 export const postApiV1EventDeliveriesByDeliveryIdDead = async (deliveryId: number, options?: RequestInit): Promise<postApiV1EventDeliveriesByDeliveryIdDeadResponse> => {
-  
+
   const res = await fetch(getPostApiV1EventDeliveriesByDeliveryIdDeadUrl(deliveryId),
-  {      
+  {
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1EventDeliveriesByDeliveryIdDeadResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1EventDeliveriesByDeliveryIdDeadResponse
 }
-  
+
 
 
 /**
@@ -2901,28 +4652,28 @@ export type postApiV1EventDeliveriesByDeliveryIdRetryResponse = (postApiV1EventD
 export const getPostApiV1EventDeliveriesByDeliveryIdRetryUrl = (deliveryId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/event-deliveries/${deliveryId}/retry`
 }
 
 export const postApiV1EventDeliveriesByDeliveryIdRetry = async (deliveryId: number, options?: RequestInit): Promise<postApiV1EventDeliveriesByDeliveryIdRetryResponse> => {
-  
+
   const res = await fetch(getPostApiV1EventDeliveriesByDeliveryIdRetryUrl(deliveryId),
-  {      
+  {
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1EventDeliveriesByDeliveryIdRetryResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1EventDeliveriesByDeliveryIdRetryResponse
 }
-  
+
 
 
 /**
@@ -2961,28 +4712,28 @@ export type getApiV1EventSinksResponse = (getApiV1EventSinksResponseSuccess | ge
 export const getGetApiV1EventSinksUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks`
 }
 
 export const getApiV1EventSinks = async ( options?: RequestInit): Promise<getApiV1EventSinksResponse> => {
-  
+
   const res = await fetch(getGetApiV1EventSinksUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1EventSinksResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1EventSinksResponse
 }
-  
+
 
 
 /**
@@ -3026,15 +4777,15 @@ export type postApiV1EventSinksResponse = (postApiV1EventSinksResponseSuccess | 
 export const getPostApiV1EventSinksUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks`
 }
 
 export const postApiV1EventSinks = async (newEventSink: NewEventSink, options?: RequestInit): Promise<postApiV1EventSinksResponse> => {
-  
+
   const res = await fetch(getPostApiV1EventSinksUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -3044,11 +4795,11 @@ export const postApiV1EventSinks = async (newEventSink: NewEventSink, options?: 
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1EventSinksResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1EventSinksResponse
 }
-  
+
 
 
 /**
@@ -3087,28 +4838,28 @@ export type getApiV1EventSinksBySinkIdResponse = (getApiV1EventSinksBySinkIdResp
 export const getGetApiV1EventSinksBySinkIdUrl = (sinkId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks/${sinkId}`
 }
 
 export const getApiV1EventSinksBySinkId = async (sinkId: number, options?: RequestInit): Promise<getApiV1EventSinksBySinkIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1EventSinksBySinkIdUrl(sinkId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1EventSinksBySinkIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1EventSinksBySinkIdResponse
 }
-  
+
 
 
 /**
@@ -3147,28 +4898,28 @@ export type deleteApiV1EventSinksBySinkIdResponse = (deleteApiV1EventSinksBySink
 export const getDeleteApiV1EventSinksBySinkIdUrl = (sinkId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks/${sinkId}`
 }
 
 export const deleteApiV1EventSinksBySinkId = async (sinkId: number, options?: RequestInit): Promise<deleteApiV1EventSinksBySinkIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1EventSinksBySinkIdUrl(sinkId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1EventSinksBySinkIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1EventSinksBySinkIdResponse
 }
-  
+
 
 
 /**
@@ -3217,16 +4968,16 @@ export type patchApiV1EventSinksBySinkIdResponse = (patchApiV1EventSinksBySinkId
 export const getPatchApiV1EventSinksBySinkIdUrl = (sinkId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks/${sinkId}`
 }
 
 export const patchApiV1EventSinksBySinkId = async (sinkId: number,
     updateEventSink: UpdateEventSink, options?: RequestInit): Promise<patchApiV1EventSinksBySinkIdResponse> => {
-  
+
   const res = await fetch(getPatchApiV1EventSinksBySinkIdUrl(sinkId),
-  {      
+  {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -3236,11 +4987,11 @@ export const patchApiV1EventSinksBySinkId = async (sinkId: number,
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: patchApiV1EventSinksBySinkIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1EventSinksBySinkIdResponse
 }
-  
+
 
 
 /**
@@ -3275,7 +5026,7 @@ export const getGetApiV1EventsUrl = (params?: GetApiV1EventsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -3287,22 +5038,822 @@ export const getGetApiV1EventsUrl = (params?: GetApiV1EventsParams,) => {
 }
 
 export const getApiV1Events = async (params?: GetApiV1EventsParams, options?: RequestInit): Promise<getApiV1EventsResponse> => {
-  
+
   const res = await fetch(getGetApiV1EventsUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1EventsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1EventsResponse
 }
-  
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/export-templates. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Export Templates
+ */
+export type getApiV1ExportTemplatesResponse200 = {
+  data: ExportTemplate[]
+  status: 200
+}
+
+export type getApiV1ExportTemplatesResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ExportTemplatesResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ExportTemplatesResponseSuccess = (getApiV1ExportTemplatesResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ExportTemplatesResponseError = (getApiV1ExportTemplatesResponse400 | getApiV1ExportTemplatesResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1ExportTemplatesResponse = (getApiV1ExportTemplatesResponseSuccess | getApiV1ExportTemplatesResponseError)
+
+export const getGetApiV1ExportTemplatesUrl = (params?: GetApiV1ExportTemplatesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/export-templates?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/export-templates`
+}
+
+export const getApiV1ExportTemplates = async (params?: GetApiV1ExportTemplatesParams, options?: RequestInit): Promise<getApiV1ExportTemplatesResponse> => {
+
+  const res = await fetch(getGetApiV1ExportTemplatesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ExportTemplatesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ExportTemplatesResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/export-templates.
+ * @summary Post Api V1 Export Templates
+ */
+export type postApiV1ExportTemplatesResponse201 = {
+  data: ExportTemplate
+  status: 201
+}
+
+export type postApiV1ExportTemplatesResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ExportTemplatesResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1ExportTemplatesResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ExportTemplatesResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ExportTemplatesResponseSuccess = (postApiV1ExportTemplatesResponse201) & {
+  headers: Headers;
+};
+export type postApiV1ExportTemplatesResponseError = (postApiV1ExportTemplatesResponse400 | postApiV1ExportTemplatesResponse401 | postApiV1ExportTemplatesResponse403 | postApiV1ExportTemplatesResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1ExportTemplatesResponse = (postApiV1ExportTemplatesResponseSuccess | postApiV1ExportTemplatesResponseError)
+
+export const getPostApiV1ExportTemplatesUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/export-templates`
+}
+
+export const postApiV1ExportTemplates = async (newExportTemplate: NewExportTemplate, options?: RequestInit): Promise<postApiV1ExportTemplatesResponse> => {
+
+  const res = await fetch(getPostApiV1ExportTemplatesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      newExportTemplate,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ExportTemplatesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ExportTemplatesResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/export-templates/{template_id}.
+ * @summary Get Api V1 Export Templates By Template Id
+ */
+export type getApiV1ExportTemplatesByTemplateIdResponse200 = {
+  data: ExportTemplate
+  status: 200
+}
+
+export type getApiV1ExportTemplatesByTemplateIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ExportTemplatesByTemplateIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ExportTemplatesByTemplateIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ExportTemplatesByTemplateIdResponseSuccess = (getApiV1ExportTemplatesByTemplateIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ExportTemplatesByTemplateIdResponseError = (getApiV1ExportTemplatesByTemplateIdResponse401 | getApiV1ExportTemplatesByTemplateIdResponse403 | getApiV1ExportTemplatesByTemplateIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ExportTemplatesByTemplateIdResponse = (getApiV1ExportTemplatesByTemplateIdResponseSuccess | getApiV1ExportTemplatesByTemplateIdResponseError)
+
+export const getGetApiV1ExportTemplatesByTemplateIdUrl = (templateId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/export-templates/${templateId}`
+}
+
+export const getApiV1ExportTemplatesByTemplateId = async (templateId: number, options?: RequestInit): Promise<getApiV1ExportTemplatesByTemplateIdResponse> => {
+
+  const res = await fetch(getGetApiV1ExportTemplatesByTemplateIdUrl(templateId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ExportTemplatesByTemplateIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ExportTemplatesByTemplateIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/export-templates/{template_id}.
+ * @summary Delete Api V1 Export Templates By Template Id
+ */
+export type deleteApiV1ExportTemplatesByTemplateIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1ExportTemplatesByTemplateIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1ExportTemplatesByTemplateIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1ExportTemplatesByTemplateIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1ExportTemplatesByTemplateIdResponseSuccess = (deleteApiV1ExportTemplatesByTemplateIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1ExportTemplatesByTemplateIdResponseError = (deleteApiV1ExportTemplatesByTemplateIdResponse401 | deleteApiV1ExportTemplatesByTemplateIdResponse403 | deleteApiV1ExportTemplatesByTemplateIdResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1ExportTemplatesByTemplateIdResponse = (deleteApiV1ExportTemplatesByTemplateIdResponseSuccess | deleteApiV1ExportTemplatesByTemplateIdResponseError)
+
+export const getDeleteApiV1ExportTemplatesByTemplateIdUrl = (templateId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/export-templates/${templateId}`
+}
+
+export const deleteApiV1ExportTemplatesByTemplateId = async (templateId: number, options?: RequestInit): Promise<deleteApiV1ExportTemplatesByTemplateIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1ExportTemplatesByTemplateIdUrl(templateId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1ExportTemplatesByTemplateIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1ExportTemplatesByTemplateIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/export-templates/{template_id}.
+ * @summary Patch Api V1 Export Templates By Template Id
+ */
+export type patchApiV1ExportTemplatesByTemplateIdResponse200 = {
+  data: ExportTemplate
+  status: 200
+}
+
+export type patchApiV1ExportTemplatesByTemplateIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1ExportTemplatesByTemplateIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1ExportTemplatesByTemplateIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1ExportTemplatesByTemplateIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1ExportTemplatesByTemplateIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1ExportTemplatesByTemplateIdResponseSuccess = (patchApiV1ExportTemplatesByTemplateIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1ExportTemplatesByTemplateIdResponseError = (patchApiV1ExportTemplatesByTemplateIdResponse400 | patchApiV1ExportTemplatesByTemplateIdResponse401 | patchApiV1ExportTemplatesByTemplateIdResponse403 | patchApiV1ExportTemplatesByTemplateIdResponse404 | patchApiV1ExportTemplatesByTemplateIdResponse409) & {
+  headers: Headers;
+};
+
+export type patchApiV1ExportTemplatesByTemplateIdResponse = (patchApiV1ExportTemplatesByTemplateIdResponseSuccess | patchApiV1ExportTemplatesByTemplateIdResponseError)
+
+export const getPatchApiV1ExportTemplatesByTemplateIdUrl = (templateId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/export-templates/${templateId}`
+}
+
+export const patchApiV1ExportTemplatesByTemplateId = async (templateId: number,
+    updateExportTemplate: UpdateExportTemplate, options?: RequestInit): Promise<patchApiV1ExportTemplatesByTemplateIdResponse> => {
+
+  const res = await fetch(getPatchApiV1ExportTemplatesByTemplateIdUrl(templateId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateExportTemplate,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1ExportTemplatesByTemplateIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1ExportTemplatesByTemplateIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/export-templates/{template_id}/events.
+ * @summary Get Api V1 Export Templates By Template Id Events
+ */
+export type getApiV1ExportTemplatesByTemplateIdEventsResponse200 = {
+  data: EventResponse[]
+  status: 200
+}
+
+export type getApiV1ExportTemplatesByTemplateIdEventsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ExportTemplatesByTemplateIdEventsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ExportTemplatesByTemplateIdEventsResponseSuccess = (getApiV1ExportTemplatesByTemplateIdEventsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ExportTemplatesByTemplateIdEventsResponseError = (getApiV1ExportTemplatesByTemplateIdEventsResponse400 | getApiV1ExportTemplatesByTemplateIdEventsResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1ExportTemplatesByTemplateIdEventsResponse = (getApiV1ExportTemplatesByTemplateIdEventsResponseSuccess | getApiV1ExportTemplatesByTemplateIdEventsResponseError)
+
+export const getGetApiV1ExportTemplatesByTemplateIdEventsUrl = (templateId: number,
+    params?: GetApiV1ExportTemplatesByTemplateIdEventsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/export-templates/${templateId}/events?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/export-templates/${templateId}/events`
+}
+
+export const getApiV1ExportTemplatesByTemplateIdEvents = async (templateId: number,
+    params?: GetApiV1ExportTemplatesByTemplateIdEventsParams, options?: RequestInit): Promise<getApiV1ExportTemplatesByTemplateIdEventsResponse> => {
+
+  const res = await fetch(getGetApiV1ExportTemplatesByTemplateIdEventsUrl(templateId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ExportTemplatesByTemplateIdEventsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ExportTemplatesByTemplateIdEventsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/export-templates/{template_id}/exports.
+ * @summary Post Api V1 Export Templates By Template Id Exports
+ */
+export type postApiV1ExportTemplatesByTemplateIdExportsResponse202 = {
+  data: TaskResponse
+  status: 202
+}
+
+export type postApiV1ExportTemplatesByTemplateIdExportsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ExportTemplatesByTemplateIdExportsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1ExportTemplatesByTemplateIdExportsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ExportTemplatesByTemplateIdExportsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1ExportTemplatesByTemplateIdExportsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ExportTemplatesByTemplateIdExportsResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1ExportTemplatesByTemplateIdExportsResponseSuccess = (postApiV1ExportTemplatesByTemplateIdExportsResponse202) & {
+  headers: Headers;
+};
+export type postApiV1ExportTemplatesByTemplateIdExportsResponseError = (postApiV1ExportTemplatesByTemplateIdExportsResponse400 | postApiV1ExportTemplatesByTemplateIdExportsResponse401 | postApiV1ExportTemplatesByTemplateIdExportsResponse403 | postApiV1ExportTemplatesByTemplateIdExportsResponse404 | postApiV1ExportTemplatesByTemplateIdExportsResponse409 | postApiV1ExportTemplatesByTemplateIdExportsResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1ExportTemplatesByTemplateIdExportsResponse = (postApiV1ExportTemplatesByTemplateIdExportsResponseSuccess | postApiV1ExportTemplatesByTemplateIdExportsResponseError)
+
+export const getPostApiV1ExportTemplatesByTemplateIdExportsUrl = (templateId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/export-templates/${templateId}/exports`
+}
+
+export const postApiV1ExportTemplatesByTemplateIdExports = async (templateId: number,
+    exportTemplateRunRequest: ExportTemplateRunRequest, options?: RequestInit): Promise<postApiV1ExportTemplatesByTemplateIdExportsResponse> => {
+
+  const res = await fetch(getPostApiV1ExportTemplatesByTemplateIdExportsUrl(templateId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      exportTemplateRunRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ExportTemplatesByTemplateIdExportsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ExportTemplatesByTemplateIdExportsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/export-templates/{template_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Export Templates By Template Id History
+ */
+export type getApiV1ExportTemplatesByTemplateIdHistoryResponse200 = {
+  data: HistoryResponseExportTemplateHistory[]
+  status: 200
+}
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryResponseSuccess = (getApiV1ExportTemplatesByTemplateIdHistoryResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ExportTemplatesByTemplateIdHistoryResponseError = (getApiV1ExportTemplatesByTemplateIdHistoryResponse401 | getApiV1ExportTemplatesByTemplateIdHistoryResponse403 | getApiV1ExportTemplatesByTemplateIdHistoryResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryResponse = (getApiV1ExportTemplatesByTemplateIdHistoryResponseSuccess | getApiV1ExportTemplatesByTemplateIdHistoryResponseError)
+
+export const getGetApiV1ExportTemplatesByTemplateIdHistoryUrl = (templateId: number,
+    params?: GetApiV1ExportTemplatesByTemplateIdHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/export-templates/${templateId}/history?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/export-templates/${templateId}/history`
+}
+
+export const getApiV1ExportTemplatesByTemplateIdHistory = async (templateId: number,
+    params?: GetApiV1ExportTemplatesByTemplateIdHistoryParams, options?: RequestInit): Promise<getApiV1ExportTemplatesByTemplateIdHistoryResponse> => {
+
+  const res = await fetch(getGetApiV1ExportTemplatesByTemplateIdHistoryUrl(templateId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ExportTemplatesByTemplateIdHistoryResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ExportTemplatesByTemplateIdHistoryResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/export-templates/{template_id}/history/as-of.
+ * @summary Get Api V1 Export Templates By Template Id History As Of
+ */
+export type getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse200 = {
+  data: HistoryResponseExportTemplateHistory
+  status: 200
+}
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponseSuccess = (getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponseError = (getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse400 | getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse401 | getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse403 | getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse = (getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponseSuccess | getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponseError)
+
+export const getGetApiV1ExportTemplatesByTemplateIdHistoryAsOfUrl = (templateId: number,
+    params: GetApiV1ExportTemplatesByTemplateIdHistoryAsOfParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/export-templates/${templateId}/history/as-of?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/export-templates/${templateId}/history/as-of`
+}
+
+export const getApiV1ExportTemplatesByTemplateIdHistoryAsOf = async (templateId: number,
+    params: GetApiV1ExportTemplatesByTemplateIdHistoryAsOfParams, options?: RequestInit): Promise<getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse> => {
+
+  const res = await fetch(getGetApiV1ExportTemplatesByTemplateIdHistoryAsOfUrl(templateId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ExportTemplatesByTemplateIdHistoryAsOfResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for POST /api/v1/exports.
+ * @summary Post Api V1 Exports
+ */
+export type postApiV1ExportsResponse202 = {
+  data: TaskResponse
+  status: 202
+}
+
+export type postApiV1ExportsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ExportsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1ExportsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ExportsResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1ExportsResponseSuccess = (postApiV1ExportsResponse202) & {
+  headers: Headers;
+};
+export type postApiV1ExportsResponseError = (postApiV1ExportsResponse400 | postApiV1ExportsResponse401 | postApiV1ExportsResponse409 | postApiV1ExportsResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1ExportsResponse = (postApiV1ExportsResponseSuccess | postApiV1ExportsResponseError)
+
+export const getPostApiV1ExportsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/exports`
+}
+
+export const postApiV1Exports = async (exportRequest: ExportRequest, options?: RequestInit): Promise<postApiV1ExportsResponse> => {
+
+  const res = await fetch(getPostApiV1ExportsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      exportRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ExportsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ExportsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/exports/{task_id}.
+ * @summary Get Api V1 Exports By Task Id
+ */
+export type getApiV1ExportsByTaskIdResponse200 = {
+  data: TaskResponse
+  status: 200
+}
+
+export type getApiV1ExportsByTaskIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ExportsByTaskIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ExportsByTaskIdResponseSuccess = (getApiV1ExportsByTaskIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ExportsByTaskIdResponseError = (getApiV1ExportsByTaskIdResponse401 | getApiV1ExportsByTaskIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ExportsByTaskIdResponse = (getApiV1ExportsByTaskIdResponseSuccess | getApiV1ExportsByTaskIdResponseError)
+
+export const getGetApiV1ExportsByTaskIdUrl = (taskId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/exports/${taskId}`
+}
+
+export const getApiV1ExportsByTaskId = async (taskId: number, options?: RequestInit): Promise<getApiV1ExportsByTaskIdResponse> => {
+
+  const res = await fetch(getGetApiV1ExportsByTaskIdUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ExportsByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ExportsByTaskIdResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/exports/{task_id}/output.
+ * @summary Get Api V1 Exports By Task Id Output
+ */
+export type getApiV1ExportsByTaskIdOutputResponse200ApplicationJson = {
+  data: ExportJsonResponse
+  status: 200
+}
+
+export type getApiV1ExportsByTaskIdOutputResponse200TextPlain = {
+  data: string
+  status: 200
+}
+
+export type getApiV1ExportsByTaskIdOutputResponse200TextHtml = {
+  data: string
+  status: 200
+}
+
+export type getApiV1ExportsByTaskIdOutputResponse200TextCsv = {
+  data: string
+  status: 200
+}
+
+export type getApiV1ExportsByTaskIdOutputResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ExportsByTaskIdOutputResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ExportsByTaskIdOutputResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
+export type getApiV1ExportsByTaskIdOutputResponseSuccess = (getApiV1ExportsByTaskIdOutputResponse200ApplicationJson | getApiV1ExportsByTaskIdOutputResponse200TextPlain | getApiV1ExportsByTaskIdOutputResponse200TextHtml | getApiV1ExportsByTaskIdOutputResponse200TextCsv) & {
+  headers: Headers;
+};
+export type getApiV1ExportsByTaskIdOutputResponseError = (getApiV1ExportsByTaskIdOutputResponse401 | getApiV1ExportsByTaskIdOutputResponse404 | getApiV1ExportsByTaskIdOutputResponse410) & {
+  headers: Headers;
+};
+
+export type getApiV1ExportsByTaskIdOutputResponse = (getApiV1ExportsByTaskIdOutputResponseSuccess | getApiV1ExportsByTaskIdOutputResponseError)
+
+export const getGetApiV1ExportsByTaskIdOutputUrl = (taskId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/exports/${taskId}/output`
+}
+
+export const getApiV1ExportsByTaskIdOutput = async (taskId: number, options?: RequestInit): Promise<getApiV1ExportsByTaskIdOutputResponse> => {
+
+  const res = await fetch(getGetApiV1ExportsByTaskIdOutputUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ExportsByTaskIdOutputResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ExportsByTaskIdOutputResponse
+}
+
 
 
 /**
@@ -3337,7 +5888,7 @@ export const getGetApiV1IamGroupsUrl = (params?: GetApiV1IamGroupsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -3349,22 +5900,22 @@ export const getGetApiV1IamGroupsUrl = (params?: GetApiV1IamGroupsParams,) => {
 }
 
 export const getApiV1IamGroups = async (params?: GetApiV1IamGroupsParams, options?: RequestInit): Promise<getApiV1IamGroupsResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamGroupsUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamGroupsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamGroupsResponse
 }
-  
+
 
 
 /**
@@ -3403,15 +5954,15 @@ export type postApiV1IamGroupsResponse = (postApiV1IamGroupsResponseSuccess | po
 export const getPostApiV1IamGroupsUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups`
 }
 
 export const postApiV1IamGroups = async (newGroup: NewGroup, options?: RequestInit): Promise<postApiV1IamGroupsResponse> => {
-  
+
   const res = await fetch(getPostApiV1IamGroupsUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -3421,11 +5972,11 @@ export const postApiV1IamGroups = async (newGroup: NewGroup, options?: RequestIn
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1IamGroupsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1IamGroupsResponse
 }
-  
+
 
 
 /**
@@ -3459,28 +6010,28 @@ export type getApiV1IamGroupsByGroupIdResponse = (getApiV1IamGroupsByGroupIdResp
 export const getGetApiV1IamGroupsByGroupIdUrl = (groupId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}`
 }
 
 export const getApiV1IamGroupsByGroupId = async (groupId: number, options?: RequestInit): Promise<getApiV1IamGroupsByGroupIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamGroupsByGroupIdUrl(groupId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamGroupsByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamGroupsByGroupIdResponse
 }
-  
+
 
 
 /**
@@ -3519,28 +6070,28 @@ export type deleteApiV1IamGroupsByGroupIdResponse = (deleteApiV1IamGroupsByGroup
 export const getDeleteApiV1IamGroupsByGroupIdUrl = (groupId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}`
 }
 
 export const deleteApiV1IamGroupsByGroupId = async (groupId: number, options?: RequestInit): Promise<deleteApiV1IamGroupsByGroupIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1IamGroupsByGroupIdUrl(groupId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1IamGroupsByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1IamGroupsByGroupIdResponse
 }
-  
+
 
 
 /**
@@ -3579,16 +6130,16 @@ export type patchApiV1IamGroupsByGroupIdResponse = (patchApiV1IamGroupsByGroupId
 export const getPatchApiV1IamGroupsByGroupIdUrl = (groupId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}`
 }
 
 export const patchApiV1IamGroupsByGroupId = async (groupId: number,
     updateGroup: UpdateGroup, options?: RequestInit): Promise<patchApiV1IamGroupsByGroupIdResponse> => {
-  
+
   const res = await fetch(getPatchApiV1IamGroupsByGroupIdUrl(groupId),
-  {      
+  {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -3598,11 +6149,11 @@ export const patchApiV1IamGroupsByGroupId = async (groupId: number,
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: patchApiV1IamGroupsByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1IamGroupsByGroupIdResponse
 }
-  
+
 
 
 /**
@@ -3638,7 +6189,7 @@ export const getGetApiV1IamGroupsByGroupIdEventsUrl = (groupId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -3651,22 +6202,22 @@ export const getGetApiV1IamGroupsByGroupIdEventsUrl = (groupId: number,
 
 export const getApiV1IamGroupsByGroupIdEvents = async (groupId: number,
     params?: GetApiV1IamGroupsByGroupIdEventsParams, options?: RequestInit): Promise<getApiV1IamGroupsByGroupIdEventsResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamGroupsByGroupIdEventsUrl(groupId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamGroupsByGroupIdEventsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamGroupsByGroupIdEventsResponse
 }
-  
+
 
 
 /**
@@ -3702,7 +6253,7 @@ export const getGetApiV1IamGroupsByGroupIdMembersUrl = (groupId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -3715,22 +6266,22 @@ export const getGetApiV1IamGroupsByGroupIdMembersUrl = (groupId: number,
 
 export const getApiV1IamGroupsByGroupIdMembers = async (groupId: number,
     params?: GetApiV1IamGroupsByGroupIdMembersParams, options?: RequestInit): Promise<getApiV1IamGroupsByGroupIdMembersResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamGroupsByGroupIdMembersUrl(groupId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamGroupsByGroupIdMembersResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamGroupsByGroupIdMembersResponse
 }
-  
+
 
 
 /**
@@ -3765,29 +6316,29 @@ export const getPostApiV1IamGroupsByGroupIdMembersByPrincipalIdUrl = (groupId: n
     principalId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members/${principalId}`
 }
 
 export const postApiV1IamGroupsByGroupIdMembersByPrincipalId = async (groupId: number,
     principalId: number, options?: RequestInit): Promise<postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse> => {
-  
+
   const res = await fetch(getPostApiV1IamGroupsByGroupIdMembersByPrincipalIdUrl(groupId,principalId),
-  {      
+  {
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse
 }
-  
+
 
 
 /**
@@ -3822,29 +6373,29 @@ export const getDeleteApiV1IamGroupsByGroupIdMembersByPrincipalIdUrl = (groupId:
     principalId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members/${principalId}`
 }
 
 export const deleteApiV1IamGroupsByGroupIdMembersByPrincipalId = async (groupId: number,
     principalId: number, options?: RequestInit): Promise<deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1IamGroupsByGroupIdMembersByPrincipalIdUrl(groupId,principalId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse
 }
-  
+
 
 
 /**
@@ -3873,28 +6424,28 @@ export type getApiV1IamMeResponse = (getApiV1IamMeResponseSuccess | getApiV1IamM
 export const getGetApiV1IamMeUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me`
 }
 
 export const getApiV1IamMe = async ( options?: RequestInit): Promise<getApiV1IamMeResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamMeUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamMeResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamMeResponse
 }
-  
+
 
 
 /**
@@ -3924,7 +6475,7 @@ export const getGetApiV1IamMeGroupsUrl = (params?: GetApiV1IamMeGroupsParams,) =
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -3936,22 +6487,22 @@ export const getGetApiV1IamMeGroupsUrl = (params?: GetApiV1IamMeGroupsParams,) =
 }
 
 export const getApiV1IamMeGroups = async (params?: GetApiV1IamMeGroupsParams, options?: RequestInit): Promise<getApiV1IamMeGroupsResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamMeGroupsUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamMeGroupsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamMeGroupsResponse
 }
-  
+
 
 
 /**
@@ -3959,7 +6510,7 @@ export const getApiV1IamMeGroups = async (params?: GetApiV1IamMeGroupsParams, op
  * @summary Get Api V1 Iam Me Permissions
  */
 export type getApiV1IamMePermissionsResponse200 = {
-  data: PrincipalNamespacePermissions[]
+  data: PrincipalCollectionPermissions[]
   status: 200
 }
 
@@ -3980,28 +6531,28 @@ export type getApiV1IamMePermissionsResponse = (getApiV1IamMePermissionsResponse
 export const getGetApiV1IamMePermissionsUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/permissions`
 }
 
 export const getApiV1IamMePermissions = async ( options?: RequestInit): Promise<getApiV1IamMePermissionsResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamMePermissionsUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamMePermissionsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamMePermissionsResponse
 }
-  
+
 
 
 /**
@@ -4036,7 +6587,7 @@ export const getGetApiV1IamMeTokensUrl = (params?: GetApiV1IamMeTokensParams,) =
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -4048,22 +6599,22 @@ export const getGetApiV1IamMeTokensUrl = (params?: GetApiV1IamMeTokensParams,) =
 }
 
 export const getApiV1IamMeTokens = async (params?: GetApiV1IamMeTokensParams, options?: RequestInit): Promise<getApiV1IamMeTokensResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamMeTokensUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamMeTokensResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamMeTokensResponse
 }
-  
+
 
 
 /**
@@ -4099,7 +6650,7 @@ export const getGetApiV1IamPrincipalsByPrincipalIdGroupsUrl = (principalId: numb
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -4112,22 +6663,22 @@ export const getGetApiV1IamPrincipalsByPrincipalIdGroupsUrl = (principalId: numb
 
 export const getApiV1IamPrincipalsByPrincipalIdGroups = async (principalId: number,
     params?: GetApiV1IamPrincipalsByPrincipalIdGroupsParams, options?: RequestInit): Promise<getApiV1IamPrincipalsByPrincipalIdGroupsResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamPrincipalsByPrincipalIdGroupsUrl(principalId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamPrincipalsByPrincipalIdGroupsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamPrincipalsByPrincipalIdGroupsResponse
 }
-  
+
 
 
 /**
@@ -4135,7 +6686,7 @@ export const getApiV1IamPrincipalsByPrincipalIdGroups = async (principalId: numb
  * @summary Get Api V1 Iam Principals By Principal Id Permissions
  */
 export type getApiV1IamPrincipalsByPrincipalIdPermissionsResponse200 = {
-  data: PrincipalNamespacePermissions[]
+  data: PrincipalCollectionPermissions[]
   status: 200
 }
 
@@ -4161,28 +6712,28 @@ export type getApiV1IamPrincipalsByPrincipalIdPermissionsResponse = (getApiV1Iam
 export const getGetApiV1IamPrincipalsByPrincipalIdPermissionsUrl = (principalId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/permissions`
 }
 
 export const getApiV1IamPrincipalsByPrincipalIdPermissions = async (principalId: number, options?: RequestInit): Promise<getApiV1IamPrincipalsByPrincipalIdPermissionsResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamPrincipalsByPrincipalIdPermissionsUrl(principalId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamPrincipalsByPrincipalIdPermissionsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamPrincipalsByPrincipalIdPermissionsResponse
 }
-  
+
 
 
 /**
@@ -4218,7 +6769,7 @@ export const getGetApiV1IamPrincipalsByPrincipalIdTokensUrl = (principalId: numb
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -4231,22 +6782,22 @@ export const getGetApiV1IamPrincipalsByPrincipalIdTokensUrl = (principalId: numb
 
 export const getApiV1IamPrincipalsByPrincipalIdTokens = async (principalId: number,
     params?: GetApiV1IamPrincipalsByPrincipalIdTokensParams, options?: RequestInit): Promise<getApiV1IamPrincipalsByPrincipalIdTokensResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamPrincipalsByPrincipalIdTokensUrl(principalId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamPrincipalsByPrincipalIdTokensResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamPrincipalsByPrincipalIdTokensResponse
 }
-  
+
 
 
 /**
@@ -4290,16 +6841,16 @@ export type postApiV1IamPrincipalsByPrincipalIdTokensResponse = (postApiV1IamPri
 export const getPostApiV1IamPrincipalsByPrincipalIdTokensUrl = (principalId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/tokens`
 }
 
 export const postApiV1IamPrincipalsByPrincipalIdTokens = async (principalId: number,
     newTokenRequest: NewTokenRequest, options?: RequestInit): Promise<postApiV1IamPrincipalsByPrincipalIdTokensResponse> => {
-  
+
   const res = await fetch(getPostApiV1IamPrincipalsByPrincipalIdTokensUrl(principalId),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -4309,11 +6860,11 @@ export const postApiV1IamPrincipalsByPrincipalIdTokens = async (principalId: num
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1IamPrincipalsByPrincipalIdTokensResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1IamPrincipalsByPrincipalIdTokensResponse
 }
-  
+
 
 
 /**
@@ -4353,29 +6904,29 @@ export const getPostApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeUrl = (p
     tokenId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/tokens/${tokenId}/revoke`
 }
 
 export const postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevoke = async (principalId: number,
     tokenId: number, options?: RequestInit): Promise<postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse> => {
-  
+
   const res = await fetch(getPostApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeUrl(principalId,tokenId),
-  {      
+  {
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse
 }
-  
+
 
 
 /**
@@ -4405,7 +6956,7 @@ export const getGetApiV1IamServiceAccountsUrl = (params?: GetApiV1IamServiceAcco
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -4417,22 +6968,22 @@ export const getGetApiV1IamServiceAccountsUrl = (params?: GetApiV1IamServiceAcco
 }
 
 export const getApiV1IamServiceAccounts = async (params?: GetApiV1IamServiceAccountsParams, options?: RequestInit): Promise<getApiV1IamServiceAccountsResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamServiceAccountsUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamServiceAccountsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamServiceAccountsResponse
 }
-  
+
 
 
 /**
@@ -4476,15 +7027,15 @@ export type postApiV1IamServiceAccountsResponse = (postApiV1IamServiceAccountsRe
 export const getPostApiV1IamServiceAccountsUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts`
 }
 
 export const postApiV1IamServiceAccounts = async (newServiceAccount: NewServiceAccount, options?: RequestInit): Promise<postApiV1IamServiceAccountsResponse> => {
-  
+
   const res = await fetch(getPostApiV1IamServiceAccountsUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -4494,11 +7045,11 @@ export const postApiV1IamServiceAccounts = async (newServiceAccount: NewServiceA
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1IamServiceAccountsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1IamServiceAccountsResponse
 }
-  
+
 
 
 /**
@@ -4537,28 +7088,28 @@ export type getApiV1IamServiceAccountsByServiceAccountIdResponse = (getApiV1IamS
 export const getGetApiV1IamServiceAccountsByServiceAccountIdUrl = (serviceAccountId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts/${serviceAccountId}`
 }
 
 export const getApiV1IamServiceAccountsByServiceAccountId = async (serviceAccountId: number, options?: RequestInit): Promise<getApiV1IamServiceAccountsByServiceAccountIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamServiceAccountsByServiceAccountIdUrl(serviceAccountId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamServiceAccountsByServiceAccountIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamServiceAccountsByServiceAccountIdResponse
 }
-  
+
 
 
 /**
@@ -4597,28 +7148,28 @@ export type deleteApiV1IamServiceAccountsByServiceAccountIdResponse = (deleteApi
 export const getDeleteApiV1IamServiceAccountsByServiceAccountIdUrl = (serviceAccountId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts/${serviceAccountId}`
 }
 
 export const deleteApiV1IamServiceAccountsByServiceAccountId = async (serviceAccountId: number, options?: RequestInit): Promise<deleteApiV1IamServiceAccountsByServiceAccountIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1IamServiceAccountsByServiceAccountIdUrl(serviceAccountId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1IamServiceAccountsByServiceAccountIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1IamServiceAccountsByServiceAccountIdResponse
 }
-  
+
 
 
 /**
@@ -4657,16 +7208,16 @@ export type patchApiV1IamServiceAccountsByServiceAccountIdResponse = (patchApiV1
 export const getPatchApiV1IamServiceAccountsByServiceAccountIdUrl = (serviceAccountId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts/${serviceAccountId}`
 }
 
 export const patchApiV1IamServiceAccountsByServiceAccountId = async (serviceAccountId: number,
     updateServiceAccount: UpdateServiceAccount, options?: RequestInit): Promise<patchApiV1IamServiceAccountsByServiceAccountIdResponse> => {
-  
+
   const res = await fetch(getPatchApiV1IamServiceAccountsByServiceAccountIdUrl(serviceAccountId),
-  {      
+  {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -4676,11 +7227,11 @@ export const patchApiV1IamServiceAccountsByServiceAccountId = async (serviceAcco
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: patchApiV1IamServiceAccountsByServiceAccountIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1IamServiceAccountsByServiceAccountIdResponse
 }
-  
+
 
 
 /**
@@ -4719,28 +7270,28 @@ export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponse = (post
 export const getPostApiV1IamServiceAccountsByServiceAccountIdDisableUrl = (serviceAccountId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/service-accounts/${serviceAccountId}/disable`
 }
 
 export const postApiV1IamServiceAccountsByServiceAccountIdDisable = async (serviceAccountId: number, options?: RequestInit): Promise<postApiV1IamServiceAccountsByServiceAccountIdDisableResponse> => {
-  
+
   const res = await fetch(getPostApiV1IamServiceAccountsByServiceAccountIdDisableUrl(serviceAccountId),
-  {      
+  {
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1IamServiceAccountsByServiceAccountIdDisableResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1IamServiceAccountsByServiceAccountIdDisableResponse
 }
-  
+
 
 
 /**
@@ -4780,7 +7331,7 @@ export const getGetApiV1IamUsersUrl = (params?: GetApiV1IamUsersParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -4792,22 +7343,22 @@ export const getGetApiV1IamUsersUrl = (params?: GetApiV1IamUsersParams,) => {
 }
 
 export const getApiV1IamUsers = async (params?: GetApiV1IamUsersParams, options?: RequestInit): Promise<getApiV1IamUsersResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamUsersUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamUsersResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamUsersResponse
 }
-  
+
 
 
 /**
@@ -4846,15 +7397,15 @@ export type postApiV1IamUsersResponse = (postApiV1IamUsersResponseSuccess | post
 export const getPostApiV1IamUsersUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/users`
 }
 
 export const postApiV1IamUsers = async (newUser: NewUser, options?: RequestInit): Promise<postApiV1IamUsersResponse> => {
-  
+
   const res = await fetch(getPostApiV1IamUsersUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -4864,11 +7415,11 @@ export const postApiV1IamUsers = async (newUser: NewUser, options?: RequestInit)
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1IamUsersResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1IamUsersResponse
 }
-  
+
 
 
 /**
@@ -4907,28 +7458,28 @@ export type getApiV1IamUsersByUserIdResponse = (getApiV1IamUsersByUserIdResponse
 export const getGetApiV1IamUsersByUserIdUrl = (userId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}`
 }
 
 export const getApiV1IamUsersByUserId = async (userId: number, options?: RequestInit): Promise<getApiV1IamUsersByUserIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamUsersByUserIdUrl(userId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamUsersByUserIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamUsersByUserIdResponse
 }
-  
+
 
 
 /**
@@ -4962,28 +7513,28 @@ export type deleteApiV1IamUsersByUserIdResponse = (deleteApiV1IamUsersByUserIdRe
 export const getDeleteApiV1IamUsersByUserIdUrl = (userId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}`
 }
 
 export const deleteApiV1IamUsersByUserId = async (userId: number, options?: RequestInit): Promise<deleteApiV1IamUsersByUserIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1IamUsersByUserIdUrl(userId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1IamUsersByUserIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1IamUsersByUserIdResponse
 }
-  
+
 
 
 /**
@@ -5022,16 +7573,16 @@ export type patchApiV1IamUsersByUserIdResponse = (patchApiV1IamUsersByUserIdResp
 export const getPatchApiV1IamUsersByUserIdUrl = (userId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}`
 }
 
 export const patchApiV1IamUsersByUserId = async (userId: number,
     updateUser: UpdateUser, options?: RequestInit): Promise<patchApiV1IamUsersByUserIdResponse> => {
-  
+
   const res = await fetch(getPatchApiV1IamUsersByUserIdUrl(userId),
-  {      
+  {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -5041,11 +7592,11 @@ export const patchApiV1IamUsersByUserId = async (userId: number,
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: patchApiV1IamUsersByUserIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1IamUsersByUserIdResponse
 }
-  
+
 
 
 /**
@@ -5084,28 +7635,28 @@ export type postApiV1IamUsersByUserIdAnonymizeResponse = (postApiV1IamUsersByUse
 export const getPostApiV1IamUsersByUserIdAnonymizeUrl = (userId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/iam/users/${userId}/anonymize`
 }
 
 export const postApiV1IamUsersByUserIdAnonymize = async (userId: number, options?: RequestInit): Promise<postApiV1IamUsersByUserIdAnonymizeResponse> => {
-  
+
   const res = await fetch(getPostApiV1IamUsersByUserIdAnonymizeUrl(userId),
-  {      
+  {
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1IamUsersByUserIdAnonymizeResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1IamUsersByUserIdAnonymizeResponse
 }
-  
+
 
 
 /**
@@ -5141,7 +7692,7 @@ export const getGetApiV1IamUsersByUserIdEventsUrl = (userId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -5154,22 +7705,22 @@ export const getGetApiV1IamUsersByUserIdEventsUrl = (userId: number,
 
 export const getApiV1IamUsersByUserIdEvents = async (userId: number,
     params?: GetApiV1IamUsersByUserIdEventsParams, options?: RequestInit): Promise<getApiV1IamUsersByUserIdEventsResponse> => {
-  
+
   const res = await fetch(getGetApiV1IamUsersByUserIdEventsUrl(userId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1IamUsersByUserIdEventsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamUsersByUserIdEventsResponse
 }
-  
+
 
 
 /**
@@ -5208,15 +7759,15 @@ export type postApiV1ImportsResponse = (postApiV1ImportsResponseSuccess | postAp
 export const getPostApiV1ImportsUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/imports`
 }
 
 export const postApiV1Imports = async (importRequest: ImportRequest, options?: RequestInit): Promise<postApiV1ImportsResponse> => {
-  
+
   const res = await fetch(getPostApiV1ImportsUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -5226,11 +7777,11 @@ export const postApiV1Imports = async (importRequest: ImportRequest, options?: R
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1ImportsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1ImportsResponse
 }
-  
+
 
 
 /**
@@ -5269,28 +7820,28 @@ export type getApiV1ImportsByTaskIdResponse = (getApiV1ImportsByTaskIdResponseSu
 export const getGetApiV1ImportsByTaskIdUrl = (taskId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/imports/${taskId}`
 }
 
 export const getApiV1ImportsByTaskId = async (taskId: number, options?: RequestInit): Promise<getApiV1ImportsByTaskIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1ImportsByTaskIdUrl(taskId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ImportsByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ImportsByTaskIdResponse
 }
-  
+
 
 
 /**
@@ -5329,1481 +7880,28 @@ export type getApiV1ImportsByTaskIdResultsResponse = (getApiV1ImportsByTaskIdRes
 export const getGetApiV1ImportsByTaskIdResultsUrl = (taskId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/imports/${taskId}/results`
 }
 
 export const getApiV1ImportsByTaskIdResults = async (taskId: number, options?: RequestInit): Promise<getApiV1ImportsByTaskIdResultsResponse> => {
-  
+
   const res = await fetch(getGetApiV1ImportsByTaskIdResultsUrl(taskId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1ImportsByTaskIdResultsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ImportsByTaskIdResultsResponse
 }
-  
 
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary Get Api V1 Namespaces
- */
-export type getApiV1NamespacesResponse200 = {
-  data: Namespace[]
-  status: 200
-}
-
-export type getApiV1NamespacesResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type getApiV1NamespacesResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesResponseSuccess = (getApiV1NamespacesResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesResponseError = (getApiV1NamespacesResponse400 | getApiV1NamespacesResponse401) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesResponse = (getApiV1NamespacesResponseSuccess | getApiV1NamespacesResponseError)
-
-export const getGetApiV1NamespacesUrl = (params?: GetApiV1NamespacesParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces`
-}
-
-export const getApiV1Namespaces = async (params?: GetApiV1NamespacesParams, options?: RequestInit): Promise<getApiV1NamespacesResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesUrl(params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for POST /api/v1/namespaces.
- * @summary Post Api V1 Namespaces
- */
-export type postApiV1NamespacesResponse201 = {
-  data: Namespace
-  status: 201
-}
-
-export type postApiV1NamespacesResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type postApiV1NamespacesResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type postApiV1NamespacesResponse409 = {
-  data: ApiErrorResponse
-  status: 409
-}
-
-export type postApiV1NamespacesResponseSuccess = (postApiV1NamespacesResponse201) & {
-  headers: Headers;
-};
-export type postApiV1NamespacesResponseError = (postApiV1NamespacesResponse400 | postApiV1NamespacesResponse401 | postApiV1NamespacesResponse409) & {
-  headers: Headers;
-};
-
-export type postApiV1NamespacesResponse = (postApiV1NamespacesResponseSuccess | postApiV1NamespacesResponseError)
-
-export const getPostApiV1NamespacesUrl = () => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces`
-}
-
-export const postApiV1Namespaces = async (newNamespaceWithAssignee: NewNamespaceWithAssignee, options?: RequestInit): Promise<postApiV1NamespacesResponse> => {
-  
-  const res = await fetch(getPostApiV1NamespacesUrl(),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      newNamespaceWithAssignee,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: postApiV1NamespacesResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as postApiV1NamespacesResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}.
- * @summary Get Api V1 Namespaces By Namespace Id
- */
-export type getApiV1NamespacesByNamespaceIdResponse200 = {
-  data: Namespace
-  status: 200
-}
-
-export type getApiV1NamespacesByNamespaceIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesByNamespaceIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1NamespacesByNamespaceIdResponseSuccess = (getApiV1NamespacesByNamespaceIdResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdResponseError = (getApiV1NamespacesByNamespaceIdResponse401 | getApiV1NamespacesByNamespaceIdResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdResponse = (getApiV1NamespacesByNamespaceIdResponseSuccess | getApiV1NamespacesByNamespaceIdResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdUrl = (namespaceId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}`
-}
-
-export const getApiV1NamespacesByNamespaceId = async (namespaceId: number, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdUrl(namespaceId),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for DELETE /api/v1/namespaces/{namespace_id}.
- * @summary Delete Api V1 Namespaces By Namespace Id
- */
-export type deleteApiV1NamespacesByNamespaceIdResponse204 = {
-  data: void
-  status: 204
-}
-
-export type deleteApiV1NamespacesByNamespaceIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type deleteApiV1NamespacesByNamespaceIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type deleteApiV1NamespacesByNamespaceIdResponseSuccess = (deleteApiV1NamespacesByNamespaceIdResponse204) & {
-  headers: Headers;
-};
-export type deleteApiV1NamespacesByNamespaceIdResponseError = (deleteApiV1NamespacesByNamespaceIdResponse401 | deleteApiV1NamespacesByNamespaceIdResponse404) & {
-  headers: Headers;
-};
-
-export type deleteApiV1NamespacesByNamespaceIdResponse = (deleteApiV1NamespacesByNamespaceIdResponseSuccess | deleteApiV1NamespacesByNamespaceIdResponseError)
-
-export const getDeleteApiV1NamespacesByNamespaceIdUrl = (namespaceId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}`
-}
-
-export const deleteApiV1NamespacesByNamespaceId = async (namespaceId: number, options?: RequestInit): Promise<deleteApiV1NamespacesByNamespaceIdResponse> => {
-  
-  const res = await fetch(getDeleteApiV1NamespacesByNamespaceIdUrl(namespaceId),
-  {      
-    ...options,
-    method: 'DELETE'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: deleteApiV1NamespacesByNamespaceIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as deleteApiV1NamespacesByNamespaceIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for PATCH /api/v1/namespaces/{namespace_id}.
- * @summary Patch Api V1 Namespaces By Namespace Id
- */
-export type patchApiV1NamespacesByNamespaceIdResponse202 = {
-  data: Namespace
-  status: 202
-}
-
-export type patchApiV1NamespacesByNamespaceIdResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type patchApiV1NamespacesByNamespaceIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type patchApiV1NamespacesByNamespaceIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type patchApiV1NamespacesByNamespaceIdResponseSuccess = (patchApiV1NamespacesByNamespaceIdResponse202) & {
-  headers: Headers;
-};
-export type patchApiV1NamespacesByNamespaceIdResponseError = (patchApiV1NamespacesByNamespaceIdResponse400 | patchApiV1NamespacesByNamespaceIdResponse401 | patchApiV1NamespacesByNamespaceIdResponse404) & {
-  headers: Headers;
-};
-
-export type patchApiV1NamespacesByNamespaceIdResponse = (patchApiV1NamespacesByNamespaceIdResponseSuccess | patchApiV1NamespacesByNamespaceIdResponseError)
-
-export const getPatchApiV1NamespacesByNamespaceIdUrl = (namespaceId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}`
-}
-
-export const patchApiV1NamespacesByNamespaceId = async (namespaceId: number,
-    updateNamespace: UpdateNamespace, options?: RequestInit): Promise<patchApiV1NamespacesByNamespaceIdResponse> => {
-  
-  const res = await fetch(getPatchApiV1NamespacesByNamespaceIdUrl(namespaceId),
-  {      
-    ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      updateNamespace,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: patchApiV1NamespacesByNamespaceIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as patchApiV1NamespacesByNamespaceIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/event-subscriptions.
- * @summary Get Api V1 Namespaces By Namespace Id Event Subscriptions
- */
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse200 = {
-  data: EventSubscription[]
-  status: 200
-}
-
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsResponseSuccess = (getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsResponseError = (getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse400 | getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse401 | getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse403) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse = (getApiV1NamespacesByNamespaceIdEventSubscriptionsResponseSuccess | getApiV1NamespacesByNamespaceIdEventSubscriptionsResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdEventSubscriptionsUrl = (namespaceId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/event-subscriptions`
-}
-
-export const getApiV1NamespacesByNamespaceIdEventSubscriptions = async (namespaceId: number, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdEventSubscriptionsUrl(namespaceId),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdEventSubscriptionsResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for POST /api/v1/namespaces/{namespace_id}/event-subscriptions.
- * @summary Post Api V1 Namespaces By Namespace Id Event Subscriptions
- */
-export type postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse201 = {
-  data: EventSubscription
-  status: 201
-}
-
-export type postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse409 = {
-  data: ApiErrorResponse
-  status: 409
-}
-
-export type postApiV1NamespacesByNamespaceIdEventSubscriptionsResponseSuccess = (postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse201) & {
-  headers: Headers;
-};
-export type postApiV1NamespacesByNamespaceIdEventSubscriptionsResponseError = (postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse400 | postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse401 | postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse403 | postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse404 | postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse409) & {
-  headers: Headers;
-};
-
-export type postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse = (postApiV1NamespacesByNamespaceIdEventSubscriptionsResponseSuccess | postApiV1NamespacesByNamespaceIdEventSubscriptionsResponseError)
-
-export const getPostApiV1NamespacesByNamespaceIdEventSubscriptionsUrl = (namespaceId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/event-subscriptions`
-}
-
-export const postApiV1NamespacesByNamespaceIdEventSubscriptions = async (namespaceId: number,
-    newEventSubscription: NewEventSubscription, options?: RequestInit): Promise<postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse> => {
-  
-  const res = await fetch(getPostApiV1NamespacesByNamespaceIdEventSubscriptionsUrl(namespaceId),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      newEventSubscription,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as postApiV1NamespacesByNamespaceIdEventSubscriptionsResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/event-subscriptions/{subscription_id}.
- * @summary Get Api V1 Namespaces By Namespace Id Event Subscriptions By Subscription Id
- */
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse200 = {
-  data: EventSubscription
-  status: 200
-}
-
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseSuccess = (getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseError = (getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse401 | getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse403 | getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse = (getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseSuccess | getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdUrl = (namespaceId: number,
-    subscriptionId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/event-subscriptions/${subscriptionId}`
-}
-
-export const getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionId = async (namespaceId: number,
-    subscriptionId: number, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdUrl(namespaceId,subscriptionId),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for DELETE /api/v1/namespaces/{namespace_id}/event-subscriptions/{subscription_id}.
- * @summary Delete Api V1 Namespaces By Namespace Id Event Subscriptions By Subscription Id
- */
-export type deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse204 = {
-  data: void
-  status: 204
-}
-
-export type deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseSuccess = (deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse204) & {
-  headers: Headers;
-};
-export type deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseError = (deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse401 | deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse403 | deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse404) & {
-  headers: Headers;
-};
-
-export type deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse = (deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseSuccess | deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseError)
-
-export const getDeleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdUrl = (namespaceId: number,
-    subscriptionId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/event-subscriptions/${subscriptionId}`
-}
-
-export const deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionId = async (namespaceId: number,
-    subscriptionId: number, options?: RequestInit): Promise<deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse> => {
-  
-  const res = await fetch(getDeleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdUrl(namespaceId,subscriptionId),
-  {      
-    ...options,
-    method: 'DELETE'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for PATCH /api/v1/namespaces/{namespace_id}/event-subscriptions/{subscription_id}.
- * @summary Patch Api V1 Namespaces By Namespace Id Event Subscriptions By Subscription Id
- */
-export type patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse200 = {
-  data: EventSubscription
-  status: 200
-}
-
-export type patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse409 = {
-  data: ApiErrorResponse
-  status: 409
-}
-
-export type patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseSuccess = (patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse200) & {
-  headers: Headers;
-};
-export type patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseError = (patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse400 | patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse401 | patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse403 | patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse404 | patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse409) & {
-  headers: Headers;
-};
-
-export type patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse = (patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseSuccess | patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponseError)
-
-export const getPatchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdUrl = (namespaceId: number,
-    subscriptionId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/event-subscriptions/${subscriptionId}`
-}
-
-export const patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionId = async (namespaceId: number,
-    subscriptionId: number,
-    updateEventSubscription: UpdateEventSubscription, options?: RequestInit): Promise<patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse> => {
-  
-  const res = await fetch(getPatchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdUrl(namespaceId,subscriptionId),
-  {      
-    ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      updateEventSubscription,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/events.
- * @summary Get Api V1 Namespaces By Namespace Id Events
- */
-export type getApiV1NamespacesByNamespaceIdEventsResponse200 = {
-  data: EventResponse[]
-  status: 200
-}
-
-export type getApiV1NamespacesByNamespaceIdEventsResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type getApiV1NamespacesByNamespaceIdEventsResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesByNamespaceIdEventsResponseSuccess = (getApiV1NamespacesByNamespaceIdEventsResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdEventsResponseError = (getApiV1NamespacesByNamespaceIdEventsResponse400 | getApiV1NamespacesByNamespaceIdEventsResponse401) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdEventsResponse = (getApiV1NamespacesByNamespaceIdEventsResponseSuccess | getApiV1NamespacesByNamespaceIdEventsResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdEventsUrl = (namespaceId: number,
-    params?: GetApiV1NamespacesByNamespaceIdEventsParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/events?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/events`
-}
-
-export const getApiV1NamespacesByNamespaceIdEvents = async (namespaceId: number,
-    params?: GetApiV1NamespacesByNamespaceIdEventsParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdEventsResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdEventsUrl(namespaceId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdEventsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdEventsResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/has_permissions/{permission}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary List all groups that have any permissions on a namespace
- */
-export type getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse200 = {
-  data: Group[]
-  status: 200
-}
-
-export type getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponseSuccess = (getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponseError = (getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse401 | getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse = (getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponseSuccess | getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionUrl = (namespaceId: number,
-    permission: Permissions,
-    params?: GetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/has_permissions/${permission}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/has_permissions/${permission}`
-}
-
-export const getApiV1NamespacesByNamespaceIdHasPermissionsByPermission = async (namespaceId: number,
-    permission: Permissions,
-    params?: GetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdHasPermissionsByPermissionUrl(namespaceId,permission,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdHasPermissionsByPermissionResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary Get Api V1 Namespaces By Namespace Id History
- */
-export type getApiV1NamespacesByNamespaceIdHistoryResponse200 = {
-  data: HistoryResponseNamespaceHistory[]
-  status: 200
-}
-
-export type getApiV1NamespacesByNamespaceIdHistoryResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesByNamespaceIdHistoryResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type getApiV1NamespacesByNamespaceIdHistoryResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1NamespacesByNamespaceIdHistoryResponseSuccess = (getApiV1NamespacesByNamespaceIdHistoryResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdHistoryResponseError = (getApiV1NamespacesByNamespaceIdHistoryResponse401 | getApiV1NamespacesByNamespaceIdHistoryResponse403 | getApiV1NamespacesByNamespaceIdHistoryResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdHistoryResponse = (getApiV1NamespacesByNamespaceIdHistoryResponseSuccess | getApiV1NamespacesByNamespaceIdHistoryResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdHistoryUrl = (namespaceId: number,
-    params?: GetApiV1NamespacesByNamespaceIdHistoryParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/history?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/history`
-}
-
-export const getApiV1NamespacesByNamespaceIdHistory = async (namespaceId: number,
-    params?: GetApiV1NamespacesByNamespaceIdHistoryParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdHistoryResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdHistoryUrl(namespaceId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdHistoryResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdHistoryResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/history/as-of.
- * @summary Get Api V1 Namespaces By Namespace Id History As Of
- */
-export type getApiV1NamespacesByNamespaceIdHistoryAsOfResponse200 = {
-  data: HistoryResponseNamespaceHistory
-  status: 200
-}
-
-export type getApiV1NamespacesByNamespaceIdHistoryAsOfResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type getApiV1NamespacesByNamespaceIdHistoryAsOfResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesByNamespaceIdHistoryAsOfResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type getApiV1NamespacesByNamespaceIdHistoryAsOfResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1NamespacesByNamespaceIdHistoryAsOfResponseSuccess = (getApiV1NamespacesByNamespaceIdHistoryAsOfResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdHistoryAsOfResponseError = (getApiV1NamespacesByNamespaceIdHistoryAsOfResponse400 | getApiV1NamespacesByNamespaceIdHistoryAsOfResponse401 | getApiV1NamespacesByNamespaceIdHistoryAsOfResponse403 | getApiV1NamespacesByNamespaceIdHistoryAsOfResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdHistoryAsOfResponse = (getApiV1NamespacesByNamespaceIdHistoryAsOfResponseSuccess | getApiV1NamespacesByNamespaceIdHistoryAsOfResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdHistoryAsOfUrl = (namespaceId: number,
-    params: GetApiV1NamespacesByNamespaceIdHistoryAsOfParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/history/as-of?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/history/as-of`
-}
-
-export const getApiV1NamespacesByNamespaceIdHistoryAsOf = async (namespaceId: number,
-    params: GetApiV1NamespacesByNamespaceIdHistoryAsOfParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdHistoryAsOfResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdHistoryAsOfUrl(namespaceId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdHistoryAsOfResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdHistoryAsOfResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary List all groups who have permissions for a namespace
- */
-export type getApiV1NamespacesByNamespaceIdPermissionsResponse200 = {
-  data: GroupPermission[]
-  status: 200
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsResponseSuccess = (getApiV1NamespacesByNamespaceIdPermissionsResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdPermissionsResponseError = (getApiV1NamespacesByNamespaceIdPermissionsResponse401 | getApiV1NamespacesByNamespaceIdPermissionsResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdPermissionsResponse = (getApiV1NamespacesByNamespaceIdPermissionsResponseSuccess | getApiV1NamespacesByNamespaceIdPermissionsResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdPermissionsUrl = (namespaceId: number,
-    params?: GetApiV1NamespacesByNamespaceIdPermissionsParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions`
-}
-
-export const getApiV1NamespacesByNamespaceIdPermissions = async (namespaceId: number,
-    params?: GetApiV1NamespacesByNamespaceIdPermissionsParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdPermissionsResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdPermissionsUrl(namespaceId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdPermissionsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdPermissionsResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions/group/{group_id}.
- * @summary List all permissions for a given group on a namespace
- */
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse200 = {
-  data: Permission
-  status: 200
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseSuccess = (getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseError = (getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse401 | getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse = (getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseSuccess | getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl = (namespaceId: number,
-    groupId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
-}
-
-export const getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId = async (namespaceId: number,
-    groupId: number, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl(namespaceId,groupId),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for PUT /api/v1/namespaces/{namespace_id}/permissions/group/{group_id}.
- * @summary Replace all permissions for a group on a namespace
-This removes any existing permissions and applies the new set.
- */
-export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse200 = {
-  data: void
-  status: 200
-}
-
-export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseSuccess = (putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse200) & {
-  headers: Headers;
-};
-export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseError = (putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse400 | putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse401 | putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse404) & {
-  headers: Headers;
-};
-
-export type putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse = (putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseSuccess | putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseError)
-
-export const getPutApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl = (namespaceId: number,
-    groupId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
-}
-
-export const putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId = async (namespaceId: number,
-    groupId: number,
-    permissions: Permissions[], options?: RequestInit): Promise<putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse> => {
-  
-  const res = await fetch(getPutApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl(namespaceId,groupId),
-  {      
-    ...options,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      permissions,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as putApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for POST /api/v1/namespaces/{namespace_id}/permissions/group/{group_id}.
- * @summary Post a permission set to a group on a namespace
-This will create a new entry if the group had no permissions,
-or add to the existing entry if it did.
-The body should be a JSON array of permissions:
-```json
-[
-  "CreateObject",
-  "ReadCollection"
-]
-```
- */
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse201 = {
-  data: void
-  status: 201
-}
-
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseSuccess = (postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse201) & {
-  headers: Headers;
-};
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseError = (postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse400 | postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse401 | postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse404) & {
-  headers: Headers;
-};
-
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse = (postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseSuccess | postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseError)
-
-export const getPostApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl = (namespaceId: number,
-    groupId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
-}
-
-export const postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId = async (namespaceId: number,
-    groupId: number,
-    permissions: Permissions[], options?: RequestInit): Promise<postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse> => {
-  
-  const res = await fetch(getPostApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl(namespaceId,groupId),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      permissions,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for DELETE /api/v1/namespaces/{namespace_id}/permissions/group/{group_id}.
- * @summary Revoke a permission set from a group on a namespace
- */
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse204 = {
-  data: void
-  status: 204
-}
-
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseSuccess = (deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse204) & {
-  headers: Headers;
-};
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseError = (deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse401 | deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse404) & {
-  headers: Headers;
-};
-
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse = (deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseSuccess | deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponseError)
-
-export const getDeleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl = (namespaceId: number,
-    groupId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}`
-}
-
-export const deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupId = async (namespaceId: number,
-    groupId: number, options?: RequestInit): Promise<deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse> => {
-  
-  const res = await fetch(getDeleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdUrl(namespaceId,groupId),
-  {      
-    ...options,
-    method: 'DELETE'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions/group/{group_id}/{permission}.
- * @summary Check a specific permission for a group on a namespace
- */
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse204 = {
-  data: void
-  status: 204
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseSuccess = (getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse204) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseError = (getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse = (getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseSuccess | getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionUrl = (namespaceId: number,
-    groupId: number,
-    permission: Permissions,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}/${permission}`
-}
-
-export const getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermission = async (namespaceId: number,
-    groupId: number,
-    permission: Permissions, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionUrl(namespaceId,groupId,permission),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for POST /api/v1/namespaces/{namespace_id}/permissions/group/{group_id}/{permission}.
- * @summary Grant a specific permission to a group on a namespace
-If the group previously had no permissions, a new entry is created
- */
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse201 = {
-  data: void
-  status: 201
-}
-
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseSuccess = (postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse201) & {
-  headers: Headers;
-};
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseError = (postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse401 | postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse404) & {
-  headers: Headers;
-};
-
-export type postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse = (postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseSuccess | postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseError)
-
-export const getPostApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionUrl = (namespaceId: number,
-    groupId: number,
-    permission: Permissions,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}/${permission}`
-}
-
-export const postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermission = async (namespaceId: number,
-    groupId: number,
-    permission: Permissions, options?: RequestInit): Promise<postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse> => {
-  
-  const res = await fetch(getPostApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionUrl(namespaceId,groupId,permission),
-  {      
-    ...options,
-    method: 'POST'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as postApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for DELETE /api/v1/namespaces/{namespace_id}/permissions/group/{group_id}/{permission}.
- * @summary Revoke a specific permission from a group on a namespace
- */
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse204 = {
-  data: void
-  status: 204
-}
-
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseSuccess = (deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse204) & {
-  headers: Headers;
-};
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseError = (deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse401 | deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse404) & {
-  headers: Headers;
-};
-
-export type deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse = (deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseSuccess | deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponseError)
-
-export const getDeleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionUrl = (namespaceId: number,
-    groupId: number,
-    permission: Permissions,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/group/${groupId}/${permission}`
-}
-
-export const deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermission = async (namespaceId: number,
-    groupId: number,
-    permission: Permissions, options?: RequestInit): Promise<deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse> => {
-  
-  const res = await fetch(getDeleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionUrl(namespaceId,groupId,permission),
-  {      
-    ...options,
-    method: 'DELETE'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as deleteApiV1NamespacesByNamespaceIdPermissionsGroupByGroupIdByPermissionResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/namespaces/{namespace_id}/permissions/principal/{principal_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary List all permissions for a principal on a namespace
- */
-export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse200 = {
-  data: GroupPermission[]
-  status: 200
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponseSuccess = (getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse200) & {
-  headers: Headers;
-};
-export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponseError = (getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse401 | getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse = (getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponseSuccess | getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponseError)
-
-export const getGetApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdUrl = (namespaceId: number,
-    principalId: number,
-    params?: GetApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/principal/${principalId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/namespaces/${namespaceId}/permissions/principal/${principalId}`
-}
-
-export const getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalId = async (namespaceId: number,
-    principalId: number,
-    params?: GetApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdParams, options?: RequestInit): Promise<getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse> => {
-  
-  const res = await fetch(getGetApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdUrl(namespaceId,principalId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1NamespacesByNamespaceIdPermissionsPrincipalByPrincipalIdResponse
-}
-  
 
 
 /**
@@ -6838,7 +7936,7 @@ export const getGetApiV1RelationsClassesUrl = (params?: GetApiV1RelationsClasses
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -6850,22 +7948,22 @@ export const getGetApiV1RelationsClassesUrl = (params?: GetApiV1RelationsClasses
 }
 
 export const getApiV1RelationsClasses = async (params?: GetApiV1RelationsClassesParams, options?: RequestInit): Promise<getApiV1RelationsClassesResponse> => {
-  
+
   const res = await fetch(getGetApiV1RelationsClassesUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1RelationsClassesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1RelationsClassesResponse
 }
-  
+
 
 
 /**
@@ -6904,15 +8002,15 @@ export type postApiV1RelationsClassesResponse = (postApiV1RelationsClassesRespon
 export const getPostApiV1RelationsClassesUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/relations/classes`
 }
 
 export const postApiV1RelationsClasses = async (newHubuumClassRelation: NewHubuumClassRelation, options?: RequestInit): Promise<postApiV1RelationsClassesResponse> => {
-  
+
   const res = await fetch(getPostApiV1RelationsClassesUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -6922,11 +8020,11 @@ export const postApiV1RelationsClasses = async (newHubuumClassRelation: NewHubuu
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1RelationsClassesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1RelationsClassesResponse
 }
-  
+
 
 
 /**
@@ -6960,28 +8058,28 @@ export type getApiV1RelationsClassesByRelationIdResponse = (getApiV1RelationsCla
 export const getGetApiV1RelationsClassesByRelationIdUrl = (relationId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/relations/classes/${relationId}`
 }
 
 export const getApiV1RelationsClassesByRelationId = async (relationId: number, options?: RequestInit): Promise<getApiV1RelationsClassesByRelationIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1RelationsClassesByRelationIdUrl(relationId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1RelationsClassesByRelationIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1RelationsClassesByRelationIdResponse
 }
-  
+
 
 
 /**
@@ -7015,28 +8113,28 @@ export type deleteApiV1RelationsClassesByRelationIdResponse = (deleteApiV1Relati
 export const getDeleteApiV1RelationsClassesByRelationIdUrl = (relationId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/relations/classes/${relationId}`
 }
 
 export const deleteApiV1RelationsClassesByRelationId = async (relationId: number, options?: RequestInit): Promise<deleteApiV1RelationsClassesByRelationIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1RelationsClassesByRelationIdUrl(relationId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1RelationsClassesByRelationIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1RelationsClassesByRelationIdResponse
 }
-  
+
 
 
 /**
@@ -7071,7 +8169,7 @@ export const getGetApiV1RelationsObjectsUrl = (params?: GetApiV1RelationsObjects
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -7083,22 +8181,22 @@ export const getGetApiV1RelationsObjectsUrl = (params?: GetApiV1RelationsObjects
 }
 
 export const getApiV1RelationsObjects = async (params?: GetApiV1RelationsObjectsParams, options?: RequestInit): Promise<getApiV1RelationsObjectsResponse> => {
-  
+
   const res = await fetch(getGetApiV1RelationsObjectsUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1RelationsObjectsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1RelationsObjectsResponse
 }
-  
+
 
 
 /**
@@ -7137,15 +8235,15 @@ export type postApiV1RelationsObjectsResponse = (postApiV1RelationsObjectsRespon
 export const getPostApiV1RelationsObjectsUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/relations/objects`
 }
 
 export const postApiV1RelationsObjects = async (newHubuumObjectRelation: NewHubuumObjectRelation, options?: RequestInit): Promise<postApiV1RelationsObjectsResponse> => {
-  
+
   const res = await fetch(getPostApiV1RelationsObjectsUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -7155,11 +8253,11 @@ export const postApiV1RelationsObjects = async (newHubuumObjectRelation: NewHubu
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1RelationsObjectsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1RelationsObjectsResponse
 }
-  
+
 
 
 /**
@@ -7193,28 +8291,28 @@ export type getApiV1RelationsObjectsByRelationIdResponse = (getApiV1RelationsObj
 export const getGetApiV1RelationsObjectsByRelationIdUrl = (relationId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/relations/objects/${relationId}`
 }
 
 export const getApiV1RelationsObjectsByRelationId = async (relationId: number, options?: RequestInit): Promise<getApiV1RelationsObjectsByRelationIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1RelationsObjectsByRelationIdUrl(relationId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1RelationsObjectsByRelationIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1RelationsObjectsByRelationIdResponse
 }
-  
+
 
 
 /**
@@ -7248,28 +8346,28 @@ export type deleteApiV1RelationsObjectsByRelationIdResponse = (deleteApiV1Relati
 export const getDeleteApiV1RelationsObjectsByRelationIdUrl = (relationId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/relations/objects/${relationId}`
 }
 
 export const deleteApiV1RelationsObjectsByRelationId = async (relationId: number, options?: RequestInit): Promise<deleteApiV1RelationsObjectsByRelationIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1RelationsObjectsByRelationIdUrl(relationId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1RelationsObjectsByRelationIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1RelationsObjectsByRelationIdResponse
 }
-  
+
 
 
 /**
@@ -7303,28 +8401,28 @@ export type getApiV1RemoteTargetsResponse = (getApiV1RemoteTargetsResponseSucces
 export const getGetApiV1RemoteTargetsUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets`
 }
 
 export const getApiV1RemoteTargets = async ( options?: RequestInit): Promise<getApiV1RemoteTargetsResponse> => {
-  
+
   const res = await fetch(getGetApiV1RemoteTargetsUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1RemoteTargetsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1RemoteTargetsResponse
 }
-  
+
 
 
 /**
@@ -7368,15 +8466,15 @@ export type postApiV1RemoteTargetsResponse = (postApiV1RemoteTargetsResponseSucc
 export const getPostApiV1RemoteTargetsUrl = () => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets`
 }
 
 export const postApiV1RemoteTargets = async (newRemoteTarget: NewRemoteTarget, options?: RequestInit): Promise<postApiV1RemoteTargetsResponse> => {
-  
+
   const res = await fetch(getPostApiV1RemoteTargetsUrl(),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -7386,11 +8484,11 @@ export const postApiV1RemoteTargets = async (newRemoteTarget: NewRemoteTarget, o
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1RemoteTargetsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1RemoteTargetsResponse
 }
-  
+
 
 
 /**
@@ -7431,7 +8529,7 @@ export const getGetApiV1RemoteTargetsByRemoteTargetIdHistoryUrl = (remoteTargetI
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -7444,22 +8542,22 @@ export const getGetApiV1RemoteTargetsByRemoteTargetIdHistoryUrl = (remoteTargetI
 
 export const getApiV1RemoteTargetsByRemoteTargetIdHistory = async (remoteTargetId: number,
     params?: GetApiV1RemoteTargetsByRemoteTargetIdHistoryParams, options?: RequestInit): Promise<getApiV1RemoteTargetsByRemoteTargetIdHistoryResponse> => {
-  
+
   const res = await fetch(getGetApiV1RemoteTargetsByRemoteTargetIdHistoryUrl(remoteTargetId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1RemoteTargetsByRemoteTargetIdHistoryResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1RemoteTargetsByRemoteTargetIdHistoryResponse
 }
-  
+
 
 
 /**
@@ -7505,7 +8603,7 @@ export const getGetApiV1RemoteTargetsByRemoteTargetIdHistoryAsOfUrl = (remoteTar
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -7518,22 +8616,22 @@ export const getGetApiV1RemoteTargetsByRemoteTargetIdHistoryAsOfUrl = (remoteTar
 
 export const getApiV1RemoteTargetsByRemoteTargetIdHistoryAsOf = async (remoteTargetId: number,
     params: GetApiV1RemoteTargetsByRemoteTargetIdHistoryAsOfParams, options?: RequestInit): Promise<getApiV1RemoteTargetsByRemoteTargetIdHistoryAsOfResponse> => {
-  
+
   const res = await fetch(getGetApiV1RemoteTargetsByRemoteTargetIdHistoryAsOfUrl(remoteTargetId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1RemoteTargetsByRemoteTargetIdHistoryAsOfResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1RemoteTargetsByRemoteTargetIdHistoryAsOfResponse
 }
-  
+
 
 
 /**
@@ -7572,28 +8670,28 @@ export type getApiV1RemoteTargetsByTargetIdResponse = (getApiV1RemoteTargetsByTa
 export const getGetApiV1RemoteTargetsByTargetIdUrl = (targetId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets/${targetId}`
 }
 
 export const getApiV1RemoteTargetsByTargetId = async (targetId: number, options?: RequestInit): Promise<getApiV1RemoteTargetsByTargetIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1RemoteTargetsByTargetIdUrl(targetId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1RemoteTargetsByTargetIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1RemoteTargetsByTargetIdResponse
 }
-  
+
 
 
 /**
@@ -7632,28 +8730,28 @@ export type deleteApiV1RemoteTargetsByTargetIdResponse = (deleteApiV1RemoteTarge
 export const getDeleteApiV1RemoteTargetsByTargetIdUrl = (targetId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets/${targetId}`
 }
 
 export const deleteApiV1RemoteTargetsByTargetId = async (targetId: number, options?: RequestInit): Promise<deleteApiV1RemoteTargetsByTargetIdResponse> => {
-  
+
   const res = await fetch(getDeleteApiV1RemoteTargetsByTargetIdUrl(targetId),
-  {      
+  {
     ...options,
     method: 'DELETE'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: deleteApiV1RemoteTargetsByTargetIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1RemoteTargetsByTargetIdResponse
 }
-  
+
 
 
 /**
@@ -7702,16 +8800,16 @@ export type patchApiV1RemoteTargetsByTargetIdResponse = (patchApiV1RemoteTargets
 export const getPatchApiV1RemoteTargetsByTargetIdUrl = (targetId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets/${targetId}`
 }
 
 export const patchApiV1RemoteTargetsByTargetId = async (targetId: number,
     updateRemoteTarget: UpdateRemoteTarget, options?: RequestInit): Promise<patchApiV1RemoteTargetsByTargetIdResponse> => {
-  
+
   const res = await fetch(getPatchApiV1RemoteTargetsByTargetIdUrl(targetId),
-  {      
+  {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -7721,11 +8819,11 @@ export const patchApiV1RemoteTargetsByTargetId = async (targetId: number,
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: patchApiV1RemoteTargetsByTargetIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1RemoteTargetsByTargetIdResponse
 }
-  
+
 
 
 /**
@@ -7761,7 +8859,7 @@ export const getGetApiV1RemoteTargetsByTargetIdEventsUrl = (targetId: number,
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -7774,22 +8872,22 @@ export const getGetApiV1RemoteTargetsByTargetIdEventsUrl = (targetId: number,
 
 export const getApiV1RemoteTargetsByTargetIdEvents = async (targetId: number,
     params?: GetApiV1RemoteTargetsByTargetIdEventsParams, options?: RequestInit): Promise<getApiV1RemoteTargetsByTargetIdEventsResponse> => {
-  
+
   const res = await fetch(getGetApiV1RemoteTargetsByTargetIdEventsUrl(targetId,params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1RemoteTargetsByTargetIdEventsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1RemoteTargetsByTargetIdEventsResponse
 }
-  
+
 
 
 /**
@@ -7838,16 +8936,16 @@ export type postApiV1RemoteTargetsByTargetIdInvokeResponse = (postApiV1RemoteTar
 export const getPostApiV1RemoteTargetsByTargetIdInvokeUrl = (targetId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets/${targetId}/invoke`
 }
 
 export const postApiV1RemoteTargetsByTargetIdInvoke = async (targetId: number,
     remoteTargetInvokeRequest: RemoteTargetInvokeRequest, options?: RequestInit): Promise<postApiV1RemoteTargetsByTargetIdInvokeResponse> => {
-  
+
   const res = await fetch(getPostApiV1RemoteTargetsByTargetIdInvokeUrl(targetId),
-  {      
+  {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
@@ -7857,207 +8955,11 @@ export const postApiV1RemoteTargetsByTargetIdInvoke = async (targetId: number,
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: postApiV1RemoteTargetsByTargetIdInvokeResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1RemoteTargetsByTargetIdInvokeResponse
 }
-  
 
-
-/**
- * Auto-generated documentation for POST /api/v1/reports.
- * @summary Post Api V1 Reports
- */
-export type postApiV1ReportsResponse202 = {
-  data: TaskResponse
-  status: 202
-}
-
-export type postApiV1ReportsResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type postApiV1ReportsResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type postApiV1ReportsResponse409 = {
-  data: ApiErrorResponse
-  status: 409
-}
-
-export type postApiV1ReportsResponse429 = {
-  data: ApiErrorResponse
-  status: 429
-}
-
-export type postApiV1ReportsResponseSuccess = (postApiV1ReportsResponse202) & {
-  headers: Headers;
-};
-export type postApiV1ReportsResponseError = (postApiV1ReportsResponse400 | postApiV1ReportsResponse401 | postApiV1ReportsResponse409 | postApiV1ReportsResponse429) & {
-  headers: Headers;
-};
-
-export type postApiV1ReportsResponse = (postApiV1ReportsResponseSuccess | postApiV1ReportsResponseError)
-
-export const getPostApiV1ReportsUrl = () => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/reports`
-}
-
-export const postApiV1Reports = async (reportRequest: ReportRequest, options?: RequestInit): Promise<postApiV1ReportsResponse> => {
-  
-  const res = await fetch(getPostApiV1ReportsUrl(),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      reportRequest,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: postApiV1ReportsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as postApiV1ReportsResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/reports/{task_id}.
- * @summary Get Api V1 Reports By Task Id
- */
-export type getApiV1ReportsByTaskIdResponse200 = {
-  data: TaskResponse
-  status: 200
-}
-
-export type getApiV1ReportsByTaskIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1ReportsByTaskIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1ReportsByTaskIdResponseSuccess = (getApiV1ReportsByTaskIdResponse200) & {
-  headers: Headers;
-};
-export type getApiV1ReportsByTaskIdResponseError = (getApiV1ReportsByTaskIdResponse401 | getApiV1ReportsByTaskIdResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1ReportsByTaskIdResponse = (getApiV1ReportsByTaskIdResponseSuccess | getApiV1ReportsByTaskIdResponseError)
-
-export const getGetApiV1ReportsByTaskIdUrl = (taskId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/reports/${taskId}`
-}
-
-export const getApiV1ReportsByTaskId = async (taskId: number, options?: RequestInit): Promise<getApiV1ReportsByTaskIdResponse> => {
-  
-  const res = await fetch(getGetApiV1ReportsByTaskIdUrl(taskId),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1ReportsByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1ReportsByTaskIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/reports/{task_id}/output.
- * @summary Get Api V1 Reports By Task Id Output
- */
-export type getApiV1ReportsByTaskIdOutputResponse200ApplicationJson = {
-  data: ReportJsonResponse
-  status: 200
-}
-
-export type getApiV1ReportsByTaskIdOutputResponse200TextPlain = {
-  data: string
-  status: 200
-}
-
-export type getApiV1ReportsByTaskIdOutputResponse200TextHtml = {
-  data: string
-  status: 200
-}
-
-export type getApiV1ReportsByTaskIdOutputResponse200TextCsv = {
-  data: string
-  status: 200
-}
-
-export type getApiV1ReportsByTaskIdOutputResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1ReportsByTaskIdOutputResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1ReportsByTaskIdOutputResponse410 = {
-  data: ApiErrorResponse
-  status: 410
-}
-
-export type getApiV1ReportsByTaskIdOutputResponseSuccess = (getApiV1ReportsByTaskIdOutputResponse200ApplicationJson | getApiV1ReportsByTaskIdOutputResponse200TextPlain | getApiV1ReportsByTaskIdOutputResponse200TextHtml | getApiV1ReportsByTaskIdOutputResponse200TextCsv) & {
-  headers: Headers;
-};
-export type getApiV1ReportsByTaskIdOutputResponseError = (getApiV1ReportsByTaskIdOutputResponse401 | getApiV1ReportsByTaskIdOutputResponse404 | getApiV1ReportsByTaskIdOutputResponse410) & {
-  headers: Headers;
-};
-
-export type getApiV1ReportsByTaskIdOutputResponse = (getApiV1ReportsByTaskIdOutputResponseSuccess | getApiV1ReportsByTaskIdOutputResponseError)
-
-export const getGetApiV1ReportsByTaskIdOutputUrl = (taskId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/reports/${taskId}/output`
-}
-
-export const getApiV1ReportsByTaskIdOutput = async (taskId: number, options?: RequestInit): Promise<getApiV1ReportsByTaskIdOutputResponse> => {
-  
-  const res = await fetch(getGetApiV1ReportsByTaskIdOutputUrl(taskId),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1ReportsByTaskIdOutputResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1ReportsByTaskIdOutputResponse
-}
-  
 
 
 /**
@@ -8092,7 +8994,7 @@ export const getGetApiV1SearchUrl = (params: GetApiV1SearchParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -8104,22 +9006,22 @@ export const getGetApiV1SearchUrl = (params: GetApiV1SearchParams,) => {
 }
 
 export const getApiV1Search = async (params: GetApiV1SearchParams, options?: RequestInit): Promise<getApiV1SearchResponse> => {
-  
+
   const res = await fetch(getGetApiV1SearchUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1SearchResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1SearchResponse
 }
-  
+
 
 
 /**
@@ -8154,7 +9056,7 @@ export const getGetApiV1SearchStreamUrl = (params: GetApiV1SearchStreamParams,) 
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -8166,22 +9068,22 @@ export const getGetApiV1SearchStreamUrl = (params: GetApiV1SearchStreamParams,) 
 }
 
 export const getApiV1SearchStream = async (params: GetApiV1SearchStreamParams, options?: RequestInit): Promise<getApiV1SearchStreamResponse> => {
-  
+
   const res = await fetch(getGetApiV1SearchStreamUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1SearchStreamResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1SearchStreamResponse
 }
-  
+
 
 
 /**
@@ -8216,7 +9118,7 @@ export const getGetApiV1TasksUrl = (params: GetApiV1TasksParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : value.toString())
     }
@@ -8228,22 +9130,22 @@ export const getGetApiV1TasksUrl = (params: GetApiV1TasksParams,) => {
 }
 
 export const getApiV1Tasks = async (params: GetApiV1TasksParams, options?: RequestInit): Promise<getApiV1TasksResponse> => {
-  
+
   const res = await fetch(getGetApiV1TasksUrl(params),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1TasksResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1TasksResponse
 }
-  
+
 
 
 /**
@@ -8282,28 +9184,28 @@ export type getApiV1TasksByTaskIdResponse = (getApiV1TasksByTaskIdResponseSucces
 export const getGetApiV1TasksByTaskIdUrl = (taskId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/tasks/${taskId}`
 }
 
 export const getApiV1TasksByTaskId = async (taskId: number, options?: RequestInit): Promise<getApiV1TasksByTaskIdResponse> => {
-  
+
   const res = await fetch(getGetApiV1TasksByTaskIdUrl(taskId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1TasksByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1TasksByTaskIdResponse
 }
-  
+
 
 
 /**
@@ -8342,632 +9244,28 @@ export type getApiV1TasksByTaskIdEventsResponse = (getApiV1TasksByTaskIdEventsRe
 export const getGetApiV1TasksByTaskIdEventsUrl = (taskId: number,) => {
 
 
-  
+
 
   return `${HUBUUM_BFF_PREFIX}/api/v1/tasks/${taskId}/events`
 }
 
 export const getApiV1TasksByTaskIdEvents = async (taskId: number, options?: RequestInit): Promise<getApiV1TasksByTaskIdEventsResponse> => {
-  
+
   const res = await fetch(getGetApiV1TasksByTaskIdEventsUrl(taskId),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getApiV1TasksByTaskIdEventsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1TasksByTaskIdEventsResponse
 }
-  
 
-
-/**
- * Auto-generated documentation for GET /api/v1/templates. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary Get Api V1 Templates
- */
-export type getApiV1TemplatesResponse200 = {
-  data: ReportTemplate[]
-  status: 200
-}
-
-export type getApiV1TemplatesResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type getApiV1TemplatesResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1TemplatesResponseSuccess = (getApiV1TemplatesResponse200) & {
-  headers: Headers;
-};
-export type getApiV1TemplatesResponseError = (getApiV1TemplatesResponse400 | getApiV1TemplatesResponse401) & {
-  headers: Headers;
-};
-
-export type getApiV1TemplatesResponse = (getApiV1TemplatesResponseSuccess | getApiV1TemplatesResponseError)
-
-export const getGetApiV1TemplatesUrl = (params?: GetApiV1TemplatesParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/templates?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/templates`
-}
-
-export const getApiV1Templates = async (params?: GetApiV1TemplatesParams, options?: RequestInit): Promise<getApiV1TemplatesResponse> => {
-  
-  const res = await fetch(getGetApiV1TemplatesUrl(params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1TemplatesResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1TemplatesResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for POST /api/v1/templates.
- * @summary Post Api V1 Templates
- */
-export type postApiV1TemplatesResponse201 = {
-  data: ReportTemplate
-  status: 201
-}
-
-export type postApiV1TemplatesResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type postApiV1TemplatesResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type postApiV1TemplatesResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type postApiV1TemplatesResponse409 = {
-  data: ApiErrorResponse
-  status: 409
-}
-
-export type postApiV1TemplatesResponseSuccess = (postApiV1TemplatesResponse201) & {
-  headers: Headers;
-};
-export type postApiV1TemplatesResponseError = (postApiV1TemplatesResponse400 | postApiV1TemplatesResponse401 | postApiV1TemplatesResponse403 | postApiV1TemplatesResponse409) & {
-  headers: Headers;
-};
-
-export type postApiV1TemplatesResponse = (postApiV1TemplatesResponseSuccess | postApiV1TemplatesResponseError)
-
-export const getPostApiV1TemplatesUrl = () => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/templates`
-}
-
-export const postApiV1Templates = async (newReportTemplate: NewReportTemplate, options?: RequestInit): Promise<postApiV1TemplatesResponse> => {
-  
-  const res = await fetch(getPostApiV1TemplatesUrl(),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      newReportTemplate,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: postApiV1TemplatesResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as postApiV1TemplatesResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/templates/{template_id}.
- * @summary Get Api V1 Templates By Template Id
- */
-export type getApiV1TemplatesByTemplateIdResponse200 = {
-  data: ReportTemplate
-  status: 200
-}
-
-export type getApiV1TemplatesByTemplateIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1TemplatesByTemplateIdResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type getApiV1TemplatesByTemplateIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1TemplatesByTemplateIdResponseSuccess = (getApiV1TemplatesByTemplateIdResponse200) & {
-  headers: Headers;
-};
-export type getApiV1TemplatesByTemplateIdResponseError = (getApiV1TemplatesByTemplateIdResponse401 | getApiV1TemplatesByTemplateIdResponse403 | getApiV1TemplatesByTemplateIdResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1TemplatesByTemplateIdResponse = (getApiV1TemplatesByTemplateIdResponseSuccess | getApiV1TemplatesByTemplateIdResponseError)
-
-export const getGetApiV1TemplatesByTemplateIdUrl = (templateId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}`
-}
-
-export const getApiV1TemplatesByTemplateId = async (templateId: number, options?: RequestInit): Promise<getApiV1TemplatesByTemplateIdResponse> => {
-  
-  const res = await fetch(getGetApiV1TemplatesByTemplateIdUrl(templateId),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1TemplatesByTemplateIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1TemplatesByTemplateIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for DELETE /api/v1/templates/{template_id}.
- * @summary Delete Api V1 Templates By Template Id
- */
-export type deleteApiV1TemplatesByTemplateIdResponse204 = {
-  data: void
-  status: 204
-}
-
-export type deleteApiV1TemplatesByTemplateIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type deleteApiV1TemplatesByTemplateIdResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type deleteApiV1TemplatesByTemplateIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type deleteApiV1TemplatesByTemplateIdResponseSuccess = (deleteApiV1TemplatesByTemplateIdResponse204) & {
-  headers: Headers;
-};
-export type deleteApiV1TemplatesByTemplateIdResponseError = (deleteApiV1TemplatesByTemplateIdResponse401 | deleteApiV1TemplatesByTemplateIdResponse403 | deleteApiV1TemplatesByTemplateIdResponse404) & {
-  headers: Headers;
-};
-
-export type deleteApiV1TemplatesByTemplateIdResponse = (deleteApiV1TemplatesByTemplateIdResponseSuccess | deleteApiV1TemplatesByTemplateIdResponseError)
-
-export const getDeleteApiV1TemplatesByTemplateIdUrl = (templateId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}`
-}
-
-export const deleteApiV1TemplatesByTemplateId = async (templateId: number, options?: RequestInit): Promise<deleteApiV1TemplatesByTemplateIdResponse> => {
-  
-  const res = await fetch(getDeleteApiV1TemplatesByTemplateIdUrl(templateId),
-  {      
-    ...options,
-    method: 'DELETE'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: deleteApiV1TemplatesByTemplateIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as deleteApiV1TemplatesByTemplateIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for PATCH /api/v1/templates/{template_id}.
- * @summary Patch Api V1 Templates By Template Id
- */
-export type patchApiV1TemplatesByTemplateIdResponse200 = {
-  data: ReportTemplate
-  status: 200
-}
-
-export type patchApiV1TemplatesByTemplateIdResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type patchApiV1TemplatesByTemplateIdResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type patchApiV1TemplatesByTemplateIdResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type patchApiV1TemplatesByTemplateIdResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type patchApiV1TemplatesByTemplateIdResponse409 = {
-  data: ApiErrorResponse
-  status: 409
-}
-
-export type patchApiV1TemplatesByTemplateIdResponseSuccess = (patchApiV1TemplatesByTemplateIdResponse200) & {
-  headers: Headers;
-};
-export type patchApiV1TemplatesByTemplateIdResponseError = (patchApiV1TemplatesByTemplateIdResponse400 | patchApiV1TemplatesByTemplateIdResponse401 | patchApiV1TemplatesByTemplateIdResponse403 | patchApiV1TemplatesByTemplateIdResponse404 | patchApiV1TemplatesByTemplateIdResponse409) & {
-  headers: Headers;
-};
-
-export type patchApiV1TemplatesByTemplateIdResponse = (patchApiV1TemplatesByTemplateIdResponseSuccess | patchApiV1TemplatesByTemplateIdResponseError)
-
-export const getPatchApiV1TemplatesByTemplateIdUrl = (templateId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}`
-}
-
-export const patchApiV1TemplatesByTemplateId = async (templateId: number,
-    updateReportTemplate: UpdateReportTemplate, options?: RequestInit): Promise<patchApiV1TemplatesByTemplateIdResponse> => {
-  
-  const res = await fetch(getPatchApiV1TemplatesByTemplateIdUrl(templateId),
-  {      
-    ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      updateReportTemplate,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: patchApiV1TemplatesByTemplateIdResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as patchApiV1TemplatesByTemplateIdResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/templates/{template_id}/events.
- * @summary Get Api V1 Templates By Template Id Events
- */
-export type getApiV1TemplatesByTemplateIdEventsResponse200 = {
-  data: EventResponse[]
-  status: 200
-}
-
-export type getApiV1TemplatesByTemplateIdEventsResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type getApiV1TemplatesByTemplateIdEventsResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1TemplatesByTemplateIdEventsResponseSuccess = (getApiV1TemplatesByTemplateIdEventsResponse200) & {
-  headers: Headers;
-};
-export type getApiV1TemplatesByTemplateIdEventsResponseError = (getApiV1TemplatesByTemplateIdEventsResponse400 | getApiV1TemplatesByTemplateIdEventsResponse401) & {
-  headers: Headers;
-};
-
-export type getApiV1TemplatesByTemplateIdEventsResponse = (getApiV1TemplatesByTemplateIdEventsResponseSuccess | getApiV1TemplatesByTemplateIdEventsResponseError)
-
-export const getGetApiV1TemplatesByTemplateIdEventsUrl = (templateId: number,
-    params?: GetApiV1TemplatesByTemplateIdEventsParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}/events?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}/events`
-}
-
-export const getApiV1TemplatesByTemplateIdEvents = async (templateId: number,
-    params?: GetApiV1TemplatesByTemplateIdEventsParams, options?: RequestInit): Promise<getApiV1TemplatesByTemplateIdEventsResponse> => {
-  
-  const res = await fetch(getGetApiV1TemplatesByTemplateIdEventsUrl(templateId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1TemplatesByTemplateIdEventsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1TemplatesByTemplateIdEventsResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/templates/{template_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
- * @summary Get Api V1 Templates By Template Id History
- */
-export type getApiV1TemplatesByTemplateIdHistoryResponse200 = {
-  data: HistoryResponseReportTemplateHistory[]
-  status: 200
-}
-
-export type getApiV1TemplatesByTemplateIdHistoryResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1TemplatesByTemplateIdHistoryResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type getApiV1TemplatesByTemplateIdHistoryResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1TemplatesByTemplateIdHistoryResponseSuccess = (getApiV1TemplatesByTemplateIdHistoryResponse200) & {
-  headers: Headers;
-};
-export type getApiV1TemplatesByTemplateIdHistoryResponseError = (getApiV1TemplatesByTemplateIdHistoryResponse401 | getApiV1TemplatesByTemplateIdHistoryResponse403 | getApiV1TemplatesByTemplateIdHistoryResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1TemplatesByTemplateIdHistoryResponse = (getApiV1TemplatesByTemplateIdHistoryResponseSuccess | getApiV1TemplatesByTemplateIdHistoryResponseError)
-
-export const getGetApiV1TemplatesByTemplateIdHistoryUrl = (templateId: number,
-    params?: GetApiV1TemplatesByTemplateIdHistoryParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}/history?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}/history`
-}
-
-export const getApiV1TemplatesByTemplateIdHistory = async (templateId: number,
-    params?: GetApiV1TemplatesByTemplateIdHistoryParams, options?: RequestInit): Promise<getApiV1TemplatesByTemplateIdHistoryResponse> => {
-  
-  const res = await fetch(getGetApiV1TemplatesByTemplateIdHistoryUrl(templateId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1TemplatesByTemplateIdHistoryResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1TemplatesByTemplateIdHistoryResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for GET /api/v1/templates/{template_id}/history/as-of.
- * @summary Get Api V1 Templates By Template Id History As Of
- */
-export type getApiV1TemplatesByTemplateIdHistoryAsOfResponse200 = {
-  data: HistoryResponseReportTemplateHistory
-  status: 200
-}
-
-export type getApiV1TemplatesByTemplateIdHistoryAsOfResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type getApiV1TemplatesByTemplateIdHistoryAsOfResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type getApiV1TemplatesByTemplateIdHistoryAsOfResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type getApiV1TemplatesByTemplateIdHistoryAsOfResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type getApiV1TemplatesByTemplateIdHistoryAsOfResponseSuccess = (getApiV1TemplatesByTemplateIdHistoryAsOfResponse200) & {
-  headers: Headers;
-};
-export type getApiV1TemplatesByTemplateIdHistoryAsOfResponseError = (getApiV1TemplatesByTemplateIdHistoryAsOfResponse400 | getApiV1TemplatesByTemplateIdHistoryAsOfResponse401 | getApiV1TemplatesByTemplateIdHistoryAsOfResponse403 | getApiV1TemplatesByTemplateIdHistoryAsOfResponse404) & {
-  headers: Headers;
-};
-
-export type getApiV1TemplatesByTemplateIdHistoryAsOfResponse = (getApiV1TemplatesByTemplateIdHistoryAsOfResponseSuccess | getApiV1TemplatesByTemplateIdHistoryAsOfResponseError)
-
-export const getGetApiV1TemplatesByTemplateIdHistoryAsOfUrl = (templateId: number,
-    params: GetApiV1TemplatesByTemplateIdHistoryAsOfParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}/history/as-of?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}/history/as-of`
-}
-
-export const getApiV1TemplatesByTemplateIdHistoryAsOf = async (templateId: number,
-    params: GetApiV1TemplatesByTemplateIdHistoryAsOfParams, options?: RequestInit): Promise<getApiV1TemplatesByTemplateIdHistoryAsOfResponse> => {
-  
-  const res = await fetch(getGetApiV1TemplatesByTemplateIdHistoryAsOfUrl(templateId,params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: getApiV1TemplatesByTemplateIdHistoryAsOfResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1TemplatesByTemplateIdHistoryAsOfResponse
-}
-  
-
-
-/**
- * Auto-generated documentation for POST /api/v1/templates/{template_id}/reports.
- * @summary Post Api V1 Templates By Template Id Reports
- */
-export type postApiV1TemplatesByTemplateIdReportsResponse202 = {
-  data: TaskResponse
-  status: 202
-}
-
-export type postApiV1TemplatesByTemplateIdReportsResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
-export type postApiV1TemplatesByTemplateIdReportsResponse401 = {
-  data: ApiErrorResponse
-  status: 401
-}
-
-export type postApiV1TemplatesByTemplateIdReportsResponse403 = {
-  data: ApiErrorResponse
-  status: 403
-}
-
-export type postApiV1TemplatesByTemplateIdReportsResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
-export type postApiV1TemplatesByTemplateIdReportsResponse409 = {
-  data: ApiErrorResponse
-  status: 409
-}
-
-export type postApiV1TemplatesByTemplateIdReportsResponse429 = {
-  data: ApiErrorResponse
-  status: 429
-}
-
-export type postApiV1TemplatesByTemplateIdReportsResponseSuccess = (postApiV1TemplatesByTemplateIdReportsResponse202) & {
-  headers: Headers;
-};
-export type postApiV1TemplatesByTemplateIdReportsResponseError = (postApiV1TemplatesByTemplateIdReportsResponse400 | postApiV1TemplatesByTemplateIdReportsResponse401 | postApiV1TemplatesByTemplateIdReportsResponse403 | postApiV1TemplatesByTemplateIdReportsResponse404 | postApiV1TemplatesByTemplateIdReportsResponse409 | postApiV1TemplatesByTemplateIdReportsResponse429) & {
-  headers: Headers;
-};
-
-export type postApiV1TemplatesByTemplateIdReportsResponse = (postApiV1TemplatesByTemplateIdReportsResponseSuccess | postApiV1TemplatesByTemplateIdReportsResponseError)
-
-export const getPostApiV1TemplatesByTemplateIdReportsUrl = (templateId: number,) => {
-
-
-  
-
-  return `${HUBUUM_BFF_PREFIX}/api/v1/templates/${templateId}/reports`
-}
-
-export const postApiV1TemplatesByTemplateIdReports = async (templateId: number,
-    reportTemplateRunRequest: ReportTemplateRunRequest, options?: RequestInit): Promise<postApiV1TemplatesByTemplateIdReportsResponse> => {
-  
-  const res = await fetch(getPostApiV1TemplatesByTemplateIdReportsUrl(templateId),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      reportTemplateRunRequest,)
-  }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
-  const data: postApiV1TemplatesByTemplateIdReportsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as postApiV1TemplatesByTemplateIdReportsResponse
-}
-  
 
 
 /**
@@ -8989,28 +9287,28 @@ export type getHealthzResponse = (getHealthzResponseSuccess)
 export const getGetHealthzUrl = () => {
 
 
-  
+
 
   return `/healthz`
 }
 
 export const getHealthz = async ( options?: RequestInit): Promise<getHealthzResponse> => {
-  
+
   const res = await fetch(getGetHealthzUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getHealthzResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getHealthzResponse
 }
-  
+
 
 
 /**
@@ -9039,27 +9337,27 @@ export type getReadyzResponse = (getReadyzResponseSuccess | getReadyzResponseErr
 export const getGetReadyzUrl = () => {
 
 
-  
+
 
   return `/readyz`
 }
 
 export const getReadyz = async ( options?: RequestInit): Promise<getReadyzResponse> => {
-  
+
   const res = await fetch(getGetReadyzUrl(),
-  {      
+  {
     ...options,
     method: 'GET'
-    
-    
+
+
   }
 )
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  
+
   const data: getReadyzResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getReadyzResponse
 }
-  
+
 
 

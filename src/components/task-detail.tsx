@@ -76,8 +76,8 @@ function getTaskHeading(task: TaskRecord | null, taskId: number): string {
 	if (task.kind === "import") {
 		return `Import task #${task.id}`;
 	}
-	if (task.kind === "report") {
-		return `Report task #${task.id}`;
+	if (task.kind === "export") {
+		return `Export task #${task.id}`;
 	}
 	if (task.kind === "remote_call") {
 		return `Remote invocation task #${task.id}`;
@@ -158,16 +158,16 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 	const activeTask = importProjectionQuery.data ?? taskQuery.data ?? null;
 	const taskTone = getTaskStatusTone(activeTask);
 	const isImportTask = activeTask?.kind === "import";
-	const reportDetails = activeTask?.details?.report ?? null;
+	const exportDetails = activeTask?.details?.export ?? null;
 	const backHref =
-		activeTask?.kind === "report"
-			? "/reports"
+		activeTask?.kind === "export"
+			? "/exports"
 			: activeTask?.kind === "import"
 				? "/imports"
 				: "/tasks";
 	const backLabel =
-		activeTask?.kind === "report"
-			? "Back to reports"
+		activeTask?.kind === "export"
+			? "Back to exports"
 			: activeTask?.kind === "import"
 				? "Back to imports"
 				: "Back to tasks";
@@ -269,34 +269,34 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 						<strong>Events URL</strong>
 						<p className="muted">{activeTask.links.events}</p>
 					</div>
-					{activeTask.kind === "report" ? (
+					{activeTask.kind === "export" ? (
 						<>
 							<div>
 								<strong>Output available</strong>
 								<p className="muted">
-									{reportDetails?.output_available ? "yes" : "no"}
+									{exportDetails?.output_available ? "yes" : "no"}
 								</p>
 							</div>
 							<div>
 								<strong>Output type</strong>
 								<p className="muted">
-									{reportDetails?.output_content_type ?? "n/a"}
+									{exportDetails?.output_content_type ?? "n/a"}
 								</p>
 							</div>
 							<div>
 								<strong>Template</strong>
-								<p className="muted">{reportDetails?.template_name ?? "n/a"}</p>
+								<p className="muted">{exportDetails?.template_name ?? "n/a"}</p>
 							</div>
 							<div>
 								<strong>Warnings</strong>
-								<p className="muted">{reportDetails?.warning_count ?? "n/a"}</p>
+								<p className="muted">{exportDetails?.warning_count ?? "n/a"}</p>
 							</div>
 							<div>
 								<strong>Truncated</strong>
 								<p className="muted">
-									{reportDetails?.truncated == null
+									{exportDetails?.truncated == null
 										? "n/a"
-										: reportDetails.truncated
+										: exportDetails.truncated
 											? "yes"
 											: "no"}
 								</p>
@@ -304,7 +304,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 							<div>
 								<strong>Output expires</strong>
 								<p className="muted">
-									{formatTimestamp(reportDetails?.output_expires_at)}
+									{formatTimestamp(exportDetails?.output_expires_at)}
 								</p>
 							</div>
 						</>

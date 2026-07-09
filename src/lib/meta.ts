@@ -7,15 +7,15 @@ import type {
 	TaskQueueStateResponse,
 } from "@/lib/api/generated/models";
 
-export type CountsWithOptionalNamespaces = CountsResponse & {
-	total_namespaces?: number;
+export type CountsWithOptionalCollections = CountsResponse & {
+	total_collections?: number;
 };
 
 export async function fetchMetaCounts(
 	token: string,
 	correlationId?: string,
-): Promise<CountsWithOptionalNamespaces> {
-	return backendFetchJson<CountsWithOptionalNamespaces>("/api/v0/meta/counts", {
+): Promise<CountsWithOptionalCollections> {
+	return backendFetchJson<CountsWithOptionalCollections>("/api/v0/meta/counts", {
 		correlationId,
 		token,
 	});
@@ -24,7 +24,7 @@ export async function fetchMetaCounts(
 export async function tryFetchMetaCounts(
 	token: string,
 	correlationId?: string,
-): Promise<CountsWithOptionalNamespaces | null> {
+): Promise<CountsWithOptionalCollections | null> {
 	try {
 		return await fetchMetaCounts(token, correlationId);
 	} catch (error) {
@@ -56,7 +56,7 @@ export async function fetchTaskQueueState(
 }
 
 export type SystemMetaSnapshot = {
-	counts: CountsWithOptionalNamespaces;
+	counts: CountsWithOptionalCollections;
 	db: DbStateResponse;
 	tasks: TaskQueueStateResponse;
 };
@@ -84,11 +84,11 @@ export async function tryFetchSystemMetaSnapshot(
 	}
 }
 
-export function getTotalNamespaces(
-	counts: CountsWithOptionalNamespaces,
+export function getTotalCollections(
+	counts: CountsWithOptionalCollections,
 ): number {
-	return typeof counts.total_namespaces === "number" &&
-		Number.isFinite(counts.total_namespaces)
-		? counts.total_namespaces
+	return typeof counts.total_collections === "number" &&
+		Number.isFinite(counts.total_collections)
+		? counts.total_collections
 		: 0;
 }

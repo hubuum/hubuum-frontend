@@ -10,8 +10,8 @@ interface PinButtonProps {
 	type: PinnedItemType;
 	id: number;
 	name: string;
-	namespaceId?: number;
-	namespaceName?: string;
+	collectionId?: number;
+	collectionName?: string;
 	classId?: number;
 	className?: string;
 }
@@ -38,14 +38,14 @@ export function PinButton({
 	type,
 	id,
 	name,
-	namespaceId,
-	namespaceName,
+	collectionId,
+	collectionName,
 	classId,
 	className,
 }: PinButtonProps) {
 	const [viewPinned, setViewPinned] = useState(false);
 	const [createPinned, setCreatePinned] = useState(false);
-	const [namespacePinned, setNamespacePinned] = useState(false);
+	const [collectionPinned, setCollectionPinned] = useState(false);
 	const [objectPinned, setObjectPinned] = useState(false);
 	const [isMenuOpen, setMenuOpen] = useState(false);
 	const { showToast } = useToast();
@@ -58,25 +58,25 @@ export function PinButton({
 		if (type === "class") {
 			setViewPinned(isPinned("class", id, "view"));
 			setCreatePinned(isPinned("class", id, "create"));
-		} else if (type === "namespace") {
-			setNamespacePinned(isPinned("namespace", id));
+		} else if (type === "collection") {
+			setCollectionPinned(isPinned("collection", id));
 		} else if (type === "object") {
 			setObjectPinned(isPinned("object", id));
 		}
 	}, [type, id]);
 
-	function handleNamespaceToggle() {
-		if (namespacePinned) {
-			unpinItem("namespace", id);
-			setNamespacePinned(false);
+	function handleCollectionToggle() {
+		if (collectionPinned) {
+			unpinItem("collection", id);
+			setCollectionPinned(false);
 		} else {
 			const success = pinItem({
-				type: "namespace",
+				type: "collection",
 				id,
 				name,
 			});
 			if (success) {
-				setNamespacePinned(true);
+				setCollectionPinned(true);
 			} else {
 				showPinLimitToast();
 			}
@@ -92,8 +92,8 @@ export function PinButton({
 				type: "object",
 				id,
 				name,
-				namespaceId,
-				namespaceName,
+				collectionId,
+				collectionName,
 				classId,
 				className,
 			});
@@ -114,8 +114,8 @@ export function PinButton({
 				type: "class",
 				id,
 				name,
-				namespaceId,
-				namespaceName,
+				collectionId,
+				collectionName,
 				action: "view",
 			});
 			if (success) {
@@ -136,8 +136,8 @@ export function PinButton({
 				type: "class",
 				id,
 				name,
-				namespaceId,
-				namespaceName,
+				collectionId,
+				collectionName,
 				action: "create",
 			});
 			if (success) {
@@ -149,16 +149,16 @@ export function PinButton({
 		setMenuOpen(false);
 	}
 
-	if (type === "namespace") {
+	if (type === "collection") {
 		return (
 			<button
 				type="button"
 				className="pin-button-inline"
-				onClick={handleNamespaceToggle}
-				aria-label={namespacePinned ? "Unpin this namespace" : "Pin this namespace"}
-				title={namespacePinned ? "Unpin namespace" : "Pin namespace"}
+				onClick={handleCollectionToggle}
+				aria-label={collectionPinned ? "Unpin this collection" : "Pin this collection"}
+				title={collectionPinned ? "Unpin collection" : "Pin collection"}
 			>
-				<IconPin filled={namespacePinned} />
+				<IconPin filled={collectionPinned} />
 			</button>
 		);
 	}

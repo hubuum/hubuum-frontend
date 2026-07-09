@@ -7,7 +7,7 @@ export default function AdminRemoteTargetsPage() {
 				<p className="eyebrow">Admin</p>
 				<h2>Remote targets</h2>
 				<p className="muted">
-					Manage namespace-scoped outbound actions that users can invoke from
+					Manage collection-scoped outbound actions that users can invoke from
 					entity pages.
 				</p>
 			</header>

@@ -23,7 +23,6 @@ export interface TaskQueueStateResponse {
   partially_succeeded_tasks: number;
   queued_tasks: number;
   reindex_tasks: number;
-  report_tasks: number;
   running_tasks: number;
   succeeded_tasks: number;
   /** @minimum 0 */

@@ -7,9 +7,9 @@
  */
 
 export interface NewHubuumObject {
+  collection_id: number;
   data: unknown;
   description: string;
   hubuum_class_id: number;
   name: string;
-  namespace_id: number;
 }

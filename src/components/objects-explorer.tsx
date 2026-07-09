@@ -21,12 +21,12 @@ import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
 	getApiV1Classes,
-	getApiV1Namespaces,
+	getApiV1Collections,
 } from "@/lib/api/generated/client";
 import type {
 	HubuumClassExpanded,
 	HubuumObject,
-	Namespace,
+	Collection,
 	NewHubuumObject,
 } from "@/lib/api/generated/models";
 import {
@@ -79,7 +79,7 @@ const MAX_DATA_PATH_DEPTH = 3;
 const MAX_DATA_ARRAY_ITEMS = 3;
 const CUSTOM_DATA_FIELD_ID_PREFIX = "custom:";
 const EMPTY_CLASSES: HubuumClassExpanded[] = [];
-const EMPTY_NAMESPACES: Namespace[] = [];
+const EMPTY_NAMESPACES: Collection[] = [];
 const EMPTY_OBJECTS: HubuumObject[] = [];
 
 type DataPathCandidate = {
@@ -189,8 +189,8 @@ async function fetchObjectsByClass(
 	};
 }
 
-async function fetchNamespaces(): Promise<Namespace[]> {
-	const response = await getApiV1Namespaces(
+async function fetchCollections(): Promise<Collection[]> {
+	const response = await getApiV1Collections(
 		{ limit: 250 },
 		{
 			credentials: "include",
@@ -199,7 +199,7 @@ async function fetchNamespaces(): Promise<Namespace[]> {
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load namespaces."),
+			getApiErrorMessage(response.data, "Failed to load collections."),
 		);
 	}
 
@@ -631,6 +631,22 @@ function normalizeCustomDataField(value: unknown): CustomDataField | null {
 	};
 }
 
+function persistCustomDataFields(
+	storageKey: string | null,
+	fields: CustomDataField[],
+): boolean {
+	if (!storageKey || typeof window === "undefined") {
+		return false;
+	}
+
+	try {
+		window.localStorage.setItem(storageKey, JSON.stringify(fields));
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function formatDataPreviewValue(value: unknown): string {
 	if (value === null) {
 		return "null";
@@ -754,13 +770,13 @@ export function ObjectsExplorer() {
 		queryKey: ["classes", "object-explorer"],
 		queryFn: fetchClasses,
 	});
-	const namespacesQuery = useQuery({
-		queryKey: ["namespaces", "object-form"],
-		queryFn: fetchNamespaces,
+	const collectionsQuery = useQuery({
+		queryKey: ["collections", "object-form"],
+		queryFn: fetchCollections,
 	});
 	const selectedClassId = searchParams.get("classId") ?? "";
 	const [createClassId, setCreateClassId] = useState("");
-	const [namespaceId, setNamespaceId] = useState("");
+	const [collectionId, setCollectionId] = useState("");
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [dataInput, setDataInput] = useState("{}");
@@ -827,19 +843,19 @@ export function ObjectsExplorer() {
 		return Number.isFinite(value) ? value : null;
 	}, [selectedClassId]);
 	const classes = classesQuery.data ?? EMPTY_CLASSES;
-	const namespaces = namespacesQuery.data ?? EMPTY_NAMESPACES;
-	const namespaceNameById = useMemo(() => {
+	const collections = collectionsQuery.data ?? EMPTY_NAMESPACES;
+	const collectionNameById = useMemo(() => {
 		const map = new Map<number, string>();
-		for (const namespace of namespaces) {
-			map.set(namespace.id, namespace.name);
+		for (const collection of collections) {
+			map.set(collection.id, collection.name);
 		}
 		for (const classItem of classes) {
-			if (!map.has(classItem.namespace.id)) {
-				map.set(classItem.namespace.id, classItem.namespace.name);
+			if (!map.has(classItem.collection.id)) {
+				map.set(classItem.collection.id, classItem.collection.name);
 			}
 		}
 		return map;
-	}, [classes, namespaces]);
+	}, [classes, collections]);
 	const selectedClass = useMemo(
 		() => classes.find((item) => item.id === parsedClassId),
 		[classes, parsedClassId],
@@ -1013,36 +1029,36 @@ export function ObjectsExplorer() {
 	}, [classes, createClassId, selectedClass]);
 
 	useEffect(() => {
-		if (!namespaces.length) {
-			setNamespaceId((current) => (current === "" ? current : ""));
+		if (!collections.length) {
+			setCollectionId((current) => (current === "" ? current : ""));
 			return;
 		}
 
-		const hasSelectedNamespace = namespaces.some(
-			(namespace) => String(namespace.id) === namespaceId,
+		const hasSelectedCollection = collections.some(
+			(collection) => String(collection.id) === collectionId,
 		);
-		if (hasSelectedNamespace) {
+		if (hasSelectedCollection) {
 			return;
 		}
 
 		if (createSelectedClass) {
-			const classNamespace = namespaces.find(
-				(namespace) => namespace.id === createSelectedClass.namespace.id,
+			const classCollection = collections.find(
+				(collection) => collection.id === createSelectedClass.collection.id,
 			);
-			if (classNamespace) {
-				const nextNamespaceId = String(classNamespace.id);
-				setNamespaceId((current) =>
-					current === nextNamespaceId ? current : nextNamespaceId,
+			if (classCollection) {
+				const nextCollectionId = String(classCollection.id);
+				setCollectionId((current) =>
+					current === nextCollectionId ? current : nextCollectionId,
 				);
 				return;
 			}
 		}
 
-		const nextNamespaceId = String(namespaces[0].id);
-		setNamespaceId((current) =>
-			current === nextNamespaceId ? current : nextNamespaceId,
+		const nextCollectionId = String(collections[0].id);
+		setCollectionId((current) =>
+			current === nextCollectionId ? current : nextCollectionId,
 		);
-	}, [createSelectedClass, namespaceId, namespaces]);
+	}, [createSelectedClass, collectionId, collections]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: selected object ids must reset when the selected class changes.
 	useEffect(() => {
@@ -1575,9 +1591,9 @@ export function ObjectsExplorer() {
 			return;
 		}
 
-		const parsedNamespaceId = Number.parseInt(namespaceId, 10);
-		if (!Number.isFinite(parsedNamespaceId) || parsedNamespaceId < 1) {
-			showToast("Namespace is required.", "error");
+		const parsedCollectionId = Number.parseInt(collectionId, 10);
+		if (!Number.isFinite(parsedCollectionId) || parsedCollectionId < 1) {
+			showToast("Collection is required.", "error");
 			return;
 		}
 
@@ -1594,7 +1610,7 @@ export function ObjectsExplorer() {
 			description: description.trim(),
 			data: parsedData,
 			hubuum_class_id: createSelectedClass.id,
-			namespace_id: parsedNamespaceId,
+			collection_id: parsedCollectionId,
 		});
 	}
 
@@ -1678,6 +1694,11 @@ export function ObjectsExplorer() {
 	function addCustomDataField(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
+		if (!customDataFieldsStorageKey) {
+			showToast("Select a class before adding custom data fields.", "error");
+			return;
+		}
+
 		const label = customDataFieldLabel.trim();
 		const expression = customDataFieldExpression.trim();
 		const paths = parseCustomDataFieldExpression(expression);
@@ -1706,8 +1727,13 @@ export function ObjectsExplorer() {
 			paths,
 			scope: "user",
 		};
+		const nextFields = [...customDataFields, nextField];
+		if (!persistCustomDataFields(customDataFieldsStorageKey, nextFields)) {
+			showToast("Could not save custom data fields in this browser.", "error");
+			return;
+		}
 
-		setCustomDataFields((current) => [...current, nextField]);
+		setCustomDataFields(nextFields);
 		setSelectedDataColumns((current) =>
 			current.includes(id) || current.length >= MAX_SELECTED_DATA_COLUMNS
 				? current
@@ -1719,9 +1745,13 @@ export function ObjectsExplorer() {
 	}
 
 	function deleteCustomDataField(fieldId: string) {
-		setCustomDataFields((current) =>
-			current.filter((field) => field.id !== fieldId),
-		);
+		const nextFields = customDataFields.filter((field) => field.id !== fieldId);
+		if (!persistCustomDataFields(customDataFieldsStorageKey, nextFields)) {
+			showToast("Could not save custom data fields in this browser.", "error");
+			return;
+		}
+
+		setCustomDataFields(nextFields);
 		setSelectedDataColumns((current) =>
 			current.filter((columnId) => columnId !== fieldId),
 		);
@@ -1739,9 +1769,9 @@ export function ObjectsExplorer() {
 		setSelectedDataColumns([]);
 	}
 
-	function renderNamespace(value: number): string {
-		const namespaceName = namespaceNameById.get(value);
-		return namespaceName ? `${namespaceName} (#${value})` : `#${value}`;
+	function renderCollection(value: number): string {
+		const collectionName = collectionNameById.get(value);
+		return collectionName ? `${collectionName} (#${value})` : `#${value}`;
 	}
 
 	function renderCreateObjectForm() {
@@ -1772,17 +1802,17 @@ export function ObjectsExplorer() {
 					</label>
 
 					<div className="control-field">
-						<span>Namespace</span>
-						{namespaces.length > 0 ? (
+						<span>Collection</span>
+						{collections.length > 0 ? (
 							<select
 								required
-								value={namespaceId}
-								onChange={(event) => setNamespaceId(event.target.value)}
+								value={collectionId}
+								onChange={(event) => setCollectionId(event.target.value)}
 								disabled={!createSelectedClass}
 							>
-								{namespaces.map((namespace) => (
-									<option key={namespace.id} value={namespace.id}>
-										{namespace.name} (#{namespace.id})
+								{collections.map((collection) => (
+									<option key={collection.id} value={collection.id}>
+										{collection.name} (#{collection.id})
 									</option>
 								))}
 							</select>
@@ -1791,14 +1821,14 @@ export function ObjectsExplorer() {
 								required
 								type="number"
 								min={1}
-								value={namespaceId}
-								onChange={(event) => setNamespaceId(event.target.value)}
+								value={collectionId}
+								onChange={(event) => setCollectionId(event.target.value)}
 								placeholder={
-									namespacesQuery.isLoading
-										? "Loading namespaces..."
-										: "Enter namespace id"
+									collectionsQuery.isLoading
+										? "Loading collections..."
+										: "Enter collection id"
 								}
-								disabled={!createSelectedClass || namespacesQuery.isLoading}
+								disabled={!createSelectedClass || collectionsQuery.isLoading}
 							/>
 						)}
 					</div>
@@ -1846,10 +1876,10 @@ export function ObjectsExplorer() {
 					</div>
 				</div>
 
-				{namespacesQuery.isError ? (
+				{collectionsQuery.isError ? (
 					<div className="muted">
-						Could not load namespaces automatically. Falling back to manual
-						namespace ID entry.
+						Could not load collections automatically. Falling back to manual
+						collection ID entry.
 					</div>
 				) : null}
 
@@ -2031,14 +2061,7 @@ export function ObjectsExplorer() {
 										onSubmit={addCustomDataField}
 									>
 										<div className="custom-data-field-scope">
-											<label>
-												<input type="radio" checked readOnly />
-												<span>Only me</span>
-											</label>
-											<label title="System-wide custom fields need a backend settings endpoint.">
-												<input type="radio" disabled />
-												<span>System-wide</span>
-											</label>
+											<span className="muted">Saved for this browser only.</span>
 										</div>
 										<label className="control-field">
 											<span>Label</span>
@@ -2196,7 +2219,7 @@ export function ObjectsExplorer() {
 							<col className="object-select-column" />
 							<col className="object-id-column" />
 							<col className="object-name-column" />
-							<col className="object-namespace-column" />
+							<col className="object-collection-column" />
 							<col className="object-description-column" />
 							{activeDataColumns.map((column) => (
 								<col
@@ -2228,9 +2251,9 @@ export function ObjectsExplorer() {
 								</th>
 								<th
 									className="sortable"
-									onClick={() => setServerSort("namespace_id")}
+									onClick={() => setServerSort("collection_id")}
 								>
-									Namespace{renderSortIndicator("namespace_id")}
+									Collection{renderSortIndicator("collection_id")}
 								</th>
 								<th
 									className="sortable"
@@ -2292,7 +2315,7 @@ export function ObjectsExplorer() {
 												{objectItem.name}
 											</Link>
 										</td>
-										<td>{renderNamespace(objectItem.namespace_id)}</td>
+										<td>{renderCollection(objectItem.collection_id)}</td>
 										<td>{objectItem.description || "-"}</td>
 										{activeDataColumns.map((column) => (
 											<td

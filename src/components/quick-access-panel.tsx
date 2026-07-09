@@ -11,7 +11,7 @@ import {
 } from "@/lib/recent-items";
 import { getPinnedItems, unpinItem } from "@/lib/pinned-items";
 
-function IconNamespace() {
+function IconCollection() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
 			<path
@@ -68,8 +68,8 @@ function IconClose() {
 
 function getItemIcon(type: RecentItem["type"]) {
 	switch (type) {
-		case "namespace":
-			return <IconNamespace />;
+		case "collection":
+			return <IconCollection />;
 		case "class":
 			return <IconClass />;
 		case "object":
@@ -82,13 +82,16 @@ function getItemIcon(type: RecentItem["type"]) {
 	}
 }
 
-function getItemHref(item: RecentItem): string {
+function getItemHref(item: RecentItem): string | null {
 	switch (item.type) {
-		case "namespace":
-			return `/namespaces/${item.id}`;
+		case "collection":
+			return `/collections/${item.id}`;
 		case "class":
 			return `/classes/${item.id}`;
 		case "object":
+			if (!item.classId) {
+				return null;
+			}
 			return `/objects/${item.classId}/${item.id}`;
 		case "task":
 			return `/tasks/${item.id}`;
@@ -98,6 +101,8 @@ function getItemHref(item: RecentItem): string {
 			return `/admin/groups/${item.id}`;
 		case "service-account":
 			return `/admin/service-accounts/${item.id}`;
+		default:
+			return null;
 	}
 }
 
@@ -109,8 +114,8 @@ function formatItemType(type: RecentItem["type"]): string {
 			return "Admin group";
 		case "service-account":
 			return "Service account";
-		case "namespace":
-			return "Namespace";
+		case "collection":
+			return "Collection";
 		case "class":
 			return "Class";
 		case "object":
@@ -141,8 +146,8 @@ function formatTimestamp(timestamp: number): string {
 
 function getPinItemIcon(type: PinnedItem["type"]) {
 	switch (type) {
-		case "namespace":
-			return <IconNamespace />;
+		case "collection":
+			return <IconCollection />;
 		case "class":
 			return <IconClass />;
 		case "object":
@@ -150,28 +155,33 @@ function getPinItemIcon(type: PinnedItem["type"]) {
 	}
 }
 
-function getPinItemHref(item: PinnedItem): string {
+function getPinItemHref(item: PinnedItem): string | null {
 	switch (item.type) {
-		case "namespace":
-			return `/namespaces/${item.id}`;
+		case "collection":
+			return `/collections/${item.id}`;
 		case "class":
 			if (item.action === "view") {
 				return `/objects?classId=${item.id}`;
 			}
 			return `/objects?create=1&classId=${item.id}`;
 		case "object":
+			if (!item.classId) {
+				return null;
+			}
 			return `/objects/${item.classId}/${item.id}`;
+		default:
+			return null;
 	}
 }
 
 function getPinItemTooltip(item: PinnedItem): string | undefined {
-	if (item.type === "namespace") {
+	if (item.type === "collection") {
 		return undefined;
 	}
 	if (item.type === "class") {
-		return item.namespaceName;
+		return item.collectionName;
 	}
-	return `${item.namespaceName} > ${item.className}`;
+	return `${item.collectionName} > ${item.className}`;
 }
 
 function getPinItemBadge(item: PinnedItem): string | undefined {
@@ -237,24 +247,31 @@ export function QuickAccessPanel() {
 					</div>
 				) : (
 					<ul className="recent-items-list">
-						{recentItems.map((item) => (
-							<li key={`${item.type}-${item.id}`}>
-								<Link
-									href={getItemHref(item)}
-									className="recent-item-link"
-								>
-									<span className="recent-item-icon">
-										{getItemIcon(item.type)}
-									</span>
-									<span className="recent-item-content">
-										<span className="recent-item-name">{item.name}</span>
-										<span className="recent-item-meta">
-											{formatItemType(item.type)} • {formatTimestamp(item.timestamp)}
+						{recentItems.map((item) => {
+							const href = getItemHref(item);
+							if (!href) {
+								return null;
+							}
+
+							return (
+								<li key={`${item.type}-${item.id}`}>
+									<Link
+										href={href}
+										className="recent-item-link"
+									>
+										<span className="recent-item-icon">
+											{getItemIcon(item.type)}
 										</span>
-									</span>
-								</Link>
-							</li>
-						))}
+										<span className="recent-item-content">
+											<span className="recent-item-name">{item.name}</span>
+											<span className="recent-item-meta">
+												{formatItemType(item.type)} • {formatTimestamp(item.timestamp)}
+											</span>
+										</span>
+									</Link>
+								</li>
+							);
+						})}
 					</ul>
 				)}
 			</section>
@@ -266,12 +283,17 @@ export function QuickAccessPanel() {
 					<div className="quick-access-empty">
 						<p className="muted">No pinned items yet</p>
 						<p className="muted quick-access-empty-subtext">
-							Pin your favorite namespaces, classes, and objects for quick access
+							Pin your favorite collections, classes, and objects for quick access
 						</p>
 					</div>
 				) : (
 					<ul className="pinned-shortcuts-list">
 						{pinnedItems.map((item) => {
+							const href = getPinItemHref(item);
+							if (!href) {
+								return null;
+							}
+
 							const tooltip = getPinItemTooltip(item);
 							const badge = getPinItemBadge(item);
 							const key = item.type === "class"
@@ -281,7 +303,7 @@ export function QuickAccessPanel() {
 							return (
 								<li key={key}>
 									<Link
-										href={getPinItemHref(item)}
+										href={href}
 										className="pinned-item-link"
 										title={tooltip}
 									>

@@ -5,8 +5,8 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
+import type { CollectionID } from './collectionID';
 import type { HubuumClassID } from './hubuumClassID';
-import type { NamespaceID } from './namespaceID';
 import type { RemoteAuthConfig } from './remoteAuthConfig';
 import type { RemoteHttpMethod } from './remoteHttpMethod';
 import type { RemoteTargetSubjectType } from './remoteTargetSubjectType';
@@ -17,12 +17,12 @@ export interface NewRemoteTarget {
   /** @nullable */
   body_template?: string | null;
   class_id?: null | HubuumClassID;
+  collection_id: CollectionID;
   description: string;
   enabled?: boolean;
   headers_template?: unknown;
   method: RemoteHttpMethod;
   name: string;
-  namespace_id: NamespaceID;
   timeout_ms?: number;
   url_template: string;
 }

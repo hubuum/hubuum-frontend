@@ -7,12 +7,12 @@
  */
 
 export interface HubuumClass {
+  collection_id: number;
   created_at: string;
   description: string;
   id: number;
   json_schema?: unknown;
   name: string;
-  namespace_id: number;
   updated_at: string;
   validate_schema: boolean;
 }

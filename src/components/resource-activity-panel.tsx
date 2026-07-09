@@ -51,8 +51,8 @@ function formatHistoryActor(record: HistoryRecord): string {
 }
 
 function scopeKey(scope: ResourceEventScope): string {
-	if (scope.type === "namespace") {
-		return `namespace:${scope.namespaceId}`;
+	if (scope.type === "collection") {
+		return `collection:${scope.collectionId}`;
 	}
 
 	if (scope.type === "class") {

@@ -7,6 +7,8 @@
  */
 
 export interface UpdateHubuumObject {
+  /** @nullable */
+  collection_id?: number | null;
   data?: unknown;
   /** @nullable */
   description?: string | null;
@@ -14,6 +16,4 @@ export interface UpdateHubuumObject {
   hubuum_class_id?: number | null;
   /** @nullable */
   name?: string | null;
-  /** @nullable */
-  namespace_id?: number | null;
 }

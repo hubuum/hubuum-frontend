@@ -37,8 +37,8 @@ function getTaskLabel(task: Pick<TaskRecord, "kind">): string {
 	if (task.kind === "import") {
 		return "Import";
 	}
-	if (task.kind === "report") {
-		return "Report";
+	if (task.kind === "export") {
+		return "Export";
 	}
 	if (task.kind === "remote_call") {
 		return "Remote invocation";
@@ -282,8 +282,8 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 							<Link className="link-chip" href="/imports">
 								Submit import
 							</Link>
-							<Link className="link-chip" href="/reports">
-								Run report
+							<Link className="link-chip" href="/exports">
+								Run export
 							</Link>
 						</div>
 					</article>

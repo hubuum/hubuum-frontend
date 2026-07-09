@@ -12,13 +12,13 @@
 export type HistoryResponseHubuumClassHistory = ({
   /** @nullable */
   actor_id?: number | null;
+  collection_id: number;
   created_at: string;
   description: string;
   history_id: number;
   id: number;
   json_schema?: unknown;
   name: string;
-  namespace_id: number;
   op: string;
   updated_at: string;
   valid_from: string;

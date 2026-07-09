@@ -20,9 +20,9 @@ actor_kind?: string;
  */
 actor_user_id?: number;
 /**
- * Optional namespace id filter
+ * Optional collection id filter
  */
-namespace_id?: number;
+collection_id?: number;
 /**
  * Optional lower occurred_at bound, RFC3339 or YYYY-MM-DD
  */

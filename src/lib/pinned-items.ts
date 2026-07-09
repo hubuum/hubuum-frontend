@@ -1,44 +1,53 @@
-import type { PinnedClass } from "@/types/quick-access";
 import type { PinnedItem, PinnedItemType, ClassPinAction } from "@/types/quick-access";
 
 const PINNED_ITEMS_KEY = "hubuum.pinned-items";
-const PINNED_CLASSES_KEY = "hubuum.pinned-classes"; // old key for migration
 const MAX_PINNED_ITEMS = 10;
+const PINNED_ITEM_TYPES = new Set(["collection", "class", "object"]);
 
-// Migration: Convert old PinnedClass[] to new PinnedItem[]
-function migrateOldPinnedClasses(): PinnedItem[] | null {
-	if (typeof window === "undefined") {
+function isPositiveInteger(value: unknown): value is number {
+	return Number.isInteger(value) && Number(value) > 0;
+}
+
+function normalizePinnedItem(value: unknown): PinnedItem | null {
+	if (!value || typeof value !== "object") {
 		return null;
 	}
 
-	try {
-		const oldData = window.localStorage.getItem(PINNED_CLASSES_KEY);
-		if (!oldData) {
-			return null;
-		}
-
-		const oldClasses = JSON.parse(oldData) as PinnedClass[];
-		if (!Array.isArray(oldClasses)) {
-			return null;
-		}
-
-		const migrated: PinnedItem[] = oldClasses.map((old) => ({
-			type: "class" as const,
-			id: old.classId,
-			name: old.className,
-			timestamp: Date.now(),
-			namespaceId: undefined,
-			namespaceName: old.namespaceName,
-			action: "create" as const, // preserve current behavior
-		}));
-
-		window.localStorage.setItem(PINNED_ITEMS_KEY, JSON.stringify(migrated));
-		window.localStorage.removeItem(PINNED_CLASSES_KEY);
-
-		return migrated;
-	} catch {
+	const item = value as Record<string, unknown>;
+	const type = item.type;
+	if (typeof type !== "string" || !PINNED_ITEM_TYPES.has(type)) {
 		return null;
 	}
+	if (!isPositiveInteger(item.id)) {
+		return null;
+	}
+	if (type === "object" && !isPositiveInteger(item.classId)) {
+		return null;
+	}
+
+	const action = item.action === "create" ? "create" : "view";
+	const name = typeof item.name === "string" && item.name.trim()
+		? item.name
+		: `${type} ${item.id}`;
+	const timestamp = typeof item.timestamp === "number" && Number.isFinite(item.timestamp)
+		? item.timestamp
+		: Date.now();
+
+	return {
+		type: type as PinnedItem["type"],
+		id: item.id,
+		name,
+		timestamp,
+		...(isPositiveInteger(item.collectionId)
+			? { collectionId: item.collectionId }
+			: {}),
+		...(typeof item.collectionName === "string"
+			? { collectionName: item.collectionName }
+			: {}),
+		...(isPositiveInteger(item.classId) ? { classId: item.classId } : {}),
+		...(typeof item.className === "string" ? { className: item.className } : {}),
+		...(type === "class" ? { action } : {}),
+	};
 }
 
 export function getPinnedItems(): PinnedItem[] {
@@ -49,12 +58,22 @@ export function getPinnedItems(): PinnedItem[] {
 	try {
 		const stored = window.localStorage.getItem(PINNED_ITEMS_KEY);
 		if (!stored) {
-			const migrated = migrateOldPinnedClasses();
-			return migrated ?? [];
+			return [];
 		}
 
-		const items = JSON.parse(stored) as PinnedItem[];
-		return Array.isArray(items) ? items : [];
+		const parsed = JSON.parse(stored);
+		if (!Array.isArray(parsed)) {
+			return [];
+		}
+
+		const items = parsed
+			.map(normalizePinnedItem)
+			.filter((item): item is PinnedItem => item !== null)
+			.slice(0, MAX_PINNED_ITEMS);
+		if (items.length !== parsed.length || JSON.stringify(items) !== stored) {
+			window.localStorage.setItem(PINNED_ITEMS_KEY, JSON.stringify(items));
+		}
+		return items;
 	} catch {
 		return [];
 	}

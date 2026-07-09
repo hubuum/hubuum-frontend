@@ -2,7 +2,7 @@ import type {
 	ClassKey,
 	ImportClassInput,
 	ImportClassRelationInput,
-	ImportNamespacePermissionInput,
+	ImportCollectionPermissionInput,
 	ImportObjectInput,
 	ImportObjectRelationInput,
 	ImportRequest,
@@ -10,22 +10,22 @@ import type {
 } from "@/lib/api/generated/models";
 import { Permissions } from "@/lib/api/generated/models";
 
-export type NamespaceMode = "file" | "existing_override" | "create_override";
+export type CollectionMode = "file" | "existing_override" | "create_override";
 
-type NamespacePermissionSeed = Pick<
-	ImportNamespacePermissionInput,
-	"namespace_key" | "namespace_ref" | "ref"
+type CollectionPermissionSeed = Pick<
+	ImportCollectionPermissionInput,
+	"collection_key" | "collection_ref" | "ref"
 >;
 
-type NamespaceTarget =
+type CollectionTarget =
 	| { kind: "key"; name: string }
 	| { kind: "ref"; ref: string };
 
-export type ImportNamespaceSuggestion = {
+export type ImportCollectionSuggestion = {
 	description: string;
-	isExistingNamespacePayload: boolean;
-	namespaceName: string;
-	namespaceRef: string | null;
+	isExistingCollectionPayload: boolean;
+	collectionName: string;
+	collectionRef: string | null;
 };
 
 export type ImportPayloadOptions = {
@@ -33,9 +33,9 @@ export type ImportPayloadOptions = {
 	collisionPolicy: "abort" | "overwrite";
 	delegateGroupName?: string;
 	dryRun: boolean;
-	namespaceDescription?: string;
-	namespaceMode: NamespaceMode;
-	namespaceName?: string;
+	collectionDescription?: string;
+	collectionMode: CollectionMode;
+	collectionName?: string;
 	permissionPolicy: "abort" | "continue";
 };
 
@@ -48,7 +48,7 @@ function trimToNonEmpty(value: string | null | undefined): string | null {
 	return trimmed ? trimmed : null;
 }
 
-export function slugNamespaceName(value: string): string {
+export function slugCollectionName(value: string): string {
 	const slug = value.toLowerCase().replace(SAFE_REF_PATTERN, "-").replace(
 		/^-+|-+$/g,
 		"",
@@ -56,11 +56,11 @@ export function slugNamespaceName(value: string): string {
 	return slug || "item";
 }
 
-export function buildNamespaceRef(name: string): string {
-	return `${NAMESPACE_REF_PREFIX}${slugNamespaceName(name)}`;
+export function buildCollectionRef(name: string): string {
+	return `${NAMESPACE_REF_PREFIX}${slugCollectionName(name)}`;
 }
 
-function namespaceNameFromRef(ref: string): string {
+function collectionNameFromRef(ref: string): string {
 	const rawName = ref.startsWith(NAMESPACE_REF_PREFIX)
 		? ref.slice(NAMESPACE_REF_PREFIX.length)
 		: ref;
@@ -80,85 +80,85 @@ function namespaceNameFromRef(ref: string): string {
 		.join(" ");
 }
 
-function collectClassNamespaceRefs(payload: ImportRequest): Set<string> {
+function collectClassCollectionRefs(payload: ImportRequest): Set<string> {
 	const refs = new Set<string>();
 
 	for (const classItem of payload.graph.classes ?? []) {
-		const namespaceRef = trimToNonEmpty(classItem.namespace_ref);
-		if (namespaceRef) {
-			refs.add(namespaceRef);
+		const collectionRef = trimToNonEmpty(classItem.collection_ref);
+		if (collectionRef) {
+			refs.add(collectionRef);
 		}
 	}
 
 	return refs;
 }
 
-export function getImportNamespaceSuggestion(
+export function getImportCollectionSuggestion(
 	payload: ImportRequest,
-	existingNamespaceNames: readonly string[] = [],
-): ImportNamespaceSuggestion {
-	const declaredNamespace = payload.graph.namespaces?.[0];
-	const declaredName = trimToNonEmpty(declaredNamespace?.name);
-	const declaredDescription = trimToNonEmpty(declaredNamespace?.description);
-	const namespaceRefs = collectClassNamespaceRefs(payload);
-	const namespaceRef =
-		namespaceRefs.size === 1 ? Array.from(namespaceRefs.values())[0] : null;
-	const hasNamespacePermissions =
-		(payload.graph.namespace_permissions?.length ?? 0) > 0;
-	const isExistingNamespacePayload =
-		(payload.graph.namespaces?.length ?? 0) === 0 &&
-		!hasNamespacePermissions &&
-		namespaceRef !== null;
-	const refSlug = namespaceRef
-		? slugNamespaceName(namespaceNameFromRef(namespaceRef))
+	existingCollectionNames: readonly string[] = [],
+): ImportCollectionSuggestion {
+	const declaredCollection = payload.graph.collections?.[0];
+	const declaredName = trimToNonEmpty(declaredCollection?.name);
+	const declaredDescription = trimToNonEmpty(declaredCollection?.description);
+	const collectionRefs = collectClassCollectionRefs(payload);
+	const collectionRef =
+		collectionRefs.size === 1 ? Array.from(collectionRefs.values())[0] : null;
+	const hasCollectionPermissions =
+		(payload.graph.collection_permissions?.length ?? 0) > 0;
+	const isExistingCollectionPayload =
+		(payload.graph.collections?.length ?? 0) === 0 &&
+		!hasCollectionPermissions &&
+		collectionRef !== null;
+	const refSlug = collectionRef
+		? slugCollectionName(collectionNameFromRef(collectionRef))
 		: "";
 	const matchedExistingName =
-		refSlug && existingNamespaceNames.length
-			? (existingNamespaceNames.find(
-					(name) => slugNamespaceName(name) === refSlug,
+		refSlug && existingCollectionNames.length
+			? (existingCollectionNames.find(
+					(name) => slugCollectionName(name) === refSlug,
 				) ?? null)
 			: null;
 
 	return {
 		description: declaredDescription ?? "",
-		isExistingNamespacePayload,
-		namespaceName:
+		isExistingCollectionPayload,
+		collectionName:
 			declaredName ??
 			matchedExistingName ??
-			(namespaceRef ? namespaceNameFromRef(namespaceRef) : ""),
-		namespaceRef,
+			(collectionRef ? collectionNameFromRef(collectionRef) : ""),
+		collectionRef,
 	};
 }
 
-function buildNamespacePermissionIdentity(
+function buildCollectionPermissionIdentity(
 	permission: Pick<
-		ImportNamespacePermissionInput,
-		"namespace_key" | "namespace_ref"
+		ImportCollectionPermissionInput,
+		"collection_key" | "collection_ref"
 	>,
 	index: number,
 ): string {
-	const namespaceRef = permission.namespace_ref?.trim();
-	if (namespaceRef) {
-		return `ref:${namespaceRef}`;
+	const collectionRef = permission.collection_ref?.trim();
+	if (collectionRef) {
+		return `ref:${collectionRef}`;
 	}
 
-	const namespaceName = permission.namespace_key?.name?.trim();
-	if (namespaceName) {
-		return `name:${namespaceName}`;
+	const collectionName = permission.collection_key?.name?.trim();
+	if (collectionName) {
+		return `name:${collectionName}`;
 	}
 
 	return `index:${index}`;
 }
 
-function buildSeedNamespacePermissions(
+function buildSeedCollectionPermissions(
 	payload: ImportRequest,
 	groupname: string,
-): ImportNamespacePermissionInput[] {
-	const seeds = new Map<string, NamespacePermissionSeed>();
-	const classNamespaceByRef = new Map<string, NamespacePermissionSeed>();
+): ImportCollectionPermissionInput[] {
+	const seeds = new Map<string, CollectionPermissionSeed>();
+	const classCollectionByRef = new Map<string, CollectionPermissionSeed>();
 
-	function registerSeed(seed: NamespacePermissionSeed): void {
-		const key = buildNamespacePermissionIdentity(seed, seeds.size);
+	function registerSeed(seed: CollectionPermissionSeed): void {
+		const key = buildCollectionPermissionIdentity(seed, seeds.size);
 		if (key.startsWith("index:")) {
 			return;
 		}
@@ -168,21 +168,21 @@ function buildSeedNamespacePermissions(
 		}
 	}
 
-	for (const namespaceItem of payload.graph.namespaces ?? []) {
-		const namespaceRef = namespaceItem.ref?.trim();
+	for (const collectionItem of payload.graph.collections ?? []) {
+		const collectionRef = collectionItem.ref?.trim();
 		registerSeed({
-			namespace_key: namespaceRef ? undefined : { name: namespaceItem.name },
-			namespace_ref: namespaceRef || undefined,
-			ref: namespaceItem.ref ?? undefined,
+			collection_key: collectionRef ? undefined : { name: collectionItem.name },
+			collection_ref: collectionRef || undefined,
+			ref: collectionItem.ref ?? undefined,
 		});
 	}
 
 	for (const classItem of payload.graph.classes ?? []) {
 		const seed = {
-			namespace_key: classItem.namespace_ref?.trim()
+			collection_key: classItem.collection_ref?.trim()
 				? undefined
-				: (classItem.namespace_key ?? undefined),
-			namespace_ref: classItem.namespace_ref?.trim() || undefined,
+				: (classItem.collection_key ?? undefined),
+			collection_ref: classItem.collection_ref?.trim() || undefined,
 			ref: classItem.ref ?? undefined,
 		};
 
@@ -190,20 +190,20 @@ function buildSeedNamespacePermissions(
 
 		const classRef = classItem.ref?.trim();
 		if (classRef) {
-			classNamespaceByRef.set(classRef, seed);
+			classCollectionByRef.set(classRef, seed);
 		}
 	}
 
 	for (const objectItem of payload.graph.objects ?? []) {
 		if (
-			objectItem.class_key?.namespace_key ||
-			objectItem.class_key?.namespace_ref
+			objectItem.class_key?.collection_key ||
+			objectItem.class_key?.collection_ref
 		) {
 			registerSeed({
-				namespace_key: objectItem.class_key.namespace_ref?.trim()
+				collection_key: objectItem.class_key.collection_ref?.trim()
 					? undefined
-					: (objectItem.class_key.namespace_key ?? undefined),
-				namespace_ref: objectItem.class_key.namespace_ref?.trim() || undefined,
+					: (objectItem.class_key.collection_key ?? undefined),
+				collection_ref: objectItem.class_key.collection_ref?.trim() || undefined,
 			});
 			continue;
 		}
@@ -213,9 +213,9 @@ function buildSeedNamespacePermissions(
 			continue;
 		}
 
-		const classNamespace = classNamespaceByRef.get(classRef);
-		if (classNamespace) {
-			registerSeed(classNamespace);
+		const classCollection = classCollectionByRef.get(classRef);
+		if (classCollection) {
+			registerSeed(classCollection);
 		}
 	}
 
@@ -231,13 +231,13 @@ function applyDelegateGroupOverride(
 	payload: ImportRequest,
 	groupname: string,
 ): ImportRequest {
-	const existingPermissions = payload.graph.namespace_permissions ?? [];
-	const seededPermissions = buildSeedNamespacePermissions(payload, groupname);
-	const mergedPermissions = new Map<string, ImportNamespacePermissionInput>();
+	const existingPermissions = payload.graph.collection_permissions ?? [];
+	const seededPermissions = buildSeedCollectionPermissions(payload, groupname);
+	const mergedPermissions = new Map<string, ImportCollectionPermissionInput>();
 
 	[...existingPermissions, ...seededPermissions].forEach(
 		(permission, index) => {
-			const key = buildNamespacePermissionIdentity(permission, index);
+			const key = buildCollectionPermissionIdentity(permission, index);
 			const previous = mergedPermissions.get(key);
 			const permissionNames = new Set(previous?.permissions ?? []);
 
@@ -259,14 +259,14 @@ function applyDelegateGroupOverride(
 		...payload,
 		graph: {
 			...payload.graph,
-			namespace_permissions: Array.from(mergedPermissions.values()),
+			collection_permissions: Array.from(mergedPermissions.values()),
 		},
 	};
 }
 
-function rewriteClassKeyNamespace<T extends ClassKey | null | undefined>(
+function rewriteClassKeyCollection<T extends ClassKey | null | undefined>(
 	classKey: T,
-	target: NamespaceTarget,
+	target: CollectionTarget,
 ): T {
 	if (!classKey) {
 		return classKey;
@@ -274,14 +274,14 @@ function rewriteClassKeyNamespace<T extends ClassKey | null | undefined>(
 
 	return {
 		...classKey,
-		namespace_key: target.kind === "key" ? { name: target.name } : undefined,
-		namespace_ref: target.kind === "ref" ? target.ref : undefined,
+		collection_key: target.kind === "key" ? { name: target.name } : undefined,
+		collection_ref: target.kind === "ref" ? target.ref : undefined,
 	} as T;
 }
 
-function rewriteObjectKeyNamespace<T extends ObjectKey | null | undefined>(
+function rewriteObjectKeyCollection<T extends ObjectKey | null | undefined>(
 	objectKey: T,
-	target: NamespaceTarget,
+	target: CollectionTarget,
 ): T {
 	if (!objectKey) {
 		return objectKey;
@@ -289,123 +289,123 @@ function rewriteObjectKeyNamespace<T extends ObjectKey | null | undefined>(
 
 	return {
 		...objectKey,
-		class_key: rewriteClassKeyNamespace(objectKey.class_key, target),
+		class_key: rewriteClassKeyCollection(objectKey.class_key, target),
 	} as T;
 }
 
-function rewriteClassNamespace(
+function rewriteClassCollection(
 	classItem: ImportClassInput,
-	target: NamespaceTarget,
+	target: CollectionTarget,
 ): ImportClassInput {
 	return {
 		...classItem,
-		namespace_key: target.kind === "key" ? { name: target.name } : undefined,
-		namespace_ref: target.kind === "ref" ? target.ref : undefined,
+		collection_key: target.kind === "key" ? { name: target.name } : undefined,
+		collection_ref: target.kind === "ref" ? target.ref : undefined,
 	};
 }
 
-function rewriteObjectNamespace(
+function rewriteObjectCollection(
 	objectItem: ImportObjectInput,
-	target: NamespaceTarget,
+	target: CollectionTarget,
 ): ImportObjectInput {
 	return {
 		...objectItem,
-		class_key: rewriteClassKeyNamespace(objectItem.class_key, target),
+		class_key: rewriteClassKeyCollection(objectItem.class_key, target),
 	};
 }
 
-function rewriteClassRelationNamespace(
+function rewriteClassRelationCollection(
 	relation: ImportClassRelationInput,
-	target: NamespaceTarget,
+	target: CollectionTarget,
 ): ImportClassRelationInput {
 	return {
 		...relation,
-		from_class_key: rewriteClassKeyNamespace(relation.from_class_key, target),
-		to_class_key: rewriteClassKeyNamespace(relation.to_class_key, target),
+		from_class_key: rewriteClassKeyCollection(relation.from_class_key, target),
+		to_class_key: rewriteClassKeyCollection(relation.to_class_key, target),
 	};
 }
 
-function rewriteObjectRelationNamespace(
+function rewriteObjectRelationCollection(
 	relation: ImportObjectRelationInput,
-	target: NamespaceTarget,
+	target: CollectionTarget,
 ): ImportObjectRelationInput {
 	return {
 		...relation,
-		from_object_key: rewriteObjectKeyNamespace(relation.from_object_key, target),
-		to_object_key: rewriteObjectKeyNamespace(relation.to_object_key, target),
+		from_object_key: rewriteObjectKeyCollection(relation.from_object_key, target),
+		to_object_key: rewriteObjectKeyCollection(relation.to_object_key, target),
 	};
 }
 
-function rewriteNamespaceReferences(
+function rewriteCollectionReferences(
 	payload: ImportRequest,
-	target: NamespaceTarget,
+	target: CollectionTarget,
 ): ImportRequest {
 	return {
 		...payload,
 		graph: {
 			...payload.graph,
 			classes: payload.graph.classes?.map((classItem) =>
-				rewriteClassNamespace(classItem, target),
+				rewriteClassCollection(classItem, target),
 			),
 			objects: payload.graph.objects?.map((objectItem) =>
-				rewriteObjectNamespace(objectItem, target),
+				rewriteObjectCollection(objectItem, target),
 			),
 			class_relations: payload.graph.class_relations?.map((relation) =>
-				rewriteClassRelationNamespace(relation, target),
+				rewriteClassRelationCollection(relation, target),
 			),
 			object_relations: payload.graph.object_relations?.map((relation) =>
-				rewriteObjectRelationNamespace(relation, target),
+				rewriteObjectRelationCollection(relation, target),
 			),
 		},
 	};
 }
 
-function applyExistingNamespaceOverride(
+function applyExistingCollectionOverride(
 	payload: ImportRequest,
-	namespaceName: string,
+	collectionName: string,
 ): ImportRequest {
-	const rewritten = rewriteNamespaceReferences(payload, {
+	const rewritten = rewriteCollectionReferences(payload, {
 		kind: "key",
-		name: namespaceName,
+		name: collectionName,
 	});
 
 	return {
 		...rewritten,
 		graph: {
 			...rewritten.graph,
-			namespaces: [],
-			namespace_permissions: [],
+			collections: [],
+			collection_permissions: [],
 		},
 	};
 }
 
-function applyCreateNamespaceOverride(
+function applyCreateCollectionOverride(
 	payload: ImportRequest,
-	namespaceName: string,
-	namespaceDescription: string,
+	collectionName: string,
+	collectionDescription: string,
 ): ImportRequest {
-	const namespaceRef = buildNamespaceRef(namespaceName);
-	const rewritten = rewriteNamespaceReferences(payload, {
+	const collectionRef = buildCollectionRef(collectionName);
+	const rewritten = rewriteCollectionReferences(payload, {
 		kind: "ref",
-		ref: namespaceRef,
+		ref: collectionRef,
 	});
 
 	return {
 		...rewritten,
 		graph: {
 			...rewritten.graph,
-			namespaces: [
+			collections: [
 				{
-					ref: namespaceRef,
-					name: namespaceName,
-					description: namespaceDescription,
+					ref: collectionRef,
+					name: collectionName,
+					description: collectionDescription,
 				},
 			],
-			namespace_permissions: rewritten.graph.namespace_permissions?.map(
+			collection_permissions: rewritten.graph.collection_permissions?.map(
 				(permission) => ({
 					...permission,
-					namespace_key: undefined,
-					namespace_ref: namespaceRef,
+					collection_key: undefined,
+					collection_ref: collectionRef,
 				}),
 			),
 		},
@@ -416,8 +416,8 @@ export function buildImportSubmissionPayload(
 	payload: ImportRequest,
 	options: ImportPayloadOptions,
 ): ImportRequest {
-	const namespaceName = trimToNonEmpty(options.namespaceName);
-	const namespaceDescription = trimToNonEmpty(options.namespaceDescription);
+	const collectionName = trimToNonEmpty(options.collectionName);
+	const collectionDescription = trimToNonEmpty(options.collectionDescription);
 	const delegateGroupName = trimToNonEmpty(options.delegateGroupName);
 	let effectivePayload: ImportRequest = {
 		...payload,
@@ -430,26 +430,26 @@ export function buildImportSubmissionPayload(
 		},
 	};
 
-	if (options.namespaceMode === "existing_override") {
-		if (!namespaceName) {
-			throw new Error("Target namespace is required.");
+	if (options.collectionMode === "existing_override") {
+		if (!collectionName) {
+			throw new Error("Target collection is required.");
 		}
 
-		return applyExistingNamespaceOverride(effectivePayload, namespaceName);
+		return applyExistingCollectionOverride(effectivePayload, collectionName);
 	}
 
-	if (options.namespaceMode === "create_override") {
-		if (!namespaceName) {
-			throw new Error("Target namespace is required.");
+	if (options.collectionMode === "create_override") {
+		if (!collectionName) {
+			throw new Error("Target collection is required.");
 		}
-		if (!namespaceDescription) {
-			throw new Error("Namespace description is required.");
+		if (!collectionDescription) {
+			throw new Error("Collection description is required.");
 		}
 
-		effectivePayload = applyCreateNamespaceOverride(
+		effectivePayload = applyCreateCollectionOverride(
 			effectivePayload,
-			namespaceName,
-			namespaceDescription,
+			collectionName,
+			collectionDescription,
 		);
 	}
 

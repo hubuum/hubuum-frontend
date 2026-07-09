@@ -5,15 +5,15 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
-import type { NamespaceKey } from './namespaceKey';
+import type { CollectionKey } from './collectionKey';
 
 export interface ImportClassInput {
+  collection_key?: null | CollectionKey;
+  /** @nullable */
+  collection_ref?: string | null;
   description: string;
   json_schema?: unknown;
   name: string;
-  namespace_key?: null | NamespaceKey;
-  /** @nullable */
-  namespace_ref?: string | null;
   /** @nullable */
   ref?: string | null;
   /** @nullable */

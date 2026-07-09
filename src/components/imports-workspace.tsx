@@ -13,14 +13,19 @@ import {
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1IamGroups,
-	getApiV1Namespaces,
+	getApiV1Collections,
 } from "@/lib/api/generated/client";
-import type { Group, Namespace } from "@/lib/api/generated/models";
+import type { Group, Collection } from "@/lib/api/generated/models";
 import { createImportTask, type ImportRequest } from "@/lib/api/tasking";
 import {
+	buildCollectionHierarchy,
+	formatCollectionOption,
+	getDuplicateCollectionNames,
+} from "@/lib/collection-hierarchy";
+import {
 	buildImportSubmissionPayload,
-	getImportNamespaceSuggestion,
-	type NamespaceMode,
+	getImportCollectionSuggestion,
+	type CollectionMode,
 } from "@/lib/import-payload";
 
 type ImportSummary = {
@@ -34,7 +39,7 @@ type ImportSummary = {
 type ImportFilePayload = ImportRequest & Record<string, unknown>;
 
 type ImportsWorkspaceProps = {
-	canCreateNamespaces: boolean;
+	canCreateCollections: boolean;
 };
 
 type HintKey =
@@ -42,9 +47,9 @@ type HintKey =
 	| "dry-run"
 	| "atomicity"
 	| "collision-policy"
-	| "namespace-handling"
-	| "target-namespace"
-	| "namespace-description"
+	| "collection-handling"
+	| "target-collection"
+	| "collection-description"
 	| "permission-policy"
 	| "delegate-group"
 	| "idempotency-key";
@@ -61,12 +66,12 @@ function parsePositiveInteger(value: string): number | null {
 
 function summarizeImport(payload: ImportRequest): ImportSummary {
 	const sectionNames = [
-		"namespaces",
+		"collections",
 		"classes",
 		"objects",
 		"class_relations",
 		"object_relations",
-		"namespace_permissions",
+		"collection_permissions",
 	] as const;
 	const sections = sectionNames.map((name) => ({
 		name,
@@ -104,7 +109,7 @@ function normalizeImportPayload(payload: unknown): ImportFilePayload {
 function getFilePermissionGroupNames(payload: ImportRequest): string[] {
 	const groupNames = new Set<string>();
 
-	for (const permission of payload.graph.namespace_permissions ?? []) {
+	for (const permission of payload.graph.collection_permissions ?? []) {
 		const groupname = permission.group_key.groupname?.trim();
 		if (groupname) {
 			groupNames.add(groupname);
@@ -128,14 +133,14 @@ async function fetchGroups(): Promise<Group[]> {
 	return response.data;
 }
 
-async function fetchNamespaces(): Promise<Namespace[]> {
-	const response = await getApiV1Namespaces({ limit: 250 }, {
+async function fetchCollections(): Promise<Collection[]> {
+	const response = await getApiV1Collections({ limit: 250 }, {
 		credentials: "include",
 	});
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load namespaces."),
+			getApiErrorMessage(response.data, "Failed to load collections."),
 		);
 	}
 
@@ -143,7 +148,7 @@ async function fetchNamespaces(): Promise<Namespace[]> {
 }
 
 export function ImportsWorkspace({
-	canCreateNamespaces,
+	canCreateCollections,
 }: ImportsWorkspaceProps) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
@@ -163,11 +168,11 @@ export function ImportsWorkspace({
 	const [permissionPolicy, setPermissionPolicy] = useState<
 		"abort" | "continue"
 	>("abort");
-	const [namespaceMode, setNamespaceMode] = useState<NamespaceMode>(
-		canCreateNamespaces ? "file" : "existing_override",
+	const [collectionMode, setCollectionMode] = useState<CollectionMode>(
+		canCreateCollections ? "file" : "existing_override",
 	);
-	const [targetNamespaceName, setTargetNamespaceName] = useState("");
-	const [targetNamespaceDescription, setTargetNamespaceDescription] =
+	const [targetCollectionName, setTargetCollectionName] = useState("");
+	const [targetCollectionDescription, setTargetCollectionDescription] =
 		useState("");
 	const [delegateGroupName, setDelegateGroupName] = useState("");
 	const [idempotencyKey, setIdempotencyKey] = useState("");
@@ -182,27 +187,41 @@ export function ImportsWorkspace({
 	const groupsQuery = useQuery({
 		queryKey: ["groups", "imports-form"],
 		queryFn: fetchGroups,
-		enabled: canCreateNamespaces && namespaceMode !== "existing_override",
+		enabled: canCreateCollections && collectionMode !== "existing_override",
 	});
-	const namespacesQuery = useQuery({
-		queryKey: ["namespaces", "imports-form"],
-		queryFn: fetchNamespaces,
+	const collectionsQuery = useQuery({
+		queryKey: ["collections", "imports-form"],
+		queryFn: fetchCollections,
 	});
-	const namespaceOptions = namespacesQuery.data ?? [];
-	const isExistingNamespaceMode = namespaceMode === "existing_override";
-	const requiresTargetNamespace = namespaceMode !== "file";
-	const requiresNamespaceDescription = namespaceMode === "create_override";
+	const collectionOptions = collectionsQuery.data ?? [];
+	const collectionHierarchy = useMemo(
+		() => buildCollectionHierarchy(collectionOptions),
+		[collectionOptions],
+	);
+	const duplicateCollectionNames = useMemo(
+		() => getDuplicateCollectionNames(collectionOptions),
+		[collectionOptions],
+	);
+	const isExistingCollectionMode = collectionMode === "existing_override";
+	const requiresTargetCollection = collectionMode !== "file";
+	const requiresCollectionDescription = collectionMode === "create_override";
 	const canUsePermissionControls =
-		canCreateNamespaces && !isExistingNamespaceMode;
-	const hasVisibleTargetNamespace =
-		namespaceMode !== "existing_override" ||
-		namespaceOptions.some((namespace) => namespace.name === targetNamespaceName);
-	const canSubmitNamespaceOptions =
-		!requiresTargetNamespace ||
-		(targetNamespaceName.trim() !== "" &&
-			hasVisibleTargetNamespace &&
-			(!requiresNamespaceDescription ||
-				targetNamespaceDescription.trim() !== ""));
+		canCreateCollections && !isExistingCollectionMode;
+	const targetCollectionNameKey = targetCollectionName.trim().toLocaleLowerCase();
+	const hasAmbiguousTargetCollection =
+		isExistingCollectionMode &&
+		targetCollectionNameKey !== "" &&
+		duplicateCollectionNames.has(targetCollectionNameKey);
+	const hasVisibleTargetCollection =
+		collectionMode !== "existing_override" ||
+		collectionOptions.some((collection) => collection.name === targetCollectionName);
+	const canSubmitCollectionOptions =
+		!requiresTargetCollection ||
+		(targetCollectionName.trim() !== "" &&
+			hasVisibleTargetCollection &&
+			!hasAmbiguousTargetCollection &&
+			(!requiresCollectionDescription ||
+				targetCollectionDescription.trim() !== ""));
 	const filePermissionGroupValidation = useMemo(
 		(): FilePermissionGroupValidation | null => {
 			if (!parsedImport || !canUsePermissionControls || delegateGroupName.trim()) {
@@ -255,30 +274,30 @@ export function ImportsWorkspace({
 	}, [router, searchParams]);
 
 	useEffect(() => {
-		if (!parsedImport || namespaceOptions.length === 0) {
+		if (!parsedImport || collectionOptions.length === 0) {
 			return;
 		}
 
-		const hasSelectedOption = namespaceOptions.some(
-			(namespace) => namespace.name === targetNamespaceName,
+		const hasSelectedOption = collectionOptions.some(
+			(collection) => collection.name === targetCollectionName,
 		);
 		if (hasSelectedOption) {
 			return;
 		}
 
-		const namespaceSuggestion = getImportNamespaceSuggestion(
+		const collectionSuggestion = getImportCollectionSuggestion(
 			parsedImport,
-			namespaceOptions.map((namespace) => namespace.name),
+			collectionOptions.map((collection) => collection.name),
 		);
 		if (
-			namespaceSuggestion.namespaceName &&
-			namespaceOptions.some(
-				(namespace) => namespace.name === namespaceSuggestion.namespaceName,
+			collectionSuggestion.collectionName &&
+			collectionOptions.some(
+				(collection) => collection.name === collectionSuggestion.collectionName,
 			)
 		) {
-			setTargetNamespaceName(namespaceSuggestion.namespaceName);
+			setTargetCollectionName(collectionSuggestion.collectionName);
 		}
-	}, [namespaceOptions, parsedImport, targetNamespaceName]);
+	}, [collectionOptions, parsedImport, targetCollectionName]);
 
 	const submitMutation = useMutation({
 		mutationFn: async () => {
@@ -293,9 +312,9 @@ export function ImportsWorkspace({
 					? delegateGroupName
 					: undefined,
 				dryRun,
-				namespaceDescription: targetNamespaceDescription,
-				namespaceMode,
-				namespaceName: targetNamespaceName,
+				collectionDescription: targetCollectionDescription,
+				collectionMode,
+				collectionName: targetCollectionName,
 				permissionPolicy,
 			});
 			return createImportTask(effectivePayload, idempotencyKey);
@@ -328,17 +347,17 @@ export function ImportsWorkspace({
 			setAtomicity(payload.mode?.atomicity ?? "strict");
 			setCollisionPolicy(payload.mode?.collision_policy ?? "abort");
 			setPermissionPolicy(payload.mode?.permission_policy ?? "abort");
-			const namespaceSuggestion = getImportNamespaceSuggestion(
+			const collectionSuggestion = getImportCollectionSuggestion(
 				payload,
-				namespaceOptions.map((namespace) => namespace.name),
+				collectionOptions.map((collection) => collection.name),
 			);
-			setNamespaceMode(
-				canCreateNamespaces && !namespaceSuggestion.isExistingNamespacePayload
+			setCollectionMode(
+				canCreateCollections && !collectionSuggestion.isExistingCollectionPayload
 					? "file"
 					: "existing_override",
 			);
-			setTargetNamespaceName(namespaceSuggestion.namespaceName);
-			setTargetNamespaceDescription(namespaceSuggestion.description);
+			setTargetCollectionName(collectionSuggestion.collectionName);
+			setTargetCollectionDescription(collectionSuggestion.description);
 			setDelegateGroupName("");
 			setParseError(null);
 			setSubmitError(null);
@@ -399,67 +418,73 @@ export function ImportsWorkspace({
 		);
 	}
 
-	function renderTargetNamespaceControl() {
-		if (!requiresTargetNamespace) {
+	function renderTargetCollectionControl() {
+		if (!requiresTargetCollection) {
 			return null;
 		}
 
-		if (namespaceMode === "create_override") {
+		if (collectionMode === "create_override") {
 			return (
 				<label className="control-field">
 					{renderFieldLabel(
-						"Target namespace",
-						"target-namespace",
-						"All namespace references in the submitted import will be rewritten to this namespace.",
+						"Target collection",
+						"target-collection",
+						"All collection references in the submitted import will be rewritten to this collection.",
 					)}
 					<input
 						required
-						value={targetNamespaceName}
-						onChange={(event) => setTargetNamespaceName(event.target.value)}
+						value={targetCollectionName}
+						onChange={(event) => setTargetCollectionName(event.target.value)}
 						placeholder="Shared Import"
 					/>
 				</label>
 			);
 		}
 
-		const hasSelectedOption = namespaceOptions.some(
-			(namespace) => namespace.name === targetNamespaceName,
+		const hasSelectedOption = collectionOptions.some(
+			(collection) => collection.name === targetCollectionName,
 		);
 
 		return (
 			<label className="control-field">
 				{renderFieldLabel(
-					"Target namespace",
-					"target-namespace",
-					"All namespace references in the submitted import will be rewritten to this existing namespace.",
+					"Target collection",
+					"target-collection",
+					"All collection references in the submitted import will be rewritten to this existing collection.",
 				)}
 				<select
 					required
-					value={targetNamespaceName}
-					onChange={(event) => setTargetNamespaceName(event.target.value)}
+					value={targetCollectionName}
+					onChange={(event) => setTargetCollectionName(event.target.value)}
 					disabled={
-						namespacesQuery.isLoading ||
-						namespacesQuery.isError ||
-						namespaceOptions.length === 0
+						collectionsQuery.isLoading ||
+						collectionsQuery.isError ||
+						collectionOptions.length === 0
 					}
 				>
 					<option value="">
-						{namespacesQuery.isLoading
-							? "Loading namespaces..."
-							: namespacesQuery.isError
-								? "Failed to load namespaces"
-								: "Select namespace"}
+						{collectionsQuery.isLoading
+							? "Loading collections..."
+							: collectionsQuery.isError
+								? "Failed to load collections"
+								: "Select collection"}
 					</option>
-					{namespaceOptions.map((namespace) => (
-						<option key={namespace.id} value={namespace.name}>
-							{namespace.name} (#{namespace.id})
+					{collectionOptions.map((collection) => (
+						<option key={collection.id} value={collection.name}>
+							{formatCollectionOption(collection, collectionHierarchy.byId)}
 						</option>
 					))}
 				</select>
-				{targetNamespaceName && !hasSelectedOption ? (
+				{targetCollectionName && !hasSelectedOption ? (
 					<span className="field-note field-note--warning">
-						The import references {targetNamespaceName}, but that namespace is
+						The import references {targetCollectionName}, but that collection is
 						not visible to your account.
+					</span>
+				) : hasAmbiguousTargetCollection ? (
+					<span className="field-note field-note--warning">
+						Multiple visible collections are named {targetCollectionName}. The
+						import API matches existing collections by name, so choose a unique
+						collection name before submitting.
 					</span>
 				) : null}
 			</label>
@@ -634,50 +659,50 @@ export function ImportsWorkspace({
 
 								<label className="control-field">
 									{renderFieldLabel(
-										"Namespace handling",
-										"namespace-handling",
-										canCreateNamespaces
-											? "Use file namespace keeps the JSON as-is. Use existing rewrites the import to an existing namespace without permission changes. Create namespace rewrites the import and includes namespace creation and grants."
-											: "Your account can only import into an existing namespace, so namespace creation and permission changes are not submitted.",
+										"Collection handling",
+										"collection-handling",
+										canCreateCollections
+											? "Use file collection keeps the JSON as-is. Use existing rewrites the import to an existing collection without permission changes. Create collection rewrites the import and includes collection creation and grants."
+											: "Your account can only import into an existing collection, so collection creation and permission changes are not submitted.",
 									)}
 									<select
-										value={namespaceMode}
+										value={collectionMode}
 										onChange={(event) => {
-											setNamespaceMode(event.target.value as NamespaceMode);
+											setCollectionMode(event.target.value as CollectionMode);
 											setDelegateGroupName("");
 										}}
-										disabled={!canCreateNamespaces}
+										disabled={!canCreateCollections}
 									>
-										{canCreateNamespaces ? (
-											<option value="file">Use file namespace</option>
+										{canCreateCollections ? (
+											<option value="file">Use file collection</option>
 										) : null}
 										<option value="existing_override">
-											Use existing namespace
+											Use existing collection
 										</option>
-										{canCreateNamespaces ? (
-											<option value="create_override">Create namespace</option>
+										{canCreateCollections ? (
+											<option value="create_override">Create collection</option>
 										) : null}
 									</select>
 								</label>
 
-								{requiresTargetNamespace
-									? renderTargetNamespaceControl()
+								{requiresTargetCollection
+									? renderTargetCollectionControl()
 									: renderDelegateGroupOverrideControl()}
 
-								{requiresNamespaceDescription ? (
+								{requiresCollectionDescription ? (
 									<label className="control-field control-field--wide">
 										{renderFieldLabel(
-											"Namespace description",
-											"namespace-description",
-											"Description used for the namespace declaration added to the import request.",
+											"Collection description",
+											"collection-description",
+											"Description used for the collection declaration added to the import request.",
 										)}
 										<input
 											required
-											value={targetNamespaceDescription}
+											value={targetCollectionDescription}
 											onChange={(event) =>
-												setTargetNamespaceDescription(event.target.value)
+												setTargetCollectionDescription(event.target.value)
 											}
-											placeholder="Namespace purpose"
+											placeholder="Collection purpose"
 										/>
 									</label>
 								) : null}
@@ -686,7 +711,7 @@ export function ImportsWorkspace({
 									{renderFieldLabel(
 										"Permission policy",
 										"permission-policy",
-										"Choose whether namespace permission errors abort the import or allow the remaining import to continue.",
+										"Choose whether collection permission errors abort the import or allow the remaining import to continue.",
 									)}
 									<select
 										value={permissionPolicy}
@@ -702,7 +727,7 @@ export function ImportsWorkspace({
 									</select>
 								</label>
 
-								{requiresTargetNamespace
+								{requiresTargetCollection
 									? renderDelegateGroupOverrideControl()
 									: null}
 
@@ -753,10 +778,10 @@ export function ImportsWorkspace({
 							{submitError ? (
 								<div className="error-banner">{submitError}</div>
 							) : null}
-							{namespacesQuery.isError && isExistingNamespaceMode ? (
+							{collectionsQuery.isError && isExistingCollectionMode ? (
 								<div className="muted">
-									Could not load namespaces. Reload the page before submitting
-									an import into an existing namespace.
+									Could not load collections. Reload the page before submitting
+									an import into an existing collection.
 								</div>
 							) : null}
 							{canUsePermissionControls && groupsQuery.isError ? (
@@ -772,7 +797,7 @@ export function ImportsWorkspace({
 									disabled={
 										submitMutation.isPending ||
 										!parsedImport ||
-										!canSubmitNamespaceOptions ||
+										!canSubmitCollectionOptions ||
 										!canSubmitFilePermissionGroups
 									}
 								>

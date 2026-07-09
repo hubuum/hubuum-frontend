@@ -7,16 +7,16 @@
  */
 import type { ImportClassInput } from './importClassInput';
 import type { ImportClassRelationInput } from './importClassRelationInput';
-import type { ImportNamespaceInput } from './importNamespaceInput';
-import type { ImportNamespacePermissionInput } from './importNamespacePermissionInput';
+import type { ImportCollectionInput } from './importCollectionInput';
+import type { ImportCollectionPermissionInput } from './importCollectionPermissionInput';
 import type { ImportObjectInput } from './importObjectInput';
 import type { ImportObjectRelationInput } from './importObjectRelationInput';
 
 export interface ImportGraph {
   class_relations?: ImportClassRelationInput[];
   classes?: ImportClassInput[];
-  namespace_permissions?: ImportNamespacePermissionInput[];
-  namespaces?: ImportNamespaceInput[];
+  collection_permissions?: ImportCollectionPermissionInput[];
+  collections?: ImportCollectionInput[];
   object_relations?: ImportObjectRelationInput[];
   objects?: ImportObjectInput[];
 }

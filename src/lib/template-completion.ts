@@ -29,9 +29,9 @@ const TAGS: Completion[] = [
 	{ label: "set", detail: "Assign a template variable", type: "keyword" },
 	{ label: "macro", detail: "Define a macro", type: "keyword" },
 	{ label: "endmacro", detail: "Close a macro", type: "keyword" },
-	{ label: "include", detail: "Include a same-namespace template", type: "keyword" },
-	{ label: "import", detail: "Import macros from a same-namespace template", type: "keyword" },
-	{ label: "extends", detail: "Extend a same-namespace template", type: "keyword" },
+	{ label: "include", detail: "Include a same-collection template", type: "keyword" },
+	{ label: "import", detail: "Import macros from a same-collection template", type: "keyword" },
+	{ label: "extends", detail: "Extend a same-collection template", type: "keyword" },
 ];
 
 const FILTERS: Completion[] = [
@@ -60,7 +60,7 @@ const FUNCTIONS: Completion[] = [
 // Resolver value kinds.
 type Kind =
 	| { type: "object" }
-	| { type: "namespace" }
+	| { type: "collection" }
 	| { type: "meta" }
 	| { type: "scope" }
 	| { type: "request" }
@@ -181,8 +181,8 @@ function step(kind: Kind, segment: Segment, options: TemplateCompletionOptions):
 				return { type: "pathsMap" };
 			}
 			const field = getScopeObjectFields(options.scopeKind).find((f) => f.name === segment.name);
-			if (field?.nested === "namespace") {
-				return { type: "namespace" };
+			if (field?.nested === "collection") {
+				return { type: "collection" };
 			}
 			if (segment.name === "path_objects") {
 				return segment.indexed ? { type: "object" } : { type: "listObject" };
@@ -218,24 +218,24 @@ function completionsForKind(kind: Kind, options: TemplateCompletionOptions): Com
 				{ label: "path", detail: "Traversal path (id list)", type: "property" },
 				{ label: "path_objects", detail: "Objects along the traversal path (list)", type: "property" },
 			];
-		case "namespace":
+		case "collection":
 			return NAMESPACE_FIELDS.map(fieldCompletion);
 		case "meta":
 			return [
 				{ label: "count", detail: "Number of rows", type: "property" },
 				{ label: "content_type", detail: "Output content type", type: "property" },
 				{ label: "truncated", detail: "Whether the result was truncated", type: "property" },
-				{ label: "scope", detail: "Report scope", type: "property" },
+				{ label: "scope", detail: "Export scope", type: "property" },
 			];
 		case "scope":
 			return [
-				{ label: "kind", detail: "Report scope kind", type: "property" },
+				{ label: "kind", detail: "Export scope kind", type: "property" },
 				{ label: "class_id", detail: "Class id for class-bound scopes", type: "property" },
 				{ label: "object_id", detail: "Object id for object-bound scopes", type: "property" },
 			];
 		case "request":
 			return [
-				{ label: "scope", detail: "Submitted report scope", type: "property" },
+				{ label: "scope", detail: "Submitted export scope", type: "property" },
 				{ label: "query", detail: "Submitted query string", type: "property" },
 			];
 		case "relatedMap":
@@ -253,10 +253,10 @@ function completionsForKind(kind: Kind, options: TemplateCompletionOptions): Com
 
 function rootCompletions(options: TemplateCompletionOptions, loopVars: Set<string>): Completion[] {
 	const vars: Completion[] = [
-		{ label: "items", detail: "Array of report rows", type: "variable", boost: 4 },
-		{ label: "meta", detail: "Report metadata", type: "variable", boost: 3 },
-		{ label: "warnings", detail: "Report warnings", type: "variable" },
-		{ label: "request", detail: "Submitted report request context", type: "variable" },
+		{ label: "items", detail: "Array of export rows", type: "variable", boost: 4 },
+		{ label: "meta", detail: "Export metadata", type: "variable", boost: 3 },
+		{ label: "warnings", detail: "Export warnings", type: "variable" },
+		{ label: "request", detail: "Submitted export request context", type: "variable" },
 	];
 	if (options.scopeKind === "related_objects") {
 		vars.push({ label: "source", detail: "Hydrated root object", type: "variable", boost: 3 });

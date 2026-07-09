@@ -12,6 +12,7 @@
 export type HistoryResponseHubuumObjectHistory = ({
   /** @nullable */
   actor_id?: number | null;
+  collection_id: number;
   created_at: string;
   data: unknown;
   description: string;
@@ -19,7 +20,6 @@ export type HistoryResponseHubuumObjectHistory = ({
   hubuum_class_id: number;
   id: number;
   name: string;
-  namespace_id: number;
   op: string;
   updated_at: string;
   valid_from: string;

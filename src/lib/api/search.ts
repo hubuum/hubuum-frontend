@@ -2,20 +2,20 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import type {
 	HubuumClassExpanded,
 	HubuumObject,
-	Namespace,
+	Collection,
 } from "@/lib/api/generated/models";
 
-export type UnifiedSearchKind = "namespace" | "class" | "object";
-export type UnifiedSearchGroup = "namespaces" | "classes" | "objects";
+export type UnifiedSearchKind = "collection" | "class" | "object";
+export type UnifiedSearchGroup = "collections" | "classes" | "objects";
 
 export type UnifiedSearchResults = {
-	namespaces: Namespace[];
+	collections: Collection[];
 	classes: HubuumClassExpanded[];
 	objects: HubuumObject[];
 };
 
 export type UnifiedSearchNext = {
-	namespaces: string | null;
+	collections: string | null;
 	classes: string | null;
 	objects: string | null;
 };
@@ -30,7 +30,7 @@ export type UnifiedSearchParams = {
 	q: string;
 	kinds?: UnifiedSearchKind[];
 	limitPerKind?: number;
-	cursorNamespaces?: string | null;
+	cursorCollections?: string | null;
 	cursorClasses?: string | null;
 	cursorObjects?: string | null;
 	searchClassSchema?: boolean;
@@ -39,8 +39,8 @@ export type UnifiedSearchParams = {
 
 export type UnifiedSearchKindPage =
 	| {
-			kind: "namespace";
-			results: Namespace[];
+			kind: "collection";
+			results: Collection[];
 			next: string | null;
 	  }
 	| {
@@ -58,7 +58,7 @@ export const DEFAULT_UNIFIED_SEARCH_LIMIT = 10;
 
 function emptyResults(): UnifiedSearchResults {
 	return {
-		namespaces: [],
+		collections: [],
 		classes: [],
 		objects: [],
 	};
@@ -66,7 +66,7 @@ function emptyResults(): UnifiedSearchResults {
 
 function emptyNext(): UnifiedSearchNext {
 	return {
-		namespaces: null,
+		collections: null,
 		classes: null,
 		objects: null,
 	};
@@ -95,12 +95,12 @@ function normalizeSearchResponse(
 	const response = payload as {
 		query?: unknown;
 		results?: {
-			namespaces?: unknown;
+			collections?: unknown;
 			classes?: unknown;
 			objects?: unknown;
 		};
 		next?: {
-			namespaces?: unknown;
+			collections?: unknown;
 			classes?: unknown;
 			objects?: unknown;
 		};
@@ -109,8 +109,8 @@ function normalizeSearchResponse(
 	return {
 		query: typeof response.query === "string" ? response.query : fallbackQuery,
 		results: {
-			namespaces: Array.isArray(response.results?.namespaces)
-				? (response.results.namespaces as Namespace[])
+			collections: Array.isArray(response.results?.collections)
+				? (response.results.collections as Collection[])
 				: [],
 			classes: Array.isArray(response.results?.classes)
 				? (response.results.classes as HubuumClassExpanded[])
@@ -120,9 +120,9 @@ function normalizeSearchResponse(
 				: [],
 		},
 		next: {
-			namespaces:
-				typeof response.next?.namespaces === "string"
-					? response.next.namespaces
+			collections:
+				typeof response.next?.collections === "string"
+					? response.next.collections
 					: null,
 			classes:
 				typeof response.next?.classes === "string"
@@ -148,8 +148,8 @@ export function getUnifiedSearchUrl(params: UnifiedSearchParams): string {
 		normalizedParams.set("limit_per_kind", String(params.limitPerKind));
 	}
 
-	if (params.cursorNamespaces) {
-		normalizedParams.set("cursor_namespaces", params.cursorNamespaces);
+	if (params.cursorCollections) {
+		normalizedParams.set("cursor_collections", params.cursorCollections);
 	}
 
 	if (params.cursorClasses) {
@@ -199,7 +199,7 @@ export async function fetchUnifiedSearchKindPage(
 		q: params.q,
 		kinds: [params.kind],
 		limitPerKind: params.limitPerKind,
-		cursorNamespaces: params.cursorNamespaces,
+		cursorCollections: params.cursorCollections,
 		cursorClasses: params.cursorClasses,
 		cursorObjects: params.cursorObjects,
 		searchClassSchema: params.searchClassSchema,
@@ -207,11 +207,11 @@ export async function fetchUnifiedSearchKindPage(
 	});
 
 	switch (params.kind) {
-		case "namespace":
+		case "collection":
 			return {
-				kind: "namespace",
-				results: response.results.namespaces,
-				next: response.next.namespaces,
+				kind: "collection",
+				results: response.results.collections,
+				next: response.next.collections,
 			};
 		case "class":
 			return {

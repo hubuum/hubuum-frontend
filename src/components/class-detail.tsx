@@ -20,13 +20,13 @@ import {
 	deleteApiV1ClassesByClassId,
 	getApiV1Classes,
 	getApiV1ClassesByClassId,
-	getApiV1Namespaces,
+	getApiV1Collections,
 	patchApiV1ClassesByClassId,
 } from "@/lib/api/generated/client";
 import type {
 	HubuumClassExpanded,
 	HubuumClassRelation,
-	Namespace,
+	Collection,
 	UpdateHubuumClass,
 } from "@/lib/api/generated/models";
 import {
@@ -44,14 +44,14 @@ type ClassDetailProps = {
 type EditableField =
 	| "name"
 	| "description"
-	| "namespace"
+	| "collection"
 	| "validate_schema"
 	| "json_schema";
 
 const ALL_EDITABLE_FIELDS: EditableField[] = [
 	"name",
 	"description",
-	"namespace",
+	"collection",
 	"validate_schema",
 	"json_schema",
 ];
@@ -68,14 +68,14 @@ async function fetchClass(classId: number): Promise<HubuumClassExpanded> {
 	return response.data;
 }
 
-async function fetchNamespaces(): Promise<Namespace[]> {
-	const response = await getApiV1Namespaces(undefined, {
+async function fetchCollections(): Promise<Collection[]> {
+	const response = await getApiV1Collections(undefined, {
 		credentials: "include",
 	});
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load namespaces."),
+			getApiErrorMessage(response.data, "Failed to load collections."),
 		);
 	}
 
@@ -169,7 +169,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
-	const [namespaceId, setNamespaceId] = useState("");
+	const [collectionId, setCollectionId] = useState("");
 	const [validateSchema, setValidateSchema] = useState(false);
 	const [jsonSchemaInput, setJsonSchemaInput] = useState("");
 	const [initialized, setInitialized] = useState(false);
@@ -186,9 +186,9 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		queryKey: ["classes", "class-detail"],
 		queryFn: fetchClasses,
 	});
-	const namespacesQuery = useQuery({
-		queryKey: ["namespaces", "class-detail"],
-		queryFn: fetchNamespaces,
+	const collectionsQuery = useQuery({
+		queryKey: ["collections", "class-detail"],
+		queryFn: fetchCollections,
 	});
 	const classRelationsQuery = useQuery({
 		queryKey: ["class-relations", "detail", classId],
@@ -203,7 +203,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		if (!initialized || editingFields.length === 0) {
 			setName(classQuery.data.name);
 			setDescription(classQuery.data.description ?? "");
-			setNamespaceId(String(classQuery.data.namespace.id));
+			setCollectionId(String(classQuery.data.collection.id));
 			setValidateSchema(classQuery.data.validate_schema);
 			setJsonSchemaInput(stringifyJsonSchema(classQuery.data.json_schema));
 			setInitialized(true);
@@ -220,7 +220,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 			type: "class",
 			id: classData.id,
 			name: classData.name,
-			namespaceId: classData.namespace.id,
+			collectionId: classData.collection.id,
 		});
 	}, [classQuery.data]);
 
@@ -302,8 +302,8 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 			return;
 		}
 
-		if (field === "namespace") {
-			setNamespaceId(String(classData.namespace.id));
+		if (field === "collection") {
+			setCollectionId(String(classData.collection.id));
 			return;
 		}
 
@@ -354,7 +354,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 
 		setName(classData.name);
 		setDescription(classData.description ?? "");
-		setNamespaceId(String(classData.namespace.id));
+		setCollectionId(String(classData.collection.id));
 		setValidateSchema(classData.validate_schema);
 		setJsonSchemaInput(stringifyJsonSchema(classData.json_schema));
 		setEditingFields([]);
@@ -393,8 +393,8 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 						type: "class",
 						id: classData.id,
 						name: classData.name,
-						namespaceId: classData.namespace.id,
-						namespaceName: classData.namespace.name,
+						collectionId: classData.collection.id,
+						collectionName: classData.collection.name,
 					},
 				},
 			}),
@@ -432,9 +432,9 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		setFormError(null);
 		setFormSuccess(null);
 
-		const parsedNamespaceId = Number.parseInt(namespaceId, 10);
-		if (!Number.isFinite(parsedNamespaceId) || parsedNamespaceId < 1) {
-			setFormError("Namespace is required.");
+		const parsedCollectionId = Number.parseInt(collectionId, 10);
+		if (!Number.isFinite(parsedCollectionId) || parsedCollectionId < 1) {
+			setFormError("Collection is required.");
 			return;
 		}
 
@@ -451,7 +451,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		const payload: UpdateHubuumClass = {
 			name: name.trim(),
 			description: description.trim(),
-			namespace_id: parsedNamespaceId,
+			collection_id: parsedCollectionId,
 			validate_schema: validateSchema,
 		};
 
@@ -529,11 +529,11 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		return <div className="card error-banner">Class data is unavailable.</div>;
 	}
 
-	const namespaceOptions = namespacesQuery.data ?? [];
-	const hasNamespaceOptions = namespaceOptions.length > 0;
-	const namespaceNameById = new Map<number, string>();
-	for (const namespace of namespaceOptions) {
-		namespaceNameById.set(namespace.id, namespace.name);
+	const collectionOptions = collectionsQuery.data ?? [];
+	const hasCollectionOptions = collectionOptions.length > 0;
+	const collectionNameById = new Map<number, string>();
+	for (const collection of collectionOptions) {
+		collectionNameById.set(collection.id, collection.name);
 	}
 	const classNameById = new Map<number, string>();
 	for (const item of classesQuery.data ?? []) {
@@ -553,10 +553,10 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 				renderClassLabel(right.relatedClassId),
 			),
 		);
-	const namespaceLabel =
-		namespaceNameById.get(classData.namespace.id) ?? classData.namespace.name;
-	const hasNamespaceSelection = namespaceOptions.some(
-		(namespace) => String(namespace.id) === namespaceId,
+	const collectionLabel =
+		collectionNameById.get(classData.collection.id) ?? classData.collection.name;
+	const hasCollectionSelection = collectionOptions.some(
+		(collection) => String(collection.id) === collectionId,
 	);
 	const schemaPreview = stringifyJsonSchema(classData.json_schema);
 	const schemaSummary =
@@ -691,45 +691,45 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 					</section>
 
 					<section
-						className={`object-detail-row${editingFields.includes("namespace") ? " is-editing" : ""}`}
+						className={`object-detail-row${editingFields.includes("collection") ? " is-editing" : ""}`}
 					>
-						<div className="object-detail-label">Namespace</div>
+						<div className="object-detail-label">Collection</div>
 						<div className="object-detail-body">
-							{editingFields.includes("namespace") ? (
+							{editingFields.includes("collection") ? (
 								<div className="control-field">
-									<label htmlFor="class-detail-namespace" className="sr-only">
-										Namespace
+									<label htmlFor="class-detail-collection" className="sr-only">
+										Collection
 									</label>
-									{hasNamespaceOptions ? (
+									{hasCollectionOptions ? (
 										<select
-											id="class-detail-namespace"
+											id="class-detail-collection"
 											required
-											value={hasNamespaceSelection ? namespaceId : ""}
-											onChange={(event) => setNamespaceId(event.target.value)}
+											value={hasCollectionSelection ? collectionId : ""}
+											onChange={(event) => setCollectionId(event.target.value)}
 										>
-											{!hasNamespaceSelection ? (
-												<option value="">Select a namespace...</option>
+											{!hasCollectionSelection ? (
+												<option value="">Select a collection...</option>
 											) : null}
-											{namespaceOptions.map((namespace) => (
-												<option key={namespace.id} value={namespace.id}>
-													{namespace.name}
+											{collectionOptions.map((collection) => (
+												<option key={collection.id} value={collection.id}>
+													{collection.name}
 												</option>
 											))}
 										</select>
 									) : (
 										<input
-											id="class-detail-namespace"
+											id="class-detail-collection"
 											required
 											type="number"
 											min={1}
-											value={namespaceId}
-											onChange={(event) => setNamespaceId(event.target.value)}
+											value={collectionId}
+											onChange={(event) => setCollectionId(event.target.value)}
 											placeholder={
-												namespacesQuery.isLoading
-													? "Loading namespaces..."
-													: "Enter namespace ID"
+												collectionsQuery.isLoading
+													? "Loading collections..."
+													: "Enter collection ID"
 											}
-											disabled={namespacesQuery.isLoading}
+											disabled={collectionsQuery.isLoading}
 										/>
 									)}
 								</div>
@@ -737,10 +737,10 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 								<button
 									type="button"
 									className="object-inline-edit"
-									onClick={() => toggleFieldEditing("namespace", classData)}
+									onClick={() => toggleFieldEditing("collection", classData)}
 								>
 									<span className="object-detail-value">
-										{namespaceLabel}
+										{collectionLabel}
 									</span>
 									<span className="object-inline-edit-icon">
 										<InlineEditIcon />
@@ -749,11 +749,11 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 							)}
 						</div>
 						<div className="object-detail-row-actions">
-							{editingFields.includes("namespace") ? (
+							{editingFields.includes("collection") ? (
 								<button
 									type="button"
 									className="ghost"
-									onClick={() => toggleFieldEditing("namespace", classData)}
+									onClick={() => toggleFieldEditing("collection", classData)}
 								>
 									Cancel
 								</button>
@@ -869,9 +869,9 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 				</div>
 
 				{formError ? <div className="error-banner">{formError}</div> : null}
-				{namespacesQuery.isError ? (
+				{collectionsQuery.isError ? (
 					<div className="muted">
-						Could not load namespaces automatically. Manual namespace ID input
+						Could not load collections automatically. Manual collection ID input
 						is enabled.
 					</div>
 				) : null}
@@ -909,7 +909,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 			</form>
 
 			<RemoteInvocationsPanel
-				namespaceId={classData.namespace.id}
+				collectionId={classData.collection.id}
 				subject={{ type: "class", class_id: classId }}
 				subjectLabel={`class "${classData.name}"`}
 				subjectType="class"

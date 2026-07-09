@@ -11,7 +11,7 @@ import {
 	deleteApiV1RelationsClassesByRelationId,
 	deleteApiV1RelationsObjectsByRelationId,
 	getApiV1Classes,
-	getApiV1Namespaces,
+	getApiV1Collections,
 	postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectId,
 } from "@/lib/api/generated/client";
 import type {
@@ -20,7 +20,7 @@ import type {
 	HubuumObject,
 	HubuumObjectRelation,
 	HubuumObjectWithPath,
-	Namespace,
+	Collection,
 } from "@/lib/api/generated/models";
 import {
 	DESELECT_ALL_EVENT,
@@ -93,7 +93,7 @@ type HubuumClassWithPath = {
 	id: number;
 	json_schema?: unknown;
 	name: string;
-	namespace_id: number;
+	collection_id: number;
 	path: number[];
 	updated_at: string;
 	validate_schema: boolean;
@@ -172,14 +172,14 @@ async function fetchDirectObjectRelations(
 	return expectArrayPayload<HubuumObjectRelation>(payload, "object relations");
 }
 
-async function fetchNamespaces(): Promise<Namespace[]> {
-	const response = await getApiV1Namespaces(undefined, {
+async function fetchCollections(): Promise<Collection[]> {
+	const response = await getApiV1Collections(undefined, {
 		credentials: "include",
 	});
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load namespaces."),
+			getApiErrorMessage(response.data, "Failed to load collections."),
 		);
 	}
 
@@ -201,7 +201,7 @@ type ObjectRelationsView = "direct" | "reachable";
 type ObjectContext = {
 	classId: number;
 	name: string;
-	namespaceId: number;
+	collectionId: number;
 };
 
 export function RelationsExplorer({ mode }: RelationsExplorerProps) {
@@ -293,14 +293,14 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		queryKey: ["classes", "relations-explorer"],
 		queryFn: fetchClasses,
 	});
-	const namespacesQuery = useQuery({
-		queryKey: ["namespaces", "relations-explorer"],
-		queryFn: fetchNamespaces,
+	const collectionsQuery = useQuery({
+		queryKey: ["collections", "relations-explorer"],
+		queryFn: fetchCollections,
 		enabled: isObjectMode,
 	});
 
 	const classes = classesQuery.data ?? [];
-	const namespaces = namespacesQuery.data ?? [];
+	const collections = collectionsQuery.data ?? [];
 	const classNameById = useMemo(() => {
 		const map = new Map<number, string>();
 		for (const classItem of classes) {
@@ -308,18 +308,18 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		}
 		return map;
 	}, [classes]);
-	const namespaceNameById = useMemo(() => {
+	const collectionNameById = useMemo(() => {
 		const map = new Map<number, string>();
-		for (const namespace of namespaces) {
-			map.set(namespace.id, namespace.name);
+		for (const collection of collections) {
+			map.set(collection.id, collection.name);
 		}
 		for (const classItem of classes) {
-			if (!map.has(classItem.namespace.id)) {
-				map.set(classItem.namespace.id, classItem.namespace.name);
+			if (!map.has(classItem.collection.id)) {
+				map.set(classItem.collection.id, classItem.collection.name);
 			}
 		}
 		return map;
-	}, [classes, namespaces]);
+	}, [classes, collections]);
 
 	const resolvedSourceClassId = useMemo(() => {
 		const parsed = parseId(sourceClassId);
@@ -506,12 +506,12 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			hubuum_class_id: number;
 			id: number;
 			name: string;
-			namespace_id: number;
+			collection_id: number;
 		}) => {
 			map.set(objectItem.id, {
 				classId: objectItem.hubuum_class_id,
 				name: objectItem.name,
-				namespaceId: objectItem.namespace_id,
+				collectionId: objectItem.collection_id,
 			});
 		};
 
@@ -1152,9 +1152,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		return className ?? `Class #${classId}`;
 	}
 
-	function renderNamespaceById(namespaceId: number): string {
-		const namespaceName = namespaceNameById.get(namespaceId);
-		return namespaceName ?? `Namespace #${namespaceId}`;
+	function renderCollectionById(collectionId: number): string {
+		const collectionName = collectionNameById.get(collectionId);
+		return collectionName ?? `Collection #${collectionId}`;
 	}
 
 	function renderObjectById(objectId: number): string {
@@ -1646,7 +1646,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 							<thead>
 								<tr>
 									<th>Class</th>
-									<th>Namespace</th>
+									<th>Collection</th>
 									<th>Hops</th>
 									<th>Path</th>
 								</tr>
@@ -1657,7 +1657,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 										key={`${connectedClass.id}-${connectedClass.path.join("-")}`}
 									>
 										<td>{renderClassLink(connectedClass.id)}</td>
-										<td>{renderNamespaceById(connectedClass.namespace_id)}</td>
+										<td>{renderCollectionById(connectedClass.collection_id)}</td>
 										<td>
 											{Math.max(
 												getDisplayClassPath(
@@ -1822,7 +1822,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 							<thead>
 								<tr>
 									<th>Object</th>
-									<th>Namespace</th>
+									<th>Collection</th>
 									<th>Path</th>
 								</tr>
 							</thead>
@@ -1830,7 +1830,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 								{relatedObjects.map((relation) => (
 									<tr key={relation.id}>
 										<td>{renderObjectLink(relation.id)}</td>
-										<td>{renderNamespaceById(relation.namespace_id)}</td>
+										<td>{renderCollectionById(relation.collection_id)}</td>
 										<td>{renderObjectPath(relation.path, relation.id)}</td>
 									</tr>
 								))}

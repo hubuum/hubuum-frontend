@@ -1,18 +1,18 @@
-export type SearchScope = "namespaces" | "classes" | "objects";
+export type SearchScope = "collections" | "classes" | "objects";
 
 export const SEARCH_SCOPE_OPTIONS: Array<{
 	value: SearchScope;
 	label: string;
 }> = [
-	{ value: "namespaces", label: "Namespaces" },
+	{ value: "collections", label: "Collections" },
 	{ value: "classes", label: "Classes" },
 	{ value: "objects", label: "Objects" },
 ];
 
 export function getSearchPath(scope: SearchScope): string {
 	switch (scope) {
-		case "namespaces":
-			return "/namespaces";
+		case "collections":
+			return "/collections";
 		case "classes":
 			return "/classes";
 		case "objects":
@@ -23,8 +23,8 @@ export function getSearchPath(scope: SearchScope): string {
 export function getSearchScopeFromPathname(
 	pathname: string,
 ): SearchScope | null {
-	if (pathname === "/namespaces") {
-		return "namespaces";
+	if (pathname === "/collections") {
+		return "collections";
 	}
 
 	if (pathname === "/classes") {

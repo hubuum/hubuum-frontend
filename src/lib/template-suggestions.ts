@@ -1,6 +1,6 @@
 import type { ReportScopeKind } from "@/lib/api/reporting";
 
-export type FieldDef = { name: string; detail: string; nested?: "namespace" };
+export type FieldDef = { name: string; detail: string; nested?: "collection" };
 
 const BASE_OBJECT_FIELDS: FieldDef[] = [
 	{ name: "id", detail: "Entity id" },
@@ -11,21 +11,21 @@ const BASE_OBJECT_FIELDS: FieldDef[] = [
 ];
 
 const OBJECT_ITEM_FIELDS: FieldDef[] = [
-	{ name: "namespace_id", detail: "Namespace id" },
+	{ name: "collection_id", detail: "Collection id" },
 	{ name: "hubuum_class_id", detail: "Class id" },
 	{ name: "data", detail: "JSON data blob" },
 ];
 
 export const NAMESPACE_FIELDS: FieldDef[] = [
-	{ name: "id", detail: "Namespace id" },
-	{ name: "name", detail: "Namespace name" },
+	{ name: "id", detail: "Collection id" },
+	{ name: "name", detail: "Collection name" },
 ];
 
 const SCOPE_EXTRA_FIELDS: Partial<Record<ReportScopeKind, FieldDef[]>> = {
 	classes: [
 		{ name: "validate_schema", detail: "Whether this class validates object data" },
 		{ name: "json_schema", detail: "JSON schema attached to this class" },
-		{ name: "namespace", detail: "Owning namespace", nested: "namespace" },
+		{ name: "collection", detail: "Owning collection", nested: "collection" },
 	],
 	objects_in_class: OBJECT_ITEM_FIELDS,
 	class_relations: [

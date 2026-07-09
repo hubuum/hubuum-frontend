@@ -16,7 +16,7 @@ function makeTarget(overrides: Partial<RemoteTarget>): RemoteTarget {
 		id: 1,
 		method: "post",
 		name: "target",
-		namespace_id: 10,
+		collection_id: 10,
 		timeout_ms: 5000,
 		updated_at: "2026-06-25T10:00:00.000Z",
 		url_template: "https://example.com/{{ object.id }}",
@@ -49,13 +49,13 @@ describe("parseJsonObjectInput", () => {
 });
 
 describe("filterInvokableTargets", () => {
-	it("keeps enabled targets matching namespace and subject type", () => {
+	it("keeps enabled targets matching collection and subject type", () => {
 		const targets = [
 			makeTarget({ id: 1 }),
-			makeTarget({ id: 2, namespace_id: 11 }),
+			makeTarget({ id: 2, collection_id: 11 }),
 			makeTarget({ id: 3, allowed_subject_types: ["class"] }),
 			makeTarget({ id: 4, enabled: false }),
-			makeTarget({ id: 5, allowed_subject_types: ["namespace", "object"] }),
+			makeTarget({ id: 5, allowed_subject_types: ["collection", "object"] }),
 		];
 
 		expect(filterInvokableTargets(targets, 10, "object").map((t) => t.id)).toEqual([]);

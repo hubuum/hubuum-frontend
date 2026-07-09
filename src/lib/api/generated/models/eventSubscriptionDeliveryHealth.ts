@@ -8,8 +8,8 @@
 import type { EventDeliveryStatusCounts } from './eventDeliveryStatusCounts';
 
 export interface EventSubscriptionDeliveryHealth {
+  collection_id: number;
   counts: EventDeliveryStatusCounts;
-  namespace_id: number;
   /** @nullable */
   oldest_due_age_seconds?: number | null;
   sink_enabled: boolean;

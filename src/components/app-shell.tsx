@@ -72,11 +72,11 @@ const GO_TO_SHORTCUT_TIMEOUT_MS = 1500;
 const GO_TO_ROUTES: Record<string, string> = {
 	a: "/audit",
 	h: "/app",
-	n: "/namespaces",
+	n: "/collections",
 	c: "/classes",
 	o: "/objects",
 	r: "/relations",
-	e: "/reports",
+	e: "/exports",
 	i: "/imports",
 	t: "/tasks",
 	s: "/statistics",
@@ -170,8 +170,8 @@ function getSectionLabel(pathname: string): string {
 	if (pathname.startsWith("/search")) {
 		return "Search";
 	}
-	if (pathname.startsWith("/reports")) {
-		return "Reports";
+	if (pathname.startsWith("/exports")) {
+		return "Exports";
 	}
 	if (pathname.startsWith("/imports")) {
 		return "Imports";
@@ -182,8 +182,8 @@ function getSectionLabel(pathname: string): string {
 	if (pathname.startsWith("/account")) {
 		return "Account";
 	}
-	if (pathname.startsWith("/namespaces")) {
-		return "Namespaces";
+	if (pathname.startsWith("/collections")) {
+		return "Collections";
 	}
 	if (pathname.startsWith("/classes")) {
 		return "Classes";
@@ -216,8 +216,8 @@ function getSectionLabel(pathname: string): string {
 }
 
 function getCreateSection(pathname: string): CreateSection | null {
-	if (pathname === "/namespaces") {
-		return "namespaces";
+	if (pathname === "/collections") {
+		return "collections";
 	}
 	if (pathname === "/classes") {
 		return "classes";
@@ -263,8 +263,8 @@ function getCreateLabel(
 	if (createSection === "admin-remote-targets") {
 		return "New remote target";
 	}
-	if (createSection === "namespaces") {
-		return "New namespace";
+	if (createSection === "collections") {
+		return "New collection";
 	}
 	if (createSection === "classes") {
 		return "New class";
@@ -331,7 +331,7 @@ function IconImport() {
 	);
 }
 
-function IconNamespace() {
+function IconCollection() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
 			<path
@@ -528,16 +528,16 @@ const workspaceLinks: NavItem[] = [
 		hint: "Home: start from the task you want to complete",
 	},
 	{
-		href: "/namespaces",
-		label: "Namespaces",
-		icon: <IconNamespace />,
-		hint: "Namespaces: organize classes and permissions",
+		href: "/collections",
+		label: "Collections",
+		icon: <IconCollection />,
+		hint: "Collections: organize classes and permissions",
 	},
 	{
 		href: "/classes",
 		label: "Classes",
 		icon: <IconClass />,
-		hint: "Classes: define object schemas inside namespaces",
+		hint: "Classes: define object schemas inside collections",
 	},
 	{
 		href: "/objects",
@@ -552,16 +552,16 @@ const workspaceLinks: NavItem[] = [
 		hint: "Relations: connect classes and objects",
 	},
 	{
-		href: "/reports",
-		label: "Reports",
-		icon: <IconReport />,
-		hint: "Reports: manage templates and render scoped output",
-	},
-	{
 		href: "/imports",
 		label: "Imports",
 		icon: <IconImport />,
 		hint: "Imports: submit JSON imports and monitor task execution",
+	},
+	{
+		href: "/exports",
+		label: "Exports",
+		icon: <IconReport />,
+		hint: "Exports: manage templates and render scoped output",
 	},
 	{
 		href: "/tasks",
@@ -1405,14 +1405,14 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 										type={detailPin.type}
 										id={detailPin.id}
 										name={detailPin.name}
-										namespaceId={
-											"namespaceId" in detailPin
-												? detailPin.namespaceId
+										collectionId={
+											"collectionId" in detailPin
+												? detailPin.collectionId
 												: undefined
 										}
-										namespaceName={
-											"namespaceName" in detailPin
-												? detailPin.namespaceName
+										collectionName={
+											"collectionName" in detailPin
+												? detailPin.collectionName
 												: undefined
 										}
 										classId={
@@ -1552,11 +1552,11 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 							<form className="topbar-search-form" onSubmit={onSearchSubmit}>
 								<div className="topbar-search-field">
 									<input
-										aria-label="Search namespaces, classes, and objects"
+										aria-label="Search collections, classes, and objects"
 										className="topbar-search-input"
 										value={searchInput}
 										onChange={(event) => setSearchInput(event.target.value)}
-										placeholder="Search namespaces, classes, and objects"
+										placeholder="Search collections, classes, and objects"
 									/>
 									{normalizeSearchTerm(searchInput) ? (
 										<button

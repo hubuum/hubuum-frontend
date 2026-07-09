@@ -5,14 +5,14 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.1
  */
+import type { Collection } from './collection';
 import type { HubuumClassExpanded } from './hubuumClassExpanded';
 import type { HubuumObject } from './hubuumObject';
-import type { Namespace } from './namespace';
 
 export interface UnifiedSearchBatchResponse {
   classes: HubuumClassExpanded[];
+  collections: Collection[];
   kind: string;
-  namespaces: Namespace[];
   /** @nullable */
   next?: string | null;
   objects: HubuumObject[];

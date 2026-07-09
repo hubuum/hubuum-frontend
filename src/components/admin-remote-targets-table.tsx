@@ -7,13 +7,13 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1RemoteTargetsByTargetId,
 	getApiV1Classes,
-	getApiV1Namespaces,
+	getApiV1Collections,
 	patchApiV1RemoteTargetsByTargetId,
 	postApiV1RemoteTargets,
 } from "@/lib/api/generated/client";
 import type {
 	HubuumClassExpanded,
-	Namespace,
+	Collection,
 	NewRemoteTarget,
 	RemoteAuthConfig,
 	RemoteHttpMethod,
@@ -27,13 +27,17 @@ import {
 	parseJsonObjectInput,
 } from "@/lib/api/remote-targets";
 import {
+	buildCollectionHierarchy,
+	formatCollectionOption,
+} from "@/lib/collection-hierarchy";
+import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
 
 const METHODS: RemoteHttpMethod[] = ["get", "post", "patch", "delete"];
 const SUBJECT_TYPES: RemoteTargetSubjectType[] = [
-	"namespace",
+	"collection",
 	"class",
 	"object",
 	"class_relation",
@@ -52,7 +56,7 @@ type FormState = {
 	headersTemplateInput: string;
 	method: RemoteHttpMethod;
 	name: string;
-	namespaceId: string;
+	collectionId: string;
 	timeoutMs: string;
 	urlTemplate: string;
 };
@@ -67,19 +71,19 @@ const defaultFormState: FormState = {
 	headersTemplateInput: "{}",
 	method: "post",
 	name: "",
-	namespaceId: "",
+	collectionId: "",
 	timeoutMs: "5000",
 	urlTemplate: "https://example.com/{{ object.id }}",
 };
 
-async function fetchNamespaces(): Promise<Namespace[]> {
-	const response = await getApiV1Namespaces(undefined, {
+async function fetchCollections(): Promise<Collection[]> {
+	const response = await getApiV1Collections(undefined, {
 		credentials: "include",
 	});
 
 	if (response.status !== 200) {
 		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load namespaces."),
+			getApiErrorMessage(response.data, "Failed to load collections."),
 		);
 	}
 
@@ -123,7 +127,7 @@ function formStateFromTarget(target: RemoteTarget): FormState {
 		headersTemplateInput: stringifyJson(target.headers_template),
 		method: target.method,
 		name: target.name,
-		namespaceId: String(target.namespace_id),
+		collectionId: String(target.collection_id),
 		timeoutMs: String(target.timeout_ms),
 		urlTemplate: target.url_template,
 	};
@@ -161,9 +165,9 @@ function isRemoteAuthConfig(value: unknown): value is RemoteAuthConfig {
 }
 
 function buildPayload(state: FormState): NewRemoteTarget {
-	const namespaceId = Number.parseInt(state.namespaceId, 10);
-	if (!Number.isFinite(namespaceId) || namespaceId < 1) {
-		throw new Error("Namespace is required.");
+	const collectionId = Number.parseInt(state.collectionId, 10);
+	if (!Number.isFinite(collectionId) || collectionId < 1) {
+		throw new Error("Collection is required.");
 	}
 
 	const name = state.name.trim();
@@ -213,7 +217,7 @@ function buildPayload(state: FormState): NewRemoteTarget {
 		headers_template: headersTemplate,
 		method: state.method,
 		name,
-		namespace_id: namespaceId,
+		collection_id: collectionId,
 		url_template: urlTemplate,
 	};
 	payload.class_id = classId;
@@ -250,9 +254,9 @@ export function AdminRemoteTargetsTable() {
 	const [editingTarget, setEditingTarget] = useState<RemoteTarget | null>(null);
 	const [formState, setFormState] = useState<FormState>(defaultFormState);
 
-	const namespacesQuery = useQuery({
-		queryKey: ["namespaces", "admin-remote-targets"],
-		queryFn: fetchNamespaces,
+	const collectionsQuery = useQuery({
+		queryKey: ["collections", "admin-remote-targets"],
+		queryFn: fetchCollections,
 	});
 	const classesQuery = useQuery({
 		queryKey: ["classes", "admin-remote-targets"],
@@ -289,7 +293,7 @@ export function AdminRemoteTargetsTable() {
 			return response.data;
 		},
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: ["namespaces"] });
+			await queryClient.invalidateQueries({ queryKey: ["collections"] });
 			setModalOpen(false);
 			setTableSuccess("Remote target created.");
 			setTableError(null);
@@ -381,33 +385,37 @@ export function AdminRemoteTargetsTable() {
 	});
 
 	useEffect(() => {
-		const namespaces = namespacesQuery.data ?? [];
-		if (formState.namespaceId || namespaces.length !== 1) {
+		const collections = collectionsQuery.data ?? [];
+		if (formState.collectionId || collections.length !== 1) {
 			return;
 		}
 
 		setFormState((current) => ({
 			...current,
-			namespaceId: String(namespaces[0].id),
+			collectionId: String(collections[0].id),
 		}));
-	}, [formState.namespaceId, namespacesQuery.data]);
+	}, [formState.collectionId, collectionsQuery.data]);
 
-	const namespacesById = useMemo(() => {
-		return new Map((namespacesQuery.data ?? []).map((namespace) => [namespace.id, namespace]));
-	}, [namespacesQuery.data]);
+	const collectionsById = useMemo(() => {
+		return new Map((collectionsQuery.data ?? []).map((collection) => [collection.id, collection]));
+	}, [collectionsQuery.data]);
+	const collectionHierarchy = useMemo(
+		() => buildCollectionHierarchy(collectionsQuery.data ?? []),
+		[collectionsQuery.data],
+	);
 	const classesById = useMemo(() => {
 		return new Map((classesQuery.data ?? []).map((hubuumClass) => [hubuumClass.id, hubuumClass]));
 	}, [classesQuery.data]);
 	const classOptions = useMemo(() => {
-		const namespaceId = Number.parseInt(formState.namespaceId, 10);
-		if (!Number.isFinite(namespaceId)) {
+		const collectionId = Number.parseInt(formState.collectionId, 10);
+		if (!Number.isFinite(collectionId)) {
 			return [];
 		}
 
 		return (classesQuery.data ?? []).filter(
-			(hubuumClass) => hubuumClass.namespace.id === namespaceId,
+			(hubuumClass) => hubuumClass.collection.id === collectionId,
 		);
-	}, [classesQuery.data, formState.namespaceId]);
+	}, [classesQuery.data, formState.collectionId]);
 	const visibleTargets = useMemo(() => {
 		const needle = search.trim().toLowerCase();
 		if (!needle) {
@@ -419,8 +427,8 @@ export function AdminRemoteTargetsTable() {
 				target.name,
 				target.description,
 				target.method,
-				String(target.namespace_id),
-				namespacesById.get(target.namespace_id)?.name ?? "",
+				String(target.collection_id),
+				collectionsById.get(target.collection_id)?.name ?? "",
 				target.class_id == null ? "" : String(target.class_id),
 				target.class_id == null ? "" : classesById.get(target.class_id)?.name ?? "",
 				target.allowed_subject_types.join(" "),
@@ -429,7 +437,7 @@ export function AdminRemoteTargetsTable() {
 				.toLowerCase();
 			return haystack.includes(needle);
 		});
-	}, [classesById, namespacesById, search, targets]);
+	}, [classesById, collectionsById, search, targets]);
 
 	function openCreateModal() {
 		setFormMode("create");
@@ -437,9 +445,9 @@ export function AdminRemoteTargetsTable() {
 		setFormError(null);
 		setFormState({
 			...defaultFormState,
-			namespaceId:
-				namespacesQuery.data?.length === 1
-					? String(namespacesQuery.data[0].id)
+			collectionId:
+				collectionsQuery.data?.length === 1
+					? String(collectionsQuery.data[0].id)
 					: "",
 		});
 		setModalOpen(true);
@@ -473,8 +481,8 @@ export function AdminRemoteTargetsTable() {
 			payload = buildPayload(formState);
 			if (payload.class_id != null) {
 				const selectedClass = classesById.get(payload.class_id);
-				if (!selectedClass || selectedClass.namespace.id !== payload.namespace_id) {
-					setFormError("Class scope must belong to the selected namespace.");
+				if (!selectedClass || selectedClass.collection.id !== payload.collection_id) {
+					setFormError("Class scope must belong to the selected collection.");
 					return;
 				}
 			}
@@ -515,41 +523,44 @@ export function AdminRemoteTargetsTable() {
 			>
 				<form className="stack" onSubmit={onSubmit}>
 					<div className="form-grid">
-						<label className="control-field" htmlFor="remote-target-namespace">
-							<span>Namespace</span>
-							{namespacesQuery.data?.length ? (
+						<label className="control-field" htmlFor="remote-target-collection">
+							<span>Collection</span>
+							{collectionsQuery.data?.length ? (
 								<select
-									id="remote-target-namespace"
+									id="remote-target-collection"
 									required
-									value={formState.namespaceId}
+									value={formState.collectionId}
 									onChange={(event) =>
 										setFormState((current) => ({
 											...current,
-											namespaceId: event.target.value,
+											collectionId: event.target.value,
 										}))
 									}
 								>
-									<option value="">Select a namespace</option>
-									{namespacesQuery.data.map((namespace) => (
-										<option key={namespace.id} value={namespace.id}>
-											{namespace.name}
+									<option value="">Select a collection</option>
+									{collectionsQuery.data.map((collection) => (
+										<option key={collection.id} value={collection.id}>
+											{formatCollectionOption(
+												collection,
+												collectionHierarchy.byId,
+											)}
 										</option>
 									))}
 								</select>
 							) : (
 								<input
-									id="remote-target-namespace"
+									id="remote-target-collection"
 									required
 									type="number"
 									min={1}
-									value={formState.namespaceId}
+									value={formState.collectionId}
 									onChange={(event) =>
 										setFormState((current) => ({
 											...current,
-											namespaceId: event.target.value,
+											collectionId: event.target.value,
 										}))
 									}
-									placeholder="Namespace ID"
+									placeholder="Collection ID"
 								/>
 							)}
 						</label>
@@ -800,9 +811,9 @@ export function AdminRemoteTargetsTable() {
 
 				{tableError ? <div className="error-banner">{tableError}</div> : null}
 				{tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
-				{namespacesQuery.isError ? (
+				{collectionsQuery.isError ? (
 					<div className="muted">
-						Could not load namespace names. Namespace IDs are still shown.
+						Could not load collection names. Collection IDs are still shown.
 					</div>
 				) : null}
 				{classesQuery.isError ? (
@@ -823,7 +834,7 @@ export function AdminRemoteTargetsTable() {
 						<thead>
 							<tr>
 								<th>Name</th>
-								<th>Namespace</th>
+								<th>Collection</th>
 								<th>Method</th>
 								<th>Subject</th>
 								<th>Class scope</th>
@@ -840,8 +851,8 @@ export function AdminRemoteTargetsTable() {
 										<div className="muted">{target.description}</div>
 									</td>
 									<td>
-										{namespacesById.get(target.namespace_id)?.name ??
-											`#${target.namespace_id}`}
+										{collectionsById.get(target.collection_id)?.name ??
+											`#${target.collection_id}`}
 									</td>
 									<td>{target.method.toUpperCase()}</td>
 									<td>{target.allowed_subject_types.join(", ")}</td>

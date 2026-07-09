@@ -10,13 +10,13 @@ import {
 	getApiV1EventDeliveriesHealth,
 	getApiV1EventSinks,
 	getApiV1Events,
-	getApiV1NamespacesByNamespaceIdEventSubscriptions,
-	getApiV1NamespacesByNamespaceIdEvents,
-	getApiV1NamespacesByNamespaceIdHistory,
-	getApiV1NamespacesByNamespaceIdHistoryAsOf,
-	patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionId,
-	postApiV1NamespacesByNamespaceIdEventSubscriptions,
-	deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionId,
+	getApiV1CollectionsByCollectionIdEventSubscriptions,
+	getApiV1CollectionsByCollectionIdEvents,
+	getApiV1CollectionsByCollectionIdHistory,
+	getApiV1CollectionsByCollectionIdHistoryAsOf,
+	patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId,
+	postApiV1CollectionsByCollectionIdEventSubscriptions,
+	deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId,
 	postApiV1EventDeliveriesByDeliveryIdDead,
 	postApiV1EventDeliveriesByDeliveryIdRetry,
 } from "@/lib/api/generated/client";
@@ -29,7 +29,7 @@ import type {
 	GetApiV1EventsParams,
 	HistoryResponseHubuumClassHistory,
 	HistoryResponseHubuumObjectHistory,
-	HistoryResponseNamespaceHistory,
+	HistoryResponseCollectionHistory,
 	NewEventSubscription,
 	UpdateEventSubscription,
 } from "@/lib/api/generated/models";
@@ -38,7 +38,7 @@ export type EventRecord = EventResponse;
 export type HistoryRecord =
 	| HistoryResponseHubuumClassHistory
 	| HistoryResponseHubuumObjectHistory
-	| HistoryResponseNamespaceHistory;
+	| HistoryResponseCollectionHistory;
 
 export type PageResult<T> = {
 	items: T[];
@@ -47,7 +47,7 @@ export type PageResult<T> = {
 };
 
 export type ResourceEventScope =
-	| { type: "namespace"; namespaceId: number }
+	| { type: "collection"; collectionId: number }
 	| { type: "class"; classId: number }
 	| { type: "object"; classId: number; objectId: number };
 
@@ -105,7 +105,7 @@ export async function fetchEventsPage(
 
 export async function fetchResourceEventsPage(
 	scope: ResourceEventScope,
-	options: Omit<EventListOptions, "entity_type" | "entity_id" | "namespace_id"> = {},
+	options: Omit<EventListOptions, "entity_type" | "entity_id" | "collection_id"> = {},
 ): Promise<PageResult<EventRecord>> {
 	const params = {
 		limit: options.limit ?? 25,
@@ -113,9 +113,9 @@ export async function fetchResourceEventsPage(
 		...options,
 	};
 
-	if (scope.type === "namespace") {
-		const response = await getApiV1NamespacesByNamespaceIdEvents(
-			scope.namespaceId,
+	if (scope.type === "collection") {
+		const response = await getApiV1CollectionsByCollectionIdEvents(
+			scope.collectionId,
 			params,
 			{ credentials: "include" },
 		);
@@ -123,7 +123,7 @@ export async function fetchResourceEventsPage(
 			response.status,
 			response.data,
 			200,
-			"Failed to load namespace events.",
+			"Failed to load collection events.",
 		);
 		return pageFromResponse(response.data as EventRecord[], response.headers);
 	}
@@ -168,9 +168,9 @@ export async function fetchResourceHistoryPage(
 		cursor: options.cursor,
 	};
 
-	if (scope.type === "namespace") {
-		const response = await getApiV1NamespacesByNamespaceIdHistory(
-			scope.namespaceId,
+	if (scope.type === "collection") {
+		const response = await getApiV1CollectionsByCollectionIdHistory(
+			scope.collectionId,
 			params,
 			{ credentials: "include" },
 		);
@@ -178,7 +178,7 @@ export async function fetchResourceHistoryPage(
 			response.status,
 			response.data,
 			200,
-			"Failed to load namespace history.",
+			"Failed to load collection history.",
 		);
 		return pageFromResponse(response.data as HistoryRecord[], response.headers);
 	}
@@ -217,9 +217,9 @@ export async function fetchResourceHistoryAsOf(
 	scope: ResourceEventScope,
 	at: string,
 ): Promise<HistoryRecord> {
-	if (scope.type === "namespace") {
-		const response = await getApiV1NamespacesByNamespaceIdHistoryAsOf(
-			scope.namespaceId,
+	if (scope.type === "collection") {
+		const response = await getApiV1CollectionsByCollectionIdHistoryAsOf(
+			scope.collectionId,
 			{ at },
 			{ credentials: "include" },
 		);
@@ -227,7 +227,7 @@ export async function fetchResourceHistoryAsOf(
 			response.status,
 			response.data,
 			200,
-			"Failed to load namespace snapshot.",
+			"Failed to load collection snapshot.",
 		);
 		return response.data as HistoryRecord;
 	}
@@ -310,11 +310,11 @@ export async function fetchEventSinks(): Promise<EventSink[]> {
 	return response.data as EventSink[];
 }
 
-export async function fetchNamespaceEventSubscriptions(
-	namespaceId: number,
+export async function fetchCollectionEventSubscriptions(
+	collectionId: number,
 ): Promise<EventSubscription[]> {
-	const response = await getApiV1NamespacesByNamespaceIdEventSubscriptions(
-		namespaceId,
+	const response = await getApiV1CollectionsByCollectionIdEventSubscriptions(
+		collectionId,
 		{ credentials: "include" },
 	);
 
@@ -327,12 +327,12 @@ export async function fetchNamespaceEventSubscriptions(
 	return response.data as EventSubscription[];
 }
 
-export async function createNamespaceEventSubscription(
-	namespaceId: number,
+export async function createCollectionEventSubscription(
+	collectionId: number,
 	payload: NewEventSubscription,
 ): Promise<EventSubscription> {
-	const response = await postApiV1NamespacesByNamespaceIdEventSubscriptions(
-		namespaceId,
+	const response = await postApiV1CollectionsByCollectionIdEventSubscriptions(
+		collectionId,
 		payload,
 		{ credentials: "include" },
 	);
@@ -346,14 +346,14 @@ export async function createNamespaceEventSubscription(
 	return response.data as EventSubscription;
 }
 
-export async function updateNamespaceEventSubscription(
-	namespaceId: number,
+export async function updateCollectionEventSubscription(
+	collectionId: number,
 	subscriptionId: number,
 	payload: UpdateEventSubscription,
 ): Promise<EventSubscription> {
 	const response =
-		await patchApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionId(
-			namespaceId,
+		await patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId(
+			collectionId,
 			subscriptionId,
 			payload,
 			{ credentials: "include" },
@@ -368,13 +368,13 @@ export async function updateNamespaceEventSubscription(
 	return response.data as EventSubscription;
 }
 
-export async function deleteNamespaceEventSubscription(
-	namespaceId: number,
+export async function deleteCollectionEventSubscription(
+	collectionId: number,
 	subscriptionId: number,
 ): Promise<void> {
 	const response =
-		await deleteApiV1NamespacesByNamespaceIdEventSubscriptionsBySubscriptionId(
-			namespaceId,
+		await deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId(
+			collectionId,
 			subscriptionId,
 			{ credentials: "include" },
 		);
