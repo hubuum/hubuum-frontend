@@ -29,7 +29,6 @@ import {
 	patchApiV1ClassesByClassIdByObjectId,
 } from "@/lib/api/generated/client";
 import type {
-	Group,
 	GroupPermission,
 	HubuumClassExpanded,
 	HubuumObject,
@@ -37,6 +36,7 @@ import type {
 	Collection,
 	UpdateHubuumObject,
 } from "@/lib/api/generated/models";
+import type { ConsoleGroup } from "@/lib/identity-scopes";
 import {
 	EDIT_STATE_EVENT,
 	type EditStateEventDetail,
@@ -127,7 +127,9 @@ async function fetchCollectionPermissions(
 	return response.data;
 }
 
-async function fetchCurrentUserGroups(_username: string): Promise<Group[]> {
+async function fetchCurrentUserGroups(
+	_username: string,
+): Promise<ConsoleGroup[]> {
 	try {
 		const response = await getApiV1IamMeGroups(undefined, {
 			credentials: "include",
@@ -210,7 +212,7 @@ function normalizePermissionFlag(value: unknown): boolean {
 
 function canCurrentUserUpdateObject(
 	permissionEntries: GroupPermission[],
-	currentUserGroups: Group[],
+	currentUserGroups: ConsoleGroup[],
 ): boolean {
 	const currentUserGroupIds = new Set(
 		currentUserGroups.map((group) => group.id),
@@ -1020,7 +1022,9 @@ export function ObjectDetail({
 												id="object-detail-collection"
 												required
 												value={hasCollectionSelection ? collectionId : ""}
-												onChange={(event) => setCollectionId(event.target.value)}
+												onChange={(event) =>
+													setCollectionId(event.target.value)
+												}
 											>
 												{!hasCollectionSelection ? (
 													<option value="">Select a collection...</option>
@@ -1038,7 +1042,9 @@ export function ObjectDetail({
 												type="number"
 												min={1}
 												value={collectionId}
-												onChange={(event) => setCollectionId(event.target.value)}
+												onChange={(event) =>
+													setCollectionId(event.target.value)
+												}
 												placeholder={
 													collectionsQuery.isLoading
 														? "Loading collections..."

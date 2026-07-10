@@ -1,6 +1,12 @@
-import type { PinnedItem, PinnedItemType, ClassPinAction } from "@/types/quick-access";
+import type {
+	PinnedItem,
+	PinnedItemType,
+	ClassPinAction,
+} from "@/types/quick-access";
+import { writeUserSetting } from "@/lib/user-settings-client";
+import { PORTABLE_USER_SETTING_KEYS } from "@/lib/user-settings-types";
 
-const PINNED_ITEMS_KEY = "hubuum.pinned-items";
+const PINNED_ITEMS_KEY = PORTABLE_USER_SETTING_KEYS.pinnedItems;
 const MAX_PINNED_ITEMS = 10;
 const PINNED_ITEM_TYPES = new Set(["collection", "class", "object"]);
 
@@ -26,12 +32,14 @@ function normalizePinnedItem(value: unknown): PinnedItem | null {
 	}
 
 	const action = item.action === "create" ? "create" : "view";
-	const name = typeof item.name === "string" && item.name.trim()
-		? item.name
-		: `${type} ${item.id}`;
-	const timestamp = typeof item.timestamp === "number" && Number.isFinite(item.timestamp)
-		? item.timestamp
-		: Date.now();
+	const name =
+		typeof item.name === "string" && item.name.trim()
+			? item.name
+			: `${type} ${item.id}`;
+	const timestamp =
+		typeof item.timestamp === "number" && Number.isFinite(item.timestamp)
+			? item.timestamp
+			: Date.now();
 
 	return {
 		type: type as PinnedItem["type"],
@@ -45,7 +53,9 @@ function normalizePinnedItem(value: unknown): PinnedItem | null {
 			? { collectionName: item.collectionName }
 			: {}),
 		...(isPositiveInteger(item.classId) ? { classId: item.classId } : {}),
-		...(typeof item.className === "string" ? { className: item.className } : {}),
+		...(typeof item.className === "string"
+			? { className: item.className }
+			: {}),
 		...(type === "class" ? { action } : {}),
 	};
 }
@@ -71,7 +81,7 @@ export function getPinnedItems(): PinnedItem[] {
 			.filter((item): item is PinnedItem => item !== null)
 			.slice(0, MAX_PINNED_ITEMS);
 		if (items.length !== parsed.length || JSON.stringify(items) !== stored) {
-			window.localStorage.setItem(PINNED_ITEMS_KEY, JSON.stringify(items));
+			writeUserSetting(PINNED_ITEMS_KEY, JSON.stringify(items));
 		}
 		return items;
 	} catch {
@@ -113,7 +123,7 @@ export function pinItem(item: Omit<PinnedItem, "timestamp">): boolean {
 		};
 
 		const updated = [newItem, ...existing];
-		window.localStorage.setItem(PINNED_ITEMS_KEY, JSON.stringify(updated));
+		writeUserSetting(PINNED_ITEMS_KEY, JSON.stringify(updated));
 		return true;
 	} catch {
 		return false;
@@ -142,7 +152,7 @@ export function unpinItem(
 			return false;
 		});
 
-		window.localStorage.setItem(PINNED_ITEMS_KEY, JSON.stringify(filtered));
+		writeUserSetting(PINNED_ITEMS_KEY, JSON.stringify(filtered));
 	} catch {
 		// Silently fail
 	}

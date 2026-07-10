@@ -12,14 +12,19 @@ import {
 	getApiV1IamUsers,
 	postApiV1IamUsers,
 } from "@/lib/api/generated/client";
-import type { NewUser, UserResponse } from "@/lib/api/generated/models";
 import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
+import {
+	type ConsoleUser,
+	isProviderManagedUser,
+	normalizeIdentityScope,
+	type ScopedNewUser,
+} from "@/lib/identity-scopes";
 import type { TableExportView } from "@/lib/table-export";
 
-async function fetchUsers(): Promise<UserResponse[]> {
+async function fetchUsers(): Promise<ConsoleUser[]> {
 	const response = await getApiV1IamUsers(undefined, {
 		credentials: "include",
 	});
@@ -49,7 +54,7 @@ export function AdminUsersTable() {
 		queryFn: fetchUsers,
 	});
 	const createMutation = useMutation({
-		mutationFn: async (payload: NewUser) => {
+		mutationFn: async (payload: ScopedNewUser) => {
 			const response = await postApiV1IamUsers(payload, {
 				credentials: "include",
 			});
@@ -130,9 +135,22 @@ export function AdminUsersTable() {
 	}, []);
 
 	const users = query.data ?? [];
+	const selectableUsers = useMemo(
+		() => users.filter((user) => !isProviderManagedUser(user)),
+		[users],
+	);
 	const allSelected =
-		users.length > 0 && selectedUserIds.length === users.length;
-	const exportView = useMemo<TableExportView<UserResponse>>(
+		selectableUsers.length > 0 &&
+		selectedUserIds.length === selectableUsers.length;
+
+	useEffect(() => {
+		if (!selectedUserIds.length) return;
+		const selectableIds = new Set(selectableUsers.map((user) => user.id));
+		setSelectedUserIds((current) =>
+			current.filter((userId) => selectableIds.has(userId)),
+		);
+	}, [selectableUsers, selectedUserIds.length]);
+	const exportView = useMemo<TableExportView<ConsoleUser>>(
 		() => ({
 			id: "admin-users",
 			fileName: "user-directory-view",
@@ -143,6 +161,16 @@ export function AdminUsersTable() {
 					key: "username",
 					label: "Username",
 					getValue: (user) => user.name,
+				},
+				{
+					key: "identity_scope",
+					label: "Identity scope",
+					getValue: (user) => normalizeIdentityScope(user.identity_scope),
+				},
+				{
+					key: "provider",
+					label: "Provider",
+					getValue: (user) => user.provider_kind ?? "local",
 				},
 				{ key: "email", label: "Email", getValue: (user) => user.email },
 				{
@@ -166,11 +194,11 @@ export function AdminUsersTable() {
 			return;
 		}
 
-		const existingIds = new Set(users.map((user) => user.id));
+		const existingIds = new Set(selectableUsers.map((user) => user.id));
 		setSelectedUserIds((current) =>
 			current.filter((userId) => existingIds.has(userId)),
 		);
-	}, [users, selectedUserIds.length]);
+	}, [selectableUsers, selectedUserIds.length]);
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -192,7 +220,7 @@ export function AdminUsersTable() {
 
 		const trimmedEmail = email.trim();
 		const trimmedProperName = properName.trim();
-		const payload: NewUser = {
+		const payload: ScopedNewUser = {
 			name: trimmedUsername,
 			password,
 		};
@@ -210,7 +238,7 @@ export function AdminUsersTable() {
 
 	function toggleAllUsers(checked: boolean) {
 		if (checked) {
-			setSelectedUserIds(users.map((user) => user.id));
+			setSelectedUserIds(selectableUsers.map((user) => user.id));
 			return;
 		}
 
@@ -227,7 +255,11 @@ export function AdminUsersTable() {
 	}
 
 	async function deleteSelectedUsers() {
-		if (!selectedUserIds.length) {
+		const selectableIds = new Set(selectableUsers.map((user) => user.id));
+		const deletableUserIds = selectedUserIds.filter((userId) =>
+			selectableIds.has(userId),
+		);
+		if (!deletableUserIds.length) {
 			return;
 		}
 
@@ -235,8 +267,8 @@ export function AdminUsersTable() {
 		setTableSuccess(null);
 
 		const confirmed = await confirm({
-			title: `Delete ${selectedUserIds.length} selected user${
-				selectedUserIds.length === 1 ? "" : "s"
+			title: `Delete ${deletableUserIds.length} selected user${
+				deletableUserIds.length === 1 ? "" : "s"
 			}?`,
 			description: "This removes the selected users and cannot be undone.",
 			confirmLabel: "Delete",
@@ -246,13 +278,17 @@ export function AdminUsersTable() {
 			return;
 		}
 
-		deleteMutation.mutate([...selectedUserIds]);
+		deleteMutation.mutate(deletableUserIds);
 	}
 
 	function renderCreateUserForm() {
 		return (
 			<form className="stack" onSubmit={onSubmit}>
 				<div className="form-grid">
+					<div className="info-banner control-field--wide">
+						New users are created in the local identity scope. Provider-managed
+						users are materialized by their authentication provider.
+					</div>
 					<label className="control-field">
 						<span>Username</span>
 						<input
@@ -369,7 +405,9 @@ export function AdminUsersTable() {
 									/>
 								</th>
 								<th>ID</th>
+								<th>Scope</th>
 								<th>Username</th>
+								<th>Provider</th>
 								<th>Email</th>
 								<th>Created</th>
 								<th>Updated</th>
@@ -383,16 +421,22 @@ export function AdminUsersTable() {
 											type="checkbox"
 											aria-label={`Select user ${user.name}`}
 											checked={selectedUserIds.includes(user.id)}
+											disabled={isProviderManagedUser(user)}
 											onChange={(event) =>
 												toggleUser(user.id, event.target.checked)
 											}
 										/>
 									</td>
 									<td>{user.id}</td>
+									<td>{normalizeIdentityScope(user.identity_scope)}</td>
 									<td>
 										<Link className="row-link" href={`/admin/users/${user.id}`}>
 											{user.name}
 										</Link>
+									</td>
+									<td>
+										{user.provider_kind ?? "local"}
+										{isProviderManagedUser(user) ? " · managed" : ""}
 									</td>
 									<td>{user.email ?? "-"}</td>
 									<td>{new Date(user.created_at).toLocaleString()}</td>

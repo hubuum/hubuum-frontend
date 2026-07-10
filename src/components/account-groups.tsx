@@ -6,10 +6,14 @@ import Link from "next/link";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV1IamMeGroups } from "@/lib/api/generated/client";
-import type { Group } from "@/lib/api/generated/models";
+import {
+	type ConsoleGroup,
+	formatScopedIdentityName,
+	normalizeIdentityScope,
+} from "@/lib/identity-scopes";
 import type { TableExportView } from "@/lib/table-export";
 
-async function fetchGroups(): Promise<Group[]> {
+async function fetchGroups(): Promise<ConsoleGroup[]> {
 	const response = await getApiV1IamMeGroups(undefined, {
 		credentials: "include",
 	});
@@ -50,7 +54,7 @@ export function AccountGroups() {
 			<div className="card muted">You are not a member of any groups.</div>
 		);
 	}
-	const exportView: TableExportView<Group> = {
+	const exportView: TableExportView<ConsoleGroup> = {
 		id: "account-groups",
 		fileName: "my-groups-view",
 		sheetName: "My groups",
@@ -59,7 +63,13 @@ export function AccountGroups() {
 			{
 				key: "group",
 				label: "Group",
-				getValue: (group) => group.groupname,
+				getValue: (group) =>
+					formatScopedIdentityName(group.identity_scope, group.groupname),
+			},
+			{
+				key: "managed_by",
+				label: "Managed by",
+				getValue: (group) => group.managed_by ?? "local",
 			},
 			{
 				key: "description",
@@ -86,7 +96,9 @@ export function AccountGroups() {
 					<thead>
 						<tr>
 							<th>ID</th>
+							<th>Scope</th>
 							<th>Group</th>
+							<th>Managed by</th>
 							<th>Description</th>
 						</tr>
 					</thead>
@@ -94,11 +106,13 @@ export function AccountGroups() {
 						{groups.map((group) => (
 							<tr key={group.id}>
 								<td>{group.id}</td>
+								<td>{normalizeIdentityScope(group.identity_scope)}</td>
 								<td>
 									<Link className="row-link" href={`/admin/groups/${group.id}`}>
 										{group.groupname}
 									</Link>
 								</td>
+								<td>{group.managed_by ?? "local"}</td>
 								<td>{group.description || "—"}</td>
 							</tr>
 						))}

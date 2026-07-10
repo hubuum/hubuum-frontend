@@ -13,14 +13,19 @@ import {
 	getApiV1IamGroupsByGroupIdMembers,
 	postApiV1IamGroups,
 } from "@/lib/api/generated/client";
-import type { Group, NewGroup } from "@/lib/api/generated/models";
 import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
+import {
+	type ConsoleGroup,
+	isProviderManagedGroup,
+	normalizeIdentityScope,
+	type ScopedNewGroup,
+} from "@/lib/identity-scopes";
 import type { TableExportView } from "@/lib/table-export";
 
-async function fetchGroups(): Promise<Group[]> {
+async function fetchGroups(): Promise<ConsoleGroup[]> {
 	const response = await getApiV1IamGroups(undefined, {
 		credentials: "include",
 	});
@@ -82,7 +87,7 @@ export function AdminGroupsTable() {
 		enabled: groups.length > 0,
 	});
 	const createMutation = useMutation({
-		mutationFn: async (payload: NewGroup) => {
+		mutationFn: async (payload: ScopedNewGroup) => {
 			const response = await postApiV1IamGroups(payload, {
 				credentials: "include",
 			});
@@ -166,9 +171,14 @@ export function AdminGroupsTable() {
 		window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
 		return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
 	}, []);
+	const selectableGroups = useMemo(
+		() => groups.filter((group) => !isProviderManagedGroup(group)),
+		[groups],
+	);
 	const allSelected =
-		groups.length > 0 && selectedGroupIds.length === groups.length;
-	const exportView = useMemo<TableExportView<Group>>(
+		selectableGroups.length > 0 &&
+		selectedGroupIds.length === selectableGroups.length;
+	const exportView = useMemo<TableExportView<ConsoleGroup>>(
 		() => ({
 			id: "admin-groups",
 			fileName: "group-directory-view",
@@ -179,6 +189,16 @@ export function AdminGroupsTable() {
 					key: "groupname",
 					label: "Group name",
 					getValue: (group) => group.groupname,
+				},
+				{
+					key: "identity_scope",
+					label: "Identity scope",
+					getValue: (group) => normalizeIdentityScope(group.identity_scope),
+				},
+				{
+					key: "managed_by",
+					label: "Managed by",
+					getValue: (group) => group.managed_by ?? "local",
 				},
 				{
 					key: "description",
@@ -214,11 +234,11 @@ export function AdminGroupsTable() {
 			return;
 		}
 
-		const existingIds = new Set(groups.map((group) => group.id));
+		const existingIds = new Set(selectableGroups.map((group) => group.id));
 		setSelectedGroupIds((current) =>
 			current.filter((groupId) => existingIds.has(groupId)),
 		);
-	}, [groups, selectedGroupIds.length]);
+	}, [selectableGroups, selectedGroupIds.length]);
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -234,7 +254,7 @@ export function AdminGroupsTable() {
 		}
 
 		const trimmedDescription = description.trim();
-		const payload: NewGroup = {
+		const payload: ScopedNewGroup = {
 			groupname: trimmedGroupname,
 		};
 
@@ -247,7 +267,7 @@ export function AdminGroupsTable() {
 
 	function toggleAllGroups(checked: boolean) {
 		if (checked) {
-			setSelectedGroupIds(groups.map((group) => group.id));
+			setSelectedGroupIds(selectableGroups.map((group) => group.id));
 			return;
 		}
 
@@ -264,7 +284,11 @@ export function AdminGroupsTable() {
 	}
 
 	async function deleteSelectedGroups() {
-		if (!selectedGroupIds.length) {
+		const selectableIds = new Set(selectableGroups.map((group) => group.id));
+		const deletableGroupIds = selectedGroupIds.filter((groupId) =>
+			selectableIds.has(groupId),
+		);
+		if (!deletableGroupIds.length) {
 			return;
 		}
 
@@ -272,8 +296,8 @@ export function AdminGroupsTable() {
 		setTableSuccess(null);
 
 		const confirmed = await confirm({
-			title: `Delete ${selectedGroupIds.length} selected group${
-				selectedGroupIds.length === 1 ? "" : "s"
+			title: `Delete ${deletableGroupIds.length} selected group${
+				deletableGroupIds.length === 1 ? "" : "s"
 			}?`,
 			description: "This removes the selected groups and cannot be undone.",
 			confirmLabel: "Delete",
@@ -283,13 +307,17 @@ export function AdminGroupsTable() {
 			return;
 		}
 
-		deleteMutation.mutate([...selectedGroupIds]);
+		deleteMutation.mutate(deletableGroupIds);
 	}
 
 	function renderCreateGroupForm() {
 		return (
 			<form className="stack" onSubmit={onSubmit}>
 				<div className="form-grid">
+					<div className="info-banner control-field--wide">
+						New groups are created in the local identity scope. Provider-managed
+						groups are materialized from their source directory.
+					</div>
 					<label className="control-field">
 						<span>Group name</span>
 						<input
@@ -392,7 +420,9 @@ export function AdminGroupsTable() {
 									/>
 								</th>
 								<th>ID</th>
+								<th>Scope</th>
 								<th>Group name</th>
+								<th>Managed by</th>
 								<th>Description</th>
 								<th>Members</th>
 								<th>Created</th>
@@ -407,12 +437,14 @@ export function AdminGroupsTable() {
 											type="checkbox"
 											aria-label={`Select group ${group.groupname}`}
 											checked={selectedGroupIds.includes(group.id)}
+											disabled={isProviderManagedGroup(group)}
 											onChange={(event) =>
 												toggleGroup(group.id, event.target.checked)
 											}
 										/>
 									</td>
 									<td>{group.id}</td>
+									<td>{normalizeIdentityScope(group.identity_scope)}</td>
 									<td>
 										<Link
 											className="row-link"
@@ -421,6 +453,7 @@ export function AdminGroupsTable() {
 											{group.groupname}
 										</Link>
 									</td>
+									<td>{group.managed_by ?? "local"}</td>
 									<td>{group.description || "-"}</td>
 									<td>
 										{memberCountsQuery.isLoading

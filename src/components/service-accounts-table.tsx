@@ -15,15 +15,17 @@ import {
 	getApiV1IamServiceAccounts,
 	postApiV1IamServiceAccounts,
 } from "@/lib/api/generated/client";
-import type {
-	Group,
-	NewServiceAccount,
-	ServiceAccountResponse,
-} from "@/lib/api/generated/models";
+import type { NewServiceAccount } from "@/lib/api/generated/models";
 import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
+import {
+	type ConsoleGroup,
+	type ConsoleServiceAccount,
+	formatScopedGroupName,
+	formatScopedServiceAccountName,
+} from "@/lib/identity-scopes";
 import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
@@ -43,7 +45,7 @@ function IconSearch() {
 }
 
 type ServiceAccountsPageData = {
-	accounts: ServiceAccountResponse[];
+	accounts: ConsoleServiceAccount[];
 	nextCursor: string | null;
 	prevCursor: string | null;
 	totalCount: number | null;
@@ -77,7 +79,7 @@ async function fetchServiceAccounts(
 	};
 }
 
-async function fetchGroups(): Promise<Group[]> {
+async function fetchGroups(): Promise<ConsoleGroup[]> {
 	const response = await getApiV1IamGroups(undefined, {
 		credentials: "include",
 	});
@@ -153,7 +155,7 @@ export function ServiceAccountsTable() {
 	const accounts = query.data?.accounts ?? [];
 	const groups = groupsQuery.data ?? [];
 	const groupById = useMemo(() => {
-		const map = new Map<number, Group>();
+		const map = new Map<number, ConsoleGroup>();
 		for (const group of groups) {
 			map.set(group.id, group);
 		}
@@ -166,6 +168,8 @@ export function ServiceAccountsTable() {
 				matchesFreeTextSearch(
 					searchTerm,
 					account.name,
+					formatScopedServiceAccountName(account),
+					account.identity_scope,
 					account.description,
 					String(account.owner_group_id),
 					groupById.get(account.owner_group_id)?.groupname,
@@ -174,21 +178,30 @@ export function ServiceAccountsTable() {
 			),
 		[accounts, groupById, searchTerm],
 	);
-	const exportView = useMemo<TableExportView<ServiceAccountResponse>>(
+	const exportView = useMemo<TableExportView<ConsoleServiceAccount>>(
 		() => ({
 			id: "service-accounts",
 			fileName: "service-accounts-view",
 			sheetName: "Service accounts",
 			columns: [
 				{ key: "id", label: "ID", getValue: (account) => account.id },
-				{ key: "name", label: "Name", getValue: (account) => account.name },
+				{
+					key: "name",
+					label: "Name",
+					getValue: (account) => formatScopedServiceAccountName(account),
+				},
+				{
+					key: "identity_scope",
+					label: "Scope",
+					getValue: (account) => account.identity_scope ?? "local",
+				},
 				{
 					key: "owner_group",
 					label: "Owner group",
 					getValue: (account) => {
 						const ownerGroup = groupById.get(account.owner_group_id);
 						return ownerGroup
-							? `${ownerGroup.groupname} (#${ownerGroup.id})`
+							? `${formatScopedGroupName(ownerGroup)} (#${ownerGroup.id})`
 							: `#${account.owner_group_id}`;
 					},
 				},
@@ -308,6 +321,9 @@ export function ServiceAccountsTable() {
 		return (
 			<form className="stack" onSubmit={onSubmit}>
 				<div className="form-grid">
+					<div className="info-banner control-field--wide">
+						New service accounts are created in the local identity scope.
+					</div>
 					<label className="control-field">
 						<span>Name</span>
 						<input
@@ -334,7 +350,7 @@ export function ServiceAccountsTable() {
 							) : null}
 							{groups.map((group) => (
 								<option key={group.id} value={group.id}>
-									{group.groupname} (#{group.id})
+									{formatScopedGroupName(group)} (#{group.id})
 								</option>
 							))}
 						</select>
@@ -468,6 +484,7 @@ export function ServiceAccountsTable() {
 								<tr>
 									<th>ID</th>
 									<th>Name</th>
+									<th>Scope</th>
 									<th>Owner group</th>
 									<th>Status</th>
 									<th>Created</th>
@@ -484,12 +501,13 @@ export function ServiceAccountsTable() {
 													className="row-link"
 													href={`/admin/service-accounts/${account.id}`}
 												>
-													{account.name}
+													{formatScopedServiceAccountName(account)}
 												</Link>
 											</td>
+											<td>{account.identity_scope ?? "local"}</td>
 											<td>
 												{ownerGroup
-													? `${ownerGroup.groupname} (#${ownerGroup.id})`
+													? `${formatScopedGroupName(ownerGroup)} (#${ownerGroup.id})`
 													: `#${account.owner_group_id}`}
 											</td>
 											<td>{account.disabled_at ? "Disabled" : "Active"}</td>

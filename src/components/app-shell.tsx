@@ -21,8 +21,15 @@ import { ToastContainer } from "@/components/toast-container";
 import { BrandMark } from "@/components/brand-mark";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV1Classes } from "@/lib/api/generated/client";
-import type { HubuumClassExpanded, HubuumObject } from "@/lib/api/generated/models";
-import { fetchTasks, isTerminalTaskStatus, type TaskRecord } from "@/lib/api/tasking";
+import type {
+	HubuumClassExpanded,
+	HubuumObject,
+} from "@/lib/api/generated/models";
+import {
+	fetchTasks,
+	isTerminalTaskStatus,
+	type TaskRecord,
+} from "@/lib/api/tasking";
 import {
 	countUnread,
 	diffNewlyTerminal,
@@ -30,7 +37,6 @@ import {
 	toastForTransition,
 } from "@/lib/task-notifications";
 import { useToast } from "@/lib/toast-context";
-import { useCurrentUserId } from "@/lib/use-current-user-id";
 import {
 	type CreateSection,
 	DESELECT_ALL_EVENT,
@@ -49,9 +55,18 @@ import {
 } from "@/lib/pagination-shortcuts";
 import { normalizeSearchTerm } from "@/lib/resource-search";
 import { OBJECT_SERVER_FILTERS_QUERY_KEY } from "@/lib/object-server-filters";
+import {
+	writeDeviceSetting,
+	writeUserSetting,
+} from "@/lib/user-settings-client";
+import {
+	DEVICE_SETTING_KEYS,
+	PORTABLE_USER_SETTING_KEYS,
+} from "@/lib/user-settings-types";
 
 type AppShellProps = {
 	canViewAdmin: boolean;
+	currentPrincipalId: number | null;
 	currentUsername: string | null;
 	children: ReactNode;
 };
@@ -69,10 +84,15 @@ type NavItem = {
 	hint: string;
 };
 
-const SIDEBAR_COLLAPSED_KEY = "hubuum.sidebar.collapsed";
-const THEME_PREFERENCE_KEY = "hubuum.theme";
-const DENSITY_PREFERENCE_KEY = "hubuum.density";
-const ACCENT_PREFERENCE_KEY = "hubuum.accent";
+const SIDEBAR_COLLAPSED_KEY = DEVICE_SETTING_KEYS.sidebarCollapsed;
+const THEME_PREFERENCE_KEY = PORTABLE_USER_SETTING_KEYS.theme;
+const DENSITY_PREFERENCE_KEY = PORTABLE_USER_SETTING_KEYS.density;
+const ACCENT_PREFERENCE_KEY = PORTABLE_USER_SETTING_KEYS.accent;
+const SECONDARY_ACCENT_PREFERENCE_KEY =
+	PORTABLE_USER_SETTING_KEYS.secondaryAccent;
+const LOGIN_ACCENT_PREFERENCE_KEY = DEVICE_SETTING_KEYS.loginAccent;
+const LOGIN_SECONDARY_ACCENT_PREFERENCE_KEY =
+	DEVICE_SETTING_KEYS.loginSecondaryAccent;
 const ACCENT_OPTIONS: Array<{
 	value: AccentPreference;
 	label: string;
@@ -647,12 +667,17 @@ const systemLinks: NavItem[] = [
 	},
 ];
 
-export function AppShell({ canViewAdmin, currentUsername, children }: AppShellProps) {
+export function AppShell({
+	canViewAdmin,
+	currentPrincipalId,
+	currentUsername,
+	children,
+}: AppShellProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const { showToast } = useToast();
-	const currentUserId = useCurrentUserId(currentUsername);
+	const currentUserId = currentPrincipalId;
 	const prevMyTasksRef = useRef<TaskRecord[] | null>(null);
 	const [lastSeenAt, setLastSeenAt] = useState<number | null>(null);
 
@@ -745,17 +770,26 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		useState<DensityPreference>("comfortable");
 	const [accentPreference, setAccentPreference] =
 		useState<AccentPreference>("teal");
+	const [secondaryAccentPreference, setSecondaryAccentPreference] =
+		useState<AccentPreference>("teal");
 	const [searchInput, setSearchInput] = useState("");
 	const [selectionCount, setSelectionCount] = useState(0);
 	const [deleteHandler, setDeleteHandler] = useState<(() => void) | null>(null);
 	const [editLabel, setEditLabel] = useState("Edit item");
 	const [editHandler, setEditHandler] = useState<(() => void) | null>(null);
 	const [detailTitle, setDetailTitle] = useState<string | null>(null);
-	const [detailPin, setDetailPin] = useState<TitleStateEventDetail["pin"]>(null);
+	const [detailPin, setDetailPin] =
+		useState<TitleStateEventDetail["pin"]>(null);
 	const [isKeyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
 	const goToShortcutTimerRef = useRef<number | null>(null);
 	const userMenuRef = useRef<HTMLDivElement | null>(null);
 	const taskMenuRef = useRef<HTMLDivElement | null>(null);
+	const didInitializeSidebarPreference = useRef(false);
+	const didInitializeThemePreference = useRef(false);
+	const didInitializeDensityPreference = useRef(false);
+	const didInitializeAccentPreference = useRef(false);
+	const didInitializeSecondaryAccentPreference = useRef(false);
+	const hasCustomSecondaryAccent = useRef(false);
 
 	const clearGoToShortcut = useCallback(() => {
 		if (goToShortcutTimerRef.current === null) {
@@ -821,16 +855,28 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		}
 
 		const storedAccent = window.localStorage.getItem(ACCENT_PREFERENCE_KEY);
-		if (isAccentPreference(storedAccent)) {
-			setAccentPreference(storedAccent);
+		const primaryAccent = isAccentPreference(storedAccent)
+			? storedAccent
+			: "teal";
+		setAccentPreference(primaryAccent);
+
+		const storedSecondaryAccent = window.localStorage.getItem(
+			SECONDARY_ACCENT_PREFERENCE_KEY,
+		);
+		if (isAccentPreference(storedSecondaryAccent)) {
+			hasCustomSecondaryAccent.current = true;
+			setSecondaryAccentPreference(storedSecondaryAccent);
+		} else {
+			setSecondaryAccentPreference(primaryAccent);
 		}
 	}, []);
 
 	useEffect(() => {
-		window.localStorage.setItem(
-			SIDEBAR_COLLAPSED_KEY,
-			isSidebarCollapsed ? "1" : "0",
-		);
+		if (!didInitializeSidebarPreference.current) {
+			didInitializeSidebarPreference.current = true;
+			return;
+		}
+		writeDeviceSetting(SIDEBAR_COLLAPSED_KEY, isSidebarCollapsed ? "1" : "0");
 	}, [isSidebarCollapsed]);
 
 	useEffect(() => {
@@ -838,7 +884,11 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 	}, [clearGoToShortcut]);
 
 	useEffect(() => {
-		window.localStorage.setItem(THEME_PREFERENCE_KEY, themePreference);
+		if (!didInitializeThemePreference.current) {
+			didInitializeThemePreference.current = true;
+		} else {
+			writeUserSetting(THEME_PREFERENCE_KEY, themePreference);
+		}
 		const applyTheme = () => {
 			const resolvedTheme = resolveTheme(themePreference);
 			document.documentElement.setAttribute("data-theme", resolvedTheme);
@@ -866,14 +916,54 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 	}, [themePreference]);
 
 	useEffect(() => {
-		window.localStorage.setItem(DENSITY_PREFERENCE_KEY, densityPreference);
+		if (!didInitializeDensityPreference.current) {
+			didInitializeDensityPreference.current = true;
+		} else {
+			writeUserSetting(DENSITY_PREFERENCE_KEY, densityPreference);
+		}
 		document.documentElement.setAttribute("data-density", densityPreference);
 	}, [densityPreference]);
 
 	useEffect(() => {
-		window.localStorage.setItem(ACCENT_PREFERENCE_KEY, accentPreference);
+		if (!didInitializeAccentPreference.current) {
+			didInitializeAccentPreference.current = true;
+			return;
+		}
+		writeUserSetting(ACCENT_PREFERENCE_KEY, accentPreference);
+		writeDeviceSetting(LOGIN_ACCENT_PREFERENCE_KEY, accentPreference);
 		document.documentElement.setAttribute("data-accent", accentPreference);
 	}, [accentPreference]);
+
+	useEffect(() => {
+		if (!didInitializeSecondaryAccentPreference.current) {
+			didInitializeSecondaryAccentPreference.current = true;
+			return;
+		}
+		if (!hasCustomSecondaryAccent.current) {
+			writeDeviceSetting(
+				LOGIN_SECONDARY_ACCENT_PREFERENCE_KEY,
+				secondaryAccentPreference,
+			);
+		}
+		document.documentElement.setAttribute(
+			"data-secondary-accent",
+			secondaryAccentPreference,
+		);
+	}, [secondaryAccentPreference]);
+
+	function selectPrimaryAccent(value: AccentPreference) {
+		setAccentPreference(value);
+		if (!hasCustomSecondaryAccent.current) {
+			setSecondaryAccentPreference(value);
+		}
+	}
+
+	function selectSecondaryAccent(value: AccentPreference) {
+		hasCustomSecondaryAccent.current = true;
+		setSecondaryAccentPreference(value);
+		writeUserSetting(SECONDARY_ACCENT_PREFERENCE_KEY, value);
+		writeDeviceSetting(LOGIN_SECONDARY_ACCENT_PREFERENCE_KEY, value);
+	}
 
 	useEffect(() => {
 		if (!pathname) {
@@ -1100,7 +1190,8 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		};
 
 		window.addEventListener(EDIT_STATE_EVENT, onEditStateChange);
-		return () => window.removeEventListener(EDIT_STATE_EVENT, onEditStateChange);
+		return () =>
+			window.removeEventListener(EDIT_STATE_EVENT, onEditStateChange);
 	}, []);
 
 	useEffect(() => {
@@ -1120,11 +1211,11 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 			return;
 		}
 
-		const key = `hubuum.tasks.lastSeenAt.${currentUserId}`;
+		const key = DEVICE_SETTING_KEYS.tasksLastSeenAt(currentUserId);
 		const stored = window.localStorage.getItem(key);
 		if (stored == null) {
 			const now = Date.now();
-			window.localStorage.setItem(key, String(now));
+			writeDeviceSetting(key, String(now));
 			setLastSeenAt(now);
 			return;
 		}
@@ -1132,7 +1223,7 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		const parsed = Number.parseInt(stored, 10);
 		if (Number.isNaN(parsed)) {
 			const now = Date.now();
-			window.localStorage.setItem(key, String(now));
+			writeDeviceSetting(key, String(now));
 			setLastSeenAt(now);
 			return;
 		}
@@ -1145,8 +1236,8 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 		}
 
 		const now = Date.now();
-		window.localStorage.setItem(
-			`hubuum.tasks.lastSeenAt.${currentUserId}`,
+		writeDeviceSetting(
+			DEVICE_SETTING_KEYS.tasksLastSeenAt(currentUserId),
 			String(now),
 		);
 		setLastSeenAt(now);
@@ -1438,9 +1529,13 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 							<div className="topbar-title-row">
 								<div className="topbar-title-stack">
 									<span className="topbar-caption">
-										{pathname.startsWith("/admin") ? "Administration" : "Workspace"}
+										{pathname.startsWith("/admin")
+											? "Administration"
+											: "Workspace"}
 									</span>
-									<h1 className="topbar-heading">{detailTitle ?? sectionLabel}</h1>
+									<h1 className="topbar-heading">
+										{detailTitle ?? sectionLabel}
+									</h1>
 								</div>
 								{detailPin ? (
 									<PinButton
@@ -1461,9 +1556,7 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 											"classId" in detailPin ? detailPin.classId : undefined
 										}
 										className={
-											"className" in detailPin
-												? detailPin.className
-												: undefined
+											"className" in detailPin ? detailPin.className : undefined
 										}
 									/>
 								) : null}
@@ -1635,7 +1728,11 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 								</button>
 
 								{isTaskMenuOpen ? (
-									<div className="task-menu card" role="menu" aria-label="Task activity">
+									<div
+										className="task-menu card"
+										role="menu"
+										aria-label="Task activity"
+									>
 										<div className="task-menu-header">
 											<div>
 												<p className="menu-label">Task Activity</p>
@@ -1658,7 +1755,9 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 											<div className="muted">Loading tasks...</div>
 										) : null}
 										{myTasksQuery.isError ? (
-											<div className="error-banner">Failed to load task activity.</div>
+											<div className="error-banner">
+												Failed to load task activity.
+											</div>
 										) : null}
 										{!myTasksQuery.isLoading &&
 										!myTasksQuery.isError &&
@@ -1675,7 +1774,9 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 														onClick={() => setTaskMenuOpen(false)}
 														role="menuitem"
 													>
-														<span className={`status-pill status-pill--${isTerminalTaskStatus(task.status) ? "neutral" : "accent"}`}>
+														<span
+															className={`status-pill status-pill--${isTerminalTaskStatus(task.status) ? "neutral" : "accent"}`}
+														>
 															{task.status}
 														</span>
 														<span>
@@ -1763,16 +1864,40 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 									</div>
 
 									<div className="menu-group">
-										<p className="menu-label">Accent color</p>
+										<p className="menu-label">Primary color</p>
 										<div className="accent-options">
 											{ACCENT_OPTIONS.map((option) => (
 												<button
 													key={option.value}
 													type="button"
 													className={`accent-option ${accentPreference === option.value ? "is-selected" : ""}`}
-													onClick={() => setAccentPreference(option.value)}
+													onClick={() => selectPrimaryAccent(option.value)}
 													aria-pressed={accentPreference === option.value}
-													title={`${option.label} accent`}
+													title={`${option.label} primary color`}
+												>
+													<span
+														className={`accent-swatch accent-swatch--${option.value}`}
+														aria-hidden="true"
+													/>
+													<span>{option.label}</span>
+												</button>
+											))}
+										</div>
+									</div>
+
+									<div className="menu-group">
+										<p className="menu-label">Secondary color</p>
+										<div className="accent-options">
+											{ACCENT_OPTIONS.map((option) => (
+												<button
+													key={option.value}
+													type="button"
+													className={`accent-option accent-option--secondary ${secondaryAccentPreference === option.value ? "is-selected" : ""}`}
+													onClick={() => selectSecondaryAccent(option.value)}
+													aria-pressed={
+														secondaryAccentPreference === option.value
+													}
+													title={`${option.label} secondary color`}
 												>
 													<span
 														className={`accent-swatch accent-swatch--${option.value}`}
@@ -1803,7 +1928,9 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 						</div>
 					</header>
 
-					<main className="content" id="main-content">{children}</main>
+					<main className="content" id="main-content">
+						{children}
+					</main>
 				</div>
 			</div>
 
@@ -1825,9 +1952,7 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 					title={`Delete ${selectionCount} selected`}
 				>
 					<IconDelete />
-					<span className="fab-text">
-						Delete {selectionCount} selected
-					</span>
+					<span className="fab-text">Delete {selectionCount} selected</span>
 					{selectionCount > 1 ? (
 						<span className="fab-badge">{selectionCount}</span>
 					) : null}
@@ -1852,7 +1977,9 @@ export function AppShell({ canViewAdmin, currentUsername, children }: AppShellPr
 					title={`${getCreateLabel(createSection, relationsView)} (C)`}
 				>
 					<IconPlus />
-					<span className="fab-text">{getCreateLabel(createSection, relationsView)}</span>
+					<span className="fab-text">
+						{getCreateLabel(createSection, relationsView)}
+					</span>
 				</button>
 			) : null}
 

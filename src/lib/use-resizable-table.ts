@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { writeDeviceSetting } from "@/lib/user-settings-client";
+import { DEVICE_SETTING_KEYS } from "@/lib/user-settings-types";
 
 type ResizableTableOptions = {
 	tableId: string;
@@ -27,7 +29,9 @@ export function useResizableTable({
 		const columns = Array.from(
 			table.querySelectorAll<HTMLTableColElement>("colgroup col"),
 		);
-		const storage = storageKey ? `hubuum.table.${storageKey}.widths` : null;
+		const storage = storageKey
+			? DEVICE_SETTING_KEYS.tableWidths(storageKey)
+			: null;
 		const getColumnKey = (header: HTMLTableCellElement, index: number) =>
 			header.dataset.columnKey ?? String(index);
 		const setColumnWidth = (index: number, width: number) => {
@@ -105,7 +109,7 @@ export function useResizableTable({
 							}
 						});
 						try {
-							localStorage.setItem(storage, JSON.stringify(widths));
+							writeDeviceSetting(storage, JSON.stringify(widths));
 						} catch {
 							// Ignore storage errors
 						}

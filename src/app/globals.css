@@ -1,55 +1,71 @@
 :root {
-	--bg: #f2f5f1;
-	--bg-strong: #e7ece7;
-	--bg-highlight: #f8faf7;
-	--card: #fff;
-	--field-bg: #fbfcfa;
-	--ink: #17221f;
-	--muted: #63716c;
-	--line: #d8e0da;
 	--accent: #167d6f;
 	--accent-strong: #0c6458;
 	--accent-soft: #e0f1ec;
 	--accent-luminous: #79d9c6;
+	--secondary-accent: #167d6f;
+	--secondary-accent-strong: #0c6458;
+	--secondary-accent-soft: #e0f1ec;
+	--secondary-accent-luminous: #79d9c6;
+	--bg: color-mix(in oklab, var(--secondary-accent) 3%, #f3f4f7);
+	--bg-strong: color-mix(in oklab, var(--secondary-accent) 5%, #e7e9ee);
+	--bg-highlight: color-mix(in oklab, var(--secondary-accent) 2%, #fafbfc);
+	--card: color-mix(in oklab, var(--secondary-accent) 1%, #fff);
+	--field-bg: color-mix(in oklab, var(--secondary-accent) 1.5%, #fbfcfd);
+	--ink: #1d222b;
+	--muted: #69717e;
+	--line: color-mix(in oklab, var(--secondary-accent) 5%, #d9dde4);
 	--warm: #e48668;
-	--nav-bg: #10251f;
-	--nav-ink: #eff8f4;
-	--nav-muted: #94aaa2;
-	--nav-line: rgba(220, 243, 235, 0.12);
+	--nav-bg: color-mix(in oklab, var(--secondary-accent) 11%, #11151c);
+	--nav-ink: #f3f5f7;
+	--nav-muted: color-mix(in oklab, var(--secondary-accent) 12%, #a8b0bb);
+	--nav-line: color-mix(
+		in oklab,
+		var(--secondary-accent-luminous) 15%,
+		transparent
+	);
 	--danger: #b4233b;
 	--danger-soft: #fce9ec;
 	--danger-line: #f4cbd2;
-	--overlay: rgba(8, 18, 15, 0.55);
+	--overlay: rgba(9, 12, 18, 0.56);
 	--radius: 18px;
 	--shadow:
-		0 14px 38px rgba(35, 54, 46, 0.07), 0 2px 8px rgba(35, 54, 46, 0.04);
-	--shadow-float: 0 24px 70px rgba(20, 40, 33, 0.16);
+		0 14px 38px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.05);
+	--shadow-float: 0 24px 70px rgba(15, 23, 42, 0.17);
 }
 
 html[data-theme="dark"] {
-	--bg: #0d1412;
-	--bg-strong: #080e0c;
-	--bg-highlight: #16201d;
-	--card: #131d1a;
-	--field-bg: #0e1714;
-	--ink: #edf5f1;
-	--muted: #9caca6;
-	--line: #2a3934;
 	--accent: #5bcbb6;
 	--accent-strong: #78dbc8;
 	--accent-soft: #183a33;
 	--accent-luminous: #73d8c4;
+	--secondary-accent: #5bcbb6;
+	--secondary-accent-strong: #78dbc8;
+	--secondary-accent-soft: #183a33;
+	--secondary-accent-luminous: #73d8c4;
+	--bg: color-mix(in oklab, var(--secondary-accent) 3%, #101218);
+	--bg-strong: color-mix(in oklab, var(--secondary-accent) 2%, #090b10);
+	--bg-highlight: color-mix(in oklab, var(--secondary-accent) 5%, #181b22);
+	--card: color-mix(in oklab, var(--secondary-accent) 4%, #151820);
+	--field-bg: color-mix(in oklab, var(--secondary-accent) 3%, #10131a);
+	--ink: #eef1f5;
+	--muted: #a2a9b4;
+	--line: color-mix(in oklab, var(--secondary-accent) 8%, #2b303a);
 	--warm: #f19b7f;
-	--nav-bg: #07110e;
-	--nav-ink: #eff9f5;
-	--nav-muted: #89a098;
-	--nav-line: rgba(220, 243, 235, 0.1);
+	--nav-bg: color-mix(in oklab, var(--secondary-accent) 9%, #080b10);
+	--nav-ink: #f3f5f7;
+	--nav-muted: color-mix(in oklab, var(--secondary-accent) 13%, #969eaa);
+	--nav-line: color-mix(
+		in oklab,
+		var(--secondary-accent-luminous) 13%,
+		transparent
+	);
 	--danger: #f1798c;
 	--danger-soft: #40242a;
 	--danger-line: #69313a;
-	--overlay: rgba(2, 5, 8, 0.55);
-	--shadow: 0 18px 48px rgba(1, 7, 5, 0.28);
-	--shadow-float: 0 28px 80px rgba(0, 5, 3, 0.48);
+	--overlay: rgba(2, 4, 9, 0.58);
+	--shadow: 0 18px 48px rgba(0, 3, 9, 0.3);
+	--shadow-float: 0 28px 80px rgba(0, 2, 8, 0.5);
 }
 
 html[data-accent="blue"] {
@@ -108,6 +124,62 @@ html[data-theme="dark"][data-accent="rose"] {
 	--accent-luminous: #f39bb2;
 }
 
+html[data-secondary-accent="blue"] {
+	--secondary-accent: #3b6bdc;
+	--secondary-accent-strong: #2853b8;
+	--secondary-accent-soft: #e7edff;
+	--secondary-accent-luminous: #8eafff;
+}
+
+html[data-theme="dark"][data-secondary-accent="blue"] {
+	--secondary-accent: #7fa8ff;
+	--secondary-accent-strong: #a8c1ff;
+	--secondary-accent-soft: #1b2c52;
+	--secondary-accent-luminous: #91b2ff;
+}
+
+html[data-secondary-accent="violet"] {
+	--secondary-accent: #7657d9;
+	--secondary-accent-strong: #5d3fbc;
+	--secondary-accent-soft: #eee9ff;
+	--secondary-accent-luminous: #b6a4ff;
+}
+
+html[data-theme="dark"][data-secondary-accent="violet"] {
+	--secondary-accent: #ae95ff;
+	--secondary-accent-strong: #c6b5ff;
+	--secondary-accent-soft: #302650;
+	--secondary-accent-luminous: #bca7ff;
+}
+
+html[data-secondary-accent="amber"] {
+	--secondary-accent: #b86b10;
+	--secondary-accent-strong: #915008;
+	--secondary-accent-soft: #fff0d6;
+	--secondary-accent-luminous: #ffc568;
+}
+
+html[data-theme="dark"][data-secondary-accent="amber"] {
+	--secondary-accent: #f3b657;
+	--secondary-accent-strong: #ffd187;
+	--secondary-accent-soft: #493418;
+	--secondary-accent-luminous: #f5be67;
+}
+
+html[data-secondary-accent="rose"] {
+	--secondary-accent: #bd4969;
+	--secondary-accent-strong: #98334f;
+	--secondary-accent-soft: #fde8ee;
+	--secondary-accent-luminous: #f39ab2;
+}
+
+html[data-theme="dark"][data-secondary-accent="rose"] {
+	--secondary-accent: #f28ba8;
+	--secondary-accent-strong: #ffb0c4;
+	--secondary-accent-soft: #4a2430;
+	--secondary-accent-luminous: #f39bb2;
+}
+
 * {
 	box-sizing: border-box;
 }
@@ -117,7 +189,11 @@ body {
 	margin: 0;
 	padding: 0;
 	background:
-		radial-gradient(circle at 92% -8%, var(--accent-soft) 0, transparent 34rem),
+		radial-gradient(
+			circle at 92% -8%,
+			var(--secondary-accent-soft) 0,
+			transparent 34rem
+		),
 		linear-gradient(
 			180deg,
 			var(--bg-highlight) 0,
@@ -341,12 +417,34 @@ main {
 	font-size: 0.88rem;
 }
 
+.login-field-hint {
+	margin-top: -0.4rem;
+	font-size: 0.82rem;
+}
+
 .error-banner {
 	background: var(--danger-soft);
 	color: var(--danger);
 	border: 1px solid var(--danger-line);
 	border-radius: 12px;
 	padding: 0.7rem 0.8rem;
+}
+
+.settings-sync-warning {
+	position: fixed;
+	top: 0.75rem;
+	left: 50%;
+	z-index: 120;
+	max-width: min(42rem, calc(100vw - 2rem));
+	transform: translateX(-50%);
+	background: var(--card);
+	color: var(--ink);
+	border: 1px solid var(--warm);
+	border-radius: 999px;
+	padding: 0.55rem 0.85rem;
+	box-shadow: var(--shadow-float);
+	font-size: 0.85rem;
+	text-align: center;
 }
 
 .app-shell {
@@ -794,6 +892,8 @@ button.sidebar-link-button {
 	right: 0;
 	top: calc(100% + 0.5rem);
 	min-width: 250px;
+	max-height: calc(100dvh - 6rem);
+	overflow-y: auto;
 	padding: 0.75rem;
 	display: grid;
 	gap: 0.7rem;
@@ -889,6 +989,11 @@ button.accent-option.is-selected {
 	border-color: var(--accent);
 	background: var(--accent-soft);
 	color: var(--ink);
+}
+
+button.accent-option--secondary.is-selected {
+	border-color: var(--secondary-accent);
+	background: var(--secondary-accent-soft);
 }
 
 .accent-swatch {
@@ -2446,7 +2551,10 @@ button.table-export-option {
 
 .server-filter-form {
 	display: grid;
-	grid-template-columns: minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(10rem, 1.35fr) auto;
+	grid-template-columns: minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(
+			10rem,
+			1.35fr
+		) auto;
 	align-items: end;
 	gap: 0.55rem;
 }
@@ -4364,8 +4472,8 @@ html[data-density="compact"] .object-column-picker-trigger {
 .auth-page {
 	isolation: isolate;
 	padding: 1.5rem;
-	background: #091511;
-	color: #eef8f4;
+	background: color-mix(in oklab, var(--secondary-accent) 16%, #090d12);
+	color: #f3f5f7;
 }
 
 .auth-grid {
@@ -4373,8 +4481,15 @@ html[data-density="compact"] .object-column-picker-trigger {
 	inset: 0;
 	z-index: -3;
 	background-image:
-		linear-gradient(rgba(131, 218, 195, 0.055) 1px, transparent 1px),
-		linear-gradient(90deg, rgba(131, 218, 195, 0.055) 1px, transparent 1px);
+		linear-gradient(
+			color-mix(in oklab, var(--accent-luminous) 10%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--accent-luminous) 10%, transparent) 1px,
+			transparent 1px
+		);
 	background-size: 48px 48px;
 	mask-image: radial-gradient(circle at center, #000 5%, transparent 78%);
 	pointer-events: none;
@@ -4391,7 +4506,7 @@ html[data-density="compact"] .object-column-picker-trigger {
 	left: -8rem;
 	width: 42rem;
 	height: 42rem;
-	background: #3abda6;
+	background: var(--accent);
 }
 
 .gradient-orb--two {
@@ -4401,7 +4516,7 @@ html[data-density="compact"] .object-column-picker-trigger {
 	left: auto;
 	width: 46rem;
 	height: 46rem;
-	background: #d8795d;
+	background: var(--secondary-accent);
 	opacity: 0.2;
 }
 
@@ -4413,10 +4528,10 @@ html[data-density="compact"] .object-column-picker-trigger {
 	width: min(1120px, calc(100vw - 3rem));
 	min-height: min(700px, calc(100vh - 3rem));
 	overflow: hidden;
-	border: 1px solid rgba(222, 246, 238, 0.14);
+	border: 1px solid color-mix(in oklab, var(--accent-luminous) 18%, transparent);
 	border-radius: 28px;
 	background: var(--card);
-	box-shadow: 0 45px 110px rgba(0, 7, 5, 0.5);
+	box-shadow: 0 45px 110px rgba(0, 4, 9, 0.52);
 }
 
 .auth-story {
@@ -4431,11 +4546,16 @@ html[data-density="compact"] .object-column-picker-trigger {
 	background:
 		radial-gradient(
 			circle at 86% 12%,
-			rgba(118, 221, 196, 0.22),
+			color-mix(in oklab, var(--accent-luminous) 22%, transparent),
 			transparent 21rem
 		),
-		linear-gradient(150deg, #17372e 0%, #0e241e 54%, #0a1915 100%);
-	color: #eef8f4;
+		linear-gradient(
+			150deg,
+			color-mix(in oklab, var(--secondary-accent) 30%, #171c24) 0%,
+			color-mix(in oklab, var(--secondary-accent) 16%, #10141a) 54%,
+			color-mix(in oklab, var(--secondary-accent) 9%, #090c11) 100%
+		);
+	color: #f3f5f7;
 }
 
 .auth-story::after {
@@ -4445,11 +4565,11 @@ html[data-density="compact"] .object-column-picker-trigger {
 	bottom: -10rem;
 	width: 30rem;
 	height: 30rem;
-	border: 1px solid rgba(127, 220, 197, 0.16);
+	border: 1px solid color-mix(in oklab, var(--accent-luminous) 18%, transparent);
 	border-radius: 50%;
 	box-shadow:
-		0 0 0 4rem rgba(127, 220, 197, 0.035),
-		0 0 0 8rem rgba(127, 220, 197, 0.025);
+		0 0 0 4rem color-mix(in oklab, var(--accent-luminous) 4%, transparent),
+		0 0 0 8rem color-mix(in oklab, var(--accent-luminous) 3%, transparent);
 	pointer-events: none;
 }
 
@@ -4460,12 +4580,15 @@ html[data-density="compact"] .object-column-picker-trigger {
 
 .auth-story .brand-glyph,
 .sidebar .brand-glyph {
-	border-color: rgba(225, 247, 239, 0.15);
-	background: rgba(225, 247, 239, 0.08);
+	border-color: color-mix(in oklab, var(--accent-luminous) 18%, transparent);
+	background: color-mix(in oklab, var(--accent-luminous) 10%, transparent);
 	color: var(--accent-luminous);
 }
 
-.auth-story .brand-product,
+.auth-story .brand-product {
+	color: color-mix(in oklab, var(--accent-luminous) 30%, #b8c0c7);
+}
+
 .sidebar .brand-product {
 	color: var(--nav-muted);
 }
@@ -4491,7 +4614,7 @@ html[data-density="compact"] .object-column-picker-trigger {
 
 .auth-story-copy > p:last-child {
 	max-width: 41ch;
-	color: #a9bdb5;
+	color: #b4bdc4;
 	font-size: 1.02rem;
 }
 
@@ -4502,7 +4625,8 @@ html[data-density="compact"] .object-column-picker-trigger {
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	margin: 0;
 	padding: 0;
-	border-top: 1px solid rgba(222, 246, 238, 0.14);
+	border-top: 1px solid
+		color-mix(in oklab, var(--accent-luminous) 16%, transparent);
 	list-style: none;
 }
 
@@ -4510,7 +4634,7 @@ html[data-density="compact"] .object-column-picker-trigger {
 	display: grid;
 	gap: 0.38rem;
 	padding-top: 1rem;
-	color: #c2d0cb;
+	color: #c5ccd1;
 	font-size: 0.78rem;
 	font-weight: 650;
 	letter-spacing: 0.04em;
@@ -4560,7 +4684,8 @@ html[data-density="compact"] .object-column-picker-trigger {
 	letter-spacing: 0.025em;
 }
 
-.login-card input {
+.login-card input,
+.login-card select {
 	min-height: 3.2rem;
 	border-radius: 0.9rem;
 	background: var(--field-bg);
@@ -4623,9 +4748,14 @@ html[data-density="compact"] .object-column-picker-trigger {
 			transparent 14rem
 		),
 		var(--nav-bg);
-	box-shadow: 0 22px 48px rgba(6, 23, 18, 0.2);
+	box-shadow: 0 22px 48px rgba(0, 4, 9, 0.22);
 	color: var(--nav-ink);
-	scrollbar-color: rgba(148, 170, 162, 0.35) transparent;
+	scrollbar-color: color-mix(
+			in oklab,
+			var(--secondary-accent-luminous) 28%,
+			transparent
+		)
+		transparent;
 	scrollbar-width: thin;
 }
 
@@ -4669,7 +4799,11 @@ button.sidebar-link-button {
 .sidebar-link:hover,
 button.sidebar-link-button:hover {
 	border-color: var(--nav-line);
-	background: rgba(225, 247, 239, 0.065);
+	background: color-mix(
+		in oklab,
+		var(--secondary-accent-luminous) 8%,
+		transparent
+	);
 	color: var(--nav-ink);
 	filter: none;
 }
@@ -4697,7 +4831,11 @@ button.sidebar-link-button:hover {
 
 .sidebar-badge {
 	border-color: var(--nav-line);
-	background: rgba(225, 247, 239, 0.08);
+	background: color-mix(
+		in oklab,
+		var(--secondary-accent-luminous) 10%,
+		transparent
+	);
 	color: var(--nav-ink);
 }
 
@@ -4714,7 +4852,7 @@ button.sidebar-link-button:hover {
 	border-color: color-mix(in oklab, var(--line) 86%, transparent);
 	border-radius: 18px;
 	background: color-mix(in oklab, var(--card) 88%, transparent);
-	box-shadow: 0 9px 28px rgba(29, 48, 41, 0.06);
+	box-shadow: 0 9px 28px rgba(15, 23, 42, 0.07);
 	backdrop-filter: blur(18px) saturate(1.2);
 }
 
@@ -4829,7 +4967,7 @@ button.sidebar-link-button:hover {
 		linear-gradient(
 			125deg,
 			var(--card) 0%,
-			color-mix(in oklab, var(--accent-soft) 62%, var(--card)) 100%
+			color-mix(in oklab, var(--secondary-accent-soft) 62%, var(--card)) 100%
 		);
 	background-size: auto, auto, auto;
 	box-shadow: var(--shadow);
@@ -4862,20 +5000,24 @@ button.sidebar-link-button:hover {
 .home-priority-card {
 	position: relative;
 	overflow: hidden;
-	border-color: rgba(105, 205, 184, 0.18);
+	border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
 	background:
 		radial-gradient(
 			circle at 100% 0,
-			color-mix(in oklab, var(--accent) 23%, transparent),
+			color-mix(in oklab, var(--accent-luminous) 24%, transparent),
 			transparent 18rem
 		),
-		linear-gradient(145deg, #15362d, #0c211b);
-	box-shadow: 0 18px 42px rgba(9, 31, 24, 0.18);
-	color: #eff8f4;
+		linear-gradient(
+			145deg,
+			color-mix(in oklab, var(--secondary-accent) 28%, #171c24),
+			color-mix(in oklab, var(--secondary-accent) 10%, #0a0e14)
+		);
+	box-shadow: 0 18px 42px rgba(0, 4, 9, 0.22);
+	color: #f3f5f7;
 }
 
 .home-priority-card .muted {
-	color: #a8bdb5;
+	color: color-mix(in oklab, var(--accent-luminous) 16%, #bdc5cb);
 }
 
 .home-priority-card .eyebrow {
@@ -4885,12 +5027,12 @@ button.sidebar-link-button:hover {
 .home-priority-card .link-chip:first-child {
 	border-color: var(--accent-luminous);
 	background: var(--accent-luminous);
-	color: #0b241d;
+	color: #0b0f15;
 }
 
 .home-priority-card .link-chip:not(:first-child) {
-	border-color: rgba(230, 247, 240, 0.2);
-	color: #eff8f4;
+	border-color: color-mix(in oklab, var(--accent-luminous) 30%, transparent);
+	color: #f3f5f7;
 }
 
 .action-card {
@@ -5208,7 +5350,7 @@ tbody tr:hover {
 		linear-gradient(
 			125deg,
 			var(--card),
-			color-mix(in oklab, var(--accent-soft) 38%, var(--card))
+			color-mix(in oklab, var(--secondary-accent-soft) 38%, var(--card))
 		);
 }
 

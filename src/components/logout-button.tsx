@@ -1,7 +1,13 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+import {
+	clearUserSettingsForLogout,
+	flushUserSettings,
+} from "@/lib/user-settings-client";
 
 type LogoutButtonProps = {
 	className?: string;
@@ -13,17 +19,24 @@ export function LogoutButton({
 	label = "Sign out",
 }: LogoutButtonProps) {
 	const router = useRouter();
+	const queryClient = useQueryClient();
 	const [isPending, setIsPending] = useState(false);
 
 	async function signOut() {
 		setIsPending(true);
 
 		try {
+			await Promise.race([
+				flushUserSettings({ keepalive: true }),
+				new Promise<void>((resolve) => window.setTimeout(resolve, 750)),
+			]);
 			await fetch("/_hubuum-bff/auth/logout", {
 				method: "POST",
 				credentials: "include",
 			});
 		} finally {
+			clearUserSettingsForLogout();
+			queryClient.clear();
 			router.push("/login");
 			router.refresh();
 		}

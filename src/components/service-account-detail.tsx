@@ -18,20 +18,20 @@ import {
 	patchApiV1IamServiceAccountsByServiceAccountId,
 	postApiV1IamServiceAccountsByServiceAccountIdDisable,
 } from "@/lib/api/generated/client";
-import type {
-	Group,
-	ServiceAccountResponse,
-	UpdateServiceAccount,
-} from "@/lib/api/generated/models";
+import type { UpdateServiceAccount } from "@/lib/api/generated/models";
+import {
+	type ConsoleGroup,
+	type ConsoleServiceAccount,
+	formatScopedGroupName,
+	formatScopedServiceAccountName,
+} from "@/lib/identity-scopes";
 import { trackRecentItem } from "@/lib/recent-items";
 
 type ServiceAccountDetailProps = {
 	serviceAccountId: number;
 };
 
-async function fetchServiceAccount(
-	id: number,
-): Promise<ServiceAccountResponse> {
+async function fetchServiceAccount(id: number): Promise<ConsoleServiceAccount> {
 	const response = await getApiV1IamServiceAccountsByServiceAccountId(id, {
 		credentials: "include",
 	});
@@ -45,7 +45,7 @@ async function fetchServiceAccount(
 	return response.data;
 }
 
-async function fetchGroups(): Promise<Group[]> {
+async function fetchGroups(): Promise<ConsoleGroup[]> {
 	const response = await getApiV1IamGroups(undefined, {
 		credentials: "include",
 	});
@@ -99,7 +99,7 @@ export function ServiceAccountDetail({
 		trackRecentItem({
 			type: "service-account",
 			id: account.id,
-			name: account.name,
+			name: formatScopedServiceAccountName(account),
 		});
 	}, [accountQuery.data]);
 
@@ -304,7 +304,8 @@ export function ServiceAccountDetail({
 			<header className="detail-identity">
 				<div className="scope-heading">
 					<h2>
-						{account.name} <span className="muted">#{account.id}</span>
+						{formatScopedServiceAccountName(account)}{" "}
+						<span className="muted">#{account.id}</span>
 					</h2>
 					<Link className="link-chip" href="/admin/service-accounts">
 						Back to service accounts
@@ -331,6 +332,15 @@ export function ServiceAccountDetail({
 					</label>
 
 					<label className="control-field">
+						<span>Identity scope</span>
+						<input
+							value={account.identity_scope ?? "local"}
+							readOnly
+							disabled
+						/>
+					</label>
+
+					<label className="control-field">
 						<span>Owner group</span>
 						<select
 							value={ownerGroupId}
@@ -339,7 +349,7 @@ export function ServiceAccountDetail({
 						>
 							{groups.map((group) => (
 								<option key={group.id} value={group.id}>
-									{group.groupname} (#{group.id})
+									{formatScopedGroupName(group)} (#{group.id})
 								</option>
 							))}
 						</select>

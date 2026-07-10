@@ -19,6 +19,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 	if (session) {
 		redirect("/app");
 	}
+	const errorCode = Array.isArray(params.error)
+		? params.error[0]
+		: params.error;
+	const initialError =
+		errorCode === "identity_scope_unavailable"
+			? "The requested identity scope is unavailable or unsupported by this server."
+			: errorCode
+				? "Login failed. Check your credentials and identity scope."
+				: null;
 
 	return (
 		<main className="auth-page">
@@ -37,14 +46,20 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 						</p>
 					</div>
 					<ol className="auth-capabilities" aria-label="Hubuum capabilities">
-						<li><strong>01</strong> Model</li>
-						<li><strong>02</strong> Connect</li>
-						<li><strong>03</strong> Operate</li>
+						<li>
+							<strong>01</strong> Model
+						</li>
+						<li>
+							<strong>02</strong> Connect
+						</li>
+						<li>
+							<strong>03</strong> Operate
+						</li>
 					</ol>
 				</aside>
 
 				<div className="auth-form-panel">
-					<LoginForm />
+					<LoginForm initialError={initialError} />
 					<p className="footer-note">
 						{process.env.NEXT_PUBLIC_APP_NAME ?? "Hubuum Console"} · Secure
 						workspace

@@ -8,13 +8,18 @@ import {
 	getApiV1IamUsersByUserId,
 	patchApiV1IamUsersByUserId,
 } from "@/lib/api/generated/client";
-import type { UpdateUser, UserResponse } from "@/lib/api/generated/models";
+import type { UpdateUser } from "@/lib/api/generated/models";
+import {
+	type ConsoleUser,
+	isProviderManagedUser,
+	normalizeIdentityScope,
+} from "@/lib/identity-scopes";
 
 type AccountProfileProps = {
 	currentUsername: string | null;
 };
 
-async function fetchCurrentUser(): Promise<UserResponse> {
+async function fetchCurrentUser(): Promise<ConsoleUser> {
 	const meResponse = await getApiV1IamMe({ credentials: "include" });
 	if (meResponse.status !== 200) {
 		throw new Error(
@@ -110,6 +115,10 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 			setFormError("User data is unavailable.");
 			return;
 		}
+		if (isProviderManagedUser(originalUser)) {
+			setFormError("Provider-managed profiles are read-only in Hubuum.");
+			return;
+		}
 
 		const trimmedProperName = properName.trim();
 		const trimmedEmail = email.trim();
@@ -156,10 +165,17 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 	if (!user) {
 		return <div className="card error-banner">User data is unavailable.</div>;
 	}
+	const providerManaged = isProviderManagedUser(user);
 
 	return (
 		<form className="card stack" onSubmit={onSubmit}>
 			<h3>Profile</h3>
+			{providerManaged ? (
+				<div className="info-banner">
+					Your profile is managed by the {user.provider_kind ?? "external"}
+					provider. Update it in the source directory.
+				</div>
+			) : null}
 
 			<div className="form-grid">
 				<label className="control-field">
@@ -168,11 +184,21 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 				</label>
 
 				<label className="control-field">
+					<span>Identity scope</span>
+					<input
+						value={normalizeIdentityScope(user.identity_scope)}
+						readOnly
+						disabled
+					/>
+				</label>
+
+				<label className="control-field">
 					<span>Display name</span>
 					<input
 						value={properName}
 						onChange={(event) => setProperName(event.target.value)}
 						placeholder="e.g. Alice Doe"
+						disabled={providerManaged}
 					/>
 				</label>
 
@@ -183,6 +209,7 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 						value={email}
 						onChange={(event) => setEmail(event.target.value)}
 						placeholder="name@example.com"
+						disabled={providerManaged}
 					/>
 				</label>
 
@@ -194,6 +221,7 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 						onChange={(event) => setPassword(event.target.value)}
 						placeholder="Leave blank to keep the current password"
 						autoComplete="new-password"
+						disabled={providerManaged}
 					/>
 				</label>
 			</div>
@@ -207,7 +235,10 @@ export function AccountProfile({ currentUsername }: AccountProfileProps) {
 			{formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
 			<div className="form-actions">
-				<button type="submit" disabled={updateMutation.isPending}>
+				<button
+					type="submit"
+					disabled={providerManaged || updateMutation.isPending}
+				>
 					{updateMutation.isPending ? "Saving..." : "Save changes"}
 				</button>
 			</div>

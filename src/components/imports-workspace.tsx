@@ -15,7 +15,7 @@ import {
 	getApiV1IamGroups,
 	getApiV1Collections,
 } from "@/lib/api/generated/client";
-import type { Group, Collection } from "@/lib/api/generated/models";
+import type { Collection } from "@/lib/api/generated/models";
 import { createImportTask, type ImportRequest } from "@/lib/api/tasking";
 import {
 	buildCollectionHierarchy,
@@ -27,6 +27,11 @@ import {
 	getImportCollectionSuggestion,
 	type CollectionMode,
 } from "@/lib/import-payload";
+import {
+	type ConsoleGroup,
+	formatScopedGroupName,
+	normalizeIdentityScope,
+} from "@/lib/identity-scopes";
 
 type ImportSummary = {
 	totalItems: number;
@@ -106,20 +111,46 @@ function normalizeImportPayload(payload: unknown): ImportFilePayload {
 	return candidate as ImportFilePayload;
 }
 
-function getFilePermissionGroupNames(payload: ImportRequest): string[] {
-	const groupNames = new Set<string>();
+type ScopedGroupReference = {
+	key: string;
+	label: string;
+};
+
+function buildScopedGroupKey(
+	identityScope: string | null | undefined,
+	groupname: string,
+): string {
+	return `${normalizeIdentityScope(identityScope)}\u0000${groupname}`;
+}
+
+function getFilePermissionGroups(
+	payload: ImportRequest,
+): ScopedGroupReference[] {
+	const groups = new Map<string, ScopedGroupReference>();
 
 	for (const permission of payload.graph.collection_permissions ?? []) {
 		const groupname = permission.group_key.groupname?.trim();
 		if (groupname) {
-			groupNames.add(groupname);
+			const identityScope = normalizeIdentityScope(
+				(permission.group_key as { identity_scope?: unknown }).identity_scope,
+			);
+			const key = buildScopedGroupKey(identityScope, groupname);
+			groups.set(key, {
+				key,
+				label:
+					identityScope === "local"
+						? groupname
+						: `${identityScope}/${groupname}`,
+			});
 		}
 	}
 
-	return Array.from(groupNames).sort((left, right) => left.localeCompare(right));
+	return Array.from(groups.values()).sort((left, right) =>
+		left.label.localeCompare(right.label),
+	);
 }
 
-async function fetchGroups(): Promise<Group[]> {
+async function fetchGroups(): Promise<ConsoleGroup[]> {
 	const response = await getApiV1IamGroups(undefined, {
 		credentials: "include",
 	});
@@ -134,9 +165,12 @@ async function fetchGroups(): Promise<Group[]> {
 }
 
 async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections({ limit: 250 }, {
-		credentials: "include",
-	});
+	const response = await getApiV1Collections(
+		{ limit: 250 },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -207,14 +241,18 @@ export function ImportsWorkspace({
 	const requiresCollectionDescription = collectionMode === "create_override";
 	const canUsePermissionControls =
 		canCreateCollections && !isExistingCollectionMode;
-	const targetCollectionNameKey = targetCollectionName.trim().toLocaleLowerCase();
+	const targetCollectionNameKey = targetCollectionName
+		.trim()
+		.toLocaleLowerCase();
 	const hasAmbiguousTargetCollection =
 		isExistingCollectionMode &&
 		targetCollectionNameKey !== "" &&
 		duplicateCollectionNames.has(targetCollectionNameKey);
 	const hasVisibleTargetCollection =
 		collectionMode !== "existing_override" ||
-		collectionOptions.some((collection) => collection.name === targetCollectionName);
+		collectionOptions.some(
+			(collection) => collection.name === targetCollectionName,
+		);
 	const canSubmitCollectionOptions =
 		!requiresTargetCollection ||
 		(targetCollectionName.trim() !== "" &&
@@ -222,14 +260,21 @@ export function ImportsWorkspace({
 			!hasAmbiguousTargetCollection &&
 			(!requiresCollectionDescription ||
 				targetCollectionDescription.trim() !== ""));
-	const filePermissionGroupValidation = useMemo(
-		(): FilePermissionGroupValidation | null => {
-			if (!parsedImport || !canUsePermissionControls || delegateGroupName.trim()) {
+	const selectedDelegateGroup = groupsQuery.data?.find(
+		(group) => String(group.id) === delegateGroupName,
+	);
+	const filePermissionGroupValidation =
+		useMemo((): FilePermissionGroupValidation | null => {
+			if (
+				!parsedImport ||
+				!canUsePermissionControls ||
+				delegateGroupName.trim()
+			) {
 				return null;
 			}
 
-			const fileGroupNames = getFilePermissionGroupNames(parsedImport);
-			if (fileGroupNames.length === 0) {
+			const fileGroups = getFilePermissionGroups(parsedImport);
+			if (fileGroups.length === 0) {
 				return null;
 			}
 
@@ -248,21 +293,29 @@ export function ImportsWorkspace({
 				};
 			}
 
-			const existingGroupNames = new Set(
-				groupsQuery.data.map((group) => group.groupname),
+			const existingGroupKeys = new Set(
+				groupsQuery.data.map((group) =>
+					buildScopedGroupKey(group.identity_scope, group.groupname),
+				),
 			);
-			const missingGroupNames = fileGroupNames.filter(
-				(groupname) => !existingGroupNames.has(groupname),
-			);
+			const missingGroupNames = fileGroups
+				.filter((group) => !existingGroupKeys.has(group.key))
+				.map((group) => group.label);
 
 			if (missingGroupNames.length > 0) {
 				return { kind: "missing", groupNames: missingGroupNames };
 			}
 
-			return { kind: "valid", groupNames: fileGroupNames };
-		},
-		[canUsePermissionControls, delegateGroupName, groupsQuery, parsedImport],
-	);
+			return {
+				kind: "valid",
+				groupNames: fileGroups.map((group) => group.label),
+			};
+		}, [
+			canUsePermissionControls,
+			delegateGroupName,
+			groupsQuery,
+			parsedImport,
+		]);
 	const canSubmitFilePermissionGroups =
 		filePermissionGroupValidation?.kind !== "missing";
 
@@ -309,8 +362,12 @@ export function ImportsWorkspace({
 				atomicity,
 				collisionPolicy,
 				delegateGroupName: canUsePermissionControls
-					? delegateGroupName
+					? (selectedDelegateGroup?.groupname ?? delegateGroupName)
 					: undefined,
+				delegateGroupIdentityScope:
+					selectedDelegateGroup === undefined
+						? undefined
+						: normalizeIdentityScope(selectedDelegateGroup.identity_scope),
 				dryRun,
 				collectionDescription: targetCollectionDescription,
 				collectionMode,
@@ -352,7 +409,8 @@ export function ImportsWorkspace({
 				collectionOptions.map((collection) => collection.name),
 			);
 			setCollectionMode(
-				canCreateCollections && !collectionSuggestion.isExistingCollectionPayload
+				canCreateCollections &&
+					!collectionSuggestion.isExistingCollectionPayload
 					? "file"
 					: "existing_override",
 			);
@@ -388,11 +446,7 @@ export function ImportsWorkspace({
 		router.push(`/tasks/${parsed}`);
 	}
 
-	function renderFieldLabel(
-		label: string,
-		hintKey: HintKey,
-		hint: ReactNode,
-	) {
+	function renderFieldLabel(label: string, hintKey: HintKey, hint: ReactNode) {
 		const isOpen = activeHint === hintKey;
 
 		return (
@@ -518,8 +572,8 @@ export function ImportsWorkspace({
 					>
 						<option value="">Use file values</option>
 						{(groupsQuery.data ?? []).map((group) => (
-							<option key={group.id} value={group.groupname}>
-								{group.groupname} (#{group.id})
+							<option key={group.id} value={group.id}>
+								{formatScopedGroupName(group)} (#{group.id})
 							</option>
 						))}
 					</select>
@@ -533,14 +587,14 @@ export function ImportsWorkspace({
 				{filePermissionGroupValidation?.kind === "missing" ? (
 					<span className="field-note field-note--warning">
 						File references missing group
-						{filePermissionGroupValidation.groupNames.length === 1
-							? ""
-							: "s"}
-						: {filePermissionGroupValidation.groupNames.join(", ")}
+						{filePermissionGroupValidation.groupNames.length === 1 ? "" : "s"}:{" "}
+						{filePermissionGroupValidation.groupNames.join(", ")}
 					</span>
 				) : null}
 				{filePermissionGroupValidation?.kind === "unchecked" ? (
-					<span className="field-note">{filePermissionGroupValidation.reason}</span>
+					<span className="field-note">
+						{filePermissionGroupValidation.reason}
+					</span>
 				) : null}
 			</div>
 		);

@@ -17,7 +17,6 @@ import {
 	postApiV1Collections,
 } from "@/lib/api/generated/client";
 import type {
-	Group,
 	Collection,
 	NewCollectionWithAssignee,
 } from "@/lib/api/generated/models";
@@ -39,6 +38,10 @@ import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
 } from "@/lib/resource-search";
+import {
+	type ConsoleGroup,
+	formatScopedGroupName,
+} from "@/lib/identity-scopes";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
@@ -97,7 +100,7 @@ async function fetchCollections(
 	};
 }
 
-async function fetchGroups(): Promise<Group[]> {
+async function fetchGroups(): Promise<ConsoleGroup[]> {
 	const response = await getApiV1IamGroups(undefined, {
 		credentials: "include",
 	});
@@ -582,7 +585,7 @@ export function CollectionsTable() {
 							>
 								{groups.map((group) => (
 									<option key={group.id} value={group.id}>
-										{group.groupname} (#{group.id})
+										{formatScopedGroupName(group)} (#{group.id})
 									</option>
 								))}
 							</select>

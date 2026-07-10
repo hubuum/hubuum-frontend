@@ -31,6 +31,7 @@ export type ImportCollectionSuggestion = {
 export type ImportPayloadOptions = {
 	atomicity: "strict" | "best_effort";
 	collisionPolicy: "abort" | "overwrite";
+	delegateGroupIdentityScope?: string;
 	delegateGroupName?: string;
 	dryRun: boolean;
 	collectionDescription?: string;
@@ -49,10 +50,10 @@ function trimToNonEmpty(value: string | null | undefined): string | null {
 }
 
 export function slugCollectionName(value: string): string {
-	const slug = value.toLowerCase().replace(SAFE_REF_PATTERN, "-").replace(
-		/^-+|-+$/g,
-		"",
-	);
+	const slug = value
+		.toLowerCase()
+		.replace(SAFE_REF_PATTERN, "-")
+		.replace(/^-+|-+$/g, "");
 	return slug || "item";
 }
 
@@ -153,6 +154,7 @@ function buildCollectionPermissionIdentity(
 function buildSeedCollectionPermissions(
 	payload: ImportRequest,
 	groupname: string,
+	identityScope: string | null,
 ): ImportCollectionPermissionInput[] {
 	const seeds = new Map<string, CollectionPermissionSeed>();
 	const classCollectionByRef = new Map<string, CollectionPermissionSeed>();
@@ -203,7 +205,8 @@ function buildSeedCollectionPermissions(
 				collection_key: objectItem.class_key.collection_ref?.trim()
 					? undefined
 					: (objectItem.class_key.collection_key ?? undefined),
-				collection_ref: objectItem.class_key.collection_ref?.trim() || undefined,
+				collection_ref:
+					objectItem.class_key.collection_ref?.trim() || undefined,
 			});
 			continue;
 		}
@@ -221,18 +224,33 @@ function buildSeedCollectionPermissions(
 
 	return Array.from(seeds.values()).map((seed) => ({
 		...seed,
-		group_key: { groupname },
+		group_key: buildScopedGroupKey(groupname, identityScope),
 		permissions: FULL_NAMESPACE_PERMISSIONS,
 		replace_existing: false,
 	}));
 }
 
+function buildScopedGroupKey(
+	groupname: string,
+	identityScope: string | null,
+): ImportCollectionPermissionInput["group_key"] {
+	return {
+		groupname,
+		...(identityScope ? { identity_scope: identityScope } : {}),
+	} as ImportCollectionPermissionInput["group_key"];
+}
+
 function applyDelegateGroupOverride(
 	payload: ImportRequest,
 	groupname: string,
+	identityScope: string | null,
 ): ImportRequest {
 	const existingPermissions = payload.graph.collection_permissions ?? [];
-	const seededPermissions = buildSeedCollectionPermissions(payload, groupname);
+	const seededPermissions = buildSeedCollectionPermissions(
+		payload,
+		groupname,
+		identityScope,
+	);
 	const mergedPermissions = new Map<string, ImportCollectionPermissionInput>();
 
 	[...existingPermissions, ...seededPermissions].forEach(
@@ -247,7 +265,7 @@ function applyDelegateGroupOverride(
 
 			mergedPermissions.set(key, {
 				...permission,
-				group_key: { groupname },
+				group_key: buildScopedGroupKey(groupname, identityScope),
 				permissions: Array.from(permissionNames),
 				replace_existing:
 					previous?.replace_existing ?? permission.replace_existing ?? false,
@@ -331,7 +349,10 @@ function rewriteObjectRelationCollection(
 ): ImportObjectRelationInput {
 	return {
 		...relation,
-		from_object_key: rewriteObjectKeyCollection(relation.from_object_key, target),
+		from_object_key: rewriteObjectKeyCollection(
+			relation.from_object_key,
+			target,
+		),
 		to_object_key: rewriteObjectKeyCollection(relation.to_object_key, target),
 	};
 }
@@ -419,6 +440,9 @@ export function buildImportSubmissionPayload(
 	const collectionName = trimToNonEmpty(options.collectionName);
 	const collectionDescription = trimToNonEmpty(options.collectionDescription);
 	const delegateGroupName = trimToNonEmpty(options.delegateGroupName);
+	const delegateGroupIdentityScope = trimToNonEmpty(
+		options.delegateGroupIdentityScope,
+	);
 	let effectivePayload: ImportRequest = {
 		...payload,
 		dry_run: options.dryRun,
@@ -457,6 +481,7 @@ export function buildImportSubmissionPayload(
 		effectivePayload = applyDelegateGroupOverride(
 			effectivePayload,
 			delegateGroupName,
+			delegateGroupIdentityScope,
 		);
 	}
 

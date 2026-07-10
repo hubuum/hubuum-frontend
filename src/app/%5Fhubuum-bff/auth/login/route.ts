@@ -5,21 +5,35 @@ import { backendFetchRaw } from "@/lib/api/backend";
 import type {
 	ApiErrorResponse,
 	LoginResponse,
-	LoginUser,
 } from "@/lib/api/generated/models";
 import { createSession, setSessionCookie } from "@/lib/auth/session";
 import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
+import {
+	authenticatedIdentityMatchesRequest,
+	formatScopedIdentityName,
+	LOCAL_IDENTITY_SCOPE,
+	readAuthenticatedPrincipalIdentity,
+	type ScopedLoginCredentials,
+} from "@/lib/identity-scopes";
+
+const optionalIdentityScopeSchema = z.preprocess(
+	(value) =>
+		typeof value === "string" && value.trim() ? value.trim() : undefined,
+	z.string().min(1).max(160).optional(),
+);
 
 const loginSchema = z
 	.object({
+		identity_scope: optionalIdentityScopeSchema,
 		name: z.string().min(1).optional(),
 		username: z.string().min(1).optional(),
 		password: z.string().min(1),
 	})
 	.transform((value) => ({
+		identity_scope: value.identity_scope,
 		name: value.name ?? value.username ?? "",
 		password: value.password,
 	}))
@@ -30,7 +44,7 @@ const loginSchema = z
 const BACKEND_LOGIN_PATH = "/api/v0/auth/login";
 
 type ParsedCredentials =
-	| { credentials: LoginUser; fromForm: boolean }
+	| { credentials: ScopedLoginCredentials; fromForm: boolean }
 	| { credentials: null; fromForm: boolean };
 
 function seeOther(location: string): NextResponse {
@@ -47,6 +61,9 @@ async function parseCredentials(
 	request: NextRequest,
 ): Promise<ParsedCredentials> {
 	const contentType = (request.headers.get("content-type") ?? "").toLowerCase();
+	const fromForm =
+		contentType.includes("application/x-www-form-urlencoded") ||
+		contentType.includes("multipart/form-data");
 
 	try {
 		if (contentType.includes("application/json")) {
@@ -54,22 +71,31 @@ async function parseCredentials(
 			return { credentials: loginSchema.parse(body), fromForm: false };
 		}
 
-		if (
-			contentType.includes("application/x-www-form-urlencoded") ||
-			contentType.includes("multipart/form-data")
-		) {
+		if (fromForm) {
 			const formData = await request.formData();
 			const body = {
+				identity_scope: formData.get("identity_scope"),
 				username: formData.get("username"),
 				password: formData.get("password"),
 			};
 			return { credentials: loginSchema.parse(body), fromForm: true };
 		}
 	} catch {
-		// Fall through to null credentials.
+		return { credentials: null, fromForm };
 	}
 
 	return { credentials: null, fromForm: false };
+}
+
+async function revokeIssuedToken(
+	token: string,
+	correlationId: string,
+): Promise<void> {
+	await backendFetchRaw("/api/v0/auth/logout", {
+		correlationId,
+		method: "POST",
+		token,
+	}).catch(() => undefined);
 }
 
 export async function POST(request: NextRequest) {
@@ -140,11 +166,47 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
-	const sid = await createSession(token, credentials.name);
+	const meResponse = await backendFetchRaw("/api/v1/iam/me", {
+		correlationId,
+		method: "GET",
+		token,
+	}).catch(() => null);
+	const identity =
+		meResponse?.status === 200
+			? readAuthenticatedPrincipalIdentity(
+					await meResponse.json().catch(() => null),
+				)
+			: null;
+	if (
+		!authenticatedIdentityMatchesRequest(identity, credentials.identity_scope)
+	) {
+		await revokeIssuedToken(token, correlationId);
+		if (fromForm) {
+			return seeOther("/login?error=identity_scope_unavailable");
+		}
+		return NextResponse.json(
+			{
+				error: "IdentityScopeUnavailable",
+				message:
+					"The requested identity scope is unavailable or unsupported by this server.",
+			},
+			{ status: 400 },
+		);
+	}
+	const sessionIdentity = identity ?? {
+		identityScope: credentials.identity_scope ?? LOCAL_IDENTITY_SCOPE,
+		name: credentials.name,
+	};
+	const sessionUsername = formatScopedIdentityName(
+		sessionIdentity.identityScope,
+		sessionIdentity.name,
+	);
+
+	const sid = await createSession(token, sessionUsername);
 	const response = fromForm
 		? seeOther("/app")
 		: NextResponse.json({ authenticated: true }, { status: 200 });
-	setSessionCookie(response, sid, request, token, credentials.name);
+	setSessionCookie(response, sid, request, token, sessionUsername);
 	console.info(
 		`[hubuum-auth][cid=${correlationId}] login succeeded and session created (fromForm=${String(fromForm)})`,
 	);

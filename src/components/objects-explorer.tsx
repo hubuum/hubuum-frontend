@@ -58,6 +58,11 @@ import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
 import { useTableSort } from "@/lib/use-table-sort";
 import { useToast } from "@/lib/toast-context";
+import {
+	isUserSettingsSyncInitialized,
+	writeUserSetting,
+} from "@/lib/user-settings-client";
+import { PORTABLE_USER_SETTING_KEYS } from "@/lib/user-settings-types";
 
 function IconSearch() {
 	return (
@@ -90,10 +95,6 @@ function IconDataField() {
 	);
 }
 
-const OBJECT_DATA_COLUMNS_STORAGE_PREFIX = "hubuum.object-data-columns";
-const OBJECT_RAW_DATA_COLUMN_STORAGE_PREFIX = "hubuum.object-raw-data-column";
-const OBJECT_CUSTOM_DATA_FIELDS_STORAGE_PREFIX =
-	"hubuum.object-custom-data-fields";
 const DEFAULT_SELECTED_DATA_COLUMN_COUNT = 3;
 const MAX_SELECTED_DATA_COLUMNS = 6;
 const MAX_DATA_PATH_DEPTH = 3;
@@ -673,8 +674,7 @@ function persistCustomDataFields(
 	}
 
 	try {
-		window.localStorage.setItem(storageKey, JSON.stringify(fields));
-		return true;
+		return writeUserSetting(storageKey, JSON.stringify(fields));
 	} catch {
 		return false;
 	}
@@ -901,15 +901,15 @@ export function ObjectsExplorer() {
 	const dataColumnStorageKey =
 		parsedClassId === null
 			? null
-			: `${OBJECT_DATA_COLUMNS_STORAGE_PREFIX}:${parsedClassId}`;
+			: PORTABLE_USER_SETTING_KEYS.objectDataColumns(parsedClassId);
 	const rawDataColumnStorageKey =
 		parsedClassId === null
 			? null
-			: `${OBJECT_RAW_DATA_COLUMN_STORAGE_PREFIX}:${parsedClassId}`;
+			: PORTABLE_USER_SETTING_KEYS.objectRawDataColumn(parsedClassId);
 	const customDataFieldsStorageKey =
 		parsedClassId === null
 			? null
-			: `${OBJECT_CUSTOM_DATA_FIELDS_STORAGE_PREFIX}:${parsedClassId}:user`;
+			: PORTABLE_USER_SETTING_KEYS.objectCustomDataFields(parsedClassId);
 	const customDataFieldsReady =
 		loadedCustomDataFieldsStorageKey === customDataFieldsStorageKey;
 	const parsedCreateClassId = useMemo(() => {
@@ -1198,7 +1198,9 @@ export function ObjectsExplorer() {
 							}
 						: null;
 				})
-				.filter((column): column is NonNullable<typeof column> => column !== null),
+				.filter(
+					(column): column is NonNullable<typeof column> => column !== null,
+				),
 		[sortedDataColumnCandidates],
 	);
 	const dataColumnMenuWidth = useMemo(() => {
@@ -1311,12 +1313,7 @@ export function ObjectsExplorer() {
 			columns: objectExportColumns,
 			rows: displayedObjects,
 		}),
-		[
-			displayedObjects,
-			objectExportColumns,
-			parsedClassId,
-			selectedClass?.name,
-		],
+		[displayedObjects, objectExportColumns, parsedClassId, selectedClass?.name],
 	);
 	useResizableTable({
 		tableId: "objects-table",
@@ -1374,12 +1371,16 @@ export function ObjectsExplorer() {
 	}, [customDataFieldsStorageKey]);
 
 	useEffect(() => {
-		if (!customDataFieldsStorageKey || !customDataFieldsReady) {
+		if (
+			!customDataFieldsStorageKey ||
+			!customDataFieldsReady ||
+			!isUserSettingsSyncInitialized()
+		) {
 			return;
 		}
 
 		try {
-			window.localStorage.setItem(
+			writeUserSetting(
 				customDataFieldsStorageKey,
 				JSON.stringify(customDataFields),
 			);
@@ -1457,7 +1458,11 @@ export function ObjectsExplorer() {
 	]);
 
 	useEffect(() => {
-		if (!dataColumnStorageKey || !customDataFieldsReady) {
+		if (
+			!dataColumnStorageKey ||
+			!customDataFieldsReady ||
+			!isUserSettingsSyncInitialized()
+		) {
 			return;
 		}
 		if (dataColumnCandidates.length === 0 && customDataFields.length === 0) {
@@ -1465,7 +1470,7 @@ export function ObjectsExplorer() {
 		}
 
 		try {
-			window.localStorage.setItem(
+			writeUserSetting(
 				dataColumnStorageKey,
 				JSON.stringify(activeDataColumns.map((column) => column.id)),
 			);
@@ -1481,7 +1486,7 @@ export function ObjectsExplorer() {
 	]);
 
 	useEffect(() => {
-		if (!rawDataColumnStorageKey) {
+		if (!rawDataColumnStorageKey || !isUserSettingsSyncInitialized()) {
 			setShowRawDataColumn((current) => (current ? current : true));
 			return;
 		}
@@ -1509,7 +1514,7 @@ export function ObjectsExplorer() {
 		}
 
 		try {
-			window.localStorage.setItem(
+			writeUserSetting(
 				rawDataColumnStorageKey,
 				showRawDataColumn ? "visible" : "hidden",
 			);
@@ -1925,9 +1930,11 @@ export function ObjectsExplorer() {
 	}
 
 	function deleteCustomDataField(fieldId: string) {
-		const nextFields = customDataFields.filter((field) => field.id !== fieldId);
+		const nextFields = customDataFields.filter(
+			(candidate) => candidate.id !== fieldId,
+		);
 		if (!persistCustomDataFields(customDataFieldsStorageKey, nextFields)) {
-			showToast("Could not save custom data fields in this browser.", "error");
+			showToast("Could not save custom data fields.", "error");
 			return;
 		}
 
@@ -2096,7 +2103,7 @@ export function ObjectsExplorer() {
 									? searchTerm
 										? `${filteredObjects.length} shown on page · ${objects.length} loaded`
 										: typeof pageData?.totalCount === "number" &&
-											pageData?.totalCount !== objects.length
+												pageData?.totalCount !== objects.length
 											? `${objects.length} loaded · ${pageData?.totalCount} ${serverFilters.length ? "matches" : "total"}`
 											: `${objects.length} loaded`
 									: parsedClassId
@@ -2241,7 +2248,7 @@ export function ObjectsExplorer() {
 									>
 										<div className="custom-data-field-scope">
 											<span className="muted">
-												Saved for this browser only.
+												Saved to your account as a display preference.
 											</span>
 										</div>
 										<label className="control-field">
@@ -2357,18 +2364,23 @@ export function ObjectsExplorer() {
 					<div className="table-scope-note" role="status">
 						{serverFilters.length > 0 ? (
 							<span>
-								<strong>{serverFilters.length} server filter{serverFilters.length === 1 ? "" : "s"}</strong>{" "}
+								<strong>
+									{serverFilters.length} server filter
+									{serverFilters.length === 1 ? "" : "s"}
+								</strong>{" "}
 								querying every object in this class.
 							</span>
 						) : null}
 						{searchTerm ? (
 							<span>
-								<strong>Find on page</strong> is narrowing the {objects.length} loaded row{objects.length === 1 ? "" : "s"}.
+								<strong>Find on page</strong> is narrowing the {objects.length}{" "}
+								loaded row{objects.length === 1 ? "" : "s"}.
 							</span>
 						) : null}
 						{dataColumnSort.columnId ? (
 							<span>
-								<strong>Loaded-page sort</strong> is active for a data field; standard columns sort the full server result.
+								<strong>Loaded-page sort</strong> is active for a data field;
+								standard columns sort the full server result.
 							</span>
 						) : null}
 					</div>

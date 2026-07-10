@@ -38,7 +38,6 @@ import {
 } from "@/lib/api/generated/client";
 import type {
 	EffectiveGroupPermission,
-	Group,
 	GroupPermission,
 	Collection,
 	Permission,
@@ -58,6 +57,10 @@ import {
 	type EditStateEventDetail,
 	TITLE_STATE_EVENT,
 } from "@/lib/create-events";
+import {
+	type ConsoleGroup,
+	formatScopedGroupName,
+} from "@/lib/identity-scopes";
 import { useCurrentUserId } from "@/lib/use-current-user-id";
 
 type CollectionDetailProps = {
@@ -415,7 +418,7 @@ async function fetchCollectionAncestors(
 	return response.data;
 }
 
-async function fetchGroups(): Promise<Group[]> {
+async function fetchGroups(): Promise<ConsoleGroup[]> {
 	const response = await getApiV1IamGroups(undefined, {
 		credentials: "include",
 	});
@@ -457,7 +460,7 @@ async function fetchEffectivePrincipalPermissions(
 async function fetchGroupsWithPermission(
 	collectionId: number,
 	permission: PermissionName,
-): Promise<Group[]> {
+): Promise<ConsoleGroup[]> {
 	const response =
 		await getApiV1CollectionsByCollectionIdHasPermissionsByPermission(
 			collectionId,
@@ -527,7 +530,9 @@ async function putCollectionPermissions(
 	);
 }
 
-async function fetchCurrentUserGroups(_username: string): Promise<Group[]> {
+async function fetchCurrentUserGroups(
+	_username: string,
+): Promise<ConsoleGroup[]> {
 	try {
 		const response = await getApiV1IamMeGroups(undefined, {
 			credentials: "include",
@@ -1456,7 +1461,7 @@ export function CollectionDetail({
 	const currentUserGroupIds = new Set(
 		(currentUserGroupsQuery.data ?? []).map((group) => group.id),
 	);
-	const userHasAnyGroup = (accessGroups: readonly Group[] | undefined) =>
+	const userHasAnyGroup = (accessGroups: readonly ConsoleGroup[] | undefined) =>
 		(accessGroups ?? []).some((group) => currentUserGroupIds.has(group.id));
 	const canManagePermissions = userHasAnyGroup(delegateGroupsQuery.data);
 	const canUpdateCollection = userHasAnyGroup(updateGroupsQuery.data);
@@ -1570,7 +1575,7 @@ export function CollectionDetail({
 					{
 						group: usingGroupSelect
 							? selectedNewPermissionGroup
-								? `${selectedNewPermissionGroup.groupname} (#${selectedNewPermissionGroup.id})`
+								? `${formatScopedGroupName(selectedNewPermissionGroup)} (#${selectedNewPermissionGroup.id})`
 								: "All groups already have permissions."
 							: newPermissionGroupId,
 						permissions: summarizePermissions(newSelectedPermissionSet),
@@ -2086,7 +2091,7 @@ export function CollectionDetail({
 														>
 															{availableGroups.map((group) => (
 																<option key={group.id} value={group.id}>
-																	{group.groupname} (#{group.id})
+																	{formatScopedGroupName(group)} (#{group.id})
 																</option>
 															))}
 														</select>
