@@ -61,9 +61,11 @@ import {
 	type ConsoleGroup,
 	formatScopedGroupName,
 } from "@/lib/identity-scopes";
+import { canManageCollectionPermissions } from "@/lib/collection-permission-access";
 import { useCurrentUserId } from "@/lib/use-current-user-id";
 
 type CollectionDetailProps = {
+	canAdminister: boolean;
 	collectionId: number;
 	currentUsername: string | null;
 };
@@ -675,6 +677,7 @@ function InlineEditIcon() {
 }
 
 export function CollectionDetail({
+	canAdminister,
 	collectionId,
 	currentUsername,
 }: CollectionDetailProps) {
@@ -1463,7 +1466,10 @@ export function CollectionDetail({
 	);
 	const userHasAnyGroup = (accessGroups: readonly ConsoleGroup[] | undefined) =>
 		(accessGroups ?? []).some((group) => currentUserGroupIds.has(group.id));
-	const canManagePermissions = userHasAnyGroup(delegateGroupsQuery.data);
+	const canManagePermissions = canManageCollectionPermissions(
+		canAdminister,
+		userHasAnyGroup(delegateGroupsQuery.data),
+	);
 	const canUpdateCollection = userHasAnyGroup(updateGroupsQuery.data);
 	const canDeleteCollection = userHasAnyGroup(deleteGroupsQuery.data);
 	const canManageEventSubscriptions = userHasAnyGroup(

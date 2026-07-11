@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import type { ApiErrorResponse } from "@/lib/api/generated/models";
@@ -25,7 +24,6 @@ export function LoginForm({
 }: {
 	initialError?: string | null;
 }) {
-	const router = useRouter();
 	const [identityScope, setIdentityScope] = useState("");
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
@@ -117,8 +115,7 @@ export function LoginForm({
 				window.localStorage.removeItem(LOGIN_IDENTITY_SCOPE_STORAGE_KEY);
 			}
 
-			router.push("/app");
-			router.refresh();
+			window.location.assign("/app");
 		} catch (caught) {
 			setError(caught instanceof Error ? caught.message : "Unexpected error");
 			setIsSubmitting(false);
