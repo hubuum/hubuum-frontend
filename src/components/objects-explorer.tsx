@@ -95,6 +95,17 @@ function IconDataField() {
 	);
 }
 
+function IconConnections() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M10.6 13.4a1 1 0 0 1 0-1.4l2.8-2.8a3 3 0 1 1 4.2 4.2l-2.1 2.1a3 3 0 0 1-4.2 0 1 1 0 1 1 1.4-1.4 1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 1 0-1.4-1.4L12 13.4a1 1 0 0 1-1.4 0Zm2.8-2.8a1 1 0 0 1 0 1.4l-2.8 2.8a3 3 0 1 1-4.2-4.2l2.1-2.1a3 3 0 0 1 4.2 0 1 1 0 1 1-1.4 1.4 1 1 0 0 0-1.4 0L7.8 12a1 1 0 1 0 1.4 1.4l2.8-2.8a1 1 0 0 1 1.4 0Z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
 const DEFAULT_SELECTED_DATA_COLUMN_COUNT = 3;
 const MAX_SELECTED_DATA_COLUMNS = 6;
 const MAX_DATA_PATH_DEPTH = 3;
@@ -2622,13 +2633,23 @@ export function ObjectsExplorer() {
 											</td>
 											<td>{objectItem.id}</td>
 											<td>
-												<Link
-													href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
-													className="row-link"
-													title={objectItem.name}
-												>
-													{objectItem.name}
-												</Link>
+												<div className="object-name-cell">
+													<Link
+														href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
+														className="row-link"
+														title={objectItem.name}
+													>
+														{objectItem.name}
+													</Link>
+													<Link
+														href={`/relations/objects?classId=${objectItem.hubuum_class_id}&objectId=${objectItem.id}&objectView=reachable`}
+														className="object-row-connections-link"
+														aria-label={`Open connections for ${objectItem.name}`}
+														title="Open connections"
+													>
+														<IconConnections />
+													</Link>
+												</div>
 											</td>
 											<td>{renderCollection(objectItem.collection_id)}</td>
 											<td

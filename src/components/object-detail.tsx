@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 import {
 	FormEvent,
 	type KeyboardEvent as ReactKeyboardEvent,
+	type ReactNode,
 	useCallback,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
-import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { JsonViewer } from "@/components/json-viewer";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
@@ -37,11 +38,14 @@ import type {
 	UpdateHubuumObject,
 } from "@/lib/api/generated/models";
 import type { ConsoleGroup } from "@/lib/identity-scopes";
+import { TITLE_STATE_EVENT } from "@/lib/create-events";
 import {
-	EDIT_STATE_EVENT,
-	type EditStateEventDetail,
-	TITLE_STATE_EVENT,
-} from "@/lib/create-events";
+	buildRelatedObjectSearchParams,
+	DEFAULT_INCLUDE_SELF_CLASS,
+	normalizeRelatedObjectPath,
+	summarizeRelatedObjectData,
+} from "@/lib/object-relation-summary";
+import { flattenObjectPropertyEntries } from "@/lib/object-property-entries";
 
 type ObjectDetailProps = {
 	classId: number;
@@ -53,11 +57,13 @@ type ObjectDetailProps = {
 type EditableField = "name" | "description" | "collection" | "data";
 
 const ALL_EDITABLE_FIELDS: EditableField[] = [
-	"name",
-	"description",
-	"collection",
 	"data",
+	"collection",
+	"description",
+	"name",
 ];
+
+const CONNECTION_PROPERTY_LIMIT = 12;
 
 async function fetchObject(
 	classId: number,
@@ -163,15 +169,11 @@ async function fetchRelatedObjects(
 	includeSelfClass: boolean,
 	ignoredClassIds: number[],
 ): Promise<HubuumObjectWithPath[]> {
-	const params = new URLSearchParams({
-		limit: "250",
-		sort: "path.asc,id.asc",
-		depth__lte: String(depthLimit),
-		ignore_self_class: String(!includeSelfClass),
+	const params = buildRelatedObjectSearchParams({
+		depthLimit,
+		includeSelfClass,
+		ignoredClassIds,
 	});
-	if (ignoredClassIds.length) {
-		params.set("ignore_classes", ignoredClassIds.join(","));
-	}
 	const response = await fetch(
 		`/_hubuum-bff/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/objects?${params.toString()}`,
 		{
@@ -248,6 +250,23 @@ function InlineEditIcon() {
 	);
 }
 
+function ObjectPropertyItem({
+	label,
+	className = "",
+	children,
+}: {
+	label: ReactNode;
+	className?: string;
+	children: ReactNode;
+}) {
+	return (
+		<div className={`object-property-item${className ? ` ${className}` : ""}`}>
+			<dt title={typeof label === "string" ? label : undefined}>{label}</dt>
+			<dd>{children}</dd>
+		</div>
+	);
+}
+
 export function ObjectDetail({
 	classId,
 	objectId,
@@ -257,18 +276,31 @@ export function ObjectDetail({
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
+	const objectFormRef = useRef<HTMLFormElement | null>(null);
 	const ignoreClassesRef = useRef<HTMLDivElement | null>(null);
+	const editAllButtonRef = useRef<HTMLButtonElement | null>(null);
+	const nameInputRef = useRef<HTMLInputElement | null>(null);
+	const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
+	const collectionSelectRef = useRef<HTMLSelectElement | null>(null);
+	const collectionInputRef = useRef<HTMLInputElement | null>(null);
 
 	const [relationDepthLimit, setRelationDepthLimit] = useState(2);
-	const [includeSelfClass, setIncludeSelfClass] = useState(false);
+	const [showAllRelations, setShowAllRelations] = useState(false);
+	const [includeSelfClass, setIncludeSelfClass] = useState(
+		DEFAULT_INCLUDE_SELF_CLASS,
+	);
 	const [ignoredClassIds, setIgnoredClassIds] = useState<number[]>([]);
 	const [isIgnoreClassesOpen, setIgnoreClassesOpen] = useState(false);
+	const [isConnectionToolsOpen, setConnectionToolsOpen] = useState(false);
+	const [isDataInspectorOpen, setDataInspectorOpen] = useState(false);
+	const [dataFieldFilter, setDataFieldFilter] = useState("");
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [dataInput, setDataInput] = useState("{}");
 	const [collectionId, setCollectionId] = useState("");
 	const [initialized, setInitialized] = useState(false);
 	const [editingFields, setEditingFields] = useState<EditableField[]>([]);
+	const [dirtyFields, setDirtyFields] = useState<EditableField[]>([]);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
@@ -335,6 +367,10 @@ export function ObjectDetail({
 				ignoredClassIds,
 			),
 	});
+	const flattenedObjectData = useMemo(
+		() => flattenObjectPropertyEntries(objectQuery.data?.data),
+		[objectQuery.data?.data],
+	);
 
 	useEffect(() => {
 		if (!objectQuery.data) {
@@ -375,6 +411,17 @@ export function ObjectDetail({
 		};
 	}, [isIgnoreClassesOpen]);
 
+	useEffect(() => {
+		const lastEditingField = editingFields.at(-1);
+		if (lastEditingField === "name") {
+			nameInputRef.current?.focus();
+		} else if (lastEditingField === "description") {
+			descriptionInputRef.current?.focus();
+		} else if (lastEditingField === "collection") {
+			(collectionSelectRef.current ?? collectionInputRef.current)?.focus();
+		}
+	}, [editingFields]);
+
 	const collections = collectionsQuery.data ?? [];
 
 	const updateMutation = useMutation({
@@ -413,8 +460,10 @@ export function ObjectDetail({
 			setDataInput(stringifyJson(updatedObject.data));
 			setCollectionId(String(updatedObject.collection_id));
 			setEditingFields([]);
+			setDirtyFields([]);
 			setFormError(null);
 			setFormSuccess("Object updated.");
+			window.requestAnimationFrame(() => editAllButtonRef.current?.focus());
 
 			if (targetClassId !== classId) {
 				router.replace(`/objects/${targetClassId}/${objectId}`);
@@ -481,27 +530,8 @@ export function ObjectDetail({
 		setFormError(null);
 		setFormSuccess(null);
 		setEditingFields(ALL_EDITABLE_FIELDS);
+		setDirtyFields([]);
 	}, [canEditObject, isSavingOrDeleting]);
-
-	useEffect(() => {
-		const detail: EditStateEventDetail = {
-			label: "Edit object",
-			editHandler:
-				canEditObject && !hasActiveEdits && !isSavingOrDeleting
-					? beginGlobalEdit
-					: null,
-		};
-
-		window.dispatchEvent(new CustomEvent(EDIT_STATE_EVENT, { detail }));
-
-		return () => {
-			window.dispatchEvent(
-				new CustomEvent(EDIT_STATE_EVENT, {
-					detail: { label: "Edit object", editHandler: null },
-				}),
-			);
-		};
-	}, [beginGlobalEdit, canEditObject, hasActiveEdits, isSavingOrDeleting]);
 
 	useEffect(() => {
 		const objectData = objectQuery.data;
@@ -575,8 +605,10 @@ export function ObjectDetail({
 		setCollectionId(String(objectData.collection_id));
 		setDataInput(stringifyJson(objectData.data));
 		setEditingFields([]);
+		setDirtyFields([]);
 		setFormError(null);
 		setFormSuccess(null);
+		window.requestAnimationFrame(() => editAllButtonRef.current?.focus());
 	}, [editingFields.length, objectQuery.data]);
 
 	useEffect(() => {
@@ -586,6 +618,21 @@ export function ObjectDetail({
 
 		function onEscape(event: KeyboardEvent) {
 			if (event.key !== "Escape") {
+				return;
+			}
+			if (
+				!(event.target instanceof Node) ||
+				!objectFormRef.current?.contains(event.target)
+			) {
+				return;
+			}
+			if (
+				event.defaultPrevented ||
+				(event.target instanceof Element &&
+					event.target.closest(
+						".json-editor, .relations-filter-dropdown, [role='dialog']",
+					))
+			) {
 				return;
 			}
 
@@ -606,61 +653,116 @@ export function ObjectDetail({
 			setEditingFields((current) =>
 				current.filter((currentField) => currentField !== field),
 			);
+			setDirtyFields((current) =>
+				current.filter((currentField) => currentField !== field),
+			);
 			return;
 		}
 
 		setEditingFields((current) => [...current, field]);
 	}
 
+	function markFieldDirty(field: EditableField) {
+		setDirtyFields((current) =>
+			current.includes(field) ? current : [...current, field],
+		);
+	}
+
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setFormError(null);
 		setFormSuccess(null);
+		if (editingFields.length === 0) {
+			return;
+		}
 
 		if (!canEditObject) {
 			setFormError("You do not have permission to update this object.");
 			return;
 		}
-
-		let parsedData: unknown;
-		try {
-			parsedData = JSON.parse(dataInput);
-		} catch {
-			setFormError("Object data must be valid JSON.");
+		const currentObject = objectQuery.data;
+		if (!currentObject) {
+			setFormError("Object data is unavailable.");
 			return;
 		}
 
-		const parsedCollectionId = Number.parseInt(collectionId, 10);
-		if (!Number.isFinite(parsedCollectionId) || parsedCollectionId < 1) {
-			setFormError("Collection ID is required.");
-			return;
+		const payload: UpdateHubuumObject = {};
+		if (dirtyFields.includes("name")) {
+			const nextName = name.trim();
+			if (!nextName) {
+				setFormError("Object name is required.");
+				return;
+			}
+			if (name !== currentObject.name && nextName !== currentObject.name) {
+				payload.name = nextName;
+			}
 		}
 
-		const payload: UpdateHubuumObject = {
-			name: name.trim(),
-			description: description.trim(),
-			data: parsedData,
-			hubuum_class_id: classId,
-			collection_id: parsedCollectionId,
-		};
+		if (dirtyFields.includes("description")) {
+			const nextDescription = description.trim();
+			if (
+				description !== (currentObject.description ?? "") &&
+				nextDescription !== (currentObject.description ?? "")
+			) {
+				payload.description = nextDescription;
+			}
+		}
+
+		if (dirtyFields.includes("data")) {
+			try {
+				const parsedData = JSON.parse(dataInput);
+				if (stringifyJson(parsedData) !== stringifyJson(currentObject.data)) {
+					payload.data = parsedData;
+				}
+			} catch {
+				setFormError("Object data must be valid JSON.");
+				return;
+			}
+		}
+
+		if (dirtyFields.includes("collection")) {
+			const parsedCollectionId = Number.parseInt(collectionId, 10);
+			if (!Number.isFinite(parsedCollectionId) || parsedCollectionId < 1) {
+				setFormError("Collection ID is required.");
+				return;
+			}
+			if (parsedCollectionId !== currentObject.collection_id) {
+				payload.collection_id = parsedCollectionId;
+			}
+		}
+
+		if (Object.keys(payload).length === 0) {
+			setEditingFields([]);
+			setDirtyFields([]);
+			setFormSuccess("No changes to save.");
+			window.requestAnimationFrame(() => editAllButtonRef.current?.focus());
+			return;
+		}
 
 		updateMutation.mutate(payload);
 	}
 
 	function onSubmitShortcut(event: ReactKeyboardEvent<HTMLFormElement>) {
-		if (event.key === "Escape" && hasActiveEdits) {
+		const target = event.target;
+		if (
+			event.key === "Enter" &&
+			!event.ctrlKey &&
+			!event.metaKey &&
+			target instanceof HTMLInputElement &&
+			!["button", "checkbox", "radio", "reset", "submit"].includes(
+				target.type,
+			) &&
+			target.closest("[data-object-nonsubmit]")
+		) {
 			event.preventDefault();
-			event.stopPropagation();
-			cancelActiveEdits();
 			return;
 		}
 
 		if (
 			event.key !== "Enter" ||
-			!event.shiftKey ||
+			(!event.ctrlKey && !event.metaKey) ||
 			event.altKey ||
-			event.ctrlKey ||
-			event.metaKey
+			event.shiftKey
 		) {
 			return;
 		}
@@ -764,7 +866,7 @@ export function ObjectDetail({
 		: permissionCheckPending
 			? "Checking whether you can update this object..."
 			: canEditObject
-				? "Toggle edit only on the fields you want to change."
+				? null
 				: canCheckPermissionMembership
 					? "You can view this object, but editing is unavailable because your access does not include UpdateObject on this collection."
 					: "Could not identify the current user. Showing a read-only object view.";
@@ -782,18 +884,7 @@ export function ObjectDetail({
 	}
 
 	function getDisplayPath(path: number[], targetId: number): number[] {
-		const normalizedPath = path.length ? [...path] : [targetId];
-		const trimmedPath =
-			normalizedPath[0] === objectId ? normalizedPath.slice(1) : normalizedPath;
-		if (!trimmedPath.length) {
-			return [targetId];
-		}
-
-		if (trimmedPath[trimmedPath.length - 1] !== targetId) {
-			trimmedPath.push(targetId);
-		}
-
-		return trimmedPath;
+		return normalizeRelatedObjectPath(objectId, targetId, path);
 	}
 
 	function renderPathLink(objectPathId: number) {
@@ -883,8 +974,32 @@ export function ObjectDetail({
 			}))
 			.sort((left, right) => left.rootLabel.localeCompare(right.rootLabel));
 	})();
+	const flattenedData = flattenedObjectData;
+	const normalizedDataFilter = dataFieldFilter.trim().toLocaleLowerCase();
+	const visibleDataProperties = normalizedDataFilter
+		? flattenedData.entries.filter(
+				(entry) =>
+					entry.label.toLocaleLowerCase().includes(normalizedDataFilter) ||
+					entry.value.toLocaleLowerCase().includes(normalizedDataFilter),
+			)
+		: flattenedData.entries;
+	const directRelatedObjects = relatedObjects.filter(
+		(relatedObject) =>
+			getDisplayPath(relatedObject.path, relatedObject.id).length === 1,
+	);
+	const directRelationCount = directRelatedObjects.length;
+	const indirectRelationCount = Math.max(
+		0,
+		relatedObjects.length - directRelationCount,
+	);
+	const visibleConnections = showAllRelations
+		? relatedObjects
+		: relatedObjects.slice(0, CONNECTION_PROPERTY_LIMIT);
+	const hiddenConnectionCount =
+		relatedObjects.length - visibleConnections.length;
 
 	function toggleIgnoredClass(classToToggle: number, checked: boolean) {
+		setShowAllRelations(false);
 		setIgnoredClassIds((current) => {
 			if (checked) {
 				return current.includes(classToToggle)
@@ -905,190 +1020,324 @@ export function ObjectDetail({
 				collectionId={objectData.collection_id}
 			/>
 			<form
-				className="card stack"
+				ref={objectFormRef}
+				className="card stack resource-index object-properties-card"
 				onSubmit={onSubmit}
 				onKeyDownCapture={onSubmitShortcut}
 			>
-				<div className="object-meta-strip">
-					<div className="object-meta-item">
-						<span className="object-meta-label">Created</span>
-						<span className="object-meta-value">
-							{formatTimestamp(objectData.created_at)}
+				<header className="object-record-toolbar">
+					<h2 className="sr-only">Object properties</h2>
+					<div className="object-record-heading">
+						<span className="eyebrow">
+							{currentClass?.name ?? `Class #${objectData.hubuum_class_id}`}
+						</span>
+						<strong>Object #{objectData.id}</strong>
+						<span className="muted">
+							{flattenedData.entries.length}
+							{flattenedData.truncated ? "+" : ""} data field
+							{flattenedData.entries.length === 1 ? "" : "s"} ·{" "}
+							{relatedObjects.length} connection
+							{relatedObjects.length === 1 ? "" : "s"} loaded
 						</span>
 					</div>
-					<div className="object-meta-item">
-						<span className="object-meta-label">Updated</span>
-						<span className="object-meta-value">
-							{formatTimestamp(objectData.updated_at)}
-						</span>
+					<div className="object-record-actions">
+						<div className="object-record-times">
+							<span>
+								Created{" "}
+								<time dateTime={objectData.created_at}>
+									{formatTimestamp(objectData.created_at)}
+								</time>
+							</span>
+							<span>
+								Updated{" "}
+								<time dateTime={objectData.updated_at}>
+									{formatTimestamp(objectData.updated_at)}
+								</time>
+							</span>
+						</div>
+						{canEditObject && !hasActiveEdits ? (
+							<button
+								ref={editAllButtonRef}
+								type="button"
+								onClick={beginGlobalEdit}
+								disabled={isSavingOrDeleting}
+							>
+								Edit all
+							</button>
+						) : null}
 					</div>
-				</div>
+				</header>
 
 				{editAccessMessage ? (
-					<div className="muted">{editAccessMessage}</div>
+					<div className="muted object-edit-access-note">
+						{editAccessMessage}
+					</div>
 				) : null}
 
-				<div className="object-detail-list">
-					<div className="object-detail-compact-grid">
-						<section
-							className={`object-detail-row object-detail-row--compact${editingFields.includes("name") ? " is-editing" : ""}`}
-						>
-							<div className="object-detail-label">Name</div>
-							<div className="object-detail-body">
-								{editingFields.includes("name") ? (
-									<label className="control-field">
-										<span className="sr-only">Object name</span>
-										<input
-											required
-											value={name}
-											onChange={(event) => setName(event.target.value)}
-										/>
-									</label>
-								) : canEditObject ? (
-									<button
-										type="button"
-										className="object-inline-edit"
-										onClick={() => toggleFieldEditing("name", objectData)}
-										disabled={isSavingOrDeleting}
-									>
-										<span className="object-detail-value">
-											{renderFieldText(objectData.name)}
-										</span>
-										<span className="object-inline-edit-icon">
-											<InlineEditIcon />
-										</span>
-									</button>
-								) : (
-									<div className="object-detail-value">
-										{renderFieldText(objectData.name)}
-									</div>
-								)}
-							</div>
-						</section>
-
-						<section
-							className={`object-detail-row object-detail-row--compact${editingFields.includes("description") ? " is-editing" : ""}`}
-						>
-							<div className="object-detail-label">Description</div>
-							<div className="object-detail-body">
-								{editingFields.includes("description") ? (
-									<label className="control-field">
-										<span className="sr-only">Object description</span>
-										<input
-											required
-											value={description}
-											onChange={(event) => setDescription(event.target.value)}
-										/>
-									</label>
-								) : canEditObject ? (
-									<button
-										type="button"
-										className="object-inline-edit"
-										onClick={() =>
-											toggleFieldEditing("description", objectData)
-										}
-										disabled={isSavingOrDeleting}
-									>
-										<span className="object-detail-value">
-											{renderFieldText(objectData.description ?? "")}
-										</span>
-										<span className="object-inline-edit-icon">
-											<InlineEditIcon />
-										</span>
-									</button>
-								) : (
-									<div className="object-detail-value">
-										{renderFieldText(objectData.description ?? "")}
-									</div>
-								)}
-							</div>
-						</section>
-
-						<section
-							className={`object-detail-row object-detail-row--compact${editingFields.includes("collection") ? " is-editing" : ""}`}
-						>
-							<div className="object-detail-label">Collection</div>
-							<div className="object-detail-body">
-								{editingFields.includes("collection") ? (
-									<div className="control-field">
-										<label
-											htmlFor="object-detail-collection"
-											className="sr-only"
-										>
-											Collection
-										</label>
-										{hasCollectionOptions ? (
-											<select
-												id="object-detail-collection"
-												required
-												value={hasCollectionSelection ? collectionId : ""}
-												onChange={(event) =>
-													setCollectionId(event.target.value)
-												}
-											>
-												{!hasCollectionSelection ? (
-													<option value="">Select a collection...</option>
-												) : null}
-												{collections.map((collection) => (
-													<option key={collection.id} value={collection.id}>
-														{collection.name}
-													</option>
-												))}
-											</select>
-										) : (
+				<div className="object-property-surface">
+					<section
+						className="object-property-section object-property-section--identity"
+						aria-labelledby="object-identity-heading"
+					>
+						<h3 id="object-identity-heading" className="sr-only">
+							Object identity
+						</h3>
+						<div className="object-fact-grid object-fact-grid--core">
+							<div
+								className={`object-fact${editingFields.includes("name") ? " is-editing" : ""}`}
+							>
+								<div className="object-fact-label">Name</div>
+								<div className="object-fact-value">
+									{editingFields.includes("name") ? (
+										<label className="control-field">
+											<span className="sr-only">Object name</span>
 											<input
-												id="object-detail-collection"
+												ref={nameInputRef}
 												required
-												type="number"
-												min={1}
-												value={collectionId}
-												onChange={(event) =>
-													setCollectionId(event.target.value)
-												}
-												placeholder={
-													collectionsQuery.isLoading
-														? "Loading collections..."
-														: "Enter collection ID"
-												}
-												disabled={collectionsQuery.isLoading}
+												value={name}
+												onChange={(event) => {
+													setName(event.target.value);
+													markFieldDirty("name");
+												}}
 											/>
-										)}
-									</div>
-								) : canEditObject ? (
-									<button
-										type="button"
-										className="object-inline-edit"
-										onClick={() => toggleFieldEditing("collection", objectData)}
-										disabled={isSavingOrDeleting}
-									>
-										<span className="object-detail-value">
-											{collectionLabel}
-										</span>
-										<span className="object-inline-edit-icon">
-											<InlineEditIcon />
-										</span>
-									</button>
-								) : (
-									<div className="object-detail-value">{collectionLabel}</div>
-								)}
+										</label>
+									) : canEditObject ? (
+										<button
+											type="button"
+											className="object-inline-edit"
+											onClick={() => toggleFieldEditing("name", objectData)}
+											disabled={isSavingOrDeleting}
+											aria-label={`Edit object name. Current value: ${renderFieldText(objectData.name)}`}
+											title={`Edit object name: ${renderFieldText(objectData.name)}`}
+										>
+											<span className="object-fact-display-value">
+												{renderFieldText(objectData.name)}
+											</span>
+											<span
+												className="object-inline-edit-icon"
+												aria-hidden="true"
+											>
+												<InlineEditIcon />
+											</span>
+										</button>
+									) : (
+										<div
+											className="object-fact-display-value"
+											title={renderFieldText(objectData.name)}
+										>
+											{renderFieldText(objectData.name)}
+										</div>
+									)}
+								</div>
 							</div>
-						</section>
-					</div>
+
+							<div
+								className={`object-fact object-fact--wide${editingFields.includes("description") ? " is-editing" : ""}`}
+							>
+								<div className="object-fact-label">Description</div>
+								<div className="object-fact-value">
+									{editingFields.includes("description") ? (
+										<label className="control-field">
+											<span className="sr-only">Object description</span>
+											<textarea
+												ref={descriptionInputRef}
+												rows={2}
+												value={description}
+												onChange={(event) => {
+													setDescription(event.target.value);
+													markFieldDirty("description");
+												}}
+											/>
+										</label>
+									) : canEditObject ? (
+										<button
+											type="button"
+											className="object-inline-edit"
+											onClick={() =>
+												toggleFieldEditing("description", objectData)
+											}
+											disabled={isSavingOrDeleting}
+											aria-label={`Edit object description. Current value: ${renderFieldText(objectData.description ?? "")}`}
+											title={`Edit object description: ${renderFieldText(objectData.description ?? "")}`}
+										>
+											<span className="object-fact-display-value">
+												{renderFieldText(objectData.description ?? "")}
+											</span>
+											<span
+												className="object-inline-edit-icon"
+												aria-hidden="true"
+											>
+												<InlineEditIcon />
+											</span>
+										</button>
+									) : (
+										<div
+											className="object-fact-display-value"
+											title={renderFieldText(objectData.description ?? "")}
+										>
+											{renderFieldText(objectData.description ?? "")}
+										</div>
+									)}
+								</div>
+							</div>
+
+							<div
+								className={`object-fact${editingFields.includes("collection") ? " is-editing" : ""}`}
+							>
+								<div className="object-fact-label">Collection</div>
+								<div className="object-fact-value">
+									{editingFields.includes("collection") ? (
+										<div className="control-field">
+											<label
+												htmlFor="object-detail-collection"
+												className="sr-only"
+											>
+												Collection
+											</label>
+											{hasCollectionOptions ? (
+												<select
+													ref={collectionSelectRef}
+													id="object-detail-collection"
+													required
+													value={hasCollectionSelection ? collectionId : ""}
+													onChange={(event) => {
+														setCollectionId(event.target.value);
+														markFieldDirty("collection");
+													}}
+												>
+													{!hasCollectionSelection ? (
+														<option value="">Select a collection...</option>
+													) : null}
+													{collections.map((collection) => (
+														<option key={collection.id} value={collection.id}>
+															{collection.name}
+														</option>
+													))}
+												</select>
+											) : (
+												<input
+													ref={collectionInputRef}
+													id="object-detail-collection"
+													required
+													type="number"
+													min={1}
+													value={collectionId}
+													onChange={(event) => {
+														setCollectionId(event.target.value);
+														markFieldDirty("collection");
+													}}
+													placeholder={
+														collectionsQuery.isLoading
+															? "Loading collections..."
+															: "Enter collection ID"
+													}
+													disabled={collectionsQuery.isLoading}
+												/>
+											)}
+										</div>
+									) : canEditObject ? (
+										<button
+											type="button"
+											className="object-inline-edit"
+											onClick={() =>
+												toggleFieldEditing("collection", objectData)
+											}
+											disabled={isSavingOrDeleting}
+											aria-label={`Edit object collection. Current value: ${collectionLabel}`}
+											title={`Edit object collection: ${collectionLabel}`}
+										>
+											<span className="object-fact-display-value">
+												{collectionLabel}
+											</span>
+											<span
+												className="object-inline-edit-icon"
+												aria-hidden="true"
+											>
+												<InlineEditIcon />
+											</span>
+										</button>
+									) : (
+										<div
+											className="object-fact-display-value"
+											title={collectionLabel}
+										>
+											{collectionLabel}
+										</div>
+									)}
+								</div>
+							</div>
+
+							<div className="object-fact">
+								<div className="object-fact-label">Class</div>
+								<div
+									className="object-fact-value"
+									title={
+										currentClass?.name ?? `Class #${objectData.hubuum_class_id}`
+									}
+								>
+									{currentClass?.name ?? `Class #${objectData.hubuum_class_id}`}
+								</div>
+							</div>
+						</div>
+					</section>
 
 					<section
-						className={`object-detail-row object-detail-row--data${editingFields.includes("data") ? " is-editing" : ""}`}
+						className={`object-property-section object-property-section--data${editingFields.includes("data") ? " is-editing" : ""}`}
+						aria-labelledby="object-data-heading"
 					>
-						<div className="object-detail-label">Data</div>
-						<div className="object-detail-body">
-							{editingFields.includes("data") ? (
+						<header className="object-property-section-header">
+							<div>
+								<span className="eyebrow">Primary data</span>
+								<div className="table-title-row">
+									<h3 id="object-data-heading">Data fields</h3>
+									<span className="muted table-count">
+										{normalizedDataFilter
+											? `${visibleDataProperties.length} of ${flattenedData.entries.length}`
+											: flattenedData.truncated
+												? `${flattenedData.entries.length}+`
+												: flattenedData.entries.length}
+									</span>
+								</div>
+							</div>
+							<div className="object-property-section-actions">
+								<label className="object-data-filter" data-object-nonsubmit>
+									<span className="sr-only">Filter object data fields</span>
+									<input
+										type="search"
+										value={dataFieldFilter}
+										onChange={(event) => setDataFieldFilter(event.target.value)}
+										placeholder="Filter data fields"
+										disabled={editingFields.includes("data")}
+									/>
+								</label>
+								{canEditObject ? (
+									<button
+										type="button"
+										className="ghost"
+										onClick={() => toggleFieldEditing("data", objectData)}
+										disabled={isSavingOrDeleting}
+									>
+										{editingFields.includes("data")
+											? "Cancel data edit"
+											: "Edit data"}
+									</button>
+								) : null}
+							</div>
+						</header>
+
+						{editingFields.includes("data") ? (
+							<div className="object-property-panel object-data-editor-panel">
 								<JsonEditor
 									id="object-detail-data"
 									label="Data (JSON)"
 									value={dataInput}
-									onChange={setDataInput}
+									onChange={(value) => {
+										setDataInput(value);
+										markFieldDirty("data");
+									}}
 									placeholder='{"hostname":"srv-web-01","env":"prod"}'
 									mode="data"
-									rows={10}
+									rows={16}
 									validationEnabled={currentClass?.validate_schema ?? false}
 									validationSchema={currentClass?.json_schema}
 									helperText={
@@ -1097,26 +1346,365 @@ export function ObjectDetail({
 											: "This class does not currently enforce JSON schema validation."
 									}
 								/>
-							) : (
-								<JsonViewer value={objectData.data} />
-							)}
-						</div>
-						<div className="object-detail-row-actions">
-							{canEditObject && !editingFields.includes("data") ? (
-								<button
-									type="button"
-									className="ghost"
-									onClick={() => toggleFieldEditing("data", objectData)}
-									disabled={isSavingOrDeleting}
+							</div>
+						) : (
+							<>
+								{visibleDataProperties.length ? (
+									<dl className="object-property-grid object-property-grid--data">
+										{visibleDataProperties.map((entry) => (
+											<ObjectPropertyItem
+												key={`data:${entry.id}`}
+												label={entry.label}
+												className={`object-property-item--data object-property-item--${entry.kind}`}
+											>
+												<span title={entry.value}>{entry.value}</span>
+											</ObjectPropertyItem>
+										))}
+									</dl>
+								) : (
+									<div className="object-property-empty">
+										No data fields match “{dataFieldFilter}”.
+									</div>
+								)}
+								{flattenedData.truncated ? (
+									<div className="object-property-note">
+										Showing the first {flattenedData.entries.length} flattened
+										fields. Use the structured inspector for the complete value.
+									</div>
+								) : null}
+								<details
+									className="object-property-inspector"
+									data-object-nonsubmit
+									open={isDataInspectorOpen}
+									onToggle={(event) =>
+										setDataInspectorOpen(event.currentTarget.open)
+									}
 								>
-									Edit
-								</button>
+									<summary>
+										<span>Inspect structured data</span>
+										<span>Overview · Tree · JSON</span>
+									</summary>
+									{isDataInspectorOpen ? (
+										<div className="object-property-inspector-panel">
+											<JsonViewer value={objectData.data} defaultTab="tree" />
+										</div>
+									) : null}
+								</details>
+							</>
+						)}
+					</section>
+
+					<section
+						id="object-connections"
+						className="object-property-section object-property-section--connections"
+						aria-labelledby="object-connections-heading"
+					>
+						<header className="object-property-section-header">
+							<div>
+								<span className="eyebrow">Related properties</span>
+								<div className="table-title-row">
+									<h3 id="object-connections-heading">Connections</h3>
+									<span className="muted table-count">
+										{directRelationCount} direct · {indirectRelationCount}{" "}
+										indirect
+									</span>
+								</div>
+							</div>
+							<Link
+								className="link-chip"
+								href={`/relations/objects?classId=${objectData.hubuum_class_id}&objectId=${objectId}&objectView=direct`}
+							>
+								Manage relations
+							</Link>
+						</header>
+
+						{relatedObjectsQuery.isLoading ? (
+							<div className="object-property-empty" role="status">
+								Loading connected objects...
+							</div>
+						) : null}
+						{relatedObjectsQuery.isError ? (
+							<div className="object-property-empty error-banner" role="alert">
+								Failed to load connected objects.{" "}
+								{relatedObjectsQuery.error instanceof Error
+									? relatedObjectsQuery.error.message
+									: "Unknown error"}
+							</div>
+						) : null}
+						{!relatedObjectsQuery.isLoading && !relatedObjectsQuery.isError ? (
+							relatedObjects.length ? (
+								<>
+									<dl className="object-property-grid object-property-grid--connections">
+										{visibleConnections.map((relatedObject) => {
+											const displayPath = getDisplayPath(
+												relatedObject.path,
+												relatedObject.id,
+											);
+											const dataSummary = summarizeRelatedObjectData(
+												relatedObject.data,
+												2,
+											);
+											const relatedClassLabel =
+												classNameById.get(relatedObject.hubuum_class_id) ??
+												`Class #${relatedObject.hubuum_class_id}`;
+											return (
+												<ObjectPropertyItem
+													key={`connection:${relatedObject.hubuum_class_id}:${relatedObject.id}:${displayPath.join("-")}`}
+													className="object-property-item--connection"
+													label={
+														<span className="object-connection-key">
+															<span>{relatedClassLabel}</span>
+															<span
+																className={`relation-depth-badge relation-depth-badge--${displayPath.length === 1 ? "direct" : "indirect"}`}
+															>
+																{displayPath.length === 1
+																	? "Direct"
+																	: `${displayPath.length} hops`}
+															</span>
+														</span>
+													}
+												>
+													<div className="object-connection-value">
+														<Link
+															className="row-link"
+															href={`/objects/${relatedObject.hubuum_class_id}/${relatedObject.id}`}
+														>
+															{relatedObject.name}
+														</Link>
+														{relatedObject.description ? (
+															<span
+																className="object-connection-description"
+																title={relatedObject.description}
+															>
+																{relatedObject.description}
+															</span>
+														) : null}
+														{dataSummary.length ? (
+															<span className="object-connection-preview">
+																{dataSummary.map((entry) => (
+																	<span key={entry.label}>
+																		<strong>{entry.label}</strong> {entry.value}
+																	</span>
+																))}
+															</span>
+														) : null}
+														{displayPath.length > 1 ? (
+															<span className="object-connection-route">
+																via{" "}
+																{renderObjectPath(
+																	displayPath.slice(0, -1),
+																	`property-${relatedObject.id}`,
+																)}
+															</span>
+														) : null}
+													</div>
+												</ObjectPropertyItem>
+											);
+										})}
+									</dl>
+									{hiddenConnectionCount > 0 ? (
+										<button
+											type="button"
+											className="ghost object-property-more"
+											onClick={() => setShowAllRelations(true)}
+										>
+											Show {hiddenConnectionCount} more connection
+											{hiddenConnectionCount === 1 ? "" : "s"}
+										</button>
+									) : showAllRelations &&
+										relatedObjects.length > CONNECTION_PROPERTY_LIMIT ? (
+										<button
+											type="button"
+											className="ghost object-property-more"
+											onClick={() => setShowAllRelations(false)}
+										>
+											Show fewer
+										</button>
+									) : null}
+								</>
+							) : (
+								<div className="object-property-empty">
+									No connections match the current filters. Same-class objects
+									are hidden by default.
+								</div>
+							)
+						) : null}
+						<details
+							className="object-property-inspector object-connection-tools"
+							data-object-nonsubmit
+							open={isConnectionToolsOpen}
+							onToggle={(event) =>
+								setConnectionToolsOpen(event.currentTarget.open)
+							}
+						>
+							<summary>
+								<span>Connection paths and filters</span>
+								<span>
+									Depth {relationDepthLimit} ·{" "}
+									{includeSelfClass
+										? "same class included"
+										: "same class hidden"}
+								</span>
+							</summary>
+							{isConnectionToolsOpen ? (
+								<div className="object-property-inspector-panel">
+									<div className="relations-control-bar">
+										<label className="relations-depth-control">
+											<span>Depth</span>
+											<input
+												className="relations-depth-input"
+												type="number"
+												min={1}
+												step={1}
+												value={relationDepthLimit}
+												onChange={(event) => {
+													const nextDepth = Number.parseInt(
+														event.target.value,
+														10,
+													);
+													if (Number.isFinite(nextDepth) && nextDepth > 0) {
+														setShowAllRelations(false);
+														setRelationDepthLimit(nextDepth);
+													}
+												}}
+												aria-label="Connection depth"
+											/>
+										</label>
+										<label className="relations-toggle">
+											<input
+												type="checkbox"
+												checked={includeSelfClass}
+												onChange={(event) => {
+													setShowAllRelations(false);
+													setIncludeSelfClass(event.target.checked);
+												}}
+											/>
+											<span>
+												Include {currentClass?.name ?? "current class"}
+											</span>
+										</label>
+										<div
+											className="relations-filter-dropdown"
+											ref={ignoreClassesRef}
+										>
+											<button
+												type="button"
+												className="ghost relations-filter-trigger"
+												onClick={() =>
+													setIgnoreClassesOpen((current) => !current)
+												}
+												aria-expanded={isIgnoreClassesOpen}
+												aria-controls="object-relation-class-filters"
+											>
+												Class filters
+												{ignoredClassIds.length
+													? ` (${ignoredClassIds.length})`
+													: ""}
+											</button>
+											{isIgnoreClassesOpen ? (
+												<div
+													id="object-relation-class-filters"
+													className="relations-filter-menu"
+												>
+													<strong>Hide classes</strong>
+													<span className="muted">
+														Exclude noisy classes from this view.
+													</span>
+													{ignoredClassOptions.length ? (
+														ignoredClassOptions.map((hubuumClass) => (
+															<label
+																key={hubuumClass.id}
+																className="relations-filter-option"
+															>
+																<input
+																	type="checkbox"
+																	checked={ignoredClassSet.has(hubuumClass.id)}
+																	onChange={(event) =>
+																		toggleIgnoredClass(
+																			hubuumClass.id,
+																			event.target.checked,
+																		)
+																	}
+																/>
+																<span>{hubuumClass.name}</span>
+															</label>
+														))
+													) : (
+														<div className="muted">
+															No other classes available.
+														</div>
+													)}
+												</div>
+											) : null}
+										</div>
+									</div>
+									{relatedObjectGroups.length ? (
+										<ul className="stat-list compact-stat-list relations-path-list">
+											{relatedObjectGroups.map((group) => (
+												<li key={group.rootId}>
+													<div>
+														{renderObjectPath(
+															group.rootPath,
+															`root-${group.rootId}`,
+														)}
+													</div>
+													{group.children.map((childPath) => (
+														<div
+															key={`child-${group.rootId}-${childPath.join("-")}`}
+															className="relations-child-path"
+														>
+															<span className="muted">{"\u2192 "}</span>
+															{renderObjectPath(
+																childPath,
+																`child-${group.rootId}`,
+															)}
+														</div>
+													))}
+												</li>
+											))}
+										</ul>
+									) : (
+										<div className="muted">
+											No connection paths in this view.
+										</div>
+									)}
+								</div>
 							) : null}
-						</div>
+						</details>
 					</section>
 				</div>
 
-				{formError ? <div className="error-banner">{formError}</div> : null}
+				{hasActiveEdits ? (
+					<fieldset className="object-edit-dock">
+						<legend className="sr-only">Unsaved object changes</legend>
+						<div className="object-edit-dock-copy">
+							<strong>
+								Editing {editingFields.length} field
+								{editingFields.length === 1 ? "" : "s"}
+							</strong>
+							<span>Ctrl/Cmd + Enter to save · Esc to cancel</span>
+						</div>
+						<div className="form-actions">
+							<button type="submit" disabled={updateMutation.isPending}>
+								{updateMutation.isPending ? "Saving..." : "Save changes"}
+							</button>
+							<button
+								type="button"
+								className="ghost"
+								onClick={cancelActiveEdits}
+								disabled={updateMutation.isPending}
+							>
+								Cancel
+							</button>
+						</div>
+					</fieldset>
+				) : null}
+
+				{formError ? (
+					<div className="error-banner" role="alert">
+						{formError}
+					</div>
+				) : null}
 				{classesQuery.isError ? (
 					<div className="muted">
 						Could not load class names. Showing class ID only.
@@ -1134,33 +1722,17 @@ export function ObjectDetail({
 						until that check succeeds.
 					</div>
 				) : null}
-				{formSuccess ? <div className="muted">{formSuccess}</div> : null}
+				{formSuccess ? (
+					<div className="muted" role="status">
+						{formSuccess}
+					</div>
+				) : null}
 
-				<div className="form-actions form-actions--spread">
-					{canEditObject ? (
-						hasActiveEdits ? (
-							<div className="form-actions">
-								<button type="submit" disabled={updateMutation.isPending}>
-									{updateMutation.isPending ? "Saving..." : "Save changes"}
-								</button>
-								<button
-									type="button"
-									className="ghost"
-									onClick={cancelActiveEdits}
-									disabled={updateMutation.isPending}
-								>
-									Cancel
-								</button>
-							</div>
-						) : (
-							<div className="muted">
-								Toggle edit on for a field to make changes.
-							</div>
-						)
-					) : (
-						<div className="muted">This object is currently read-only.</div>
-					)}
-					{hasActiveEdits ? null : (
+				{!hasActiveEdits ? (
+					<div className="object-detail-footer">
+						{canEditObject ? null : (
+							<div className="muted">This object is currently read-only.</div>
+						)}
 						<button
 							type="button"
 							className="danger"
@@ -1169,8 +1741,8 @@ export function ObjectDetail({
 						>
 							{deleteMutation.isPending ? "Deleting..." : "Delete object"}
 						</button>
-					)}
-				</div>
+					</div>
+				) : null}
 			</form>
 
 			<RemoteInvocationsPanel
@@ -1185,153 +1757,6 @@ export function ObjectDetail({
 				scope={{ type: "object", classId, objectId }}
 				title="Object audit and history"
 			/>
-
-			<section className="card stack">
-				{relatedObjectsQuery.isLoading ? (
-					<div className="muted">Loading object relations...</div>
-				) : null}
-				{relatedObjectsQuery.isError ? (
-					<div className="error-banner">
-						Failed to load object relations.{" "}
-						{relatedObjectsQuery.error instanceof Error
-							? relatedObjectsQuery.error.message
-							: "Unknown error"}
-					</div>
-				) : null}
-				{!relatedObjectsQuery.isLoading && !relatedObjectsQuery.isError ? (
-					<>
-						<div className="relations-toolbar">
-							<div className="relations-toolbar-meta">
-								<h3 className="relations-title">
-									Relations: {relatedObjects.length}
-								</h3>
-								<div className="relations-depth-control">
-									<span>Depth:</span>
-									<div className="relations-stepper">
-										<input
-											type="number"
-											min={1}
-											step={1}
-											value={relationDepthLimit}
-											onChange={(event) => {
-												const parsed = Number.parseInt(event.target.value, 10);
-												setRelationDepthLimit(
-													Number.isFinite(parsed) && parsed > 0 ? parsed : 1,
-												);
-											}}
-											aria-label="Relationship depth"
-										/>
-									</div>
-								</div>
-								<label className="relations-toggle">
-									<input
-										type="checkbox"
-										checked={includeSelfClass}
-										onChange={(event) =>
-											setIncludeSelfClass(event.target.checked)
-										}
-									/>
-									<span>Include self class</span>
-								</label>
-								<div
-									className="relations-filter-dropdown"
-									ref={ignoreClassesRef}
-								>
-									<button
-										type="button"
-										className="ghost relations-filter-trigger"
-										onClick={() => setIgnoreClassesOpen((current) => !current)}
-										aria-haspopup="menu"
-										aria-expanded={isIgnoreClassesOpen}
-									>
-										Ignore classes
-										{ignoredClassIds.length
-											? ` (${ignoredClassIds.length})`
-											: ""}
-									</button>
-									{isIgnoreClassesOpen ? (
-										<div className="relations-filter-menu" role="menu">
-											{ignoredClassOptions.length ? (
-												ignoredClassOptions.map((hubuumClass) => (
-													<label
-														key={hubuumClass.id}
-														className="relations-filter-option"
-													>
-														<input
-															type="checkbox"
-															checked={ignoredClassSet.has(hubuumClass.id)}
-															onChange={(event) =>
-																toggleIgnoredClass(
-																	hubuumClass.id,
-																	event.target.checked,
-																)
-															}
-														/>
-														<span>{hubuumClass.name}</span>
-													</label>
-												))
-											) : (
-												<div className="muted">No other classes available.</div>
-											)}
-										</div>
-									) : null}
-								</div>
-							</div>
-							<Link
-								className="link-chip"
-								href={`/relations/objects?classId=${objectData.hubuum_class_id}&objectId=${objectId}&objectView=reachable`}
-							>
-								Open relations
-							</Link>
-						</div>
-
-						{relatedObjects.length === 0 ? (
-							<EmptyState
-								title="No reachable objects yet."
-								description="Create object relations to connect this object with related objects."
-								action={
-									<Link
-										className="link-chip"
-										href={`/relations/objects?classId=${objectData.hubuum_class_id}&objectId=${objectId}&objectView=direct`}
-									>
-										Open relations
-									</Link>
-								}
-							/>
-						) : (
-							<ul className="stat-list compact-stat-list relations-path-list">
-								{relatedObjectGroups.map((group) => (
-									<li key={group.rootId}>
-										<div>
-											{renderObjectPath(group.rootPath, `root-${group.rootId}`)}
-										</div>
-										{group.children.map((childPath) => (
-											<div
-												key={`child-${group.rootId}-${childPath.join("-")}`}
-												className="relations-child-path"
-											>
-												<span className="muted">{"\u2192 "}</span>
-												{renderObjectPath(childPath, `child-${group.rootId}`)}
-											</div>
-										))}
-									</li>
-								))}
-							</ul>
-						)}
-						{relatedObjectsQuery.isError ? (
-							<div className="muted">
-								Could not resolve all related objects automatically. Showing IDs
-								instead.
-							</div>
-						) : null}
-						{classesQuery.isError ? (
-							<div className="muted">
-								Could not load class names. Showing class IDs instead.
-							</div>
-						) : null}
-					</>
-				) : null}
-			</section>
 		</section>
 	);
 }

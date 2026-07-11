@@ -1429,6 +1429,438 @@ body.modal-open {
 	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.object-properties-card {
+	display: grid;
+	gap: 0.55rem;
+	padding: 0.8rem;
+}
+
+.content .card.object-properties-card {
+	padding: 0.8rem;
+}
+
+.object-record-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	min-height: 2.5rem;
+	padding: 0.05rem 0.15rem 0.55rem;
+	border-bottom: 1px solid var(--line);
+	flex-wrap: wrap;
+}
+
+.object-record-heading,
+.object-record-actions,
+.object-record-times {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+	flex-wrap: wrap;
+}
+
+.object-record-heading {
+	min-width: 0;
+}
+
+.object-record-heading .eyebrow {
+	margin: 0;
+}
+
+.object-record-heading strong {
+	font-size: 0.95rem;
+}
+
+.object-record-heading .muted,
+.object-record-times {
+	font-size: 0.74rem;
+}
+
+.object-record-actions {
+	margin-left: auto;
+	justify-content: flex-end;
+}
+
+.object-record-times {
+	color: var(--muted);
+}
+
+.object-record-times span {
+	white-space: nowrap;
+}
+
+.object-record-times span + span {
+	padding-left: 0.65rem;
+	border-left: 1px solid var(--line);
+}
+
+.object-record-times time {
+	color: var(--ink);
+	font-weight: 650;
+}
+
+.object-property-surface {
+	container-type: inline-size;
+	overflow: hidden;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	background: var(--line);
+}
+
+.object-property-section {
+	display: grid;
+	gap: 0;
+	background: var(--card);
+	border-top: 1px solid var(--line);
+}
+
+.object-property-section:first-child {
+	border-top: 0;
+}
+
+.object-property-section.is-editing {
+	background: color-mix(in oklab, var(--accent-soft) 30%, var(--card));
+}
+
+.object-property-section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	min-height: 2.75rem;
+	padding: 0.42rem 0.7rem;
+	border-bottom: 1px solid var(--line);
+	background: color-mix(in oklab, var(--bg-highlight) 86%, var(--card));
+	flex-wrap: wrap;
+}
+
+.object-property-section-header > div:first-child {
+	display: grid;
+	gap: 0.08rem;
+	min-width: 0;
+}
+
+.object-property-section-header h3 {
+	margin: 0;
+	font-size: 0.94rem;
+}
+
+.object-property-section-header .table-title-row h3 {
+	font-size: 0.94rem;
+}
+
+.object-property-section-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.45rem;
+	flex-wrap: wrap;
+}
+
+.object-data-filter input {
+	width: min(15rem, 100%);
+	min-height: 2.1rem;
+	padding-block: 0.4rem;
+}
+
+.object-fact-grid,
+.object-property-grid {
+	display: grid;
+	gap: 1px;
+	margin: 0;
+	padding: 0;
+	background: var(--line);
+}
+
+.object-fact-grid--core {
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.object-property-grid--data,
+.object-property-grid--connections {
+	grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr));
+}
+
+.object-fact,
+.object-property-item {
+	display: grid;
+	grid-template-columns: minmax(7.5rem, 36%) minmax(0, 1fr);
+	align-items: center;
+	gap: 0.6rem;
+	min-width: 0;
+	min-height: 2.85rem;
+	padding: 0.52rem 0.68rem;
+	background: var(--card);
+}
+
+.object-fact--wide {
+	grid-column: span 2;
+}
+
+.object-fact.is-editing,
+.object-property-item:focus-within {
+	background: color-mix(in oklab, var(--accent-soft) 32%, var(--card));
+}
+
+.object-fact-label,
+.object-property-item dt {
+	min-width: 0;
+	color: var(--muted);
+	font-size: 0.76rem;
+	font-weight: 750;
+	overflow-wrap: anywhere;
+}
+
+.object-fact-value,
+.object-property-item dd {
+	min-width: 0;
+	margin: 0;
+	font-size: 0.88rem;
+	overflow-wrap: anywhere;
+}
+
+.object-property-item {
+	align-items: start;
+	min-height: 3.15rem;
+}
+
+.object-property-item--data dd {
+	line-height: 1.4;
+}
+
+.object-property-item--data dd > span,
+.object-property-item--data dt,
+.object-fact-display-value {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
+.object-fact-display-value {
+	min-width: 0;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+.object-property-item--empty-object dd,
+.object-property-item--empty-array dd,
+.object-property-item--object-summary dd,
+.object-property-item--array-summary dd {
+	color: var(--muted);
+}
+
+.object-property-panel,
+.object-property-empty,
+.object-property-note,
+.object-property-more,
+.object-property-inspector {
+	background: var(--card);
+}
+
+.object-property-panel,
+.object-property-empty,
+.object-property-note {
+	padding: 0.75rem;
+}
+
+.object-property-empty,
+.object-property-note {
+	color: var(--muted);
+	font-size: 0.84rem;
+}
+
+button.object-property-more {
+	width: 100%;
+	border: 0;
+	border-top: 1px solid var(--line);
+	border-radius: 0;
+	background: var(--card);
+}
+
+.object-property-inspector {
+	border-top: 1px solid var(--line);
+}
+
+.object-property-inspector > summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	min-height: 2.65rem;
+	padding: 0.5rem 0.7rem;
+	cursor: pointer;
+	list-style: none;
+	font-size: 0.84rem;
+	font-weight: 720;
+}
+
+.object-property-inspector > summary::-webkit-details-marker {
+	display: none;
+}
+
+.object-property-inspector > summary::before {
+	content: "›";
+	color: var(--muted);
+	font-size: 1.1rem;
+	transition: transform 150ms ease;
+}
+
+.object-property-inspector[open] > summary::before {
+	transform: rotate(90deg);
+}
+
+.object-property-inspector > summary > span:first-child {
+	margin-right: auto;
+}
+
+.object-property-inspector > summary > span:last-child {
+	color: var(--muted);
+	font-size: 0.76rem;
+	font-weight: 600;
+}
+
+.object-property-inspector[open] > summary {
+	border-bottom: 1px solid var(--line);
+}
+
+.object-property-inspector-panel {
+	display: grid;
+	gap: 0.75rem;
+	padding: 0.75rem;
+}
+
+.object-connection-key,
+.object-connection-preview {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	flex-wrap: wrap;
+}
+
+.object-property-item .object-connection-key > span:first-child {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.object-connection-value {
+	display: grid;
+	gap: 0.18rem;
+	min-width: 0;
+}
+
+.object-connection-description,
+.object-connection-route {
+	color: var(--muted);
+	font-size: 0.76rem;
+	line-height: 1.35;
+}
+
+.object-connection-description,
+.object-connection-route {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.object-connection-preview > span {
+	display: inline-flex;
+	gap: 0.2rem;
+	padding: 0.12rem 0.3rem;
+	border-radius: 5px;
+	background: var(--bg-highlight);
+	color: var(--muted);
+	font-size: 0.72rem;
+}
+
+.object-connection-preview strong {
+	color: var(--ink);
+}
+
+.object-detail-footer {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.75rem;
+	min-height: 2.5rem;
+	padding-top: 0.15rem;
+}
+
+@container (max-width: 1100px) {
+	.object-fact-grid--core {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@container (max-width: 760px) {
+	.object-fact-grid--core,
+	.object-property-grid--data,
+	.object-property-grid--connections {
+		grid-template-columns: 1fr;
+	}
+
+	.object-fact--wide {
+		grid-column: auto;
+	}
+}
+
+@container (max-width: 480px) {
+	.object-fact,
+	.object-property-item {
+		grid-template-columns: 1fr;
+		gap: 0.2rem;
+	}
+
+	.object-property-section-header,
+	.object-property-section-actions,
+	.object-property-inspector > summary {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.object-data-filter input {
+		width: 100%;
+	}
+}
+
+.object-edit-dock {
+	position: fixed;
+	left: 50%;
+	bottom: max(1rem, env(safe-area-inset-bottom));
+	z-index: 60;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	width: min(42rem, calc(100vw - 2rem));
+	min-width: 0;
+	margin: 0;
+	padding: 0.7rem 0.8rem;
+	border: 1px solid var(--line);
+	border-radius: 16px;
+	background: color-mix(in oklab, var(--card) 94%, transparent);
+	box-shadow: 0 16px 48px color-mix(in oklab, var(--ink) 22%, transparent);
+	transform: translateX(-50%);
+	backdrop-filter: blur(14px);
+}
+
+.object-edit-dock-copy {
+	display: grid;
+	gap: 0.1rem;
+}
+
+.object-edit-dock-copy span {
+	color: var(--muted);
+	font-size: 0.76rem;
+}
+
+.object-edit-access-note {
+	font-size: 0.84rem;
+}
+
 .object-meta-item {
 	display: flex;
 	gap: 0.45rem;
@@ -1537,7 +1969,8 @@ body.modal-open {
 	gap: 0.4rem;
 	width: fit-content;
 	max-width: 100%;
-	padding: 0;
+	min-height: 2rem;
+	padding: 0.2rem 0.1rem;
 	border: 0;
 	border-radius: 0;
 	background: transparent;
@@ -1760,6 +2193,16 @@ body.modal-open {
 
 .object-json-code.is-expanded {
 	max-height: 32rem;
+}
+
+.object-detail-row--data .json-overview-list-wrap {
+	max-height: 13rem;
+}
+
+.object-detail-row--data .json-tree-shell,
+.object-detail-row--data .object-json-code.is-expanded {
+	max-height: 16rem;
+	overflow: auto;
 }
 
 @media (max-width: 720px) {
@@ -3622,6 +4065,232 @@ th.sortable:focus-visible {
 	flex-wrap: wrap;
 }
 
+.object-connections-card {
+	gap: 0.75rem;
+	scroll-margin-top: 6rem;
+}
+
+.object-connections-card > .relations-toolbar {
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid var(--line);
+}
+
+.relations-toolbar-actions,
+.relations-control-bar,
+.relations-summary-strip,
+.relations-class-summary {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+	flex-wrap: wrap;
+}
+
+.relations-toolbar-actions {
+	justify-content: flex-end;
+}
+
+.view-switcher,
+.relations-class-summary {
+	margin: 0;
+}
+
+.relations-class-summary {
+	padding: 0;
+	list-style: none;
+}
+
+.view-switcher,
+.relations-depth-options {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.15rem;
+	padding: 0.2rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--bg-highlight);
+}
+
+.view-switcher button,
+.relations-depth-options button {
+	min-height: 2rem;
+	padding: 0.38rem 0.62rem;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--muted);
+	box-shadow: none;
+	font-size: 0.82rem;
+	font-weight: 700;
+}
+
+.relations-depth-input {
+	width: 3.5rem;
+	min-height: 2rem;
+	padding: 0.35rem 0.4rem;
+	border-color: var(--line);
+	border-radius: 7px;
+	background: var(--card);
+	font-size: 0.82rem;
+	font-weight: 700;
+	text-align: center;
+}
+
+.view-switcher button:hover,
+.relations-depth-options button:hover {
+	background: color-mix(in oklab, var(--card) 72%, var(--accent-soft));
+	color: var(--ink);
+}
+
+.view-switcher button.is-active,
+.relations-depth-options button.is-active {
+	background: var(--card);
+	color: var(--accent-strong);
+	box-shadow: 0 1px 4px color-mix(in oklab, var(--ink) 12%, transparent);
+}
+
+.relations-control-bar {
+	padding: 0.65rem 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: color-mix(in oklab, var(--bg-highlight) 82%, var(--card));
+}
+
+.relations-summary-strip {
+	min-height: 2rem;
+}
+
+.relations-summary-stat {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.3rem;
+	padding-right: 0.7rem;
+	border-right: 1px solid var(--line);
+}
+
+.relations-summary-stat strong {
+	font-size: 1.05rem;
+}
+
+.relations-summary-stat span {
+	color: var(--muted);
+	font-size: 0.8rem;
+}
+
+.relation-class-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.28rem 0.52rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--bg-highlight);
+	color: var(--muted);
+	font-size: 0.78rem;
+}
+
+.relation-class-chip strong {
+	color: var(--ink);
+}
+
+.relation-overview-table-wrap {
+	overflow: auto;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+}
+
+.relation-overview-table {
+	width: 100%;
+	min-width: 760px;
+	border-collapse: collapse;
+}
+
+.relation-overview-table th {
+	padding: 0.55rem 0.7rem;
+	background: var(--bg-highlight);
+	color: var(--muted);
+	font-size: 0.72rem;
+	font-weight: 800;
+	letter-spacing: 0.045em;
+	text-align: left;
+	text-transform: uppercase;
+}
+
+.relation-overview-table td {
+	padding: 0.62rem 0.7rem;
+	border-top: 1px solid var(--line);
+	vertical-align: top;
+	font-size: 0.86rem;
+}
+
+.relation-overview-table tbody tr:hover {
+	background: color-mix(in oklab, var(--accent-soft) 28%, transparent);
+}
+
+.relation-object-description {
+	display: block;
+	max-width: 20rem;
+	margin-top: 0.15rem;
+	color: var(--muted);
+	font-size: 0.78rem;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.relation-depth-badge {
+	display: inline-flex;
+	padding: 0.25rem 0.48rem;
+	border-radius: 999px;
+	font-size: 0.75rem;
+	font-weight: 750;
+	white-space: nowrap;
+}
+
+.relation-depth-badge--direct {
+	background: var(--accent-soft);
+	color: var(--accent-strong);
+}
+
+.relation-depth-badge--indirect {
+	background: var(--bg-highlight);
+	color: var(--muted);
+}
+
+.relation-data-preview {
+	display: flex;
+	gap: 0.3rem;
+	flex-wrap: wrap;
+	max-width: 28rem;
+}
+
+.relation-data-preview span {
+	display: inline-flex;
+	gap: 0.25rem;
+	max-width: 14rem;
+	padding: 0.2rem 0.38rem;
+	border-radius: 6px;
+	background: var(--bg-highlight);
+	color: var(--muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.relation-data-preview strong {
+	color: var(--ink);
+}
+
+.relation-route-cell {
+	max-width: 26rem;
+	color: var(--muted);
+	line-height: 1.45;
+}
+
+.relations-show-more {
+	justify-self: center;
+	margin-inline: auto;
+}
+
 .relations-toolbar-meta {
 	display: flex;
 	align-items: center;
@@ -3698,6 +4367,17 @@ th.sortable:focus-visible {
 	border: 1px solid var(--line);
 	background: var(--card);
 	box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+}
+
+.object-property-inspector.object-connection-tools .relations-filter-dropdown {
+	display: grid;
+}
+
+.object-property-inspector.object-connection-tools
+	.relations-filter-dropdown
+	.relations-filter-menu {
+	position: static;
+	margin-top: 0.45rem;
 }
 
 .relations-filter-option {
@@ -3782,6 +4462,38 @@ html[data-theme="dark"] .status-pill--accent {
 
 	.relation-create-grid {
 		grid-template-columns: 1fr;
+	}
+
+	.relations-toolbar,
+	.relations-toolbar-actions {
+		align-items: stretch;
+	}
+
+	.relations-toolbar-actions {
+		width: 100%;
+		justify-content: space-between;
+	}
+
+	.relations-control-bar {
+		align-items: flex-start;
+	}
+
+	.relation-overview-table th:nth-child(4),
+	.relation-overview-table td:nth-child(4),
+	.relation-overview-table th:nth-child(5),
+	.relation-overview-table td:nth-child(5) {
+		display: none;
+	}
+
+	.relation-overview-table {
+		min-width: 520px;
+	}
+
+	.view-switcher button,
+	.relations-depth-options button,
+	.relations-depth-input,
+	.relations-filter-trigger {
+		min-height: 2.5rem;
 	}
 
 	.scope-heading {
@@ -5650,6 +6362,42 @@ tbody tr:hover {
 	white-space: nowrap;
 }
 
+.object-name-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-width: 0;
+}
+
+#objects-table .object-name-cell .row-link {
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.object-row-connections-link {
+	display: inline-grid;
+	width: 1.75rem;
+	height: 1.75rem;
+	flex: 0 0 auto;
+	place-items: center;
+	border-radius: 7px;
+	color: var(--muted);
+	opacity: 0.72;
+}
+
+.object-row-connections-link svg {
+	width: 1rem;
+	height: 1rem;
+}
+
+#objects-table tbody tr:hover .object-row-connections-link,
+.object-row-connections-link:hover,
+.object-row-connections-link:focus-visible {
+	background: var(--accent-soft);
+	color: var(--accent-strong);
+	opacity: 1;
+}
+
 .object-data-preview {
 	max-height: 4.15rem;
 	overflow: hidden;
@@ -5724,6 +6472,84 @@ tbody tr:hover {
 }
 
 @media (max-width: 680px) {
+	.object-record-toolbar {
+		align-items: flex-start;
+	}
+
+	.object-record-actions {
+		width: 100%;
+		margin-left: 0;
+		justify-content: space-between;
+	}
+
+	.object-record-times {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+
+	.object-record-times span + span {
+		padding-left: 0;
+		border-left: 0;
+	}
+
+	.object-edit-dock {
+		bottom: max(0.65rem, env(safe-area-inset-bottom));
+		align-items: stretch;
+		flex-direction: column;
+		gap: 0.55rem;
+		width: calc(100vw - 1.3rem);
+	}
+
+	.object-edit-dock-copy span {
+		display: none;
+	}
+
+	.object-edit-dock .form-actions {
+		width: 100%;
+		justify-content: flex-end;
+		margin-left: auto;
+	}
+
+	.relations-control-bar {
+		display: grid;
+		grid-template-columns: 1fr;
+	}
+
+	.relation-overview-table {
+		min-width: 0;
+		table-layout: fixed;
+	}
+
+	.relation-overview-table th:first-child {
+		width: 48%;
+	}
+
+	.relation-overview-table th:nth-child(2) {
+		width: 28%;
+	}
+
+	.relation-overview-table th:nth-child(3) {
+		width: 24%;
+	}
+
+	.relation-overview-table th,
+	.relation-overview-table td {
+		padding-inline: 0.5rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.relation-depth-badge {
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.object-row-connections-link {
+		opacity: 0.85;
+	}
+
 	.server-filter-menu {
 		position: fixed;
 		top: 1rem;
