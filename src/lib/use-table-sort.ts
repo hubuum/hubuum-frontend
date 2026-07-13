@@ -56,9 +56,18 @@ export function useTableSort() {
 		return sortParam ?? undefined;
 	}, [searchParams]);
 
+	const clearSort = useCallback(() => {
+		const params = new URLSearchParams(searchParams.toString());
+		params.delete("sort");
+		params.delete("cursor");
+		const query = params.toString();
+		router.push(query ? `${pathname}?${query}` : pathname);
+	}, [pathname, router, searchParams]);
+
 	return {
 		sortState,
 		setSort,
+		clearSort,
 		getSortParam,
 	};
 }

@@ -8,4 +8,6 @@
 
 export interface GroupKey {
   groupname: string;
+  /** @nullable */
+  identity_scope?: string | null;
 }

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useConfirm } from "@/lib/confirm-context";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamUsersByUserId,
@@ -12,18 +12,23 @@ import {
 	getApiV1IamUsersByUserId,
 	patchApiV1IamUsersByUserId,
 } from "@/lib/api/generated/client";
-import type {
-	Group,
-	UpdateUser,
-	UserResponse,
-} from "@/lib/api/generated/models";
+import type { UpdateUser } from "@/lib/api/generated/models";
+import { useConfirm } from "@/lib/confirm-context";
+import {
+	type ConsoleGroup,
+	type ConsoleUser,
+	formatScopedIdentityName,
+	isProviderManagedUser,
+	normalizeIdentityScope,
+} from "@/lib/identity-scopes";
 import { trackRecentItem } from "@/lib/recent-items";
+import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 
 type AdminUserDetailProps = {
 	userId: number;
 };
 
-async function fetchUser(userId: number): Promise<UserResponse> {
+async function fetchUser(userId: number): Promise<ConsoleUser> {
 	const response = await getApiV1IamUsersByUserId(userId, {
 		credentials: "include",
 	});
@@ -35,10 +40,10 @@ async function fetchUser(userId: number): Promise<UserResponse> {
 	return response.data;
 }
 
-async function fetchUserGroups(userId: number): Promise<Group[]> {
+async function fetchUserGroups(userId: number): Promise<ConsoleGroup[]> {
 	const response = await getApiV1IamPrincipalsByPrincipalIdGroups(
 		userId,
-		undefined,
+		{ include_total: false },
 		{ credentials: "include" },
 	);
 
@@ -50,6 +55,21 @@ async function fetchUserGroups(userId: number): Promise<Group[]> {
 
 	return response.data;
 }
+
+const groupMembershipExportColumns: TableExportColumn<ConsoleGroup>[] = [
+	{ key: "id", label: "ID", getValue: (group) => group.id },
+	{ key: "group", label: "Group", getValue: (group) => group.groupname },
+	{
+		key: "identity_scope",
+		label: "Identity scope",
+		getValue: (group) => normalizeIdentityScope(group.identity_scope),
+	},
+	{
+		key: "description",
+		label: "Description",
+		getValue: (group) => group.description || "-",
+	},
+];
 
 export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	const router = useRouter();
@@ -91,7 +111,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 		trackRecentItem({
 			type: "admin-user",
 			id: user.id,
-			name: user.name,
+			name: formatScopedIdentityName(user.identity_scope, user.name),
 		});
 	}, [userQuery.data]);
 
@@ -175,6 +195,10 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 			setFormError("User data is unavailable.");
 			return;
 		}
+		if (isProviderManagedUser(originalUser)) {
+			setFormError("Provider-managed users are read-only in Hubuum.");
+			return;
+		}
 
 		const trimmedProperName = properName.trim();
 		const trimmedEmail = email.trim();
@@ -205,6 +229,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	async function onDelete() {
 		setFormError(null);
 		setFormSuccess(null);
+		if (userQuery.data && isProviderManagedUser(userQuery.data)) return;
 		const confirmed = await confirm({
 			title: `Delete user #${userId}?`,
 			description: "This removes the user and cannot be undone.",
@@ -237,13 +262,22 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	if (!user) {
 		return <div className="card error-banner">User data is unavailable.</div>;
 	}
+	const providerManaged = isProviderManagedUser(user);
+	const groupMembershipExportView: TableExportView<ConsoleGroup> = {
+		id: `admin.user.${user.id}.groups`,
+		fileName: `${user.name}-group-memberships-view`,
+		sheetName: "Group memberships",
+		columns: groupMembershipExportColumns,
+		rows: sortedGroups,
+	};
 
 	return (
 		<section className="stack">
 			<header className="detail-identity">
 				<div className="scope-heading">
 					<h2>
-						{user.name} <span className="muted">#{user.id}</span>
+						{formatScopedIdentityName(user.identity_scope, user.name)}{" "}
+						<span className="muted">#{user.id}</span>
 					</h2>
 					<Link className="link-chip" href="/admin/users">
 						Back to users
@@ -251,6 +285,14 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 				</div>
 				<p className="detail-title-meta">Admin user</p>
 			</header>
+
+			{providerManaged ? (
+				<div className="info-banner">
+					This user is managed by the {user.provider_kind ?? "external"}
+					provider. Profile changes and deletion must be performed in the source
+					system.
+				</div>
+			) : null}
 
 			<form className="card stack" onSubmit={onSubmit}>
 				<h3>User profile</h3>
@@ -262,11 +304,21 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 					</label>
 
 					<label className="control-field">
+						<span>Identity scope</span>
+						<input
+							value={normalizeIdentityScope(user.identity_scope)}
+							readOnly
+							disabled
+						/>
+					</label>
+
+					<label className="control-field">
 						<span>Display name</span>
 						<input
 							value={properName}
 							onChange={(event) => setProperName(event.target.value)}
 							placeholder="e.g. Alice Doe"
+							disabled={providerManaged}
 						/>
 					</label>
 
@@ -277,6 +329,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 							value={email}
 							onChange={(event) => setEmail(event.target.value)}
 							placeholder="name@example.com"
+							disabled={providerManaged}
 						/>
 					</label>
 
@@ -288,6 +341,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 							onChange={(event) => setPassword(event.target.value)}
 							placeholder="Leave blank to keep the current password"
 							autoComplete="new-password"
+							disabled={providerManaged}
 						/>
 					</label>
 				</div>
@@ -303,7 +357,11 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 				<div className="form-actions form-actions--spread">
 					<button
 						type="submit"
-						disabled={updateMutation.isPending || deleteMutation.isPending}
+						disabled={
+							providerManaged ||
+							updateMutation.isPending ||
+							deleteMutation.isPending
+						}
 					>
 						{updateMutation.isPending ? "Saving..." : "Save changes"}
 					</button>
@@ -311,7 +369,11 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 						type="button"
 						className="danger"
 						onClick={onDelete}
-						disabled={updateMutation.isPending || deleteMutation.isPending}
+						disabled={
+							providerManaged ||
+							updateMutation.isPending ||
+							deleteMutation.isPending
+						}
 					>
 						{deleteMutation.isPending ? "Deleting..." : "Delete user"}
 					</button>
@@ -319,7 +381,14 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 			</form>
 
 			<section className="card stack">
-				<h3>Group memberships</h3>
+				<div className="table-header">
+					<h3>Group memberships</h3>
+					<TableExportMenu
+						view={groupMembershipExportView}
+						disabled={groupsQuery.isFetching}
+						compact
+					/>
+				</div>
 
 				{groupsQuery.isLoading ? (
 					<div className="muted">Loading groups...</div>
@@ -345,6 +414,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 							<thead>
 								<tr>
 									<th>ID</th>
+									<th>Scope</th>
 									<th>Group</th>
 									<th>Description</th>
 								</tr>
@@ -353,6 +423,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 								{sortedGroups.map((group) => (
 									<tr key={group.id}>
 										<td>{group.id}</td>
+										<td>{normalizeIdentityScope(group.identity_scope)}</td>
 										<td>
 											<Link
 												className="row-link"

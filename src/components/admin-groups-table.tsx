@@ -2,8 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -12,16 +13,25 @@ import {
 	getApiV1IamGroupsByGroupIdMembers,
 	postApiV1IamGroups,
 } from "@/lib/api/generated/client";
-import type { Group, NewGroup } from "@/lib/api/generated/models";
 import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
+import {
+	type ConsoleGroup,
+	isProviderManagedGroup,
+	normalizeIdentityScope,
+	type ScopedNewGroup,
+} from "@/lib/identity-scopes";
+import type { TableExportView } from "@/lib/table-export";
 
-async function fetchGroups(): Promise<Group[]> {
-	const response = await getApiV1IamGroups(undefined, {
-		credentials: "include",
-	});
+async function fetchGroups(): Promise<ConsoleGroup[]> {
+	const response = await getApiV1IamGroups(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -33,9 +43,13 @@ async function fetchGroups(): Promise<Group[]> {
 }
 
 async function fetchGroupMemberCount(groupId: number): Promise<number> {
-	const response = await getApiV1IamGroupsByGroupIdMembers(groupId, undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1IamGroupsByGroupIdMembers(
+		groupId,
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -80,7 +94,7 @@ export function AdminGroupsTable() {
 		enabled: groups.length > 0,
 	});
 	const createMutation = useMutation({
-		mutationFn: async (payload: NewGroup) => {
+		mutationFn: async (payload: ScopedNewGroup) => {
 			const response = await postApiV1IamGroups(payload, {
 				credentials: "include",
 			});
@@ -164,19 +178,74 @@ export function AdminGroupsTable() {
 		window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
 		return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
 	}, []);
+	const selectableGroups = useMemo(
+		() => groups.filter((group) => !isProviderManagedGroup(group)),
+		[groups],
+	);
 	const allSelected =
-		groups.length > 0 && selectedGroupIds.length === groups.length;
+		selectableGroups.length > 0 &&
+		selectedGroupIds.length === selectableGroups.length;
+	const exportView = useMemo<TableExportView<ConsoleGroup>>(
+		() => ({
+			id: "admin-groups",
+			fileName: "group-directory-view",
+			sheetName: "Groups",
+			columns: [
+				{ key: "id", label: "ID", getValue: (group) => group.id },
+				{
+					key: "groupname",
+					label: "Group name",
+					getValue: (group) => group.groupname,
+				},
+				{
+					key: "identity_scope",
+					label: "Identity scope",
+					getValue: (group) => normalizeIdentityScope(group.identity_scope),
+				},
+				{
+					key: "managed_by",
+					label: "Managed by",
+					getValue: (group) => group.managed_by ?? "local",
+				},
+				{
+					key: "description",
+					label: "Description",
+					getValue: (group) => group.description,
+				},
+				{
+					key: "members",
+					label: "Members",
+					getValue: (group) =>
+						memberCountsQuery.isLoading
+							? null
+							: (memberCountsQuery.data?.[group.id] ?? 0),
+				},
+				{
+					key: "created_at",
+					label: "Created",
+					getValue: (group) => new Date(group.created_at),
+				},
+				{
+					key: "updated_at",
+					label: "Updated",
+					getValue: (group) => new Date(group.updated_at),
+				},
+			],
+			rows: groups,
+		}),
+		[groups, memberCountsQuery.data, memberCountsQuery.isLoading],
+	);
 
 	useEffect(() => {
 		if (!selectedGroupIds.length) {
 			return;
 		}
 
-		const existingIds = new Set(groups.map((group) => group.id));
+		const existingIds = new Set(selectableGroups.map((group) => group.id));
 		setSelectedGroupIds((current) =>
 			current.filter((groupId) => existingIds.has(groupId)),
 		);
-	}, [groups, selectedGroupIds.length]);
+	}, [selectableGroups, selectedGroupIds.length]);
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -192,7 +261,7 @@ export function AdminGroupsTable() {
 		}
 
 		const trimmedDescription = description.trim();
-		const payload: NewGroup = {
+		const payload: ScopedNewGroup = {
 			groupname: trimmedGroupname,
 		};
 
@@ -205,7 +274,7 @@ export function AdminGroupsTable() {
 
 	function toggleAllGroups(checked: boolean) {
 		if (checked) {
-			setSelectedGroupIds(groups.map((group) => group.id));
+			setSelectedGroupIds(selectableGroups.map((group) => group.id));
 			return;
 		}
 
@@ -222,7 +291,11 @@ export function AdminGroupsTable() {
 	}
 
 	async function deleteSelectedGroups() {
-		if (!selectedGroupIds.length) {
+		const selectableIds = new Set(selectableGroups.map((group) => group.id));
+		const deletableGroupIds = selectedGroupIds.filter((groupId) =>
+			selectableIds.has(groupId),
+		);
+		if (!deletableGroupIds.length) {
 			return;
 		}
 
@@ -230,8 +303,8 @@ export function AdminGroupsTable() {
 		setTableSuccess(null);
 
 		const confirmed = await confirm({
-			title: `Delete ${selectedGroupIds.length} selected group${
-				selectedGroupIds.length === 1 ? "" : "s"
+			title: `Delete ${deletableGroupIds.length} selected group${
+				deletableGroupIds.length === 1 ? "" : "s"
 			}?`,
 			description: "This removes the selected groups and cannot be undone.",
 			confirmLabel: "Delete",
@@ -241,13 +314,17 @@ export function AdminGroupsTable() {
 			return;
 		}
 
-		deleteMutation.mutate([...selectedGroupIds]);
+		deleteMutation.mutate(deletableGroupIds);
 	}
 
 	function renderCreateGroupForm() {
 		return (
 			<form className="stack" onSubmit={onSubmit}>
 				<div className="form-grid">
+					<div className="info-banner control-field--wide">
+						New groups are created in the local identity scope. Provider-managed
+						groups are materialized from their source directory.
+					</div>
 					<label className="control-field">
 						<span>Group name</span>
 						<input
@@ -303,7 +380,7 @@ export function AdminGroupsTable() {
 				{renderCreateGroupForm()}
 			</CreateModal>
 
-			<div className="card table-wrap">
+			<div className="card">
 				<div className="table-header">
 					<h3>Group directory</h3>
 					<div className="table-tools">
@@ -313,6 +390,7 @@ export function AdminGroupsTable() {
 								? ` • ${selectedGroupIds.length} selected`
 								: ""}
 						</span>
+						<TableExportMenu view={exportView} compact />
 						<button
 							type="button"
 							className="danger"
@@ -336,56 +414,66 @@ export function AdminGroupsTable() {
 					</div>
 				) : null}
 
-				<table>
-					<thead>
-						<tr>
-							<th className="check-col">
-								<input
-									type="checkbox"
-									aria-label="Select all groups"
-									checked={allSelected}
-									onChange={(event) => toggleAllGroups(event.target.checked)}
-								/>
-							</th>
-							<th>ID</th>
-							<th>Group name</th>
-							<th>Description</th>
-							<th>Members</th>
-							<th>Created</th>
-							<th>Updated</th>
-						</tr>
-					</thead>
-					<tbody>
-						{groups.map((group) => (
-							<tr key={group.id}>
-								<td className="check-col">
+				<div className="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th className="check-col">
 									<input
 										type="checkbox"
-										aria-label={`Select group ${group.groupname}`}
-										checked={selectedGroupIds.includes(group.id)}
-										onChange={(event) =>
-											toggleGroup(group.id, event.target.checked)
-										}
+										aria-label="Select all groups"
+										checked={allSelected}
+										onChange={(event) => toggleAllGroups(event.target.checked)}
 									/>
-								</td>
-								<td>{group.id}</td>
-								<td>
-									<Link className="row-link" href={`/admin/groups/${group.id}`}>
-										{group.groupname}
-									</Link>
-								</td>
-								<td>{group.description || "-"}</td>
-								<td>
-									{memberCountsQuery.isLoading
-										? "…"
-										: (memberCountsQuery.data?.[group.id] ?? 0)}
-								</td>
-								<td>{new Date(group.created_at).toLocaleString()}</td>
-								<td>{new Date(group.updated_at).toLocaleString()}</td>
+								</th>
+								<th>ID</th>
+								<th>Scope</th>
+								<th>Group name</th>
+								<th>Managed by</th>
+								<th>Description</th>
+								<th>Members</th>
+								<th>Created</th>
+								<th>Updated</th>
 							</tr>
-						))}
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							{groups.map((group) => (
+								<tr key={group.id}>
+									<td className="check-col">
+										<input
+											type="checkbox"
+											aria-label={`Select group ${group.groupname}`}
+											checked={selectedGroupIds.includes(group.id)}
+											disabled={isProviderManagedGroup(group)}
+											onChange={(event) =>
+												toggleGroup(group.id, event.target.checked)
+											}
+										/>
+									</td>
+									<td>{group.id}</td>
+									<td>{normalizeIdentityScope(group.identity_scope)}</td>
+									<td>
+										<Link
+											className="row-link"
+											href={`/admin/groups/${group.id}`}
+										>
+											{group.groupname}
+										</Link>
+									</td>
+									<td>{group.managed_by ?? "local"}</td>
+									<td>{group.description || "-"}</td>
+									<td>
+										{memberCountsQuery.isLoading
+											? "…"
+											: (memberCountsQuery.data?.[group.id] ?? 0)}
+									</td>
+									<td>{new Date(group.created_at).toLocaleString()}</td>
+									<td>{new Date(group.updated_at).toLocaleString()}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
 	);

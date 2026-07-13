@@ -15,6 +15,8 @@ import {
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
+import { ObjectServerFilterMenu } from "@/components/object-server-filter-menu";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
@@ -40,12 +42,27 @@ import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
 } from "@/lib/resource-search";
+import { getDataColumnHeadings } from "@/lib/data-column-headings";
+import {
+	appendObjectServerFilters,
+	OBJECT_SERVER_FILTERS_QUERY_KEY,
+	parseObjectServerFilters,
+	serializeObjectServerFilters,
+	toServerFilterDataPath,
+	type ObjectServerFilter,
+} from "@/lib/object-server-filters";
+import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
 import { useTableSort } from "@/lib/use-table-sort";
 import { useToast } from "@/lib/toast-context";
+import {
+	isUserSettingsSyncInitialized,
+	writeUserSetting,
+} from "@/lib/user-settings-client";
+import { PORTABLE_USER_SETTING_KEYS } from "@/lib/user-settings-types";
 
 function IconSearch() {
 	return (
@@ -69,10 +86,26 @@ function IconColumns() {
 	);
 }
 
-const OBJECT_DATA_COLUMNS_STORAGE_PREFIX = "hubuum.object-data-columns";
-const OBJECT_RAW_DATA_COLUMN_STORAGE_PREFIX = "hubuum.object-raw-data-column";
-const OBJECT_CUSTOM_DATA_FIELDS_STORAGE_PREFIX =
-	"hubuum.object-custom-data-fields";
+function IconDataField() {
+	return (
+		<svg viewBox="0 0 16 16" aria-hidden="true">
+			<rect x="2.25" y="3" width="11.5" height="10" rx="2" />
+			<path d="M6 3.5v9M10 3.5v9" />
+		</svg>
+	);
+}
+
+function IconConnections() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M10.6 13.4a1 1 0 0 1 0-1.4l2.8-2.8a3 3 0 1 1 4.2 4.2l-2.1 2.1a3 3 0 0 1-4.2 0 1 1 0 1 1 1.4-1.4 1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 1 0-1.4-1.4L12 13.4a1 1 0 0 1-1.4 0Zm2.8-2.8a1 1 0 0 1 0 1.4l-2.8 2.8a3 3 0 1 1-4.2-4.2l2.1-2.1a3 3 0 0 1 4.2 0 1 1 0 1 1-1.4 1.4 1 1 0 0 0-1.4 0L7.8 12a1 1 0 1 0 1.4 1.4l2.8-2.8a1 1 0 0 1 1.4 0Z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
 const DEFAULT_SELECTED_DATA_COLUMN_COUNT = 3;
 const MAX_SELECTED_DATA_COLUMNS = 6;
 const MAX_DATA_PATH_DEPTH = 3;
@@ -118,7 +151,7 @@ type DataColumnSortState = {
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
-		{ limit: 250 },
+		{ limit: 250, include_total: false },
 		{
 			credentials: "include",
 		},
@@ -158,11 +191,13 @@ async function fetchObjectsByClass(
 	limit: number,
 	cursor?: string,
 	sort?: string,
+	serverFilters: readonly ObjectServerFilter[] = [],
 ): Promise<ObjectsPageData> {
 	const params = new URLSearchParams();
 	params.set("limit", String(limit));
 	if (cursor) params.set("cursor", cursor);
 	if (sort) params.set("sort", sort);
+	appendObjectServerFilters(params, serverFilters);
 
 	const response = await fetch(
 		`/_hubuum-bff/classes/${classId}/objects?${params.toString()}`,
@@ -179,7 +214,9 @@ async function fetchObjectsByClass(
 	const nextCursor = response.headers.get("X-Next-Cursor");
 	const prevCursor = response.headers.get("X-Prev-Cursor");
 	const totalCountHeader = response.headers.get("X-Total-Count");
-	const totalCount = totalCountHeader ? Number.parseInt(totalCountHeader, 10) : null;
+	const totalCount = totalCountHeader
+		? Number.parseInt(totalCountHeader, 10)
+		: null;
 
 	return {
 		objects: expectArrayPayload<HubuumObject>(payload, "class objects"),
@@ -191,7 +228,7 @@ async function fetchObjectsByClass(
 
 async function fetchCollections(): Promise<Collection[]> {
 	const response = await getApiV1Collections(
-		{ limit: 250 },
+		{ limit: 250, include_total: false },
 		{
 			credentials: "include",
 		},
@@ -373,7 +410,9 @@ function getValueAtFirstAvailableDataPath(
 	return undefined;
 }
 
-function getComparableDataValue(value: unknown): string | number | boolean | null {
+function getComparableDataValue(
+	value: unknown,
+): string | number | boolean | null {
 	if (value === null || value === undefined) {
 		return null;
 	}
@@ -428,12 +467,20 @@ function getSchemaPropertyPaths(
 	parentPath: string[] = [],
 	depth = 1,
 ): string[][] {
-	if (!jsonSchema || typeof jsonSchema !== "object" || Array.isArray(jsonSchema)) {
+	if (
+		!jsonSchema ||
+		typeof jsonSchema !== "object" ||
+		Array.isArray(jsonSchema)
+	) {
 		return [];
 	}
 
 	const properties = (jsonSchema as { properties?: unknown }).properties;
-	if (!properties || typeof properties !== "object" || Array.isArray(properties)) {
+	if (
+		!properties ||
+		typeof properties !== "object" ||
+		Array.isArray(properties)
+	) {
 		return [];
 	}
 
@@ -531,26 +578,24 @@ function collectDataPreviewEntries(
 				: [];
 		}
 
-		return value
-			.slice(0, MAX_DATA_ARRAY_ITEMS)
-			.flatMap((childValue, index) => {
-				const path = [...parentPath, `[${index}]`];
-				if (isOmittedDataPath(path, omittedPaths)) {
-					return [];
-				}
-				if (isPlainObject(childValue) || Array.isArray(childValue)) {
-					const childEntries = collectDataPreviewEntries(
-						childValue,
-						omittedPaths,
-						path,
-						depth + 1,
-					);
-					return childEntries.length > 0
-						? childEntries
-						: [{ id: getDataPathId(path), path, value: childValue }];
-				}
-				return [{ id: getDataPathId(path), path, value: childValue }];
-			});
+		return value.slice(0, MAX_DATA_ARRAY_ITEMS).flatMap((childValue, index) => {
+			const path = [...parentPath, `[${index}]`];
+			if (isOmittedDataPath(path, omittedPaths)) {
+				return [];
+			}
+			if (isPlainObject(childValue) || Array.isArray(childValue)) {
+				const childEntries = collectDataPreviewEntries(
+					childValue,
+					omittedPaths,
+					path,
+					depth + 1,
+				);
+				return childEntries.length > 0
+					? childEntries
+					: [{ id: getDataPathId(path), path, value: childValue }];
+			}
+			return [{ id: getDataPathId(path), path, value: childValue }];
+		});
 	}
 
 	if (!isPlainObject(value)) {
@@ -640,8 +685,7 @@ function persistCustomDataFields(
 	}
 
 	try {
-		window.localStorage.setItem(storageKey, JSON.stringify(fields));
-		return true;
+		return writeUserSetting(storageKey, JSON.stringify(fields));
 	} catch {
 		return false;
 	}
@@ -683,10 +727,7 @@ function renderObjectDataPreview(data: unknown, omittedPaths: string[][] = []) {
 		);
 	}
 
-	const previewEntries = collectDataPreviewEntries(
-		data,
-		omittedPaths,
-	);
+	const previewEntries = collectDataPreviewEntries(data, omittedPaths);
 	if (previewEntries.length === 0) {
 		return <span className="muted">No other data</span>;
 	}
@@ -711,9 +752,7 @@ function renderObjectDataPreview(data: unknown, omittedPaths: string[][] = []) {
 				);
 			})}
 			{hiddenCount > 0 ? (
-				<span className="object-data-more">
-					+{hiddenCount} more
-				</span>
+				<span className="object-data-more">+{hiddenCount} more</span>
 			) : null}
 		</div>
 	);
@@ -794,7 +833,8 @@ export function ObjectsExplorer() {
 		setLoadedCustomDataFieldsStorageKey,
 	] = useState<string | null>(null);
 	const [customDataFieldLabel, setCustomDataFieldLabel] = useState("");
-	const [customDataFieldExpression, setCustomDataFieldExpression] = useState("");
+	const [customDataFieldExpression, setCustomDataFieldExpression] =
+		useState("");
 	const [dataColumnSort, setDataColumnSort] = useState<DataColumnSortState>({
 		columnId: null,
 		direction: "asc",
@@ -802,13 +842,22 @@ export function ObjectsExplorer() {
 	const [searchInput, setSearchInput] = useState(
 		searchParams.get("search") ?? "",
 	);
+	const serverFilters = useMemo(
+		() =>
+			parseObjectServerFilters(
+				searchParams.get(OBJECT_SERVER_FILTERS_QUERY_KEY),
+			),
+		[searchParams],
+	);
+	const serverFilterSignature = useMemo(
+		() => serializeObjectServerFilters(serverFilters),
+		[serverFilters],
+	);
 
 	const { showToast } = useToast();
 
-	useResizableTable({ tableId: "objects-table", storageKey: "objects" });
-
 	const pagination = useCursorPagination({ defaultLimit: 100 });
-	const { sortState, setSort, getSortParam } = useTableSort();
+	const { sortState, setSort, clearSort, getSortParam } = useTableSort();
 
 	useEffect(() => {
 		if (searchParams.get("create") !== "1") {
@@ -863,15 +912,15 @@ export function ObjectsExplorer() {
 	const dataColumnStorageKey =
 		parsedClassId === null
 			? null
-			: `${OBJECT_DATA_COLUMNS_STORAGE_PREFIX}:${parsedClassId}`;
+			: PORTABLE_USER_SETTING_KEYS.objectDataColumns(parsedClassId);
 	const rawDataColumnStorageKey =
 		parsedClassId === null
 			? null
-			: `${OBJECT_RAW_DATA_COLUMN_STORAGE_PREFIX}:${parsedClassId}`;
+			: PORTABLE_USER_SETTING_KEYS.objectRawDataColumn(parsedClassId);
 	const customDataFieldsStorageKey =
 		parsedClassId === null
 			? null
-			: `${OBJECT_CUSTOM_DATA_FIELDS_STORAGE_PREFIX}:${parsedClassId}:user`;
+			: PORTABLE_USER_SETTING_KEYS.objectCustomDataFields(parsedClassId);
 	const customDataFieldsReady =
 		loadedCustomDataFieldsStorageKey === customDataFieldsStorageKey;
 	const parsedCreateClassId = useMemo(() => {
@@ -890,6 +939,7 @@ export function ObjectsExplorer() {
 			pagination.cursor,
 			pagination.limit,
 			getSortParam(),
+			serverFilterSignature,
 		],
 		queryFn: async () =>
 			fetchObjectsByClass(
@@ -897,6 +947,7 @@ export function ObjectsExplorer() {
 				pagination.limit,
 				pagination.cursor,
 				getSortParam(),
+				serverFilters,
 			),
 		enabled: parsedClassId !== null,
 	});
@@ -1060,10 +1111,10 @@ export function ObjectsExplorer() {
 		);
 	}, [createSelectedClass, collectionId, collections]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: selected object ids must reset when the selected class changes.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: selected object ids must reset when the server result scope changes.
 	useEffect(() => {
 		setSelectedObjectIds((current) => (current.length ? [] : current));
-	}, [selectedClassId]);
+	}, [selectedClassId, serverFilterSignature]);
 
 	const pageData = objectsQuery.data;
 	const objects = pageData?.objects ?? EMPTY_OBJECTS;
@@ -1134,12 +1185,34 @@ export function ObjectsExplorer() {
 			})
 			.filter((column): column is ActiveDataColumn => column !== null);
 	}, [customDataFields, dataColumnCandidates, selectedDataColumns]);
+	const dataColumnHeadings = useMemo(
+		() => getDataColumnHeadings(activeDataColumns),
+		[activeDataColumns],
+	);
 	const sortedDataColumnCandidates = useMemo(
 		() =>
 			[...dataColumnCandidates].sort((left, right) =>
 				left.label.localeCompare(right.label),
 			),
 		[dataColumnCandidates],
+	);
+	const serverFilterDataFields = useMemo(
+		() =>
+			sortedDataColumnCandidates
+				.map((column) => {
+					const path = toServerFilterDataPath(column.path);
+					return path
+						? {
+								id: column.id,
+								label: column.label,
+								path,
+							}
+						: null;
+				})
+				.filter(
+					(column): column is NonNullable<typeof column> => column !== null,
+				),
+		[sortedDataColumnCandidates],
 	);
 	const dataColumnMenuWidth = useMemo(() => {
 		const longestLabelLength = dataColumnCandidates.reduce(
@@ -1195,6 +1268,74 @@ export function ObjectsExplorer() {
 			return left.id - right.id;
 		});
 	}, [activeDataColumns, dataColumnSort, filteredObjects]);
+	const objectExportColumns = useMemo<TableExportColumn<HubuumObject>[]>(() => {
+		const columns: TableExportColumn<HubuumObject>[] = [
+			{ key: "id", label: "ID", getValue: (item) => item.id },
+			{ key: "name", label: "Name", getValue: (item) => item.name },
+			{
+				key: "collection",
+				label: "Collection",
+				getValue: (item) => {
+					const collectionName = collectionNameById.get(item.collection_id);
+					return collectionName
+						? `${collectionName} (#${item.collection_id})`
+						: item.collection_id;
+				},
+			},
+			{
+				key: "description",
+				label: "Description",
+				getValue: (item) => item.description,
+			},
+		];
+		for (const column of activeDataColumns) {
+			const heading = dataColumnHeadings.get(column.id) ?? {
+				context: "",
+				label: column.label,
+			};
+			columns.push({
+				key: `data.${column.id}`,
+				label: heading.context
+					? `${heading.context} · ${heading.label}`
+					: heading.label,
+				getValue: (item) =>
+					getValueAtFirstAvailableDataPath(item.data, column.paths),
+			});
+		}
+		if (showRawDataColumn) {
+			columns.push({
+				key: "data",
+				label: "Data",
+				getValue: (item) => item.data,
+			});
+		}
+		return columns;
+	}, [
+		activeDataColumns,
+		collectionNameById,
+		dataColumnHeadings,
+		showRawDataColumn,
+	]);
+	const objectExportView = useMemo<TableExportView<HubuumObject>>(
+		() => ({
+			id: parsedClassId === null ? "objects" : `objects.class.${parsedClassId}`,
+			fileName: `${selectedClass?.name ?? "objects"}-view`,
+			sheetName: selectedClass?.name ?? "Objects",
+			columns: objectExportColumns,
+			rows: displayedObjects,
+		}),
+		[displayedObjects, objectExportColumns, parsedClassId, selectedClass?.name],
+	);
+	useResizableTable({
+		tableId: "objects-table",
+		storageKey: "objects",
+		columnSignature: [
+			objectsQuery.data ? "ready" : "pending",
+			filteredObjects.length > 0 ? "visible" : "hidden",
+			...activeDataColumns.map((column) => column.id),
+			showRawDataColumn ? "raw" : "no-raw",
+		].join("|"),
+	});
 	const allSelected =
 		displayedObjects.length > 0 &&
 		selectedObjectIds.length === displayedObjects.length;
@@ -1214,7 +1355,9 @@ export function ObjectsExplorer() {
 		}
 
 		try {
-			const storedValue = window.localStorage.getItem(customDataFieldsStorageKey);
+			const storedValue = window.localStorage.getItem(
+				customDataFieldsStorageKey,
+			);
 			if (storedValue) {
 				const parsedValue = JSON.parse(storedValue);
 				if (Array.isArray(parsedValue)) {
@@ -1239,23 +1382,23 @@ export function ObjectsExplorer() {
 	}, [customDataFieldsStorageKey]);
 
 	useEffect(() => {
-		if (!customDataFieldsStorageKey || !customDataFieldsReady) {
+		if (
+			!customDataFieldsStorageKey ||
+			!customDataFieldsReady ||
+			!isUserSettingsSyncInitialized()
+		) {
 			return;
 		}
 
 		try {
-			window.localStorage.setItem(
+			writeUserSetting(
 				customDataFieldsStorageKey,
 				JSON.stringify(customDataFields),
 			);
 		} catch {
 			// Ignore unavailable localStorage.
 		}
-	}, [
-		customDataFields,
-		customDataFieldsStorageKey,
-		customDataFieldsReady,
-	]);
+	}, [customDataFields, customDataFieldsStorageKey, customDataFieldsReady]);
 
 	useEffect(() => {
 		if (!customDataFieldsReady) {
@@ -1282,12 +1425,10 @@ export function ObjectsExplorer() {
 						return;
 					}
 
-					const candidateIds = new Set(
-						[
-							...dataColumnCandidates.map((column) => column.id),
-							...customDataFields.map((field) => field.id),
-						],
-					);
+					const candidateIds = new Set([
+						...dataColumnCandidates.map((column) => column.id),
+						...customDataFields.map((field) => field.id),
+					]);
 					const nextColumns = parsedValue
 						.filter((value): value is string => typeof value === "string")
 						.map((value) => {
@@ -1314,10 +1455,9 @@ export function ObjectsExplorer() {
 			// Ignore unavailable or malformed localStorage.
 		}
 
-		const nextColumns =
-			dataColumnCandidates
-				.slice(0, DEFAULT_SELECTED_DATA_COLUMN_COUNT)
-				.map((column) => column.id);
+		const nextColumns = dataColumnCandidates
+			.slice(0, DEFAULT_SELECTED_DATA_COLUMN_COUNT)
+			.map((column) => column.id);
 		setSelectedDataColumns((current) =>
 			areStringArraysEqual(current, nextColumns) ? current : nextColumns,
 		);
@@ -1329,7 +1469,11 @@ export function ObjectsExplorer() {
 	]);
 
 	useEffect(() => {
-		if (!dataColumnStorageKey || !customDataFieldsReady) {
+		if (
+			!dataColumnStorageKey ||
+			!customDataFieldsReady ||
+			!isUserSettingsSyncInitialized()
+		) {
 			return;
 		}
 		if (dataColumnCandidates.length === 0 && customDataFields.length === 0) {
@@ -1337,7 +1481,7 @@ export function ObjectsExplorer() {
 		}
 
 		try {
-			window.localStorage.setItem(
+			writeUserSetting(
 				dataColumnStorageKey,
 				JSON.stringify(activeDataColumns.map((column) => column.id)),
 			);
@@ -1353,7 +1497,7 @@ export function ObjectsExplorer() {
 	]);
 
 	useEffect(() => {
-		if (!rawDataColumnStorageKey) {
+		if (!rawDataColumnStorageKey || !isUserSettingsSyncInitialized()) {
 			setShowRawDataColumn((current) => (current ? current : true));
 			return;
 		}
@@ -1381,7 +1525,7 @@ export function ObjectsExplorer() {
 		}
 
 		try {
-			window.localStorage.setItem(
+			writeUserSetting(
 				rawDataColumnStorageKey,
 				showRawDataColumn ? "visible" : "hidden",
 			);
@@ -1394,7 +1538,9 @@ export function ObjectsExplorer() {
 		if (!dataColumnSort.columnId) {
 			return;
 		}
-		if (activeDataColumns.some((column) => column.id === dataColumnSort.columnId)) {
+		if (
+			activeDataColumns.some((column) => column.id === dataColumnSort.columnId)
+		) {
 			return;
 		}
 		setDataColumnSort({ columnId: null, direction: "asc" });
@@ -1531,14 +1677,25 @@ export function ObjectsExplorer() {
 
 	function renderSortIndicator(column: string) {
 		if (dataColumnSort.columnId) {
-			return <span className="sort-indicator">⇅</span>;
+			return (
+				<span className="sort-indicator" aria-hidden="true">
+					⇅
+				</span>
+			);
 		}
 		if (sortState.column !== column) {
-			return <span className="sort-indicator">⇅</span>;
+			return (
+				<span className="sort-indicator" aria-hidden="true">
+					⇅
+				</span>
+			);
 		}
 
 		return (
-			<span className="sort-indicator sort-indicator--active">
+			<span
+				className="sort-indicator sort-indicator--active"
+				aria-hidden="true"
+			>
 				{sortState.direction === "asc" ? "↑" : "↓"}
 			</span>
 		);
@@ -1546,14 +1703,37 @@ export function ObjectsExplorer() {
 
 	function renderDataSortIndicator(columnId: string) {
 		if (dataColumnSort.columnId !== columnId) {
-			return <span className="sort-indicator">⇅</span>;
+			return (
+				<span className="sort-indicator" aria-hidden="true">
+					⇅
+				</span>
+			);
 		}
 
 		return (
-			<span className="sort-indicator sort-indicator--active">
+			<span
+				className="sort-indicator sort-indicator--active"
+				aria-hidden="true"
+			>
 				{dataColumnSort.direction === "asc" ? "↑" : "↓"}
 			</span>
 		);
+	}
+
+	function getServerSortAria(
+		column: string,
+	): "ascending" | "descending" | "none" {
+		if (dataColumnSort.columnId || sortState.column !== column) return "none";
+		return sortState.direction === "asc" ? "ascending" : "descending";
+	}
+
+	function onServerSortKeyDown(
+		event: ReactKeyboardEvent<HTMLTableCellElement>,
+		column: string,
+	) {
+		if (event.key !== "Enter" && event.key !== " ") return;
+		event.preventDefault();
+		setServerSort(column);
 	}
 
 	function setServerSort(column: string) {
@@ -1562,6 +1742,9 @@ export function ObjectsExplorer() {
 	}
 
 	function setDataSort(columnId: string) {
+		if (sortState.column) {
+			clearSort();
+		}
 		setDataColumnSort((current) => {
 			if (current.columnId !== columnId) {
 				return { columnId, direction: "asc" };
@@ -1625,10 +1808,9 @@ export function ObjectsExplorer() {
 			return;
 		}
 
-		const submitButton =
-			event.currentTarget.querySelector<HTMLButtonElement>(
-				"button[type='submit']:not(:disabled)",
-			);
+		const submitButton = event.currentTarget.querySelector<HTMLButtonElement>(
+			"button[type='submit']:not(:disabled)",
+		);
 		if (!submitButton) {
 			return;
 		}
@@ -1652,7 +1834,6 @@ export function ObjectsExplorer() {
 		);
 	}
 
-
 	function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
@@ -1675,6 +1856,21 @@ export function ObjectsExplorer() {
 		params.delete("search");
 		params.delete("cursor");
 
+		const query = params.toString();
+		router.push(query ? `${pathname}?${query}` : pathname);
+	}
+
+	function updateServerFilters(nextFilters: ObjectServerFilter[]) {
+		const params = new URLSearchParams(searchParams.toString());
+		if (nextFilters.length > 0) {
+			params.set(
+				OBJECT_SERVER_FILTERS_QUERY_KEY,
+				serializeObjectServerFilters(nextFilters),
+			);
+		} else {
+			params.delete(OBJECT_SERVER_FILTERS_QUERY_KEY);
+		}
+		params.delete("cursor");
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
 	}
@@ -1745,9 +1941,11 @@ export function ObjectsExplorer() {
 	}
 
 	function deleteCustomDataField(fieldId: string) {
-		const nextFields = customDataFields.filter((field) => field.id !== fieldId);
+		const nextFields = customDataFields.filter(
+			(candidate) => candidate.id !== fieldId,
+		);
 		if (!persistCustomDataFields(customDataFieldsStorageKey, nextFields)) {
-			showToast("Could not save custom data fields in this browser.", "error");
+			showToast("Could not save custom data fields.", "error");
 			return;
 		}
 
@@ -1905,22 +2103,28 @@ export function ObjectsExplorer() {
 				{renderCreateObjectForm()}
 			</CreateModal>
 
-			<div className="card table-wrap">
+			<div className="card table-wrap resource-index objects-resource-index">
 				<div className="table-header">
-					<div className="table-title-row">
-						<h3>Objects</h3>
-						<span className="muted table-count">
-							{objectsQuery.data
-								? searchTerm
-									? `${filteredObjects.length} shown of ${objects.length}`
-									: `${objects.length} loaded`
-								: parsedClassId
-									? "Waiting..."
-									: "No class"}
-							{selectedObjectIds.length
-								? ` · ${selectedObjectIds.length} selected`
-								: ""}
-						</span>
+					<div className="resource-index-title">
+						<p className="eyebrow">Data model</p>
+						<div className="table-title-row">
+							<h2>Objects</h2>
+							<span className="muted table-count">
+								{objectsQuery.data
+									? searchTerm
+										? `${filteredObjects.length} shown on page · ${objects.length} loaded`
+										: typeof pageData?.totalCount === "number" &&
+												pageData?.totalCount !== objects.length
+											? `${objects.length} loaded · ${pageData?.totalCount} ${serverFilters.length ? "matches" : "total"}`
+											: `${objects.length} loaded`
+									: parsedClassId
+										? "Waiting..."
+										: "No class"}
+								{selectedObjectIds.length
+									? ` · ${selectedObjectIds.length} selected`
+									: ""}
+							</span>
+						</div>
 					</div>
 					<div className="table-tools">
 						<div className="object-column-picker" ref={columnPickerRef}>
@@ -1984,13 +2188,10 @@ export function ObjectsExplorer() {
 									) : (
 										<div className="object-column-options">
 											{sortedDataColumnCandidates.map((column) => {
-												const checked = selectedDataColumns.includes(
-													column.id,
-												);
+												const checked = selectedDataColumns.includes(column.id);
 												const disabled =
 													!checked &&
-													activeDataColumns.length >=
-														MAX_SELECTED_DATA_COLUMNS;
+													activeDataColumns.length >= MAX_SELECTED_DATA_COLUMNS;
 												return (
 													<label
 														key={column.id}
@@ -2025,10 +2226,7 @@ export function ObjectsExplorer() {
 								</div>
 							) : null}
 						</div>
-						<div
-							className="object-column-picker"
-							ref={customColumnPickerRef}
-						>
+						<div className="object-column-picker" ref={customColumnPickerRef}>
 							<button
 								type="button"
 								className="ghost object-column-picker-trigger"
@@ -2048,8 +2246,7 @@ export function ObjectsExplorer() {
 									className="object-column-menu object-column-menu--custom card"
 									style={
 										{
-											"--object-column-menu-width":
-												customDataColumnMenuWidth,
+											"--object-column-menu-width": customDataColumnMenuWidth,
 										} as React.CSSProperties
 									}
 								>
@@ -2061,7 +2258,9 @@ export function ObjectsExplorer() {
 										onSubmit={addCustomDataField}
 									>
 										<div className="custom-data-field-scope">
-											<span className="muted">Saved for this browser only.</span>
+											<span className="muted">
+												Saved to your account as a display preference.
+											</span>
 										</div>
 										<label className="control-field">
 											<span>Label</span>
@@ -2094,13 +2293,10 @@ export function ObjectsExplorer() {
 									) : (
 										<div className="object-column-options">
 											{customDataFields.map((field) => {
-												const checked = selectedDataColumns.includes(
-													field.id,
-												);
+												const checked = selectedDataColumns.includes(field.id);
 												const disabled =
 													!checked &&
-													activeDataColumns.length >=
-														MAX_SELECTED_DATA_COLUMNS;
+													activeDataColumns.length >= MAX_SELECTED_DATA_COLUMNS;
 												return (
 													<div
 														key={field.id}
@@ -2111,20 +2307,13 @@ export function ObjectsExplorer() {
 															checked={checked}
 															disabled={disabled}
 															onChange={(event) =>
-																toggleDataColumn(
-																	field.id,
-																	event.target.checked,
-																)
+																toggleDataColumn(field.id, event.target.checked)
 															}
 															aria-label={`Show ${field.label}`}
 														/>
 														<span>
-															<strong title={field.label}>
-																{field.label}
-															</strong>
-															<small title={field.expression}>
-																Only me
-															</small>
+															<strong title={field.label}>{field.label}</strong>
+															<small title={field.expression}>Only me</small>
 														</span>
 														<button
 															type="button"
@@ -2142,14 +2331,24 @@ export function ObjectsExplorer() {
 								</div>
 							) : null}
 						</div>
+						<ObjectServerFilterMenu
+							filters={serverFilters}
+							dataFields={serverFilterDataFields}
+							onChange={updateServerFilters}
+							disabled={parsedClassId === null}
+						/>
+						<TableExportMenu
+							view={objectExportView}
+							disabled={objectsQuery.isFetching}
+						/>
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
 								<input
-									aria-label="Filter loaded objects"
+									aria-label="Find objects on this loaded page"
 									className="table-filter-input"
 									value={searchInput}
 									onChange={(event) => setSearchInput(event.target.value)}
-									placeholder="Filter loaded items"
+									placeholder="Find on this page"
 								/>
 								{normalizeSearchTerm(searchInput) ? (
 									<button
@@ -2165,16 +2364,36 @@ export function ObjectsExplorer() {
 							<button
 								type="submit"
 								className="ghost icon-button"
-								aria-label="Filter objects"
+								aria-label="Find objects on this page"
 							>
 								<IconSearch />
 							</button>
 						</form>
 					</div>
 				</div>
-				{searchTerm ? (
-					<div className="muted">
-						Filtering is currently scoped to the selected class.
+				{searchTerm || serverFilters.length > 0 || dataColumnSort.columnId ? (
+					<div className="table-scope-note" role="status">
+						{serverFilters.length > 0 ? (
+							<span>
+								<strong>
+									{serverFilters.length} server filter
+									{serverFilters.length === 1 ? "" : "s"}
+								</strong>{" "}
+								querying every object in this class.
+							</span>
+						) : null}
+						{searchTerm ? (
+							<span>
+								<strong>Find on page</strong> is narrowing the {objects.length}{" "}
+								loaded row{objects.length === 1 ? "" : "s"}.
+							</span>
+						) : null}
+						{dataColumnSort.columnId ? (
+							<span>
+								<strong>Loaded-page sort</strong> is active for a data field;
+								standard columns sort the full server result.
+							</span>
+						) : null}
 					</div>
 				) : null}
 
@@ -2193,16 +2412,28 @@ export function ObjectsExplorer() {
 					<EmptyState
 						title={
 							searchTerm
-								? `No objects in this class match "${searchTerm}".`
-								: "No objects available in the selected class."
+								? `No loaded objects match "${searchTerm}".`
+								: serverFilters.length > 0
+									? "No objects match the server filters."
+									: "No objects available in the selected class."
 						}
 						description={
 							searchTerm
-								? "Clear the filter to return to the full object list for this class."
-								: "Create an object to start populating this class."
+								? "Clear Find on page to return to the current server result."
+								: serverFilters.length > 0
+									? "Change or clear the server filters to broaden the class query."
+									: "Create an object to start populating this class."
 						}
 						action={
-							searchTerm ? null : (
+							searchTerm ? (
+								<button type="button" onClick={clearFilter}>
+									Clear Find on page
+								</button>
+							) : serverFilters.length > 0 ? (
+								<button type="button" onClick={() => updateServerFilters([])}>
+									Clear server filters
+								</button>
+							) : (
 								<button
 									type="button"
 									onClick={() => setCreateModalOpen(true)}
@@ -2214,139 +2445,248 @@ export function ObjectsExplorer() {
 						}
 					/>
 				) : (
-					<table id="objects-table">
-						<colgroup>
-							<col className="object-select-column" />
-							<col className="object-id-column" />
-							<col className="object-name-column" />
-							<col className="object-collection-column" />
-							<col className="object-description-column" />
-							{activeDataColumns.map((column) => (
+					<div className="object-table-scroll">
+						<table id="objects-table">
+							<colgroup>
 								<col
-									key={column.id}
-									className="object-promoted-data-column"
+									className="object-select-column"
+									data-column-key="select"
 								/>
-							))}
-							{showRawDataColumn ? (
-								<col className="object-data-column" />
-							) : null}
-						</colgroup>
-						<thead>
-							<tr>
-								<th className="check-col">
-									<input
-										type="checkbox"
-										aria-label="Select all objects"
-										checked={allSelected}
-										onChange={(event) =>
-											shiftSelect.handleSelectAll(event.target.checked)
-										}
-									/>
-								</th>
-								<th className="sortable" onClick={() => setServerSort("id")}>
-									ID{renderSortIndicator("id")}
-								</th>
-								<th className="sortable" onClick={() => setServerSort("name")}>
-									Name{renderSortIndicator("name")}
-								</th>
-								<th
-									className="sortable"
-									onClick={() => setServerSort("collection_id")}
-								>
-									Collection{renderSortIndicator("collection_id")}
-								</th>
-								<th
-									className="sortable"
-									onClick={() => setServerSort("description")}
-								>
-									Description{renderSortIndicator("description")}
-								</th>
+								<col className="object-id-column" data-column-key="id" />
+								<col className="object-name-column" data-column-key="name" />
+								<col
+									className="object-collection-column"
+									data-column-key="collection"
+								/>
+								<col
+									className="object-description-column"
+									data-column-key="description"
+								/>
 								{activeDataColumns.map((column) => (
-									<th
+									<col
 										key={column.id}
-										className="sortable object-data-field-heading"
-										title={`${column.label} (sorts loaded rows)`}
-										onClick={() => setDataSort(column.id)}
-									>
-										{column.label}
-										{renderDataSortIndicator(column.id)}
-									</th>
+										className="object-promoted-data-column"
+										data-column-key={`data:${column.id}`}
+									/>
 								))}
-								{showRawDataColumn ? <th>Data</th> : null}
-							</tr>
-						</thead>
-						<tbody>
-							{displayedObjects.map((objectItem, index) => {
-								const isSelected = selectedObjectIds.includes(objectItem.id);
-								const isFocused = keyboardNav.focusedId === objectItem.id;
-								const rowClassName = [
-									isSelected ? "table-row-selected" : "",
-									isFocused ? "table-row-focused" : "",
-								]
-									.filter(Boolean)
-									.join(" ");
-
-								return (
-									<tr
-										key={objectItem.id}
-										className={rowClassName}
-										data-table-row-index={index}
+								{showRawDataColumn ? (
+									<col
+										className="object-data-column"
+										data-column-key="raw-data"
+									/>
+								) : null}
+							</colgroup>
+							<thead>
+								<tr>
+									<th className="check-col" data-column-key="select">
+										<input
+											type="checkbox"
+											aria-label="Select all objects"
+											checked={allSelected}
+											onChange={(event) =>
+												shiftSelect.handleSelectAll(event.target.checked)
+											}
+										/>
+									</th>
+									<th
+										className="sortable"
+										data-column-key="id"
+										title="Sort all matching objects by ID"
+										aria-sort={getServerSortAria("id")}
+										tabIndex={0}
+										onClick={() => setServerSort("id")}
+										onKeyDown={(event) => onServerSortKeyDown(event, "id")}
 									>
-										<td className="check-col">
-											<input
-												type="checkbox"
-												aria-label={`Select object ${objectItem.name}`}
-												checked={isSelected}
-												onChange={(event) =>
-													shiftSelect.handleClick(
-														objectItem.id,
-														event.target.checked,
-														(event.nativeEvent as MouseEvent).shiftKey,
-													)
-												}
-											/>
-										</td>
-										<td>{objectItem.id}</td>
-										<td>
-											<Link
-												href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
-												className="row-link"
-											>
-												{objectItem.name}
-											</Link>
-										</td>
-										<td>{renderCollection(objectItem.collection_id)}</td>
-										<td>{objectItem.description || "-"}</td>
-										{activeDataColumns.map((column) => (
-											<td
+										ID{renderSortIndicator("id")}
+									</th>
+									<th
+										className="sortable"
+										data-column-key="name"
+										title="Sort all matching objects by name"
+										aria-sort={getServerSortAria("name")}
+										tabIndex={0}
+										onClick={() => setServerSort("name")}
+										onKeyDown={(event) => onServerSortKeyDown(event, "name")}
+									>
+										Name{renderSortIndicator("name")}
+									</th>
+									<th
+										className="sortable"
+										data-column-key="collection"
+										title="Sort all matching objects by collection"
+										aria-sort={getServerSortAria("collection_id")}
+										tabIndex={0}
+										onClick={() => setServerSort("collection_id")}
+										onKeyDown={(event) =>
+											onServerSortKeyDown(event, "collection_id")
+										}
+									>
+										Collection{renderSortIndicator("collection_id")}
+									</th>
+									<th
+										className="sortable"
+										data-column-key="description"
+										title="Sort all matching objects by description"
+										aria-sort={getServerSortAria("description")}
+										tabIndex={0}
+										onClick={() => setServerSort("description")}
+										onKeyDown={(event) =>
+											onServerSortKeyDown(event, "description")
+										}
+									>
+										Description{renderSortIndicator("description")}
+									</th>
+									{activeDataColumns.map((column) => {
+										const heading = dataColumnHeadings.get(column.id) ?? {
+											context: "",
+											label: column.label,
+										};
+										return (
+											<th
 												key={column.id}
-												className="object-data-field-cell"
+												className="object-data-field-heading"
+												data-column-key={`data:${column.id}`}
+												title={`${column.label} — sorts loaded rows`}
+												aria-sort={
+													dataColumnSort.columnId === column.id
+														? dataColumnSort.direction === "asc"
+															? "ascending"
+															: "descending"
+														: "none"
+												}
 											>
-												{renderPromotedDataValue(
-													getValueAtFirstAvailableDataPath(
+												<button
+													type="button"
+													className="object-column-sort"
+													onClick={() => setDataSort(column.id)}
+													aria-label={`Sort loaded rows by ${column.label}`}
+												>
+													<span
+														className="object-data-field-icon"
+														aria-hidden="true"
+													>
+														<IconDataField />
+													</span>
+													{heading.context ? (
+														<>
+															<span className="object-column-heading-context">
+																{heading.context}
+															</span>
+															<span
+																className="object-column-heading-separator"
+																aria-hidden="true"
+															>
+																·
+															</span>
+														</>
+													) : null}
+													<span className="object-column-heading-label">
+														<span className="object-column-heading-name">
+															{heading.label}
+														</span>
+														{renderDataSortIndicator(column.id)}
+													</span>
+												</button>
+											</th>
+										);
+									})}
+									{showRawDataColumn ? (
+										<th
+											className="object-raw-data-heading"
+											data-column-key="raw-data"
+										>
+											Data
+										</th>
+									) : null}
+								</tr>
+							</thead>
+							<tbody>
+								{displayedObjects.map((objectItem, index) => {
+									const isSelected = selectedObjectIds.includes(objectItem.id);
+									const isFocused = keyboardNav.focusedId === objectItem.id;
+									const rowClassName = [
+										isSelected ? "table-row-selected" : "",
+										isFocused ? "table-row-focused" : "",
+									]
+										.filter(Boolean)
+										.join(" ");
+
+									return (
+										<tr
+											key={objectItem.id}
+											className={rowClassName}
+											data-table-row-index={index}
+										>
+											<td className="check-col">
+												<input
+													type="checkbox"
+													aria-label={`Select object ${objectItem.name}`}
+													checked={isSelected}
+													onChange={(event) =>
+														shiftSelect.handleClick(
+															objectItem.id,
+															event.target.checked,
+															(event.nativeEvent as MouseEvent).shiftKey,
+														)
+													}
+												/>
+											</td>
+											<td>{objectItem.id}</td>
+											<td>
+												<div className="object-name-cell">
+													<Link
+														href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
+														className="row-link"
+														title={objectItem.name}
+													>
+														{objectItem.name}
+													</Link>
+													<Link
+														href={`/relations/objects?classId=${objectItem.hubuum_class_id}&objectId=${objectItem.id}&objectView=reachable`}
+														className="object-row-connections-link"
+														aria-label={`Open connections for ${objectItem.name}`}
+														title="Open connections"
+													>
+														<IconConnections />
+													</Link>
+												</div>
+											</td>
+											<td>{renderCollection(objectItem.collection_id)}</td>
+											<td
+												className="object-description-cell"
+												title={objectItem.description || undefined}
+											>
+												{objectItem.description || "-"}
+											</td>
+											{activeDataColumns.map((column) => (
+												<td key={column.id} className="object-data-field-cell">
+													{renderPromotedDataValue(
+														getValueAtFirstAvailableDataPath(
+															objectItem.data,
+															column.paths,
+														),
+													)}
+												</td>
+											))}
+											{showRawDataColumn ? (
+												<td className="data-cell">
+													{renderObjectDataPreview(
 														objectItem.data,
-														column.paths,
-													),
-												)}
-											</td>
-										))}
-										{showRawDataColumn ? (
-											<td className="data-cell">
-												{renderObjectDataPreview(
-													objectItem.data,
-													activeDataColumns.flatMap(
-														(column) => column.paths,
-													),
-												)}
-											</td>
-										) : null}
-									</tr>
-								);
-							})}
-						</tbody>
-					</table>
+														activeDataColumns.flatMap((column) => column.paths),
+													)}
+												</td>
+											) : null}
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
 				)}
-				{pageData && (pageData.nextCursor || pageData.prevCursor || pagination.hasPrevPage) ? (
+				{pageData &&
+				(pageData.nextCursor ||
+					pageData.prevCursor ||
+					pagination.hasPrevPage) ? (
 					<TablePagination
 						hasNextPage={!!pageData.nextCursor}
 						hasPrevPage={pagination.hasPrevPage || !!pageData.prevCursor}

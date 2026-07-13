@@ -14,6 +14,8 @@ The password is expected to be plaintext. `name` is the principal name.
 export interface NewUser {
   /** @nullable */
   email?: string | null;
+  /** @nullable */
+  identity_scope?: string | null;
   name: string;
   password: string;
   /** @nullable */

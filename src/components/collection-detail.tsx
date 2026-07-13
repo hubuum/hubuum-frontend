@@ -16,6 +16,7 @@ import { CollectionEventSubscriptionsPanel } from "@/components/collection-event
 import { CollectionDetailTracker } from "@/components/collection-detail-tracker";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -37,7 +38,6 @@ import {
 } from "@/lib/api/generated/client";
 import type {
 	EffectiveGroupPermission,
-	Group,
 	GroupPermission,
 	Collection,
 	Permission,
@@ -57,9 +57,15 @@ import {
 	type EditStateEventDetail,
 	TITLE_STATE_EVENT,
 } from "@/lib/create-events";
+import {
+	type ConsoleGroup,
+	formatScopedGroupName,
+} from "@/lib/identity-scopes";
+import { canManageCollectionPermissions } from "@/lib/collection-permission-access";
 import { useCurrentUserId } from "@/lib/use-current-user-id";
 
 type CollectionDetailProps = {
+	canAdminister: boolean;
 	collectionId: number;
 	currentUsername: string | null;
 };
@@ -116,6 +122,19 @@ type PermissionSection =
 	| "events";
 
 type EditableField = "name" | "description";
+
+type PermissionExportRow = {
+	group: string;
+	permissions: string;
+	updated: string;
+};
+
+type EffectivePermissionExportRow = {
+	sourceCollection: string;
+	group: string;
+	type: string;
+	permissions: string;
+};
 
 const ALL_EDITABLE_FIELDS: EditableField[] = ["name", "description"];
 
@@ -348,7 +367,7 @@ async function fetchCollection(collectionId: number): Promise<Collection> {
 
 async function fetchCollections(): Promise<Collection[]> {
 	const response = await getApiV1Collections(
-		{ limit: 250 },
+		{ limit: 250, include_total: false },
 		{
 			credentials: "include",
 		},
@@ -401,10 +420,13 @@ async function fetchCollectionAncestors(
 	return response.data;
 }
 
-async function fetchGroups(): Promise<Group[]> {
-	const response = await getApiV1IamGroups(undefined, {
-		credentials: "include",
-	});
+async function fetchGroups(): Promise<ConsoleGroup[]> {
+	const response = await getApiV1IamGroups(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -443,15 +465,16 @@ async function fetchEffectivePrincipalPermissions(
 async function fetchGroupsWithPermission(
 	collectionId: number,
 	permission: PermissionName,
-): Promise<Group[]> {
-	const response = await getApiV1CollectionsByCollectionIdHasPermissionsByPermission(
-		collectionId,
-		permission,
-		undefined,
-		{
-			credentials: "include",
-		},
-	);
+): Promise<ConsoleGroup[]> {
+	const response =
+		await getApiV1CollectionsByCollectionIdHasPermissionsByPermission(
+			collectionId,
+			permission,
+			undefined,
+			{
+				credentials: "include",
+			},
+		);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -512,11 +535,16 @@ async function putCollectionPermissions(
 	);
 }
 
-async function fetchCurrentUserGroups(_username: string): Promise<Group[]> {
+async function fetchCurrentUserGroups(
+	_username: string,
+): Promise<ConsoleGroup[]> {
 	try {
-		const response = await getApiV1IamMeGroups(undefined, {
-			credentials: "include",
-		});
+		const response = await getApiV1IamMeGroups(
+			{ include_total: false },
+			{
+				credentials: "include",
+			},
+		);
 		if (response.status !== 200) {
 			return [];
 		}
@@ -655,6 +683,7 @@ function InlineEditIcon() {
 }
 
 export function CollectionDetail({
+	canAdminister,
 	collectionId,
 	currentUsername,
 }: CollectionDetailProps) {
@@ -712,7 +741,12 @@ export function CollectionDetail({
 		queryFn: async () => fetchCollectionPermissions(collectionId),
 	});
 	const effectivePermissionsQuery = useQuery({
-		queryKey: ["collection", collectionId, "effective-permissions", currentUserId],
+		queryKey: [
+			"collection",
+			collectionId,
+			"effective-permissions",
+			currentUserId,
+		],
 		queryFn: async () => {
 			if (!currentUserId) {
 				return [];
@@ -733,19 +767,43 @@ export function CollectionDetail({
 		},
 	});
 	const delegateGroupsQuery = useQuery({
-		queryKey: ["collection", collectionId, "has-permission", PermissionValues.DelegateCollection],
+		queryKey: [
+			"collection",
+			collectionId,
+			"has-permission",
+			PermissionValues.DelegateCollection,
+		],
 		queryFn: async () =>
-			fetchGroupsWithPermission(collectionId, PermissionValues.DelegateCollection),
+			fetchGroupsWithPermission(
+				collectionId,
+				PermissionValues.DelegateCollection,
+			),
 	});
 	const updateGroupsQuery = useQuery({
-		queryKey: ["collection", collectionId, "has-permission", PermissionValues.UpdateCollection],
+		queryKey: [
+			"collection",
+			collectionId,
+			"has-permission",
+			PermissionValues.UpdateCollection,
+		],
 		queryFn: async () =>
-			fetchGroupsWithPermission(collectionId, PermissionValues.UpdateCollection),
+			fetchGroupsWithPermission(
+				collectionId,
+				PermissionValues.UpdateCollection,
+			),
 	});
 	const deleteGroupsQuery = useQuery({
-		queryKey: ["collection", collectionId, "has-permission", PermissionValues.DeleteCollection],
+		queryKey: [
+			"collection",
+			collectionId,
+			"has-permission",
+			PermissionValues.DeleteCollection,
+		],
 		queryFn: async () =>
-			fetchGroupsWithPermission(collectionId, PermissionValues.DeleteCollection),
+			fetchGroupsWithPermission(
+				collectionId,
+				PermissionValues.DeleteCollection,
+			),
 	});
 	const manageEventSubscriptionGroupsQuery = useQuery({
 		queryKey: [
@@ -794,9 +852,12 @@ export function CollectionDetail({
 	});
 	const deleteMutation = useMutation({
 		mutationFn: async () => {
-			const response = await deleteApiV1CollectionsByCollectionId(collectionId, {
-				credentials: "include",
-			});
+			const response = await deleteApiV1CollectionsByCollectionId(
+				collectionId,
+				{
+					credentials: "include",
+				},
+			);
 
 			if (response.status !== 204) {
 				throw new Error(
@@ -1026,7 +1087,10 @@ export function CollectionDetail({
 		setDescription(collectionData.description ?? "");
 	}
 
-	function toggleFieldEditing(field: EditableField, collectionData: Collection) {
+	function toggleFieldEditing(
+		field: EditableField,
+		collectionData: Collection,
+	) {
 		setFormError(null);
 		setFormSuccess(null);
 
@@ -1406,9 +1470,12 @@ export function CollectionDetail({
 	const currentUserGroupIds = new Set(
 		(currentUserGroupsQuery.data ?? []).map((group) => group.id),
 	);
-	const userHasAnyGroup = (accessGroups: readonly Group[] | undefined) =>
+	const userHasAnyGroup = (accessGroups: readonly ConsoleGroup[] | undefined) =>
 		(accessGroups ?? []).some((group) => currentUserGroupIds.has(group.id));
-	const canManagePermissions = userHasAnyGroup(delegateGroupsQuery.data);
+	const canManagePermissions = canManageCollectionPermissions(
+		canAdminister,
+		userHasAnyGroup(delegateGroupsQuery.data),
+	);
 	const canUpdateCollection = userHasAnyGroup(updateGroupsQuery.data);
 	const canDeleteCollection = userHasAnyGroup(deleteGroupsQuery.data);
 	const canManageEventSubscriptions = userHasAnyGroup(
@@ -1439,8 +1506,11 @@ export function CollectionDetail({
 	];
 	const parentCollection = ancestorsQuery.data?.[0] ?? null;
 	const childCollections = childrenQuery.data ?? [];
-	const isRoot = collectionQuery.data ? isRootCollection(collectionQuery.data) : false;
-	const canMoveCollection = !isRoot && canUpdateCollection && canManagePermissions;
+	const isRoot = collectionQuery.data
+		? isRootCollection(collectionQuery.data)
+		: false;
+	const canMoveCollection =
+		!isRoot && canUpdateCollection && canManagePermissions;
 	const effectivePermissionEntries = effectivePermissionsQuery.data ?? [];
 	const sortedEffectivePermissionEntries = [...effectivePermissionEntries].sort(
 		(left, right) =>
@@ -1507,6 +1577,97 @@ export function CollectionDetail({
 			<div className="card error-banner">Collection data is unavailable.</div>
 		);
 	}
+
+	const selectedNewPermissionGroup = availableGroups.find(
+		(group) => String(group.id) === newPermissionGroupId,
+	);
+	const directPermissionExportRows: PermissionExportRow[] = [
+		...(canManagePermissions && addingGroupPermissions
+			? [
+					{
+						group: usingGroupSelect
+							? selectedNewPermissionGroup
+								? `${formatScopedGroupName(selectedNewPermissionGroup)} (#${selectedNewPermissionGroup.id})`
+								: "All groups already have permissions."
+							: newPermissionGroupId,
+						permissions: summarizePermissions(newSelectedPermissionSet),
+						updated: "-",
+					},
+				]
+			: []),
+		...sortedPermissionEntries.map((entry) => {
+			const basePermissions = getEnabledPermissions(entry.permission);
+			const displayedPermissions = canManagePermissions
+				? new Set(permissionDrafts[entry.group.id] ?? basePermissions)
+				: new Set(basePermissions);
+
+			return {
+				group: `${entry.group.groupname} (#${entry.group.id})`,
+				permissions: summarizePermissions(displayedPermissions),
+				updated: new Date(entry.permission.updated_at).toLocaleString(),
+			};
+		}),
+	];
+	const directPermissionExportView = {
+		id: `collection-${collectionId}-direct-permissions`,
+		fileName: `${collectionData.name}-direct-permissions`,
+		sheetName: "Direct permissions",
+		columns: [
+			{
+				key: "group",
+				label: "Group",
+				getValue: (row: PermissionExportRow) => row.group,
+			},
+			{
+				key: "permissions",
+				label: "Permissions",
+				getValue: (row: PermissionExportRow) => row.permissions,
+			},
+			{
+				key: "updated",
+				label: "Updated",
+				getValue: (row: PermissionExportRow) => row.updated,
+			},
+		],
+		rows: directPermissionExportRows,
+	};
+	const effectivePermissionExportRows: EffectivePermissionExportRow[] =
+		sortedEffectivePermissionEntries.map((entry) => ({
+			sourceCollection: `${entry.source_collection.name} (#${entry.source_collection.id})`,
+			group: `${entry.group.groupname} (#${entry.group.id})`,
+			type: entry.inherited ? `Inherited, depth ${entry.depth}` : "Direct",
+			permissions: summarizePermissions(
+				new Set(getEnabledPermissions(entry.permission)),
+			),
+		}));
+	const effectivePermissionExportView = {
+		id: `collection-${collectionId}-effective-permissions`,
+		fileName: `${collectionData.name}-effective-permissions`,
+		sheetName: "Effective permissions",
+		columns: [
+			{
+				key: "source_collection",
+				label: "Source collection",
+				getValue: (row: EffectivePermissionExportRow) => row.sourceCollection,
+			},
+			{
+				key: "group",
+				label: "Group",
+				getValue: (row: EffectivePermissionExportRow) => row.group,
+			},
+			{
+				key: "type",
+				label: "Type",
+				getValue: (row: EffectivePermissionExportRow) => row.type,
+			},
+			{
+				key: "permissions",
+				label: "Permissions",
+				getValue: (row: EffectivePermissionExportRow) => row.permissions,
+			},
+		],
+		rows: effectivePermissionExportRows,
+	};
 
 	return (
 		<>
@@ -1882,7 +2043,14 @@ export function CollectionDetail({
 						<div className="muted">{permissionsSuccess}</div>
 					) : null}
 
-					<h4>Direct permissions</h4>
+					<div className="panel-header">
+						<h4>Direct permissions</h4>
+						<TableExportMenu
+							view={directPermissionExportView}
+							disabled={permissionsQuery.isFetching}
+							compact
+						/>
+					</div>
 					{permissionsQuery.isLoading ? (
 						<div className="muted">Loading collection permissions...</div>
 					) : permissionsQuery.isError ? (
@@ -1935,7 +2103,7 @@ export function CollectionDetail({
 														>
 															{availableGroups.map((group) => (
 																<option key={group.id} value={group.id}>
-																	{group.groupname} (#{group.id})
+																	{formatScopedGroupName(group)} (#{group.id})
 																</option>
 															))}
 														</select>
@@ -2126,11 +2294,18 @@ export function CollectionDetail({
 						</div>
 					)}
 
-					<h4>Effective permissions for you</h4>
+					<div className="panel-header">
+						<h4>Effective permissions for you</h4>
+						<TableExportMenu
+							view={effectivePermissionExportView}
+							disabled={effectivePermissionsQuery.isFetching}
+							compact
+						/>
+					</div>
 					{!currentUserId ? (
 						<div className="muted">
-							Could not identify the current principal, so inherited
-							permissions cannot be shown here.
+							Could not identify the current principal, so inherited permissions
+							cannot be shown here.
 						</div>
 					) : effectivePermissionsQuery.isLoading ? (
 						<div className="muted">Loading effective permissions...</div>

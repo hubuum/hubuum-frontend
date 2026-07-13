@@ -7,6 +7,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -41,6 +42,7 @@ import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
 import { useTableSort } from "@/lib/use-table-sort";
+import type { TableExportView } from "@/lib/table-export";
 
 function IconSearch() {
 	return (
@@ -81,7 +83,9 @@ async function fetchClasses(
 	const nextCursor = response.headers.get("X-Next-Cursor");
 	const prevCursor = response.headers.get("X-Prev-Cursor");
 	const totalCountHeader = response.headers.get("X-Total-Count");
-	const totalCount = totalCountHeader ? Number.parseInt(totalCountHeader, 10) : null;
+	const totalCount = totalCountHeader
+		? Number.parseInt(totalCountHeader, 10)
+		: null;
 
 	return {
 		classes: response.data,
@@ -93,7 +97,7 @@ async function fetchClasses(
 
 async function fetchCollections(): Promise<Collection[]> {
 	const response = await getApiV1Collections(
-		{ limit: 250 },
+		{ limit: 250, include_total: false },
 		{
 			credentials: "include",
 		},
@@ -318,6 +322,30 @@ export function ClassesTable() {
 			),
 		[classes, searchTerm],
 	);
+	const exportView = useMemo<TableExportView<HubuumClassExpanded>>(
+		() => ({
+			id: "classes",
+			fileName: "classes-view",
+			sheetName: "Classes",
+			columns: [
+				{ key: "id", label: "ID", getValue: (item) => item.id },
+				{ key: "name", label: "Name", getValue: (item) => item.name },
+				{
+					key: "collection",
+					label: "Collection",
+					getValue: (item) =>
+						`${item.collection.name} (#${item.collection.id})`,
+				},
+				{
+					key: "description",
+					label: "Description",
+					getValue: (item) => item.description,
+				},
+			],
+			rows: filteredClasses,
+		}),
+		[filteredClasses],
+	);
 	const allSelected =
 		filteredClasses.length > 0 &&
 		selectedClassIds.length === filteredClasses.length;
@@ -405,7 +433,6 @@ export function ClassesTable() {
 		);
 	}
 
-
 	function renderSortIndicator(column: string) {
 		if (sortState.column !== column) {
 			return <span className="sort-indicator">⇅</span>;
@@ -471,10 +498,7 @@ export function ClassesTable() {
 							) : null}
 							{collections.map((collection) => (
 								<option key={collection.id} value={collection.id}>
-									{formatCollectionOption(
-										collection,
-										collectionHierarchy.byId,
-									)}
+									{formatCollectionOption(collection, collectionHierarchy.byId)}
 								</option>
 							))}
 						</select>
@@ -538,20 +562,24 @@ export function ClassesTable() {
 				{renderCreateClassForm()}
 			</CreateModal>
 
-			<div className="card table-wrap">
+			<div className="card resource-index">
 				<div className="table-header">
-					<div className="table-title-row">
-						<h2>Classes</h2>
-						<span className="muted table-count">
-							{searchTerm
-								? `${filteredClasses.length} shown of ${classes.length}`
-								: `${classes.length} loaded`}
-							{selectedClassIds.length
-								? ` · ${selectedClassIds.length} selected`
-								: ""}
-						</span>
+					<div className="resource-index-title">
+						<p className="eyebrow">Data model</p>
+						<div className="table-title-row">
+							<h2>Classes</h2>
+							<span className="muted table-count">
+								{searchTerm
+									? `${filteredClasses.length} shown of ${classes.length}`
+									: `${classes.length} loaded`}
+								{selectedClassIds.length
+									? ` · ${selectedClassIds.length} selected`
+									: ""}
+							</span>
+						</div>
 					</div>
 					<div className="table-tools">
+						<TableExportMenu view={exportView} compact />
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
 								<input
@@ -609,86 +637,94 @@ export function ClassesTable() {
 						}
 					/>
 				) : (
-					<table id="classes-table">
-						<thead>
-							<tr>
-								<th className="check-col">
-									<input
-										type="checkbox"
-										aria-label="Select all classes"
-										checked={allSelected}
-										onChange={(event) =>
-											shiftSelect.handleSelectAll(event.target.checked)
-										}
-									/>
-								</th>
-								<th className="sortable" onClick={() => setSort("id")}>
-									ID{renderSortIndicator("id")}
-								</th>
-								<th className="sortable" onClick={() => setSort("name")}>
-									Name{renderSortIndicator("name")}
-								</th>
-								<th
-									className="sortable"
-									onClick={() => setSort("collection_id")}
-								>
-									Collection{renderSortIndicator("collection_id")}
-								</th>
-								<th className="sortable" onClick={() => setSort("description")}>
-									Description{renderSortIndicator("description")}
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{filteredClasses.map((item, index) => {
-								const isSelected = selectedClassIds.includes(item.id);
-								const isFocused = keyboardNav.focusedId === item.id;
-								const rowClassName = [
-									isSelected ? "table-row-selected" : "",
-									isFocused ? "table-row-focused" : "",
-								]
-									.filter(Boolean)
-									.join(" ");
-
-								return (
-									<tr
-										key={item.id}
-										className={rowClassName}
-										data-table-row-index={index}
+					<div className="table-wrap">
+						<table id="classes-table">
+							<thead>
+								<tr>
+									<th className="check-col">
+										<input
+											type="checkbox"
+											aria-label="Select all classes"
+											checked={allSelected}
+											onChange={(event) =>
+												shiftSelect.handleSelectAll(event.target.checked)
+											}
+										/>
+									</th>
+									<th className="sortable" onClick={() => setSort("id")}>
+										ID{renderSortIndicator("id")}
+									</th>
+									<th className="sortable" onClick={() => setSort("name")}>
+										Name{renderSortIndicator("name")}
+									</th>
+									<th
+										className="sortable"
+										onClick={() => setSort("collection_id")}
 									>
-										<td className="check-col">
-											<input
-												type="checkbox"
-												aria-label={`Select class ${item.name}`}
-												checked={isSelected}
-												onChange={(
-													event: React.ChangeEvent<HTMLInputElement>,
-												) =>
-													shiftSelect.handleClick(
-														item.id,
-														event.target.checked,
-														(event.nativeEvent as MouseEvent).shiftKey,
-													)
-												}
-											/>
-										</td>
-										<td>{item.id}</td>
-										<td>
-											<Link href={`/classes/${item.id}`} className="row-link">
-												{item.name}
-											</Link>
-										</td>
-										<td>
-											{item.collection.name} (#{item.collection.id})
-										</td>
-										<td>{item.description || "-"}</td>
-									</tr>
-								);
-							})}
-						</tbody>
-					</table>
+										Collection{renderSortIndicator("collection_id")}
+									</th>
+									<th
+										className="sortable"
+										onClick={() => setSort("description")}
+									>
+										Description{renderSortIndicator("description")}
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{filteredClasses.map((item, index) => {
+									const isSelected = selectedClassIds.includes(item.id);
+									const isFocused = keyboardNav.focusedId === item.id;
+									const rowClassName = [
+										isSelected ? "table-row-selected" : "",
+										isFocused ? "table-row-focused" : "",
+									]
+										.filter(Boolean)
+										.join(" ");
+
+									return (
+										<tr
+											key={item.id}
+											className={rowClassName}
+											data-table-row-index={index}
+										>
+											<td className="check-col">
+												<input
+													type="checkbox"
+													aria-label={`Select class ${item.name}`}
+													checked={isSelected}
+													onChange={(
+														event: React.ChangeEvent<HTMLInputElement>,
+													) =>
+														shiftSelect.handleClick(
+															item.id,
+															event.target.checked,
+															(event.nativeEvent as MouseEvent).shiftKey,
+														)
+													}
+												/>
+											</td>
+											<td>{item.id}</td>
+											<td>
+												<Link href={`/classes/${item.id}`} className="row-link">
+													{item.name}
+												</Link>
+											</td>
+											<td>
+												{item.collection.name} (#{item.collection.id})
+											</td>
+											<td>{item.description || "-"}</td>
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
 				)}
-				{pageData && (pageData.nextCursor || pageData.prevCursor || pagination.hasPrevPage) ? (
+				{pageData &&
+				(pageData.nextCursor ||
+					pageData.prevCursor ||
+					pagination.hasPrevPage) ? (
 					<TablePagination
 						hasNextPage={!!pageData.nextCursor}
 						hasPrevPage={pagination.hasPrevPage || !!pageData.prevCursor}

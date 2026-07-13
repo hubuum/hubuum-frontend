@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useConfirm } from "@/lib/confirm-context";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamGroupsByGroupIdMembersByPrincipalId,
@@ -12,12 +12,17 @@ import {
 	getApiV1IamUsers,
 	postApiV1IamGroupsByGroupIdMembersByPrincipalId,
 } from "@/lib/api/generated/client";
-import type {
-	Group,
-	PrincipalMemberResponse,
-	UserResponse,
-} from "@/lib/api/generated/models";
+import { useConfirm } from "@/lib/confirm-context";
+import {
+	type ConsoleGroup,
+	type ConsolePrincipalMember,
+	type ConsoleUser,
+	formatScopedIdentityName,
+	isProviderManagedGroup,
+	normalizeIdentityScope,
+} from "@/lib/identity-scopes";
 import { trackRecentItem } from "@/lib/recent-items";
+import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 
 type AdminGroupDetailProps = {
 	groupId: number;
@@ -31,10 +36,10 @@ type UpdateGroupPayload = {
 type UpdateGroupResult = {
 	descriptionRequested: boolean;
 	descriptionUpdated: boolean;
-	group: Group;
+	group: ConsoleGroup;
 };
 
-async function fetchGroup(groupId: number): Promise<Group> {
+async function fetchGroup(groupId: number): Promise<ConsoleGroup> {
 	const response = await getApiV1IamGroupsByGroupId(groupId, {
 		credentials: "include",
 	});
@@ -46,10 +51,13 @@ async function fetchGroup(groupId: number): Promise<Group> {
 	return response.data;
 }
 
-async function fetchUsers(): Promise<UserResponse[]> {
-	const response = await getApiV1IamUsers(undefined, {
-		credentials: "include",
-	});
+async function fetchUsers(): Promise<ConsoleUser[]> {
+	const response = await getApiV1IamUsers(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(getApiErrorMessage(response.data, "Failed to load users."));
@@ -60,10 +68,14 @@ async function fetchUsers(): Promise<UserResponse[]> {
 
 async function fetchGroupMembers(
 	groupId: number,
-): Promise<PrincipalMemberResponse[]> {
-	const response = await getApiV1IamGroupsByGroupIdMembers(groupId, undefined, {
-		credentials: "include",
-	});
+): Promise<ConsolePrincipalMember[]> {
+	const response = await getApiV1IamGroupsByGroupIdMembers(
+		groupId,
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -108,7 +120,7 @@ async function updateGroup(
 		return {
 			descriptionRequested: payload.description !== undefined,
 			descriptionUpdated: payload.description !== undefined,
-			group: responsePayload as Group,
+			group: responsePayload as ConsoleGroup,
 		};
 	}
 
@@ -130,7 +142,7 @@ async function updateGroup(
 			return {
 				descriptionRequested: true,
 				descriptionUpdated: false,
-				group: fallbackPayload as Group,
+				group: fallbackPayload as ConsoleGroup,
 			};
 		}
 
@@ -144,14 +156,14 @@ async function updateGroup(
 	);
 }
 
-function formatUserOption(user: UserResponse): string {
-	return `${user.name} (#${user.id})${user.email ? ` - ${user.email}` : ""}`;
+function formatUserOption(user: ConsoleUser): string {
+	return `${formatScopedIdentityName(user.identity_scope, user.name)} (#${user.id})${user.email ? ` - ${user.email}` : ""}`;
 }
 
 function resolveUserFromInput(
 	input: string,
-	availableUsers: UserResponse[],
-): UserResponse | null {
+	availableUsers: ConsoleUser[],
+): ConsoleUser | null {
 	const trimmed = input.trim();
 	if (!trimmed) {
 		return null;
@@ -186,11 +198,20 @@ function resolveUserFromInput(
 		}
 	}
 
-	const matchedByUsername = availableUsers.find(
+	const matchedByScopedName = availableUsers.find(
+		(user) =>
+			formatScopedIdentityName(user.identity_scope, user.name).toLowerCase() ===
+			normalized,
+	);
+	if (matchedByScopedName) {
+		return matchedByScopedName;
+	}
+
+	const usernameMatches = availableUsers.filter(
 		(user) => user.name.toLowerCase() === normalized,
 	);
-	if (matchedByUsername) {
-		return matchedByUsername;
+	if (usernameMatches.length === 1) {
+		return usernameMatches[0];
 	}
 
 	return (
@@ -199,6 +220,26 @@ function resolveUserFromInput(
 		) ?? null
 	);
 }
+
+const memberExportColumns: TableExportColumn<ConsolePrincipalMember>[] = [
+	{
+		key: "id",
+		label: "ID",
+		getValue: (member) => member.principal_id,
+	},
+	{ key: "name", label: "Name", getValue: (member) => member.name },
+	{
+		key: "identity_scope",
+		label: "Identity scope",
+		getValue: (member) => normalizeIdentityScope(member.identity_scope),
+	},
+	{
+		key: "kind",
+		label: "Kind",
+		getValue: (member) =>
+			member.kind === "service_account" ? "Service account" : "Human",
+	},
+];
 
 export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	const queryClient = useQueryClient();
@@ -248,7 +289,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		trackRecentItem({
 			type: "admin-group",
 			id: group.id,
-			name: group.groupname,
+			name: formatScopedIdentityName(group.identity_scope, group.groupname),
 		});
 	}, [groupQuery.data]);
 
@@ -404,6 +445,10 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		event.preventDefault();
 		setFormError(null);
 		setFormSuccess(null);
+		if (groupQuery.data && isProviderManagedGroup(groupQuery.data)) {
+			setFormError("Provider-managed groups are read-only in Hubuum.");
+			return;
+		}
 
 		const trimmedGroupname = groupname.trim();
 		if (!trimmedGroupname) {
@@ -425,6 +470,12 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	}
 
 	function addMember() {
+		if (groupQuery.data && isProviderManagedGroup(groupQuery.data)) {
+			setMembershipError(
+				"Provider-managed group memberships are read-only in Hubuum.",
+			);
+			return;
+		}
 		if (addMemberMutation.isPending || removeMemberMutation.isPending) {
 			return;
 		}
@@ -444,6 +495,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	}
 
 	function toggleAllMembers(checked: boolean) {
+		if (groupQuery.data && isProviderManagedGroup(groupQuery.data)) return;
 		if (checked) {
 			setSelectedMemberIds(members.map((member) => member.principal_id));
 			return;
@@ -453,6 +505,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	}
 
 	function toggleMember(userId: number, checked: boolean) {
+		if (groupQuery.data && isProviderManagedGroup(groupQuery.data)) return;
 		setSelectedMemberIds((current) => {
 			if (checked) {
 				return current.includes(userId) ? current : [...current, userId];
@@ -463,6 +516,12 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	}
 
 	async function removeSelectedMembers() {
+		if (groupQuery.data && isProviderManagedGroup(groupQuery.data)) {
+			setMembershipError(
+				"Provider-managed group memberships are read-only in Hubuum.",
+			);
+			return;
+		}
 		if (addMemberMutation.isPending || removeMemberMutation.isPending) {
 			return;
 		}
@@ -507,16 +566,25 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	if (!group) {
 		return <div className="card error-banner">Group data is unavailable.</div>;
 	}
+	const providerManaged = isProviderManagedGroup(group);
 
 	const isMembershipUpdating =
 		addMemberMutation.isPending || removeMemberMutation.isPending;
+	const memberExportView: TableExportView<ConsolePrincipalMember> = {
+		id: `admin.group.${group.id}.members`,
+		fileName: `${group.groupname}-members-view`,
+		sheetName: "Group members",
+		columns: memberExportColumns,
+		rows: members,
+	};
 
 	return (
 		<section className="stack">
 			<header className="detail-identity">
 				<div className="scope-heading">
 					<h2>
-						{group.groupname} <span className="muted">#{group.id}</span>
+						{formatScopedIdentityName(group.identity_scope, group.groupname)}{" "}
+						<span className="muted">#{group.id}</span>
 					</h2>
 					<Link className="link-chip" href="/admin/groups">
 						Back to groups
@@ -524,6 +592,13 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 				</div>
 				<p className="detail-title-meta">Admin group</p>
 			</header>
+
+			{providerManaged ? (
+				<div className="info-banner">
+					This group and its memberships are managed by {group.managed_by}. Make
+					changes in the source directory.
+				</div>
+			) : null}
 
 			<form className="card stack" onSubmit={onSubmit}>
 				<h3>Group profile</h3>
@@ -535,6 +610,16 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 							required
 							value={groupname}
 							onChange={(event) => setGroupname(event.target.value)}
+							disabled={providerManaged}
+						/>
+					</label>
+
+					<label className="control-field">
+						<span>Identity scope</span>
+						<input
+							value={normalizeIdentityScope(group.identity_scope)}
+							readOnly
+							disabled
 						/>
 					</label>
 
@@ -543,6 +628,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 						<input
 							value={description}
 							onChange={(event) => setDescription(event.target.value)}
+							disabled={providerManaged}
 						/>
 					</label>
 				</div>
@@ -551,7 +637,10 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 				{formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
 				<div className="form-actions">
-					<button type="submit" disabled={updateMutation.isPending}>
+					<button
+						type="submit"
+						disabled={providerManaged || updateMutation.isPending}
+					>
 						{updateMutation.isPending ? "Saving..." : "Save changes"}
 					</button>
 				</div>
@@ -569,6 +658,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 							onChange={(event) => setMemberInput(event.target.value)}
 							placeholder="Type username, email, or user ID"
 							disabled={
+								providerManaged ||
 								usersQuery.isLoading ||
 								usersQuery.isError ||
 								isMembershipUpdating ||
@@ -588,6 +678,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 						type="button"
 						onClick={addMember}
 						disabled={
+							providerManaged ||
 							usersQuery.isLoading ||
 							usersQuery.isError ||
 							isMembershipUpdating ||
@@ -597,9 +688,11 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 						{addMemberMutation.isPending ? "Adding..." : "Add member"}
 					</button>
 					<span className="muted">
-						{usersNotInGroup.length === 0
-							? "All users are already members."
-							: `${usersNotInGroup.length} user${usersNotInGroup.length === 1 ? "" : "s"} available to add.`}
+						{providerManaged
+							? "Membership is synchronized from the identity provider."
+							: usersNotInGroup.length === 0
+								? "All users are already members."
+								: `${usersNotInGroup.length} user${usersNotInGroup.length === 1 ? "" : "s"} available to add.`}
 					</span>
 				</div>
 
@@ -634,10 +727,15 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 				) : null}
 
 				{!membersQuery.isLoading && members.length > 0 ? (
-					<div className="table-wrap">
+					<>
 						<div className="table-header">
 							<h4>Current members</h4>
 							<div className="table-tools">
+								<TableExportMenu
+									view={memberExportView}
+									disabled={membersQuery.isFetching}
+									compact
+								/>
 								<span className="muted">
 									{selectedMemberIds.length
 										? `${selectedMemberIds.length} selected`
@@ -648,7 +746,9 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 									className="danger"
 									onClick={removeSelectedMembers}
 									disabled={
-										isMembershipUpdating || selectedMemberIds.length === 0
+										providerManaged ||
+										isMembershipUpdating ||
+										selectedMemberIds.length === 0
 									}
 								>
 									{removeMemberMutation.isPending
@@ -657,57 +757,62 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 								</button>
 							</div>
 						</div>
-						<table>
-							<thead>
-								<tr>
-									<th className="check-col">
-										<input
-											type="checkbox"
-											aria-label="Select all members"
-											checked={allMembersSelected}
-											onChange={(event) =>
-												toggleAllMembers(event.target.checked)
-											}
-										/>
-									</th>
-									<th>ID</th>
-									<th>Name</th>
-									<th>Kind</th>
-								</tr>
-							</thead>
-							<tbody>
-								{members.map((member) => (
-									<tr key={member.principal_id}>
-										<td className="check-col">
+						<div className="table-wrap">
+							<table>
+								<thead>
+									<tr>
+										<th className="check-col">
 											<input
 												type="checkbox"
-												aria-label={`Select member ${member.name}`}
-												checked={selectedMemberIds.includes(
-													member.principal_id,
-												)}
+												aria-label="Select all members"
+												checked={allMembersSelected}
 												onChange={(event) =>
-													toggleMember(
-														member.principal_id,
-														event.target.checked,
-													)
+													toggleAllMembers(event.target.checked)
 												}
-												disabled={isMembershipUpdating}
+												disabled={providerManaged}
 											/>
-										</td>
-										<td>{member.principal_id}</td>
-										<td>{member.name}</td>
-										<td>
-											<span className="badge">
-												{member.kind === "service_account"
-													? "Service account"
-													: "Human"}
-											</span>
-										</td>
+										</th>
+										<th>ID</th>
+										<th>Scope</th>
+										<th>Name</th>
+										<th>Kind</th>
 									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
+								</thead>
+								<tbody>
+									{members.map((member) => (
+										<tr key={member.principal_id}>
+											<td className="check-col">
+												<input
+													type="checkbox"
+													aria-label={`Select member ${member.name}`}
+													checked={selectedMemberIds.includes(
+														member.principal_id,
+													)}
+													onChange={(event) =>
+														toggleMember(
+															member.principal_id,
+															event.target.checked,
+														)
+													}
+													disabled={providerManaged || isMembershipUpdating}
+												/>
+											</td>
+											<td>{member.principal_id}</td>
+											<td>{normalizeIdentityScope(member.identity_scope)}</td>
+											<td>{member.name}</td>
+											<td>
+												<span className="badge">
+													{member.kind === "service_account"
+														? "Service account"
+														: "Human"}
+												</span>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</>
 				) : null}
 			</section>
 		</section>

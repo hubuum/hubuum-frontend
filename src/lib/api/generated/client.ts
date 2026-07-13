@@ -7,6 +7,7 @@
  */
 import type {
   ApiErrorResponse,
+  AuthProvidersResponse,
   ClearRateLimitResponse,
   Collection,
   CountsResponse,
@@ -67,8 +68,8 @@ import type {
   GetApiV1SearchParams,
   GetApiV1SearchStreamParams,
   GetApiV1TasksParams,
-  Group,
   GroupPermission,
+  GroupResponse,
   HistoryResponseCollectionHistory,
   HistoryResponseExportTemplateHistory,
   HistoryResponseHubuumClassHistory,
@@ -106,6 +107,7 @@ import type {
   Permissions,
   PrincipalCollectionPermissions,
   PrincipalMemberResponse,
+  PrincipalSettings,
   PrincipalTokenMetadata,
   ProbeResponse,
   RelatedClassGraph,
@@ -113,6 +115,7 @@ import type {
   ReleaseRateLimitResponse,
   RemoteTarget,
   RemoteTargetInvokeRequest,
+  RunningConfig,
   ServiceAccountResponse,
   TaskEventResponse,
   TaskQueueStateResponse,
@@ -412,6 +415,56 @@ export const postApiV0AuthLogoutAll = async ( options?: RequestInit): Promise<po
 
   const data: postApiV0AuthLogoutAllResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV0AuthLogoutAllResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v0/auth/providers.
+ * @summary Get Api V0 Auth Providers
+ */
+export type getApiV0AuthProvidersResponse200 = {
+  data: AuthProvidersResponse
+  status: 200
+}
+
+export type getApiV0AuthProvidersResponse500 = {
+  data: ApiErrorResponse
+  status: 500
+}
+
+export type getApiV0AuthProvidersResponseSuccess = (getApiV0AuthProvidersResponse200) & {
+  headers: Headers;
+};
+export type getApiV0AuthProvidersResponseError = (getApiV0AuthProvidersResponse500) & {
+  headers: Headers;
+};
+
+export type getApiV0AuthProvidersResponse = (getApiV0AuthProvidersResponseSuccess | getApiV0AuthProvidersResponseError)
+
+export const getGetApiV0AuthProvidersUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v0/auth/providers`
+}
+
+export const getApiV0AuthProviders = async ( options?: RequestInit): Promise<getApiV0AuthProvidersResponse> => {
+
+  const res = await fetch(getGetApiV0AuthProvidersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV0AuthProvidersResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV0AuthProvidersResponse
 }
 
 
@@ -814,7 +867,62 @@ export const getApiV0MetaTasks = async ( options?: RequestInit): Promise<getApiV
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/admin/config.
+ * @summary Get Api V1 Admin Config
+ */
+export type getApiV1AdminConfigResponse200 = {
+  data: RunningConfig
+  status: 200
+}
+
+export type getApiV1AdminConfigResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1AdminConfigResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1AdminConfigResponseSuccess = (getApiV1AdminConfigResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AdminConfigResponseError = (getApiV1AdminConfigResponse401 | getApiV1AdminConfigResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1AdminConfigResponse = (getApiV1AdminConfigResponseSuccess | getApiV1AdminConfigResponseError)
+
+export const getGetApiV1AdminConfigUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/config`
+}
+
+export const getApiV1AdminConfig = async ( options?: RequestInit): Promise<getApiV1AdminConfigResponse> => {
+
+  const res = await fetch(getGetApiV1AdminConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AdminConfigResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AdminConfigResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes
  */
 export type getApiV1ClassesResponse200 = {
@@ -1109,7 +1217,7 @@ export const patchApiV1ClassesByClassId = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Trailing
  */
 export type getApiV1ClassesByClassIdTrailingResponse200 = {
@@ -1304,7 +1412,7 @@ export const getApiV1ClassesByClassIdEvents = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id History
  */
 export type getApiV1ClassesByClassIdHistoryResponse200 = {
@@ -1509,7 +1617,7 @@ export const getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraph = async (clas
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Objects By Object Id Related Objects
  */
 export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsResponse200 = {
@@ -1580,7 +1688,7 @@ export const getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjects = async (cl
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Objects By Object Id Related Relations
  */
 export type getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsResponse200 = {
@@ -1651,7 +1759,7 @@ export const getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelations = async (
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Permissions
  */
 export type getApiV1ClassesByClassIdPermissionsResponse200 = {
@@ -1715,7 +1823,7 @@ export const getApiV1ClassesByClassIdPermissions = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/related/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/related/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Related Classes
  */
 export type getApiV1ClassesByClassIdRelatedClassesResponse200 = {
@@ -1844,7 +1952,7 @@ export const getApiV1ClassesByClassIdRelatedGraph = async (classId: number, opti
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Related Relations
  */
 export type getApiV1ClassesByClassIdRelatedRelationsResponse200 = {
@@ -2474,7 +2582,7 @@ export const getApiV1ClassesByClassIdByObjectIdEvents = async (classId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id By Object Id History
  */
 export type getApiV1ClassesByClassIdByObjectIdHistoryResponse200 = {
@@ -2621,7 +2729,7 @@ export const getApiV1ClassesByClassIdByObjectIdHistoryAsOf = async (classId: num
 
 
 /**
- * Auto-generated documentation for GET /api/v1/collections. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/collections. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Collections
  */
 export type getApiV1CollectionsResponse200 = {
@@ -3420,11 +3528,11 @@ export const getApiV1CollectionsByCollectionIdEvents = async (collectionId: numb
 
 
 /**
- * Auto-generated documentation for GET /api/v1/collections/{collection_id}/has_permissions/{permission}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/has_permissions/{permission}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List all groups that have any permissions on a collection
  */
 export type getApiV1CollectionsByCollectionIdHasPermissionsByPermissionResponse200 = {
-  data: Group[]
+  data: GroupResponse[]
   status: 200
 }
 
@@ -3486,7 +3594,7 @@ export const getApiV1CollectionsByCollectionIdHasPermissionsByPermission = async
 
 
 /**
- * Auto-generated documentation for GET /api/v1/collections/{collection_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Collections By Collection Id History
  */
 export type getApiV1CollectionsByCollectionIdHistoryResponse200 = {
@@ -3701,7 +3809,7 @@ export const putApiV1CollectionsByCollectionIdParent = async (collectionId: numb
 
 
 /**
- * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List all groups who have permissions for a collection
  */
 export type getApiV1CollectionsByCollectionIdPermissionsResponse200 = {
@@ -4304,7 +4412,7 @@ export const deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPerm
 
 
 /**
- * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/principal/{principal_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/principal/{principal_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List all permissions for a principal on a collection
  */
 export type getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdResponse200 = {
@@ -5057,7 +5165,7 @@ export const getApiV1Events = async (params?: GetApiV1EventsParams, options?: Re
 
 
 /**
- * Auto-generated documentation for GET /api/v1/export-templates. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/export-templates. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Export Templates
  */
 export type getApiV1ExportTemplatesResponse200 = {
@@ -5518,7 +5626,7 @@ export const postApiV1ExportTemplatesByTemplateIdExports = async (templateId: nu
 
 
 /**
- * Auto-generated documentation for GET /api/v1/export-templates/{template_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/export-templates/{template_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Export Templates By Template Id History
  */
 export type getApiV1ExportTemplatesByTemplateIdHistoryResponse200 = {
@@ -5857,11 +5965,11 @@ export const getApiV1ExportsByTaskIdOutput = async (taskId: number, options?: Re
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Groups
  */
 export type getApiV1IamGroupsResponse200 = {
-  data: Group[]
+  data: GroupResponse[]
   status: 200
 }
 
@@ -5923,7 +6031,7 @@ export const getApiV1IamGroups = async (params?: GetApiV1IamGroupsParams, option
  * @summary Post Api V1 Iam Groups
  */
 export type postApiV1IamGroupsResponse201 = {
-  data: Group
+  data: GroupResponse
   status: 201
 }
 
@@ -5984,7 +6092,7 @@ export const postApiV1IamGroups = async (newGroup: NewGroup, options?: RequestIn
  * @summary Get Api V1 Iam Groups By Group Id
  */
 export type getApiV1IamGroupsByGroupIdResponse200 = {
-  data: Group
+  data: GroupResponse
   status: 200
 }
 
@@ -6048,6 +6156,11 @@ export type deleteApiV1IamGroupsByGroupIdResponse401 = {
   status: 401
 }
 
+export type deleteApiV1IamGroupsByGroupIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
 export type deleteApiV1IamGroupsByGroupIdResponse404 = {
   data: ApiErrorResponse
   status: 404
@@ -6061,7 +6174,7 @@ export type deleteApiV1IamGroupsByGroupIdResponse409 = {
 export type deleteApiV1IamGroupsByGroupIdResponseSuccess = (deleteApiV1IamGroupsByGroupIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamGroupsByGroupIdResponseError = (deleteApiV1IamGroupsByGroupIdResponse401 | deleteApiV1IamGroupsByGroupIdResponse404 | deleteApiV1IamGroupsByGroupIdResponse409) & {
+export type deleteApiV1IamGroupsByGroupIdResponseError = (deleteApiV1IamGroupsByGroupIdResponse401 | deleteApiV1IamGroupsByGroupIdResponse403 | deleteApiV1IamGroupsByGroupIdResponse404 | deleteApiV1IamGroupsByGroupIdResponse409) & {
   headers: Headers;
 };
 
@@ -6099,7 +6212,7 @@ export const deleteApiV1IamGroupsByGroupId = async (groupId: number, options?: R
  * @summary Patch Api V1 Iam Groups By Group Id
  */
 export type patchApiV1IamGroupsByGroupIdResponse200 = {
-  data: Group
+  data: GroupResponse
   status: 200
 }
 
@@ -6113,6 +6226,11 @@ export type patchApiV1IamGroupsByGroupIdResponse401 = {
   status: 401
 }
 
+export type patchApiV1IamGroupsByGroupIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
 export type patchApiV1IamGroupsByGroupIdResponse404 = {
   data: ApiErrorResponse
   status: 404
@@ -6121,7 +6239,7 @@ export type patchApiV1IamGroupsByGroupIdResponse404 = {
 export type patchApiV1IamGroupsByGroupIdResponseSuccess = (patchApiV1IamGroupsByGroupIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1IamGroupsByGroupIdResponseError = (patchApiV1IamGroupsByGroupIdResponse400 | patchApiV1IamGroupsByGroupIdResponse401 | patchApiV1IamGroupsByGroupIdResponse404) & {
+export type patchApiV1IamGroupsByGroupIdResponseError = (patchApiV1IamGroupsByGroupIdResponse400 | patchApiV1IamGroupsByGroupIdResponse401 | patchApiV1IamGroupsByGroupIdResponse403 | patchApiV1IamGroupsByGroupIdResponse404) & {
   headers: Headers;
 };
 
@@ -6221,7 +6339,7 @@ export const getApiV1IamGroupsByGroupIdEvents = async (groupId: number,
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/members. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/members. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Groups By Group Id Members
  */
 export type getApiV1IamGroupsByGroupIdMembersResponse200 = {
@@ -6449,11 +6567,11 @@ export const getApiV1IamMe = async ( options?: RequestInit): Promise<getApiV1Iam
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/me/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/me/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Me Groups
  */
 export type getApiV1IamMeGroupsResponse200 = {
-  data: Group[]
+  data: GroupResponse[]
   status: 200
 }
 
@@ -6556,7 +6674,219 @@ export const getApiV1IamMePermissions = async ( options?: RequestInit): Promise<
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/me/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/me/settings.
+ * @summary Get Api V1 Iam Me Settings
+ */
+export type getApiV1IamMeSettingsResponse200 = {
+  data: PrincipalSettings
+  status: 200
+}
+
+export type getApiV1IamMeSettingsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamMeSettingsResponseSuccess = (getApiV1IamMeSettingsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMeSettingsResponseError = (getApiV1IamMeSettingsResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMeSettingsResponse = (getApiV1IamMeSettingsResponseSuccess | getApiV1IamMeSettingsResponseError)
+
+export const getGetApiV1IamMeSettingsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/settings`
+}
+
+export const getApiV1IamMeSettings = async ( options?: RequestInit): Promise<getApiV1IamMeSettingsResponse> => {
+
+  const res = await fetch(getGetApiV1IamMeSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1IamMeSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMeSettingsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for PUT /api/v1/iam/me/settings.
+ * @summary Put Api V1 Iam Me Settings
+ */
+export type putApiV1IamMeSettingsResponse200 = {
+  data: PrincipalSettings
+  status: 200
+}
+
+export type putApiV1IamMeSettingsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type putApiV1IamMeSettingsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type putApiV1IamMeSettingsResponseSuccess = (putApiV1IamMeSettingsResponse200) & {
+  headers: Headers;
+};
+export type putApiV1IamMeSettingsResponseError = (putApiV1IamMeSettingsResponse400 | putApiV1IamMeSettingsResponse401) & {
+  headers: Headers;
+};
+
+export type putApiV1IamMeSettingsResponse = (putApiV1IamMeSettingsResponseSuccess | putApiV1IamMeSettingsResponseError)
+
+export const getPutApiV1IamMeSettingsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/settings`
+}
+
+export const putApiV1IamMeSettings = async (principalSettings: PrincipalSettings, options?: RequestInit): Promise<putApiV1IamMeSettingsResponse> => {
+
+  const res = await fetch(getPutApiV1IamMeSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      principalSettings,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1IamMeSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1IamMeSettingsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/iam/me/settings.
+ * @summary Delete Api V1 Iam Me Settings
+ */
+export type deleteApiV1IamMeSettingsResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1IamMeSettingsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1IamMeSettingsResponseSuccess = (deleteApiV1IamMeSettingsResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1IamMeSettingsResponseError = (deleteApiV1IamMeSettingsResponse401) & {
+  headers: Headers;
+};
+
+export type deleteApiV1IamMeSettingsResponse = (deleteApiV1IamMeSettingsResponseSuccess | deleteApiV1IamMeSettingsResponseError)
+
+export const getDeleteApiV1IamMeSettingsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/settings`
+}
+
+export const deleteApiV1IamMeSettings = async ( options?: RequestInit): Promise<deleteApiV1IamMeSettingsResponse> => {
+
+  const res = await fetch(getDeleteApiV1IamMeSettingsUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1IamMeSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1IamMeSettingsResponse
+}
+
+
+
+/**
+ * Applies an object-only JSON Merge Patch to the current principal settings. Object values merge recursively; a `null` value removes its key; arrays, strings, numbers, and booleans replace the existing value. An object patch applied to a missing or non-object value starts from an empty object. The document root must be an object. Use PUT, rather than PATCH, when a setting itself must retain a null value.
+ * @summary Patch Api V1 Iam Me Settings
+ */
+export type patchApiV1IamMeSettingsResponse200 = {
+  data: PrincipalSettings
+  status: 200
+}
+
+export type patchApiV1IamMeSettingsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1IamMeSettingsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1IamMeSettingsResponseSuccess = (patchApiV1IamMeSettingsResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1IamMeSettingsResponseError = (patchApiV1IamMeSettingsResponse400 | patchApiV1IamMeSettingsResponse401) & {
+  headers: Headers;
+};
+
+export type patchApiV1IamMeSettingsResponse = (patchApiV1IamMeSettingsResponseSuccess | patchApiV1IamMeSettingsResponseError)
+
+export const getPatchApiV1IamMeSettingsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/settings`
+}
+
+export const patchApiV1IamMeSettings = async (principalSettings: PrincipalSettings, options?: RequestInit): Promise<patchApiV1IamMeSettingsResponse> => {
+
+  const res = await fetch(getPatchApiV1IamMeSettingsUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      principalSettings,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1IamMeSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1IamMeSettingsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Me Tokens
  */
 export type getApiV1IamMeTokensResponse200 = {
@@ -6618,11 +6948,11 @@ export const getApiV1IamMeTokens = async (params?: GetApiV1IamMeTokensParams, op
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Principals By Principal Id Groups
  */
 export type getApiV1IamPrincipalsByPrincipalIdGroupsResponse200 = {
-  data: Group[]
+  data: GroupResponse[]
   status: 200
 }
 
@@ -6737,7 +7067,241 @@ export const getApiV1IamPrincipalsByPrincipalIdPermissions = async (principalId:
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/settings.
+ * @summary Get Api V1 Iam Principals By Principal Id Settings
+ */
+export type getApiV1IamPrincipalsByPrincipalIdSettingsResponse200 = {
+  data: PrincipalSettings
+  status: 200
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdSettingsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdSettingsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess = (getApiV1IamPrincipalsByPrincipalIdSettingsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamPrincipalsByPrincipalIdSettingsResponseError = (getApiV1IamPrincipalsByPrincipalIdSettingsResponse401 | getApiV1IamPrincipalsByPrincipalIdSettingsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1IamPrincipalsByPrincipalIdSettingsResponse = (getApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess | getApiV1IamPrincipalsByPrincipalIdSettingsResponseError)
+
+export const getGetApiV1IamPrincipalsByPrincipalIdSettingsUrl = (principalId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/settings`
+}
+
+export const getApiV1IamPrincipalsByPrincipalIdSettings = async (principalId: number, options?: RequestInit): Promise<getApiV1IamPrincipalsByPrincipalIdSettingsResponse> => {
+
+  const res = await fetch(getGetApiV1IamPrincipalsByPrincipalIdSettingsUrl(principalId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1IamPrincipalsByPrincipalIdSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamPrincipalsByPrincipalIdSettingsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for PUT /api/v1/iam/principals/{principal_id}/settings.
+ * @summary Put Api V1 Iam Principals By Principal Id Settings
+ */
+export type putApiV1IamPrincipalsByPrincipalIdSettingsResponse200 = {
+  data: PrincipalSettings
+  status: 200
+}
+
+export type putApiV1IamPrincipalsByPrincipalIdSettingsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type putApiV1IamPrincipalsByPrincipalIdSettingsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type putApiV1IamPrincipalsByPrincipalIdSettingsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type putApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess = (putApiV1IamPrincipalsByPrincipalIdSettingsResponse200) & {
+  headers: Headers;
+};
+export type putApiV1IamPrincipalsByPrincipalIdSettingsResponseError = (putApiV1IamPrincipalsByPrincipalIdSettingsResponse400 | putApiV1IamPrincipalsByPrincipalIdSettingsResponse401 | putApiV1IamPrincipalsByPrincipalIdSettingsResponse404) & {
+  headers: Headers;
+};
+
+export type putApiV1IamPrincipalsByPrincipalIdSettingsResponse = (putApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess | putApiV1IamPrincipalsByPrincipalIdSettingsResponseError)
+
+export const getPutApiV1IamPrincipalsByPrincipalIdSettingsUrl = (principalId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/settings`
+}
+
+export const putApiV1IamPrincipalsByPrincipalIdSettings = async (principalId: number,
+    principalSettings: PrincipalSettings, options?: RequestInit): Promise<putApiV1IamPrincipalsByPrincipalIdSettingsResponse> => {
+
+  const res = await fetch(getPutApiV1IamPrincipalsByPrincipalIdSettingsUrl(principalId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      principalSettings,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1IamPrincipalsByPrincipalIdSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1IamPrincipalsByPrincipalIdSettingsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/iam/principals/{principal_id}/settings.
+ * @summary Delete Api V1 Iam Principals By Principal Id Settings
+ */
+export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess = (deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponseError = (deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse401 | deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse = (deleteApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess | deleteApiV1IamPrincipalsByPrincipalIdSettingsResponseError)
+
+export const getDeleteApiV1IamPrincipalsByPrincipalIdSettingsUrl = (principalId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/settings`
+}
+
+export const deleteApiV1IamPrincipalsByPrincipalIdSettings = async (principalId: number, options?: RequestInit): Promise<deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse> => {
+
+  const res = await fetch(getDeleteApiV1IamPrincipalsByPrincipalIdSettingsUrl(principalId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse
+}
+
+
+
+/**
+ * Applies an object-only JSON Merge Patch to the target principal settings. Object values merge recursively; a `null` value removes its key; arrays, strings, numbers, and booleans replace the existing value. An object patch applied to a missing or non-object value starts from an empty object. The document root must be an object. Use PUT, rather than PATCH, when a setting itself must retain a null value.
+ * @summary Patch Api V1 Iam Principals By Principal Id Settings
+ */
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse200 = {
+  data: PrincipalSettings
+  status: 200
+}
+
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess = (patchApiV1IamPrincipalsByPrincipalIdSettingsResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponseError = (patchApiV1IamPrincipalsByPrincipalIdSettingsResponse400 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse401 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse404) & {
+  headers: Headers;
+};
+
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse = (patchApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess | patchApiV1IamPrincipalsByPrincipalIdSettingsResponseError)
+
+export const getPatchApiV1IamPrincipalsByPrincipalIdSettingsUrl = (principalId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/settings`
+}
+
+export const patchApiV1IamPrincipalsByPrincipalIdSettings = async (principalId: number,
+    principalSettings: PrincipalSettings, options?: RequestInit): Promise<patchApiV1IamPrincipalsByPrincipalIdSettingsResponse> => {
+
+  const res = await fetch(getPatchApiV1IamPrincipalsByPrincipalIdSettingsUrl(principalId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      principalSettings,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1IamPrincipalsByPrincipalIdSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1IamPrincipalsByPrincipalIdSettingsResponse
+}
+
+
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Principals By Principal Id Tokens
  */
 export type getApiV1IamPrincipalsByPrincipalIdTokensResponse200 = {
@@ -6930,7 +7494,7 @@ export const postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevoke = async (p
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/service-accounts. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/service-accounts. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Service Accounts
  */
 export type getApiV1IamServiceAccountsResponse200 = {
@@ -7295,7 +7859,7 @@ export const postApiV1IamServiceAccountsByServiceAccountIdDisable = async (servi
 
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/users. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/iam/users. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Users
  */
 export type getApiV1IamUsersResponse200 = {
@@ -7496,6 +8060,11 @@ export type deleteApiV1IamUsersByUserIdResponse401 = {
   status: 401
 }
 
+export type deleteApiV1IamUsersByUserIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
 export type deleteApiV1IamUsersByUserIdResponse404 = {
   data: ApiErrorResponse
   status: 404
@@ -7504,7 +8073,7 @@ export type deleteApiV1IamUsersByUserIdResponse404 = {
 export type deleteApiV1IamUsersByUserIdResponseSuccess = (deleteApiV1IamUsersByUserIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamUsersByUserIdResponseError = (deleteApiV1IamUsersByUserIdResponse401 | deleteApiV1IamUsersByUserIdResponse404) & {
+export type deleteApiV1IamUsersByUserIdResponseError = (deleteApiV1IamUsersByUserIdResponse401 | deleteApiV1IamUsersByUserIdResponse403 | deleteApiV1IamUsersByUserIdResponse404) & {
   headers: Headers;
 };
 
@@ -7556,6 +8125,11 @@ export type patchApiV1IamUsersByUserIdResponse401 = {
   status: 401
 }
 
+export type patchApiV1IamUsersByUserIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
 export type patchApiV1IamUsersByUserIdResponse404 = {
   data: ApiErrorResponse
   status: 404
@@ -7564,7 +8138,7 @@ export type patchApiV1IamUsersByUserIdResponse404 = {
 export type patchApiV1IamUsersByUserIdResponseSuccess = (patchApiV1IamUsersByUserIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1IamUsersByUserIdResponseError = (patchApiV1IamUsersByUserIdResponse400 | patchApiV1IamUsersByUserIdResponse401 | patchApiV1IamUsersByUserIdResponse404) & {
+export type patchApiV1IamUsersByUserIdResponseError = (patchApiV1IamUsersByUserIdResponse400 | patchApiV1IamUsersByUserIdResponse401 | patchApiV1IamUsersByUserIdResponse403 | patchApiV1IamUsersByUserIdResponse404) & {
   headers: Headers;
 };
 
@@ -7747,10 +8321,15 @@ export type postApiV1ImportsResponse409 = {
   status: 409
 }
 
+export type postApiV1ImportsResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
 export type postApiV1ImportsResponseSuccess = (postApiV1ImportsResponse202) & {
   headers: Headers;
 };
-export type postApiV1ImportsResponseError = (postApiV1ImportsResponse400 | postApiV1ImportsResponse401 | postApiV1ImportsResponse409) & {
+export type postApiV1ImportsResponseError = (postApiV1ImportsResponse400 | postApiV1ImportsResponse401 | postApiV1ImportsResponse409 | postApiV1ImportsResponse429) & {
   headers: Headers;
 };
 
@@ -7905,7 +8484,7 @@ export const getApiV1ImportsByTaskIdResults = async (taskId: number, options?: R
 
 
 /**
- * Auto-generated documentation for GET /api/v1/relations/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/relations/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Relations Classes
  */
 export type getApiV1RelationsClassesResponse200 = {
@@ -8138,7 +8717,7 @@ export const deleteApiV1RelationsClassesByRelationId = async (relationId: number
 
 
 /**
- * Auto-generated documentation for GET /api/v1/relations/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/relations/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Relations Objects
  */
 export type getApiV1RelationsObjectsResponse200 = {
@@ -8492,7 +9071,7 @@ export const postApiV1RemoteTargets = async (newRemoteTarget: NewRemoteTarget, o
 
 
 /**
- * Auto-generated documentation for GET /api/v1/remote-targets/{remote_target_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/remote-targets/{remote_target_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Remote Targets By Remote Target Id History
  */
 export type getApiV1RemoteTargetsByRemoteTargetIdHistoryResponse200 = {
@@ -9087,7 +9666,7 @@ export const getApiV1SearchStream = async (params: GetApiV1SearchStreamParams, o
 
 
 /**
- * Auto-generated documentation for GET /api/v1/tasks. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Auto-generated documentation for GET /api/v1/tasks. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Tasks
  */
 export type getApiV1TasksResponse200 = {

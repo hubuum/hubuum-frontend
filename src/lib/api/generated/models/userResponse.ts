@@ -15,8 +15,15 @@ export interface UserResponse {
   /** @nullable */
   email?: string | null;
   id: number;
+  identity_scope: string;
+  /** @nullable */
+  last_sync_attempted_at?: string | null;
+  /** @nullable */
+  last_sync_success_at?: string | null;
   name: string;
   /** @nullable */
   proper_name?: string | null;
+  provider_kind: string;
+  provider_managed: boolean;
   updated_at: string;
 }

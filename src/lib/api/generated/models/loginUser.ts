@@ -12,6 +12,8 @@
 The password is expected to be plaintext. `name` is the principal name.
  */
 export interface LoginUser {
+  /** @nullable */
+  identity_scope?: string | null;
   name: string;
   password: string;
 }

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1RemoteTargetsByTargetId,
@@ -12,8 +13,8 @@ import {
 	postApiV1RemoteTargets,
 } from "@/lib/api/generated/client";
 import type {
-	HubuumClassExpanded,
 	Collection,
+	HubuumClassExpanded,
 	NewRemoteTarget,
 	RemoteAuthConfig,
 	RemoteHttpMethod,
@@ -34,6 +35,7 @@ import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
+import type { TableExportView } from "@/lib/table-export";
 
 const METHODS: RemoteHttpMethod[] = ["get", "post", "patch", "delete"];
 const SUBJECT_TYPES: RemoteTargetSubjectType[] = [
@@ -77,7 +79,7 @@ const defaultFormState: FormState = {
 };
 
 async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(undefined, {
+	const response = await getApiV1Collections({ include_total: false }, {
 		credentials: "include",
 	});
 
@@ -92,7 +94,7 @@ async function fetchCollections(): Promise<Collection[]> {
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
-		{ limit: 250, sort: "name.asc,id.asc" },
+		{ limit: 250, sort: "name.asc,id.asc", include_total: false },
 		{ credentials: "include" },
 	);
 
@@ -438,6 +440,61 @@ export function AdminRemoteTargetsTable() {
 			return haystack.includes(needle);
 		});
 	}, [classesById, collectionsById, search, targets]);
+	const targetExportView = useMemo<TableExportView<RemoteTarget>>(
+		() => ({
+			id: "admin.remote-targets",
+			fileName: "remote-targets-view",
+			sheetName: "Remote targets",
+			columns: [
+				{
+					key: "name",
+					label: "Name",
+					getValue: (target) =>
+						target.description
+							? `${target.name}\n${target.description}`
+							: target.name,
+				},
+				{
+					key: "collection",
+					label: "Collection",
+					getValue: (target) =>
+						collectionsById.get(target.collection_id)?.name ??
+						`#${target.collection_id}`,
+				},
+				{
+					key: "method",
+					label: "Method",
+					getValue: (target) => target.method.toUpperCase(),
+				},
+				{
+					key: "subject",
+					label: "Subject",
+					getValue: (target) => target.allowed_subject_types.join(", "),
+				},
+				{
+					key: "class_scope",
+					label: "Class scope",
+					getValue: (target) =>
+						target.class_id == null
+							? "n/a"
+							: (classesById.get(target.class_id)?.name ??
+								`#${target.class_id}`),
+				},
+				{
+					key: "enabled",
+					label: "Enabled",
+					getValue: (target) => (target.enabled ? "yes" : "no"),
+				},
+				{
+					key: "updated",
+					label: "Updated",
+					getValue: (target) => formatTimestamp(target.updated_at),
+				},
+			],
+			rows: visibleTargets,
+		}),
+		[classesById, collectionsById, visibleTargets],
+	);
 
 	function openCreateModal() {
 		setFormMode("create");
@@ -794,7 +851,7 @@ export function AdminRemoteTargetsTable() {
 				</form>
 			</CreateModal>
 
-			<div className="card table-wrap">
+			<div className="card stack">
 				<div className="table-header">
 					<h3>Remote targets</h3>
 					<div className="table-tools">
@@ -802,6 +859,11 @@ export function AdminRemoteTargetsTable() {
 							value={search}
 							onChange={(event) => setSearch(event.target.value)}
 							placeholder="Search targets"
+						/>
+						<TableExportMenu
+							view={targetExportView}
+							disabled={loadTargetsMutation.isPending}
+							compact
 						/>
 						<button type="button" onClick={openCreateModal}>
 							Create target
@@ -830,63 +892,65 @@ export function AdminRemoteTargetsTable() {
 				) : null}
 
 				{visibleTargets.length > 0 ? (
-					<table>
-						<thead>
-							<tr>
-								<th>Name</th>
-								<th>Collection</th>
-								<th>Method</th>
-								<th>Subject</th>
-								<th>Class scope</th>
-								<th>Enabled</th>
-								<th>Updated</th>
-								<th>Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{visibleTargets.map((target) => (
-								<tr key={target.id}>
-									<td>
-										<strong>{target.name}</strong>
-										<div className="muted">{target.description}</div>
-									</td>
-									<td>
-										{collectionsById.get(target.collection_id)?.name ??
-											`#${target.collection_id}`}
-									</td>
-									<td>{target.method.toUpperCase()}</td>
-									<td>{target.allowed_subject_types.join(", ")}</td>
-									<td>
-										{target.class_id == null
-											? "n/a"
-											: classesById.get(target.class_id)?.name ??
-												`#${target.class_id}`}
-									</td>
-									<td>{target.enabled ? "yes" : "no"}</td>
-									<td>{formatTimestamp(target.updated_at)}</td>
-									<td>
-										<div className="action-row">
-											<button
-												type="button"
-												className="ghost"
-												onClick={() => openEditModal(target)}
-											>
-												Edit
-											</button>
-											<button
-												type="button"
-												className="danger"
-												onClick={() => onDelete(target)}
-												disabled={deleteMutation.isPending}
-											>
-												Delete
-											</button>
-										</div>
-									</td>
+					<div className="table-wrap">
+						<table>
+							<thead>
+								<tr>
+									<th>Name</th>
+									<th>Collection</th>
+									<th>Method</th>
+									<th>Subject</th>
+									<th>Class scope</th>
+									<th>Enabled</th>
+									<th>Updated</th>
+									<th>Actions</th>
 								</tr>
-							))}
-						</tbody>
-					</table>
+							</thead>
+							<tbody>
+								{visibleTargets.map((target) => (
+									<tr key={target.id}>
+										<td>
+											<strong>{target.name}</strong>
+											<div className="muted">{target.description}</div>
+										</td>
+										<td>
+											{collectionsById.get(target.collection_id)?.name ??
+												`#${target.collection_id}`}
+										</td>
+										<td>{target.method.toUpperCase()}</td>
+										<td>{target.allowed_subject_types.join(", ")}</td>
+										<td>
+											{target.class_id == null
+												? "n/a"
+												: classesById.get(target.class_id)?.name ??
+													`#${target.class_id}`}
+										</td>
+										<td>{target.enabled ? "yes" : "no"}</td>
+										<td>{formatTimestamp(target.updated_at)}</td>
+										<td>
+											<div className="action-row">
+												<button
+													type="button"
+													className="ghost"
+													onClick={() => openEditModal(target)}
+												>
+													Edit
+												</button>
+												<button
+													type="button"
+													className="danger"
+													onClick={() => onDelete(target)}
+													disabled={deleteMutation.isPending}
+												>
+													Delete
+												</button>
+											</div>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
 				) : null}
 
 				{nextCursor ? (

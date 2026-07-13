@@ -104,6 +104,10 @@ async function proxyClassObjects(request: NextRequest, context: RouteContext) {
 	if (prevCursor) {
 		response.headers.set("X-Prev-Cursor", prevCursor);
 	}
+	const totalCount = upstream.headers.get("X-Total-Count");
+	if (totalCount) {
+		response.headers.set("X-Total-Count", totalCount);
+	}
 
 	if (upstream.status === 401) {
 		await destroySession(session.sid);

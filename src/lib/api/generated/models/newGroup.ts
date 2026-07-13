@@ -10,4 +10,6 @@ export interface NewGroup {
   /** @nullable */
   description?: string | null;
   groupname: string;
+  /** @nullable */
+  identity_scope?: string | null;
 }

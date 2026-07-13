@@ -14,17 +14,6 @@ import {
 	tryFetchMetaCounts,
 } from "@/lib/meta";
 
-type ActionCard = {
-	title: string;
-	description: string;
-	primaryHref: string;
-	primaryLabel: string;
-	secondaryHref?: string;
-	secondaryLabel?: string;
-	icon: React.ReactNode;
-	count?: number;
-};
-
 type RecommendedAction = {
 	title: string;
 	description: string;
@@ -203,6 +192,48 @@ function IconUser({ className }: { className?: string }) {
 	);
 }
 
+function IconTasks({ className }: { className?: string }) {
+	return (
+		<svg
+			className={className}
+			width="24"
+			height="24"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="2"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			role="img"
+			aria-label="Tasks icon"
+		>
+			<path d="M9 6h11M9 12h11M9 18h11" />
+			<path d="m3.5 6 1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2" />
+		</svg>
+	);
+}
+
+function IconAudit({ className }: { className?: string }) {
+	return (
+		<svg
+			className={className}
+			width="24"
+			height="24"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="2"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			role="img"
+			aria-label="Audit icon"
+		>
+			<path d="M12 3 4.5 6v5.5c0 4.6 3 7.8 7.5 9.5 4.5-1.7 7.5-4.9 7.5-9.5V6z" />
+			<path d="m8.5 12 2.2 2.2 4.8-5" />
+		</svg>
+	);
+}
+
 function getRecommendedAction(
 	counts: CountsWithOptionalCollections | null,
 ): RecommendedAction {
@@ -269,117 +300,6 @@ function getRecommendedAction(
 	};
 }
 
-function getActionCards(
-	counts: CountsWithOptionalCollections | null,
-	canViewAdmin: boolean,
-): ActionCard[] {
-	const totalCollections = counts ? getTotalCollections(counts) : 0;
-	const totalClasses = counts?.total_classes ?? 0;
-	const totalObjects = counts?.total_objects ?? 0;
-
-	const cards: ActionCard[] = [
-		{
-			title: "Collections",
-			description: !counts
-				? "Organize ownership and permissions through collections."
-				: totalCollections === 0
-					? "No collections exist yet. Start here to establish ownership and permissions."
-					: `${totalCollections} collection${totalCollections === 1 ? "" : "s"} available for organizing classes and access.`,
-			primaryHref: "/collections?create=1",
-			primaryLabel: "Create collection",
-			secondaryHref: "/collections",
-			secondaryLabel: "Browse collections",
-			icon: <IconCollection className="action-card-icon" />,
-			count: counts && totalCollections > 0 ? totalCollections : undefined,
-		},
-		{
-			title: "Classes",
-			description: !counts
-				? "Classes give your objects a schema and a place to live."
-				: totalCollections === 0
-					? "Classes depend on collections, so create a collection first."
-					: totalClasses === 0
-						? "No classes yet. Define one to describe the objects your team will manage."
-						: `${totalClasses} class${totalClasses === 1 ? "" : "es"} defined across the workspace.`,
-			primaryHref: "/classes?create=1",
-			primaryLabel: "Create class",
-			secondaryHref: "/classes",
-			secondaryLabel: "Browse classes",
-			icon: <IconClass className="action-card-icon" />,
-			count: counts && totalClasses > 0 ? totalClasses : undefined,
-		},
-		{
-			title: "Objects",
-			description: !counts
-				? "Inspect and update the records that live inside your classes."
-				: totalClasses === 0
-					? "Objects depend on classes. Once a class exists, this becomes the main operational area."
-					: totalObjects === 0
-						? "No objects yet. Add the first object to start using the model."
-						: `${totalObjects} object${totalObjects === 1 ? "" : "s"} currently available to inspect and update.`,
-			primaryHref: "/objects?create=1",
-			primaryLabel: "Create object",
-			secondaryHref: "/objects",
-			secondaryLabel: "Open objects",
-			icon: <IconObject className="action-card-icon" />,
-			count: counts && totalObjects > 0 ? totalObjects : undefined,
-		},
-		{
-			title: "Relations",
-			description:
-				counts && totalClasses < 2
-					? "Relations become useful once you have at least two classes or established object records."
-					: "Map how classes and objects relate so navigation and reachability become meaningful.",
-			primaryHref: "/relations/classes?create=1",
-			primaryLabel: "Create relation",
-			secondaryHref: "/relations/classes",
-			secondaryLabel: "Open relations",
-			icon: <IconRelation className="action-card-icon" />,
-		},
-		{
-			title: "Exports",
-			description:
-				counts && totalClasses === 0
-					? "Exports become useful once you have real collections to query, but you can prepare templates ahead of time."
-					: "Create stored templates and run scoped exports without leaving the workspace.",
-			primaryHref: "/exports",
-			primaryLabel: "Open exports",
-			icon: <IconReport className="action-card-icon" />,
-		},
-		{
-			title: "Imports",
-			description:
-				"Submit JSON import jobs, then monitor queue state, lifecycle events, and per-item outcomes.",
-			primaryHref: "/imports",
-			primaryLabel: "Open imports",
-			icon: <IconImport className="action-card-icon" />,
-		},
-	];
-
-	if (canViewAdmin) {
-		cards.push({
-			title: "Statistics",
-			description:
-				"Review workspace counts, database health, and global task system state.",
-			primaryHref: "/statistics",
-			primaryLabel: "Open statistics",
-			icon: <IconStatistics className="action-card-icon" />,
-		});
-		cards.push({
-			title: "Access Management",
-			description:
-				"Review users and groups when you need to inspect permissions or prepare access changes.",
-			primaryHref: "/admin",
-			primaryLabel: "Open admin",
-			secondaryHref: "/admin/users",
-			secondaryLabel: "Users",
-			icon: <IconUser className="action-card-icon" />,
-		});
-	}
-
-	return cards;
-}
-
 export default async function AppPage() {
 	const requestHeaders = await headers();
 	const correlationId =
@@ -391,27 +311,116 @@ export default async function AppPage() {
 		? await tryFetchMetaCounts(session.token, correlationId)
 		: null;
 	const recommendedAction = getRecommendedAction(counts);
-	const actionCards = getActionCards(counts, canViewAdmin);
+	const totalCollections = counts ? getTotalCollections(counts) : null;
+	const totalClasses = counts?.total_classes ?? null;
+	const totalObjects = counts?.total_objects ?? null;
+	const workflowSteps = [
+		{
+			step: "01",
+			title: "Collections",
+			description: "Ownership and access boundaries",
+			href: "/collections",
+			count: totalCollections,
+			icon: <IconCollection />,
+		},
+		{
+			step: "02",
+			title: "Classes",
+			description: "Schemas for structured records",
+			href: "/classes",
+			count: totalClasses,
+			icon: <IconClass />,
+		},
+		{
+			step: "03",
+			title: "Objects",
+			description: "The records your teams operate",
+			href: "/objects",
+			count: totalObjects,
+			icon: <IconObject />,
+		},
+		{
+			step: "04",
+			title: "Relations",
+			description: "Connections across the graph",
+			href: "/relations",
+			count: null,
+			icon: <IconRelation />,
+		},
+	];
+	const operationLinks = [
+		{
+			title: "Imports",
+			description: "Bring structured data in",
+			href: "/imports",
+			icon: <IconImport />,
+		},
+		{
+			title: "Exports",
+			description: "Render and deliver scoped data",
+			href: "/exports",
+			icon: <IconReport />,
+		},
+		{
+			title: "Tasks",
+			description: "Monitor background work",
+			href: "/tasks",
+			icon: <IconTasks />,
+		},
+		{
+			title: "Audit",
+			description: "Trace changes and events",
+			href: "/audit",
+			icon: <IconAudit />,
+		},
+		...(canViewAdmin
+			? [
+					{
+						title: "Statistics",
+						description: "Review system health",
+						href: "/statistics",
+						icon: <IconStatistics />,
+					},
+					{
+						title: "Access",
+						description: "Manage users and groups",
+						href: "/admin",
+						icon: <IconUser />,
+					},
+				]
+			: []),
+	];
 
 	return (
-		<div className="landing-layout">
-			<aside className="landing-sidebar">
-				<QuickAccessPanel />
-			</aside>
-
-			<section className="landing-main stack">
-				<header className="stack action-card-header">
-					<div className="stack action-card-header">
-						<p className="eyebrow">Home</p>
-						<h2>What do you want to do?</h2>
-					</div>
+		<div className="workspace-dashboard">
+			<header className="card workspace-hero">
+				<div className="workspace-hero-copy">
+					<p className="eyebrow">Knowledge graph</p>
+					<h2>Welcome back, {session.username ?? "admin"}.</h2>
 					<p className="muted">
-						Start from the task you have in mind. Statistics and database health
-						now live separately.
+						Your model is active and ready for the next change. Continue where
+						you left off or move through the graph below.
 					</p>
-				</header>
+				</div>
+				<dl className="workspace-metrics">
+					<div>
+						<dt>Collections</dt>
+						<dd>{totalCollections ?? "—"}</dd>
+					</div>
+					<div>
+						<dt>Classes</dt>
+						<dd>{totalClasses ?? "—"}</dd>
+					</div>
+					<div>
+						<dt>Objects</dt>
+						<dd>{totalObjects?.toLocaleString() ?? "—"}</dd>
+					</div>
+				</dl>
+			</header>
 
-				<article className="card stack home-priority-card">
+			<div className="workspace-dashboard-grid">
+				<section className="dashboard-primary">
+					<article className="card home-priority-card dashboard-priority">
 					<div className="stack action-card-header">
 						<p className="eyebrow">Recommended next step</p>
 						<h3>{recommendedAction.title}</h3>
@@ -426,38 +435,60 @@ export default async function AppPage() {
 							{recommendedAction.secondaryLabel}
 						</Link>
 					</div>
-				</article>
+					</article>
 
-				<div className="grid cols-2">
-					{actionCards.map((card) => (
-						<article key={card.title} className="card stack action-card">
-							<div className="action-card-header-with-icon">
-								<div className="action-card-icon-wrapper">{card.icon}</div>
-								<div className="stack action-card-header">
-									<div className="action-card-title-row">
-										<h3>{card.title}</h3>
-										{card.count !== undefined ? (
-											<span className="action-card-count">{card.count}</span>
-										) : null}
-									</div>
-									<p className="muted">{card.description}</p>
-								</div>
+					<section className="card workflow-panel">
+						<header className="section-heading">
+							<div>
+								<p className="eyebrow">Data model</p>
+								<h3>Move through the graph</h3>
 							</div>
-
-							<div className="action-card-actions">
-								<Link className="link-chip" href={card.primaryHref}>
-									{card.primaryLabel}
+							<p className="muted">Four layers, one connected workspace.</p>
+						</header>
+						<div className="workflow-path">
+							{workflowSteps.map((item) => (
+								<Link key={item.title} className="workflow-step" href={item.href}>
+									<span className="workflow-step-number">{item.step}</span>
+									<span className="workflow-step-icon">{item.icon}</span>
+									<span className="workflow-step-copy">
+										<strong>{item.title}</strong>
+										<small>{item.description}</small>
+									</span>
+									<span className="workflow-step-count">
+										{item.count?.toLocaleString() ?? "Explore"}
+									</span>
 								</Link>
-								{card.secondaryHref && card.secondaryLabel ? (
-									<Link className="link-chip" href={card.secondaryHref}>
-										{card.secondaryLabel}
-									</Link>
-								) : null}
+							))}
+						</div>
+					</section>
+				</section>
+
+				<aside className="dashboard-rail">
+					<QuickAccessPanel />
+					<section className="card operations-panel">
+						<header className="section-heading">
+							<div>
+								<p className="eyebrow">Operations</p>
+								<h3>Run and observe</h3>
 							</div>
-						</article>
-					))}
-				</div>
-			</section>
+						</header>
+						<div className="operation-links">
+							{operationLinks.map((item) => (
+								<Link key={item.title} className="operation-link" href={item.href}>
+									<span className="operation-link-icon">{item.icon}</span>
+									<span>
+										<strong>{item.title}</strong>
+										<small>{item.description}</small>
+									</span>
+									<span className="operation-link-arrow" aria-hidden="true">
+										→
+									</span>
+								</Link>
+							))}
+						</div>
+					</section>
+				</aside>
+			</div>
 		</div>
 	);
 }

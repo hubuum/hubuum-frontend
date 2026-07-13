@@ -35,10 +35,12 @@ The frontend owns only routes under `/_hubuum-bff/...`.
 | Frontend route | Purpose |
 | --- | --- |
 | `/_hubuum-bff/auth/login` | Accepts browser login payloads, calls backend `/api/v0/auth/login`, and creates the frontend session cookie. |
+| `/_hubuum-bff/auth/providers` | Discovers public authentication providers from backend `/api/v0/auth/providers`; the login form falls back to a manual identity-scope field when unavailable. |
 | `/_hubuum-bff/auth/logout` | Logs out locally and asks the backend to revoke the current token. |
 | `/_hubuum-bff/auth/session` | Readiness-friendly session check for the browser session. |
 | `/_hubuum-bff/hubuum/<backend-path>` | Generic authenticated BFF proxy. For example, `/_hubuum-bff/hubuum/api/v1/classes` calls backend `/api/v1/classes` with the server-side bearer token. |
 | `/_hubuum-bff/classes/...` | Frontend helper BFF routes that normalize a few class/object workflows before calling backend APIs. |
+| `/_hubuum-bff/settings` | Reads and updates the current principal's durable console preferences through the backend settings API, with a temporary Valkey fallback for older servers. |
 
 The frontend deliberately does not own `/api/v0/...` or `/api/v1/...`. This
 lets a colocated reverse proxy route those paths directly to the backend while
@@ -72,11 +74,36 @@ public prefix to the frontend's fixed `/_hubuum-bff/...` routes.
 
 Hubuum `/api/v0/meta/...` endpoints are admin-only. The frontend must only call
 them after an admin access check, and current meta usage is limited to the
-admin statistics surface and admin-only landing-page counts.
+admin statistics surface and admin-only landing-page counts. The statistics
+surface also reads the redacted `/api/v1/admin/config` projection when the
+backend provides it, while remaining compatible with older backends where that
+endpoint returns `404`.
 
 Task activity shown to regular users comes from `/api/v1/tasks` through the BFF
 proxy, so users can see the task records available to their account without
 requiring global meta access.
+
+Cursor-paginated helper requests that do not display an exact total pass
+`include_total=false`; primary data tables retain the default exact-count
+behavior when they show `X-Total-Count` in pagination controls.
+
+## Scoped identities
+
+The login form accepts an optional identity scope. Blank values and `local`
+select local Hubuum users; any other value is forwarded as `identity_scope` for
+the matching configured authentication provider. After login, the BFF verifies
+the issued token against `/api/v1/iam/me`. This prevents an older backend that
+ignores the new field from accidentally authenticating a same-named local user.
+When the public provider-discovery endpoint is available, the form presents its
+scopes as a select menu. A missing, failed, or malformed discovery
+response keeps the manual identity-scope field available for older servers.
+
+Principal and group labels include their non-local scope where names can be
+ambiguous. Provider-managed user profiles, groups, and synchronized group
+memberships are read-only in the console. Users can still be assigned to local
+groups, including users that originated from a provider.
+Import permission selectors include `GroupKey.identity_scope`, and the import
+workspace defaults omitted scopes to `local` to match the backend contract.
 
 ## Object data columns
 
@@ -86,19 +113,32 @@ schema when available, then augmented from the currently loaded object rows.
 Discovery is page-local and shallowly bounded, so it does not trigger an
 expensive full-dataset scan.
 
-Column preferences are stored in browser `localStorage` per class id. The
-`Data columns` menu lets users reset to suggested fields or clear all promoted
-columns. The same menu can show or hide the raw data preview column, also
-remembered per class id.
+Column preferences are stored per user and per class id. The `Data columns`
+menu lets users reset to suggested fields or clear all promoted columns. The
+same menu can show or hide the raw data preview column, also remembered per
+class id. Portable preferences such as theme, primary and secondary colors,
+pins, and selected data columns are saved in the user settings store, with
+`localStorage` used as an owner-scoped browser cache. The primary color drives
+actions and focus while the secondary color tints the canvas, navigation, and
+ambient artwork. Viewport and activity state such as table widths, sidebar
+state, recent items, and task last-seen timestamps stay device-local.
 
 The `Custom data fields` menu lets users create personal fallback columns with a
 label and a `|`-separated list of data paths. The table shows the first
 non-empty value, so a field like
 `os.fedora.version|os.redhat.version|os.macos.version` can display one
-normalized `OS version` column across differently shaped object data. These
-custom definitions are currently stored per class id in browser `localStorage`;
-system-wide admin-managed definitions need a backend settings endpoint before
-they can be shared across users.
+normalized `OS version` column across differently shaped object data. Personal
+display definitions are stored as per-user, per-class console preferences.
+They affect presentation only. Shared or API-visible computed fields are domain
+resources and deliberately remain separate from the settings store.
+
+The BFF uses `/api/v1/iam/me/settings` when the backend exposes the principal
+settings API. Console preferences live under a versioned `hubuum_frontend`
+namespace in the raw settings document, so recursive merge patches preserve
+settings owned by other clients. While connected to an older backend, the BFF
+uses Valkey without the session TTL, or an in-memory local-development fallback.
+Existing fallback preferences are migrated automatically when the backend
+endpoint becomes available.
 
 Nested data fields use dotted display paths, while literal dots and backslashes
 inside object keys are escaped:

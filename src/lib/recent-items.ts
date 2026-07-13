@@ -1,6 +1,11 @@
 import type { RecentItem } from "@/types/quick-access";
+import {
+	removeDeviceSetting,
+	writeDeviceSetting,
+} from "@/lib/user-settings-client";
+import { DEVICE_SETTING_KEYS } from "@/lib/user-settings-types";
 
-const RECENT_ITEMS_KEY = "hubuum.recent-items";
+const RECENT_ITEMS_KEY = DEVICE_SETTING_KEYS.recentItems;
 const MAX_RECENT_ITEMS = 50;
 const RECENT_ITEM_TYPES = new Set([
 	"collection",
@@ -33,12 +38,14 @@ function normalizeRecentItem(value: unknown): RecentItem | null {
 		return null;
 	}
 
-	const name = typeof item.name === "string" && item.name.trim()
-		? item.name
-		: `${type} ${item.id}`;
-	const timestamp = typeof item.timestamp === "number" && Number.isFinite(item.timestamp)
-		? item.timestamp
-		: Date.now();
+	const name =
+		typeof item.name === "string" && item.name.trim()
+			? item.name
+			: `${type} ${item.id}`;
+	const timestamp =
+		typeof item.timestamp === "number" && Number.isFinite(item.timestamp)
+			? item.timestamp
+			: Date.now();
 
 	return {
 		type: type as RecentItem["type"],
@@ -73,7 +80,7 @@ export function getRecentItems(): RecentItem[] {
 			.filter((item): item is RecentItem => item !== null)
 			.slice(0, MAX_RECENT_ITEMS);
 		if (items.length !== parsed.length || JSON.stringify(items) !== stored) {
-			window.localStorage.setItem(RECENT_ITEMS_KEY, JSON.stringify(items));
+			writeDeviceSetting(RECENT_ITEMS_KEY, JSON.stringify(items));
 		}
 		return items;
 	} catch {
@@ -97,7 +104,7 @@ export function trackRecentItem(item: Omit<RecentItem, "timestamp">): void {
 			...filtered,
 		].slice(0, MAX_RECENT_ITEMS);
 
-		window.localStorage.setItem(RECENT_ITEMS_KEY, JSON.stringify(updated));
+		writeDeviceSetting(RECENT_ITEMS_KEY, JSON.stringify(updated));
 	} catch {
 		// Silently fail if localStorage is unavailable
 	}
@@ -109,7 +116,7 @@ export function clearRecentItems(): void {
 	}
 
 	try {
-		window.localStorage.removeItem(RECENT_ITEMS_KEY);
+		removeDeviceSetting(RECENT_ITEMS_KEY);
 	} catch {
 		// Silently fail
 	}

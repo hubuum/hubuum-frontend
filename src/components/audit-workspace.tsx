@@ -2,7 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
-import { fetchEventsPage, type EventListOptions } from "@/lib/api/events";
+import { TableExportMenu } from "@/components/table-export-menu";
+import {
+	type EventListOptions,
+	type EventRecord,
+	fetchEventsPage,
+} from "@/lib/api/events";
+import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 
 function parseOptionalNumber(value: string): number | undefined {
 	const trimmed = value.trim();
@@ -36,6 +42,39 @@ function formatActor(actorKind: string, actorUserId: number | null | undefined):
 
 	return `${actorKind} #${actorUserId}`;
 }
+
+const eventExportColumns: TableExportColumn<EventRecord>[] = [
+	{
+		key: "time",
+		label: "Time",
+		getValue: (event) => formatTimestamp(event.occurred_at),
+	},
+	{
+		key: "entity",
+		label: "Entity",
+		getValue: (event) =>
+			`${event.entity_type}${event.entity_id == null ? "" : ` #${event.entity_id}`}${
+				event.entity_name ? ` / ${event.entity_name}` : ""
+			}`,
+	},
+	{ key: "action", label: "Action", getValue: (event) => event.action },
+	{
+		key: "actor",
+		label: "Actor",
+		getValue: (event) => formatActor(event.actor_kind, event.actor_user_id),
+	},
+	{
+		key: "collection",
+		label: "Collection",
+		getValue: (event) => event.collection_id ?? "n/a",
+	},
+	{ key: "summary", label: "Summary", getValue: (event) => event.summary },
+	{
+		key: "correlation",
+		label: "Correlation",
+		getValue: (event) => event.correlation_id ?? "n/a",
+	},
+];
 
 export function AuditWorkspace() {
 	const [cursor, setCursor] = useState("");
@@ -90,6 +129,14 @@ export function AuditWorkspace() {
 		setOccurredBefore("");
 		setFilters({ limit: 50, sort: "-occurred_at,-id" });
 	}
+
+	const eventExportView: TableExportView<EventRecord> = {
+		id: "audit.events",
+		fileName: "audit-events-view",
+		sheetName: "Audit events",
+		columns: eventExportColumns,
+		rows: eventsQuery.data?.items ?? [],
+	};
 
 	return (
 		<section className="stack">
@@ -188,6 +235,11 @@ export function AuditWorkspace() {
 						</p>
 					</div>
 					<div className="action-row">
+						<TableExportMenu
+							view={eventExportView}
+							disabled={eventsQuery.isFetching}
+							compact
+						/>
 						<button
 							type="button"
 							className="secondary"

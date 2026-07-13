@@ -14,6 +14,7 @@ const serverEnvSchema = z.object({
 		.positive()
 		.default(8 * 60 * 60),
 	SESSION_PREFIX: z.string().min(1).default("hubuum:sess:"),
+	SETTINGS_PREFIX: z.string().min(1).default("hubuum:settings:"),
 	NEXT_PUBLIC_APP_NAME: z.string().min(1).default("Hubuum Console"),
 });
 

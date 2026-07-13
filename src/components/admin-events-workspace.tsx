@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TableExportMenu } from "@/components/table-export-menu";
 import {
 	fetchEventDeliveriesPage,
 	fetchEventDeliveryHealth,
@@ -8,6 +9,8 @@ import {
 	markEventDeliveryDead,
 	retryEventDelivery,
 } from "@/lib/api/events";
+import type { EventDelivery, EventSink } from "@/lib/api/generated/models";
+import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 
 function formatTimestamp(value: string | null | undefined): string {
 	if (!value) {
@@ -51,6 +54,57 @@ function statusTone(status: string): "neutral" | "success" | "danger" | "accent"
 	return "neutral";
 }
 
+const eventSinkExportColumns: TableExportColumn<EventSink>[] = [
+	{ key: "id", label: "ID", getValue: (sink) => `#${sink.id}` },
+	{ key: "name", label: "Name", getValue: (sink) => sink.name },
+	{ key: "kind", label: "Kind", getValue: (sink) => sink.kind },
+	{
+		key: "enabled",
+		label: "Enabled",
+		getValue: (sink) => (sink.enabled ? "yes" : "no"),
+	},
+	{
+		key: "secret",
+		label: "Secret",
+		getValue: (sink) => sink.secret_ref ?? "n/a",
+	},
+	{
+		key: "updated",
+		label: "Updated",
+		getValue: (sink) => formatTimestamp(sink.updated_at),
+	},
+];
+
+const eventDeliveryExportColumns: TableExportColumn<EventDelivery>[] = [
+	{ key: "id", label: "ID", getValue: (delivery) => `#${delivery.id}` },
+	{
+		key: "event",
+		label: "Event",
+		getValue: (delivery) => `#${delivery.event_id}`,
+	},
+	{
+		key: "subscription",
+		label: "Subscription",
+		getValue: (delivery) => `#${delivery.subscription_id}`,
+	},
+	{ key: "status", label: "Status", getValue: (delivery) => delivery.status },
+	{
+		key: "attempts",
+		label: "Attempts",
+		getValue: (delivery) => delivery.attempts,
+	},
+	{
+		key: "next_attempt",
+		label: "Next attempt",
+		getValue: (delivery) => formatTimestamp(delivery.next_attempt_at),
+	},
+	{
+		key: "error",
+		label: "Error",
+		getValue: (delivery) => delivery.last_error ?? "n/a",
+	},
+];
+
 export function AdminEventsWorkspace() {
 	const queryClient = useQueryClient();
 	const healthQuery = useQuery({
@@ -83,6 +137,20 @@ export function AdminEventsWorkspace() {
 	});
 
 	const health = healthQuery.data;
+	const sinkExportView: TableExportView<EventSink> = {
+		id: "admin.event-sinks",
+		fileName: "event-sinks-view",
+		sheetName: "Event sinks",
+		columns: eventSinkExportColumns,
+		rows: sinksQuery.data ?? [],
+	};
+	const deliveryExportView: TableExportView<EventDelivery> = {
+		id: "admin.event-deliveries",
+		fileName: "event-deliveries-view",
+		sheetName: "Event deliveries",
+		columns: eventDeliveryExportColumns,
+		rows: deliveriesQuery.data?.items ?? [],
+	};
 
 	return (
 		<section className="stack">
@@ -139,12 +207,19 @@ export function AdminEventsWorkspace() {
 			</article>
 
 			<article className="card stack panel-card">
-				<div className="stack action-card-header">
-					<h3>Event sinks</h3>
-					<p className="muted">
-						Configured global transports. Sink configuration is shown in
-						summary form; secrets remain references only.
-					</p>
+				<div className="panel-header">
+					<div className="stack action-card-header">
+						<h3>Event sinks</h3>
+						<p className="muted">
+							Configured global transports. Sink configuration is shown in
+							summary form; secrets remain references only.
+						</p>
+					</div>
+					<TableExportMenu
+						view={sinkExportView}
+						disabled={sinksQuery.isFetching}
+						compact
+					/>
 				</div>
 
 				{sinksQuery.isLoading ? (
@@ -194,12 +269,19 @@ export function AdminEventsWorkspace() {
 			</article>
 
 			<article className="card stack panel-card">
-				<div className="stack action-card-header">
-					<h3>Recent deliveries</h3>
-					<p className="muted">
-						Retry failed rows or move rows to dead-letter state when they should
-						no longer be attempted.
-					</p>
+				<div className="panel-header">
+					<div className="stack action-card-header">
+						<h3>Recent deliveries</h3>
+						<p className="muted">
+							Retry failed rows or move rows to dead-letter state when they
+							should no longer be attempted.
+						</p>
+					</div>
+					<TableExportMenu
+						view={deliveryExportView}
+						disabled={deliveriesQuery.isFetching}
+						compact
+					/>
 				</div>
 
 				{deliveriesQuery.isLoading ? (

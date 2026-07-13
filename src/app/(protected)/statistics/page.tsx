@@ -1,16 +1,48 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 
+import { RuntimeConfigPanel } from "@/components/runtime-config-panel";
 import { hasAdminAccess } from "@/lib/auth/admin";
 import { requireServerSession } from "@/lib/auth/guards";
 import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
-import {
-	getTotalCollections,
-	tryFetchSystemMetaSnapshot,
-} from "@/lib/meta";
+import { getTotalCollections, tryFetchSystemMetaSnapshot } from "@/lib/meta";
+
+const numberFormatter = new Intl.NumberFormat(undefined, {
+	maximumFractionDigits: 1,
+});
+
+function formatNumber(value: number | null | undefined): string {
+	return typeof value === "number" && Number.isFinite(value)
+		? numberFormatter.format(value)
+		: "n/a";
+}
+
+function formatBytes(value: number | null | undefined): string {
+	if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+		return "n/a";
+	}
+	if (value < 1024) return `${formatNumber(value)} B`;
+
+	const units = ["KiB", "MiB", "GiB", "TiB"];
+	let amount = value / 1024;
+	let unit = units[0];
+	for (const candidate of units.slice(1)) {
+		if (amount < 1024) break;
+		amount /= 1024;
+		unit = candidate;
+	}
+	return `${formatNumber(amount)} ${unit}`;
+}
+
+function formatMilliseconds(value: number | null | undefined): string {
+	if (typeof value !== "number" || !Number.isFinite(value)) return "n/a";
+	return value >= 1000
+		? `${formatNumber(value / 1000)} s`
+		: `${formatNumber(value)} ms`;
+}
 
 function formatTimestamp(value: string | null | undefined): string {
 	if (!value) {
@@ -66,7 +98,10 @@ export default async function StatisticsPage() {
 		);
 	}
 
-	const snapshot = await tryFetchSystemMetaSnapshot(session.token, correlationId);
+	const snapshot = await tryFetchSystemMetaSnapshot(
+		session.token,
+		correlationId,
+	);
 
 	if (!snapshot) {
 		return (
@@ -98,7 +133,7 @@ export default async function StatisticsPage() {
 		);
 	}
 
-	const { counts, db, tasks } = snapshot;
+	const { config, counts, db, tasks } = snapshot;
 	const totalCollections = getTotalCollections(counts);
 
 	return (
@@ -137,19 +172,67 @@ export default async function StatisticsPage() {
 					<ul className="stat-list">
 						<li>
 							<span>DB size</span>
-							<strong>{db.db_size}</strong>
+							<strong>{formatBytes(db.db_size)}</strong>
 						</li>
 						<li>
 							<span>Active connections</span>
-							<strong>{db.active_connections}</strong>
+							<strong>{formatNumber(db.active_connections)}</strong>
+						</li>
+						<li>
+							<span>Pool in use / maximum</span>
+							<strong>
+								{formatNumber(db.in_use_connections)} /{" "}
+								{formatNumber(db.max_connections)}
+							</strong>
+						</li>
+						<li>
+							<span>Pool connections</span>
+							<strong>{formatNumber(db.total_connections)}</strong>
 						</li>
 						<li>
 							<span>Idle connections</span>
-							<strong>{db.idle_connections}</strong>
+							<strong>{formatNumber(db.idle_connections)}</strong>
 						</li>
 						<li>
 							<span>Available connections</span>
-							<strong>{db.available_connections}</strong>
+							<strong>{formatNumber(db.available_connections)}</strong>
+						</li>
+						<li>
+							<span>Pending acquisitions</span>
+							<strong>{formatNumber(db.pending_acquisitions)}</strong>
+						</li>
+						<li>
+							<span>Direct / waited acquisitions</span>
+							<strong>
+								{formatNumber(db.acquisitions_direct)} /{" "}
+								{formatNumber(db.acquisitions_waited)}
+							</strong>
+						</li>
+						<li>
+							<span>Acquisition timeouts</span>
+							<strong>{formatNumber(db.acquisitions_timed_out)}</strong>
+						</li>
+						<li>
+							<span>Cumulative acquisition wait</span>
+							<strong>{formatMilliseconds(db.acquisition_wait_time_ms)}</strong>
+						</li>
+						<li>
+							<span>Connections created</span>
+							<strong>{formatNumber(db.connections_created)}</strong>
+						</li>
+						<li>
+							<span>Broken / invalid closes</span>
+							<strong>
+								{formatNumber(db.connections_closed_broken)} /{" "}
+								{formatNumber(db.connections_closed_invalid)}
+							</strong>
+						</li>
+						<li>
+							<span>Lifetime / idle closes</span>
+							<strong>
+								{formatNumber(db.connections_closed_max_lifetime)} /{" "}
+								{formatNumber(db.connections_closed_idle_timeout)}
+							</strong>
 						</li>
 						<li>
 							<span>Last vacuum</span>
@@ -209,9 +292,7 @@ export default async function StatisticsPage() {
 						</li>
 						<li>
 							<span>Reindex tasks</span>
-							<strong>
-								{tasks.reindex_tasks}
-							</strong>
+							<strong>{tasks.reindex_tasks}</strong>
 						</li>
 						<li>
 							<span>Total task events</span>
@@ -231,6 +312,32 @@ export default async function StatisticsPage() {
 						</li>
 					</ul>
 				</article>
+			</div>
+
+			<div className="stack">
+				<header className="stack action-card-header">
+					<div className="stack action-card-header">
+						<p className="eyebrow">Configuration</p>
+						<h2>Effective runtime configuration</h2>
+					</div>
+					<p className="muted">
+						The backend exposes this administrator-only projection without
+						secret values, credential paths, proxy networks, or allowlist
+						contents.
+					</p>
+				</header>
+
+				{config ? (
+					<RuntimeConfigPanel config={config} />
+				) : (
+					<article className="card stack panel-card">
+						<h3>Runtime configuration unavailable</h3>
+						<p className="muted">
+							This backend may predate the redacted configuration endpoint, or
+							the current administrator token cannot access it.
+						</p>
+					</article>
+				)}
 			</div>
 		</section>
 	);

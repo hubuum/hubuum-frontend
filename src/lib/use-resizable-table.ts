@@ -1,13 +1,17 @@
 import { useEffect, useRef } from "react";
+import { writeDeviceSetting } from "@/lib/user-settings-client";
+import { DEVICE_SETTING_KEYS } from "@/lib/user-settings-types";
 
 type ResizableTableOptions = {
 	tableId: string;
 	storageKey?: string;
+	columnSignature?: string;
 };
 
 export function useResizableTable({
 	tableId,
 	storageKey,
+	columnSignature,
 }: ResizableTableOptions) {
 	const tableRef = useRef<HTMLTableElement | null>(null);
 
@@ -18,18 +22,35 @@ export function useResizableTable({
 		}
 
 		tableRef.current = table;
-		const headers = Array.from(table.querySelectorAll("thead th"));
-		const storage = storageKey ? `hubuum.table.${storageKey}.widths` : null;
+		table.dataset.resizableColumnSignature = columnSignature ?? "";
+		const headers = Array.from(
+			table.querySelectorAll<HTMLTableCellElement>("thead th"),
+		);
+		const columns = Array.from(
+			table.querySelectorAll<HTMLTableColElement>("colgroup col"),
+		);
+		const storage = storageKey
+			? DEVICE_SETTING_KEYS.tableWidths(storageKey)
+			: null;
+		const getColumnKey = (header: HTMLTableCellElement, index: number) =>
+			header.dataset.columnKey ?? String(index);
+		const setColumnWidth = (index: number, width: number) => {
+			const target = columns[index] ?? headers[index];
+			if (target) {
+				target.style.width = `${width}px`;
+			}
+		};
 
 		// Load saved widths
 		if (storage) {
 			try {
 				const saved = localStorage.getItem(storage);
 				if (saved) {
-					const widths = JSON.parse(saved) as Record<number, number>;
+					const widths = JSON.parse(saved) as Record<string, number>;
 					headers.forEach((th, index) => {
-						if (widths[index]) {
-							(th as HTMLElement).style.width = `${widths[index]}px`;
+						const width = widths[getColumnKey(th, index)];
+						if (width) {
+							setColumnWidth(index, width);
 						}
 					});
 				}
@@ -40,7 +61,7 @@ export function useResizableTable({
 
 		// Add resize handles to all headers except checkbox and last column
 		headers.forEach((th, index) => {
-			const element = th as HTMLElement;
+			const element = th;
 			if (
 				element.classList.contains("check-col") ||
 				index === headers.length - 1
@@ -69,7 +90,7 @@ export function useResizableTable({
 				onMouseMove = (e: MouseEvent) => {
 					const diff = e.clientX - startX;
 					const newWidth = Math.max(50, startWidth + diff);
-					element.style.width = `${newWidth}px`;
+					setColumnWidth(index, newWidth);
 				};
 
 				onMouseUp = () => {
@@ -80,15 +101,15 @@ export function useResizableTable({
 
 					// Save widths
 					if (storage) {
-						const widths: Record<number, number> = {};
+						const widths: Record<string, number> = {};
 						headers.forEach((h, i) => {
-							const width = (h as HTMLElement).offsetWidth;
+							const width = h.offsetWidth;
 							if (width) {
-								widths[i] = width;
+								widths[getColumnKey(h, i)] = width;
 							}
 						});
 						try {
-							localStorage.setItem(storage, JSON.stringify(widths));
+							writeDeviceSetting(storage, JSON.stringify(widths));
 						} catch {
 							// Ignore storage errors
 						}
@@ -104,6 +125,7 @@ export function useResizableTable({
 
 		// Cleanup function
 		return () => {
+			delete table.dataset.resizableColumnSignature;
 			headers.forEach((th) => {
 				const element = th as HTMLElement;
 				element.classList.remove("resizable");
@@ -113,7 +135,7 @@ export function useResizableTable({
 				});
 			});
 		};
-	}, [tableId, storageKey]);
+	}, [columnSignature, tableId, storageKey]);
 
 	return tableRef;
 }

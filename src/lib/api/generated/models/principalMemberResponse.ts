@@ -10,7 +10,10 @@
  * Public representation of a group member (a principal of either kind).
  */
 export interface PrincipalMemberResponse {
+  created_at: string;
+  identity_scope: string;
   kind: string;
   name: string;
   principal_id: number;
+  updated_at: string;
 }

@@ -18,6 +18,7 @@ export interface ServiceAccountResponse {
   /** @nullable */
   disabled_at?: string | null;
   id: number;
+  identity_scope: string;
   name: string;
   owner_group_id: number;
   updated_at: string;

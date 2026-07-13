@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect } from "react";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiV1IamUsersByUserId } from "@/lib/api/generated/client";
 import {
 	fetchImportProjection,
@@ -176,6 +177,69 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 		return <div className="card error-banner">Task data is unavailable.</div>;
 	}
 
+	const taskEvents = eventsQuery.data ?? [];
+	const taskEventsExportView = {
+		id: `task-${taskId}-lifecycle-events`,
+		fileName: `task-${taskId}-lifecycle-events`,
+		sheetName: "Lifecycle events",
+		columns: [
+			{
+				key: "time",
+				label: "Time",
+				getValue: (event: (typeof taskEvents)[number]) =>
+					formatTimestamp(event.created_at),
+			},
+			{
+				key: "event",
+				label: "Event",
+				getValue: (event: (typeof taskEvents)[number]) => event.event_type,
+			},
+			{
+				key: "message",
+				label: "Message",
+				getValue: (event: (typeof taskEvents)[number]) => event.message,
+			},
+		],
+		rows: taskEvents,
+	};
+	const importResults = resultsQuery.data ?? [];
+	const importResultsExportView = {
+		id: `task-${taskId}-import-results`,
+		fileName: `task-${taskId}-import-results`,
+		sheetName: "Import results",
+		columns: [
+			{
+				key: "item",
+				label: "Item",
+				getValue: (result: (typeof importResults)[number]) =>
+					result.item_ref ?? result.identifier ?? "n/a",
+			},
+			{
+				key: "entity",
+				label: "Entity",
+				getValue: (result: (typeof importResults)[number]) =>
+					result.entity_kind,
+			},
+			{
+				key: "action",
+				label: "Action",
+				getValue: (result: (typeof importResults)[number]) => result.action,
+			},
+			{
+				key: "outcome",
+				label: "Outcome",
+				getValue: (result: (typeof importResults)[number]) => result.outcome,
+			},
+			{
+				key: "error",
+				label: "Error",
+				getValue: (result: (typeof importResults)[number]) =>
+					result.error ?? "n/a",
+			},
+		],
+		rows: importResults,
+	};
+
 	let submittedByLabel = "n/a";
 	if (submittedByUserId != null) {
 		submittedByLabel = `User #${submittedByUserId}`;
@@ -325,11 +389,18 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 			</article>
 
 			<article className="card stack panel-card">
-				<div className="stack action-card-header">
-					<h3>Lifecycle events</h3>
-					<p className="muted">
-						Append-only task history from the generic task system.
-					</p>
+				<div className="panel-header">
+					<div className="stack action-card-header">
+						<h3>Lifecycle events</h3>
+						<p className="muted">
+							Append-only task history from the generic task system.
+						</p>
+					</div>
+					<TableExportMenu
+						view={taskEventsExportView}
+						disabled={eventsQuery.isFetching}
+						compact
+					/>
 				</div>
 
 				{eventsQuery.isLoading ? (
@@ -357,7 +428,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 								</tr>
 							</thead>
 							<tbody>
-								{eventsQuery.data.map((event) => (
+								{taskEvents.map((event) => (
 									<tr key={event.id}>
 										<td>{formatTimestamp(event.created_at)}</td>
 										<td>{event.event_type}</td>
@@ -372,12 +443,19 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
 			{isImportTask ? (
 				<article className="card stack panel-card">
-					<div className="stack action-card-header">
-						<h3>Import results</h3>
-						<p className="muted">
-							Per-item outcomes are available for import tasks once validation
-							or execution begins producing results.
-						</p>
+					<div className="panel-header">
+						<div className="stack action-card-header">
+							<h3>Import results</h3>
+							<p className="muted">
+								Per-item outcomes are available for import tasks once validation
+								or execution begins producing results.
+							</p>
+						</div>
+						<TableExportMenu
+							view={importResultsExportView}
+							disabled={resultsQuery.isFetching}
+							compact
+						/>
 					</div>
 
 					{resultsQuery.isLoading ? (
@@ -409,7 +487,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 									</tr>
 								</thead>
 								<tbody>
-									{resultsQuery.data.map((result) => (
+									{importResults.map((result) => (
 										<tr key={result.id}>
 											<td>{result.item_ref ?? result.identifier ?? "n/a"}</td>
 											<td>{result.entity_kind}</td>

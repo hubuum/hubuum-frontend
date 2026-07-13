@@ -7,6 +7,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -14,20 +15,23 @@ import {
 	getApiV1IamServiceAccounts,
 	postApiV1IamServiceAccounts,
 } from "@/lib/api/generated/client";
-import type {
-	Group,
-	NewServiceAccount,
-	ServiceAccountResponse,
-} from "@/lib/api/generated/models";
+import type { NewServiceAccount } from "@/lib/api/generated/models";
 import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
 import {
+	type ConsoleGroup,
+	type ConsoleServiceAccount,
+	formatScopedGroupName,
+	formatScopedServiceAccountName,
+} from "@/lib/identity-scopes";
+import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
 } from "@/lib/resource-search";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
+import type { TableExportView } from "@/lib/table-export";
 
 function IconSearch() {
 	return (
@@ -41,7 +45,7 @@ function IconSearch() {
 }
 
 type ServiceAccountsPageData = {
-	accounts: ServiceAccountResponse[];
+	accounts: ConsoleServiceAccount[];
 	nextCursor: string | null;
 	prevCursor: string | null;
 	totalCount: number | null;
@@ -63,7 +67,9 @@ async function fetchServiceAccounts(
 	}
 
 	const totalCountHeader = response.headers.get("X-Total-Count");
-	const totalCount = totalCountHeader ? Number.parseInt(totalCountHeader, 10) : null;
+	const totalCount = totalCountHeader
+		? Number.parseInt(totalCountHeader, 10)
+		: null;
 
 	return {
 		accounts: response.data,
@@ -73,10 +79,13 @@ async function fetchServiceAccounts(
 	};
 }
 
-async function fetchGroups(): Promise<Group[]> {
-	const response = await getApiV1IamGroups(undefined, {
-		credentials: "include",
-	});
+async function fetchGroups(): Promise<ConsoleGroup[]> {
+	const response = await getApiV1IamGroups(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -105,8 +114,7 @@ export function ServiceAccountsTable() {
 
 	const query = useQuery({
 		queryKey: ["service-accounts", pagination.cursor, pagination.limit],
-		queryFn: () =>
-			fetchServiceAccounts(pagination.limit, pagination.cursor),
+		queryFn: () => fetchServiceAccounts(pagination.limit, pagination.cursor),
 	});
 	const groupsQuery = useQuery({
 		queryKey: ["groups", "service-account-owner"],
@@ -150,7 +158,7 @@ export function ServiceAccountsTable() {
 	const accounts = query.data?.accounts ?? [];
 	const groups = groupsQuery.data ?? [];
 	const groupById = useMemo(() => {
-		const map = new Map<number, Group>();
+		const map = new Map<number, ConsoleGroup>();
 		for (const group of groups) {
 			map.set(group.id, group);
 		}
@@ -163,6 +171,8 @@ export function ServiceAccountsTable() {
 				matchesFreeTextSearch(
 					searchTerm,
 					account.name,
+					formatScopedServiceAccountName(account),
+					account.identity_scope,
 					account.description,
 					String(account.owner_group_id),
 					groupById.get(account.owner_group_id)?.groupname,
@@ -170,6 +180,48 @@ export function ServiceAccountsTable() {
 				),
 			),
 		[accounts, groupById, searchTerm],
+	);
+	const exportView = useMemo<TableExportView<ConsoleServiceAccount>>(
+		() => ({
+			id: "service-accounts",
+			fileName: "service-accounts-view",
+			sheetName: "Service accounts",
+			columns: [
+				{ key: "id", label: "ID", getValue: (account) => account.id },
+				{
+					key: "name",
+					label: "Name",
+					getValue: (account) => formatScopedServiceAccountName(account),
+				},
+				{
+					key: "identity_scope",
+					label: "Scope",
+					getValue: (account) => account.identity_scope ?? "local",
+				},
+				{
+					key: "owner_group",
+					label: "Owner group",
+					getValue: (account) => {
+						const ownerGroup = groupById.get(account.owner_group_id);
+						return ownerGroup
+							? `${formatScopedGroupName(ownerGroup)} (#${ownerGroup.id})`
+							: `#${account.owner_group_id}`;
+					},
+				},
+				{
+					key: "status",
+					label: "Status",
+					getValue: (account) => (account.disabled_at ? "Disabled" : "Active"),
+				},
+				{
+					key: "created_at",
+					label: "Created",
+					getValue: (account) => new Date(account.created_at),
+				},
+			],
+			rows: filteredAccounts,
+		}),
+		[filteredAccounts, groupById],
 	);
 
 	useEffect(() => {
@@ -272,6 +324,9 @@ export function ServiceAccountsTable() {
 		return (
 			<form className="stack" onSubmit={onSubmit}>
 				<div className="form-grid">
+					<div className="info-banner control-field--wide">
+						New service accounts are created in the local identity scope.
+					</div>
 					<label className="control-field">
 						<span>Name</span>
 						<input
@@ -298,7 +353,7 @@ export function ServiceAccountsTable() {
 							) : null}
 							{groups.map((group) => (
 								<option key={group.id} value={group.id}>
-									{group.groupname} (#{group.id})
+									{formatScopedGroupName(group)} (#{group.id})
 								</option>
 							))}
 						</select>
@@ -363,7 +418,7 @@ export function ServiceAccountsTable() {
 				{renderCreateForm()}
 			</CreateModal>
 
-			<div className="card table-wrap">
+			<div className="card">
 				<div className="table-header">
 					<div className="table-title-row">
 						<h3>Service accounts</h3>
@@ -374,6 +429,7 @@ export function ServiceAccountsTable() {
 						</span>
 					</div>
 					<div className="table-tools">
+						<TableExportMenu view={exportView} compact />
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
 								<input
@@ -425,42 +481,46 @@ export function ServiceAccountsTable() {
 						}
 					/>
 				) : (
-					<table>
-						<thead>
-							<tr>
-								<th>ID</th>
-								<th>Name</th>
-								<th>Owner group</th>
-								<th>Status</th>
-								<th>Created</th>
-							</tr>
-						</thead>
-						<tbody>
-							{filteredAccounts.map((account) => {
-								const ownerGroup = groupById.get(account.owner_group_id);
-								return (
-									<tr key={account.id}>
-										<td>{account.id}</td>
-										<td>
-											<Link
-												className="row-link"
-												href={`/admin/service-accounts/${account.id}`}
-											>
-												{account.name}
-											</Link>
-										</td>
-										<td>
-											{ownerGroup
-												? `${ownerGroup.groupname} (#${ownerGroup.id})`
-												: `#${account.owner_group_id}`}
-										</td>
-										<td>{account.disabled_at ? "Disabled" : "Active"}</td>
-										<td>{new Date(account.created_at).toLocaleString()}</td>
-									</tr>
-								);
-							})}
-						</tbody>
-					</table>
+					<div className="table-wrap">
+						<table>
+							<thead>
+								<tr>
+									<th>ID</th>
+									<th>Name</th>
+									<th>Scope</th>
+									<th>Owner group</th>
+									<th>Status</th>
+									<th>Created</th>
+								</tr>
+							</thead>
+							<tbody>
+								{filteredAccounts.map((account) => {
+									const ownerGroup = groupById.get(account.owner_group_id);
+									return (
+										<tr key={account.id}>
+											<td>{account.id}</td>
+											<td>
+												<Link
+													className="row-link"
+													href={`/admin/service-accounts/${account.id}`}
+												>
+													{formatScopedServiceAccountName(account)}
+												</Link>
+											</td>
+											<td>{account.identity_scope ?? "local"}</td>
+											<td>
+												{ownerGroup
+													? `${formatScopedGroupName(ownerGroup)} (#${ownerGroup.id})`
+													: `#${account.owner_group_id}`}
+											</td>
+											<td>{account.disabled_at ? "Disabled" : "Active"}</td>
+											<td>{new Date(account.created_at).toLocaleString()}</td>
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
 				)}
 				{query.data &&
 				(query.data.nextCursor ||

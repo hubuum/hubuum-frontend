@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1IamMePermissions,
@@ -59,51 +60,75 @@ export function PrincipalPermissions({
 
 	if (collections.length === 0) {
 		return (
-			<div className="card muted">
-				No direct permissions on any collection.
-			</div>
+			<div className="card muted">No direct permissions on any collection.</div>
 		);
 	}
 
 	return (
 		<section className="stack">
-			{collections.map((collection) => (
-				<div key={collection.collection_id} className="card stack">
-					<h4>
-						{collection.collection_name}{" "}
-						<span className="muted">#{collection.collection_id}</span>
-					</h4>
-					<div className="table-wrap">
-						<table>
-							<thead>
-								<tr>
-									<th>Granted by group</th>
-									<th>Permissions</th>
-								</tr>
-							</thead>
-							<tbody>
-								{collection.grants.map((grant) => (
-									<tr key={grant.group_id}>
-										<td>
-											{grant.groupname}{" "}
-											<span className="muted">#{grant.group_id}</span>
-										</td>
-										<td>
-											<div className="chip-row">
-												{grant.permissions.map((permission) => (
-													<span key={permission} className="badge">
-														{permission}
-													</span>
-												))}
-											</div>
-										</td>
+			{collections.map((collection) => {
+				const exportView = {
+					id: `principal-permissions-${principalId}-collection-${collection.collection_id}`,
+					fileName: `${collection.collection_name}-permissions`,
+					sheetName: "Permissions",
+					columns: [
+						{
+							key: "group",
+							label: "Granted by group",
+							getValue: (grant: (typeof collection.grants)[number]) =>
+								`${grant.groupname} #${grant.group_id}`,
+						},
+						{
+							key: "permissions",
+							label: "Permissions",
+							getValue: (grant: (typeof collection.grants)[number]) =>
+								grant.permissions.join(", "),
+						},
+					],
+					rows: collection.grants,
+				};
+
+				return (
+					<div key={collection.collection_id} className="card stack">
+						<div className="panel-header">
+							<h4>
+								{collection.collection_name}{" "}
+								<span className="muted">#{collection.collection_id}</span>
+							</h4>
+							<TableExportMenu view={exportView} compact />
+						</div>
+						<div className="table-wrap">
+							<table>
+								<thead>
+									<tr>
+										<th>Granted by group</th>
+										<th>Permissions</th>
 									</tr>
-								))}
-							</tbody>
-						</table>
+								</thead>
+								<tbody>
+									{collection.grants.map((grant) => (
+										<tr key={grant.group_id}>
+											<td>
+												{grant.groupname}{" "}
+												<span className="muted">#{grant.group_id}</span>
+											</td>
+											<td>
+												<div className="chip-row">
+													{grant.permissions.map((permission) => (
+														<span key={permission} className="badge">
+															{permission}
+														</span>
+													))}
+												</div>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
 					</div>
-				</div>
-			))}
+				);
+			})}
 		</section>
 	);
 }

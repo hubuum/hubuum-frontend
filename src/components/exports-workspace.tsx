@@ -11,6 +11,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { IncludeRows } from "@/components/include-rows";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { TemplateCodeEditor } from "@/components/template-code-editor";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -394,7 +395,7 @@ function downloadReportResult(
 }
 
 async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(undefined, {
+	const response = await getApiV1Collections({ include_total: false }, {
 		credentials: "include",
 	});
 
@@ -408,7 +409,7 @@ async function fetchCollections(): Promise<Collection[]> {
 }
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(undefined, {
+	const response = await getApiV1Classes({ include_total: false }, {
 		credentials: "include",
 	});
 
@@ -552,6 +553,34 @@ export function ExportsWorkspace() {
 			),
 		[reportRunsQuery.data?.tasks],
 	);
+	const reportRunsExportView = {
+		id: "recent-export-runs",
+		fileName: "recent-export-runs",
+		sheetName: "Export runs",
+		columns: [
+			{
+				key: "run",
+				label: "Run",
+				getValue: (task: (typeof successfulReportRuns)[number]) => {
+					const details = task.details?.export ?? null;
+					return `Export #${task.id}\n${details?.template_name ?? task.summary ?? "Ad-hoc export"}`;
+				},
+			},
+			{
+				key: "created",
+				label: "Created",
+				getValue: (task: (typeof successfulReportRuns)[number]) =>
+					formatTimestamp(task.created_at),
+			},
+			{
+				key: "type",
+				label: "Type",
+				getValue: (task: (typeof successfulReportRuns)[number]) =>
+					task.details?.export?.output_content_type ?? "available",
+			},
+		],
+		rows: successfulReportRuns,
+	};
 	const activeReportTask = reportTaskQuery.data ?? lastReportTask;
 	const reportDetails = activeReportTask?.details?.export ?? null;
 	const reportTerminal =
@@ -1694,6 +1723,11 @@ export function ExportsWorkspace() {
 									stored.
 								</p>
 							</div>
+							<TableExportMenu
+								view={reportRunsExportView}
+								disabled={reportRunsQuery.isFetching}
+								compact
+							/>
 						</div>
 
 						{reportRunsQuery.isLoading ? (

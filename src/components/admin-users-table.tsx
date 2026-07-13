@@ -2,8 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { TableExportMenu } from "@/components/table-export-menu";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -11,16 +12,25 @@ import {
 	getApiV1IamUsers,
 	postApiV1IamUsers,
 } from "@/lib/api/generated/client";
-import type { NewUser, UserResponse } from "@/lib/api/generated/models";
 import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
+import {
+	type ConsoleUser,
+	isProviderManagedUser,
+	normalizeIdentityScope,
+	type ScopedNewUser,
+} from "@/lib/identity-scopes";
+import type { TableExportView } from "@/lib/table-export";
 
-async function fetchUsers(): Promise<UserResponse[]> {
-	const response = await getApiV1IamUsers(undefined, {
-		credentials: "include",
-	});
+async function fetchUsers(): Promise<ConsoleUser[]> {
+	const response = await getApiV1IamUsers(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(getApiErrorMessage(response.data, "Failed to load users."));
@@ -47,7 +57,7 @@ export function AdminUsersTable() {
 		queryFn: fetchUsers,
 	});
 	const createMutation = useMutation({
-		mutationFn: async (payload: NewUser) => {
+		mutationFn: async (payload: ScopedNewUser) => {
 			const response = await postApiV1IamUsers(payload, {
 				credentials: "include",
 			});
@@ -128,19 +138,70 @@ export function AdminUsersTable() {
 	}, []);
 
 	const users = query.data ?? [];
+	const selectableUsers = useMemo(
+		() => users.filter((user) => !isProviderManagedUser(user)),
+		[users],
+	);
 	const allSelected =
-		users.length > 0 && selectedUserIds.length === users.length;
+		selectableUsers.length > 0 &&
+		selectedUserIds.length === selectableUsers.length;
+
+	useEffect(() => {
+		if (!selectedUserIds.length) return;
+		const selectableIds = new Set(selectableUsers.map((user) => user.id));
+		setSelectedUserIds((current) =>
+			current.filter((userId) => selectableIds.has(userId)),
+		);
+	}, [selectableUsers, selectedUserIds.length]);
+	const exportView = useMemo<TableExportView<ConsoleUser>>(
+		() => ({
+			id: "admin-users",
+			fileName: "user-directory-view",
+			sheetName: "Users",
+			columns: [
+				{ key: "id", label: "ID", getValue: (user) => user.id },
+				{
+					key: "username",
+					label: "Username",
+					getValue: (user) => user.name,
+				},
+				{
+					key: "identity_scope",
+					label: "Identity scope",
+					getValue: (user) => normalizeIdentityScope(user.identity_scope),
+				},
+				{
+					key: "provider",
+					label: "Provider",
+					getValue: (user) => user.provider_kind ?? "local",
+				},
+				{ key: "email", label: "Email", getValue: (user) => user.email },
+				{
+					key: "created_at",
+					label: "Created",
+					getValue: (user) => new Date(user.created_at),
+				},
+				{
+					key: "updated_at",
+					label: "Updated",
+					getValue: (user) => new Date(user.updated_at),
+				},
+			],
+			rows: users,
+		}),
+		[users],
+	);
 
 	useEffect(() => {
 		if (!selectedUserIds.length) {
 			return;
 		}
 
-		const existingIds = new Set(users.map((user) => user.id));
+		const existingIds = new Set(selectableUsers.map((user) => user.id));
 		setSelectedUserIds((current) =>
 			current.filter((userId) => existingIds.has(userId)),
 		);
-	}, [users, selectedUserIds.length]);
+	}, [selectableUsers, selectedUserIds.length]);
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -162,7 +223,7 @@ export function AdminUsersTable() {
 
 		const trimmedEmail = email.trim();
 		const trimmedProperName = properName.trim();
-		const payload: NewUser = {
+		const payload: ScopedNewUser = {
 			name: trimmedUsername,
 			password,
 		};
@@ -180,7 +241,7 @@ export function AdminUsersTable() {
 
 	function toggleAllUsers(checked: boolean) {
 		if (checked) {
-			setSelectedUserIds(users.map((user) => user.id));
+			setSelectedUserIds(selectableUsers.map((user) => user.id));
 			return;
 		}
 
@@ -197,7 +258,11 @@ export function AdminUsersTable() {
 	}
 
 	async function deleteSelectedUsers() {
-		if (!selectedUserIds.length) {
+		const selectableIds = new Set(selectableUsers.map((user) => user.id));
+		const deletableUserIds = selectedUserIds.filter((userId) =>
+			selectableIds.has(userId),
+		);
+		if (!deletableUserIds.length) {
 			return;
 		}
 
@@ -205,8 +270,8 @@ export function AdminUsersTable() {
 		setTableSuccess(null);
 
 		const confirmed = await confirm({
-			title: `Delete ${selectedUserIds.length} selected user${
-				selectedUserIds.length === 1 ? "" : "s"
+			title: `Delete ${deletableUserIds.length} selected user${
+				deletableUserIds.length === 1 ? "" : "s"
 			}?`,
 			description: "This removes the selected users and cannot be undone.",
 			confirmLabel: "Delete",
@@ -216,13 +281,17 @@ export function AdminUsersTable() {
 			return;
 		}
 
-		deleteMutation.mutate([...selectedUserIds]);
+		deleteMutation.mutate(deletableUserIds);
 	}
 
 	function renderCreateUserForm() {
 		return (
 			<form className="stack" onSubmit={onSubmit}>
 				<div className="form-grid">
+					<div className="info-banner control-field--wide">
+						New users are created in the local identity scope. Provider-managed
+						users are materialized by their authentication provider.
+					</div>
 					<label className="control-field">
 						<span>Username</span>
 						<input
@@ -300,7 +369,7 @@ export function AdminUsersTable() {
 				{renderCreateUserForm()}
 			</CreateModal>
 
-			<div className="card table-wrap">
+			<div className="card">
 				<div className="table-header">
 					<h3>User directory</h3>
 					<div className="table-tools">
@@ -310,6 +379,7 @@ export function AdminUsersTable() {
 								? ` • ${selectedUserIds.length} selected`
 								: ""}
 						</span>
+						<TableExportMenu view={exportView} compact />
 						<button
 							type="button"
 							className="danger"
@@ -325,50 +395,60 @@ export function AdminUsersTable() {
 				{tableError ? <div className="error-banner">{tableError}</div> : null}
 				{tableSuccess ? <div className="muted">{tableSuccess}</div> : null}
 
-				<table>
-					<thead>
-						<tr>
-							<th className="check-col">
-								<input
-									type="checkbox"
-									aria-label="Select all users"
-									checked={allSelected}
-									onChange={(event) => toggleAllUsers(event.target.checked)}
-								/>
-							</th>
-							<th>ID</th>
-							<th>Username</th>
-							<th>Email</th>
-							<th>Created</th>
-							<th>Updated</th>
-						</tr>
-					</thead>
-					<tbody>
-						{users.map((user) => (
-							<tr key={user.id}>
-								<td className="check-col">
+				<div className="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th className="check-col">
 									<input
 										type="checkbox"
-										aria-label={`Select user ${user.name}`}
-										checked={selectedUserIds.includes(user.id)}
-										onChange={(event) =>
-											toggleUser(user.id, event.target.checked)
-										}
+										aria-label="Select all users"
+										checked={allSelected}
+										onChange={(event) => toggleAllUsers(event.target.checked)}
 									/>
-								</td>
-								<td>{user.id}</td>
-								<td>
-									<Link className="row-link" href={`/admin/users/${user.id}`}>
-										{user.name}
-									</Link>
-								</td>
-								<td>{user.email ?? "-"}</td>
-								<td>{new Date(user.created_at).toLocaleString()}</td>
-								<td>{new Date(user.updated_at).toLocaleString()}</td>
+								</th>
+								<th>ID</th>
+								<th>Scope</th>
+								<th>Username</th>
+								<th>Provider</th>
+								<th>Email</th>
+								<th>Created</th>
+								<th>Updated</th>
 							</tr>
-						))}
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							{users.map((user) => (
+								<tr key={user.id}>
+									<td className="check-col">
+										<input
+											type="checkbox"
+											aria-label={`Select user ${user.name}`}
+											checked={selectedUserIds.includes(user.id)}
+											disabled={isProviderManagedUser(user)}
+											onChange={(event) =>
+												toggleUser(user.id, event.target.checked)
+											}
+										/>
+									</td>
+									<td>{user.id}</td>
+									<td>{normalizeIdentityScope(user.identity_scope)}</td>
+									<td>
+										<Link className="row-link" href={`/admin/users/${user.id}`}>
+											{user.name}
+										</Link>
+									</td>
+									<td>
+										{user.provider_kind ?? "local"}
+										{isProviderManagedUser(user) ? " · managed" : ""}
+									</td>
+									<td>{user.email ?? "-"}</td>
+									<td>{new Date(user.created_at).toLocaleString()}</td>
+									<td>{new Date(user.updated_at).toLocaleString()}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
 	);

@@ -12,7 +12,7 @@
 		"test": "vitest run",
 		"test:live-backend": "scripts/live-backend-test.sh",
 		"lint": "biome lint .",
-		"typecheck": "next typegen && rm -rf .next/dev && tsc --noEmit",
+		"typecheck": "next typegen && tsc --noEmit",
 		"gen:api": "npx --yes orval@8.4.1 --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
 		"audit:prod": "npm audit --omit=dev"
 	},
@@ -28,12 +28,14 @@
 		"@tanstack/react-query": "^5.100.10",
 		"@types/prismjs": "^1.26.6",
 		"codemirror": "^6.0.2",
+		"fflate": "0.8.3",
 		"ioredis": "^5.10.1",
 		"next": "^16.2.6",
 		"prismjs": "^1.30.0",
 		"react": "^19.2.6",
 		"react-dom": "^19.2.6",
 		"react-simple-code-editor": "^0.14.1",
+		"xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
 		"zod": "^4.4.3"
 	},
 	"overrides": {
