@@ -13,6 +13,7 @@ import {
 	getTotalCollections,
 	tryFetchMetaCounts,
 } from "@/lib/meta";
+import { fetchVisibleWorkspaceSummary } from "@/lib/workspace-summary";
 
 type RecommendedAction = {
 	title: string;
@@ -239,13 +240,13 @@ function getRecommendedAction(
 ): RecommendedAction {
 	if (!counts) {
 		return {
-			title: "Continue exploring the workspace",
+			title: "Resume your workspace",
 			description:
-				"Pick the area you want to work in. Live counts aren't available for your account, but every workspace area is still reachable below.",
-			primaryHref: "/objects",
-			primaryLabel: "Open objects",
-			secondaryHref: "/collections",
-			secondaryLabel: "Open collections",
+				"Return to recent or pinned resources, search across the graph, or review work already in progress.",
+			primaryHref: "/search",
+			primaryLabel: "Search workspace",
+			secondaryHref: "/tasks",
+			secondaryLabel: "Review tasks",
 		};
 	}
 
@@ -310,10 +311,27 @@ export default async function AppPage() {
 	const counts = canViewAdmin
 		? await tryFetchMetaCounts(session.token, correlationId)
 		: null;
+	const visibleSummary = canViewAdmin
+		? null
+		: await fetchVisibleWorkspaceSummary(session.token, correlationId);
 	const recommendedAction = getRecommendedAction(counts);
 	const totalCollections = counts ? getTotalCollections(counts) : null;
 	const totalClasses = counts?.total_classes ?? null;
 	const totalObjects = counts?.total_objects ?? null;
+	const dashboardMetrics = counts
+		? [
+				{ label: "Collections", value: totalCollections },
+				{ label: "Classes", value: totalClasses },
+				{ label: "Objects", value: totalObjects },
+			]
+		: [
+				{
+					label: "Visible collections",
+					value: visibleSummary?.collections ?? null,
+				},
+				{ label: "Visible classes", value: visibleSummary?.classes ?? null },
+				{ label: "Available tasks", value: visibleSummary?.tasks ?? null },
+			].filter((metric) => metric.value !== null);
 	const workflowSteps = [
 		{
 			step: "01",
@@ -402,39 +420,38 @@ export default async function AppPage() {
 						you left off or move through the graph below.
 					</p>
 				</div>
-				<dl className="workspace-metrics">
-					<div>
-						<dt>Collections</dt>
-						<dd>{totalCollections ?? "—"}</dd>
-					</div>
-					<div>
-						<dt>Classes</dt>
-						<dd>{totalClasses ?? "—"}</dd>
-					</div>
-					<div>
-						<dt>Objects</dt>
-						<dd>{totalObjects?.toLocaleString() ?? "—"}</dd>
-					</div>
-				</dl>
+				{dashboardMetrics.length > 0 ? (
+					<dl className="workspace-metrics">
+						{dashboardMetrics.map((metric) => (
+							<div key={metric.label}>
+								<dt>{metric.label}</dt>
+								<dd>{metric.value?.toLocaleString()}</dd>
+							</div>
+						))}
+					</dl>
+				) : null}
 			</header>
 
 			<div className="workspace-dashboard-grid">
 				<section className="dashboard-primary">
 					<article className="card home-priority-card dashboard-priority">
-					<div className="stack action-card-header">
-						<p className="eyebrow">Recommended next step</p>
-						<h3>{recommendedAction.title}</h3>
-						<p className="muted">{recommendedAction.description}</p>
-					</div>
+						<div className="stack action-card-header">
+							<p className="eyebrow">Recommended next step</p>
+							<h3>{recommendedAction.title}</h3>
+							<p className="muted">{recommendedAction.description}</p>
+						</div>
 
-					<div className="action-card-actions">
-						<Link className="link-chip" href={recommendedAction.primaryHref}>
-							{recommendedAction.primaryLabel}
-						</Link>
-						<Link className="link-chip" href={recommendedAction.secondaryHref}>
-							{recommendedAction.secondaryLabel}
-						</Link>
-					</div>
+						<div className="action-card-actions">
+							<Link className="link-chip" href={recommendedAction.primaryHref}>
+								{recommendedAction.primaryLabel}
+							</Link>
+							<Link
+								className="link-chip"
+								href={recommendedAction.secondaryHref}
+							>
+								{recommendedAction.secondaryLabel}
+							</Link>
+						</div>
 					</article>
 
 					<section className="card workflow-panel">
@@ -447,7 +464,11 @@ export default async function AppPage() {
 						</header>
 						<div className="workflow-path">
 							{workflowSteps.map((item) => (
-								<Link key={item.title} className="workflow-step" href={item.href}>
+								<Link
+									key={item.title}
+									className="workflow-step"
+									href={item.href}
+								>
 									<span className="workflow-step-number">{item.step}</span>
 									<span className="workflow-step-icon">{item.icon}</span>
 									<span className="workflow-step-copy">
@@ -474,7 +495,11 @@ export default async function AppPage() {
 						</header>
 						<div className="operation-links">
 							{operationLinks.map((item) => (
-								<Link key={item.title} className="operation-link" href={item.href}>
+								<Link
+									key={item.title}
+									className="operation-link"
+									href={item.href}
+								>
 									<span className="operation-link-icon">{item.icon}</span>
 									<span>
 										<strong>{item.title}</strong>

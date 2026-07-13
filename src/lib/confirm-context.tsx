@@ -5,8 +5,11 @@ import {
 	type ReactNode,
 	useCallback,
 	useContext,
+	useRef,
 	useState,
 } from "react";
+
+import { useDialogAccessibility } from "@/lib/use-dialog-accessibility";
 
 type ConfirmOptions = {
 	title: string;
@@ -27,6 +30,8 @@ type ConfirmContextValue = {
 const ConfirmContext = createContext<ConfirmContextValue | null>(null);
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
+	const overlayRef = useRef<HTMLDivElement | null>(null);
+	const dialogRef = useRef<HTMLElement | null>(null);
 	const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
 		null,
 	);
@@ -51,11 +56,20 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 		[pendingConfirm],
 	);
 
+	const closeDialog = useCallback(() => close(false), [close]);
+	useDialogAccessibility({
+		open: pendingConfirm !== null,
+		onClose: closeDialog,
+		dialogRef,
+		overlayRef,
+		initialFocusSelector: "[data-dialog-initial-focus]",
+	});
+
 	return (
 		<ConfirmContext.Provider value={{ confirm }}>
 			{children}
 			{pendingConfirm ? (
-				<div className="modal-overlay">
+				<div className="modal-overlay" ref={overlayRef}>
 					<button
 						type="button"
 						className="modal-backdrop"
@@ -63,6 +77,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 						aria-label="Cancel confirmation"
 					/>
 					<section
+						ref={dialogRef}
 						className="modal-panel card confirm-dialog"
 						role="alertdialog"
 						aria-modal="true"
@@ -72,6 +87,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 								? "confirm-dialog-description"
 								: undefined
 						}
+						tabIndex={-1}
 					>
 						<header className="modal-header">
 							<h3 id="confirm-dialog-title">{pendingConfirm.title}</h3>
@@ -87,6 +103,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 									type="button"
 									className="ghost"
 									onClick={() => close(false)}
+									data-dialog-initial-focus
 								>
 									{pendingConfirm.cancelLabel ?? "Cancel"}
 								</button>

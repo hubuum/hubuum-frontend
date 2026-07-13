@@ -58,6 +58,27 @@ npm run dev:deps:down
 The development Valkey data is intentionally ephemeral, so stopping it signs
 out existing local sessions.
 
+## Browser quality checks
+
+Install the browser used by the end-to-end suite once:
+
+```sh
+npx playwright install chromium
+```
+
+Run the public accessibility, contrast, responsive-layout, and screenshot
+checks without backend credentials:
+
+```sh
+npm run test:e2e:public
+```
+
+Authenticated dashboard and create-flow checks run when `E2E_USERNAME` and
+`E2E_PASSWORD` are set. Point either suite at an already running frontend with
+`PLAYWRIGHT_BASE_URL`, for example `http://127.0.0.1:3000`. Refresh intentional
+local screenshot changes with `npm run test:e2e:update`; CI runs the portable
+accessibility, contrast, and responsive-layout checks.
+
 ## Use another Valkey port
 
 If port 6379 is already occupied, start the dependency on another loopback port

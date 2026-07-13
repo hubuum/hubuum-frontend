@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
-import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
@@ -18,14 +17,15 @@ import {
 	postApiV1Classes,
 } from "@/lib/api/generated/client";
 import type {
-	HubuumClassExpanded,
 	Collection,
+	HubuumClassExpanded,
 	NewHubuumClass,
 } from "@/lib/api/generated/models";
 import {
 	buildCollectionHierarchy,
 	formatCollectionOption,
 } from "@/lib/collection-hierarchy";
+import { useConfirm } from "@/lib/confirm-context";
 import {
 	DESELECT_ALL_EVENT,
 	OPEN_CREATE_EVENT,
@@ -37,12 +37,12 @@ import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
 } from "@/lib/resource-search";
+import type { TableExportView } from "@/lib/table-export";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
 import { useTableSort } from "@/lib/use-table-sort";
-import type { TableExportView } from "@/lib/table-export";
 
 function IconSearch() {
 	return (
@@ -435,14 +435,26 @@ export function ClassesTable() {
 
 	function renderSortIndicator(column: string) {
 		if (sortState.column !== column) {
-			return <span className="sort-indicator">⇅</span>;
+			return (
+				<span className="sort-indicator" aria-hidden="true">
+					⇅
+				</span>
+			);
 		}
 
 		return (
-			<span className="sort-indicator sort-indicator--active">
+			<span
+				className="sort-indicator sort-indicator--active"
+				aria-hidden="true"
+			>
 				{sortState.direction === "asc" ? "↑" : "↓"}
 			</span>
 		);
+	}
+
+	function getSortAria(column: string): "ascending" | "descending" | "none" {
+		if (sortState.column !== column) return "none";
+		return sortState.direction === "asc" ? "ascending" : "descending";
 	}
 
 	function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
@@ -637,88 +649,124 @@ export function ClassesTable() {
 						}
 					/>
 				) : (
-					<div className="table-wrap">
-						<table id="classes-table">
-							<thead>
-								<tr>
-									<th className="check-col">
-										<input
-											type="checkbox"
-											aria-label="Select all classes"
-											checked={allSelected}
-											onChange={(event) =>
-												shiftSelect.handleSelectAll(event.target.checked)
-											}
-										/>
-									</th>
-									<th className="sortable" onClick={() => setSort("id")}>
-										ID{renderSortIndicator("id")}
-									</th>
-									<th className="sortable" onClick={() => setSort("name")}>
-										Name{renderSortIndicator("name")}
-									</th>
-									<th
-										className="sortable"
-										onClick={() => setSort("collection_id")}
-									>
-										Collection{renderSortIndicator("collection_id")}
-									</th>
-									<th
-										className="sortable"
-										onClick={() => setSort("description")}
-									>
-										Description{renderSortIndicator("description")}
-									</th>
-								</tr>
-							</thead>
-							<tbody>
-								{filteredClasses.map((item, index) => {
-									const isSelected = selectedClassIds.includes(item.id);
-									const isFocused = keyboardNav.focusedId === item.id;
-									const rowClassName = [
-										isSelected ? "table-row-selected" : "",
-										isFocused ? "table-row-focused" : "",
-									]
-										.filter(Boolean)
-										.join(" ");
-
-									return (
-										<tr
-											key={item.id}
-											className={rowClassName}
-											data-table-row-index={index}
+					<div className="responsive-table-region">
+						<p className="table-scroll-hint">
+							Swipe horizontally to see more columns.
+						</p>
+						<section className="table-wrap" aria-label="Classes table">
+							<table
+								id="classes-table"
+								className="responsive-data-table classes-data-table"
+							>
+								<caption className="sr-only">Classes</caption>
+								<thead>
+									<tr>
+										<th className="check-col">
+											<input
+												type="checkbox"
+												aria-label="Select all classes"
+												checked={allSelected}
+												onChange={(event) =>
+													shiftSelect.handleSelectAll(event.target.checked)
+												}
+											/>
+										</th>
+										<th className="sortable" aria-sort={getSortAria("id")}>
+											<button
+												type="button"
+												className="table-sort-button"
+												onClick={() => setSort("id")}
+											>
+												ID{renderSortIndicator("id")}
+											</button>
+										</th>
+										<th className="sortable" aria-sort={getSortAria("name")}>
+											<button
+												type="button"
+												className="table-sort-button"
+												onClick={() => setSort("name")}
+											>
+												Name{renderSortIndicator("name")}
+											</button>
+										</th>
+										<th
+											className="sortable"
+											aria-sort={getSortAria("collection_id")}
 										>
-											<td className="check-col">
-												<input
-													type="checkbox"
-													aria-label={`Select class ${item.name}`}
-													checked={isSelected}
-													onChange={(
-														event: React.ChangeEvent<HTMLInputElement>,
-													) =>
-														shiftSelect.handleClick(
-															item.id,
-															event.target.checked,
-															(event.nativeEvent as MouseEvent).shiftKey,
-														)
-													}
-												/>
-											</td>
-											<td>{item.id}</td>
-											<td>
-												<Link href={`/classes/${item.id}`} className="row-link">
-													{item.name}
-												</Link>
-											</td>
-											<td>
-												{item.collection.name} (#{item.collection.id})
-											</td>
-											<td>{item.description || "-"}</td>
-										</tr>
-									);
-								})}
-							</tbody>
-						</table>
+											<button
+												type="button"
+												className="table-sort-button"
+												onClick={() => setSort("collection_id")}
+											>
+												Collection{renderSortIndicator("collection_id")}
+											</button>
+										</th>
+										<th
+											className="sortable"
+											aria-sort={getSortAria("description")}
+										>
+											<button
+												type="button"
+												className="table-sort-button"
+												onClick={() => setSort("description")}
+											>
+												Description{renderSortIndicator("description")}
+											</button>
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+									{filteredClasses.map((item, index) => {
+										const isSelected = selectedClassIds.includes(item.id);
+										const isFocused = keyboardNav.focusedId === item.id;
+										const rowClassName = [
+											isSelected ? "table-row-selected" : "",
+											isFocused ? "table-row-focused" : "",
+										]
+											.filter(Boolean)
+											.join(" ");
+
+										return (
+											<tr
+												key={item.id}
+												className={rowClassName}
+												data-table-row-index={index}
+											>
+												<td className="check-col">
+													<input
+														type="checkbox"
+														aria-label={`Select class ${item.name}`}
+														checked={isSelected}
+														onChange={(
+															event: React.ChangeEvent<HTMLInputElement>,
+														) =>
+															shiftSelect.handleClick(
+																item.id,
+																event.target.checked,
+																(event.nativeEvent as MouseEvent).shiftKey,
+															)
+														}
+													/>
+												</td>
+												<td>{item.id}</td>
+												<td>
+													<Link
+														href={`/classes/${item.id}`}
+														className="row-link"
+													>
+														{item.name}
+													</Link>
+												</td>
+												<td>
+													{item.collection.name} (#{item.collection.id})
+												</td>
+												<td>{item.description || "-"}</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</section>
 					</div>
 				)}
 				{pageData &&

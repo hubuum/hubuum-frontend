@@ -8,12 +8,11 @@ import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
-import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1CollectionsByCollectionId,
-	getApiV1IamGroups,
 	getApiV1Collections,
+	getApiV1IamGroups,
 	postApiV1Collections,
 } from "@/lib/api/generated/client";
 import type {
@@ -27,6 +26,7 @@ import {
 	getCollectionPath,
 	isRootCollection,
 } from "@/lib/collection-hierarchy";
+import { useConfirm } from "@/lib/confirm-context";
 import {
 	DESELECT_ALL_EVENT,
 	OPEN_CREATE_EVENT,
@@ -35,19 +35,19 @@ import {
 	SELECTION_STATE_EVENT,
 } from "@/lib/create-events";
 import {
-	matchesFreeTextSearch,
-	normalizeSearchTerm,
-} from "@/lib/resource-search";
-import {
 	type ConsoleGroup,
 	formatScopedGroupName,
 } from "@/lib/identity-scopes";
+import {
+	matchesFreeTextSearch,
+	normalizeSearchTerm,
+} from "@/lib/resource-search";
+import type { TableExportView } from "@/lib/table-export";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
 import { useTableSort } from "@/lib/use-table-sort";
-import type { TableExportView } from "@/lib/table-export";
 
 function IconSearch() {
 	return (
@@ -554,14 +554,26 @@ export function CollectionsTable() {
 
 	function renderSortIndicator(column: string) {
 		if (sortState.column !== column) {
-			return <span className="sort-indicator">⇅</span>;
+			return (
+				<span className="sort-indicator" aria-hidden="true">
+					⇅
+				</span>
+			);
 		}
 
 		return (
-			<span className="sort-indicator sort-indicator--active">
+			<span
+				className="sort-indicator sort-indicator--active"
+				aria-hidden="true"
+			>
 				{sortState.direction === "asc" ? "↑" : "↓"}
 			</span>
 		);
+	}
+
+	function getSortAria(column: string): "ascending" | "descending" | "none" {
+		if (sortState.column !== column) return "none";
+		return sortState.direction === "asc" ? "ascending" : "descending";
 	}
 
 	function renderCreateCollectionForm() {
@@ -752,113 +764,140 @@ export function CollectionsTable() {
 						}
 					/>
 				) : (
-					<div className="table-wrap">
-						<table id="collections-table">
-							<thead>
-								<tr>
-									<th className="check-col">
-										<input
-											type="checkbox"
-											aria-label="Select all collections"
-											checked={allSelected}
-											onChange={(event) =>
-												shiftSelect.handleSelectAll(event.target.checked)
-											}
-										/>
-									</th>
-									<th className="sortable" onClick={() => setSort("id")}>
-										ID{renderSortIndicator("id")}
-									</th>
-									<th className="sortable" onClick={() => setSort("name")}>
-										Name{renderSortIndicator("name")}
-									</th>
-									<th>Parent</th>
-									<th>Children</th>
-									<th
-										className="sortable"
-										onClick={() => setSort("description")}
-									>
-										Description{renderSortIndicator("description")}
-									</th>
-								</tr>
-							</thead>
-							<tbody>
-								{filteredCollections.map((collection, index) => {
-									const isSelected = selectedCollectionIds.includes(
-										collection.id,
-									);
-									const isFocused = keyboardNav.focusedId === collection.id;
-									const depth = depthByCollectionId.get(collection.id) ?? 0;
-									const parent =
-										collection.parent_collection_id === null ||
-										collection.parent_collection_id === undefined
-											? null
-											: hierarchy.byId.get(collection.parent_collection_id);
-									const childCount =
-										hierarchy.childrenByParentId.get(collection.id)?.length ??
-										0;
-									const pathLabel = formatCollectionPath(
-										getCollectionPath(collection, hierarchy.byId),
-									);
-									const rowClassName = [
-										isSelected ? "table-row-selected" : "",
-										isFocused ? "table-row-focused" : "",
-									]
-										.filter(Boolean)
-										.join(" ");
-
-									return (
-										<tr
-											key={collection.id}
-											className={rowClassName}
-											data-table-row-index={index}
+					<div className="responsive-table-region">
+						<p className="table-scroll-hint">
+							Swipe horizontally to see more columns.
+						</p>
+						<section className="table-wrap" aria-label="Collections table">
+							<table
+								id="collections-table"
+								className="responsive-data-table collections-data-table"
+							>
+								<caption className="sr-only">Collections</caption>
+								<thead>
+									<tr>
+										<th className="check-col">
+											<input
+												type="checkbox"
+												aria-label="Select all collections"
+												checked={allSelected}
+												onChange={(event) =>
+													shiftSelect.handleSelectAll(event.target.checked)
+												}
+											/>
+										</th>
+										<th className="sortable" aria-sort={getSortAria("id")}>
+											<button
+												type="button"
+												className="table-sort-button"
+												onClick={() => setSort("id")}
+											>
+												ID{renderSortIndicator("id")}
+											</button>
+										</th>
+										<th className="sortable" aria-sort={getSortAria("name")}>
+											<button
+												type="button"
+												className="table-sort-button"
+												onClick={() => setSort("name")}
+											>
+												Name{renderSortIndicator("name")}
+											</button>
+										</th>
+										<th>Parent</th>
+										<th>Children</th>
+										<th
+											className="sortable"
+											aria-sort={getSortAria("description")}
 										>
-											<td className="check-col">
-												<input
-													type="checkbox"
-													aria-label={`Select collection ${collection.name}`}
-													checked={isSelected}
-													onChange={(event) =>
-														shiftSelect.handleClick(
-															collection.id,
-															event.target.checked,
-															(event.nativeEvent as MouseEvent).shiftKey,
-														)
-													}
-												/>
-											</td>
-											<td>{collection.id}</td>
-											<td>
-												<Link
-													href={`/collections/${collection.id}`}
-													className="row-link"
-													title={pathLabel}
-													style={{
-														paddingLeft: depth > 0 ? `${depth * 1.25}rem` : 0,
-													}}
-												>
-													{collection.name}
-												</Link>
-											</td>
-											<td>
-												{parent ? (
+											<button
+												type="button"
+												className="table-sort-button"
+												onClick={() => setSort("description")}
+											>
+												Description{renderSortIndicator("description")}
+											</button>
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+									{filteredCollections.map((collection, index) => {
+										const isSelected = selectedCollectionIds.includes(
+											collection.id,
+										);
+										const isFocused = keyboardNav.focusedId === collection.id;
+										const depth = depthByCollectionId.get(collection.id) ?? 0;
+										const parent =
+											collection.parent_collection_id === null ||
+											collection.parent_collection_id === undefined
+												? null
+												: hierarchy.byId.get(collection.parent_collection_id);
+										const childCount =
+											hierarchy.childrenByParentId.get(collection.id)?.length ??
+											0;
+										const pathLabel = formatCollectionPath(
+											getCollectionPath(collection, hierarchy.byId),
+										);
+										const rowClassName = [
+											isSelected ? "table-row-selected" : "",
+											isFocused ? "table-row-focused" : "",
+										]
+											.filter(Boolean)
+											.join(" ");
+
+										return (
+											<tr
+												key={collection.id}
+												className={rowClassName}
+												data-table-row-index={index}
+											>
+												<td className="check-col">
+													<input
+														type="checkbox"
+														aria-label={`Select collection ${collection.name}`}
+														checked={isSelected}
+														onChange={(event) =>
+															shiftSelect.handleClick(
+																collection.id,
+																event.target.checked,
+																(event.nativeEvent as MouseEvent).shiftKey,
+															)
+														}
+													/>
+												</td>
+												<td>{collection.id}</td>
+												<td>
 													<Link
-														href={`/collections/${parent.id}`}
+														href={`/collections/${collection.id}`}
 														className="row-link"
+														title={pathLabel}
+														style={{
+															paddingLeft: depth > 0 ? `${depth * 1.25}rem` : 0,
+														}}
 													>
-														{parent.name} (#{parent.id})
+														{collection.name}
 													</Link>
-												) : (
-													<span className="muted">Root</span>
-												)}
-											</td>
-											<td>{childCount}</td>
-											<td>{collection.description || "-"}</td>
-										</tr>
-									);
-								})}
-							</tbody>
-						</table>
+												</td>
+												<td>
+													{parent ? (
+														<Link
+															href={`/collections/${parent.id}`}
+															className="row-link"
+														>
+															{parent.name} (#{parent.id})
+														</Link>
+													) : (
+														<span className="muted">Root</span>
+													)}
+												</td>
+												<td>{childCount}</td>
+												<td>{collection.description || "-"}</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</section>
 					</div>
 				)}
 				{pageData &&

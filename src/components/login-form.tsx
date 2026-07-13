@@ -9,8 +9,8 @@ import {
 	selectAvailableProvider,
 } from "@/lib/auth-providers";
 import {
-	LOGIN_IDENTITY_SCOPE_STORAGE_KEY,
 	LOCAL_IDENTITY_SCOPE,
+	LOGIN_IDENTITY_SCOPE_STORAGE_KEY,
 	type ScopedLoginCredentials,
 } from "@/lib/identity-scopes";
 
@@ -204,7 +204,11 @@ export function LoginForm({
 				required
 			/>
 
-			{error ? <div className="error-banner">{error}</div> : null}
+			{error ? (
+				<div className="error-banner" role="alert">
+					{error}
+				</div>
+			) : null}
 
 			<button className="login-submit" type="submit" disabled={isSubmitting}>
 				<span>{isSubmitting ? "Signing in..." : "Enter workspace"}</span>
