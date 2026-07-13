@@ -148,7 +148,7 @@ jobs:
           HUBUUM_COMPAT_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: bash scripts/release-stack-smoke.sh
       - name: Set up Helm
-        uses: azure/setup-helm@59b1c81c6280f5abebb1fb1bc585696daa7dfb42 # v5
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
       - name: Validate Helm chart
         shell: bash
         run: |
@@ -233,7 +233,7 @@ jobs:
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
       - name: Set up Helm
-        uses: azure/setup-helm@59b1c81c6280f5abebb1fb1bc585696daa7dfb42 # v5
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
       - name: Publish development chart
         env:
           HELM_REGISTRY_CONFIG: /tmp/helm-registry.json
