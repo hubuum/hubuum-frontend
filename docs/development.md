@@ -13,6 +13,12 @@ npm ci
 cp .env.example .env.local
 ```
 
+The project type-checks with TypeScript 7. Next.js still consumes the
+TypeScript 6 programmatic API during its build, so `package.json` installs the
+two official side-by-side aliases: `@typescript/native` provides the `tsc`
+binary, while `typescript` points to the TypeScript 6 compatibility package.
+Keep both aliases until Next.js supports the TypeScript 7 API directly.
+
 Edit `.env.local` and set `BACKEND_BASE_URL` to the Hubuum Server URL that the
 host-side Next.js process can reach:
 
