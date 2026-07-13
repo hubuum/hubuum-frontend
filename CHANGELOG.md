@@ -6,6 +6,16 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Configurable object-reachability depth, persisted in the relations URL, for
+  exploring paths up to 10 hops.
+
+### Changed
+
+- Simplified related-object cards to emphasize the object, description, hop
+  count, and indirect route without displaying object data previews.
+
 ## [0.0.1] - 2026-07-13
 
 ### Added

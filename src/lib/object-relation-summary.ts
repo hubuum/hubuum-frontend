@@ -12,6 +12,23 @@ export type RelatedObjectQueryOptions = {
 };
 
 export const DEFAULT_INCLUDE_SELF_CLASS = false;
+export const DEFAULT_RELATED_OBJECT_DEPTH_LIMIT = 2;
+export const MAX_RELATED_OBJECT_DEPTH_LIMIT = 10;
+
+export function normalizeRelatedObjectDepthLimit(
+	value: string | null | undefined,
+): number {
+	if (!value) {
+		return DEFAULT_RELATED_OBJECT_DEPTH_LIMIT;
+	}
+
+	const parsed = Number(value);
+	return Number.isInteger(parsed) &&
+		parsed >= 1 &&
+		parsed <= MAX_RELATED_OBJECT_DEPTH_LIMIT
+		? parsed
+		: DEFAULT_RELATED_OBJECT_DEPTH_LIMIT;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);

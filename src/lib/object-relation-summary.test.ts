@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
 	buildRelatedObjectSearchParams,
 	DEFAULT_INCLUDE_SELF_CLASS,
+	DEFAULT_RELATED_OBJECT_DEPTH_LIMIT,
+	MAX_RELATED_OBJECT_DEPTH_LIMIT,
 	normalizeRelatedObjectPath,
+	normalizeRelatedObjectDepthLimit,
 	summarizeRelatedObjectData,
 } from "@/lib/object-relation-summary";
 
@@ -34,6 +37,17 @@ describe("object relation summaries", () => {
 		expect(params.toString()).toBe(
 			"limit=50&sort=path.asc%2Cid.asc&depth__lte=9&ignore_self_class=false&ignore_classes=9%2C12",
 		);
+	});
+
+	it("defaults and bounds the reachability depth", () => {
+		expect(DEFAULT_RELATED_OBJECT_DEPTH_LIMIT).toBe(2);
+		expect(MAX_RELATED_OBJECT_DEPTH_LIMIT).toBe(10);
+		expect(normalizeRelatedObjectDepthLimit(null)).toBe(2);
+		expect(normalizeRelatedObjectDepthLimit("3")).toBe(3);
+		expect(normalizeRelatedObjectDepthLimit("0")).toBe(2);
+		expect(normalizeRelatedObjectDepthLimit("11")).toBe(2);
+		expect(normalizeRelatedObjectDepthLimit("2.5")).toBe(2);
+		expect(normalizeRelatedObjectDepthLimit("invalid")).toBe(2);
 	});
 
 	it("normalizes root-prefixed, partial, and empty paths", () => {

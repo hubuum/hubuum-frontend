@@ -42,8 +42,8 @@ import { TITLE_STATE_EVENT } from "@/lib/create-events";
 import {
 	buildRelatedObjectSearchParams,
 	DEFAULT_INCLUDE_SELF_CLASS,
+	DEFAULT_RELATED_OBJECT_DEPTH_LIMIT,
 	normalizeRelatedObjectPath,
-	summarizeRelatedObjectData,
 } from "@/lib/object-relation-summary";
 import { flattenObjectPropertyEntries } from "@/lib/object-property-entries";
 
@@ -293,7 +293,9 @@ export function ObjectDetail({
 	const collectionSelectRef = useRef<HTMLSelectElement | null>(null);
 	const collectionInputRef = useRef<HTMLInputElement | null>(null);
 
-	const [relationDepthLimit, setRelationDepthLimit] = useState(2);
+	const [relationDepthLimit, setRelationDepthLimit] = useState(
+		DEFAULT_RELATED_OBJECT_DEPTH_LIMIT,
+	);
 	const [showAllRelations, setShowAllRelations] = useState(false);
 	const [includeSelfClass, setIncludeSelfClass] = useState(
 		DEFAULT_INCLUDE_SELF_CLASS,
@@ -1449,10 +1451,6 @@ export function ObjectDetail({
 												relatedObject.path,
 												relatedObject.id,
 											);
-											const dataSummary = summarizeRelatedObjectData(
-												relatedObject.data,
-												2,
-											);
 											const relatedClassLabel =
 												classNameById.get(relatedObject.hubuum_class_id) ??
 												`Class #${relatedObject.hubuum_class_id}`;
@@ -1461,15 +1459,12 @@ export function ObjectDetail({
 													key={`connection:${relatedObject.hubuum_class_id}:${relatedObject.id}:${displayPath.join("-")}`}
 													className="object-property-item--connection"
 													label={
-														<span className="object-connection-key">
-															<span>{relatedClassLabel}</span>
-															<span
-																className={`relation-depth-badge relation-depth-badge--${displayPath.length === 1 ? "direct" : "indirect"}`}
-															>
-																{displayPath.length === 1
-																	? "Direct"
-																	: `${displayPath.length} hops`}
-															</span>
+														<span
+															className={`relation-depth-badge relation-depth-badge--${displayPath.length === 1 ? "direct" : "indirect"}`}
+														>
+															{displayPath.length === 1
+																? "Direct"
+																: `${displayPath.length} hops`}
 														</span>
 													}
 												>
@@ -1477,6 +1472,7 @@ export function ObjectDetail({
 														<Link
 															className="row-link"
 															href={`/objects/${relatedObject.hubuum_class_id}/${relatedObject.id}`}
+															title={`${relatedClassLabel} #${relatedObject.id}`}
 														>
 															{relatedObject.name}
 														</Link>
@@ -1486,15 +1482,6 @@ export function ObjectDetail({
 																title={relatedObject.description}
 															>
 																{relatedObject.description}
-															</span>
-														) : null}
-														{dataSummary.length ? (
-															<span className="object-connection-preview">
-																{dataSummary.map((entry) => (
-																	<span key={entry.label}>
-																		<strong>{entry.label}</strong> {entry.value}
-																	</span>
-																))}
 															</span>
 														) : null}
 														{displayPath.length > 1 ? (
