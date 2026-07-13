@@ -6,15 +6,13 @@ import { getServerEnv } from "@/lib/env";
 
 let client: Redis | null = null;
 
-export function getValkeyClient(): Redis | null {
+export function getValkeyClient(): Redis {
 	const env = getServerEnv();
-
-	if (!env.VALKEY_URL) {
-		return null;
-	}
 
 	if (!client) {
 		client = new Redis(env.VALKEY_URL, {
+			commandTimeout: 2_000,
+			connectTimeout: 2_000,
 			maxRetriesPerRequest: 2,
 			enableReadyCheck: true,
 			lazyConnect: true,
@@ -26,4 +24,11 @@ export function getValkeyClient(): Redis | null {
 	}
 
 	return client;
+}
+
+export async function pingValkey(): Promise<void> {
+	const response = await getValkeyClient().ping();
+	if (response !== "PONG") {
+		throw new Error("Valkey readiness check returned an unexpected response.");
+	}
 }

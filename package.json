@@ -3,10 +3,12 @@
 	"version": "0.0.1",
 	"private": true,
 	"engines": {
-		"node": ">=20.0.0"
+		"node": ">=24.0.0"
 	},
 	"scripts": {
 		"dev": "next dev",
+		"dev:deps": "docker compose -f compose.dev.yml up -d --wait",
+		"dev:deps:down": "docker compose -f compose.dev.yml down",
 		"build": "next build",
 		"start": "node scripts/start-standalone.mjs",
 		"test": "vitest run",

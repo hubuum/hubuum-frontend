@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  verify:
+    name: verify-release
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+      - name: Require an annotated tag
+        run: test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
+      - name: Validate release metadata
+        run: bash scripts/check-release-readiness.sh "$GITHUB_REF_NAME"
+      - name: Verify the tagged commit passed CI on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          successful_runs="$(gh api -X GET \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+            -f branch=main \
+            -f head_sha="$GITHUB_SHA" \
+            -f status=success \
+            --jq '.total_count')"
+          if [[ "$successful_runs" -lt 1 ]]; then
+            echo "No successful main CI run found for $GITHUB_SHA." >&2
+            exit 1
+          fi
+
+  publish:
+    name: publish-release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ github.ref_name }}
+            type=semver,pattern={{version}}
+            type=raw,value=sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.title=Hubuum Frontend
+            org.opencontainers.image.description=Web console for Hubuum Server
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.version=${{ github.ref_name }}
+      - name: Build and push image
+        id: push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+      - name: Attest image
+        uses: actions/attest@f6bf1532d7d6793fce74eac584813a8eee607999 # v4
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+      - name: Set up Helm
+        uses: azure/setup-helm@59b1c81c6280f5abebb1fb1bc585696daa7dfb42 # v5
+      - name: Publish release chart
+        env:
+          HELM_REGISTRY_CONFIG: /tmp/helm-registry.json
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            --username "${{ github.actor }}" \
+            --password-stdin
+          helm package charts/hubuum-frontend \
+            --destination /tmp \
+            --version "$version" \
+            --app-version "$GITHUB_REF_NAME"
+          helm push "/tmp/hubuum-frontend-${version}.tgz" \
+            oci://ghcr.io/${{ github.repository_owner }}/charts
+      - name: Build release assets and notes
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          bash scripts/package-quickstart.sh \
+            "$version" \
+            "${{ steps.push.outputs.digest }}" \
+            dist
+          bash scripts/extract-changelog-section.sh "$version" > /tmp/release-notes.md
+          test -s /tmp/release-notes.md
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/hubuum-frontend-"$GITHUB_REF_NAME"-compose.tar.gz \
+            dist/SHA256SUMS \
+            --latest \
+            --notes-file /tmp/release-notes.md \
+            --title "Hubuum Frontend $GITHUB_REF_NAME" \
+            --verify-tag

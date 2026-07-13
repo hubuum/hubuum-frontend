@@ -3,4 +3,4 @@ name: hubuum-frontend
 description: Next.js frontend for Hubuum.
 type: application
 version: 0.0.1
-appVersion: main
+appVersion: "v0.0.1"

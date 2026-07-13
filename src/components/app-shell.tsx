@@ -25,6 +25,7 @@ import type {
 	HubuumClassExpanded,
 	HubuumObject,
 } from "@/lib/api/generated/models";
+import { APPLICATION_VERSION } from "@/lib/application-version";
 import {
 	fetchTasks,
 	isTerminalTaskStatus,
@@ -1512,6 +1513,12 @@ export function AppShell({
 							) : null}
 						</nav>
 					</div>
+					<p
+						className="sidebar-footer"
+						title={`Hubuum Frontend ${APPLICATION_VERSION}`}
+					>
+						{APPLICATION_VERSION}
+					</p>
 				</aside>
 
 				<div className="app-main">

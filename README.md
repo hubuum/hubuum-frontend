@@ -7,7 +7,7 @@ Next.js frontend scaffold for the Hubuum REST API, built for secure horizontal s
 - Next.js (App Router) + TypeScript
 - Server-side auth boundary (BFF pattern)
 - Opaque Hubuum API token handling through server sessions
-- Shared session store via Valkey (with dev fallback to in-memory)
+- Shared server-side session store via Valkey
 - Catch-all API proxy route that injects `Authorization: Bearer <token>` server-side
 - TanStack Query for snappy client-side data fetching
 - OpenAPI generator wiring (`orval`) for typed client generation from `openapi.json`
@@ -136,9 +136,8 @@ The BFF uses `/api/v1/iam/me/settings` when the backend exposes the principal
 settings API. Console preferences live under a versioned `hubuum_frontend`
 namespace in the raw settings document, so recursive merge patches preserve
 settings owned by other clients. While connected to an older backend, the BFF
-uses Valkey without the session TTL, or an in-memory local-development fallback.
-Existing fallback preferences are migrated automatically when the backend
-endpoint becomes available.
+uses Valkey without the session TTL. Existing fallback preferences are migrated
+automatically when the backend endpoint becomes available.
 
 Nested data fields use dotted display paths, while literal dots and backslashes
 inside object keys are escaped:
@@ -169,24 +168,31 @@ collection overrides when multiple visible collections share the selected name.
 
 ## Quick start
 
-1. Install dependencies:
+Use Node.js 24 LTS. Install dependencies:
 
 ```bash
-npm install
+npm ci
 ```
 
-2. Create env file:
+Create an environment file:
 
 ```bash
 cp .env.example .env.local
 ```
 
-3. Set required environment variables:
+Set the required environment variables:
 
 - `BACKEND_BASE_URL`: Hubuum API base URL
-- `VALKEY_URL`: required for multi-pod production sessions
+- `VALKEY_URL`: Valkey URL for server-side sessions; the example points to the
+  local development dependency
 
-4. Run:
+Start the Valkey development dependency:
+
+```bash
+npm run dev:deps
+```
+
+Run the development server:
 
 ```bash
 npm run dev
@@ -194,12 +200,57 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+Stop the development dependency when finished:
+
+```bash
+npm run dev:deps:down
+```
+
+See [local development](docs/development.md) for backend URL examples,
+dependency lifecycle details, and alternate Valkey ports. In particular,
+`BACKEND_BASE_URL` must be reachable from the host process running Next.js.
+
 For production-style local runs:
 
 ```bash
-BACKEND_BASE_URL=http://localhost:7070 npm run build
-BACKEND_BASE_URL=http://localhost:7070 npm start
+BACKEND_BASE_URL=http://localhost:7070 \
+  VALKEY_URL=redis://127.0.0.1:6379/0 npm run build
+BACKEND_BASE_URL=http://localhost:7070 \
+  VALKEY_URL=redis://127.0.0.1:6379/0 npm start
 ```
+
+### Container quickstart
+
+The release Compose quickstart runs the frontend and Valkey against an existing
+Hubuum Server. It does not install the backend or PostgreSQL:
+
+```bash
+cp .env.quickstart.example .env.quickstart
+# Edit BACKEND_BASE_URL in .env.quickstart.
+docker compose --env-file .env.quickstart -f compose.quickstart.yml up -d
+```
+
+See [the Compose quickstart](docs/quickstart-compose.md) for host networking,
+updates, logs, and cleanup.
+
+## Release artifacts
+
+Hubuum Frontend `v0.0.1` supports Hubuum Server `v0.0.1`. Releases provide:
+
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.1` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.1`;
+- a digest-pinned Compose quickstart archive and SHA-256 checksums; and
+- build provenance and an image SBOM through GHCR attestations.
+
+The application version is visible in the navigation, on the login page, and
+in `/healthz` and `/readyz` responses. Release images show the exact tag (for
+example, `v0.0.1`); commit images show `v0.0.1+<short-sha>`; unversioned local
+builds show `v0.0.1+dirty`. Image builds may set the immutable identity with
+`docker build --build-arg APP_VERSION=...`.
+
+See [compatibility](docs/compatibility.md) and the
+[maintainer release guide](docs/releasing.md). Release deployments should pin a
+version or digest instead of using the moving `main` tag.
 
 ## Security audit gate
 
@@ -210,7 +261,9 @@ npm run audit:prod
 ```
 
 This checks runtime dependencies only (`npm audit --omit=dev`), so lint/codegen dev-tool advisories do not block deploys.
-The CI workflow at `.github/workflows/ci.yml` runs this gate together with lint, typecheck, and build.
+The CI workflow runs this gate together with lint, typecheck, unit tests,
+backend compatibility tests, a production build, container smoke tests,
+Compose validation, and Helm validation.
 
 ## Live backend contract tests
 
@@ -221,7 +274,7 @@ server image:
 npm run test:live-backend
 ```
 
-The script always pulls `ghcr.io/hubuum/hubuum-server:main`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:main`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, permission, events/audit, history/as-of, event sink, subscription,
@@ -250,44 +303,47 @@ The generator runs via `npx orval@8.4.1`, so network access is required when gen
 
 ## Deployment notes (OKD)
 
-- Use at least 2 frontend replicas.
-- Set `VALKEY_URL` in a Secret and mount as env var.
-- Use readiness/liveness probes on `/login` or `/_hubuum-bff/auth/session`.
+- Every replica requires `VALKEY_URL` from a Secret so opaque sessions remain
+  available across Next.js runtimes, restarts, and pods.
+- Use `/healthz` for liveness and `/readyz` for dependency-aware readiness.
 - Frontend-owned BFF routes live under `/_hubuum-bff/...`; `/api/v0/...`
   and `/api/v1/...` remain available for direct backend routing at the edge.
-- Do not rely on in-memory sessions in production.
+- Keep Valkey private to the application network and enable persistence or
+  replication according to the deployment's session-availability needs.
 - TLS terminate at ingress; keep secure cookies enabled in production.
 
 ## Container and Helm publishing
 
-Commits to `main` publish a moving container image:
+After all required checks pass, commits to `main` publish a moving container
+image:
 
 ```text
 ghcr.io/hubuum/hubuum-frontend:main
 ```
 
-The workflow also publishes an immutable SHA tag for each commit.
+The workflow also publishes an immutable full-SHA tag for each commit.
 Both tags are multi-architecture images for `linux/amd64` and `linux/arm64`.
 
 The Helm chart lives in `charts/hubuum-frontend` and is published to GHCR as
-an OCI chart with a unique prerelease chart version per `main` build. The chart
-defaults to the moving `main` image tag, so Kubernetes pulls the matching image
-architecture for each node.
+an OCI chart with a unique prerelease chart version per `main` build. Tagged
+releases publish a matching stable chart version. The chart defaults its image
+tag from `appVersion` and also accepts an immutable `image.digest`.
 
 Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.1-main.<run-number> \
-  --set env.BACKEND_BASE_URL=https://hubuum-api.example.com \
-  --set existingSecret.name=hubuum-frontend
+  --version 0.0.1 \
+  --set backend.baseUrl=https://hubuum-api.example.com \
+  --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
 
 For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.1-main.<run-number> \
+  --version 0.0.1 \
+  --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com
 ```

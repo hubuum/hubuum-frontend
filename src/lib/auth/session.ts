@@ -6,26 +6,10 @@ import { getSessionStore, type SessionPayload } from "@/lib/auth/session-store";
 import { getServerEnv } from "@/lib/env";
 
 export const SESSION_COOKIE_NAME = "hubuum.sid";
-export const SESSION_TOKEN_COOKIE_NAME = "hubuum.token";
-export const SESSION_USERNAME_COOKIE_NAME = "hubuum.username";
+const LEGACY_SESSION_TOKEN_COOKIE_NAME = "hubuum.token";
+const LEGACY_SESSION_USERNAME_COOKIE_NAME = "hubuum.username";
 
 export type ActiveSession = SessionPayload & { sid: string };
-
-function usesDistributedSessionStore(): boolean {
-	return Boolean(getServerEnv().VALKEY_URL);
-}
-
-function encodeCookieValue(value: string): string {
-	return Buffer.from(value, "utf8").toString("base64url");
-}
-
-function decodeCookieValue(value: string): string | null {
-	try {
-		return Buffer.from(value, "base64url").toString("utf8");
-	} catch {
-		return null;
-	}
-}
 
 function shouldUseSecureCookies(request?: NextRequest): boolean {
 	const env = getServerEnv();
@@ -62,10 +46,6 @@ function cookieSettings(request?: NextRequest) {
 }
 
 async function hydrateSession(sid: string): Promise<ActiveSession | null> {
-	if (!usesDistributedSessionStore()) {
-		return null;
-	}
-
 	const store = getSessionStore();
 	const payload = await store.get(sid);
 	if (!payload) {
@@ -89,11 +69,6 @@ export async function createSession(
 	token: string,
 	username?: string,
 ): Promise<string> {
-	if (!usesDistributedSessionStore()) {
-		// In non-distributed mode we keep the backend token in an HttpOnly cookie.
-		return `cookie-${crypto.randomUUID()}`;
-	}
-
 	const sid = crypto.randomUUID();
 	const now = Date.now();
 	const payload: SessionPayload = {
@@ -110,85 +85,25 @@ export async function createSession(
 export async function getSessionFromRequest(
 	request: NextRequest,
 ): Promise<ActiveSession | null> {
-	if (usesDistributedSessionStore()) {
-		const sid = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-		if (!sid) {
-			return null;
-		}
-
-		return hydrateSession(sid);
-	}
-
-	const encodedToken = request.cookies.get(SESSION_TOKEN_COOKIE_NAME)?.value;
-	if (!encodedToken) {
-		console.warn("[hubuum-auth] no token cookie present on request");
+	const sid = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+	if (!sid) {
 		return null;
 	}
 
-	const token = decodeCookieValue(encodedToken);
-	if (!token) {
-		console.warn("[hubuum-auth] token cookie decode failed on request");
-		return null;
-	}
-
-	const encodedUsername = request.cookies.get(
-		SESSION_USERNAME_COOKIE_NAME,
-	)?.value;
-	const username = encodedUsername
-		? (decodeCookieValue(encodedUsername) ?? undefined)
-		: undefined;
-
-	return {
-		sid: "cookie-token",
-		token,
-		username,
-		createdAt: 0,
-		lastSeen: Date.now(),
-	};
+	return hydrateSession(sid);
 }
 
 export async function getSessionFromServerCookies(): Promise<ActiveSession | null> {
 	const cookieStore = await Promise.resolve(cookies());
-	if (usesDistributedSessionStore()) {
-		const sid = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-		if (!sid) {
-			return null;
-		}
-
-		return hydrateSession(sid);
-	}
-
-	const encodedToken = cookieStore.get(SESSION_TOKEN_COOKIE_NAME)?.value;
-	if (!encodedToken) {
-		console.warn("[hubuum-auth] no token cookie present in server cookies");
+	const sid = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+	if (!sid) {
 		return null;
 	}
 
-	const token = decodeCookieValue(encodedToken);
-	if (!token) {
-		console.warn("[hubuum-auth] token cookie decode failed in server cookies");
-		return null;
-	}
-
-	const encodedUsername = cookieStore.get(SESSION_USERNAME_COOKIE_NAME)?.value;
-	const username = encodedUsername
-		? (decodeCookieValue(encodedUsername) ?? undefined)
-		: undefined;
-
-	return {
-		sid: "cookie-token",
-		token,
-		username,
-		createdAt: 0,
-		lastSeen: Date.now(),
-	};
+	return hydrateSession(sid);
 }
 
 export async function destroySession(sid: string): Promise<void> {
-	if (!usesDistributedSessionStore()) {
-		return;
-	}
-
 	await getSessionStore().destroy(sid);
 }
 
@@ -196,41 +111,23 @@ export function setSessionCookie(
 	response: NextResponse,
 	sid: string,
 	request?: NextRequest,
-	token?: string,
-	username?: string,
 ): void {
 	const settings = cookieSettings(request);
-	if (usesDistributedSessionStore()) {
-		response.cookies.set(SESSION_COOKIE_NAME, sid, settings);
-		response.cookies.set(SESSION_USERNAME_COOKIE_NAME, "", {
-			...settings,
-			maxAge: 0,
-		});
-	} else if (token) {
-		const encodedToken = encodeCookieValue(token);
-		response.cookies.set(SESSION_TOKEN_COOKIE_NAME, encodedToken, settings);
-		if (username) {
-			const encodedUsername = encodeCookieValue(username);
-			response.cookies.set(
-				SESSION_USERNAME_COOKIE_NAME,
-				encodedUsername,
-				settings,
-			);
-		} else {
-			response.cookies.set(SESSION_USERNAME_COOKIE_NAME, "", {
-				...settings,
-				maxAge: 0,
-			});
-		}
-	}
+	response.cookies.set(SESSION_COOKIE_NAME, sid, settings);
+	response.cookies.set(LEGACY_SESSION_TOKEN_COOKIE_NAME, "", {
+		...settings,
+		maxAge: 0,
+	});
+	response.cookies.set(LEGACY_SESSION_USERNAME_COOKIE_NAME, "", {
+		...settings,
+		maxAge: 0,
+	});
 
 	const host = request?.nextUrl.host ?? "-";
 	const forwardedProto = request?.headers.get("x-forwarded-proto") ?? "-";
 	const requestProto = request?.nextUrl.protocol ?? "-";
-	const mode = usesDistributedSessionStore() ? "sid" : "token-cookie";
-	const tokenLen = token?.length ?? 0;
 	console.info(
-		`[hubuum-auth] set session cookie mode=${mode} tokenLen=${tokenLen} (secure=${String(settings.secure)} maxAge=${settings.maxAge} host=${host} proto=${requestProto} xfp=${forwardedProto})`,
+		`[hubuum-auth] set session cookie mode=valkey (secure=${String(settings.secure)} maxAge=${settings.maxAge} host=${host} proto=${requestProto} xfp=${forwardedProto})`,
 	);
 }
 
@@ -242,11 +139,11 @@ export function clearSessionCookie(
 		...cookieSettings(request),
 		maxAge: 0,
 	});
-	response.cookies.set(SESSION_TOKEN_COOKIE_NAME, "", {
+	response.cookies.set(LEGACY_SESSION_TOKEN_COOKIE_NAME, "", {
 		...cookieSettings(request),
 		maxAge: 0,
 	});
-	response.cookies.set(SESSION_USERNAME_COOKIE_NAME, "", {
+	response.cookies.set(LEGACY_SESSION_USERNAME_COOKIE_NAME, "", {
 		...cookieSettings(request),
 		maxAge: 0,
 	});

@@ -1,16 +1,18 @@
-Hubuum frontend has been installed.
+Hubuum Frontend has been installed.
 
 Image:
-  {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+  {{ include "hubuum-frontend.image" . }}
+
+Backend target:
+  {{ .Values.backend.baseUrl }}
 
 Service:
   {{ include "hubuum-frontend.fullname" . }}:{{ .Values.service.port }}
 
-Set BACKEND_BASE_URL with:
-  --set env.BACKEND_BASE_URL=https://hubuum-api.example.com
+Authentication sessions require an external Valkey/Redis Secret for every
+installation:
 
-For multiple replicas, configure Valkey with either:
-  --set valkeyUrl=redis://valkey:6379/0
+  --set valkey.existingSecret.name=hubuum-frontend-valkey
 
-or:
-  --set existingSecret.name=hubuum-frontend
+The Secret must contain the Valkey/Redis URL under:
+  {{ .Values.valkey.existingSecret.urlKey }}

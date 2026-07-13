@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import packageJson from "./package.json";
+
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 function getBackendOrigin(): string | null {
@@ -16,6 +18,9 @@ function getBackendOrigin(): string | null {
 }
 
 const backendOrigin = getBackendOrigin();
+const applicationVersion =
+	process.env.NEXT_PUBLIC_APP_VERSION?.trim() ||
+	`v${packageJson.version}+dirty`;
 
 const csp = [
 	"default-src 'self'",
@@ -35,6 +40,9 @@ const csp = [
 const nextConfig: NextConfig = {
 	output: "standalone",
 	poweredByHeader: false,
+	env: {
+		NEXT_PUBLIC_APP_VERSION: applicationVersion,
+	},
 	async headers() {
 		return [
 			{
