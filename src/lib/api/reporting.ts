@@ -98,6 +98,7 @@ export async function listReportTemplates(
 	cursor?: string | null,
 ): Promise<ReportTemplatePage> {
 	const params: GetApiV1ExportTemplatesParams = {
+		include_total: false,
 		limit: 100,
 		sort: "updated_at.desc",
 	};
@@ -275,7 +276,9 @@ export async function fetchReportOutput(
 
 	if (!response.ok) {
 		const payload = await parseBody(response);
-		throw new Error(getApiErrorMessage(payload, "Failed to fetch export output."));
+		throw new Error(
+			getApiErrorMessage(payload, "Failed to fetch export output."),
+		);
 	}
 
 	if (contentType === "application/json") {

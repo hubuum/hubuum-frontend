@@ -4,6 +4,7 @@ import { BackendError, backendFetchJson } from "@/lib/api/backend";
 import type {
 	CountsResponse,
 	DbStateResponse,
+	RunningConfig,
 	TaskQueueStateResponse,
 } from "@/lib/api/generated/models";
 
@@ -15,10 +16,13 @@ export async function fetchMetaCounts(
 	token: string,
 	correlationId?: string,
 ): Promise<CountsWithOptionalCollections> {
-	return backendFetchJson<CountsWithOptionalCollections>("/api/v0/meta/counts", {
-		correlationId,
-		token,
-	});
+	return backendFetchJson<CountsWithOptionalCollections>(
+		"/api/v0/meta/counts",
+		{
+			correlationId,
+			token,
+		},
+	);
 }
 
 export async function tryFetchMetaCounts(
@@ -55,7 +59,35 @@ export async function fetchTaskQueueState(
 	});
 }
 
+export async function fetchRunningConfig(
+	token: string,
+	correlationId?: string,
+): Promise<RunningConfig> {
+	return backendFetchJson<RunningConfig>("/api/v1/admin/config", {
+		correlationId,
+		token,
+	});
+}
+
+export async function tryFetchRunningConfig(
+	token: string,
+	correlationId?: string,
+): Promise<RunningConfig | null> {
+	try {
+		return await fetchRunningConfig(token, correlationId);
+	} catch (error) {
+		if (
+			error instanceof BackendError &&
+			(error.status === 401 || error.status === 403 || error.status === 404)
+		) {
+			return null;
+		}
+		throw error;
+	}
+}
+
 export type SystemMetaSnapshot = {
+	config: RunningConfig | null;
 	counts: CountsWithOptionalCollections;
 	db: DbStateResponse;
 	tasks: TaskQueueStateResponse;
@@ -66,13 +98,14 @@ export async function tryFetchSystemMetaSnapshot(
 	correlationId?: string,
 ): Promise<SystemMetaSnapshot | null> {
 	try {
-		const [counts, db, tasks] = await Promise.all([
+		const [config, counts, db, tasks] = await Promise.all([
+			tryFetchRunningConfig(token, correlationId),
 			fetchMetaCounts(token, correlationId),
 			fetchDbState(token, correlationId),
 			fetchTaskQueueState(token, correlationId),
 		]);
 
-		return { counts, db, tasks };
+		return { config, counts, db, tasks };
 	} catch (error) {
 		if (
 			error instanceof BackendError &&

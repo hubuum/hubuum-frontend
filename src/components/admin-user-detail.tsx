@@ -43,7 +43,7 @@ async function fetchUser(userId: number): Promise<ConsoleUser> {
 async function fetchUserGroups(userId: number): Promise<ConsoleGroup[]> {
 	const response = await getApiV1IamPrincipalsByPrincipalIdGroups(
 		userId,
-		undefined,
+		{ include_total: false },
 		{ credentials: "include" },
 	);
 

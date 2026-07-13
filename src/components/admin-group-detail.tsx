@@ -52,9 +52,12 @@ async function fetchGroup(groupId: number): Promise<ConsoleGroup> {
 }
 
 async function fetchUsers(): Promise<ConsoleUser[]> {
-	const response = await getApiV1IamUsers(undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1IamUsers(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(getApiErrorMessage(response.data, "Failed to load users."));
@@ -66,9 +69,13 @@ async function fetchUsers(): Promise<ConsoleUser[]> {
 async function fetchGroupMembers(
 	groupId: number,
 ): Promise<ConsolePrincipalMember[]> {
-	const response = await getApiV1IamGroupsByGroupIdMembers(groupId, undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1IamGroupsByGroupIdMembers(
+		groupId,
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(

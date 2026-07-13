@@ -32,4 +32,8 @@ sort: string;
  * Cursor token from X-Next-Cursor
  */
 cursor: string;
+/**
+ * Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.
+ */
+include_total?: boolean;
 };

@@ -52,9 +52,12 @@ function _IconSearch() {
 }
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1Classes(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -181,9 +184,12 @@ async function fetchDirectObjectRelations(
 }
 
 async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1Collections(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(

@@ -97,7 +97,7 @@ async function fetchClasses(
 
 async function fetchCollections(): Promise<Collection[]> {
 	const response = await getApiV1Collections(
-		{ limit: 250 },
+		{ limit: 250, include_total: false },
 		{
 			credentials: "include",
 		},

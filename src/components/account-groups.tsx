@@ -14,9 +14,12 @@ import {
 import type { TableExportView } from "@/lib/table-export";
 
 async function fetchGroups(): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamMeGroups(undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1IamMeGroups(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(

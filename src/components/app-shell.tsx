@@ -121,7 +121,7 @@ const GO_TO_ROUTES: Record<string, string> = {
 
 async function fetchTopbarClassOptions(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
-		{ limit: 250 },
+		{ limit: 250, include_total: false },
 		{
 			credentials: "include",
 		},

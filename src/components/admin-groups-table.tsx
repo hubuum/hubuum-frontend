@@ -26,9 +26,12 @@ import {
 import type { TableExportView } from "@/lib/table-export";
 
 async function fetchGroups(): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamGroups(undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1IamGroups(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -40,9 +43,13 @@ async function fetchGroups(): Promise<ConsoleGroup[]> {
 }
 
 async function fetchGroupMemberCount(groupId: number): Promise<number> {
-	const response = await getApiV1IamGroupsByGroupIdMembers(groupId, undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1IamGroupsByGroupIdMembers(
+		groupId,
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(

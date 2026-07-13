@@ -395,7 +395,7 @@ function downloadReportResult(
 }
 
 async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(undefined, {
+	const response = await getApiV1Collections({ include_total: false }, {
 		credentials: "include",
 	});
 
@@ -409,7 +409,7 @@ async function fetchCollections(): Promise<Collection[]> {
 }
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(undefined, {
+	const response = await getApiV1Classes({ include_total: false }, {
 		credentials: "include",
 	});
 

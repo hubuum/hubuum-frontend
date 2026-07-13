@@ -1,11 +1,8 @@
+import type { AuthProvidersResponse } from "@/lib/api/generated/models";
 import { LOCAL_IDENTITY_SCOPE } from "@/lib/identity-scopes";
 
 const MAX_AUTH_PROVIDERS = 100;
 const MAX_PROVIDER_NAME_LENGTH = 160;
-
-export type AuthProvidersResponse = {
-	providers: string[];
-};
 
 export function normalizeAuthProvidersResponse(
 	value: unknown,

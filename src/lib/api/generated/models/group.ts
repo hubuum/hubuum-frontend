@@ -9,7 +9,15 @@
 export interface Group {
   created_at: string;
   description: string;
+  /** @nullable */
+  external_key?: string | null;
   groupname: string;
   id: number;
+  identity_scope_id: number;
+  /** @nullable */
+  last_sync_attempted_at?: string | null;
+  /** @nullable */
+  last_sync_success_at?: string | null;
+  managed_by: string;
   updated_at: string;
 }

@@ -79,7 +79,7 @@ const defaultFormState: FormState = {
 };
 
 async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(undefined, {
+	const response = await getApiV1Collections({ include_total: false }, {
 		credentials: "include",
 	});
 
@@ -94,7 +94,7 @@ async function fetchCollections(): Promise<Collection[]> {
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
-		{ limit: 250, sort: "name.asc,id.asc" },
+		{ limit: 250, sort: "name.asc,id.asc", include_total: false },
 		{ credentials: "include" },
 	);
 

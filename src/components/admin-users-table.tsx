@@ -25,9 +25,12 @@ import {
 import type { TableExportView } from "@/lib/table-export";
 
 async function fetchUsers(): Promise<ConsoleUser[]> {
-	const response = await getApiV1IamUsers(undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1IamUsers(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(getApiErrorMessage(response.data, "Failed to load users."));

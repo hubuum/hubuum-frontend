@@ -80,9 +80,12 @@ async function fetchServiceAccounts(
 }
 
 async function fetchGroups(): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamGroups(undefined, {
-		credentials: "include",
-	});
+	const response = await getApiV1IamGroups(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(

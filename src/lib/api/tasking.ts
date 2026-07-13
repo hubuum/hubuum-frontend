@@ -83,10 +83,7 @@ function earlierTimestamp(
 }
 
 export function summarizeTaskActivity(
-	tasks: readonly Pick<
-		TaskResponse,
-		"created_at" | "started_at" | "status"
-	>[],
+	tasks: readonly Pick<TaskResponse, "created_at" | "started_at" | "status">[],
 ): TaskActivitySummary {
 	const summary: TaskActivitySummary = {
 		activeTasks: 0,
@@ -150,14 +147,18 @@ export async function fetchTasks(
 
 	searchParams.set("limit", String(options.limit ?? 20));
 	searchParams.set("sort", options.sort ?? "created_at.desc,id.desc");
+	searchParams.set("include_total", "false");
 
 	if (options.cursor?.trim()) {
 		searchParams.set("cursor", options.cursor.trim());
 	}
 
-	const response = await fetch(`/_hubuum-bff/hubuum/api/v1/tasks?${searchParams.toString()}`, {
-		credentials: "include",
-	});
+	const response = await fetch(
+		`/_hubuum-bff/hubuum/api/v1/tasks?${searchParams.toString()}`,
+		{
+			credentials: "include",
+		},
+	);
 
 	const payload =
 		response.status === 204 ? [] : await response.json().catch(() => null);

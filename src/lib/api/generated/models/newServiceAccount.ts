@@ -12,6 +12,8 @@
 export interface NewServiceAccount {
   /** @nullable */
   description?: string | null;
+  /** @nullable */
+  identity_scope?: string | null;
   name: string;
   owner_group_id: number;
 }

@@ -151,7 +151,7 @@ type DataColumnSortState = {
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
-		{ limit: 250 },
+		{ limit: 250, include_total: false },
 		{
 			credentials: "include",
 		},
@@ -228,7 +228,7 @@ async function fetchObjectsByClass(
 
 async function fetchCollections(): Promise<Collection[]> {
 	const response = await getApiV1Collections(
-		{ limit: 250 },
+		{ limit: 250, include_total: false },
 		{
 			credentials: "include",
 		},

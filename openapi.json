@@ -288,6 +288,38 @@
         ]
       }
     },
+    "/api/v0/auth/providers": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Api V0 Auth Providers",
+        "description": "Auto-generated documentation for GET /api/v0/auth/providers.",
+        "operationId": "getApiV0AuthProviders",
+        "responses": {
+          "200": {
+            "description": "Configured authentication provider names",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProvidersResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v0/auth/validate": {
       "get": {
         "tags": [
@@ -665,13 +697,60 @@
         ]
       }
     },
+    "/api/v1/admin/config": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Api V1 Admin Config",
+        "description": "Auto-generated documentation for GET /api/v1/admin/config.",
+        "operationId": "getApiV1AdminConfig",
+        "responses": {
+          "200": {
+            "description": "Effective redacted process configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunningConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/classes": {
       "get": {
         "tags": [
           "classes"
         ],
         "summary": "Get Api V1 Classes",
-        "description": "Auto-generated documentation for GET /api/v1/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1Classes",
         "parameters": [
           {
@@ -700,6 +779,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -716,7 +804,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -1015,7 +1103,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id Trailing",
-        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ClassesByClassIdTrailing",
         "parameters": [
           {
@@ -1054,6 +1142,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -1070,7 +1167,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -1351,7 +1448,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id History",
-        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ClassesByClassIdHistory",
         "parameters": [
           {
@@ -1390,6 +1487,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -1406,7 +1512,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -1631,7 +1737,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id Objects By Object Id Related Objects",
-        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjects",
         "parameters": [
           {
@@ -1698,6 +1804,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -1714,7 +1829,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -1772,7 +1887,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id Objects By Object Id Related Relations",
-        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelations",
         "parameters": [
           {
@@ -1821,6 +1936,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -1837,7 +1961,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -1895,7 +2019,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id Permissions",
-        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ClassesByClassIdPermissions",
         "parameters": [
           {
@@ -1934,6 +2058,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -1950,7 +2083,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -1998,7 +2131,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id Related Classes",
-        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/related/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/related/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ClassesByClassIdRelatedClasses",
         "parameters": [
           {
@@ -2037,6 +2170,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -2053,7 +2195,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -2180,7 +2322,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id Related Relations",
-        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ClassesByClassIdRelatedRelations",
         "parameters": [
           {
@@ -2219,6 +2361,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -2235,7 +2386,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -3092,7 +3243,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id By Object Id History",
-        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ClassesByClassIdByObjectIdHistory",
         "parameters": [
           {
@@ -3141,6 +3292,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -3157,7 +3317,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -3313,7 +3473,7 @@
           "collections"
         ],
         "summary": "Get Api V1 Collections",
-        "description": "Auto-generated documentation for GET /api/v1/collections. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/collections. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1Collections",
         "parameters": [
           {
@@ -3342,6 +3502,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -3358,7 +3527,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -4342,7 +4511,7 @@
           "collections"
         ],
         "summary": "List all groups that have any permissions on a collection",
-        "description": "Auto-generated documentation for GET /api/v1/collections/{collection_id}/has_permissions/{permission}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/collections/{collection_id}/has_permissions/{permission}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1CollectionsByCollectionIdHasPermissionsByPermission",
         "parameters": [
           {
@@ -4390,6 +4559,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -4406,7 +4584,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -4414,7 +4592,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Group"
+                    "$ref": "#/components/schemas/GroupResponse"
                   }
                 }
               }
@@ -4454,7 +4632,7 @@
           "collections"
         ],
         "summary": "Get Api V1 Collections By Collection Id History",
-        "description": "Auto-generated documentation for GET /api/v1/collections/{collection_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/collections/{collection_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1CollectionsByCollectionIdHistory",
         "parameters": [
           {
@@ -4493,6 +4671,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -4509,7 +4696,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -4754,7 +4941,7 @@
           "collections"
         ],
         "summary": "List all groups who have permissions for a collection",
-        "description": "Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1CollectionsByCollectionIdPermissions",
         "parameters": [
           {
@@ -4793,6 +4980,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -4809,7 +5005,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -5495,7 +5691,7 @@
           "collections"
         ],
         "summary": "List all permissions for a principal on a collection",
-        "description": "Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/principal/{principal_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/collections/{collection_id}/permissions/principal/{principal_id}. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalId",
         "parameters": [
           {
@@ -5544,6 +5740,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -5560,7 +5765,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -6478,7 +6683,7 @@
           "export-templates"
         ],
         "summary": "Get Api V1 Export Templates",
-        "description": "Auto-generated documentation for GET /api/v1/export-templates. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/export-templates. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ExportTemplates",
         "parameters": [
           {
@@ -6507,6 +6712,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -6523,7 +6737,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -7127,7 +7341,7 @@
           "export-templates"
         ],
         "summary": "Get Api V1 Export Templates By Template Id History",
-        "description": "Auto-generated documentation for GET /api/v1/export-templates/{template_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/export-templates/{template_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ExportTemplatesByTemplateIdHistory",
         "parameters": [
           {
@@ -7166,6 +7380,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -7182,7 +7405,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -7548,7 +7771,7 @@
           "groups"
         ],
         "summary": "Get Api V1 Iam Groups",
-        "description": "Auto-generated documentation for GET /api/v1/iam/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/iam/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1IamGroups",
         "parameters": [
           {
@@ -7577,6 +7800,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -7593,7 +7825,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -7601,7 +7833,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Group"
+                    "$ref": "#/components/schemas/GroupResponse"
                   }
                 }
               }
@@ -7657,7 +7889,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Group"
+                  "$ref": "#/components/schemas/GroupResponse"
                 }
               }
             }
@@ -7726,7 +7958,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Group"
+                  "$ref": "#/components/schemas/GroupResponse"
                 }
               }
             }
@@ -7783,6 +8015,16 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Directory-managed group is read-only",
             "content": {
               "application/json": {
                 "schema": {
@@ -7853,7 +8095,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Group"
+                  "$ref": "#/components/schemas/GroupResponse"
                 }
               }
             }
@@ -7870,6 +8112,16 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Directory-managed group is read-only",
             "content": {
               "application/json": {
                 "schema": {
@@ -8048,7 +8300,7 @@
           "groups"
         ],
         "summary": "Get Api V1 Iam Groups By Group Id Members",
-        "description": "Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/members. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/members. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1IamGroupsByGroupIdMembers",
         "parameters": [
           {
@@ -8087,6 +8339,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -8103,7 +8364,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -8310,7 +8571,7 @@
           "principals"
         ],
         "summary": "Get Api V1 Iam Me Groups",
-        "description": "Auto-generated documentation for GET /api/v1/iam/me/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/iam/me/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1IamMeGroups",
         "parameters": [
           {
@@ -8339,6 +8600,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -8355,7 +8625,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -8363,7 +8633,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Group"
+                    "$ref": "#/components/schemas/GroupResponse"
                   }
                 }
               }
@@ -8427,13 +8697,203 @@
         ]
       }
     },
+    "/api/v1/iam/me/settings": {
+      "get": {
+        "tags": [
+          "principals"
+        ],
+        "summary": "Get Api V1 Iam Me Settings",
+        "description": "Auto-generated documentation for GET /api/v1/iam/me/settings.",
+        "operationId": "getApiV1IamMeSettings",
+        "responses": {
+          "200": {
+            "description": "Current principal settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrincipalSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "principals"
+        ],
+        "summary": "Put Api V1 Iam Me Settings",
+        "description": "Auto-generated documentation for PUT /api/v1/iam/me/settings.",
+        "operationId": "putApiV1IamMeSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrincipalSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Replaced current principal settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrincipalSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Settings root is not an object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "principals"
+        ],
+        "summary": "Delete Api V1 Iam Me Settings",
+        "description": "Auto-generated documentation for DELETE /api/v1/iam/me/settings.",
+        "operationId": "deleteApiV1IamMeSettings",
+        "responses": {
+          "204": {
+            "description": "Current principal settings reset"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "principals"
+        ],
+        "summary": "Patch Api V1 Iam Me Settings",
+        "description": "Applies an object-only JSON Merge Patch to the current principal settings. Object values merge recursively; a `null` value removes its key; arrays, strings, numbers, and booleans replace the existing value. An object patch applied to a missing or non-object value starts from an empty object. The document root must be an object. Use PUT, rather than PATCH, when a setting itself must retain a null value.",
+        "operationId": "patchApiV1IamMeSettings",
+        "requestBody": {
+          "description": "The settings patch object.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrincipalSettings"
+              },
+              "example": {
+                "layout": {
+                  "columns": 2,
+                  "sidebar": null
+                },
+                "theme": "dark"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Merged current principal settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrincipalSettings"
+                },
+                "example": {
+                  "layout": {
+                    "columns": 2,
+                    "density": "normal"
+                  },
+                  "theme": "dark"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Settings root is not an object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/iam/me/tokens": {
       "get": {
         "tags": [
           "principals"
         ],
         "summary": "Get Api V1 Iam Me Tokens",
-        "description": "Auto-generated documentation for GET /api/v1/iam/me/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/iam/me/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1IamMeTokens",
         "parameters": [
           {
@@ -8462,6 +8922,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -8478,7 +8947,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -8526,7 +8995,7 @@
           "principals"
         ],
         "summary": "Get Api V1 Iam Principals By Principal Id Groups",
-        "description": "Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/groups. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1IamPrincipalsByPrincipalIdGroups",
         "parameters": [
           {
@@ -8565,6 +9034,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -8581,7 +9059,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -8589,7 +9067,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Group"
+                    "$ref": "#/components/schemas/GroupResponse"
                   }
                 }
               }
@@ -8685,13 +9163,291 @@
         ]
       }
     },
+    "/api/v1/iam/principals/{principal_id}/settings": {
+      "get": {
+        "tags": [
+          "principals"
+        ],
+        "summary": "Get Api V1 Iam Principals By Principal Id Settings",
+        "description": "Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/settings.",
+        "operationId": "getApiV1IamPrincipalsByPrincipalIdSettings",
+        "parameters": [
+          {
+            "name": "principal_id",
+            "in": "path",
+            "description": "Principal id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Principal settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrincipalSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Principal not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "principals"
+        ],
+        "summary": "Put Api V1 Iam Principals By Principal Id Settings",
+        "description": "Auto-generated documentation for PUT /api/v1/iam/principals/{principal_id}/settings.",
+        "operationId": "putApiV1IamPrincipalsByPrincipalIdSettings",
+        "parameters": [
+          {
+            "name": "principal_id",
+            "in": "path",
+            "description": "Principal id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrincipalSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Replaced principal settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrincipalSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Settings root is not an object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Principal not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "principals"
+        ],
+        "summary": "Delete Api V1 Iam Principals By Principal Id Settings",
+        "description": "Auto-generated documentation for DELETE /api/v1/iam/principals/{principal_id}/settings.",
+        "operationId": "deleteApiV1IamPrincipalsByPrincipalIdSettings",
+        "parameters": [
+          {
+            "name": "principal_id",
+            "in": "path",
+            "description": "Principal id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Principal settings reset"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Principal not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "principals"
+        ],
+        "summary": "Patch Api V1 Iam Principals By Principal Id Settings",
+        "description": "Applies an object-only JSON Merge Patch to the target principal settings. Object values merge recursively; a `null` value removes its key; arrays, strings, numbers, and booleans replace the existing value. An object patch applied to a missing or non-object value starts from an empty object. The document root must be an object. Use PUT, rather than PATCH, when a setting itself must retain a null value.",
+        "operationId": "patchApiV1IamPrincipalsByPrincipalIdSettings",
+        "parameters": [
+          {
+            "name": "principal_id",
+            "in": "path",
+            "description": "Principal id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The settings patch object.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrincipalSettings"
+              },
+              "example": {
+                "layout": {
+                  "columns": 2,
+                  "sidebar": null
+                },
+                "theme": "dark"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Merged principal settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrincipalSettings"
+                },
+                "example": {
+                  "layout": {
+                    "columns": 2,
+                    "density": "normal"
+                  },
+                  "theme": "dark"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Settings root is not an object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Principal not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/iam/principals/{principal_id}/tokens": {
       "get": {
         "tags": [
           "principals"
         ],
         "summary": "Get Api V1 Iam Principals By Principal Id Tokens",
-        "description": "Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/tokens. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1IamPrincipalsByPrincipalIdTokens",
         "parameters": [
           {
@@ -8730,6 +9486,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -8746,7 +9511,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -8953,7 +9718,7 @@
           "service-accounts"
         ],
         "summary": "Get Api V1 Iam Service Accounts",
-        "description": "Auto-generated documentation for GET /api/v1/iam/service-accounts. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/iam/service-accounts. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1IamServiceAccounts",
         "parameters": [
           {
@@ -8982,6 +9747,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -8998,7 +9772,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -9386,7 +10160,7 @@
           "users"
         ],
         "summary": "Get Api V1 Iam Users",
-        "description": "Auto-generated documentation for GET /api/v1/iam/users. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/iam/users. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1IamUsers",
         "parameters": [
           {
@@ -9415,6 +10189,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -9431,7 +10214,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -9649,6 +10432,16 @@
               }
             }
           },
+          "403": {
+            "description": "Provider-managed user is read-only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "User not found",
             "content": {
@@ -9718,6 +10511,16 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider-managed user is read-only",
             "content": {
               "application/json": {
                 "schema": {
@@ -10010,6 +10813,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many active import tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -10166,7 +10979,7 @@
           "relations"
         ],
         "summary": "Get Api V1 Relations Classes",
-        "description": "Auto-generated documentation for GET /api/v1/relations/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/relations/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1RelationsClasses",
         "parameters": [
           {
@@ -10195,6 +11008,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -10211,7 +11033,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -10433,7 +11255,7 @@
           "relations"
         ],
         "summary": "Get Api V1 Relations Objects",
-        "description": "Auto-generated documentation for GET /api/v1/relations/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/relations/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1RelationsObjects",
         "parameters": [
           {
@@ -10462,6 +11284,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -10478,7 +11309,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -10825,7 +11656,7 @@
           "remote-targets"
         ],
         "summary": "Get Api V1 Remote Targets By Remote Target Id History",
-        "description": "Auto-generated documentation for GET /api/v1/remote-targets/{remote_target_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/remote-targets/{remote_target_id}/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1RemoteTargetsByRemoteTargetIdHistory",
         "parameters": [
           {
@@ -10864,6 +11695,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -10880,7 +11720,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -11734,7 +12574,7 @@
           "tasks"
         ],
         "summary": "Get Api V1 Tasks",
-        "description": "Auto-generated documentation for GET /api/v1/tasks. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Auto-generated documentation for GET /api/v1/tasks. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1Tasks",
         "parameters": [
           {
@@ -11792,6 +12632,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -11808,7 +12657,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "Exact total number of results matching the current filter set, independent of cursor pagination."
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
               }
             },
             "content": {
@@ -12067,6 +12916,54 @@
           "message": "Authentication failure"
         }
       },
+      "AuthProvidersResponse": {
+        "type": "object",
+        "required": [
+          "providers"
+        ],
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AuthenticationConfig": {
+        "type": "object",
+        "required": [
+          "token_lifetime_hours",
+          "stable_token_hash_key_configured",
+          "admin_groupname",
+          "provider_config_path",
+          "login_rate_limit"
+        ],
+        "properties": {
+          "admin_groupname": {
+            "type": "string"
+          },
+          "admin_identity_scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "login_rate_limit": {
+            "$ref": "#/components/schemas/LoginRateLimitConfig"
+          },
+          "provider_config_path": {
+            "$ref": "#/components/schemas/SecretStatus"
+          },
+          "stable_token_hash_key_configured": {
+            "type": "boolean"
+          },
+          "token_lifetime_hours": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ClassKey": {
         "type": "object",
         "required": [
@@ -12101,6 +12998,22 @@
         ],
         "properties": {
           "cleared": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ClientAllowlistStatus": {
+        "type": "object",
+        "required": [
+          "allows_any",
+          "network_count"
+        ],
+        "properties": {
+          "allows_any": {
+            "type": "boolean"
+          },
+          "network_count": {
             "type": "integer",
             "minimum": 0
           }
@@ -12329,38 +13242,170 @@
           }
         }
       },
-      "DbStateResponse": {
+      "DatabaseConfig": {
         "type": "object",
         "required": [
-          "available_connections",
-          "idle_connections",
-          "active_connections",
-          "db_size"
+          "url",
+          "pool_size",
+          "pool_acquire_timeout_ms",
+          "statement_timeout_ms"
         ],
         "properties": {
-          "active_connections": {
+          "pool_acquire_timeout_ms": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "minimum": 0
           },
-          "available_connections": {
+          "pool_size": {
             "type": "integer",
             "format": "int32",
             "minimum": 0
           },
+          "statement_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "url": {
+            "$ref": "#/components/schemas/SecretStatus"
+          }
+        }
+      },
+      "DbStateResponse": {
+        "type": "object",
+        "required": [
+          "max_connections",
+          "total_connections",
+          "available_connections",
+          "idle_connections",
+          "in_use_connections",
+          "pending_acquisitions",
+          "acquisitions_started",
+          "acquisitions_direct",
+          "acquisitions_waited",
+          "acquisitions_timed_out",
+          "acquisition_wait_time_ms",
+          "connections_created",
+          "connections_closed_broken",
+          "connections_closed_invalid",
+          "connections_closed_max_lifetime",
+          "connections_closed_idle_timeout",
+          "active_connections",
+          "db_size"
+        ],
+        "properties": {
+          "acquisition_wait_time_ms": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cumulative time spent waiting for connections, in milliseconds.",
+            "minimum": 0
+          },
+          "acquisitions_direct": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cumulative acquisitions completed without waiting.",
+            "minimum": 0
+          },
+          "acquisitions_started": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cumulative connection acquisitions started.",
+            "minimum": 0
+          },
+          "acquisitions_timed_out": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cumulative acquisitions that exceeded the acquisition timeout.",
+            "minimum": 0
+          },
+          "acquisitions_waited": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cumulative acquisitions that waited for a connection.",
+            "minimum": 0
+          },
+          "active_connections": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Active PostgreSQL sessions reported by `pg_stat_activity`."
+          },
+          "available_connections": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Remaining capacity: idle connections plus capacity to create connections.",
+            "minimum": 0
+          },
+          "connections_closed_broken": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cumulative connections discarded because they were broken.",
+            "minimum": 0
+          },
+          "connections_closed_idle_timeout": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cumulative connections closed after reaching the idle timeout.",
+            "minimum": 0
+          },
+          "connections_closed_invalid": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cumulative connections discarded after checkout validation failed.",
+            "minimum": 0
+          },
+          "connections_closed_max_lifetime": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cumulative connections closed after reaching their maximum lifetime.",
+            "minimum": 0
+          },
+          "connections_created": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cumulative connections established by the pool.",
+            "minimum": 0
+          },
           "db_size": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Current database size in bytes."
           },
           "idle_connections": {
             "type": "integer",
             "format": "int32",
+            "description": "Established connections currently waiting in the pool.",
+            "minimum": 0
+          },
+          "in_use_connections": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Established connections currently checked out of the pool.",
             "minimum": 0
           },
           "last_vacuum_time": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "Most recent vacuum timestamp among user tables."
+          },
+          "max_connections": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Configured maximum number of connections in this process-local pool.",
+            "minimum": 0
+          },
+          "pending_acquisitions": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Connection acquisitions currently waiting to complete.",
+            "minimum": 0
+          },
+          "total_connections": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Connections currently managed by this process-local pool.",
+            "minimum": 0
           }
         }
       },
@@ -12393,6 +13438,113 @@
           },
           "target_collection": {
             "$ref": "#/components/schemas/Collection"
+          }
+        }
+      },
+      "EventConfig": {
+        "type": "object",
+        "required": [
+          "fanout_workers",
+          "fanout_batch_size",
+          "fanout_poll_interval_ms",
+          "fanout_lock_timeout_ms",
+          "delivery_workers",
+          "delivery_batch_size",
+          "delivery_poll_interval_ms",
+          "delivery_lock_timeout_ms",
+          "delivery_transport_timeout_ms",
+          "delivery_retry_backoff_base_ms",
+          "delivery_retry_backoff_max_ms",
+          "delivery_max_attempts",
+          "retention_purge_enabled",
+          "retention_days",
+          "delivery_retention_days",
+          "retention_purge_interval_seconds",
+          "retention_purge_batch_size",
+          "retention_file_archive_enabled",
+          "retention_archive_path_configured"
+        ],
+        "properties": {
+          "delivery_batch_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "delivery_lock_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "delivery_max_attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "delivery_poll_interval_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "delivery_retention_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "delivery_retry_backoff_base_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "delivery_retry_backoff_max_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "delivery_transport_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "delivery_workers": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "fanout_batch_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "fanout_lock_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "fanout_poll_interval_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "fanout_workers": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "retention_archive_path_configured": {
+            "type": "boolean"
+          },
+          "retention_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "retention_file_archive_enabled": {
+            "type": "boolean"
+          },
+          "retention_purge_batch_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "retention_purge_enabled": {
+            "type": "boolean"
+          },
+          "retention_purge_interval_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
           }
         }
       },
@@ -13036,6 +14188,57 @@
           "poll_wakeups": {
             "type": "integer",
             "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "ExportConfig": {
+        "type": "object",
+        "required": [
+          "output_retention_hours",
+          "output_cleanup_interval_seconds",
+          "template_recursion_limit",
+          "template_fuel",
+          "template_max_objects",
+          "max_output_bytes",
+          "stage_timeout_ms",
+          "database_statement_timeout_ms"
+        ],
+        "properties": {
+          "database_statement_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "max_output_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "output_cleanup_interval_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "output_retention_hours": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "stage_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "template_fuel": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "template_max_objects": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "template_recursion_limit": {
+            "type": "integer",
             "minimum": 0
           }
         }
@@ -13754,7 +14957,9 @@
           "groupname",
           "description",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "identity_scope_id",
+          "managed_by"
         ],
         "properties": {
           "created_at": {
@@ -13764,12 +14969,39 @@
           "description": {
             "type": "string"
           },
+          "external_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "groupname": {
             "type": "string"
           },
           "id": {
             "type": "integer",
             "format": "int32"
+          },
+          "identity_scope_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "last_sync_attempted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_sync_success_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "managed_by": {
+            "type": "string"
           },
           "updated_at": {
             "type": "string",
@@ -13809,6 +15041,12 @@
         "properties": {
           "groupname": {
             "type": "string"
+          },
+          "identity_scope": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -13824,6 +15062,64 @@
           },
           "permission": {
             "$ref": "#/components/schemas/Permission"
+          }
+        }
+      },
+      "GroupResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "identity_scope",
+          "groupname",
+          "description",
+          "managed_by",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "external_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "groupname": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "identity_scope": {
+            "type": "string"
+          },
+          "last_sync_attempted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_sync_success_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "managed_by": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -15227,6 +16523,62 @@
           }
         }
       },
+      "LoginRateLimitConfig": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "max_attempts",
+          "max_attempts_per_ip",
+          "max_attempts_per_subnet",
+          "window_seconds",
+          "backoff_base_seconds",
+          "backoff_max_seconds",
+          "subnet_prefix_v4",
+          "subnet_prefix_v6"
+        ],
+        "properties": {
+          "backoff_base_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "backoff_max_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "max_attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_attempts_per_ip": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_attempts_per_subnet": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subnet_prefix_v4": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "subnet_prefix_v6": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "window_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
       "LoginRateLimitConfigResponse": {
         "type": "object",
         "description": "Effective login rate-limit configuration, echoed back in the admin state endpoint.",
@@ -15393,6 +16745,12 @@
           "password"
         ],
         "properties": {
+          "identity_scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -15401,6 +16759,7 @@
           }
         },
         "example": {
+          "identity_scope": null,
           "name": "alice",
           "password": "correct-horse-battery-staple"
         }
@@ -15443,6 +16802,31 @@
         },
         "example": {
           "message": "Token is valid."
+        }
+      },
+      "NetworkConfig": {
+        "type": "object",
+        "required": [
+          "trust_ip_headers",
+          "trusted_proxy_hops",
+          "trusted_proxy_networks",
+          "client_allowlist"
+        ],
+        "properties": {
+          "client_allowlist": {
+            "$ref": "#/components/schemas/ClientAllowlistStatus"
+          },
+          "trust_ip_headers": {
+            "type": "boolean"
+          },
+          "trusted_proxy_hops": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "trusted_proxy_networks": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       },
       "NewCollectionWithAssignee": {
@@ -15673,11 +17057,18 @@
           },
           "groupname": {
             "type": "string"
+          },
+          "identity_scope": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "example": {
           "description": "Operations team",
-          "groupname": "ops"
+          "groupname": "ops",
+          "identity_scope": null
         }
       },
       "NewHubuumClass": {
@@ -15918,6 +17309,12 @@
               "null"
             ]
           },
+          "identity_scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -15928,6 +17325,7 @@
         },
         "example": {
           "description": "Production DNS importer",
+          "identity_scope": null,
           "name": "dns-sync",
           "owner_group_id": 1
         }
@@ -15980,6 +17378,12 @@
               "null"
             ]
           },
+          "identity_scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -15995,6 +17399,7 @@
         },
         "example": {
           "email": "alice@example.com",
+          "identity_scope": null,
           "name": "alice",
           "password": "correct-horse-battery-staple",
           "proper_name": "Alice Doe"
@@ -16039,6 +17444,28 @@
             "format": "int64"
           },
           "hubuum_class_id": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PaginationConfig": {
+        "type": "object",
+        "required": [
+          "default_page_limit",
+          "max_page_limit",
+          "max_transitive_depth"
+        ],
+        "properties": {
+          "default_page_limit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_page_limit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_transitive_depth": {
             "type": "integer",
             "format": "int32"
           }
@@ -16265,10 +17692,20 @@
         "description": "Public representation of a group member (a principal of either kind).",
         "required": [
           "principal_id",
+          "identity_scope",
           "kind",
-          "name"
+          "name",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "identity_scope": {
+            "type": "string"
+          },
           "kind": {
             "type": "string"
           },
@@ -16278,8 +17715,16 @@
           "principal_id": {
             "type": "integer",
             "format": "int32"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
+      },
+      "PrincipalSettings": {
+        "type": "object",
+        "description": "An object-only JSON document containing a principal's local preferences.\n\nValues below the document root may be any JSON type. The private\nrepresentation keeps callers from constructing an invalid non-object root."
       },
       "PrincipalToken": {
         "type": "object",
@@ -16548,6 +17993,28 @@
             }
           }
         ]
+      },
+      "RemoteCallConfig": {
+        "type": "object",
+        "required": [
+          "timeout_ms",
+          "max_response_bytes",
+          "allow_private_targets"
+        ],
+        "properties": {
+          "allow_private_targets": {
+            "type": "boolean"
+          },
+          "max_response_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
       },
       "RemoteCallResult": {
         "type": "object",
@@ -16942,11 +18409,105 @@
           "object_relation"
         ]
       },
+      "RunningConfig": {
+        "type": "object",
+        "required": [
+          "server",
+          "database",
+          "tasks",
+          "events",
+          "exports",
+          "remote_calls",
+          "authentication",
+          "pagination",
+          "network"
+        ],
+        "properties": {
+          "authentication": {
+            "$ref": "#/components/schemas/AuthenticationConfig"
+          },
+          "database": {
+            "$ref": "#/components/schemas/DatabaseConfig"
+          },
+          "events": {
+            "$ref": "#/components/schemas/EventConfig"
+          },
+          "exports": {
+            "$ref": "#/components/schemas/ExportConfig"
+          },
+          "network": {
+            "$ref": "#/components/schemas/NetworkConfig"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationConfig"
+          },
+          "remote_calls": {
+            "$ref": "#/components/schemas/RemoteCallConfig"
+          },
+          "server": {
+            "$ref": "#/components/schemas/ServerConfig"
+          },
+          "tasks": {
+            "$ref": "#/components/schemas/TaskConfig"
+          }
+        }
+      },
+      "SecretStatus": {
+        "type": "object",
+        "required": [
+          "configured"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "description": "Whether a value is configured. The value itself is never returned."
+          }
+        }
+      },
+      "ServerConfig": {
+        "type": "object",
+        "required": [
+          "bind_ip",
+          "bind_port",
+          "log_level",
+          "actix_workers",
+          "metrics_enabled",
+          "metrics_path",
+          "tls"
+        ],
+        "properties": {
+          "actix_workers": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bind_ip": {
+            "type": "string"
+          },
+          "bind_port": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "log_level": {
+            "type": "string"
+          },
+          "metrics_enabled": {
+            "type": "boolean"
+          },
+          "metrics_path": {
+            "type": "string"
+          },
+          "tls": {
+            "$ref": "#/components/schemas/TlsConfig"
+          }
+        }
+      },
       "ServiceAccountResponse": {
         "type": "object",
         "description": "Public response shape, combining the service-account row with its principal\nname (the name lives on `principals`).",
         "required": [
           "id",
+          "identity_scope",
           "name",
           "description",
           "owner_group_id",
@@ -16979,6 +18540,9 @@
             "type": "integer",
             "format": "int32"
           },
+          "identity_scope": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
@@ -16989,6 +18553,39 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "TaskConfig": {
+        "type": "object",
+        "required": [
+          "workers",
+          "poll_interval_ms",
+          "import_max_active_per_user",
+          "export_max_active_per_user",
+          "remote_call_max_active_per_user"
+        ],
+        "properties": {
+          "export_max_active_per_user": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "import_max_active_per_user": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "poll_interval_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "remote_call_max_active_per_user": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "workers": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
@@ -17316,6 +18913,35 @@
           "partially_succeeded",
           "cancelled"
         ]
+      },
+      "TlsConfig": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "certificate_path_configured",
+          "private_key_path",
+          "private_key_passphrase"
+        ],
+        "properties": {
+          "backend": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "certificate_path_configured": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "private_key_passphrase": {
+            "$ref": "#/components/schemas/SecretStatus"
+          },
+          "private_key_path": {
+            "$ref": "#/components/schemas/SecretStatus"
+          }
+        }
       },
       "UnifiedSearchBatchResponse": {
         "type": "object",
@@ -17943,6 +19569,9 @@
         "description": "Public representation of a user, including the name resolved from the\nprincipal (the name authority).",
         "required": [
           "id",
+          "identity_scope",
+          "provider_kind",
+          "provider_managed",
           "name",
           "created_at",
           "updated_at"
@@ -17962,6 +19591,23 @@
             "type": "integer",
             "format": "int32"
           },
+          "identity_scope": {
+            "type": "string"
+          },
+          "last_sync_attempted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_sync_success_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
           "name": {
             "type": "string"
           },
@@ -17970,6 +19616,12 @@
               "string",
               "null"
             ]
+          },
+          "provider_kind": {
+            "type": "string"
+          },
+          "provider_managed": {
+            "type": "boolean"
           },
           "updated_at": {
             "type": "string",
@@ -17986,6 +19638,10 @@
     }
   },
   "tags": [
+    {
+      "name": "admin",
+      "description": "Administrative process inspection endpoints"
+    },
     {
       "name": "meta",
       "description": "Meta and database state endpoints"

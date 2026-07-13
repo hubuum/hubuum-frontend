@@ -74,11 +74,18 @@ public prefix to the frontend's fixed `/_hubuum-bff/...` routes.
 
 Hubuum `/api/v0/meta/...` endpoints are admin-only. The frontend must only call
 them after an admin access check, and current meta usage is limited to the
-admin statistics surface and admin-only landing-page counts.
+admin statistics surface and admin-only landing-page counts. The statistics
+surface also reads the redacted `/api/v1/admin/config` projection when the
+backend provides it, while remaining compatible with older backends where that
+endpoint returns `404`.
 
 Task activity shown to regular users comes from `/api/v1/tasks` through the BFF
 proxy, so users can see the task records available to their account without
 requiring global meta access.
+
+Cursor-paginated helper requests that do not display an exact total pass
+`include_total=false`; primary data tables retain the default exact-count
+behavior when they show `X-Total-Count` in pagination controls.
 
 ## Scoped identities
 

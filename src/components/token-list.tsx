@@ -23,10 +23,15 @@ async function fetchTokens(
 ): Promise<PrincipalTokenMetadata[]> {
 	const response =
 		principalId === "me"
-			? await getApiV1IamMeTokens(undefined, { credentials: "include" })
-			: await getApiV1IamPrincipalsByPrincipalIdTokens(principalId, undefined, {
-					credentials: "include",
-				});
+			? await getApiV1IamMeTokens(
+					{ include_total: false },
+					{ credentials: "include" },
+				)
+			: await getApiV1IamPrincipalsByPrincipalIdTokens(
+					principalId,
+					{ include_total: false },
+					{ credentials: "include" },
+				);
 
 	if (response.status !== 200) {
 		throw new Error(

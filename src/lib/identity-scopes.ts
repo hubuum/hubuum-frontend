@@ -1,69 +1,23 @@
-import type { NewGroup, NewUser } from "@/lib/api/generated/models";
+import type {
+	GroupResponse,
+	LoginUser,
+	NewGroup,
+	NewUser,
+	PrincipalMemberResponse,
+	ServiceAccountResponse,
+	UserResponse,
+} from "@/lib/api/generated/models";
 
 export const LOCAL_IDENTITY_SCOPE = "local";
 export const LOGIN_IDENTITY_SCOPE_STORAGE_KEY = "hubuum.login.identity-scope";
 
-export type ScopedLoginCredentials = {
-	identity_scope?: string;
-	name: string;
-	password: string;
-};
-
-export type ScopedNewUser = NewUser & {
-	identity_scope?: string | null;
-};
-
-export type ScopedNewGroup = NewGroup & {
-	identity_scope?: string | null;
-};
-
-export type ConsoleUser = {
-	created_at: string;
-	email?: string | null;
-	id: number;
-	identity_scope?: string;
-	last_sync_attempted_at?: string | null;
-	last_sync_success_at?: string | null;
-	name: string;
-	proper_name?: string | null;
-	provider_kind?: string;
-	provider_managed?: boolean;
-	updated_at: string;
-};
-
-export type ConsoleGroup = {
-	created_at: string;
-	description: string;
-	external_key?: string | null;
-	groupname: string;
-	id: number;
-	identity_scope?: string;
-	last_sync_attempted_at?: string | null;
-	last_sync_success_at?: string | null;
-	managed_by?: string;
-	updated_at: string;
-};
-
-export type ConsolePrincipalMember = {
-	created_at?: string;
-	identity_scope?: string;
-	kind: string;
-	name: string;
-	principal_id: number;
-	updated_at?: string;
-};
-
-export type ConsoleServiceAccount = {
-	created_at: string;
-	created_by?: number | null;
-	description: string;
-	disabled_at?: string | null;
-	id: number;
-	identity_scope?: string;
-	name: string;
-	owner_group_id: number;
-	updated_at: string;
-};
+export type ScopedLoginCredentials = LoginUser;
+export type ScopedNewUser = NewUser;
+export type ScopedNewGroup = NewGroup;
+export type ConsoleUser = UserResponse;
+export type ConsoleGroup = GroupResponse;
+export type ConsolePrincipalMember = PrincipalMemberResponse;
+export type ConsoleServiceAccount = ServiceAccountResponse;
 
 export type AuthenticatedPrincipalIdentity = {
 	identityScope: string;
@@ -99,13 +53,13 @@ export function formatScopedServiceAccountName(
 }
 
 export function isProviderManagedUser(
-	user: Pick<ConsoleUser, "provider_managed">,
+	user: { provider_managed?: boolean | null },
 ): boolean {
 	return user.provider_managed === true;
 }
 
 export function isProviderManagedGroup(
-	group: Pick<ConsoleGroup, "managed_by">,
+	group: { managed_by?: string | null },
 ): boolean {
 	return Boolean(group.managed_by && group.managed_by !== "local");
 }
@@ -130,7 +84,7 @@ export function readAuthenticatedPrincipalIdentity(
 
 export function authenticatedIdentityMatchesRequest(
 	identity: AuthenticatedPrincipalIdentity | null,
-	requestedScope: string | undefined,
+	requestedScope: string | null | undefined,
 ): boolean {
 	const normalizedRequest = normalizeIdentityScope(requestedScope);
 	if (normalizedRequest === LOCAL_IDENTITY_SCOPE) return true;
