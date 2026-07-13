@@ -18,7 +18,6 @@ import { JsonEditor } from "@/components/json-editor";
 import { ObjectServerFilterMenu } from "@/components/object-server-filter-menu";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
-import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
@@ -26,11 +25,12 @@ import {
 	getApiV1Collections,
 } from "@/lib/api/generated/client";
 import type {
+	Collection,
 	HubuumClassExpanded,
 	HubuumObject,
-	Collection,
 	NewHubuumObject,
 } from "@/lib/api/generated/models";
+import { useConfirm } from "@/lib/confirm-context";
 import {
 	DESELECT_ALL_EVENT,
 	OPEN_CREATE_EVENT,
@@ -38,26 +38,26 @@ import {
 	SELECT_ALL_EVENT,
 	SELECTION_STATE_EVENT,
 } from "@/lib/create-events";
-import {
-	matchesFreeTextSearch,
-	normalizeSearchTerm,
-} from "@/lib/resource-search";
 import { getDataColumnHeadings } from "@/lib/data-column-headings";
 import {
 	appendObjectServerFilters,
 	OBJECT_SERVER_FILTERS_QUERY_KEY,
+	type ObjectServerFilter,
 	parseObjectServerFilters,
 	serializeObjectServerFilters,
 	toServerFilterDataPath,
-	type ObjectServerFilter,
 } from "@/lib/object-server-filters";
+import {
+	matchesFreeTextSearch,
+	normalizeSearchTerm,
+} from "@/lib/resource-search";
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
+import { useToast } from "@/lib/toast-context";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
 import { useTableSort } from "@/lib/use-table-sort";
-import { useToast } from "@/lib/toast-context";
 import {
 	isUserSettingsSyncInitialized,
 	writeUserSetting,
@@ -804,7 +804,6 @@ export function ObjectsExplorer() {
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
 	const columnPickerRef = useRef<HTMLDivElement | null>(null);
-	const customColumnPickerRef = useRef<HTMLDivElement | null>(null);
 	const classesQuery = useQuery({
 		queryKey: ["classes", "object-explorer"],
 		queryFn: fetchClasses,
@@ -824,7 +823,6 @@ export function ObjectsExplorer() {
 	const [isColumnPickerOpen, setColumnPickerOpen] = useState(false);
 	const [selectedDataColumns, setSelectedDataColumns] = useState<string[]>([]);
 	const [showRawDataColumn, setShowRawDataColumn] = useState(true);
-	const [isCustomColumnPickerOpen, setCustomColumnPickerOpen] = useState(false);
 	const [customDataFields, setCustomDataFields] = useState<CustomDataField[]>(
 		[],
 	);
@@ -1214,23 +1212,22 @@ export function ObjectsExplorer() {
 				),
 		[sortedDataColumnCandidates],
 	);
-	const dataColumnMenuWidth = useMemo(() => {
-		const longestLabelLength = dataColumnCandidates.reduce(
+	const columnMenuWidth = useMemo(() => {
+		const standardLength = dataColumnCandidates.reduce(
 			(maxLength, column) => Math.max(maxLength, column.label.length),
 			0,
 		);
-		const widthCh = Math.max(24, Math.min(96, longestLabelLength + 14));
-		return `${widthCh}ch`;
-	}, [dataColumnCandidates]);
-	const customDataColumnMenuWidth = useMemo(() => {
-		const longestLabelLength = customDataFields.reduce(
+		const customLength = customDataFields.reduce(
 			(maxLength, field) =>
 				Math.max(maxLength, field.label.length, field.expression.length),
 			0,
 		);
-		const widthCh = Math.max(34, Math.min(96, longestLabelLength + 14));
+		const widthCh = Math.max(
+			34,
+			Math.min(96, Math.max(standardLength, customLength) + 14),
+		);
 		return `${widthCh}ch`;
-	}, [customDataFields]);
+	}, [customDataFields, dataColumnCandidates]);
 	const searchTerm = normalizeSearchTerm(searchParams.get("search"));
 	const filteredObjects = useMemo(
 		() =>
@@ -1560,6 +1557,15 @@ export function ObjectsExplorer() {
 		function onKeyDown(event: KeyboardEvent) {
 			if (event.key === "Escape") {
 				setColumnPickerOpen(false);
+				window.setTimeout(
+					() =>
+						columnPickerRef.current
+							?.querySelector<HTMLButtonElement>(
+								".object-column-picker-trigger",
+							)
+							?.focus(),
+					0,
+				);
 			}
 		}
 
@@ -1570,31 +1576,6 @@ export function ObjectsExplorer() {
 			document.removeEventListener("keydown", onKeyDown);
 		};
 	}, [isColumnPickerOpen]);
-
-	useEffect(() => {
-		if (!isCustomColumnPickerOpen) {
-			return;
-		}
-
-		function onPointerDown(event: MouseEvent) {
-			if (!customColumnPickerRef.current?.contains(event.target as Node)) {
-				setCustomColumnPickerOpen(false);
-			}
-		}
-
-		function onKeyDown(event: KeyboardEvent) {
-			if (event.key === "Escape") {
-				setCustomColumnPickerOpen(false);
-			}
-		}
-
-		document.addEventListener("mousedown", onPointerDown);
-		document.addEventListener("keydown", onKeyDown);
-		return () => {
-			document.removeEventListener("mousedown", onPointerDown);
-			document.removeEventListener("keydown", onKeyDown);
-		};
-	}, [isCustomColumnPickerOpen]);
 
 	const shiftSelect = useShiftSelect({
 		items: displayedObjects,
@@ -1757,13 +1738,7 @@ export function ObjectsExplorer() {
 	}
 
 	function toggleDataColumnPicker() {
-		setCustomColumnPickerOpen(false);
 		setColumnPickerOpen((current) => !current);
-	}
-
-	function toggleCustomDataColumnPicker() {
-		setColumnPickerOpen(false);
-		setCustomColumnPickerOpen((current) => !current);
 	}
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -2133,26 +2108,38 @@ export function ObjectsExplorer() {
 								className="ghost object-column-picker-trigger"
 								onClick={toggleDataColumnPicker}
 								disabled={parsedClassId === null}
+								aria-haspopup="dialog"
+								aria-expanded={isColumnPickerOpen}
+								aria-controls="object-columns-popover"
 							>
 								<IconColumns />
-								<span>Data columns</span>
-								{activeStandardDataColumnCount ? (
+								<span>Columns</span>
+								{activeStandardDataColumnCount + activeCustomDataColumnCount ? (
 									<span className="object-column-count">
-										{activeStandardDataColumnCount}
+										{activeStandardDataColumnCount +
+											activeCustomDataColumnCount}
 									</span>
 								) : null}
 							</button>
 							{isColumnPickerOpen ? (
 								<div
+									id="object-columns-popover"
 									className="object-column-menu card"
+									role="dialog"
+									aria-label="Object columns"
 									style={
 										{
-											"--object-column-menu-width": dataColumnMenuWidth,
+											"--object-column-menu-width": columnMenuWidth,
 										} as React.CSSProperties
 									}
 								>
 									<div className="object-column-menu-header">
-										<strong>Show data fields</strong>
+										<div>
+											<strong>Visible columns</strong>
+											<p className="muted">
+												Choose up to {MAX_SELECTED_DATA_COLUMNS} data fields.
+											</p>
+										</div>
 										<div className="object-column-menu-actions">
 											<button
 												type="button"
@@ -2223,71 +2210,10 @@ export function ObjectsExplorer() {
 											})}
 										</div>
 									)}
-								</div>
-							) : null}
-						</div>
-						<div className="object-column-picker" ref={customColumnPickerRef}>
-							<button
-								type="button"
-								className="ghost object-column-picker-trigger"
-								onClick={toggleCustomDataColumnPicker}
-								disabled={parsedClassId === null}
-							>
-								<IconColumns />
-								<span>Custom data fields</span>
-								{activeCustomDataColumnCount ? (
-									<span className="object-column-count">
-										{activeCustomDataColumnCount}
-									</span>
-								) : null}
-							</button>
-							{isCustomColumnPickerOpen ? (
-								<div
-									className="object-column-menu object-column-menu--custom card"
-									style={
-										{
-											"--object-column-menu-width": customDataColumnMenuWidth,
-										} as React.CSSProperties
-									}
-								>
-									<div className="object-column-menu-header">
-										<strong>Custom data fields</strong>
+									<div className="object-column-section-heading">
+										<strong>Custom fields</strong>
+										<span className="muted">Only visible to you</span>
 									</div>
-									<form
-										className="custom-data-field-form"
-										onSubmit={addCustomDataField}
-									>
-										<div className="custom-data-field-scope">
-											<span className="muted">
-												Saved to your account as a display preference.
-											</span>
-										</div>
-										<label className="control-field">
-											<span>Label</span>
-											<input
-												value={customDataFieldLabel}
-												onChange={(event) =>
-													setCustomDataFieldLabel(event.target.value)
-												}
-												placeholder="OS version"
-											/>
-										</label>
-										<label className="control-field">
-											<span>Paths</span>
-											<input
-												value={customDataFieldExpression}
-												onChange={(event) =>
-													setCustomDataFieldExpression(event.target.value)
-												}
-												placeholder="os.fedora.version|os.redhat.version|os.macos.version"
-											/>
-										</label>
-										<p className="muted">
-											Uses the first non-empty path. Escape literal dots or
-											pipes with a backslash.
-										</p>
-										<button type="submit">Add custom field</button>
-									</form>
 									{customDataFields.length === 0 ? (
 										<p className="muted">No custom data fields yet.</p>
 									) : (
@@ -2328,6 +2254,44 @@ export function ObjectsExplorer() {
 											})}
 										</div>
 									)}
+									<details className="custom-data-field-disclosure">
+										<summary>Create a custom field</summary>
+										<form
+											className="custom-data-field-form"
+											onSubmit={addCustomDataField}
+										>
+											<div className="custom-data-field-scope">
+												<span className="muted">
+													Saved to your account as a display preference.
+												</span>
+											</div>
+											<label className="control-field">
+												<span>Label</span>
+												<input
+													value={customDataFieldLabel}
+													onChange={(event) =>
+														setCustomDataFieldLabel(event.target.value)
+													}
+													placeholder="OS version"
+												/>
+											</label>
+											<label className="control-field">
+												<span>Paths</span>
+												<input
+													value={customDataFieldExpression}
+													onChange={(event) =>
+														setCustomDataFieldExpression(event.target.value)
+													}
+													placeholder="os.fedora.version|os.redhat.version|os.macos.version"
+												/>
+											</label>
+											<p className="muted">
+												Uses the first non-empty path. Escape literal dots or
+												pipes with a backslash.
+											</p>
+											<button type="submit">Add custom field</button>
+										</form>
+									</details>
 								</div>
 							) : null}
 						</div>
@@ -2445,243 +2409,259 @@ export function ObjectsExplorer() {
 						}
 					/>
 				) : (
-					<div className="object-table-scroll">
-						<table id="objects-table">
-							<colgroup>
-								<col
-									className="object-select-column"
-									data-column-key="select"
-								/>
-								<col className="object-id-column" data-column-key="id" />
-								<col className="object-name-column" data-column-key="name" />
-								<col
-									className="object-collection-column"
-									data-column-key="collection"
-								/>
-								<col
-									className="object-description-column"
-									data-column-key="description"
-								/>
-								{activeDataColumns.map((column) => (
+					<>
+						<p className="table-scroll-hint">
+							Swipe horizontally to see more columns. Names remain pinned.
+						</p>
+						<section className="object-table-scroll" aria-label="Objects table">
+							<table id="objects-table">
+								<caption className="sr-only">Objects</caption>
+								<colgroup>
 									<col
-										key={column.id}
-										className="object-promoted-data-column"
-										data-column-key={`data:${column.id}`}
+										className="object-select-column"
+										data-column-key="select"
 									/>
-								))}
-								{showRawDataColumn ? (
+									<col className="object-id-column" data-column-key="id" />
+									<col className="object-name-column" data-column-key="name" />
 									<col
-										className="object-data-column"
-										data-column-key="raw-data"
-									/>
-								) : null}
-							</colgroup>
-							<thead>
-								<tr>
-									<th className="check-col" data-column-key="select">
-										<input
-											type="checkbox"
-											aria-label="Select all objects"
-											checked={allSelected}
-											onChange={(event) =>
-												shiftSelect.handleSelectAll(event.target.checked)
-											}
-										/>
-									</th>
-									<th
-										className="sortable"
-										data-column-key="id"
-										title="Sort all matching objects by ID"
-										aria-sort={getServerSortAria("id")}
-										tabIndex={0}
-										onClick={() => setServerSort("id")}
-										onKeyDown={(event) => onServerSortKeyDown(event, "id")}
-									>
-										ID{renderSortIndicator("id")}
-									</th>
-									<th
-										className="sortable"
-										data-column-key="name"
-										title="Sort all matching objects by name"
-										aria-sort={getServerSortAria("name")}
-										tabIndex={0}
-										onClick={() => setServerSort("name")}
-										onKeyDown={(event) => onServerSortKeyDown(event, "name")}
-									>
-										Name{renderSortIndicator("name")}
-									</th>
-									<th
-										className="sortable"
+										className="object-collection-column"
 										data-column-key="collection"
-										title="Sort all matching objects by collection"
-										aria-sort={getServerSortAria("collection_id")}
-										tabIndex={0}
-										onClick={() => setServerSort("collection_id")}
-										onKeyDown={(event) =>
-											onServerSortKeyDown(event, "collection_id")
-										}
-									>
-										Collection{renderSortIndicator("collection_id")}
-									</th>
-									<th
-										className="sortable"
+									/>
+									<col
+										className="object-description-column"
 										data-column-key="description"
-										title="Sort all matching objects by description"
-										aria-sort={getServerSortAria("description")}
-										tabIndex={0}
-										onClick={() => setServerSort("description")}
-										onKeyDown={(event) =>
-											onServerSortKeyDown(event, "description")
-										}
-									>
-										Description{renderSortIndicator("description")}
-									</th>
-									{activeDataColumns.map((column) => {
-										const heading = dataColumnHeadings.get(column.id) ?? {
-											context: "",
-											label: column.label,
-										};
-										return (
-											<th
-												key={column.id}
-												className="object-data-field-heading"
-												data-column-key={`data:${column.id}`}
-												title={`${column.label} — sorts loaded rows`}
-												aria-sort={
-													dataColumnSort.columnId === column.id
-														? dataColumnSort.direction === "asc"
-															? "ascending"
-															: "descending"
-														: "none"
+									/>
+									{activeDataColumns.map((column) => (
+										<col
+											key={column.id}
+											className="object-promoted-data-column"
+											data-column-key={`data:${column.id}`}
+										/>
+									))}
+									{showRawDataColumn ? (
+										<col
+											className="object-data-column"
+											data-column-key="raw-data"
+										/>
+									) : null}
+								</colgroup>
+								<thead>
+									<tr>
+										<th className="check-col" data-column-key="select">
+											<input
+												type="checkbox"
+												aria-label="Select all objects"
+												checked={allSelected}
+												onChange={(event) =>
+													shiftSelect.handleSelectAll(event.target.checked)
 												}
-											>
-												<button
-													type="button"
-													className="object-column-sort"
-													onClick={() => setDataSort(column.id)}
-													aria-label={`Sort loaded rows by ${column.label}`}
+											/>
+										</th>
+										<th
+											className="sortable"
+											data-column-key="id"
+											title="Sort all matching objects by ID"
+											aria-sort={getServerSortAria("id")}
+											tabIndex={0}
+											onClick={() => setServerSort("id")}
+											onKeyDown={(event) => onServerSortKeyDown(event, "id")}
+										>
+											ID{renderSortIndicator("id")}
+										</th>
+										<th
+											className="sortable"
+											data-column-key="name"
+											title="Sort all matching objects by name"
+											aria-sort={getServerSortAria("name")}
+											tabIndex={0}
+											onClick={() => setServerSort("name")}
+											onKeyDown={(event) => onServerSortKeyDown(event, "name")}
+										>
+											Name{renderSortIndicator("name")}
+										</th>
+										<th
+											className="sortable"
+											data-column-key="collection"
+											title="Sort all matching objects by collection"
+											aria-sort={getServerSortAria("collection_id")}
+											tabIndex={0}
+											onClick={() => setServerSort("collection_id")}
+											onKeyDown={(event) =>
+												onServerSortKeyDown(event, "collection_id")
+											}
+										>
+											Collection{renderSortIndicator("collection_id")}
+										</th>
+										<th
+											className="sortable"
+											data-column-key="description"
+											title="Sort all matching objects by description"
+											aria-sort={getServerSortAria("description")}
+											tabIndex={0}
+											onClick={() => setServerSort("description")}
+											onKeyDown={(event) =>
+												onServerSortKeyDown(event, "description")
+											}
+										>
+											Description{renderSortIndicator("description")}
+										</th>
+										{activeDataColumns.map((column) => {
+											const heading = dataColumnHeadings.get(column.id) ?? {
+												context: "",
+												label: column.label,
+											};
+											return (
+												<th
+													key={column.id}
+													className="object-data-field-heading"
+													data-column-key={`data:${column.id}`}
+													title={`${column.label} — sorts loaded rows`}
+													aria-sort={
+														dataColumnSort.columnId === column.id
+															? dataColumnSort.direction === "asc"
+																? "ascending"
+																: "descending"
+															: "none"
+													}
 												>
-													<span
-														className="object-data-field-icon"
-														aria-hidden="true"
+													<button
+														type="button"
+														className="object-column-sort"
+														onClick={() => setDataSort(column.id)}
+														aria-label={`Sort loaded rows by ${column.label}`}
 													>
-														<IconDataField />
-													</span>
-													{heading.context ? (
-														<>
-															<span className="object-column-heading-context">
-																{heading.context}
-															</span>
-															<span
-																className="object-column-heading-separator"
-																aria-hidden="true"
-															>
-																·
-															</span>
-														</>
-													) : null}
-													<span className="object-column-heading-label">
-														<span className="object-column-heading-name">
-															{heading.label}
+														<span
+															className="object-data-field-icon"
+															aria-hidden="true"
+														>
+															<IconDataField />
 														</span>
-														{renderDataSortIndicator(column.id)}
-													</span>
-												</button>
+														{heading.context ? (
+															<>
+																<span className="object-column-heading-context">
+																	{heading.context}
+																</span>
+																<span
+																	className="object-column-heading-separator"
+																	aria-hidden="true"
+																>
+																	·
+																</span>
+															</>
+														) : null}
+														<span className="object-column-heading-label">
+															<span className="object-column-heading-name">
+																{heading.label}
+															</span>
+															{renderDataSortIndicator(column.id)}
+														</span>
+													</button>
+												</th>
+											);
+										})}
+										{showRawDataColumn ? (
+											<th
+												className="object-raw-data-heading"
+												data-column-key="raw-data"
+											>
+												Data
 											</th>
+										) : null}
+									</tr>
+								</thead>
+								<tbody>
+									{displayedObjects.map((objectItem, index) => {
+										const isSelected = selectedObjectIds.includes(
+											objectItem.id,
+										);
+										const isFocused = keyboardNav.focusedId === objectItem.id;
+										const rowClassName = [
+											isSelected ? "table-row-selected" : "",
+											isFocused ? "table-row-focused" : "",
+										]
+											.filter(Boolean)
+											.join(" ");
+
+										return (
+											<tr
+												key={objectItem.id}
+												className={rowClassName}
+												data-table-row-index={index}
+											>
+												<td className="check-col" data-column-key="select">
+													<input
+														type="checkbox"
+														aria-label={`Select object ${objectItem.name}`}
+														checked={isSelected}
+														onChange={(event) =>
+															shiftSelect.handleClick(
+																objectItem.id,
+																event.target.checked,
+																(event.nativeEvent as MouseEvent).shiftKey,
+															)
+														}
+													/>
+												</td>
+												<td data-column-key="id">{objectItem.id}</td>
+												<td data-column-key="name">
+													<div className="object-name-cell">
+														<Link
+															href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
+															className="row-link"
+															title={objectItem.name}
+														>
+															{objectItem.name}
+														</Link>
+														<Link
+															href={`/relations/objects?classId=${objectItem.hubuum_class_id}&objectId=${objectItem.id}&objectView=reachable`}
+															className="object-row-connections-link"
+															aria-label={`Open connections for ${objectItem.name}`}
+															title="Open connections"
+														>
+															<IconConnections />
+														</Link>
+													</div>
+												</td>
+												<td data-column-key="collection">
+													{renderCollection(objectItem.collection_id)}
+												</td>
+												<td
+													className="object-description-cell"
+													data-column-key="description"
+													title={objectItem.description || undefined}
+												>
+													{objectItem.description || "-"}
+												</td>
+												{activeDataColumns.map((column) => (
+													<td
+														key={column.id}
+														className="object-data-field-cell"
+													>
+														{renderPromotedDataValue(
+															getValueAtFirstAvailableDataPath(
+																objectItem.data,
+																column.paths,
+															),
+														)}
+													</td>
+												))}
+												{showRawDataColumn ? (
+													<td className="data-cell">
+														{renderObjectDataPreview(
+															objectItem.data,
+															activeDataColumns.flatMap(
+																(column) => column.paths,
+															),
+														)}
+													</td>
+												) : null}
+											</tr>
 										);
 									})}
-									{showRawDataColumn ? (
-										<th
-											className="object-raw-data-heading"
-											data-column-key="raw-data"
-										>
-											Data
-										</th>
-									) : null}
-								</tr>
-							</thead>
-							<tbody>
-								{displayedObjects.map((objectItem, index) => {
-									const isSelected = selectedObjectIds.includes(objectItem.id);
-									const isFocused = keyboardNav.focusedId === objectItem.id;
-									const rowClassName = [
-										isSelected ? "table-row-selected" : "",
-										isFocused ? "table-row-focused" : "",
-									]
-										.filter(Boolean)
-										.join(" ");
-
-									return (
-										<tr
-											key={objectItem.id}
-											className={rowClassName}
-											data-table-row-index={index}
-										>
-											<td className="check-col">
-												<input
-													type="checkbox"
-													aria-label={`Select object ${objectItem.name}`}
-													checked={isSelected}
-													onChange={(event) =>
-														shiftSelect.handleClick(
-															objectItem.id,
-															event.target.checked,
-															(event.nativeEvent as MouseEvent).shiftKey,
-														)
-													}
-												/>
-											</td>
-											<td>{objectItem.id}</td>
-											<td>
-												<div className="object-name-cell">
-													<Link
-														href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
-														className="row-link"
-														title={objectItem.name}
-													>
-														{objectItem.name}
-													</Link>
-													<Link
-														href={`/relations/objects?classId=${objectItem.hubuum_class_id}&objectId=${objectItem.id}&objectView=reachable`}
-														className="object-row-connections-link"
-														aria-label={`Open connections for ${objectItem.name}`}
-														title="Open connections"
-													>
-														<IconConnections />
-													</Link>
-												</div>
-											</td>
-											<td>{renderCollection(objectItem.collection_id)}</td>
-											<td
-												className="object-description-cell"
-												title={objectItem.description || undefined}
-											>
-												{objectItem.description || "-"}
-											</td>
-											{activeDataColumns.map((column) => (
-												<td key={column.id} className="object-data-field-cell">
-													{renderPromotedDataValue(
-														getValueAtFirstAvailableDataPath(
-															objectItem.data,
-															column.paths,
-														),
-													)}
-												</td>
-											))}
-											{showRawDataColumn ? (
-												<td className="data-cell">
-													{renderObjectDataPreview(
-														objectItem.data,
-														activeDataColumns.flatMap((column) => column.paths),
-													)}
-												</td>
-											) : null}
-										</tr>
-									);
-								})}
-							</tbody>
-						</table>
-					</div>
+								</tbody>
+							</table>
+						</section>
+					</>
 				)}
 				{pageData &&
 				(pageData.nextCursor ||

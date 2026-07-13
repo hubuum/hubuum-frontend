@@ -10,11 +10,24 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Configurable object-reachability depth, persisted in the relations URL, for
   exploring paths up to 10 hops.
+- Dedicated account appearance settings for theme, density, and primary and
+  secondary workspace colors.
+- Playwright browser-quality coverage for accessibility, color contrast,
+  responsive layouts, and visual regression, with portable checks enforced in
+  CI.
 
 ### Changed
 
 - Simplified related-object cards to emphasize the object, description, hop
   count, and indirect route without displaying object data previews.
+- Improved the responsive application shell with mobile search, a single
+  primary create action, clearer account controls, and more useful non-admin
+  dashboard summaries.
+- Made collection, class, and object tables easier to use on narrow screens
+  with scroll guidance, sticky identifying columns, combined column controls,
+  and accessible sorting.
+- Improved action contrast, touch targets, compact typography, and dialog focus
+  management across light and dark themes.
 
 ## [0.0.1] - 2026-07-13
 

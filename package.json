@@ -12,6 +12,9 @@
 		"build": "next build",
 		"start": "node scripts/start-standalone.mjs",
 		"test": "vitest run",
+		"test:e2e": "playwright test",
+		"test:e2e:public": "playwright test tests/e2e/public-ui.spec.ts",
+		"test:e2e:update": "playwright test tests/e2e/public-ui.spec.ts --update-snapshots",
 		"test:live-backend": "scripts/live-backend-test.sh",
 		"lint": "biome lint .",
 		"typecheck": "next typegen && tsc --noEmit",
@@ -44,7 +47,9 @@
 		"postcss": "8.5.10"
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "^4.12.1",
 		"@biomejs/biome": "^2.4.15",
+		"@playwright/test": "^1.61.1",
 		"@types/node": "^25.9.2",
 		"@types/react": "^19.2.17",
 		"@types/react-dom": "^19.2.3",

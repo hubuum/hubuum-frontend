@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useId, useRef } from "react";
+
+import { useDialogAccessibility } from "@/lib/use-dialog-accessibility";
 
 type KeyboardHelpProps = {
 	open: boolean;
@@ -24,7 +26,10 @@ const shortcuts: Shortcut[] = [
 	{ keys: ["↑", "↓"], description: "Navigate table rows" },
 	{ keys: ["Enter"], description: "Open focused row" },
 	{ keys: ["N"], description: "Go to the next page in the active paged view" },
-	{ keys: ["P"], description: "Go to the previous page in the active paged view" },
+	{
+		keys: ["P"],
+		description: "Go to the previous page in the active paged view",
+	},
 	{ keys: ["G", "H"], description: "Go to Home" },
 	{ keys: ["G", "N"], description: "Go to Collections" },
 	{ keys: ["G", "C"], description: "Go to Classes" },
@@ -39,46 +44,38 @@ const shortcuts: Shortcut[] = [
 ];
 
 export function KeyboardHelp({ open, onClose }: KeyboardHelpProps) {
-	useEffect(() => {
-		if (!open) {
-			return;
-		}
-
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				onClose();
-			}
-		};
-
-		document.addEventListener("keydown", onKeyDown);
-		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [open, onClose]);
-
-	useEffect(() => {
-		if (!open) {
-			return;
-		}
-
-		const onPointerDown = (event: PointerEvent) => {
-			const target = event.target as HTMLElement;
-			if (target.classList.contains("keyboard-help-backdrop")) {
-				onClose();
-			}
-		};
-
-		document.addEventListener("pointerdown", onPointerDown);
-		return () => document.removeEventListener("pointerdown", onPointerDown);
-	}, [open, onClose]);
+	const titleId = useId();
+	const overlayRef = useRef<HTMLDivElement | null>(null);
+	const dialogRef = useRef<HTMLDivElement | null>(null);
+	useDialogAccessibility({
+		open,
+		onClose,
+		dialogRef,
+		overlayRef,
+	});
 
 	if (!open) {
 		return null;
 	}
 
 	return (
-		<div className="keyboard-help-backdrop">
-			<div className="keyboard-help card">
+		<div
+			className="keyboard-help-backdrop"
+			ref={overlayRef}
+			onPointerDown={(event) => {
+				if (event.target === event.currentTarget) onClose();
+			}}
+		>
+			<div
+				className="keyboard-help card"
+				ref={dialogRef}
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby={titleId}
+				tabIndex={-1}
+			>
 				<div className="keyboard-help-header">
-					<h2>Keyboard Shortcuts</h2>
+					<h2 id={titleId}>Keyboard Shortcuts</h2>
 					<button
 						type="button"
 						className="ghost icon-button"

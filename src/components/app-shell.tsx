@@ -13,31 +13,33 @@ import {
 	useRef,
 	useState,
 } from "react";
-
+import { BrandMark } from "@/components/brand-mark";
+import { CreateModal } from "@/components/create-modal";
 import { KeyboardHelp } from "@/components/keyboard-help";
 import { LogoutButton } from "@/components/logout-button";
 import { PinButton } from "@/components/pin-button";
 import { ToastContainer } from "@/components/toast-container";
-import { BrandMark } from "@/components/brand-mark";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV1Classes } from "@/lib/api/generated/client";
 import type {
 	HubuumClassExpanded,
 	HubuumObject,
 } from "@/lib/api/generated/models";
-import { APPLICATION_VERSION } from "@/lib/application-version";
 import {
 	fetchTasks,
 	isTerminalTaskStatus,
 	type TaskRecord,
 } from "@/lib/api/tasking";
 import {
-	countUnread,
-	diffNewlyTerminal,
-	filterMine,
-	toastForTransition,
-} from "@/lib/task-notifications";
-import { useToast } from "@/lib/toast-context";
+	type AccentPreference,
+	type DensityPreference,
+	isAccentPreference,
+	isDensityPreference,
+	isThemePreference,
+	resolveTheme,
+	type ThemePreference,
+} from "@/lib/appearance-preferences";
+import { APPLICATION_VERSION } from "@/lib/application-version";
 import {
 	type CreateSection,
 	DESELECT_ALL_EVENT,
@@ -50,13 +52,21 @@ import {
 	TITLE_STATE_EVENT,
 	type TitleStateEventDetail,
 } from "@/lib/create-events";
+import { OBJECT_SERVER_FILTERS_QUERY_KEY } from "@/lib/object-server-filters";
 import {
 	triggerActivePaginationNextPage,
 	triggerActivePaginationPrevPage,
 } from "@/lib/pagination-shortcuts";
 import { normalizeSearchTerm } from "@/lib/resource-search";
-import { OBJECT_SERVER_FILTERS_QUERY_KEY } from "@/lib/object-server-filters";
 import {
+	countUnread,
+	diffNewlyTerminal,
+	filterMine,
+	toastForTransition,
+} from "@/lib/task-notifications";
+import { useToast } from "@/lib/toast-context";
+import {
+	USER_SETTINGS_CHANGED_EVENT,
 	writeDeviceSetting,
 	writeUserSetting,
 } from "@/lib/user-settings-client";
@@ -71,12 +81,6 @@ type AppShellProps = {
 	currentUsername: string | null;
 	children: ReactNode;
 };
-
-type ThemePreference = "system" | "light" | "dark";
-
-type DensityPreference = "comfortable" | "compact";
-
-type AccentPreference = "teal" | "blue" | "violet" | "amber" | "rose";
 
 type NavItem = {
 	href: string;
@@ -94,16 +98,6 @@ const SECONDARY_ACCENT_PREFERENCE_KEY =
 const LOGIN_ACCENT_PREFERENCE_KEY = DEVICE_SETTING_KEYS.loginAccent;
 const LOGIN_SECONDARY_ACCENT_PREFERENCE_KEY =
 	DEVICE_SETTING_KEYS.loginSecondaryAccent;
-const ACCENT_OPTIONS: Array<{
-	value: AccentPreference;
-	label: string;
-}> = [
-	{ value: "teal", label: "Teal" },
-	{ value: "blue", label: "Blue" },
-	{ value: "violet", label: "Violet" },
-	{ value: "amber", label: "Amber" },
-	{ value: "rose", label: "Rose" },
-];
 const GO_TO_SHORTCUT_TIMEOUT_MS = 1500;
 const GO_TO_ROUTES: Record<string, string> = {
 	a: "/audit",
@@ -172,24 +166,6 @@ async function fetchRelationsObjectOptions(
 function parseId(value: string): number | null {
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function resolveTheme(preference: ThemePreference): "light" | "dark" {
-	if (preference === "light" || preference === "dark") {
-		return preference;
-	}
-
-	return window.matchMedia("(prefers-color-scheme: dark)").matches
-		? "dark"
-		: "light";
-}
-
-function isThemePreference(value: string | null): value is ThemePreference {
-	return value === "system" || value === "light" || value === "dark";
-}
-
-function isAccentPreference(value: string | null): value is AccentPreference {
-	return ACCENT_OPTIONS.some((option) => option.value === value);
 }
 
 function isLinkActive(pathname: string, href: string): boolean {
@@ -422,6 +398,58 @@ function IconUser() {
 				d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12m0 2.2c-4 0-7.5 2.1-7.5 4.8V21h15v-2c0-2.7-3.5-4.8-7.5-4.8"
 				fill="currentColor"
 			/>
+		</svg>
+	);
+}
+
+function IconSystemTheme() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-6v2h3v2H7v-2h3v-2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m0 2v10h16V6z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
+function IconLightTheme() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M11 1h2v3h-2zm0 19h2v3h-2zM3.5 4.9l1.4-1.4L7 5.6 5.6 7zM17 18.4l1.4-1.4 2.1 2.1-1.4 1.4zM1 11h3v2H1zm19 0h3v2h-3zM3.5 19.1 5.6 17 7 18.4l-2.1 2.1zM17 5.6l2.1-2.1 1.4 1.4L18.4 7zM12 6a6 6 0 1 1 0 12 6 6 0 0 1 0-12m0 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
+function IconDarkTheme() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M20.8 15.3A8.5 8.5 0 0 1 8.7 3.2 9 9 0 1 0 20.8 15.3M12 21a7 7 0 0 1-5.6-11.2 10.5 10.5 0 0 0 7.8 7.8A7 7 0 0 0 12 21"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
+function IconPalette() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M12 3a9 9 0 0 0 0 18h1.5a2.5 2.5 0 0 0 0-5H12a1.5 1.5 0 0 1 0-3h3.8A5.2 5.2 0 0 0 21 7.8C21 5.1 16.8 3 12 3M7 13a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m2-5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m5-1a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
+function IconArrowRight() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path d="m9 5 7 7-7 7-1.4-1.4 5.6-5.6-5.6-5.6z" fill="currentColor" />
 		</svg>
 	);
 }
@@ -763,6 +791,7 @@ export function AppShell({
 	}, [relationsObjectOptions, selectedRelationsObjectId]);
 	const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+	const [isMobileSearchOpen, setMobileSearchOpen] = useState(false);
 	const [isUserMenuOpen, setUserMenuOpen] = useState(false);
 	const [isTaskMenuOpen, setTaskMenuOpen] = useState(false);
 	const [themePreference, setThemePreference] =
@@ -851,7 +880,7 @@ export function AppShell({
 		}
 
 		const storedDensity = window.localStorage.getItem(DENSITY_PREFERENCE_KEY);
-		if (storedDensity === "compact" || storedDensity === "comfortable") {
+		if (isDensityPreference(storedDensity)) {
 			setDensityPreference(storedDensity);
 		}
 
@@ -870,6 +899,37 @@ export function AppShell({
 		} else {
 			setSecondaryAccentPreference(primaryAccent);
 		}
+	}, []);
+
+	useEffect(() => {
+		const onSettingChange = (event: Event) => {
+			const key = (event as CustomEvent<{ key?: string }>).detail?.key;
+			if (key === THEME_PREFERENCE_KEY) {
+				const value = window.localStorage.getItem(THEME_PREFERENCE_KEY);
+				if (isThemePreference(value)) setThemePreference(value);
+			}
+			if (key === DENSITY_PREFERENCE_KEY) {
+				const value = window.localStorage.getItem(DENSITY_PREFERENCE_KEY);
+				if (isDensityPreference(value)) setDensityPreference(value);
+			}
+			if (key === ACCENT_PREFERENCE_KEY) {
+				const value = window.localStorage.getItem(ACCENT_PREFERENCE_KEY);
+				if (isAccentPreference(value)) setAccentPreference(value);
+			}
+			if (key === SECONDARY_ACCENT_PREFERENCE_KEY) {
+				const value = window.localStorage.getItem(
+					SECONDARY_ACCENT_PREFERENCE_KEY,
+				);
+				if (isAccentPreference(value)) {
+					hasCustomSecondaryAccent.current = true;
+					setSecondaryAccentPreference(value);
+				}
+			}
+		};
+
+		window.addEventListener(USER_SETTINGS_CHANGED_EVENT, onSettingChange);
+		return () =>
+			window.removeEventListener(USER_SETTINGS_CHANGED_EVENT, onSettingChange);
 	}, []);
 
 	useEffect(() => {
@@ -952,26 +1012,13 @@ export function AppShell({
 		);
 	}, [secondaryAccentPreference]);
 
-	function selectPrimaryAccent(value: AccentPreference) {
-		setAccentPreference(value);
-		if (!hasCustomSecondaryAccent.current) {
-			setSecondaryAccentPreference(value);
-		}
-	}
-
-	function selectSecondaryAccent(value: AccentPreference) {
-		hasCustomSecondaryAccent.current = true;
-		setSecondaryAccentPreference(value);
-		writeUserSetting(SECONDARY_ACCENT_PREFERENCE_KEY, value);
-		writeDeviceSetting(LOGIN_SECONDARY_ACCENT_PREFERENCE_KEY, value);
-	}
-
 	useEffect(() => {
 		if (!pathname) {
 			return;
 		}
 
 		setMobileSidebarOpen(false);
+		setMobileSearchOpen(false);
 		setUserMenuOpen(false);
 		setTaskMenuOpen(false);
 		setDetailTitle(null);
@@ -1003,6 +1050,13 @@ export function AppShell({
 		const onEscape = (event: KeyboardEvent) => {
 			if (event.key === "Escape") {
 				setUserMenuOpen(false);
+				window.setTimeout(
+					() =>
+						userMenuRef.current
+							?.querySelector<HTMLButtonElement>(".user-trigger")
+							?.focus(),
+					0,
+				);
 			}
 		};
 
@@ -1031,9 +1085,24 @@ export function AppShell({
 
 			setTaskMenuOpen(false);
 		};
+		const onEscape = (event: KeyboardEvent) => {
+			if (event.key !== "Escape") return;
+			setTaskMenuOpen(false);
+			window.setTimeout(
+				() =>
+					taskMenuRef.current
+						?.querySelector<HTMLButtonElement>(".task-menu-trigger")
+						?.focus(),
+				0,
+			);
+		};
 
 		document.addEventListener("pointerdown", onPointerDown);
-		return () => document.removeEventListener("pointerdown", onPointerDown);
+		document.addEventListener("keydown", onEscape);
+		return () => {
+			document.removeEventListener("pointerdown", onPointerDown);
+			document.removeEventListener("keydown", onEscape);
+		};
 	}, [isTaskMenuOpen]);
 
 	useEffect(() => {
@@ -1071,9 +1140,11 @@ export function AppShell({
 				const searchInput = document.querySelector(
 					".topbar-search-input",
 				) as HTMLInputElement;
-				if (searchInput) {
+				if (searchInput && searchInput.offsetParent !== null) {
 					searchInput.focus();
 					searchInput.select();
+				} else {
+					setMobileSearchOpen(true);
 				}
 				return;
 			}
@@ -1376,6 +1447,7 @@ export function AppShell({
 
 	function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
+		setMobileSearchOpen(false);
 
 		const trimmedSearchTerm = normalizeSearchTerm(searchInput);
 		const params = isSearchRoute
@@ -1691,7 +1763,10 @@ export function AppShell({
 						</div>
 
 						<div className="topbar-right" ref={userMenuRef}>
-							<form className="topbar-search-form" onSubmit={onSearchSubmit}>
+							<form
+								className="topbar-search-form desktop-search-form"
+								onSubmit={onSearchSubmit}
+							>
 								<div className="topbar-search-field">
 									<input
 										aria-label="Search collections, classes, and objects"
@@ -1720,12 +1795,22 @@ export function AppShell({
 								</button>
 							</form>
 
+							<button
+								type="button"
+								className="ghost icon-button mobile-only mobile-search-trigger"
+								onClick={() => setMobileSearchOpen(true)}
+								aria-label="Search workspace"
+								title="Search workspace"
+							>
+								<IconSearch />
+							</button>
+
 							<div className="task-menu-wrapper" ref={taskMenuRef}>
 								<button
 									type="button"
 									className="ghost icon-button task-menu-trigger"
 									onClick={() => setTaskMenuOpen((current) => !current)}
-									aria-haspopup="menu"
+									aria-controls="task-activity-popover"
 									aria-expanded={isTaskMenuOpen}
 									aria-label="Task activity"
 									title="Task activity"
@@ -1735,9 +1820,9 @@ export function AppShell({
 								</button>
 
 								{isTaskMenuOpen ? (
-									<div
+									<section
+										id="task-activity-popover"
 										className="task-menu card"
-										role="menu"
 										aria-label="Task activity"
 									>
 										<div className="task-menu-header">
@@ -1779,7 +1864,6 @@ export function AppShell({
 														className="task-menu-item"
 														href={`/tasks/${task.id}`}
 														onClick={() => setTaskMenuOpen(false)}
-														role="menuitem"
 													>
 														<span
 															className={`status-pill status-pill--${isTerminalTaskStatus(task.status) ? "neutral" : "accent"}`}
@@ -1798,7 +1882,7 @@ export function AppShell({
 												))}
 											</div>
 										) : null}
-									</div>
+									</section>
 								) : null}
 							</div>
 
@@ -1806,7 +1890,7 @@ export function AppShell({
 								type="button"
 								className="ghost user-trigger"
 								onClick={() => setUserMenuOpen((current) => !current)}
-								aria-haspopup="menu"
+								aria-controls="account-popover"
 								aria-expanded={isUserMenuOpen}
 								aria-label={`Open account menu for ${currentUsername ?? "current user"}`}
 							>
@@ -1822,115 +1906,95 @@ export function AppShell({
 							</button>
 
 							{isUserMenuOpen ? (
-								<div
+								<section
+									id="account-popover"
 									className="user-menu card"
-									role="menu"
 									aria-label="User menu"
 								>
-									<div className="menu-group">
-										<p className="menu-label">Density</p>
-										<button
-											type="button"
-											className={`menu-item ${densityPreference === "comfortable" ? "is-selected" : ""}`}
-											onClick={() => setDensityPreference("comfortable")}
-										>
-											Comfortable
-										</button>
-										<button
-											type="button"
-											className={`menu-item ${densityPreference === "compact" ? "is-selected" : ""}`}
-											onClick={() => setDensityPreference("compact")}
-										>
-											Compact
-										</button>
+									<div className="account-menu-header">
+										<span className="user-avatar account-menu-avatar">
+											<IconUser />
+										</span>
+										<span className="account-menu-identity">
+											<strong>{currentUsername ?? "Account"}</strong>
+											<small>Workspace account</small>
+										</span>
 									</div>
 
-									<div className="menu-group">
-										<p className="menu-label">Theme</p>
-										<button
-											type="button"
-											className={`menu-item ${themePreference === "system" ? "is-selected" : ""}`}
-											onClick={() => setThemePreference("system")}
-										>
-											System
-										</button>
-										<button
-											type="button"
-											className={`menu-item ${themePreference === "light" ? "is-selected" : ""}`}
-											onClick={() => setThemePreference("light")}
-										>
-											Light
-										</button>
-										<button
-											type="button"
-											className={`menu-item ${themePreference === "dark" ? "is-selected" : ""}`}
-											onClick={() => setThemePreference("dark")}
-										>
-											Dark
-										</button>
-									</div>
-
-									<div className="menu-group">
-										<p className="menu-label">Primary color</p>
-										<div className="accent-options">
-											{ACCENT_OPTIONS.map((option) => (
+									<div className="menu-group menu-theme-group">
+										<fieldset className="quick-theme-picker">
+											<legend className="menu-label">Theme</legend>
+											<div className="quick-theme-options">
 												<button
-													key={option.value}
 													type="button"
-													className={`accent-option ${accentPreference === option.value ? "is-selected" : ""}`}
-													onClick={() => selectPrimaryAccent(option.value)}
-													aria-pressed={accentPreference === option.value}
-													title={`${option.label} primary color`}
+													className={`quick-theme-option ${themePreference === "system" ? "is-selected" : ""}`}
+													onClick={() => setThemePreference("system")}
+													aria-pressed={themePreference === "system"}
 												>
-													<span
-														className={`accent-swatch accent-swatch--${option.value}`}
-														aria-hidden="true"
-													/>
-													<span>{option.label}</span>
+													<IconSystemTheme />
+													<span>System</span>
 												</button>
-											))}
-										</div>
-									</div>
-
-									<div className="menu-group">
-										<p className="menu-label">Secondary color</p>
-										<div className="accent-options">
-											{ACCENT_OPTIONS.map((option) => (
 												<button
-													key={option.value}
 													type="button"
-													className={`accent-option accent-option--secondary ${secondaryAccentPreference === option.value ? "is-selected" : ""}`}
-													onClick={() => selectSecondaryAccent(option.value)}
-													aria-pressed={
-														secondaryAccentPreference === option.value
-													}
-													title={`${option.label} secondary color`}
+													className={`quick-theme-option ${themePreference === "light" ? "is-selected" : ""}`}
+													onClick={() => setThemePreference("light")}
+													aria-pressed={themePreference === "light"}
 												>
-													<span
-														className={`accent-swatch accent-swatch--${option.value}`}
-														aria-hidden="true"
-													/>
-													<span>{option.label}</span>
+													<IconLightTheme />
+													<span>Light</span>
 												</button>
-											))}
-										</div>
+												<button
+													type="button"
+													className={`quick-theme-option ${themePreference === "dark" ? "is-selected" : ""}`}
+													onClick={() => setThemePreference("dark")}
+													aria-pressed={themePreference === "dark"}
+												>
+													<IconDarkTheme />
+													<span>Dark</span>
+												</button>
+											</div>
+										</fieldset>
 									</div>
 
-									<div className="menu-group">
+									<div className="menu-group menu-navigation-group">
 										<Link
-											className="menu-item"
-											href="/account"
-											role="menuitem"
+											className="menu-item menu-nav-item"
+											href="/account/appearance"
 											onClick={() => setUserMenuOpen(false)}
 										>
-											Account
+											<span className="menu-nav-icon">
+												<IconPalette />
+											</span>
+											<span className="menu-nav-copy">
+												<strong>Appearance</strong>
+												<small>Theme, color and density</small>
+											</span>
+											<span className="menu-nav-arrow">
+												<IconArrowRight />
+											</span>
+										</Link>
+										<Link
+											className="menu-item menu-nav-item"
+											href="/account"
+											onClick={() => setUserMenuOpen(false)}
+										>
+											<span className="menu-nav-icon">
+												<IconUser />
+											</span>
+											<span className="menu-nav-copy">
+												<strong>Account</strong>
+												<small>Profile, tokens and access</small>
+											</span>
+											<span className="menu-nav-arrow">
+												<IconArrowRight />
+											</span>
 										</Link>
 									</div>
 
-									<div className="menu-group">
-										<LogoutButton className="menu-item menu-item-danger" />
+									<div className="menu-group menu-signout-group">
+										<LogoutButton className="menu-item menu-item-danger account-menu-signout" />
 									</div>
-								</div>
+								</section>
 							) : null}
 						</div>
 					</header>
@@ -1989,6 +2053,35 @@ export function AppShell({
 					</span>
 				</button>
 			) : null}
+
+			<CreateModal
+				open={isMobileSearchOpen}
+				title="Search workspace"
+				onClose={() => setMobileSearchOpen(false)}
+			>
+				<form className="stack mobile-search-form" onSubmit={onSearchSubmit}>
+					<label className="control-field" htmlFor="mobile-workspace-search">
+						<span>Collections, classes, and objects</span>
+						<input
+							id="mobile-workspace-search"
+							value={searchInput}
+							onChange={(event) => setSearchInput(event.target.value)}
+							placeholder="Search the workspace"
+							autoComplete="off"
+						/>
+					</label>
+					<div className="form-actions form-actions--end">
+						<button
+							type="button"
+							className="ghost"
+							onClick={() => setMobileSearchOpen(false)}
+						>
+							Cancel
+						</button>
+						<button type="submit">Search</button>
+					</div>
+				</form>
+			</CreateModal>
 
 			<KeyboardHelp
 				open={isKeyboardHelpOpen}

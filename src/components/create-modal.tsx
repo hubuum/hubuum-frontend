@@ -1,7 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useId, useRef } from "react";
+
+import { useDialogAccessibility } from "@/lib/use-dialog-accessibility";
 
 type CreateModalProps = {
 	open: boolean;
@@ -27,50 +29,24 @@ export function CreateModal({
 	onClose,
 	children,
 }: CreateModalProps) {
+	const titleId = useId();
+	const overlayRef = useRef<HTMLDivElement | null>(null);
 	const panelRef = useRef<HTMLElement | null>(null);
-
-	useEffect(() => {
-		if (!open) {
-			return;
-		}
-
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				onClose();
-			}
-		};
-
-		document.body.classList.add("modal-open");
-		document.addEventListener("keydown", onKeyDown);
-
-		return () => {
-			document.body.classList.remove("modal-open");
-			document.removeEventListener("keydown", onKeyDown);
-		};
-	}, [open, onClose]);
-
-	useEffect(() => {
-		if (!open) {
-			return;
-		}
-
-		const frame = window.requestAnimationFrame(() => {
-			const firstField = panelRef.current?.querySelector<HTMLElement>(
-				".modal-content input:not([type='hidden']):not([disabled]), .modal-content select:not([disabled]), .modal-content textarea:not([disabled]), .modal-content button:not([disabled]), .modal-content [href], .modal-content [tabindex]:not([tabindex='-1'])",
-			);
-
-			firstField?.focus();
-		});
-
-		return () => window.cancelAnimationFrame(frame);
-	}, [open]);
+	useDialogAccessibility({
+		open,
+		onClose,
+		dialogRef: panelRef,
+		overlayRef,
+		initialFocusSelector:
+			".modal-content input:not([type='hidden']):not([disabled]), .modal-content select:not([disabled]), .modal-content textarea:not([disabled]), .modal-content button:not([disabled])",
+	});
 
 	if (!open) {
 		return null;
 	}
 
 	return (
-		<div className="modal-overlay">
+		<div className="modal-overlay" ref={overlayRef}>
 			<button
 				type="button"
 				className="modal-backdrop"
@@ -82,10 +58,11 @@ export function CreateModal({
 				className="modal-panel card"
 				role="dialog"
 				aria-modal="true"
-				aria-label={title}
+				aria-labelledby={titleId}
+				tabIndex={-1}
 			>
 				<header className="modal-header">
-					<h3>{title}</h3>
+					<h3 id={titleId}>{title}</h3>
 					<button
 						type="button"
 						className="ghost icon-button"
