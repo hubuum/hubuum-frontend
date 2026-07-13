@@ -6,7 +6,7 @@ if (!adminPassword) {
   throw new Error("HUBUUM_LIVE_ADMIN_PASSWORD is required.");
 }
 
-const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+const suffix = `${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
 const state = {
   passed: 0,
 };

@@ -2,7 +2,6 @@ import "server-only";
 
 import { getServerEnv } from "@/lib/env";
 import {
-	InMemoryUserSettingsStore,
 	UserSettingsLimitError,
 	type UserSettingsStore,
 } from "@/lib/user-settings-store-core";
@@ -51,11 +50,7 @@ class ValkeyUserSettingsStore implements UserSettingsStore {
 	}
 
 	private client() {
-		const client = getValkeyClient();
-		if (!client) {
-			throw new Error("Valkey is not configured.");
-		}
-		return client;
+		return getValkeyClient();
 	}
 
 	async getUserSettings(principalId: number): Promise<UserSettings> {
@@ -93,8 +88,6 @@ export function getUserSettingsStore(): UserSettingsStore {
 	if (store) return store;
 
 	const env = getServerEnv();
-	store = env.VALKEY_URL
-		? new ValkeyUserSettingsStore(env.SETTINGS_PREFIX)
-		: new InMemoryUserSettingsStore();
+	store = new ValkeyUserSettingsStore(env.SETTINGS_PREFIX);
 	return store;
 }

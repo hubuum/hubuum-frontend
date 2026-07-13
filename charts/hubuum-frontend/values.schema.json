@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["backend", "image", "replicaCount", "session", "valkey"],
+  "properties": {
+    "replicaCount": { "type": "integer", "minimum": 1 },
+    "appName": { "type": "string", "minLength": 1 },
+    "backend": {
+      "type": "object",
+      "required": ["baseUrl"],
+      "properties": {
+        "baseUrl": { "type": "string", "format": "uri", "minLength": 1 }
+      }
+    },
+    "image": {
+      "type": "object",
+      "required": ["repository", "pullPolicy"],
+      "properties": {
+        "digest": { "type": "string" },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] },
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" }
+      }
+    },
+    "session": {
+      "type": "object",
+      "required": ["prefix", "settingsPrefix", "ttlSeconds"],
+      "properties": {
+        "prefix": { "type": "string", "minLength": 1 },
+        "settingsPrefix": { "type": "string", "minLength": 1 },
+        "ttlSeconds": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "valkey": {
+      "type": "object",
+      "required": ["existingSecret"],
+      "properties": {
+        "existingSecret": {
+          "type": "object",
+          "required": ["name", "urlKey"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "urlKey": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

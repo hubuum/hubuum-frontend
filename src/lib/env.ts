@@ -7,7 +7,7 @@ const serverEnvSchema = z.object({
 		.enum(["development", "test", "production"])
 		.default("development"),
 	BACKEND_BASE_URL: z.string().url(),
-	VALKEY_URL: z.string().url().optional().or(z.literal("")),
+	VALKEY_URL: z.string().url(),
 	SESSION_TTL_SECONDS: z.coerce
 		.number()
 		.int()
@@ -35,9 +35,6 @@ export function getServerEnv(): ServerEnv {
 		throw new Error(`Invalid server environment: ${details}`);
 	}
 
-	cachedEnv = {
-		...parsed.data,
-		VALKEY_URL: parsed.data.VALKEY_URL || undefined,
-	};
+	cachedEnv = parsed.data;
 	return cachedEnv;
 }

@@ -202,11 +202,29 @@ export async function POST(request: NextRequest) {
 		sessionIdentity.name,
 	);
 
-	const sid = await createSession(token, sessionUsername);
+	let sid: string;
+	try {
+		sid = await createSession(token, sessionUsername);
+	} catch {
+		await revokeIssuedToken(token, correlationId);
+		console.error(
+			`[hubuum-auth][cid=${correlationId}] session store unavailable; verify VALKEY_URL and Valkey connectivity`,
+		);
+		if (fromForm) {
+			return seeOther("/login?error=session_store_unavailable");
+		}
+		return NextResponse.json(
+			{
+				error: "SessionStoreUnavailable",
+				message: "The frontend session store is unavailable.",
+			},
+			{ status: 503 },
+		);
+	}
 	const response = fromForm
 		? seeOther("/app")
 		: NextResponse.json({ authenticated: true }, { status: 200 });
-	setSessionCookie(response, sid, request, token, sessionUsername);
+	setSessionCookie(response, sid, request);
 	console.info(
 		`[hubuum-auth][cid=${correlationId}] login succeeded and session created (fromForm=${String(fromForm)})`,
 	);

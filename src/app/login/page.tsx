@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { BrandMark } from "@/components/brand-mark";
 import { LoginForm } from "@/components/login-form";
+import { APPLICATION_VERSION } from "@/lib/application-version";
 import { getSessionFromServerCookies } from "@/lib/auth/session";
 
 type LoginPageProps = {
@@ -25,6 +26,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 	const initialError =
 		errorCode === "identity_scope_unavailable"
 			? "The requested identity scope is unavailable or unsupported by this server."
+			: errorCode === "session_store_unavailable"
+				? "The frontend session store is unavailable. Try again shortly."
 			: errorCode
 				? "Login failed. Check your credentials and identity scope."
 				: null;
@@ -61,8 +64,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 				<div className="auth-form-panel">
 					<LoginForm initialError={initialError} />
 					<p className="footer-note">
-						{process.env.NEXT_PUBLIC_APP_NAME ?? "Hubuum Console"} · Secure
-						workspace
+						{process.env.NEXT_PUBLIC_APP_NAME ?? "Hubuum Console"} ·{
+							APPLICATION_VERSION
+						} · Secure workspace
 					</p>
 				</div>
 			</section>

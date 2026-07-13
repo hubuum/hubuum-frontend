@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: hubuum
+      POSTGRES_PASSWORD: hubuum_password
+      POSTGRES_USER: hubuum
+      PGUSER: hubuum
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hubuum -d hubuum"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  hubuum:
+    image: ${HUBUUM_COMPAT_BACKEND_IMAGE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://hubuum:hubuum_password@postgres:5432/hubuum
+      HUBUUM_BIND_IP: 0.0.0.0
+      HUBUUM_CLIENT_ALLOWLIST: "*"
+      HUBUUM_DATABASE_URL: postgres://hubuum:hubuum_password@postgres:5432/hubuum
+      HUBUUM_LOGIN_RATE_LIMIT_ENABLED: "false"
+      HUBUUM_TOKEN_HASH_KEY: release-smoke-token-hash-key
+
+  valkey:
+    image: docker.io/valkey/valkey:9.1.0-alpine3.23@sha256:a35428eba9043cc0b79dbe54100f0c92784f2de00ad09b01182bfb1c5c83d1bd
+    command: ["valkey-server", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  frontend:
+    image: ${HUBUUM_FRONTEND_TEST_IMAGE:-hubuum-frontend:ci}
+    pull_policy: never
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/.next/cache:size=128m,uid=1001,gid=1001,mode=0750
+    depends_on:
+      hubuum:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      BACKEND_BASE_URL: http://hubuum:8080
+      VALKEY_URL: redis://valkey:6379/0
+    ports:
+      - "127.0.0.1:${HUBUUM_FRONTEND_TEST_PORT:-13000}:3000"

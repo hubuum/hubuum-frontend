@@ -1,9 +1,10 @@
-replicaCount: 2
+replicaCount: 1
 
 image:
   repository: ghcr.io/hubuum/hubuum-frontend
   pullPolicy: IfNotPresent
-  tag: main
+  tag: ""
+  digest: ""
 
 imagePullSecrets: []
 nameOverride: ""
@@ -11,6 +12,7 @@ fullnameOverride: ""
 
 serviceAccount:
   create: true
+  automountServiceAccountToken: false
   annotations: {}
   name: ""
 
@@ -22,12 +24,15 @@ podSecurityContext:
   runAsUser: 1001
   runAsGroup: 1001
   fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
 
 securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
       - ALL
+  readOnlyRootFilesystem: true
 
 service:
   type: ClusterIP
@@ -52,29 +57,47 @@ route:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
 
-env:
-  BACKEND_BASE_URL: http://hubuum-api:8080
-  SESSION_TTL_SECONDS: "28800"
-  SESSION_PREFIX: "hubuum:sess:"
-  NEXT_PUBLIC_APP_NAME: "Hubuum Console"
+backend:
+  baseUrl: http://hubuum-api:8080
 
-existingSecret:
-  name: ""
-  valkeyUrlKey: VALKEY_URL
+appName: Hubuum Console
 
-valkeyUrl: ""
+session:
+  ttlSeconds: 28800
+  prefix: "hubuum:sess:"
+  settingsPrefix: "hubuum:settings:"
 
-resources: {}
+valkey:
+  existingSecret:
+    name: ""
+    urlKey: VALKEY_URL
+
+extraEnv: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
 
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}
 
 probes:
-  path: /login
-  initialDelaySeconds: 10
-  periodSeconds: 10
-  timeoutSeconds: 2
-  failureThreshold: 6
+  startup:
+    path: /healthz
+    periodSeconds: 2
+    timeoutSeconds: 2
+    failureThreshold: 30
+  liveness:
+    path: /healthz
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /readyz
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3

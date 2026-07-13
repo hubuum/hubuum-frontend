@@ -5,40 +5,227 @@ on:
   push:
     branches:
       - main
+  merge_group:
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+
+env:
+  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.1@sha256:061fc4cb3af57e2db06c33012db93e60834d4618815e30af4ebb4aa05a21f445
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
   validate:
+    name: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 35
-
+    timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
-          node-version: 22
+          node-version: 24.18.0
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
       - name: Lint
         run: npm run lint
-
       - name: Typecheck
         run: npm run typecheck
-
       - name: Test
         run: npm test
-
-      - name: Live backend contract test
-        run: npm run test:live-backend
-
       - name: Build
         run: npm run build
-
       - name: Audit runtime dependencies
         run: npm run audit:prod
+      - name: Verify release metadata
+        run: bash scripts/check-release-readiness.sh
+
+  backend-contract:
+    name: backend-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 24.18.0
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Test against Hubuum Server v0.0.1
+        env:
+          HUBUUM_LIVE_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
+        run: npm run test:live-backend
+
+  package:
+    name: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Resolve build version
+        id: version
+        shell: bash
+        run: |
+          package_version="$(jq --raw-output .version package.json)"
+          echo "value=v${package_version}+${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+      - name: Validate development dependencies
+        run: docker compose -f compose.dev.yml config --quiet
+      - name: Build test image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          load: true
+          push: false
+          tags: hubuum-frontend:ci
+          build-args: APP_VERSION=${{ steps.version.outputs.value }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test hardened image
+        shell: bash
+        run: |
+          container_id="$(docker run --detach \
+            --read-only \
+            --tmpfs /tmp:size=64m,mode=1777 \
+            --tmpfs /app/.next/cache:size=128m,uid=1001,gid=1001,mode=0750 \
+            --env BACKEND_BASE_URL=http://127.0.0.1:9 \
+            --publish 127.0.0.1:3000:3000 \
+            hubuum-frontend:ci)"
+          trap 'docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+          test "$(docker image inspect hubuum-frontend:ci --format '{{.Config.User}}')" = "1001"
+          for attempt in $(seq 1 30); do
+            if health_payload="$(curl --fail --silent http://127.0.0.1:3000/healthz)"; then
+              break
+            fi
+            echo "Waiting for frontend health (${attempt}/30)..."
+            sleep 1
+          done
+          if [[ -z "${health_payload:-}" ]]; then
+            docker logs "$container_id"
+            exit 1
+          fi
+          test "$(jq --raw-output .version <<< "$health_payload")" = \
+            "${{ steps.version.outputs.value }}"
+      - name: Smoke test Compose quickstart
+        env:
+          BACKEND_BASE_URL: http://127.0.0.1:9
+          HUBUUM_FRONTEND_IMAGE: hubuum-frontend:ci
+          HUBUUM_FRONTEND_PORT: 13001
+        run: bash scripts/quickstart-smoke.sh
+      - name: Smoke test frontend BFF against Hubuum Server v0.0.1
+        env:
+          HUBUUM_COMPAT_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
+        run: bash scripts/release-stack-smoke.sh
+      - name: Set up Helm
+        uses: azure/setup-helm@59b1c81c6280f5abebb1fb1bc585696daa7dfb42 # v5
+      - name: Validate Helm chart
+        shell: bash
+        run: |
+          helm lint charts/hubuum-frontend \
+            --set valkey.existingSecret.name=hubuum-valkey
+          helm template test charts/hubuum-frontend \
+            --set valkey.existingSecret.name=hubuum-valkey >/dev/null
+          helm template test charts/hubuum-frontend \
+            --set replicaCount=2 \
+            --set valkey.existingSecret.name=hubuum-valkey >/dev/null
+          if helm template invalid charts/hubuum-frontend >/dev/null 2>&1; then
+            echo "Expected an install without a Valkey Secret to fail." >&2
+            exit 1
+          fi
+          helm package charts/hubuum-frontend --destination /tmp
+
+  publish-main:
+    name: publish-main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - validate
+      - backend-contract
+      - package
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Resolve build version
+        id: version
+        shell: bash
+        run: |
+          package_version="$(jq --raw-output .version package.json)"
+          echo "value=v${package_version}+${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=main
+            type=raw,value=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.title=Hubuum Frontend
+            org.opencontainers.image.description=Web console for Hubuum Server
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.version=${{ steps.version.outputs.value }}
+      - name: Build and push image
+        id: push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ steps.version.outputs.value }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+      - name: Attest image
+        uses: actions/attest@f6bf1532d7d6793fce74eac584813a8eee607999 # v4
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+      - name: Set up Helm
+        uses: azure/setup-helm@59b1c81c6280f5abebb1fb1bc585696daa7dfb42 # v5
+      - name: Publish development chart
+        env:
+          HELM_REGISTRY_CONFIG: /tmp/helm-registry.json
+        shell: bash
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
+            --username "${{ github.actor }}" \
+            --password-stdin
+          version="0.0.1-main.${GITHUB_RUN_NUMBER}"
+          helm package charts/hubuum-frontend \
+            --destination /tmp \
+            --version "$version" \
+            --app-version "$GITHUB_SHA"
+          helm push "/tmp/hubuum-frontend-${version}.tgz" \
+            oci://ghcr.io/${{ github.repository_owner }}/charts
