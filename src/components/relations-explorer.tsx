@@ -37,6 +37,12 @@ import {
 	SELECT_ALL_EVENT,
 	SELECTION_STATE_EVENT,
 } from "@/lib/create-events";
+import {
+	buildRelatedObjectSearchParams,
+	DEFAULT_INCLUDE_SELF_CLASS,
+	MAX_RELATED_OBJECT_DEPTH_LIMIT,
+	normalizeRelatedObjectDepthLimit,
+} from "@/lib/object-relation-summary";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 
@@ -146,9 +152,16 @@ async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
 async function fetchRelatedObjects(
 	classId: number,
 	objectId: number,
+	depthLimit: number,
 ): Promise<HubuumObjectWithPath[]> {
+	const params = buildRelatedObjectSearchParams({
+		depthLimit,
+		includeSelfClass: DEFAULT_INCLUDE_SELF_CLASS,
+		ignoredClassIds: [],
+	});
+	params.set("include_total", "false");
 	const response = await fetch(
-		`/_hubuum-bff/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/objects?limit=250`,
+		`/_hubuum-bff/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/objects?${params.toString()}`,
 		{
 			credentials: "include",
 		},
@@ -242,6 +255,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		useState<ObjectRelationsView>(
 			initialObjectView === "direct" ? "direct" : "reachable",
 		);
+	const [reachabilityDepth, setReachabilityDepth] = useState(() =>
+		normalizeRelatedObjectDepthLimit(searchParams.get("depth")),
+	);
 	const [classRelationTargetClassId, setClassRelationTargetClassId] =
 		useState("");
 	const [objectRelationTargetClassId, setObjectRelationTargetClassId] =
@@ -446,11 +462,13 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			"object-related-objects",
 			parsedSourceClassId,
 			parsedResolvedSourceObjectId,
+			objectRelationsView === "reachable" ? reachabilityDepth : 1,
 		],
 		queryFn: async () =>
 			fetchRelatedObjects(
 				parsedSourceClassId ?? 0,
 				parsedResolvedSourceObjectId ?? 0,
+				objectRelationsView === "reachable" ? reachabilityDepth : 1,
 			),
 		enabled:
 			isObjectMode &&
@@ -572,8 +590,10 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			params.set("classView", classRelationsView);
 			params.delete("objectView");
 			params.delete("objectId");
+			params.delete("depth");
 		} else if (isObjectMode) {
 			params.set("objectView", objectRelationsView);
+			params.set("depth", String(reachabilityDepth));
 			params.delete("classView");
 			if (resolvedSourceObjectId) {
 				params.set("objectId", resolvedSourceObjectId);
@@ -594,6 +614,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		isObjectMode,
 		objectRelationsView,
 		pathname,
+		reachabilityDepth,
 		resolvedSourceClassId,
 		resolvedSourceObjectId,
 	]);
@@ -1858,6 +1879,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 										: parsedResolvedSourceObjectId !== null
 											? "Waiting..."
 											: "No object"}
+								{objectRelationsView === "reachable"
+									? ` · depth ${reachabilityDepth}`
+									: ""}
 								{objectRelationsView === "direct" &&
 								selectedObjectRelationIds.length
 									? ` · ${selectedObjectRelationIds.length} selected`
@@ -1865,6 +1889,30 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 							</span>
 						</div>
 						<div className="table-tools">
+							{objectRelationsView === "reachable" ? (
+								<label className="relations-depth-control">
+									<span>Depth</span>
+									<select
+										className="relations-depth-input"
+										aria-label="Reachability depth"
+										value={reachabilityDepth}
+										onChange={(event) =>
+											setReachabilityDepth(
+												normalizeRelatedObjectDepthLimit(event.target.value),
+											)
+										}
+									>
+										{Array.from(
+											{ length: MAX_RELATED_OBJECT_DEPTH_LIMIT },
+											(_, index) => index + 1,
+										).map((depth) => (
+											<option key={depth} value={depth}>
+												{depth}
+											</option>
+										))}
+									</select>
+								</label>
+							) : null}
 							{objectRelationsView === "direct" ? (
 								<TableExportMenu
 									view={directObjectRelationsExportView}

@@ -1739,19 +1739,9 @@ button.object-property-more {
 	padding: 0.75rem;
 }
 
-.object-connection-key,
-.object-connection-preview {
-	display: flex;
+.object-property-item--connection {
+	grid-template-columns: auto minmax(0, 1fr);
 	align-items: center;
-	gap: 0.35rem;
-	flex-wrap: wrap;
-}
-
-.object-property-item .object-connection-key > span:first-child {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .object-connection-value {
@@ -1765,28 +1755,10 @@ button.object-property-more {
 	color: var(--muted);
 	font-size: 0.76rem;
 	line-height: 1.35;
-}
-
-.object-connection-description,
-.object-connection-route {
 	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.object-connection-preview > span {
-	display: inline-flex;
-	gap: 0.2rem;
-	padding: 0.12rem 0.3rem;
-	border-radius: 5px;
-	background: var(--bg-highlight);
-	color: var(--muted);
-	font-size: 0.72rem;
-}
-
-.object-connection-preview strong {
-	color: var(--ink);
 }
 
 .object-detail-footer {
