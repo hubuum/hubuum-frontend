@@ -1,5 +1,6 @@
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
+	deleteApiV1EventSinksBySinkId,
 	getApiV1ClassesByClassIdByObjectIdEvents,
 	getApiV1ClassesByClassIdByObjectIdHistory,
 	getApiV1ClassesByClassIdByObjectIdHistoryAsOf,
@@ -14,7 +15,9 @@ import {
 	getApiV1CollectionsByCollectionIdEvents,
 	getApiV1CollectionsByCollectionIdHistory,
 	getApiV1CollectionsByCollectionIdHistoryAsOf,
+	patchApiV1EventSinksBySinkId,
 	patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId,
+	postApiV1EventSinks,
 	postApiV1CollectionsByCollectionIdEventSubscriptions,
 	deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId,
 	postApiV1EventDeliveriesByDeliveryIdDead,
@@ -30,7 +33,9 @@ import type {
 	HistoryResponseHubuumClassHistory,
 	HistoryResponseHubuumObjectHistory,
 	HistoryResponseCollectionHistory,
+	NewEventSink,
 	NewEventSubscription,
+	UpdateEventSink,
 	UpdateEventSubscription,
 } from "@/lib/api/generated/models";
 
@@ -105,7 +110,10 @@ export async function fetchEventsPage(
 
 export async function fetchResourceEventsPage(
 	scope: ResourceEventScope,
-	options: Omit<EventListOptions, "entity_type" | "entity_id" | "collection_id"> = {},
+	options: Omit<
+		EventListOptions,
+		"entity_type" | "entity_id" | "collection_id"
+	> = {},
 ): Promise<PageResult<EventRecord>> {
 	const params = {
 		limit: options.limit ?? 25,
@@ -284,10 +292,9 @@ export async function fetchEventDeliveriesPage(
 		sort: "-updated_at,-id",
 		...(cursor ? { cursor } : {}),
 	} as Parameters<typeof getApiV1EventDeliveries>[0];
-	const response = await getApiV1EventDeliveries(
-		params,
-		{ credentials: "include" },
-	);
+	const response = await getApiV1EventDeliveries(params, {
+		credentials: "include",
+	});
 
 	assertStatus(
 		response.status,
@@ -308,6 +315,52 @@ export async function fetchEventSinks(): Promise<EventSink[]> {
 		"Failed to load event sinks.",
 	);
 	return response.data as EventSink[];
+}
+
+export async function createEventSink(
+	payload: NewEventSink,
+): Promise<EventSink> {
+	const response = await postApiV1EventSinks(payload, {
+		credentials: "include",
+	});
+
+	assertStatus(
+		response.status,
+		response.data,
+		201,
+		"Failed to create event sink.",
+	);
+	return response.data as EventSink;
+}
+
+export async function updateEventSink(
+	sinkId: number,
+	payload: UpdateEventSink,
+): Promise<EventSink> {
+	const response = await patchApiV1EventSinksBySinkId(sinkId, payload, {
+		credentials: "include",
+	});
+
+	assertStatus(
+		response.status,
+		response.data,
+		200,
+		"Failed to update event sink.",
+	);
+	return response.data as EventSink;
+}
+
+export async function deleteEventSink(sinkId: number): Promise<void> {
+	const response = await deleteApiV1EventSinksBySinkId(sinkId, {
+		credentials: "include",
+	});
+
+	assertStatus(
+		response.status,
+		response.data,
+		204,
+		"Failed to delete event sink.",
+	);
 }
 
 export async function fetchCollectionEventSubscriptions(
@@ -387,11 +440,12 @@ export async function deleteCollectionEventSubscription(
 	);
 }
 
-export async function retryEventDelivery(deliveryId: number): Promise<EventDelivery> {
-	const response = await postApiV1EventDeliveriesByDeliveryIdRetry(
-		deliveryId,
-		{ credentials: "include" },
-	);
+export async function retryEventDelivery(
+	deliveryId: number,
+): Promise<EventDelivery> {
+	const response = await postApiV1EventDeliveriesByDeliveryIdRetry(deliveryId, {
+		credentials: "include",
+	});
 
 	assertStatus(
 		response.status,
