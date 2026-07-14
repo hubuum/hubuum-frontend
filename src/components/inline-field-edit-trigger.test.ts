@@ -9,11 +9,11 @@ describe("InlineFieldEditTrigger", () => {
 			createElement(
 				InlineFieldEditTrigger,
 				{
-					children: "server-01",
 					fieldLabel: "object name",
 					onClick: () => undefined,
 					valueText: "server-01",
 				},
+				"server-01",
 			),
 		);
 

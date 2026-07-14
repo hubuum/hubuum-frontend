@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 
 type InlineFieldEditTriggerProps = {
-	children: ReactNode;
+	children?: ReactNode;
 	className?: string;
 	disabled?: boolean;
 	fieldLabel: string;

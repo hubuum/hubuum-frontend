@@ -273,17 +273,6 @@ function renderFieldText(value: string): string {
 	return value.trim() ? value : "No value";
 }
 
-function InlineEditIcon() {
-	return (
-		<svg viewBox="0 0 24 24" aria-hidden="true">
-			<path
-				d="m4 16.8 8.9-8.9 3.2 3.2-8.9 8.9H4Zm10-10 1.8-1.8a1.8 1.8 0 0 1 2.5 0l.7.7a1.8 1.8 0 0 1 0 2.5l-1.8 1.8Z"
-				fill="currentColor"
-			/>
-		</svg>
-	);
-}
-
 function ObjectDataValueEditor({
 	path,
 	value,
@@ -1622,26 +1611,16 @@ export function ObjectDetail({
 											)}
 										</div>
 									) : canEditObject ? (
-										<button
-											type="button"
-											className="object-inline-edit"
+										<InlineFieldEditTrigger
+											fieldLabel="object collection"
+											valueText={collectionLabel}
 											onClick={() =>
 												toggleFieldEditing("collection", objectData)
 											}
 											disabled={isSavingOrDeleting}
-											aria-label={`Edit object collection. Current value: ${collectionLabel}`}
-											title={`Edit object collection: ${collectionLabel}`}
 										>
-											<span className="object-fact-display-value">
-												{collectionLabel}
-											</span>
-											<span
-												className="object-inline-edit-icon"
-												aria-hidden="true"
-											>
-												<InlineEditIcon />
-											</span>
-										</button>
+											{collectionLabel}
+										</InlineFieldEditTrigger>
 									) : (
 										<div
 											className="object-fact-display-value"

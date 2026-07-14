@@ -154,17 +154,6 @@ function stringifyJsonSchema(value: unknown): string {
 	return formatted ?? "";
 }
 
-function InlineEditIcon() {
-	return (
-		<svg viewBox="0 0 24 24" aria-hidden="true">
-			<path
-				d="m4 16.8 8.9-8.9 3.2 3.2-8.9 8.9H4Zm10-10 1.8-1.8a1.8 1.8 0 0 1 2.5 0l.7.7a1.8 1.8 0 0 1 0 2.5l-1.8 1.8Z"
-				fill="currentColor"
-			/>
-		</svg>
-	);
-}
-
 export function ClassDetail({ classId }: ClassDetailProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
@@ -182,6 +171,10 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
 	const nameInputRef = useRef<HTMLInputElement | null>(null);
 	const descriptionInputRef = useRef<HTMLInputElement | null>(null);
+	const collectionSelectRef = useRef<HTMLSelectElement | null>(null);
+	const collectionInputRef = useRef<HTMLInputElement | null>(null);
+	const validateSchemaInputRef = useRef<HTMLInputElement | null>(null);
+	const jsonSchemaEditorRef = useRef<HTMLDivElement | null>(null);
 
 	const classQuery = useQuery({
 		queryKey: ["class", classId],
@@ -221,6 +214,17 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 			nameInputRef.current?.focus();
 		} else if (lastEditingField === "description") {
 			descriptionInputRef.current?.focus();
+		} else if (lastEditingField === "collection") {
+			(collectionSelectRef.current ?? collectionInputRef.current)?.focus();
+		} else if (lastEditingField === "validate_schema") {
+			validateSchemaInputRef.current?.focus();
+		} else if (lastEditingField === "json_schema") {
+			const frame = window.requestAnimationFrame(() => {
+				jsonSchemaEditorRef.current
+					?.querySelector<HTMLElement>(".cm-content, textarea")
+					?.focus();
+			});
+			return () => window.cancelAnimationFrame(frame);
 		}
 	}, [editingFields]);
 
@@ -688,6 +692,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 									</label>
 									{hasCollectionOptions ? (
 										<select
+											ref={collectionSelectRef}
 											id="class-detail-collection"
 											required
 											value={hasCollectionSelection ? collectionId : ""}
@@ -704,6 +709,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 										</select>
 									) : (
 										<input
+											ref={collectionInputRef}
 											id="class-detail-collection"
 											required
 											type="number"
@@ -720,18 +726,13 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 									)}
 								</div>
 							) : (
-								<button
-									type="button"
-									className="object-inline-edit"
+								<InlineFieldEditTrigger
+									fieldLabel="class collection"
+									valueText={collectionLabel}
 									onClick={() => toggleFieldEditing("collection", classData)}
 								>
-									<span className="object-detail-value">
-										{collectionLabel}
-									</span>
-									<span className="object-inline-edit-icon">
-										<InlineEditIcon />
-									</span>
-								</button>
+									{collectionLabel}
+								</InlineFieldEditTrigger>
 							)}
 						</div>
 						<div className="object-detail-row-actions">
@@ -755,6 +756,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 							{editingFields.includes("validate_schema") ? (
 								<label className="control-check">
 									<input
+										ref={validateSchemaInputRef}
 										type="checkbox"
 										checked={validateSchema}
 										onChange={(event) =>
@@ -764,20 +766,17 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 									<span>Validate objects against JSON schema</span>
 								</label>
 							) : (
-								<button
-									type="button"
-									className="object-inline-edit"
+								<InlineFieldEditTrigger
+									fieldLabel="schema validation"
+									valueText={
+										classData.validate_schema ? "Enabled" : "Disabled"
+									}
 									onClick={() =>
 										toggleFieldEditing("validate_schema", classData)
 									}
 								>
-									<span className="object-detail-value">
-										{classData.validate_schema ? "Enabled" : "Disabled"}
-									</span>
-									<span className="object-inline-edit-icon">
-										<InlineEditIcon />
-									</span>
-								</button>
+									{classData.validate_schema ? "Enabled" : "Disabled"}
+								</InlineFieldEditTrigger>
 							)}
 						</div>
 						<div className="object-detail-row-actions">
@@ -801,38 +800,56 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 						<div className="object-detail-label">JSON schema</div>
 						<div className="object-detail-body">
 							{editingFields.includes("json_schema") ? (
-								<JsonEditor
-									id="class-detail-json-schema"
-									label="JSON schema (optional)"
-									value={jsonSchemaInput}
-									onChange={setJsonSchemaInput}
-									placeholder='{"type":"object","properties":{"name":{"type":"string"}}}'
-									mode="schema"
-									rows={8}
-									helperText="Use a JSON Schema object for object validation preview and backend enforcement."
-								/>
-							) : classData.json_schema === undefined ? (
-								<div className="muted">No JSON schema defined.</div>
-							) : (
-								<div className="object-json-preview">
-									{schemaSummary.length > 0 ? (
-										<ul className="object-json-summary">
-											{schemaSummary.map((item) => (
-												<li key={item}>{item}</li>
-											))}
-										</ul>
-									) : null}
-									<pre
-										className={`object-json-code${isSchemaExpanded ? " is-expanded" : ""}`}
-									>
-										{schemaPreview}
-									</pre>
+								<div ref={jsonSchemaEditorRef}>
+									<JsonEditor
+										id="class-detail-json-schema"
+										label="JSON schema (optional)"
+										value={jsonSchemaInput}
+										onChange={setJsonSchemaInput}
+										placeholder='{"type":"object","properties":{"name":{"type":"string"}}}'
+										mode="schema"
+										rows={8}
+										helperText="Use a JSON Schema object for object validation preview and backend enforcement."
+									/>
 								</div>
+							) : (
+								<InlineFieldEditTrigger
+									className={`inline-field-edit-trigger--complex${isSchemaExpanded ? " is-expanded" : ""}`}
+									fieldLabel="JSON schema"
+									valueText={
+										classData.json_schema === undefined
+											? "No JSON schema defined"
+											: "JSON schema configured"
+									}
+									onClick={() =>
+										toggleFieldEditing("json_schema", classData)
+									}
+								>
+									{classData.json_schema === undefined ? (
+										<span className="muted">No JSON schema defined.</span>
+									) : (
+										<span className="inline-schema-preview">
+											{schemaSummary.length > 0 ? (
+												<span className="inline-schema-summary">
+													{schemaSummary.join(" · ")}
+												</span>
+											) : null}
+											<span className="inline-schema-code">{schemaPreview}</span>
+										</span>
+									)}
+								</InlineFieldEditTrigger>
 							)}
 						</div>
 						<div className="object-detail-row-actions">
-							{!editingFields.includes("json_schema") &&
-							classData.json_schema !== undefined ? (
+							{editingFields.includes("json_schema") ? (
+								<button
+									type="button"
+									className="ghost"
+									onClick={() => toggleFieldEditing("json_schema", classData)}
+								>
+									Cancel
+								</button>
+							) : classData.json_schema !== undefined ? (
 								<button
 									type="button"
 									className="ghost"
@@ -841,15 +858,6 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 									{isSchemaExpanded ? "Collapse" : "Expand"}
 								</button>
 							) : null}
-							{editingFields.includes("json_schema") ? null : (
-								<button
-									type="button"
-									className="ghost"
-									onClick={() => toggleFieldEditing("json_schema", classData)}
-								>
-									Edit
-								</button>
-							)}
 						</div>
 					</section>
 				</div>

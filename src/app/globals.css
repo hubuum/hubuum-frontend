@@ -1953,6 +1953,43 @@ body.modal-open {
 	white-space: pre-wrap;
 }
 
+.inline-field-edit-trigger--complex {
+	align-items: flex-start;
+	min-height: 4rem;
+}
+
+.inline-field-edit-trigger--complex .inline-field-edit-trigger-value,
+.inline-schema-preview {
+	display: grid;
+	width: 100%;
+	gap: 0.5rem;
+	overflow: visible;
+	-webkit-line-clamp: unset;
+}
+
+.inline-schema-summary {
+	color: var(--muted);
+	font-size: 0.78rem;
+	font-weight: 650;
+}
+
+.inline-schema-code {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 5;
+	font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+	font-size: 0.78rem;
+	line-height: 1.45;
+	white-space: pre-wrap;
+}
+
+.inline-field-edit-trigger--complex.is-expanded .inline-schema-code {
+	display: block;
+	overflow: visible;
+	-webkit-line-clamp: unset;
+}
+
 .object-data-inline-hint,
 .object-data-inline-error {
 	grid-column: 1 / -1;
@@ -2300,40 +2337,6 @@ button.object-property-more {
 	line-height: 1.5;
 	white-space: pre-wrap;
 	word-break: break-word;
-}
-
-.object-inline-edit {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.4rem;
-	width: fit-content;
-	max-width: 100%;
-	min-height: 2rem;
-	padding: 0.2rem 0.1rem;
-	border: 0;
-	border-radius: 0;
-	background: transparent;
-	color: inherit;
-	text-align: left;
-}
-
-.object-inline-edit:hover,
-.object-inline-edit:focus-visible {
-	text-decoration: underline;
-	text-underline-offset: 0.15em;
-	filter: none;
-}
-
-.object-inline-edit-icon {
-	width: 0.9rem;
-	height: 0.9rem;
-	color: var(--muted);
-	flex: 0 0 auto;
-}
-
-.object-inline-edit-icon svg {
-	width: 100%;
-	height: 100%;
 }
 
 .object-detail-row-actions {
