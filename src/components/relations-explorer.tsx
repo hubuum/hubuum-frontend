@@ -726,26 +726,18 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		}
 
 		if (
-			fromClassFilterId &&
-			(parsedFromClassFilterId === null ||
-				!classes.some((classItem) => classItem.id === parsedFromClassFilterId))
+			parsedFromClassFilterId !== null &&
+			!classes.some((classItem) => classItem.id === parsedFromClassFilterId)
 		) {
 			setFromClassFilterId("");
 		}
 		if (
-			toClassFilterId &&
-			(parsedToClassFilterId === null ||
-				!classes.some((classItem) => classItem.id === parsedToClassFilterId))
+			parsedToClassFilterId !== null &&
+			!classes.some((classItem) => classItem.id === parsedToClassFilterId)
 		) {
 			setToClassFilterId("");
 		}
-	}, [
-		classes,
-		fromClassFilterId,
-		parsedFromClassFilterId,
-		parsedToClassFilterId,
-		toClassFilterId,
-	]);
+	}, [classes, parsedFromClassFilterId, parsedToClassFilterId]);
 
 	useEffect(() => {
 		if (!isObjectMode) {
