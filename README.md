@@ -157,6 +157,10 @@ the same dotted/bracket path syntax and can create missing object branches or
 append the next array item. The advanced JSON editor remains available for bulk
 changes, deep branches, file loading, and schema previews.
 
+Name and description values on object, class, and collection detail pages use
+the same whole-field edit target instead of a separate pencil control. Opening
+one focuses its input immediately, and Escape restores the draft.
+
 Escape is the console-wide safe exit for transient work. It closes the most
 recently opened menu, create form, or edit mode without saving its draft; nested
 modes unwind one at a time. Escape is ignored while an inline save or delete is

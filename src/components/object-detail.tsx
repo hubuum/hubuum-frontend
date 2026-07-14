@@ -15,6 +15,7 @@ import {
 } from "react";
 import { JsonEditor } from "@/components/json-editor";
 import { JsonViewer } from "@/components/json-viewer";
+import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
@@ -469,19 +470,14 @@ function ObjectDataEditTrigger({
 	onClick: () => void;
 }) {
 	return (
-		<button
-			type="button"
-			className="object-data-inline-trigger"
+		<InlineFieldEditTrigger
+			fieldLabel={path}
+			valueText={value}
 			onClick={onClick}
 			disabled={disabled}
-			aria-label={`Edit ${path}. Current value: ${value}`}
-			title={`Edit ${path}`}
 		>
-			<span>{value}</span>
-			<span className="object-data-inline-trigger-icon" aria-hidden="true">
-				<InlineEditIcon />
-			</span>
-		</button>
+			{value}
+		</InlineFieldEditTrigger>
 	);
 }
 
@@ -1510,24 +1506,14 @@ export function ObjectDetail({
 											/>
 										</label>
 									) : canEditObject ? (
-										<button
-											type="button"
-											className="object-inline-edit"
+										<InlineFieldEditTrigger
+											fieldLabel="object name"
+											valueText={renderFieldText(objectData.name)}
 											onClick={() => toggleFieldEditing("name", objectData)}
 											disabled={isSavingOrDeleting}
-											aria-label={`Edit object name. Current value: ${renderFieldText(objectData.name)}`}
-											title={`Edit object name: ${renderFieldText(objectData.name)}`}
 										>
-											<span className="object-fact-display-value">
-												{renderFieldText(objectData.name)}
-											</span>
-											<span
-												className="object-inline-edit-icon"
-												aria-hidden="true"
-											>
-												<InlineEditIcon />
-											</span>
-										</button>
+											{renderFieldText(objectData.name)}
+										</InlineFieldEditTrigger>
 									) : (
 										<div
 											className="object-fact-display-value"
@@ -1558,26 +1544,18 @@ export function ObjectDetail({
 											/>
 										</label>
 									) : canEditObject ? (
-										<button
-											type="button"
-											className="object-inline-edit"
+										<InlineFieldEditTrigger
+											fieldLabel="object description"
+											valueText={renderFieldText(
+												objectData.description ?? "",
+											)}
 											onClick={() =>
 												toggleFieldEditing("description", objectData)
 											}
 											disabled={isSavingOrDeleting}
-											aria-label={`Edit object description. Current value: ${renderFieldText(objectData.description ?? "")}`}
-											title={`Edit object description: ${renderFieldText(objectData.description ?? "")}`}
 										>
-											<span className="object-fact-display-value">
-												{renderFieldText(objectData.description ?? "")}
-											</span>
-											<span
-												className="object-inline-edit-icon"
-												aria-hidden="true"
-											>
-												<InlineEditIcon />
-											</span>
-										</button>
+											{renderFieldText(objectData.description ?? "")}
+										</InlineFieldEditTrigger>
 									) : (
 										<div
 											className="object-fact-display-value"

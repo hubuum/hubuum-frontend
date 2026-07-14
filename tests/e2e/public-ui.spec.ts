@@ -71,7 +71,15 @@ test.describe("public accessibility", () => {
 				const input = document.createElement("input");
 				const select = document.createElement("select");
 				select.append(new Option("Text", "text"));
-				fixture.append(input, select);
+				const inlineEditTrigger = document.createElement("button");
+				inlineEditTrigger.className = "inline-field-edit-trigger";
+				inlineEditTrigger.append(
+					Object.assign(document.createElement("span"), {
+						className: "inline-field-edit-trigger-value",
+						textContent: "Editable value",
+					}),
+				);
+				fixture.append(input, select, inlineEditTrigger);
 				document.body.append(fixture);
 				await new Promise<void>((resolve) =>
 					window.requestAnimationFrame(() => resolve()),
@@ -84,6 +92,9 @@ test.describe("public accessibility", () => {
 					inputMinHeight: Number.parseFloat(inputStyle.minHeight),
 					selectHeight: select.getBoundingClientRect().height,
 					selectMinHeight: Number.parseFloat(selectStyle.minHeight),
+					inlineEditHeight: inlineEditTrigger.getBoundingClientRect().height,
+					inlineEditWidth: inlineEditTrigger.getBoundingClientRect().width,
+					fixtureWidth: fixture.getBoundingClientRect().width,
 				};
 				fixture.remove();
 				if (previousDensity) {
@@ -103,6 +114,11 @@ test.describe("public accessibility", () => {
 			1,
 		);
 		expect(comfortable.inputHeight).toBeGreaterThanOrEqual(44);
+		expect(comfortable.inlineEditWidth).toBeCloseTo(
+			comfortable.fixtureWidth,
+			1,
+		);
+		expect(comfortable.inlineEditHeight).toBeGreaterThanOrEqual(34);
 		expect(compact.inputHeight).toBeCloseTo(compact.selectHeight, 1);
 		expect(compact.inputMinHeight).toBeCloseTo(compact.selectMinHeight, 1);
 		expect(compact.inputHeight).toBeLessThan(comfortable.inputHeight);

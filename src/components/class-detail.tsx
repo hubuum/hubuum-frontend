@@ -8,9 +8,11 @@ import {
 	type KeyboardEvent as ReactKeyboardEvent,
 	useCallback,
 	useEffect,
+	useRef,
 	useState,
 } from "react";
 import { EmptyState } from "@/components/empty-state";
+import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { JsonEditor } from "@/components/json-editor";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
@@ -178,6 +180,8 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 	const [isSchemaExpanded, setSchemaExpanded] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
+	const nameInputRef = useRef<HTMLInputElement | null>(null);
+	const descriptionInputRef = useRef<HTMLInputElement | null>(null);
 
 	const classQuery = useQuery({
 		queryKey: ["class", classId],
@@ -210,6 +214,15 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 			setInitialized(true);
 		}
 	}, [classQuery.data, editingFields.length, initialized]);
+
+	useEffect(() => {
+		const lastEditingField = editingFields.at(-1);
+		if (lastEditingField === "name") {
+			nameInputRef.current?.focus();
+		} else if (lastEditingField === "description") {
+			descriptionInputRef.current?.focus();
+		}
+	}, [editingFields]);
 
 	useEffect(() => {
 		const classData = classQuery.data;
@@ -596,24 +609,20 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 								<label className="control-field">
 									<span className="sr-only">Class name</span>
 									<input
+										ref={nameInputRef}
 										required
 										value={name}
 										onChange={(event) => setName(event.target.value)}
 									/>
 								</label>
 							) : (
-								<button
-									type="button"
-									className="object-inline-edit"
+								<InlineFieldEditTrigger
+									fieldLabel="class name"
+									valueText={renderFieldText(classData.name)}
 									onClick={() => toggleFieldEditing("name", classData)}
 								>
-									<span className="object-detail-value">
-										{renderFieldText(classData.name)}
-									</span>
-									<span className="object-inline-edit-icon">
-										<InlineEditIcon />
-									</span>
-								</button>
+									{renderFieldText(classData.name)}
+								</InlineFieldEditTrigger>
 							)}
 						</div>
 						<div className="object-detail-row-actions">
@@ -638,24 +647,20 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 								<label className="control-field">
 									<span className="sr-only">Class description</span>
 									<input
+										ref={descriptionInputRef}
 										required
 										value={description}
 										onChange={(event) => setDescription(event.target.value)}
 									/>
 								</label>
 							) : (
-								<button
-									type="button"
-									className="object-inline-edit"
+								<InlineFieldEditTrigger
+									fieldLabel="class description"
+									valueText={renderFieldText(classData.description ?? "")}
 									onClick={() => toggleFieldEditing("description", classData)}
 								>
-									<span className="object-detail-value">
-										{renderFieldText(classData.description ?? "")}
-									</span>
-									<span className="object-inline-edit-icon">
-										<InlineEditIcon />
-									</span>
-								</button>
+									{renderFieldText(classData.description ?? "")}
+								</InlineFieldEditTrigger>
 							)}
 						</div>
 						<div className="object-detail-row-actions">
