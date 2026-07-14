@@ -36,6 +36,7 @@ import {
 } from "@/lib/create-events";
 import { summarizeJsonDocument } from "@/lib/json-inspector";
 import { trackRecentItem } from "@/lib/recent-items";
+import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 type ClassDetailProps = {
 	classId: number;
@@ -409,23 +410,10 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		};
 	}, [classQuery.data]);
 
-	useEffect(() => {
-		if (!hasActiveEdits) {
-			return;
-		}
-
-		function onEscape(event: KeyboardEvent) {
-			if (event.key !== "Escape") {
-				return;
-			}
-
-			event.preventDefault();
-			cancelActiveEdits();
-		}
-
-		document.addEventListener("keydown", onEscape);
-		return () => document.removeEventListener("keydown", onEscape);
-	}, [cancelActiveEdits, hasActiveEdits]);
+	useEscapeToCancel({
+		enabled: hasActiveEdits && !isSavingOrDeleting,
+		onCancel: cancelActiveEdits,
+	});
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -463,13 +451,6 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 	}
 
 	function onSubmitShortcut(event: ReactKeyboardEvent<HTMLFormElement>) {
-		if (event.key === "Escape" && hasActiveEdits) {
-			event.preventDefault();
-			event.stopPropagation();
-			cancelActiveEdits();
-			return;
-		}
-
 		if (
 			event.key !== "Enter" ||
 			!event.shiftKey ||

@@ -74,6 +74,10 @@ import {
 	DEVICE_SETTING_KEYS,
 	PORTABLE_USER_SETTING_KEYS,
 } from "@/lib/user-settings-types";
+import {
+	hasActiveEscapeCancel,
+	useEscapeToCancel,
+} from "@/lib/use-escape-to-cancel";
 
 type AppShellProps = {
 	canViewAdmin: boolean;
@@ -1029,6 +1033,37 @@ export function AppShell({
 		setSearchInput(isSearchRoute ? (searchParams.get("q") ?? "") : "");
 	}, [isSearchRoute, searchParams]);
 
+	useEscapeToCancel({
+		enabled: isMobileSidebarOpen,
+		onCancel: () => setMobileSidebarOpen(false),
+	});
+	useEscapeToCancel({
+		enabled: isUserMenuOpen,
+		onCancel: () => {
+			setUserMenuOpen(false);
+			window.setTimeout(
+				() =>
+					userMenuRef.current
+						?.querySelector<HTMLButtonElement>(".user-trigger")
+						?.focus(),
+				0,
+			);
+		},
+	});
+	useEscapeToCancel({
+		enabled: isTaskMenuOpen,
+		onCancel: () => {
+			setTaskMenuOpen(false);
+			window.setTimeout(
+				() =>
+					taskMenuRef.current
+						?.querySelector<HTMLButtonElement>(".task-menu-trigger")
+						?.focus(),
+				0,
+			);
+		},
+	});
+
 	useEffect(() => {
 		if (!isUserMenuOpen) {
 			return;
@@ -1047,24 +1082,9 @@ export function AppShell({
 			setUserMenuOpen(false);
 		};
 
-		const onEscape = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				setUserMenuOpen(false);
-				window.setTimeout(
-					() =>
-						userMenuRef.current
-							?.querySelector<HTMLButtonElement>(".user-trigger")
-							?.focus(),
-					0,
-				);
-			}
-		};
-
 		document.addEventListener("pointerdown", onPointerDown);
-		document.addEventListener("keydown", onEscape);
 		return () => {
 			document.removeEventListener("pointerdown", onPointerDown);
-			document.removeEventListener("keydown", onEscape);
 		};
 	}, [isUserMenuOpen]);
 
@@ -1085,23 +1105,9 @@ export function AppShell({
 
 			setTaskMenuOpen(false);
 		};
-		const onEscape = (event: KeyboardEvent) => {
-			if (event.key !== "Escape") return;
-			setTaskMenuOpen(false);
-			window.setTimeout(
-				() =>
-					taskMenuRef.current
-						?.querySelector<HTMLButtonElement>(".task-menu-trigger")
-						?.focus(),
-				0,
-			);
-		};
-
 		document.addEventListener("pointerdown", onPointerDown);
-		document.addEventListener("keydown", onEscape);
 		return () => {
 			document.removeEventListener("pointerdown", onPointerDown);
-			document.removeEventListener("keydown", onEscape);
 		};
 	}, [isTaskMenuOpen]);
 
@@ -1117,6 +1123,10 @@ export function AppShell({
 			if (goToShortcutTimerRef.current !== null && event.key === "Escape") {
 				event.preventDefault();
 				clearGoToShortcut();
+				return;
+			}
+
+			if (event.key === "Escape" && hasActiveEscapeCancel()) {
 				return;
 			}
 

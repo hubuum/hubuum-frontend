@@ -45,7 +45,19 @@ import {
 	DEFAULT_RELATED_OBJECT_DEPTH_LIMIT,
 	normalizeRelatedObjectPath,
 } from "@/lib/object-relation-summary";
-import { flattenObjectPropertyEntries } from "@/lib/object-property-entries";
+import {
+	createObjectDataFieldValue,
+	getObjectDataFieldType,
+	getObjectDataValue,
+	parseObjectDataPath,
+	setObjectDataValue,
+	type ObjectDataFieldType,
+} from "@/lib/object-data-editing";
+import {
+	flattenObjectPropertyEntries,
+	type ObjectPropertyPathSegment,
+} from "@/lib/object-property-entries";
+import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 type ObjectDetailProps = {
 	classId: number;
@@ -64,6 +76,18 @@ const ALL_EDITABLE_FIELDS: EditableField[] = [
 ];
 
 const CONNECTION_PROPERTY_LIMIT = 12;
+
+const OBJECT_DATA_FIELD_TYPES: Array<{
+	value: ObjectDataFieldType;
+	label: string;
+}> = [
+	{ value: "string", label: "Text" },
+	{ value: "number", label: "Number" },
+	{ value: "boolean", label: "Boolean" },
+	{ value: "null", label: "Null" },
+	{ value: "object", label: "Object" },
+	{ value: "array", label: "Array" },
+];
 
 async function fetchObject(
 	classId: number,
@@ -259,6 +283,208 @@ function InlineEditIcon() {
 	);
 }
 
+function ObjectDataValueEditor({
+	path,
+	value,
+	disabled,
+	onCommit,
+	onCancel,
+}: {
+	path: string;
+	value: unknown;
+	disabled: boolean;
+	onCommit: (value: unknown) => void;
+	onCancel: () => void;
+}) {
+	const initialType = getObjectDataFieldType(value);
+	const typeSelectRef = useRef<HTMLSelectElement | null>(null);
+	const valueInputRef = useRef<HTMLInputElement | null>(null);
+	const valueSelectRef = useRef<HTMLSelectElement | null>(null);
+	const [draftType, setDraftType] =
+		useState<ObjectDataFieldType>(initialType);
+	const [draftInput, setDraftInput] = useState(() => {
+		if (initialType === "string" || initialType === "number") {
+			return String(value);
+		}
+		return initialType === "boolean" && value === true ? "true" : "false";
+	});
+	const [editorError, setEditorError] = useState<string | null>(null);
+
+	useEffect(() => {
+		const frame = window.requestAnimationFrame(() => {
+			(valueInputRef.current ?? valueSelectRef.current ?? typeSelectRef.current)?.focus();
+			if (valueInputRef.current) {
+				valueInputRef.current.select();
+			}
+		});
+		return () => window.cancelAnimationFrame(frame);
+	}, []);
+
+	function changeType(type: ObjectDataFieldType) {
+		setDraftType(type);
+		setDraftInput(
+			type === "number" ? "0" : type === "boolean" ? "false" : "",
+		);
+		setEditorError(null);
+		window.requestAnimationFrame(() =>
+			(valueInputRef.current ?? valueSelectRef.current)?.focus(),
+		);
+	}
+
+	function commit() {
+		const result = createObjectDataFieldValue(draftType, draftInput);
+		if (!result.ok) {
+			setEditorError(result.error);
+			return;
+		}
+		onCommit(result.value);
+	}
+
+	function handleKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+		if (event.nativeEvent.isComposing) {
+			return;
+		}
+		if (event.key === "Escape") {
+			event.preventDefault();
+			event.stopPropagation();
+			onCancel();
+			return;
+		}
+		if (
+			event.key === "Enter" &&
+			!event.altKey &&
+			!event.ctrlKey &&
+			!event.metaKey &&
+			!event.shiftKey
+		) {
+			event.preventDefault();
+			event.stopPropagation();
+			commit();
+		}
+	}
+
+	return (
+		<div className="object-data-inline-editor" data-object-nonsubmit>
+			<label>
+				<span className="sr-only">Type for {path}</span>
+				<select
+					ref={typeSelectRef}
+					value={draftType}
+					onChange={(event) =>
+						changeType(event.target.value as ObjectDataFieldType)
+					}
+					disabled={disabled}
+					aria-label={`Type for ${path}`}
+					onKeyDown={handleKeyDown}
+				>
+					{OBJECT_DATA_FIELD_TYPES.map((option) => (
+						<option key={option.value} value={option.value}>
+							{option.label}
+						</option>
+					))}
+				</select>
+			</label>
+			{draftType === "string" ? (
+				<label className="object-data-inline-value">
+					<span className="sr-only">Value for {path}</span>
+					<input
+						ref={valueInputRef}
+						value={draftInput}
+						onChange={(event) => {
+							setDraftInput(event.target.value);
+							setEditorError(null);
+						}}
+						disabled={disabled}
+						aria-label={`Value for ${path}`}
+						onKeyDown={handleKeyDown}
+					/>
+				</label>
+			) : null}
+			{draftType === "number" ? (
+				<label className="object-data-inline-value">
+					<span className="sr-only">Value for {path}</span>
+					<input
+						ref={valueInputRef}
+						type="number"
+						step="any"
+						required
+						value={draftInput}
+						onChange={(event) => {
+							setDraftInput(event.target.value);
+							setEditorError(null);
+						}}
+						disabled={disabled}
+						aria-label={`Value for ${path}`}
+						onKeyDown={handleKeyDown}
+					/>
+				</label>
+			) : null}
+			{draftType === "boolean" ? (
+				<label className="object-data-inline-value">
+					<span className="sr-only">Value for {path}</span>
+					<select
+						ref={valueSelectRef}
+						value={draftInput}
+						onChange={(event) => {
+							setDraftInput(event.target.value);
+							setEditorError(null);
+						}}
+						disabled={disabled}
+						aria-label={`Value for ${path}`}
+						onKeyDown={handleKeyDown}
+					>
+						<option value="true">True</option>
+						<option value="false">False</option>
+					</select>
+				</label>
+			) : null}
+			{draftType === "null" ||
+			draftType === "object" ||
+			draftType === "array" ? (
+				<span className="object-data-inline-placeholder">
+					{draftType === "null" ? "Null value" : `Empty ${draftType}`}
+				</span>
+			) : null}
+			<span className="object-data-inline-hint">
+				Enter to save · Escape to undo
+			</span>
+			{editorError ? (
+				<span className="object-data-inline-error" role="alert">
+					{editorError}
+				</span>
+			) : null}
+		</div>
+	);
+}
+
+function ObjectDataEditTrigger({
+	path,
+	value,
+	disabled,
+	onClick,
+}: {
+	path: string;
+	value: string;
+	disabled: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			className="object-data-inline-trigger"
+			onClick={onClick}
+			disabled={disabled}
+			aria-label={`Edit ${path}. Current value: ${value}`}
+			title={`Edit ${path}`}
+		>
+			<span>{value}</span>
+			<span className="object-data-inline-trigger-icon" aria-hidden="true">
+				<InlineEditIcon />
+			</span>
+		</button>
+	);
+}
+
 function ObjectPropertyItem({
 	label,
 	className = "",
@@ -292,6 +518,7 @@ export function ObjectDetail({
 	const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
 	const collectionSelectRef = useRef<HTMLSelectElement | null>(null);
 	const collectionInputRef = useRef<HTMLInputElement | null>(null);
+	const newDataFieldPathRef = useRef<HTMLInputElement | null>(null);
 
 	const [relationDepthLimit, setRelationDepthLimit] = useState(
 		DEFAULT_RELATED_OBJECT_DEPTH_LIMIT,
@@ -304,10 +531,21 @@ export function ObjectDetail({
 	const [isIgnoreClassesOpen, setIgnoreClassesOpen] = useState(false);
 	const [isConnectionToolsOpen, setConnectionToolsOpen] = useState(false);
 	const [isDataInspectorOpen, setDataInspectorOpen] = useState(false);
+	const [isAdvancedDataEditorOpen, setAdvancedDataEditorOpen] = useState(false);
+	const [isAddDataFieldOpen, setAddDataFieldOpen] = useState(false);
+	const [activeDataFieldId, setActiveDataFieldId] = useState<string | null>(null);
 	const [dataFieldFilter, setDataFieldFilter] = useState("");
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [dataInput, setDataInput] = useState("{}");
+	const [dataDraft, setDataDraft] = useState<unknown>({});
+	const [newDataFieldPath, setNewDataFieldPath] = useState("");
+	const [newDataFieldType, setNewDataFieldType] =
+		useState<ObjectDataFieldType>("string");
+	const [newDataFieldValue, setNewDataFieldValue] = useState("");
+	const [newDataFieldError, setNewDataFieldError] = useState<string | null>(
+		null,
+	);
 	const [collectionId, setCollectionId] = useState("");
 	const [initialized, setInitialized] = useState(false);
 	const [editingFields, setEditingFields] = useState<EditableField[]>([]);
@@ -382,6 +620,10 @@ export function ObjectDetail({
 		() => flattenObjectPropertyEntries(objectQuery.data?.data),
 		[objectQuery.data?.data],
 	);
+	const flattenedDataDraft = useMemo(
+		() => flattenObjectPropertyEntries(dataDraft),
+		[dataDraft],
+	);
 
 	useEffect(() => {
 		if (!objectQuery.data) {
@@ -392,6 +634,7 @@ export function ObjectDetail({
 			setName(objectQuery.data.name);
 			setDescription(objectQuery.data.description ?? "");
 			setDataInput(stringifyJson(objectQuery.data.data));
+			setDataDraft(objectQuery.data.data);
 			setCollectionId(String(objectQuery.data.collection_id));
 			setInitialized(true);
 		}
@@ -408,19 +651,15 @@ export function ObjectDetail({
 			}
 		}
 
-		function handleKeyDown(event: KeyboardEvent) {
-			if (event.key === "Escape") {
-				setIgnoreClassesOpen(false);
-			}
-		}
-
 		document.addEventListener("mousedown", handlePointerDown);
-		document.addEventListener("keydown", handleKeyDown);
 		return () => {
 			document.removeEventListener("mousedown", handlePointerDown);
-			document.removeEventListener("keydown", handleKeyDown);
 		};
 	}, [isIgnoreClassesOpen]);
+	useEscapeToCancel({
+		enabled: isIgnoreClassesOpen,
+		onCancel: () => setIgnoreClassesOpen(false),
+	});
 
 	useEffect(() => {
 		const lastEditingField = editingFields.at(-1);
@@ -432,6 +671,12 @@ export function ObjectDetail({
 			(collectionSelectRef.current ?? collectionInputRef.current)?.focus();
 		}
 	}, [editingFields]);
+
+	useEffect(() => {
+		if (isAddDataFieldOpen) {
+			newDataFieldPathRef.current?.focus();
+		}
+	}, [isAddDataFieldOpen]);
 
 	const collections = collectionsQuery.data ?? [];
 
@@ -469,6 +714,11 @@ export function ObjectDetail({
 			setName(updatedObject.name);
 			setDescription(updatedObject.description ?? "");
 			setDataInput(stringifyJson(updatedObject.data));
+			setDataDraft(updatedObject.data);
+			setAddDataFieldOpen(false);
+			setAdvancedDataEditorOpen(false);
+			setActiveDataFieldId(null);
+			setNewDataFieldError(null);
 			setCollectionId(String(updatedObject.collection_id));
 			setEditingFields([]);
 			setDirtyFields([]);
@@ -534,15 +784,22 @@ export function ObjectDetail({
 	const isSavingOrDeleting =
 		updateMutation.isPending || deleteMutation.isPending;
 	const beginGlobalEdit = useCallback(() => {
-		if (!canEditObject || isSavingOrDeleting) {
+		const objectData = objectQuery.data;
+		if (!canEditObject || isSavingOrDeleting || !objectData) {
 			return;
 		}
 
 		setFormError(null);
 		setFormSuccess(null);
+		setDataInput(stringifyJson(objectData.data));
+		setDataDraft(objectData.data);
+		setAddDataFieldOpen(false);
+		setAdvancedDataEditorOpen(false);
+		setActiveDataFieldId(null);
+		setNewDataFieldError(null);
 		setEditingFields(ALL_EDITABLE_FIELDS);
 		setDirtyFields([]);
-	}, [canEditObject, isSavingOrDeleting]);
+	}, [canEditObject, isSavingOrDeleting, objectQuery.data]);
 
 	useEffect(() => {
 		const objectData = objectQuery.data;
@@ -603,6 +860,14 @@ export function ObjectDetail({
 		}
 
 		setDataInput(stringifyJson(objectData.data));
+		setDataDraft(objectData.data);
+		setAddDataFieldOpen(false);
+		setAdvancedDataEditorOpen(false);
+		setActiveDataFieldId(null);
+		setNewDataFieldPath("");
+		setNewDataFieldType("string");
+		setNewDataFieldValue("");
+		setNewDataFieldError(null);
 	}
 
 	const cancelActiveEdits = useCallback(() => {
@@ -615,6 +880,14 @@ export function ObjectDetail({
 		setDescription(objectData.description ?? "");
 		setCollectionId(String(objectData.collection_id));
 		setDataInput(stringifyJson(objectData.data));
+		setDataDraft(objectData.data);
+		setAddDataFieldOpen(false);
+		setAdvancedDataEditorOpen(false);
+		setActiveDataFieldId(null);
+		setNewDataFieldPath("");
+		setNewDataFieldType("string");
+		setNewDataFieldValue("");
+		setNewDataFieldError(null);
 		setEditingFields([]);
 		setDirtyFields([]);
 		setFormError(null);
@@ -622,38 +895,12 @@ export function ObjectDetail({
 		window.requestAnimationFrame(() => editAllButtonRef.current?.focus());
 	}, [editingFields.length, objectQuery.data]);
 
-	useEffect(() => {
-		if (!hasActiveEdits) {
-			return;
-		}
-
-		function onEscape(event: KeyboardEvent) {
-			if (event.key !== "Escape") {
-				return;
-			}
-			if (
-				!(event.target instanceof Node) ||
-				!objectFormRef.current?.contains(event.target)
-			) {
-				return;
-			}
-			if (
-				event.defaultPrevented ||
-				(event.target instanceof Element &&
-					event.target.closest(
-						".json-editor, .relations-filter-dropdown, [role='dialog']",
-					))
-			) {
-				return;
-			}
-
-			event.preventDefault();
-			cancelActiveEdits();
-		}
-
-		document.addEventListener("keydown", onEscape);
-		return () => document.removeEventListener("keydown", onEscape);
-	}, [cancelActiveEdits, hasActiveEdits]);
+	useEscapeToCancel({
+		enabled: hasActiveEdits && !isSavingOrDeleting,
+		onCancel: cancelActiveEdits,
+		ignoreSelector:
+			".json-editor, .relations-filter-dropdown, [role='dialog']",
+	});
 
 	function toggleFieldEditing(field: EditableField, objectData: HubuumObject) {
 		setFormError(null);
@@ -661,6 +908,9 @@ export function ObjectDetail({
 
 		if (editingFields.includes(field)) {
 			resetFieldDraft(field, objectData);
+			if (field === "data") {
+				setActiveDataFieldId(null);
+			}
 			setEditingFields((current) =>
 				current.filter((currentField) => currentField !== field),
 			);
@@ -668,6 +918,14 @@ export function ObjectDetail({
 				current.filter((currentField) => currentField !== field),
 			);
 			return;
+		}
+		if (field === "data") {
+			setDataInput(stringifyJson(objectData.data));
+			setDataDraft(objectData.data);
+			setAddDataFieldOpen(false);
+			setAdvancedDataEditorOpen(false);
+			setActiveDataFieldId(null);
+			setNewDataFieldError(null);
 		}
 
 		setEditingFields((current) => [...current, field]);
@@ -679,11 +937,144 @@ export function ObjectDetail({
 		);
 	}
 
-	function onSubmit(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
+	function commitDataDraft(nextData: unknown) {
+		setDataDraft(nextData);
+		setDataInput(stringifyJson(nextData));
+		setNewDataFieldError(null);
 		setFormError(null);
 		setFormSuccess(null);
-		if (editingFields.length === 0) {
+		markFieldDirty("data");
+	}
+
+	function beginInlineDataField(fieldId: string) {
+		const objectData = objectQuery.data;
+		if (!objectData || !canEditObject || isSavingOrDeleting) {
+			return;
+		}
+
+		setFormError(null);
+		setFormSuccess(null);
+		if (!editingFields.includes("data")) {
+			setDataInput(stringifyJson(objectData.data));
+			setDataDraft(objectData.data);
+			setEditingFields((current) => [...current, "data"]);
+		}
+		setActiveDataFieldId(fieldId);
+	}
+
+	function cancelInlineDataField() {
+		setActiveDataFieldId(null);
+		if (dirtyFields.includes("data")) {
+			return;
+		}
+
+		const objectData = objectQuery.data;
+		if (objectData) {
+			setDataInput(stringifyJson(objectData.data));
+			setDataDraft(objectData.data);
+		}
+		setEditingFields((current) =>
+			current.filter((field) => field !== "data"),
+		);
+	}
+
+	function commitInlineDataField(
+		segments: readonly ObjectPropertyPathSegment[],
+		value: unknown,
+	) {
+		const updated = setObjectDataValue(dataDraft, segments, value);
+		if (!updated.ok) {
+			setFormError(updated.error);
+			return;
+		}
+		commitDataDraft(updated.value);
+		setActiveDataFieldId(null);
+		submitCurrentEdits({ dataOverride: updated.value });
+	}
+
+	function resetNewDataField() {
+		setNewDataFieldPath("");
+		setNewDataFieldType("string");
+		setNewDataFieldValue("");
+		setNewDataFieldError(null);
+	}
+
+	useEscapeToCancel({
+		enabled: isAddDataFieldOpen && !isSavingOrDeleting,
+		onCancel: () => {
+			setAddDataFieldOpen(false);
+			resetNewDataField();
+		},
+	});
+	useEscapeToCancel({
+		enabled: isAdvancedDataEditorOpen && !isSavingOrDeleting,
+		onCancel: () => setAdvancedDataEditorOpen(false),
+	});
+
+	function changeNewDataFieldType(type: ObjectDataFieldType) {
+		setNewDataFieldType(type);
+		setNewDataFieldValue(
+			type === "number" ? "0" : type === "boolean" ? "false" : "",
+		);
+		setNewDataFieldError(null);
+	}
+
+	function addDataField() {
+		const parsedPath = parseObjectDataPath(newDataFieldPath);
+		if (!parsedPath.ok) {
+			setNewDataFieldError(parsedPath.error);
+			return;
+		}
+		if (getObjectDataValue(dataDraft, parsedPath.segments).found) {
+			setNewDataFieldError("A data field already exists at this path.");
+			return;
+		}
+
+		const fieldValue = createObjectDataFieldValue(
+			newDataFieldType,
+			newDataFieldValue,
+		);
+		if (!fieldValue.ok) {
+			setNewDataFieldError(fieldValue.error);
+			return;
+		}
+		const updated = setObjectDataValue(
+			dataDraft,
+			parsedPath.segments,
+			fieldValue.value,
+		);
+		if (!updated.ok) {
+			setNewDataFieldError(updated.error);
+			return;
+		}
+
+		commitDataDraft(updated.value);
+		setDataFieldFilter("");
+		setAddDataFieldOpen(false);
+		resetNewDataField();
+	}
+
+	function updateRawDataInput(value: string) {
+		setDataInput(value);
+		setFormError(null);
+		setFormSuccess(null);
+		markFieldDirty("data");
+		try {
+			setDataDraft(JSON.parse(value));
+		} catch {
+			// Keep inline fields on the last valid document while JSON is incomplete.
+		}
+	}
+
+	function onSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		submitCurrentEdits();
+	}
+
+	function submitCurrentEdits(options?: { dataOverride: unknown }) {
+		setFormError(null);
+		setFormSuccess(null);
+		if (editingFields.length === 0 && !options) {
 			return;
 		}
 
@@ -719,9 +1110,11 @@ export function ObjectDetail({
 			}
 		}
 
-		if (dirtyFields.includes("data")) {
+		if (dirtyFields.includes("data") || options) {
 			try {
-				const parsedData = JSON.parse(dataInput);
+				const parsedData = options
+					? options.dataOverride
+					: JSON.parse(dataInput);
 				if (stringifyJson(parsedData) !== stringifyJson(currentObject.data)) {
 					payload.data = parsedData;
 				}
@@ -743,6 +1136,7 @@ export function ObjectDetail({
 		}
 
 		if (Object.keys(payload).length === 0) {
+			setActiveDataFieldId(null);
 			setEditingFields([]);
 			setDirtyFields([]);
 			setFormSuccess("No changes to save.");
@@ -985,7 +1379,10 @@ export function ObjectDetail({
 			}))
 			.sort((left, right) => left.rootLabel.localeCompare(right.rootLabel));
 	})();
-	const flattenedData = flattenedObjectData;
+	const isEditingData = editingFields.includes("data");
+	const flattenedData = isEditingData
+		? flattenedDataDraft
+		: flattenedObjectData;
 	const normalizedDataFilter = dataFieldFilter.trim().toLocaleLowerCase();
 	const visibleDataProperties = normalizedDataFilter
 		? flattenedData.entries.filter(
@@ -1293,7 +1690,7 @@ export function ObjectDetail({
 					</section>
 
 					<section
-						className={`object-property-section object-property-section--data${editingFields.includes("data") ? " is-editing" : ""}`}
+						className={`object-property-section object-property-section--data${isEditingData ? " is-editing" : ""}`}
 						aria-labelledby="object-data-heading"
 					>
 						<header className="object-property-section-header">
@@ -1315,62 +1712,271 @@ export function ObjectDetail({
 									<span className="sr-only">Filter object data fields</span>
 									<input
 										type="search"
-										value={dataFieldFilter}
-										onChange={(event) => setDataFieldFilter(event.target.value)}
-										placeholder="Filter data fields"
-										disabled={editingFields.includes("data")}
-									/>
-								</label>
-								{canEditObject ? (
+									value={dataFieldFilter}
+									onChange={(event) => setDataFieldFilter(event.target.value)}
+									placeholder="Filter data fields"
+								/>
+							</label>
+							{isEditingData ? (
+								<button
+									type="button"
+									className="ghost"
+									onClick={() => {
+										setAddDataFieldOpen((current) => !current);
+										setActiveDataFieldId(null);
+										setNewDataFieldError(null);
+									}}
+									disabled={isSavingOrDeleting}
+									aria-expanded={isAddDataFieldOpen}
+								>
+									{isAddDataFieldOpen ? "Close add field" : "Add field"}
+								</button>
+							) : null}
+							{canEditObject ? (
 									<button
 										type="button"
 										className="ghost"
 										onClick={() => toggleFieldEditing("data", objectData)}
 										disabled={isSavingOrDeleting}
 									>
-										{editingFields.includes("data")
-											? "Cancel data edit"
-											: "Edit data"}
+									{isEditingData
+										? "Cancel data edit"
+										: "Edit data"}
 									</button>
 								) : null}
 							</div>
 						</header>
 
-						{editingFields.includes("data") ? (
-							<div className="object-property-panel object-data-editor-panel">
-								<JsonEditor
-									id="object-detail-data"
-									label="Data (JSON)"
-									value={dataInput}
-									onChange={(value) => {
-										setDataInput(value);
-										markFieldDirty("data");
+						{isEditingData ? (
+							<>
+								{isAddDataFieldOpen ? (
+									<div
+										className="object-data-add-panel"
+										data-object-nonsubmit
+									>
+										<label className="control-field object-data-add-path">
+											<span>Field path</span>
+											<input
+												ref={newDataFieldPathRef}
+												value={newDataFieldPath}
+												onChange={(event) => {
+													setNewDataFieldPath(event.target.value);
+													setNewDataFieldError(null);
+												}}
+												placeholder="hardware.rack.name"
+											/>
+										</label>
+										<label className="control-field">
+											<span>Type</span>
+											<select
+												value={newDataFieldType}
+												onChange={(event) =>
+													changeNewDataFieldType(
+														event.target.value as ObjectDataFieldType,
+													)
+												}
+											>
+												{OBJECT_DATA_FIELD_TYPES.map((option) => (
+													<option key={option.value} value={option.value}>
+														{option.label}
+													</option>
+												))}
+											</select>
+										</label>
+										{newDataFieldType === "string" ||
+										newDataFieldType === "number" ? (
+											<label className="control-field object-data-add-value">
+												<span>Value</span>
+												<input
+													type={
+														newDataFieldType === "number" ? "number" : "text"
+													}
+													step={newDataFieldType === "number" ? "any" : undefined}
+													value={newDataFieldValue}
+													onChange={(event) => {
+														setNewDataFieldValue(event.target.value);
+														setNewDataFieldError(null);
+													}}
+												/>
+											</label>
+										) : null}
+										{newDataFieldType === "boolean" ? (
+											<label className="control-field object-data-add-value">
+												<span>Value</span>
+												<select
+													value={newDataFieldValue || "false"}
+													onChange={(event) =>
+														setNewDataFieldValue(event.target.value)
+													}
+												>
+													<option value="false">False</option>
+													<option value="true">True</option>
+												</select>
+											</label>
+										) : null}
+										{newDataFieldType === "null" ||
+										newDataFieldType === "object" ||
+										newDataFieldType === "array" ? (
+											<div className="object-data-add-value object-data-add-preview">
+												<span>Initial value</span>
+												<strong>
+													{newDataFieldType === "null"
+														? "null"
+														: newDataFieldType === "array"
+															? "[]"
+															: "{}"}
+												</strong>
+											</div>
+										) : null}
+										<div className="object-data-add-actions">
+											<button
+												type="button"
+												onClick={addDataField}
+												disabled={isSavingOrDeleting}
+											>
+												Add field
+											</button>
+											<button
+												type="button"
+												className="ghost"
+												onClick={() => {
+													setAddDataFieldOpen(false);
+													resetNewDataField();
+												}}
+											>
+												Cancel
+											</button>
+										</div>
+										<div className="object-data-add-help muted">
+											Use dotted paths for nested objects and brackets for arrays,
+											e.g. <code>hardware.cpu[0].model</code>.
+										</div>
+										{newDataFieldError ? (
+											<div className="error-banner object-data-add-error" role="alert">
+												{newDataFieldError}
+											</div>
+										) : null}
+									</div>
+								) : null}
+								{visibleDataProperties.length ? (
+									<dl className="object-property-grid object-property-grid--data object-property-grid--data-editing">
+										{visibleDataProperties.map((entry) => {
+											const currentValue = getObjectDataValue(
+												dataDraft,
+												entry.segments,
+											);
+											const canEditInline =
+												entry.kind !== "object-summary" &&
+												entry.kind !== "array-summary";
+											const isActive = activeDataFieldId === entry.id;
+											return (
+												<ObjectPropertyItem
+													key={`data-edit:${entry.id}`}
+													label={entry.label}
+													className={`object-property-item--data${isActive ? " object-property-item--data-editing" : ""} object-property-item--${entry.kind}`}
+												>
+													{isActive ? (
+														<ObjectDataValueEditor
+															path={entry.label}
+															value={currentValue.found ? currentValue.value : null}
+															disabled={isSavingOrDeleting}
+															onCommit={(value) =>
+																commitInlineDataField(entry.segments, value)
+															}
+															onCancel={cancelInlineDataField}
+														/>
+													) : canEditInline ? (
+														<ObjectDataEditTrigger
+															path={entry.label}
+															value={entry.value}
+															disabled={isSavingOrDeleting}
+															onClick={() => beginInlineDataField(entry.id)}
+														/>
+													) : (
+														<span title={entry.value}>{entry.value}</span>
+													)}
+												</ObjectPropertyItem>
+											);
+										})}
+									</dl>
+								) : (
+									<div className="object-property-empty">
+										No data fields match “{dataFieldFilter}”.
+									</div>
+								)}
+								{flattenedData.truncated ? (
+									<div className="object-property-note">
+										Showing the first {flattenedData.entries.length} flattened
+										fields. Deep branches remain unchanged unless edited in JSON.
+									</div>
+								) : null}
+								<details
+									className="object-property-inspector object-data-advanced-editor"
+									data-object-nonsubmit
+									open={isAdvancedDataEditorOpen}
+									onToggle={(event) => {
+										setAdvancedDataEditorOpen(event.currentTarget.open);
+										if (event.currentTarget.open) {
+											setActiveDataFieldId(null);
+										}
 									}}
-									placeholder='{"hostname":"srv-web-01","env":"prod"}'
-									mode="data"
-									rows={16}
-									validationEnabled={currentClass?.validate_schema ?? false}
-									validationSchema={currentClass?.json_schema}
-									helperText={
-										currentClass?.validate_schema
-											? "This class validates object data against its JSON schema."
-											: "This class does not currently enforce JSON schema validation."
-									}
-								/>
-							</div>
+								>
+									<summary>
+										<span>Advanced JSON editor</span>
+										<span>Full structure and schema preview</span>
+									</summary>
+									{isAdvancedDataEditorOpen ? (
+										<div className="object-property-inspector-panel">
+											<JsonEditor
+												id="object-detail-data"
+												label="Data (JSON)"
+												value={dataInput}
+												onChange={updateRawDataInput}
+												placeholder='{"hostname":"srv-web-01","env":"prod"}'
+												mode="data"
+												rows={16}
+												validationEnabled={
+													currentClass?.validate_schema ?? false
+												}
+												validationSchema={currentClass?.json_schema}
+												helperText={
+													currentClass?.validate_schema
+														? "This class validates object data against its JSON schema."
+														: "This class does not currently enforce JSON schema validation."
+												}
+											/>
+										</div>
+									) : null}
+								</details>
+							</>
 						) : (
 							<>
 								{visibleDataProperties.length ? (
 									<dl className="object-property-grid object-property-grid--data">
-										{visibleDataProperties.map((entry) => (
-											<ObjectPropertyItem
-												key={`data:${entry.id}`}
-												label={entry.label}
-												className={`object-property-item--data object-property-item--${entry.kind}`}
-											>
-												<span title={entry.value}>{entry.value}</span>
-											</ObjectPropertyItem>
-										))}
+										{visibleDataProperties.map((entry) => {
+											const canEditInline =
+												canEditObject &&
+												entry.kind !== "object-summary" &&
+												entry.kind !== "array-summary";
+											return (
+												<ObjectPropertyItem
+													key={`data:${entry.id}`}
+													label={entry.label}
+													className={`object-property-item--data object-property-item--${entry.kind}`}
+												>
+													{canEditInline ? (
+														<ObjectDataEditTrigger
+															path={entry.label}
+															value={entry.value}
+															disabled={isSavingOrDeleting}
+															onClick={() => beginInlineDataField(entry.id)}
+														/>
+													) : (
+														<span title={entry.value}>{entry.value}</span>
+													)}
+												</ObjectPropertyItem>
+											);
+										})}
 									</dl>
 								) : (
 									<div className="object-property-empty">
@@ -1678,10 +2284,19 @@ export function ObjectDetail({
 								Editing {editingFields.length} field
 								{editingFields.length === 1 ? "" : "s"}
 							</strong>
-							<span>Ctrl/Cmd + Enter to save · Esc to cancel</span>
+							<span>
+								{activeDataFieldId
+									? "Enter in the field to save · Escape to undo"
+									: "Ctrl/Cmd + Enter to save · Esc to cancel"}
+							</span>
 						</div>
 						<div className="form-actions">
-							<button type="submit" disabled={updateMutation.isPending}>
+							<button
+								type="submit"
+								disabled={
+									updateMutation.isPending || Boolean(activeDataFieldId)
+								}
+							>
 								{updateMutation.isPending ? "Saving..." : "Save changes"}
 							</button>
 							<button

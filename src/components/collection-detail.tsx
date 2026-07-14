@@ -63,6 +63,7 @@ import {
 } from "@/lib/identity-scopes";
 import { canManageCollectionPermissions } from "@/lib/collection-permission-access";
 import { useCurrentUserId } from "@/lib/use-current-user-id";
+import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 type CollectionDetailProps = {
 	canAdminister: boolean;
@@ -1177,23 +1178,10 @@ export function CollectionDetail({
 		};
 	}, [collectionQuery.data]);
 
-	useEffect(() => {
-		if (!hasActiveEdits) {
-			return;
-		}
-
-		function onEscape(event: KeyboardEvent) {
-			if (event.key !== "Escape") {
-				return;
-			}
-
-			event.preventDefault();
-			cancelActiveEdits();
-		}
-
-		document.addEventListener("keydown", onEscape);
-		return () => document.removeEventListener("keydown", onEscape);
-	}, [cancelActiveEdits, hasActiveEdits]);
+	useEscapeToCancel({
+		enabled: hasActiveEdits && !isSavingOrDeleting,
+		onCancel: cancelActiveEdits,
+	});
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -1207,13 +1195,6 @@ export function CollectionDetail({
 	}
 
 	function onSubmitShortcut(event: ReactKeyboardEvent<HTMLFormElement>) {
-		if (event.key === "Escape" && hasActiveEdits) {
-			event.preventDefault();
-			event.stopPropagation();
-			cancelActiveEdits();
-			return;
-		}
-
 		if (
 			event.key !== "Enter" ||
 			!event.shiftKey ||
@@ -1532,6 +1513,12 @@ export function CollectionDetail({
 		sortedPermissionEntries.length > 0 ||
 		(canManagePermissions && addingGroupPermissions);
 	const hasDirtyRowDrafts = Object.keys(permissionDrafts).length > 0;
+	useEscapeToCancel({
+		enabled:
+			(addingGroupPermissions || hasDirtyRowDrafts) &&
+			!upsertPermissionsMutation.isPending,
+		onCancel: onResetPermissionEditor,
+	});
 
 	useEffect(() => {
 		if (!addingGroupPermissions || !usingGroupSelect) {

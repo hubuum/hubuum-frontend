@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 interface PinMenuProps {
 	isOpen: boolean;
@@ -22,6 +23,7 @@ export function PinMenu({
 	onToggleCreate,
 }: PinMenuProps) {
 	const menuRef = useRef<HTMLDivElement>(null);
+	useEscapeToCancel({ enabled: isOpen, onCancel: onClose });
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -34,18 +36,10 @@ export function PinMenu({
 			}
 		}
 
-		function handleEscape(event: KeyboardEvent) {
-			if (event.key === "Escape") {
-				onClose();
-			}
-		}
-
 		document.addEventListener("mousedown", handleClickOutside);
-		document.addEventListener("keydown", handleEscape);
 
 		return () => {
 			document.removeEventListener("mousedown", handleClickOutside);
-			document.removeEventListener("keydown", handleEscape);
 		};
 	}, [isOpen, onClose]);
 
