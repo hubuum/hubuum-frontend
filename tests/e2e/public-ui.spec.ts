@@ -11,6 +11,13 @@ const themes = ["light", "dark"] as const;
 const accents = ["teal", "blue", "violet", "amber", "rose"] as const;
 
 async function prepareLogin(page: Page, theme: (typeof themes)[number]) {
+	await page.route("**/_hubuum-bff/auth/providers", async (route) => {
+		await route.fulfill({
+			status: 503,
+			contentType: "application/json",
+			body: JSON.stringify({ message: "Provider discovery unavailable." }),
+		});
+	});
 	await page.addInitScript((selectedTheme) => {
 		window.localStorage.setItem("hubuum.theme", selectedTheme);
 		window.localStorage.setItem("hubuum.login.accent", "teal");
@@ -19,6 +26,11 @@ async function prepareLogin(page: Page, theme: (typeof themes)[number]) {
 	await page.goto("/login");
 	await expect(
 		page.getByRole("heading", { name: "Welcome back" }),
+	).toBeVisible();
+	await expect(
+		page.getByText(
+			"Leave blank for local accounts, or enter the configured provider scope.",
+		),
 	).toBeVisible();
 	await page.evaluate(async () => {
 		await document.fonts.ready;
