@@ -20,28 +20,31 @@ export function filterMine<T extends { submitted_by?: number | null }>(
 	return tasks.filter((task) => task.submitted_by === myId);
 }
 
+function effectiveCompletionMs(task: TaskRecord): number {
+	const stamp = task.finished_at ?? task.started_at ?? task.created_at ?? null;
+	return stamp ? Date.parse(stamp) : Number.NaN;
+}
+
 export function diffNewlyTerminal(
 	prev: readonly TaskRecord[] | null,
 	next: readonly TaskRecord[],
+	watchStartedAt: number,
 ): TaskRecord[] {
-	if (!prev) {
-		return [];
-	}
-
-	const prevById = new Map(prev.map((task) => [task.id, task]));
+	const prevById = prev
+		? new Map(prev.map((task) => [task.id, task]))
+		: null;
 
 	return next.filter((task) => {
 		if (!isTerminalTaskStatus(task.status)) {
 			return false;
 		}
-		const previous = prevById.get(task.id);
-		return previous != null && !isTerminalTaskStatus(previous.status);
+		const previous = prevById?.get(task.id);
+		if (previous != null) {
+			return !isTerminalTaskStatus(previous.status);
+		}
+		const completionMs = effectiveCompletionMs(task);
+		return !Number.isNaN(completionMs) && completionMs > watchStartedAt;
 	});
-}
-
-function effectiveCompletionMs(task: TaskRecord): number {
-	const stamp = task.finished_at ?? task.started_at ?? task.created_at ?? null;
-	return stamp ? Date.parse(stamp) : Number.NaN;
 }
 
 export function countUnread(
