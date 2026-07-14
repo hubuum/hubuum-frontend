@@ -58,6 +58,7 @@ import {
 	triggerActivePaginationPrevPage,
 } from "@/lib/pagination-shortcuts";
 import { normalizeSearchTerm } from "@/lib/resource-search";
+import { getRelationsContextVisibility } from "@/lib/relations-context";
 import {
 	countUnread,
 	diffNewlyTerminal,
@@ -748,15 +749,18 @@ export function AppShell({
 	const createSection = useMemo(() => getCreateSection(pathname), [pathname]);
 	const relationsView = useMemo(() => getRelationsView(pathname), [pathname]);
 	const isSearchRoute = pathname.startsWith("/search");
-	const isRelationsRoute = relationsView !== null;
 	const isObjectsListRoute = pathname === "/objects";
+	const relationsContextVisibility = getRelationsContextVisibility(
+		relationsView,
+		searchParams.get("classView"),
+	);
 	const selectedRelationsClassId = searchParams.get("classId") ?? "";
 	const selectedRelationsObjectId = searchParams.get("objectId") ?? "";
 	const selectedObjectsClassId = searchParams.get("classId") ?? "";
 	const topbarClassOptionsQuery = useQuery({
 		queryKey: ["classes", "topbar-context"],
 		queryFn: fetchTopbarClassOptions,
-		enabled: isObjectsListRoute || isRelationsRoute,
+		enabled: isObjectsListRoute || relationsContextVisibility.showClass,
 	});
 	const topbarClassOptions = topbarClassOptionsQuery.data ?? [];
 	const resolvedObjectsClassId = useMemo(() => {
@@ -783,7 +787,9 @@ export function AppShell({
 		queryKey: ["objects", "relations-topbar", parsedResolvedRelationsClassId],
 		queryFn: async () =>
 			fetchRelationsObjectOptions(parsedResolvedRelationsClassId ?? 0),
-		enabled: isRelationsRoute && parsedResolvedRelationsClassId !== null,
+		enabled:
+			relationsContextVisibility.showObject &&
+			parsedResolvedRelationsClassId !== null,
 	});
 	const relationsObjectOptions = relationsObjectOptionsQuery.data ?? [];
 	const resolvedRelationsObjectId = useMemo(() => {
@@ -1649,7 +1655,7 @@ export function AppShell({
 										}
 									/>
 								) : null}
-								{isRelationsRoute ? (
+								{relationsContextVisibility.showClass ? (
 									<>
 										<span className="topbar-divider" aria-hidden="true">
 											/
@@ -1682,6 +1688,10 @@ export function AppShell({
 												</option>
 											))}
 										</select>
+									</>
+								) : null}
+								{relationsContextVisibility.showObject ? (
+									<>
 										<span className="topbar-divider" aria-hidden="true">
 											/
 										</span>

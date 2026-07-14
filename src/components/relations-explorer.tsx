@@ -315,6 +315,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	const [reachabilityDepth, setReachabilityDepth] = useState(() =>
 		normalizeRelatedObjectDepthLimit(searchParams.get("depth")),
 	);
+	const [classRelationSourceClassId, setClassRelationSourceClassId] =
+		useState(sourceClassId);
 	const [classRelationTargetClassId, setClassRelationTargetClassId] =
 		useState("");
 	const [objectRelationTargetClassId, setObjectRelationTargetClassId] =
@@ -426,6 +428,18 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		() => parseId(resolvedSourceClassId),
 		[resolvedSourceClassId],
 	);
+	const resolvedClassRelationSourceClassId = useMemo(() => {
+		const parsed = parseId(classRelationSourceClassId);
+		if (parsed !== null && classes.some((item) => item.id === parsed)) {
+			return String(parsed);
+		}
+
+		return resolvedSourceClassId;
+	}, [classRelationSourceClassId, classes, resolvedSourceClassId]);
+	const parsedClassRelationSourceClassId = useMemo(
+		() => parseId(resolvedClassRelationSourceClassId),
+		[resolvedClassRelationSourceClassId],
+	);
 	const parsedClassRelationTargetClassId = useMemo(
 		() => parseId(classRelationTargetClassId),
 		[classRelationTargetClassId],
@@ -450,12 +464,13 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	const classRelationsQuery = useQuery({
 		queryKey: ["class-relations", parsedSourceClassId],
 		queryFn: async () => fetchClassRelations(parsedSourceClassId ?? 0),
-		enabled: parsedSourceClassId !== null,
+		enabled: isObjectMode && parsedSourceClassId !== null,
 	});
 	const allClassRelationsQuery = useQuery({
 		queryKey: ["class-relations", "all"],
 		queryFn: fetchAllClassRelations,
-		enabled: isClassMode && classRelationsView === "direct",
+		enabled:
+			isClassMode && (classRelationsView === "direct" || isCreateModalOpen),
 	});
 	const classConnectedClassesQuery = useQuery({
 		queryKey: ["class-related-classes", parsedSourceClassId],
@@ -492,8 +507,11 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	);
 
 	const classRelationTargetOptions = useMemo(
-		() => classes.filter((classItem) => classItem.id !== parsedSourceClassId),
-		[classes, parsedSourceClassId],
+		() =>
+			classes.filter(
+				(classItem) => classItem.id !== parsedClassRelationSourceClassId,
+			),
+		[classes, parsedClassRelationSourceClassId],
 	);
 	const relatedTargetClassIds = useMemo(() => {
 		const ids = new Set<number>();
@@ -651,13 +669,13 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	}, [relatedObjects, selectedSourceObject, sourceObjects, targetObjects]);
 
 	const classRelationExists =
-		parsedSourceClassId !== null &&
+		parsedClassRelationSourceClassId !== null &&
 		parsedClassRelationTargetClassId !== null &&
-		scopedClassRelations.some(
+		allClassRelations.some(
 			(relation) =>
-				(relation.from_hubuum_class_id === parsedSourceClassId &&
+				(relation.from_hubuum_class_id === parsedClassRelationSourceClassId &&
 					relation.to_hubuum_class_id === parsedClassRelationTargetClassId) ||
-				(relation.to_hubuum_class_id === parsedSourceClassId &&
+				(relation.to_hubuum_class_id === parsedClassRelationSourceClassId &&
 					relation.from_hubuum_class_id === parsedClassRelationTargetClassId),
 		);
 
@@ -667,7 +685,10 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		}
 
 		const params = new URLSearchParams(window.location.search);
-		if (resolvedSourceClassId) {
+		if (
+			resolvedSourceClassId &&
+			(!isClassMode || classRelationsView === "connected")
+		) {
 			params.set("classId", resolvedSourceClassId);
 		} else {
 			params.delete("classId");
@@ -1205,17 +1226,15 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		setClassRelationSuccess(null);
 
 		if (
-			parsedSourceClassId === null ||
+			parsedClassRelationSourceClassId === null ||
 			parsedClassRelationTargetClassId === null
 		) {
 			setClassRelationError("Select both classes in the relation pair.");
 			return;
 		}
 
-		if (parsedSourceClassId === parsedClassRelationTargetClassId) {
-			setClassRelationError(
-				"Connected class must be different from the current class.",
-			);
+		if (parsedClassRelationSourceClassId === parsedClassRelationTargetClassId) {
+			setClassRelationError("From and to classes must be different.");
 			return;
 		}
 
@@ -1225,7 +1244,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		}
 
 		createClassRelationMutation.mutate({
-			sourceClassId: parsedSourceClassId,
+			sourceClassId: parsedClassRelationSourceClassId,
 			targetClassId: parsedClassRelationTargetClassId,
 		});
 	}
@@ -1286,9 +1305,11 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 
 	const selectedClass = classes.find((item) => item.id === parsedSourceClassId);
 	const canCreateClassRelation =
-		parsedSourceClassId !== null &&
+		parsedClassRelationSourceClassId !== null &&
 		parsedClassRelationTargetClassId !== null &&
-		parsedClassRelationTargetClassId !== parsedSourceClassId &&
+		parsedClassRelationTargetClassId !== parsedClassRelationSourceClassId &&
+		!allClassRelationsQuery.isLoading &&
+		!allClassRelationsQuery.isError &&
 		!classRelationExists;
 	const canCreateObjectRelation =
 		parsedSourceClassId !== null &&
@@ -1586,22 +1607,36 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			<form className="stack" onSubmit={onCreateClassRelation}>
 				<div className="object-detail-list">
 					<section className="object-detail-row">
-						<div className="object-detail-label">Current class</div>
+						<div className="object-detail-label">From class</div>
 						<div className="object-detail-body">
-							<div className="object-detail-value">
-								{selectedClass
-									? `${selectedClass.name} (#${selectedClass.id})`
-									: "Select a current class in the top bar first."}
-							</div>
+							<label className="control-field">
+								<span className="sr-only">From class</span>
+								<select
+									value={resolvedClassRelationSourceClassId}
+									onChange={(event) =>
+										setClassRelationSourceClassId(event.target.value)
+									}
+									disabled={!classes.length}
+								>
+									{!classes.length ? (
+										<option value="">No classes available</option>
+									) : null}
+									{classes.map((hubuumClass) => (
+										<option key={hubuumClass.id} value={hubuumClass.id}>
+											{hubuumClass.name} (#{hubuumClass.id})
+										</option>
+									))}
+								</select>
+							</label>
 						</div>
 						<div className="object-detail-row-actions" />
 					</section>
 
 					<section className="object-detail-row">
-						<div className="object-detail-label">Connected class</div>
+						<div className="object-detail-label">To class</div>
 						<div className="object-detail-body">
 							<label className="control-field">
-								<span className="sr-only">Connected class</span>
+								<span className="sr-only">To class</span>
 								<select
 									value={classRelationTargetClassId}
 									onChange={(event) =>
@@ -1626,6 +1661,12 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 
 				{classRelationError ? (
 					<div className="error-banner">{classRelationError}</div>
+				) : null}
+				{allClassRelationsQuery.isError ? (
+					<div className="error-banner">
+						Failed to load existing class relations. Try again before creating a
+						relation.
+					</div>
 				) : null}
 				{!classRelationTargetOptions.length ? (
 					<div className="muted">
