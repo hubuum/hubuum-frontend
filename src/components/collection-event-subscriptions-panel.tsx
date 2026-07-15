@@ -19,6 +19,7 @@ import type {
 	NewEventSubscription,
 	UpdateEventSubscription,
 } from "@/lib/api/generated/models";
+import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 type CollectionEventSubscriptionsPanelProps = {
 	collectionId: number;
@@ -585,6 +586,10 @@ export function CollectionEventSubscriptionsPanel({
 		createMutation.isPending ||
 		updateMutation.isPending ||
 		deleteMutation.isPending;
+	useEscapeToCancel({
+		enabled: isEditorOpen && !actionPending,
+		onCancel: cancelEditor,
+	});
 	const subscriptions = subscriptionsQuery.data ?? [];
 	const subscriptionsExportView = {
 		id: `collection-${collectionId}-event-subscriptions`,

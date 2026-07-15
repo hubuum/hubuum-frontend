@@ -8,6 +8,7 @@ import {
 	type ObjectServerFilter,
 	type ObjectServerFilterOperator,
 } from "@/lib/object-server-filters";
+import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 export type ServerFilterDataField = {
 	id: string;
@@ -87,19 +88,15 @@ export function ObjectServerFilterMenu({
 		const onPointerDown = (event: PointerEvent) => {
 			if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
 		};
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				setOpen(false);
-				window.setTimeout(() => triggerRef.current?.focus(), 0);
-			}
-		};
 		window.addEventListener("pointerdown", onPointerDown);
-		window.addEventListener("keydown", onKeyDown);
 		return () => {
 			window.removeEventListener("pointerdown", onPointerDown);
-			window.removeEventListener("keydown", onKeyDown);
 		};
 	}, [isOpen]);
+	useEscapeToCancel({
+		enabled: isOpen,
+		onCancel: () => closeMenu({ restoreFocus: true }),
+	});
 
 	const dataFieldById = useMemo(
 		() => new Map(dataFields.map((item) => [item.id, item])),

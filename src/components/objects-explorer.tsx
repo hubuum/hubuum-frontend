@@ -54,6 +54,7 @@ import {
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 import { useToast } from "@/lib/toast-context";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
+import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
@@ -1554,28 +1555,26 @@ export function ObjectsExplorer() {
 			}
 		}
 
-		function onKeyDown(event: KeyboardEvent) {
-			if (event.key === "Escape") {
-				setColumnPickerOpen(false);
-				window.setTimeout(
-					() =>
-						columnPickerRef.current
-							?.querySelector<HTMLButtonElement>(
-								".object-column-picker-trigger",
-							)
-							?.focus(),
-					0,
-				);
-			}
-		}
-
 		document.addEventListener("mousedown", onPointerDown);
-		document.addEventListener("keydown", onKeyDown);
 		return () => {
 			document.removeEventListener("mousedown", onPointerDown);
-			document.removeEventListener("keydown", onKeyDown);
 		};
 	}, [isColumnPickerOpen]);
+	useEscapeToCancel({
+		enabled: isColumnPickerOpen,
+		onCancel: () => {
+			setColumnPickerOpen(false);
+			window.setTimeout(
+				() =>
+					columnPickerRef.current
+						?.querySelector<HTMLButtonElement>(
+							".object-column-picker-trigger",
+						)
+						?.focus(),
+				0,
+			);
+		},
+	});
 
 	const shiftSelect = useShiftSelect({
 		items: displayedObjects,
@@ -2081,7 +2080,6 @@ export function ObjectsExplorer() {
 			<div className="card table-wrap resource-index objects-resource-index">
 				<div className="table-header">
 					<div className="resource-index-title">
-						<p className="eyebrow">Data model</p>
 						<div className="table-title-row">
 							<h2>Objects</h2>
 							<span className="muted table-count">

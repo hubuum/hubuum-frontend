@@ -9,11 +9,13 @@ import {
 	useCallback,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { CollectionEventSubscriptionsPanel } from "@/components/collection-event-subscriptions-panel";
 import { CollectionDetailTracker } from "@/components/collection-detail-tracker";
+import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { TableExportMenu } from "@/components/table-export-menu";
@@ -63,6 +65,7 @@ import {
 } from "@/lib/identity-scopes";
 import { canManageCollectionPermissions } from "@/lib/collection-permission-access";
 import { useCurrentUserId } from "@/lib/use-current-user-id";
+import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 type CollectionDetailProps = {
 	canAdminister: boolean;
@@ -671,17 +674,6 @@ function renderFieldText(value: string): string {
 	return value.trim() ? value : "No value";
 }
 
-function InlineEditIcon() {
-	return (
-		<svg viewBox="0 0 24 24" aria-hidden="true">
-			<path
-				d="m4 16.8 8.9-8.9 3.2 3.2-8.9 8.9H4Zm10-10 1.8-1.8a1.8 1.8 0 0 1 2.5 0l.7.7a1.8 1.8 0 0 1 0 2.5l-1.8 1.8Z"
-				fill="currentColor"
-			/>
-		</svg>
-	);
-}
-
 export function CollectionDetail({
 	canAdminister,
 	collectionId,
@@ -711,6 +703,8 @@ export function CollectionDetail({
 	const [initialized, setInitialized] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
+	const nameInputRef = useRef<HTMLInputElement | null>(null);
+	const descriptionInputRef = useRef<HTMLInputElement | null>(null);
 	const [moveParentId, setMoveParentId] = useState("");
 	const [moveError, setMoveError] = useState<string | null>(null);
 	const [moveSuccess, setMoveSuccess] = useState<string | null>(null);
@@ -1067,6 +1061,15 @@ export function CollectionDetail({
 	}, [editingFields.length, initialized, collectionQuery.data]);
 
 	useEffect(() => {
+		const lastEditingField = editingFields.at(-1);
+		if (lastEditingField === "name") {
+			nameInputRef.current?.focus();
+		} else if (lastEditingField === "description") {
+			descriptionInputRef.current?.focus();
+		}
+	}, [editingFields]);
+
+	useEffect(() => {
 		if (!collectionQuery.data) {
 			return;
 		}
@@ -1177,23 +1180,10 @@ export function CollectionDetail({
 		};
 	}, [collectionQuery.data]);
 
-	useEffect(() => {
-		if (!hasActiveEdits) {
-			return;
-		}
-
-		function onEscape(event: KeyboardEvent) {
-			if (event.key !== "Escape") {
-				return;
-			}
-
-			event.preventDefault();
-			cancelActiveEdits();
-		}
-
-		document.addEventListener("keydown", onEscape);
-		return () => document.removeEventListener("keydown", onEscape);
-	}, [cancelActiveEdits, hasActiveEdits]);
+	useEscapeToCancel({
+		enabled: hasActiveEdits && !isSavingOrDeleting,
+		onCancel: cancelActiveEdits,
+	});
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -1207,13 +1197,6 @@ export function CollectionDetail({
 	}
 
 	function onSubmitShortcut(event: ReactKeyboardEvent<HTMLFormElement>) {
-		if (event.key === "Escape" && hasActiveEdits) {
-			event.preventDefault();
-			event.stopPropagation();
-			cancelActiveEdits();
-			return;
-		}
-
 		if (
 			event.key !== "Enter" ||
 			!event.shiftKey ||
@@ -1532,6 +1515,12 @@ export function CollectionDetail({
 		sortedPermissionEntries.length > 0 ||
 		(canManagePermissions && addingGroupPermissions);
 	const hasDirtyRowDrafts = Object.keys(permissionDrafts).length > 0;
+	useEscapeToCancel({
+		enabled:
+			(addingGroupPermissions || hasDirtyRowDrafts) &&
+			!upsertPermissionsMutation.isPending,
+		onCancel: onResetPermissionEditor,
+	});
 
 	useEffect(() => {
 		if (!addingGroupPermissions || !usingGroupSelect) {
@@ -1734,24 +1723,20 @@ export function CollectionDetail({
 									<label className="control-field">
 										<span className="sr-only">Collection name</span>
 										<input
+											ref={nameInputRef}
 											required
 											value={name}
 											onChange={(event) => setName(event.target.value)}
 										/>
 									</label>
 								) : (
-									<button
-										type="button"
-										className="object-inline-edit"
+									<InlineFieldEditTrigger
+										fieldLabel="collection name"
+										valueText={renderFieldText(collectionData.name)}
 										onClick={() => toggleFieldEditing("name", collectionData)}
 									>
-										<span className="object-detail-value">
-											{renderFieldText(collectionData.name)}
-										</span>
-										<span className="object-inline-edit-icon">
-											<InlineEditIcon />
-										</span>
-									</button>
+										{renderFieldText(collectionData.name)}
+									</InlineFieldEditTrigger>
 								)}
 							</div>
 							<div className="object-detail-row-actions">
@@ -1776,26 +1761,24 @@ export function CollectionDetail({
 									<label className="control-field">
 										<span className="sr-only">Collection description</span>
 										<input
+											ref={descriptionInputRef}
 											required
 											value={description}
 											onChange={(event) => setDescription(event.target.value)}
 										/>
 									</label>
 								) : (
-									<button
-										type="button"
-										className="object-inline-edit"
+									<InlineFieldEditTrigger
+										fieldLabel="collection description"
+										valueText={renderFieldText(
+											collectionData.description ?? "",
+										)}
 										onClick={() =>
 											toggleFieldEditing("description", collectionData)
 										}
 									>
-										<span className="object-detail-value">
-											{renderFieldText(collectionData.description ?? "")}
-										</span>
-										<span className="object-inline-edit-icon">
-											<InlineEditIcon />
-										</span>
-									</button>
+										{renderFieldText(collectionData.description ?? "")}
+									</InlineFieldEditTrigger>
 								)}
 							</div>
 							<div className="object-detail-row-actions">

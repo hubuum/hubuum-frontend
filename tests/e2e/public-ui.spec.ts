@@ -51,6 +51,79 @@ test.describe("public accessibility", () => {
 		});
 	}
 
+	test("single-line inputs and selects share the same control height", async ({
+		page,
+	}) => {
+		await prepareLogin(page, "light");
+
+		async function measure(density: "comfortable" | "compact") {
+			return page.evaluate(async (selectedDensity) => {
+				const previousDensity = document.documentElement.dataset.density;
+				if (selectedDensity === "compact") {
+					document.documentElement.dataset.density = "compact";
+				} else {
+					delete document.documentElement.dataset.density;
+				}
+
+				const fixture = document.createElement("div");
+				fixture.style.cssText =
+					"position:absolute;left:-10000px;top:0;display:grid;width:320px";
+				const input = document.createElement("input");
+				const select = document.createElement("select");
+				select.append(new Option("Text", "text"));
+				const inlineEditTrigger = document.createElement("button");
+				inlineEditTrigger.className = "inline-field-edit-trigger";
+				inlineEditTrigger.append(
+					Object.assign(document.createElement("span"), {
+						className: "inline-field-edit-trigger-value",
+						textContent: "Editable value",
+					}),
+				);
+				fixture.append(input, select, inlineEditTrigger);
+				document.body.append(fixture);
+				await new Promise<void>((resolve) =>
+					window.requestAnimationFrame(() => resolve()),
+				);
+
+				const inputStyle = getComputedStyle(input);
+				const selectStyle = getComputedStyle(select);
+				const measurement = {
+					inputHeight: input.getBoundingClientRect().height,
+					inputMinHeight: Number.parseFloat(inputStyle.minHeight),
+					selectHeight: select.getBoundingClientRect().height,
+					selectMinHeight: Number.parseFloat(selectStyle.minHeight),
+					inlineEditHeight: inlineEditTrigger.getBoundingClientRect().height,
+					inlineEditWidth: inlineEditTrigger.getBoundingClientRect().width,
+					fixtureWidth: fixture.getBoundingClientRect().width,
+				};
+				fixture.remove();
+				if (previousDensity) {
+					document.documentElement.dataset.density = previousDensity;
+				} else {
+					delete document.documentElement.dataset.density;
+				}
+				return measurement;
+			}, density);
+		}
+
+		const comfortable = await measure("comfortable");
+		const compact = await measure("compact");
+		expect(comfortable.inputHeight).toBeCloseTo(comfortable.selectHeight, 1);
+		expect(comfortable.inputMinHeight).toBeCloseTo(
+			comfortable.selectMinHeight,
+			1,
+		);
+		expect(comfortable.inputHeight).toBeGreaterThanOrEqual(44);
+		expect(comfortable.inlineEditWidth).toBeCloseTo(
+			comfortable.fixtureWidth,
+			1,
+		);
+		expect(comfortable.inlineEditHeight).toBeGreaterThanOrEqual(34);
+		expect(compact.inputHeight).toBeCloseTo(compact.selectHeight, 1);
+		expect(compact.inputMinHeight).toBeCloseTo(compact.selectMinHeight, 1);
+		expect(compact.inputHeight).toBeLessThan(comfortable.inputHeight);
+	});
+
 	test("every accent keeps primary action text readable", async ({ page }) => {
 		await prepareLogin(page, "light");
 

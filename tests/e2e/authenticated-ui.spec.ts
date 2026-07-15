@@ -50,6 +50,21 @@ test.describe("authenticated workspace", () => {
 		await expect(trigger).toBeFocused();
 	});
 
+	test("Escape closes the active account menu and restores focus", async ({
+		page,
+	}) => {
+		const trigger = page.getByRole("button", {
+			name: /Open account menu for/,
+		});
+		await trigger.click();
+		await expect(page.getByLabel("User menu")).toBeVisible();
+
+		await page.keyboard.press("Escape");
+
+		await expect(page.getByLabel("User menu")).toBeHidden();
+		await expect(trigger).toBeFocused();
+	});
+
 	test("mobile resource pages expose one primary create action", async ({
 		page,
 	}) => {
