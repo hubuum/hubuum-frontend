@@ -2080,7 +2080,6 @@ export function ObjectsExplorer() {
 			<div className="card table-wrap resource-index objects-resource-index">
 				<div className="table-header">
 					<div className="resource-index-title">
-						<p className="eyebrow">Data model</p>
 						<div className="table-title-row">
 							<h2>Objects</h2>
 							<span className="muted table-count">

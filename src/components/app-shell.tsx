@@ -1622,16 +1622,9 @@ export function AppShell({
 							</button>
 
 							<div className="topbar-title-row">
-								<div className="topbar-title-stack">
-									<span className="topbar-caption">
-										{pathname.startsWith("/admin")
-											? "Administration"
-											: "Workspace"}
-									</span>
-									<h1 className="topbar-heading">
-										{detailTitle ?? sectionLabel}
-									</h1>
-								</div>
+								<h1 className="topbar-heading">
+									{detailTitle ?? sectionLabel}
+								</h1>
 								{detailPin ? (
 									<PinButton
 										type={detailPin.type}

@@ -6301,7 +6301,6 @@ button.sidebar-link-button:hover {
 	position: sticky;
 	top: 0.85rem;
 	z-index: 40;
-	min-height: 4.2rem;
 	padding: 0.55rem 0.72rem 0.55rem 0.9rem;
 	border-color: color-mix(in oklab, var(--line) 86%, transparent);
 	border-radius: 18px;
@@ -6314,22 +6313,8 @@ button.sidebar-link-button:hover {
 	gap: 0.55rem;
 }
 
-.topbar-title-stack {
-	display: grid;
-	gap: 0.05rem;
-	min-width: 0;
-}
-
-.topbar-caption {
-	color: var(--muted);
-	font-size: 0.59rem;
-	font-weight: 750;
-	letter-spacing: 0.13em;
-	line-height: 1.2;
-	text-transform: uppercase;
-}
-
 .topbar-heading {
+	min-width: 0;
 	font-size: 1.02rem;
 	letter-spacing: -0.025em;
 }
@@ -6748,10 +6733,6 @@ tbody tr:hover {
 	.topbar.card {
 		top: 0.5rem;
 		border-radius: 15px;
-	}
-
-	.topbar-caption {
-		display: none;
 	}
 
 	.landing-hero {

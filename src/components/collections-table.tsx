@@ -696,7 +696,6 @@ export function CollectionsTable() {
 			<div className="card resource-index">
 				<div className="table-header">
 					<div className="resource-index-title">
-						<p className="eyebrow">Data model</p>
 						<div className="table-title-row">
 							<h2>Collections</h2>
 							<span className="muted table-count">

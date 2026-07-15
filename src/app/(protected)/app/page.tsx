@@ -457,7 +457,6 @@ export default async function AppPage() {
 					<section className="card workflow-panel">
 						<header className="section-heading">
 							<div>
-								<p className="eyebrow">Data model</p>
 								<h3>Move through the graph</h3>
 							</div>
 							<p className="muted">Four layers, one connected workspace.</p>
