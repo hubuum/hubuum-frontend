@@ -3,7 +3,11 @@
 import { indentWithTab } from "@codemirror/commands";
 import { bracketMatching } from "@codemirror/language";
 import { Compartment, type Extension, StateEffect } from "@codemirror/state";
-import { EditorView, keymap, placeholder as placeholderExtension } from "@codemirror/view";
+import {
+	EditorView,
+	keymap,
+	placeholder as placeholderExtension,
+} from "@codemirror/view";
 import { minimalSetup } from "codemirror";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef } from "react";
@@ -18,6 +22,10 @@ type CodeEditorProps = {
 	className?: string;
 	inputId?: string;
 	ariaLabel?: string;
+	insertRequest?: {
+		id: number;
+		text: string;
+	} | null;
 };
 
 const syncExternalValue = StateEffect.define<{
@@ -57,9 +65,10 @@ const sharedEditorTheme = EditorView.theme({
 	".cm-placeholder": {
 		color: "var(--muted)",
 	},
-	".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": {
-		backgroundColor: "color-mix(in srgb, var(--accent) 24%, transparent)",
-	},
+	".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection":
+		{
+			backgroundColor: "color-mix(in srgb, var(--accent) 24%, transparent)",
+		},
 	".cm-cursor, .cm-dropCursor": {
 		borderLeftColor: "var(--accent)",
 	},
@@ -79,6 +88,7 @@ export function CodeEditor({
 	className,
 	inputId,
 	ariaLabel,
+	insertRequest,
 }: CodeEditorProps) {
 	const hostRef = useRef<HTMLDivElement | null>(null);
 	const viewRef = useRef<EditorView | null>(null);
@@ -93,6 +103,7 @@ export function CodeEditor({
 	const placeholderCompartmentRef = useRef(new Compartment());
 	const extensionsCompartmentRef = useRef(new Compartment());
 	const attributesCompartmentRef = useRef(new Compartment());
+	const lastInsertRequestIdRef = useRef<number | null>(null);
 
 	onChangeRef.current = onChange;
 
@@ -147,9 +158,13 @@ export function CodeEditor({
 						return;
 					}
 
-					if (update.transactions.some((transaction) =>
-						transaction.effects.some((effect) => effect.is(syncExternalValue)),
-					)) {
+					if (
+						update.transactions.some((transaction) =>
+							transaction.effects.some((effect) =>
+								effect.is(syncExternalValue),
+							),
+						)
+					) {
 						return;
 					}
 
@@ -243,6 +258,29 @@ export function CodeEditor({
 			}),
 		});
 	}, [value]);
+
+	useEffect(() => {
+		const view = viewRef.current;
+		if (
+			!view ||
+			!insertRequest ||
+			lastInsertRequestIdRef.current === insertRequest.id
+		) {
+			return;
+		}
+
+		lastInsertRequestIdRef.current = insertRequest.id;
+		const selection = view.state.selection.main;
+		view.dispatch({
+			changes: {
+				from: selection.from,
+				to: selection.to,
+				insert: insertRequest.text,
+			},
+			selection: { anchor: selection.from + insertRequest.text.length },
+		});
+		view.focus();
+	}, [insertRequest]);
 
 	return (
 		<div

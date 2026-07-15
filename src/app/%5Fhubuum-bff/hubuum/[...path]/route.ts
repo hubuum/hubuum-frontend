@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { buildBackendUrl, getSafeBackendPathForLogs } from "@/lib/api/backend";
+import { copyPaginationHeaders } from "@/lib/api/proxy-pagination-headers";
 import {
 	clearSessionCookie,
 	destroySession,
@@ -166,6 +167,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	if (!hasNoBody && contentType) {
 		response.headers.set("content-type", contentType);
 	}
+	copyPaginationHeaders(upstreamResponse.headers, response.headers);
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
 
 	if (upstreamResponse.status === 401) {

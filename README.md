@@ -148,6 +148,27 @@ metadata\.owner    -> literal key { "metadata.owner": ... }
 path\\.segment     -> literal key { "path\\segment": ... }
 ```
 
+On an object detail page, editable values in this flattened grid open a focused,
+type-aware control when clicked. Enter saves that field immediately; Escape
+closes the control without changing its value. Text, numbers, booleans, nulls,
+empty objects, and empty arrays retain their JSON types unless the user
+explicitly changes the type. `Edit data` also exposes `Add field`, which accepts
+the same dotted/bracket path syntax and can create missing object branches or
+append the next array item. The advanced JSON editor remains available for bulk
+changes, deep branches, file loading, and schema previews.
+
+Directly editable values on object, class, and collection detail pages use the
+same whole-field edit target instead of a separate pencil or Edit control. This
+includes names, descriptions, collection selectors, schema validation, and JSON
+schema. Opening one focuses its editor immediately, and Escape restores the
+draft. Permission-gated hierarchy moves remain a separate collection operation.
+
+Escape is the console-wide safe exit for transient work. It closes the most
+recently opened menu, create form, or edit mode without saving its draft; nested
+modes unwind one at a time. Escape is ignored while an inline save or delete is
+in progress, so leaving the interface never implies that an active request was
+canceled.
+
 ## Collection hierarchy
 
 Collections are hierarchical. The frontend shows parent/path information in

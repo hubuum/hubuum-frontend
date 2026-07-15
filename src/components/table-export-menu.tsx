@@ -16,6 +16,7 @@ import {
 	type TableExportView,
 } from "@/lib/table-export";
 import { useToast } from "@/lib/toast-context";
+import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 function IconExport() {
 	return (
@@ -53,6 +54,13 @@ export function TableExportMenu<Row>({
 	);
 	const { showToast } = useToast();
 	const isDisabled = disabled || view.rows.length === 0 || view.columns.length === 0;
+	useEscapeToCancel({
+		enabled: isOpen,
+		onCancel: () => {
+			setOpen(false);
+			window.setTimeout(() => triggerRef.current?.focus(), 0);
+		},
+	});
 
 	useEffect(() => {
 		if (!isOpen) return;
@@ -86,10 +94,6 @@ export function TableExportMenu<Row>({
 			nextIndex = 0;
 		} else if (event.key === "End") {
 			nextIndex = TABLE_EXPORT_FORMATS.length - 1;
-		} else if (event.key === "Escape") {
-			event.preventDefault();
-			setOpen(false);
-			triggerRef.current?.focus();
 		}
 		if (nextIndex !== null) {
 			event.preventDefault();

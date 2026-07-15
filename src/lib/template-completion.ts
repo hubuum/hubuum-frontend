@@ -6,6 +6,7 @@ import type {
 } from "@codemirror/autocomplete";
 
 import type { ReportScopeKind } from "@/lib/api/reporting";
+import { JSON_ARRAY_ITEM_SEGMENT } from "@/lib/json-field-discovery";
 import {
 	type FieldDef,
 	getScopeObjectFields,
@@ -17,6 +18,12 @@ export type TemplateCompletionOptions = {
 	relationHydrated: boolean;
 	relationAliases?: string[];
 	templateNames?: string[];
+	dataFields?: TemplateDataFieldCompletion[];
+};
+
+export type TemplateDataFieldCompletion = {
+	path: string[];
+	detail: string;
 };
 
 const TAGS: Completion[] = [
@@ -29,18 +36,50 @@ const TAGS: Completion[] = [
 	{ label: "set", detail: "Assign a template variable", type: "keyword" },
 	{ label: "macro", detail: "Define a macro", type: "keyword" },
 	{ label: "endmacro", detail: "Close a macro", type: "keyword" },
-	{ label: "include", detail: "Include a same-collection template", type: "keyword" },
-	{ label: "import", detail: "Import macros from a same-collection template", type: "keyword" },
-	{ label: "extends", detail: "Extend a same-collection template", type: "keyword" },
+	{
+		label: "include",
+		detail: "Include a same-collection template",
+		type: "keyword",
+	},
+	{
+		label: "import",
+		detail: "Import macros from a same-collection template",
+		type: "keyword",
+	},
+	{
+		label: "extends",
+		detail: "Extend a same-collection template",
+		type: "keyword",
+	},
 ];
 
 const FILTERS: Completion[] = [
-	{ label: "csv_cell", detail: "Escape a value for a CSV cell", type: "function" },
+	{
+		label: "csv_cell",
+		detail: "Escape a value for a CSV cell",
+		type: "function",
+	},
 	{ label: "tojson", detail: "Serialize a value as JSON", type: "function" },
-	{ label: "default", detail: "default(fallback) — value when undefined", type: "function" },
-	{ label: "default_if_empty", detail: "default_if_empty(fallback) — value when empty", type: "function" },
-	{ label: "format_datetime", detail: "format_datetime(fmt) — format a timestamp", type: "function" },
-	{ label: "join_nonempty", detail: "join_nonempty(sep) — join non-empty values", type: "function" },
+	{
+		label: "default",
+		detail: "default(fallback) — value when undefined",
+		type: "function",
+	},
+	{
+		label: "default_if_empty",
+		detail: "default_if_empty(fallback) — value when empty",
+		type: "function",
+	},
+	{
+		label: "format_datetime",
+		detail: "format_datetime(fmt) — format a timestamp",
+		type: "function",
+	},
+	{
+		label: "join_nonempty",
+		detail: "join_nonempty(sep) — join non-empty values",
+		type: "function",
+	},
 	{ label: "length", detail: "Number of items", type: "function" },
 	{ label: "sort", detail: "Sort a sequence", type: "function" },
 ];
@@ -53,8 +92,16 @@ const TESTS: Completion[] = [
 ];
 
 const FUNCTIONS: Completion[] = [
-	{ label: "coalesce", detail: "coalesce(a, b, ...) — first non-null value", type: "function" },
-	{ label: "range", detail: "range(n) — sequence of numbers", type: "function" },
+	{
+		label: "coalesce",
+		detail: "coalesce(a, b, ...) — first non-null value",
+		type: "function",
+	},
+	{
+		label: "range",
+		detail: "range(n) — sequence of numbers",
+		type: "function",
+	},
 ];
 
 // Resolver value kinds.
@@ -64,6 +111,7 @@ type Kind =
 	| { type: "meta" }
 	| { type: "scope" }
 	| { type: "request" }
+	| { type: "data"; path: string[] }
 	| { type: "listObject" } // a list whose elements are objects
 	| { type: "relatedMap" } // related.* — relation/include aliases
 	| { type: "classMap" } // reachable.* / paths.* — class aliases
@@ -71,7 +119,7 @@ type Kind =
 	| { type: "pathsEntry" } // an element of paths.<alias>: object fields + path + path_objects
 	| { type: "unknown" };
 
-type Segment = { name: string; indexed: boolean };
+type Segment = { name: string; indexed: boolean; indexSegments: string[] };
 
 function fieldCompletion(field: FieldDef): Completion {
 	return { label: field.name, detail: field.detail, type: "property" };
@@ -106,7 +154,9 @@ const RELATION_MAP_PROPS = (relationHydrated: boolean): Completion[] => {
 
 // Parse the access chain ending at the cursor into segments. Returns null when
 // the text before the cursor is not an access chain.
-function parseChain(text: string): { segments: Segment[]; partial: string } | null {
+function parseChain(
+	text: string,
+): { segments: Segment[]; partial: string } | null {
 	const match = text.match(
 		/([A-Za-z_][A-Za-z0-9_]*(?:\s*(?:\[(?:\d+|"[^"]*"|'[^']*')\]|\.[A-Za-z_][A-Za-z0-9_]*))*)(\.[A-Za-z0-9_]*)?$/,
 	);
@@ -119,11 +169,17 @@ function parseChain(text: string): { segments: Segment[]; partial: string } | nu
 	const segments: Segment[] = [];
 	// Split chain on dots that are not inside brackets.
 	for (const raw of chain.split(".")) {
-		const nameMatch = raw.match(/^([A-Za-z_][A-Za-z0-9_]*)((?:\[(?:\d+|"[^"]*"|'[^']*')\])*)$/);
+		const nameMatch = raw.match(
+			/^([A-Za-z_][A-Za-z0-9_]*)((?:\[(?:\d+|"[^"]*"|'[^']*')\])*)$/,
+		);
 		if (!nameMatch) {
 			return null;
 		}
-		segments.push({ name: nameMatch[1], indexed: Boolean(nameMatch[2]) });
+		segments.push({
+			name: nameMatch[1],
+			indexed: Boolean(nameMatch[2]),
+			indexSegments: nameMatch[2].match(/\[\d+\]/g) ?? [],
+		});
 	}
 
 	if (trailing) {
@@ -141,7 +197,11 @@ function parseChain(text: string): { segments: Segment[]; partial: string } | nu
 	return { segments, partial: "" };
 }
 
-function resolveRoot(name: string, options: TemplateCompletionOptions, loopVars: Set<string>): Kind {
+function resolveRoot(
+	name: string,
+	options: TemplateCompletionOptions,
+	loopVars: Set<string>,
+): Kind {
 	if (loopVars.has(name)) {
 		return { type: "object" };
 	}
@@ -160,7 +220,11 @@ function resolveRoot(name: string, options: TemplateCompletionOptions, loopVars:
 	return { type: "unknown" };
 }
 
-function step(kind: Kind, segment: Segment, options: TemplateCompletionOptions): Kind {
+function step(
+	kind: Kind,
+	segment: Segment,
+	options: TemplateCompletionOptions,
+): Kind {
 	const allowRelations = (mapType: "relatedMap" | "classMap") =>
 		mapType === "relatedMap"
 			? options.relationHydrated || (options.relationAliases?.length ?? 0) > 0
@@ -180,7 +244,12 @@ function step(kind: Kind, segment: Segment, options: TemplateCompletionOptions):
 			if (segment.name === "paths" && allowRelations("classMap")) {
 				return { type: "pathsMap" };
 			}
-			const field = getScopeObjectFields(options.scopeKind).find((f) => f.name === segment.name);
+			const field = getScopeObjectFields(options.scopeKind).find(
+				(f) => f.name === segment.name,
+			);
+			if (field?.name === "data") {
+				return { type: "data", path: [] };
+			}
 			if (field?.nested === "collection") {
 				return { type: "collection" };
 			}
@@ -188,6 +257,13 @@ function step(kind: Kind, segment: Segment, options: TemplateCompletionOptions):
 				return segment.indexed ? { type: "object" } : { type: "listObject" };
 			}
 			return { type: "unknown" };
+		}
+		case "data": {
+			const path = [...kind.path, segment.name, ...segment.indexSegments];
+			const isKnownPath = (options.dataFields ?? []).some((field) =>
+				isKnownDataPathPrefix(field.path, path),
+			);
+			return isKnownPath ? { type: "data", path } : { type: "unknown" };
 		}
 		case "relatedMap":
 		case "classMap":
@@ -204,7 +280,51 @@ function step(kind: Kind, segment: Segment, options: TemplateCompletionOptions):
 	}
 }
 
-function completionsForKind(kind: Kind, options: TemplateCompletionOptions): Completion[] {
+function dataPathSegmentsMatch(known: string, actual: string): boolean {
+	return (
+		known === actual ||
+		(known === JSON_ARRAY_ITEM_SEGMENT && /^\[\d+\]$/.test(actual))
+	);
+}
+
+function isKnownDataPathPrefix(
+	knownPath: string[],
+	actualPath: string[],
+): boolean {
+	return actualPath.every((segment, index) =>
+		dataPathSegmentsMatch(knownPath[index] ?? "", segment),
+	);
+}
+
+function dataCompletions(
+	path: string[],
+	options: TemplateCompletionOptions,
+): Completion[] {
+	const completions = new Map<string, Completion>();
+	for (const field of options.dataFields ?? []) {
+		if (!isKnownDataPathPrefix(field.path, path)) continue;
+		const nextSegment = field.path[path.length];
+		if (!nextSegment || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(nextSegment)) continue;
+		const isLeaf = field.path.length === path.length + 1;
+		const current = completions.get(nextSegment);
+		if (!current || isLeaf) {
+			completions.set(nextSegment, {
+				label: nextSegment,
+				detail: isLeaf ? field.detail : "Nested JSON data",
+				type: "property",
+				boost: isLeaf ? 2 : 1,
+			});
+		}
+	}
+	return [...completions.values()].sort((left, right) =>
+		left.label.localeCompare(right.label),
+	);
+}
+
+function completionsForKind(
+	kind: Kind,
+	options: TemplateCompletionOptions,
+): Completion[] {
 	switch (kind.type) {
 		case "object":
 			return [
@@ -216,28 +336,50 @@ function completionsForKind(kind: Kind, options: TemplateCompletionOptions): Com
 				...getScopeObjectFields(options.scopeKind).map(fieldCompletion),
 				...RELATION_MAP_PROPS(options.relationHydrated),
 				{ label: "path", detail: "Traversal path (id list)", type: "property" },
-				{ label: "path_objects", detail: "Objects along the traversal path (list)", type: "property" },
+				{
+					label: "path_objects",
+					detail: "Objects along the traversal path (list)",
+					type: "property",
+				},
 			];
 		case "collection":
 			return NAMESPACE_FIELDS.map(fieldCompletion);
 		case "meta":
 			return [
 				{ label: "count", detail: "Number of rows", type: "property" },
-				{ label: "content_type", detail: "Output content type", type: "property" },
-				{ label: "truncated", detail: "Whether the result was truncated", type: "property" },
+				{
+					label: "content_type",
+					detail: "Output content type",
+					type: "property",
+				},
+				{
+					label: "truncated",
+					detail: "Whether the result was truncated",
+					type: "property",
+				},
 				{ label: "scope", detail: "Export scope", type: "property" },
 			];
 		case "scope":
 			return [
 				{ label: "kind", detail: "Export scope kind", type: "property" },
-				{ label: "class_id", detail: "Class id for class-bound scopes", type: "property" },
-				{ label: "object_id", detail: "Object id for object-bound scopes", type: "property" },
+				{
+					label: "class_id",
+					detail: "Class id for class-bound scopes",
+					type: "property",
+				},
+				{
+					label: "object_id",
+					detail: "Object id for object-bound scopes",
+					type: "property",
+				},
 			];
 		case "request":
 			return [
 				{ label: "scope", detail: "Submitted export scope", type: "property" },
 				{ label: "query", detail: "Submitted query string", type: "property" },
 			];
+		case "data":
+			return dataCompletions(kind.path, options);
 		case "relatedMap":
 			return (options.relationAliases ?? []).map((alias) => ({
 				label: alias,
@@ -251,18 +393,40 @@ function completionsForKind(kind: Kind, options: TemplateCompletionOptions): Com
 	}
 }
 
-function rootCompletions(options: TemplateCompletionOptions, loopVars: Set<string>): Completion[] {
+function rootCompletions(
+	options: TemplateCompletionOptions,
+	loopVars: Set<string>,
+): Completion[] {
 	const vars: Completion[] = [
-		{ label: "items", detail: "Array of export rows", type: "variable", boost: 4 },
+		{
+			label: "items",
+			detail: "Array of export rows",
+			type: "variable",
+			boost: 4,
+		},
 		{ label: "meta", detail: "Export metadata", type: "variable", boost: 3 },
 		{ label: "warnings", detail: "Export warnings", type: "variable" },
-		{ label: "request", detail: "Submitted export request context", type: "variable" },
+		{
+			label: "request",
+			detail: "Submitted export request context",
+			type: "variable",
+		},
 	];
 	if (options.scopeKind === "related_objects") {
-		vars.push({ label: "source", detail: "Hydrated root object", type: "variable", boost: 3 });
+		vars.push({
+			label: "source",
+			detail: "Hydrated root object",
+			type: "variable",
+			boost: 3,
+		});
 	}
 	for (const name of loopVars) {
-		vars.push({ label: name, detail: "Loop variable", type: "variable", boost: 3 });
+		vars.push({
+			label: name,
+			detail: "Loop variable",
+			type: "variable",
+			boost: 3,
+		});
 	}
 	return [...vars, ...FUNCTIONS];
 }
@@ -279,7 +443,10 @@ function collectLoopVars(before: string): Set<string> {
 	return vars;
 }
 
-function result(from: number, optionsList: Completion[]): CompletionResult | null {
+function result(
+	from: number,
+	optionsList: Completion[],
+): CompletionResult | null {
 	if (!optionsList.length) {
 		return null;
 	}
@@ -316,11 +483,14 @@ export function createTemplateCompletionSource(
 				return null;
 			}
 			const word = context.matchBefore(/[A-Za-z0-9_.\-/]*$/);
-			return result(word ? word.from : context.pos, names.map((name) => ({
-				label: name,
-				detail: "Stored template",
-				type: "text",
-			})));
+			return result(
+				word ? word.from : context.pos,
+				names.map((name) => ({
+					label: name,
+					detail: "Stored template",
+					type: "text",
+				})),
+			);
 		}
 
 		// Tag keyword position: `{%` then only an optional leading word.
