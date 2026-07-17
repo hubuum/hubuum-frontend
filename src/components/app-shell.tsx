@@ -713,6 +713,7 @@ export function AppShell({
 	const { showToast } = useToast();
 	const currentUserId = currentPrincipalId;
 	const prevMyTasksRef = useRef<TaskRecord[] | null>(null);
+	const taskToastWatchStartedAtRef = useRef(Date.now());
 	const [lastSeenAt, setLastSeenAt] = useState<number | null>(null);
 
 	const myTasksQuery = useQuery({
@@ -1337,7 +1338,11 @@ export function AppShell({
 			return;
 		}
 
-		for (const task of diffNewlyTerminal(prevMyTasksRef.current, data.mine)) {
+		for (const task of diffNewlyTerminal(
+			prevMyTasksRef.current,
+			data.mine,
+			taskToastWatchStartedAtRef.current,
+		)) {
 			const { message, type } = toastForTransition(task);
 			showToast(message, type, { href: `/tasks/${task.id}` });
 		}

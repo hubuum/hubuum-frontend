@@ -34,36 +34,85 @@ describe("filterMine", () => {
 });
 
 describe("diffNewlyTerminal", () => {
-	it("returns [] on the first poll (prev null)", () => {
-		const next = [makeTask({ id: 1, status: "succeeded" })];
-		expect(diffNewlyTerminal(null, next)).toEqual([]);
+	it("ignores terminal backlog from before the watcher started", () => {
+		const next = [
+			makeTask({
+				id: 1,
+				status: "succeeded",
+				finished_at: "2026-06-21T11:00:00.000Z",
+			}),
+		];
+		expect(diffNewlyTerminal(null, next, seen)).toEqual([]);
+	});
+
+	it("detects a task that finishes before the first poll returns", () => {
+		const next = [
+			makeTask({
+				id: 1,
+				status: "succeeded",
+				finished_at: "2026-06-21T13:00:00.000Z",
+			}),
+		];
+		expect(diffNewlyTerminal(null, next, seen).map((task) => task.id)).toEqual([
+			1,
+		]);
+	});
+
+	it("treats the watcher start boundary as exclusive", () => {
+		const next = [
+			makeTask({
+				id: 1,
+				status: "succeeded",
+				finished_at: "2026-06-21T12:00:00.000Z",
+			}),
+		];
+		expect(diffNewlyTerminal(null, next, seen)).toEqual([]);
 	});
 
 	it("detects non-terminal -> terminal", () => {
 		const prev = [makeTask({ id: 1, status: "running" })];
 		const next = [makeTask({ id: 1, status: "succeeded" })];
-		expect(diffNewlyTerminal(prev, next).map((t) => t.id)).toEqual([1]);
+		expect(diffNewlyTerminal(prev, next, seen).map((t) => t.id)).toEqual([1]);
 	});
 
 	it("ignores terminal -> terminal", () => {
 		const prev = [makeTask({ id: 1, status: "succeeded" })];
 		const next = [makeTask({ id: 1, status: "succeeded" })];
-		expect(diffNewlyTerminal(prev, next)).toEqual([]);
+		expect(diffNewlyTerminal(prev, next, seen)).toEqual([]);
 	});
 
 	it("ignores non-terminal -> non-terminal", () => {
 		const prev = [makeTask({ id: 1, status: "queued" })];
 		const next = [makeTask({ id: 1, status: "running" })];
-		expect(diffNewlyTerminal(prev, next)).toEqual([]);
+		expect(diffNewlyTerminal(prev, next, seen)).toEqual([]);
 	});
 
-	it("ignores tasks absent from prev (avoids backlog toasts)", () => {
+	it("detects a terminal task first observed after the baseline poll", () => {
 		const prev = [makeTask({ id: 1, status: "running" })];
 		const next = [
 			makeTask({ id: 1, status: "running" }),
-			makeTask({ id: 2, status: "succeeded" }),
+			makeTask({
+				id: 2,
+				status: "succeeded",
+				finished_at: "2026-06-21T13:00:00.000Z",
+			}),
 		];
-		expect(diffNewlyTerminal(prev, next)).toEqual([]);
+		expect(diffNewlyTerminal(prev, next, seen).map((task) => task.id)).toEqual([
+			2,
+		]);
+	});
+
+	it("ignores terminal backlog first observed after the baseline poll", () => {
+		const prev = [makeTask({ id: 1, status: "running" })];
+		const next = [
+			makeTask({ id: 1, status: "running" }),
+			makeTask({
+				id: 2,
+				status: "succeeded",
+				finished_at: "2026-06-21T11:00:00.000Z",
+			}),
+		];
+		expect(diffNewlyTerminal(prev, next, seen)).toEqual([]);
 	});
 });
 
