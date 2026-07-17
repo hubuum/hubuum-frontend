@@ -3,26 +3,32 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 0.0.2
  */
 import type { AuthenticationConfig } from './authenticationConfig';
+import type { BackupConfig } from './backupConfig';
 import type { DatabaseConfig } from './databaseConfig';
 import type { EventConfig } from './eventConfig';
 import type { ExportConfig } from './exportConfig';
 import type { NetworkConfig } from './networkConfig';
 import type { PaginationConfig } from './paginationConfig';
+import type { PermissionConfig } from './permissionConfig';
 import type { RemoteCallConfig } from './remoteCallConfig';
+import type { RestoreConfig } from './restoreConfig';
 import type { ServerConfig } from './serverConfig';
 import type { TaskConfig } from './taskConfig';
 
 export interface RunningConfig {
   authentication: AuthenticationConfig;
+  backups: BackupConfig;
   database: DatabaseConfig;
   events: EventConfig;
   exports: ExportConfig;
   network: NetworkConfig;
   pagination: PaginationConfig;
+  permissions: PermissionConfig;
   remote_calls: RemoteCallConfig;
+  restores: RestoreConfig;
   server: ServerConfig;
   tasks: TaskConfig;
 }

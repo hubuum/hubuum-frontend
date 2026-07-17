@@ -230,6 +230,12 @@ function getSectionLabel(pathname: string): string {
 	if (pathname.startsWith("/admin/events")) {
 		return "Events";
 	}
+	if (pathname.startsWith("/admin/configuration")) {
+		return "Configuration";
+	}
+	if (pathname.startsWith("/admin/backups")) {
+		return "Backup & restore";
+	}
 	if (pathname.startsWith("/admin")) {
 		return "Admin";
 	}
@@ -689,6 +695,18 @@ const adminLinks: NavItem[] = [
 		label: "Events",
 		icon: <IconAudit />,
 		hint: "Events: inspect delivery health and retries",
+	},
+	{
+		href: "/admin/configuration",
+		label: "Configuration",
+		icon: <IconOverview />,
+		hint: "Configuration: inspect the redacted runtime configuration",
+	},
+	{
+		href: "/admin/backups",
+		label: "Backup & restore",
+		icon: <IconImport />,
+		hint: "Backup & restore: protect or replace all Hubuum data",
 	},
 ];
 

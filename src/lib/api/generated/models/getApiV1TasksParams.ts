@@ -3,12 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 0.0.2
  */
 
 export type GetApiV1TasksParams = {
 /**
- * Optional task kind filter (import|export|reindex|remote_call)
+ * Optional task kind filter (import|export|backup|reindex|remote_call)
  */
 kind: string;
 /**

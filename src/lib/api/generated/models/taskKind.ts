@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 0.0.2
  */
 
 export type TaskKind = typeof TaskKind[keyof typeof TaskKind];
@@ -12,6 +12,7 @@ export type TaskKind = typeof TaskKind[keyof typeof TaskKind];
 export const TaskKind = {
   import: 'import',
   export: 'export',
+  backup: 'backup',
   reindex: 'reindex',
   remote_call: 'remote_call',
 } as const;

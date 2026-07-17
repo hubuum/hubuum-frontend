@@ -3,20 +3,36 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 0.0.2
  */
 import type { ImportClassInput } from './importClassInput';
 import type { ImportClassRelationInput } from './importClassRelationInput';
 import type { ImportCollectionInput } from './importCollectionInput';
 import type { ImportCollectionPermissionInput } from './importCollectionPermissionInput';
+import type { ImportEventSinkInput } from './importEventSinkInput';
+import type { ImportEventSubscriptionInput } from './importEventSubscriptionInput';
+import type { ImportExportTemplateInput } from './importExportTemplateInput';
+import type { ImportGroupInput } from './importGroupInput';
+import type { ImportGroupMembershipInput } from './importGroupMembershipInput';
+import type { ImportIdentityScopeInput } from './importIdentityScopeInput';
 import type { ImportObjectInput } from './importObjectInput';
 import type { ImportObjectRelationInput } from './importObjectRelationInput';
+import type { ImportPrincipalInput } from './importPrincipalInput';
+import type { ImportRemoteTargetInput } from './importRemoteTargetInput';
 
 export interface ImportGraph {
   class_relations?: ImportClassRelationInput[];
   classes?: ImportClassInput[];
   collection_permissions?: ImportCollectionPermissionInput[];
   collections?: ImportCollectionInput[];
+  event_sinks?: ImportEventSinkInput[];
+  event_subscriptions?: ImportEventSubscriptionInput[];
+  export_templates?: ImportExportTemplateInput[];
+  group_memberships?: ImportGroupMembershipInput[];
+  groups?: ImportGroupInput[];
+  identity_scopes?: ImportIdentityScopeInput[];
   object_relations?: ImportObjectRelationInput[];
   objects?: ImportObjectInput[];
+  principals?: ImportPrincipalInput[];
+  remote_targets?: ImportRemoteTargetInput[];
 }

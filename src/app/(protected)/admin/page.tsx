@@ -60,6 +60,27 @@ export default function AdminLandingPage() {
 						Open events
 					</Link>
 				</article>
+
+				<article className="card stack">
+					<h3>Configuration</h3>
+					<p className="muted">
+						Inspect the server&apos;s redacted effective runtime configuration.
+					</p>
+					<Link className="link-chip" href="/admin/configuration">
+						Open configuration
+					</Link>
+				</article>
+
+				<article className="card stack">
+					<h3>Backup &amp; restore</h3>
+					<p className="muted">
+						Create downloadable backups or stage and confirm a full-system
+						restore.
+					</p>
+					<Link className="link-chip" href="/admin/backups">
+						Open backup &amp; restore
+					</Link>
+				</article>
 			</div>
 		</section>
 	);

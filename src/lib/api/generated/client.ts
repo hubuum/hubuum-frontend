@@ -3,15 +3,28 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 0.0.2
  */
 import type {
   ApiErrorResponse,
   AuthProvidersResponse,
+  BackupDocument,
+  BackupRequest,
+  ClassComputationState,
   ClearRateLimitResponse,
   Collection,
+  ComputedFieldDefinition,
+  ComputedFieldDefinitionPatch,
+  ComputedFieldDefinitionRequest,
+  ComputedFieldDeleteResponse,
+  ComputedFieldListResponse,
+  ComputedFieldMutationResponse,
+  ComputedFieldPreviewRequest,
+  ComputedFieldPreviewResponse,
   CountsResponse,
   DbStateResponse,
+  DeleteApiV1ClassesByClassIdComputedFieldsByFieldIdParams,
+  DeleteApiV1IamMeComputedFieldsByFieldIdParams,
   EffectiveGroupPermission,
   EventDelivery,
   EventDeliveryHealthResponse,
@@ -27,6 +40,7 @@ import type {
   GetApiV1ClassesByClassIdByObjectIdEventsParams,
   GetApiV1ClassesByClassIdByObjectIdHistoryAsOfParams,
   GetApiV1ClassesByClassIdByObjectIdHistoryParams,
+  GetApiV1ClassesByClassIdByObjectIdParams,
   GetApiV1ClassesByClassIdEventsParams,
   GetApiV1ClassesByClassIdHistoryAsOfParams,
   GetApiV1ClassesByClassIdHistoryParams,
@@ -53,6 +67,7 @@ import type {
   GetApiV1IamGroupsByGroupIdEventsParams,
   GetApiV1IamGroupsByGroupIdMembersParams,
   GetApiV1IamGroupsParams,
+  GetApiV1IamMeComputedFieldsParams,
   GetApiV1IamMeGroupsParams,
   GetApiV1IamMeTokensParams,
   GetApiV1IamPrincipalsByPrincipalIdGroupsParams,
@@ -79,6 +94,7 @@ import type {
   HubuumClassRelation,
   HubuumClassWithPath,
   HubuumObject,
+  HubuumObjectReadResponse,
   HubuumObjectRelation,
   HubuumObjectWithPath,
   ImportRequest,
@@ -97,14 +113,15 @@ import type {
   NewHubuumClass,
   NewHubuumClassRelation,
   NewHubuumClassRelationFromClass,
-  NewHubuumObject,
   NewHubuumObjectRelation,
+  NewHubuumObjectRequest,
   NewRemoteTarget,
   NewServiceAccount,
   NewTokenRequest,
   NewUser,
   Permission,
   Permissions,
+  PersonalComputedFieldDefinitionRequest,
   PrincipalCollectionPermissions,
   PrincipalMemberResponse,
   PrincipalSettings,
@@ -115,6 +132,8 @@ import type {
   ReleaseRateLimitResponse,
   RemoteTarget,
   RemoteTargetInvokeRequest,
+  RestoreConfirmRequest,
+  RestoreStageResponse,
   RunningConfig,
   ServiceAccountResponse,
   TaskEventResponse,
@@ -128,7 +147,7 @@ import type {
   UpdateExportTemplate,
   UpdateGroup,
   UpdateHubuumClass,
-  UpdateHubuumObject,
+  UpdateHubuumObjectRequest,
   UpdateRemoteTarget,
   UpdateServiceAccount,
   UpdateUser,
@@ -651,10 +670,15 @@ export type getApiV0MetaLoginRateLimitResponse403 = {
   status: 403
 }
 
+export type getApiV0MetaLoginRateLimitResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
 export type getApiV0MetaLoginRateLimitResponseSuccess = (getApiV0MetaLoginRateLimitResponse200) & {
   headers: Headers;
 };
-export type getApiV0MetaLoginRateLimitResponseError = (getApiV0MetaLoginRateLimitResponse401 | getApiV0MetaLoginRateLimitResponse403) & {
+export type getApiV0MetaLoginRateLimitResponseError = (getApiV0MetaLoginRateLimitResponse401 | getApiV0MetaLoginRateLimitResponse403 | getApiV0MetaLoginRateLimitResponse503) & {
   headers: Headers;
 };
 
@@ -714,10 +738,15 @@ export type deleteApiV0MetaLoginRateLimitResponse403 = {
   status: 403
 }
 
+export type deleteApiV0MetaLoginRateLimitResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
 export type deleteApiV0MetaLoginRateLimitResponseSuccess = (deleteApiV0MetaLoginRateLimitResponse200) & {
   headers: Headers;
 };
-export type deleteApiV0MetaLoginRateLimitResponseError = (deleteApiV0MetaLoginRateLimitResponse401 | deleteApiV0MetaLoginRateLimitResponse403) & {
+export type deleteApiV0MetaLoginRateLimitResponseError = (deleteApiV0MetaLoginRateLimitResponse401 | deleteApiV0MetaLoginRateLimitResponse403 | deleteApiV0MetaLoginRateLimitResponse503) & {
   headers: Headers;
 };
 
@@ -780,10 +809,15 @@ export type deleteApiV0MetaLoginRateLimitByIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV0MetaLoginRateLimitByIdResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
 export type deleteApiV0MetaLoginRateLimitByIdResponseSuccess = (deleteApiV0MetaLoginRateLimitByIdResponse200) & {
   headers: Headers;
 };
-export type deleteApiV0MetaLoginRateLimitByIdResponseError = (deleteApiV0MetaLoginRateLimitByIdResponse400 | deleteApiV0MetaLoginRateLimitByIdResponse401 | deleteApiV0MetaLoginRateLimitByIdResponse403 | deleteApiV0MetaLoginRateLimitByIdResponse404) & {
+export type deleteApiV0MetaLoginRateLimitByIdResponseError = (deleteApiV0MetaLoginRateLimitByIdResponse400 | deleteApiV0MetaLoginRateLimitByIdResponse401 | deleteApiV0MetaLoginRateLimitByIdResponse403 | deleteApiV0MetaLoginRateLimitByIdResponse404 | deleteApiV0MetaLoginRateLimitByIdResponse503) & {
   headers: Headers;
 };
 
@@ -929,6 +963,204 @@ export const getApiV1AdminConfig = async ( options?: RequestInit): Promise<getAp
 
   const data: getApiV1AdminConfigResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1AdminConfigResponse
+}
+
+
+
+export type postApiV1BackupsResponse202 = {
+  data: TaskResponse
+  status: 202
+}
+
+export type postApiV1BackupsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1BackupsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1BackupsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1BackupsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1BackupsResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1BackupsResponseSuccess = (postApiV1BackupsResponse202) & {
+  headers: Headers;
+};
+export type postApiV1BackupsResponseError = (postApiV1BackupsResponse400 | postApiV1BackupsResponse401 | postApiV1BackupsResponse403 | postApiV1BackupsResponse409 | postApiV1BackupsResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1BackupsResponse = (postApiV1BackupsResponseSuccess | postApiV1BackupsResponseError)
+
+export const getPostApiV1BackupsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/backups`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/backups.
+ * @summary Post Api V1 Backups
+ */
+export const postApiV1Backups = async (backupRequest: BackupRequest, options?: RequestInit): Promise<postApiV1BackupsResponse> => {
+
+  const res = await fetch(getPostApiV1BackupsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(backupRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1BackupsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1BackupsResponse
+}
+
+
+
+export type getApiV1BackupsByTaskIdResponse200 = {
+  data: TaskResponse
+  status: 200
+}
+
+export type getApiV1BackupsByTaskIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1BackupsByTaskIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1BackupsByTaskIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1BackupsByTaskIdResponseSuccess = (getApiV1BackupsByTaskIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1BackupsByTaskIdResponseError = (getApiV1BackupsByTaskIdResponse401 | getApiV1BackupsByTaskIdResponse403 | getApiV1BackupsByTaskIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1BackupsByTaskIdResponse = (getApiV1BackupsByTaskIdResponseSuccess | getApiV1BackupsByTaskIdResponseError)
+
+export const getGetApiV1BackupsByTaskIdUrl = (taskId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/backups/${taskId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/backups/{task_id}.
+ * @summary Get Api V1 Backups By Task Id
+ */
+export const getApiV1BackupsByTaskId = async (taskId: number, options?: RequestInit): Promise<getApiV1BackupsByTaskIdResponse> => {
+
+  const res = await fetch(getGetApiV1BackupsByTaskIdUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1BackupsByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1BackupsByTaskIdResponse
+}
+
+
+
+export type getApiV1BackupsByTaskIdOutputResponse200 = {
+  data: BackupDocument
+  status: 200
+}
+
+export type getApiV1BackupsByTaskIdOutputResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1BackupsByTaskIdOutputResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1BackupsByTaskIdOutputResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1BackupsByTaskIdOutputResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
+export type getApiV1BackupsByTaskIdOutputResponseSuccess = (getApiV1BackupsByTaskIdOutputResponse200) & {
+  headers: Headers;
+};
+export type getApiV1BackupsByTaskIdOutputResponseError = (getApiV1BackupsByTaskIdOutputResponse401 | getApiV1BackupsByTaskIdOutputResponse403 | getApiV1BackupsByTaskIdOutputResponse404 | getApiV1BackupsByTaskIdOutputResponse410) & {
+  headers: Headers;
+};
+
+export type getApiV1BackupsByTaskIdOutputResponse = (getApiV1BackupsByTaskIdOutputResponseSuccess | getApiV1BackupsByTaskIdOutputResponseError)
+
+export const getGetApiV1BackupsByTaskIdOutputUrl = (taskId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/backups/${taskId}/output`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/backups/{task_id}/output.
+ * @summary Get Api V1 Backups By Task Id Output
+ */
+export const getApiV1BackupsByTaskIdOutput = async (taskId: number, options?: RequestInit): Promise<getApiV1BackupsByTaskIdOutputResponse> => {
+
+  const res = await fetch(getGetApiV1BackupsByTaskIdOutputUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1BackupsByTaskIdOutputResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1BackupsByTaskIdOutputResponse
 }
 
 
@@ -1232,7 +1464,7 @@ export const patchApiV1ClassesByClassId = async (classId: number,
 
 
 export type getApiV1ClassesByClassIdTrailingResponse200 = {
-  data: HubuumObject[]
+  data: HubuumObjectReadResponse[]
   status: 200
 }
 
@@ -1343,14 +1575,14 @@ export const getPostApiV1ClassesByClassIdTrailingUrl = (classId: number,) => {
  * @summary Post Api V1 Classes By Class Id Trailing
  */
 export const postApiV1ClassesByClassIdTrailing = async (classId: number,
-    newHubuumObject: NewHubuumObject, options?: RequestInit): Promise<postApiV1ClassesByClassIdTrailingResponse> => {
+    newHubuumObjectRequest: NewHubuumObjectRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdTrailingResponse> => {
 
   const res = await fetch(getPostApiV1ClassesByClassIdTrailingUrl(classId),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(newHubuumObject)
+    body: JSON.stringify(newHubuumObjectRequest)
   }
 )
 
@@ -1359,6 +1591,353 @@ export const postApiV1ClassesByClassIdTrailing = async (classId: number,
 
   const data: postApiV1ClassesByClassIdTrailingResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdTrailingResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdComputedFieldsResponse200 = {
+  data: ComputedFieldListResponse
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdComputedFieldsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdComputedFieldsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdComputedFieldsResponseSuccess = (getApiV1ClassesByClassIdComputedFieldsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdComputedFieldsResponseError = (getApiV1ClassesByClassIdComputedFieldsResponse401 | getApiV1ClassesByClassIdComputedFieldsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdComputedFieldsResponse = (getApiV1ClassesByClassIdComputedFieldsResponseSuccess | getApiV1ClassesByClassIdComputedFieldsResponseError)
+
+export const getGetApiV1ClassesByClassIdComputedFieldsUrl = (classId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/computed-fields.
+ * @summary Get Api V1 Classes By Class Id Computed Fields
+ */
+export const getApiV1ClassesByClassIdComputedFields = async (classId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdComputedFieldsResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdComputedFieldsUrl(classId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdComputedFieldsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdComputedFieldsResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdComputedFieldsResponse201 = {
+  data: ComputedFieldMutationResponse
+  status: 201
+}
+
+export type postApiV1ClassesByClassIdComputedFieldsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByClassIdComputedFieldsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1ClassesByClassIdComputedFieldsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByClassIdComputedFieldsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ClassesByClassIdComputedFieldsResponseSuccess = (postApiV1ClassesByClassIdComputedFieldsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdComputedFieldsResponseError = (postApiV1ClassesByClassIdComputedFieldsResponse400 | postApiV1ClassesByClassIdComputedFieldsResponse401 | postApiV1ClassesByClassIdComputedFieldsResponse403 | postApiV1ClassesByClassIdComputedFieldsResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdComputedFieldsResponse = (postApiV1ClassesByClassIdComputedFieldsResponseSuccess | postApiV1ClassesByClassIdComputedFieldsResponseError)
+
+export const getPostApiV1ClassesByClassIdComputedFieldsUrl = (classId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/computed-fields.
+ * @summary Post Api V1 Classes By Class Id Computed Fields
+ */
+export const postApiV1ClassesByClassIdComputedFields = async (classId: number,
+    computedFieldDefinitionRequest: ComputedFieldDefinitionRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdComputedFieldsResponse> => {
+
+  const res = await fetch(getPostApiV1ClassesByClassIdComputedFieldsUrl(classId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(computedFieldDefinitionRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdComputedFieldsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdComputedFieldsResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdComputedFieldsPreviewResponse200 = {
+  data: ComputedFieldPreviewResponse
+  status: 200
+}
+
+export type postApiV1ClassesByClassIdComputedFieldsPreviewResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByClassIdComputedFieldsPreviewResponseSuccess = (postApiV1ClassesByClassIdComputedFieldsPreviewResponse200) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdComputedFieldsPreviewResponseError = (postApiV1ClassesByClassIdComputedFieldsPreviewResponse400) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdComputedFieldsPreviewResponse = (postApiV1ClassesByClassIdComputedFieldsPreviewResponseSuccess | postApiV1ClassesByClassIdComputedFieldsPreviewResponseError)
+
+export const getPostApiV1ClassesByClassIdComputedFieldsPreviewUrl = (classId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields/preview`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/computed-fields/preview.
+ * @summary Post Api V1 Classes By Class Id Computed Fields Preview
+ */
+export const postApiV1ClassesByClassIdComputedFieldsPreview = async (classId: number,
+    computedFieldPreviewRequest: ComputedFieldPreviewRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdComputedFieldsPreviewResponse> => {
+
+  const res = await fetch(getPostApiV1ClassesByClassIdComputedFieldsPreviewUrl(classId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(computedFieldPreviewRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdComputedFieldsPreviewResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdComputedFieldsPreviewResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdComputedFieldsRebuildResponse202 = {
+  data: ClassComputationState
+  status: 202
+}
+
+export type postApiV1ClassesByClassIdComputedFieldsRebuildResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByClassIdComputedFieldsRebuildResponseSuccess = (postApiV1ClassesByClassIdComputedFieldsRebuildResponse202) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdComputedFieldsRebuildResponseError = (postApiV1ClassesByClassIdComputedFieldsRebuildResponse403) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdComputedFieldsRebuildResponse = (postApiV1ClassesByClassIdComputedFieldsRebuildResponseSuccess | postApiV1ClassesByClassIdComputedFieldsRebuildResponseError)
+
+export const getPostApiV1ClassesByClassIdComputedFieldsRebuildUrl = (classId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields/rebuild`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/computed-fields/rebuild.
+ * @summary Post Api V1 Classes By Class Id Computed Fields Rebuild
+ */
+export const postApiV1ClassesByClassIdComputedFieldsRebuild = async (classId: number, options?: RequestInit): Promise<postApiV1ClassesByClassIdComputedFieldsRebuildResponse> => {
+
+  const res = await fetch(getPostApiV1ClassesByClassIdComputedFieldsRebuildUrl(classId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdComputedFieldsRebuildResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdComputedFieldsRebuildResponse
+}
+
+
+
+export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse202 = {
+  data: ComputedFieldDeleteResponse
+  status: 202
+}
+
+export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponseSuccess = (deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse202) & {
+  headers: Headers;
+};
+export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError = (deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse409) & {
+  headers: Headers;
+};
+
+export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse = (deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponseSuccess | deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError)
+
+export const getDeleteApiV1ClassesByClassIdComputedFieldsByFieldIdUrl = (classId: number,
+    fieldId: number,
+    params: DeleteApiV1ClassesByClassIdComputedFieldsByFieldIdParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields/${fieldId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields/${fieldId}`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/classes/{class_id}/computed-fields/{field_id}.
+ * @summary Delete Api V1 Classes By Class Id Computed Fields By Field Id
+ */
+export const deleteApiV1ClassesByClassIdComputedFieldsByFieldId = async (classId: number,
+    fieldId: number,
+    params: DeleteApiV1ClassesByClassIdComputedFieldsByFieldIdParams, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1ClassesByClassIdComputedFieldsByFieldIdUrl(classId,fieldId,params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse
+}
+
+
+
+export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse200 = {
+  data: ComputedFieldMutationResponse
+  status: 200
+}
+
+export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponseSuccess = (patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError = (patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse400 | patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse409) & {
+  headers: Headers;
+};
+
+export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse = (patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponseSuccess | patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError)
+
+export const getPatchApiV1ClassesByClassIdComputedFieldsByFieldIdUrl = (classId: number,
+    fieldId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields/${fieldId}`
+}
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/classes/{class_id}/computed-fields/{field_id}.
+ * @summary Patch Api V1 Classes By Class Id Computed Fields By Field Id
+ */
+export const patchApiV1ClassesByClassIdComputedFieldsByFieldId = async (classId: number,
+    fieldId: number,
+    computedFieldDefinitionPatch: ComputedFieldDefinitionPatch, options?: RequestInit): Promise<patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse> => {
+
+  const res = await fetch(getPatchApiV1ClassesByClassIdComputedFieldsByFieldIdUrl(classId,fieldId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(computedFieldDefinitionPatch)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse
 }
 
 
@@ -2368,7 +2947,7 @@ export const deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToOb
 
 
 export type getApiV1ClassesByClassIdByObjectIdResponse200 = {
-  data: HubuumObject
+  data: HubuumObjectReadResponse
   status: 200
 }
 
@@ -2392,12 +2971,20 @@ export type getApiV1ClassesByClassIdByObjectIdResponseError = (getApiV1ClassesBy
 export type getApiV1ClassesByClassIdByObjectIdResponse = (getApiV1ClassesByClassIdByObjectIdResponseSuccess | getApiV1ClassesByClassIdByObjectIdResponseError)
 
 export const getGetApiV1ClassesByClassIdByObjectIdUrl = (classId: number,
-    objectId: number,) => {
+    objectId: number,
+    params?: GetApiV1ClassesByClassIdByObjectIdParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${objectId}`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${objectId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${objectId}`
 }
 
 /**
@@ -2405,9 +2992,10 @@ export const getGetApiV1ClassesByClassIdByObjectIdUrl = (classId: number,
  * @summary Get Api V1 Classes By Class Id By Object Id
  */
 export const getApiV1ClassesByClassIdByObjectId = async (classId: number,
-    objectId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdByObjectIdResponse> => {
+    objectId: number,
+    params?: GetApiV1ClassesByClassIdByObjectIdParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdByObjectIdResponse> => {
 
-  const res = await fetch(getGetApiV1ClassesByClassIdByObjectIdUrl(classId,objectId),
+  const res = await fetch(getGetApiV1ClassesByClassIdByObjectIdUrl(classId,objectId,params),
   {
     ...options,
     method: 'GET'
@@ -2527,14 +3115,14 @@ export const getPatchApiV1ClassesByClassIdByObjectIdUrl = (classId: number,
  */
 export const patchApiV1ClassesByClassIdByObjectId = async (classId: number,
     objectId: number,
-    updateHubuumObject: UpdateHubuumObject, options?: RequestInit): Promise<patchApiV1ClassesByClassIdByObjectIdResponse> => {
+    updateHubuumObjectRequest: UpdateHubuumObjectRequest, options?: RequestInit): Promise<patchApiV1ClassesByClassIdByObjectIdResponse> => {
 
   const res = await fetch(getPatchApiV1ClassesByClassIdByObjectIdUrl(classId,objectId),
   {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(updateHubuumObject)
+    body: JSON.stringify(updateHubuumObjectRequest)
   }
 )
 
@@ -2562,10 +3150,15 @@ export type getApiV1ClassesByClassIdByObjectIdEventsResponse401 = {
   status: 401
 }
 
+export type getApiV1ClassesByClassIdByObjectIdEventsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
 export type getApiV1ClassesByClassIdByObjectIdEventsResponseSuccess = (getApiV1ClassesByClassIdByObjectIdEventsResponse200) & {
   headers: Headers;
 };
-export type getApiV1ClassesByClassIdByObjectIdEventsResponseError = (getApiV1ClassesByClassIdByObjectIdEventsResponse400 | getApiV1ClassesByClassIdByObjectIdEventsResponse401) & {
+export type getApiV1ClassesByClassIdByObjectIdEventsResponseError = (getApiV1ClassesByClassIdByObjectIdEventsResponse400 | getApiV1ClassesByClassIdByObjectIdEventsResponse401 | getApiV1ClassesByClassIdByObjectIdEventsResponse404) & {
   headers: Headers;
 };
 
@@ -5854,6 +6447,11 @@ export type postApiV1ExportsResponse401 = {
   status: 401
 }
 
+export type postApiV1ExportsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
 export type postApiV1ExportsResponse409 = {
   data: ApiErrorResponse
   status: 409
@@ -5867,7 +6465,7 @@ export type postApiV1ExportsResponse429 = {
 export type postApiV1ExportsResponseSuccess = (postApiV1ExportsResponse202) & {
   headers: Headers;
 };
-export type postApiV1ExportsResponseError = (postApiV1ExportsResponse400 | postApiV1ExportsResponse401 | postApiV1ExportsResponse409 | postApiV1ExportsResponse429) & {
+export type postApiV1ExportsResponseError = (postApiV1ExportsResponse400 | postApiV1ExportsResponse401 | postApiV1ExportsResponse403 | postApiV1ExportsResponse409 | postApiV1ExportsResponse429) & {
   headers: Headers;
 };
 
@@ -6643,6 +7241,278 @@ export const getApiV1IamMe = async ( options?: RequestInit): Promise<getApiV1Iam
 
   const data: getApiV1IamMeResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1IamMeResponse
+}
+
+
+
+export type getApiV1IamMeComputedFieldsResponse200 = {
+  data: ComputedFieldDefinition[]
+  status: 200
+}
+
+export type getApiV1IamMeComputedFieldsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1IamMeComputedFieldsResponseSuccess = (getApiV1IamMeComputedFieldsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMeComputedFieldsResponseError = (getApiV1IamMeComputedFieldsResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMeComputedFieldsResponse = (getApiV1IamMeComputedFieldsResponseSuccess | getApiV1IamMeComputedFieldsResponseError)
+
+export const getGetApiV1IamMeComputedFieldsUrl = (params?: GetApiV1IamMeComputedFieldsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me/computed-fields.
+ * @summary Get Api V1 Iam Me Computed Fields
+ */
+export const getApiV1IamMeComputedFields = async (params?: GetApiV1IamMeComputedFieldsParams, options?: RequestInit): Promise<getApiV1IamMeComputedFieldsResponse> => {
+
+  const res = await fetch(getGetApiV1IamMeComputedFieldsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1IamMeComputedFieldsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMeComputedFieldsResponse
+}
+
+
+
+export type postApiV1IamMeComputedFieldsResponse201 = {
+  data: ComputedFieldDefinition
+  status: 201
+}
+
+export type postApiV1IamMeComputedFieldsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1IamMeComputedFieldsResponseSuccess = (postApiV1IamMeComputedFieldsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1IamMeComputedFieldsResponseError = (postApiV1IamMeComputedFieldsResponse403) & {
+  headers: Headers;
+};
+
+export type postApiV1IamMeComputedFieldsResponse = (postApiV1IamMeComputedFieldsResponseSuccess | postApiV1IamMeComputedFieldsResponseError)
+
+export const getPostApiV1IamMeComputedFieldsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/iam/me/computed-fields.
+ * @summary Post Api V1 Iam Me Computed Fields
+ */
+export const postApiV1IamMeComputedFields = async (personalComputedFieldDefinitionRequest: PersonalComputedFieldDefinitionRequest, options?: RequestInit): Promise<postApiV1IamMeComputedFieldsResponse> => {
+
+  const res = await fetch(getPostApiV1IamMeComputedFieldsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(personalComputedFieldDefinitionRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1IamMeComputedFieldsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1IamMeComputedFieldsResponse
+}
+
+
+
+export type postApiV1IamMeComputedFieldsPreviewResponse200 = {
+  data: ComputedFieldPreviewResponse
+  status: 200
+}
+
+export type postApiV1IamMeComputedFieldsPreviewResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1IamMeComputedFieldsPreviewResponseSuccess = (postApiV1IamMeComputedFieldsPreviewResponse200) & {
+  headers: Headers;
+};
+export type postApiV1IamMeComputedFieldsPreviewResponseError = (postApiV1IamMeComputedFieldsPreviewResponse400) & {
+  headers: Headers;
+};
+
+export type postApiV1IamMeComputedFieldsPreviewResponse = (postApiV1IamMeComputedFieldsPreviewResponseSuccess | postApiV1IamMeComputedFieldsPreviewResponseError)
+
+export const getPostApiV1IamMeComputedFieldsPreviewUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields/preview`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/iam/me/computed-fields/preview.
+ * @summary Post Api V1 Iam Me Computed Fields Preview
+ */
+export const postApiV1IamMeComputedFieldsPreview = async (computedFieldPreviewRequest: ComputedFieldPreviewRequest, options?: RequestInit): Promise<postApiV1IamMeComputedFieldsPreviewResponse> => {
+
+  const res = await fetch(getPostApiV1IamMeComputedFieldsPreviewUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(computedFieldPreviewRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1IamMeComputedFieldsPreviewResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1IamMeComputedFieldsPreviewResponse
+}
+
+
+
+export type deleteApiV1IamMeComputedFieldsByFieldIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1IamMeComputedFieldsByFieldIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type deleteApiV1IamMeComputedFieldsByFieldIdResponseSuccess = (deleteApiV1IamMeComputedFieldsByFieldIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1IamMeComputedFieldsByFieldIdResponseError = (deleteApiV1IamMeComputedFieldsByFieldIdResponse409) & {
+  headers: Headers;
+};
+
+export type deleteApiV1IamMeComputedFieldsByFieldIdResponse = (deleteApiV1IamMeComputedFieldsByFieldIdResponseSuccess | deleteApiV1IamMeComputedFieldsByFieldIdResponseError)
+
+export const getDeleteApiV1IamMeComputedFieldsByFieldIdUrl = (fieldId: number,
+    params: DeleteApiV1IamMeComputedFieldsByFieldIdParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields/${fieldId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields/${fieldId}`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/iam/me/computed-fields/{field_id}.
+ * @summary Delete Api V1 Iam Me Computed Fields By Field Id
+ */
+export const deleteApiV1IamMeComputedFieldsByFieldId = async (fieldId: number,
+    params: DeleteApiV1IamMeComputedFieldsByFieldIdParams, options?: RequestInit): Promise<deleteApiV1IamMeComputedFieldsByFieldIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1IamMeComputedFieldsByFieldIdUrl(fieldId,params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1IamMeComputedFieldsByFieldIdResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deleteApiV1IamMeComputedFieldsByFieldIdResponse
+}
+
+
+
+export type patchApiV1IamMeComputedFieldsByFieldIdResponse200 = {
+  data: ComputedFieldDefinition
+  status: 200
+}
+
+export type patchApiV1IamMeComputedFieldsByFieldIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1IamMeComputedFieldsByFieldIdResponseSuccess = (patchApiV1IamMeComputedFieldsByFieldIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1IamMeComputedFieldsByFieldIdResponseError = (patchApiV1IamMeComputedFieldsByFieldIdResponse409) & {
+  headers: Headers;
+};
+
+export type patchApiV1IamMeComputedFieldsByFieldIdResponse = (patchApiV1IamMeComputedFieldsByFieldIdResponseSuccess | patchApiV1IamMeComputedFieldsByFieldIdResponseError)
+
+export const getPatchApiV1IamMeComputedFieldsByFieldIdUrl = (fieldId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields/${fieldId}`
+}
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/iam/me/computed-fields/{field_id}.
+ * @summary Patch Api V1 Iam Me Computed Fields By Field Id
+ */
+export const patchApiV1IamMeComputedFieldsByFieldId = async (fieldId: number,
+    computedFieldDefinitionPatch: ComputedFieldDefinitionPatch, options?: RequestInit): Promise<patchApiV1IamMeComputedFieldsByFieldIdResponse> => {
+
+  const res = await fetch(getPatchApiV1IamMeComputedFieldsByFieldIdUrl(fieldId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(computedFieldDefinitionPatch)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1IamMeComputedFieldsByFieldIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1IamMeComputedFieldsByFieldIdResponse
 }
 
 
@@ -8413,6 +9283,11 @@ export type postApiV1ImportsResponse401 = {
   status: 401
 }
 
+export type postApiV1ImportsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
 export type postApiV1ImportsResponse409 = {
   data: ApiErrorResponse
   status: 409
@@ -8426,7 +9301,7 @@ export type postApiV1ImportsResponse429 = {
 export type postApiV1ImportsResponseSuccess = (postApiV1ImportsResponse202) & {
   headers: Headers;
 };
-export type postApiV1ImportsResponseError = (postApiV1ImportsResponse400 | postApiV1ImportsResponse401 | postApiV1ImportsResponse409 | postApiV1ImportsResponse429) & {
+export type postApiV1ImportsResponseError = (postApiV1ImportsResponse400 | postApiV1ImportsResponse401 | postApiV1ImportsResponse403 | postApiV1ImportsResponse409 | postApiV1ImportsResponse429) & {
   headers: Headers;
 };
 
@@ -9652,6 +10527,205 @@ export const postApiV1RemoteTargetsByTargetIdInvoke = async (targetId: number,
 
   const data: postApiV1RemoteTargetsByTargetIdInvokeResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1RemoteTargetsByTargetIdInvokeResponse
+}
+
+
+
+export type postApiV1RestoresResponse201 = {
+  data: RestoreStageResponse
+  status: 201
+}
+
+export type postApiV1RestoresResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1RestoresResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1RestoresResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1RestoresResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type postApiV1RestoresResponseSuccess = (postApiV1RestoresResponse201) & {
+  headers: Headers;
+};
+export type postApiV1RestoresResponseError = (postApiV1RestoresResponse400 | postApiV1RestoresResponse401 | postApiV1RestoresResponse403 | postApiV1RestoresResponse413) & {
+  headers: Headers;
+};
+
+export type postApiV1RestoresResponse = (postApiV1RestoresResponseSuccess | postApiV1RestoresResponseError)
+
+export const getPostApiV1RestoresUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/restores`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/restores.
+ * @summary Post Api V1 Restores
+ */
+export const postApiV1Restores = async (backupDocument: BackupDocument, options?: RequestInit): Promise<postApiV1RestoresResponse> => {
+
+  const res = await fetch(getPostApiV1RestoresUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(backupDocument)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1RestoresResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1RestoresResponse
+}
+
+
+
+export type postApiV1RestoresByRestoreIdConfirmResponse200 = {
+  data: RestoreStageResponse
+  status: 200
+}
+
+export type postApiV1RestoresByRestoreIdConfirmResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1RestoresByRestoreIdConfirmResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1RestoresByRestoreIdConfirmResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1RestoresByRestoreIdConfirmResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1RestoresByRestoreIdConfirmResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
+export type postApiV1RestoresByRestoreIdConfirmResponseSuccess = (postApiV1RestoresByRestoreIdConfirmResponse200) & {
+  headers: Headers;
+};
+export type postApiV1RestoresByRestoreIdConfirmResponseError = (postApiV1RestoresByRestoreIdConfirmResponse400 | postApiV1RestoresByRestoreIdConfirmResponse401 | postApiV1RestoresByRestoreIdConfirmResponse403 | postApiV1RestoresByRestoreIdConfirmResponse409 | postApiV1RestoresByRestoreIdConfirmResponse410) & {
+  headers: Headers;
+};
+
+export type postApiV1RestoresByRestoreIdConfirmResponse = (postApiV1RestoresByRestoreIdConfirmResponseSuccess | postApiV1RestoresByRestoreIdConfirmResponseError)
+
+export const getPostApiV1RestoresByRestoreIdConfirmUrl = (restoreId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/restores/${restoreId}/confirm`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/restores/{restore_id}/confirm.
+ * @summary Post Api V1 Restores By Restore Id Confirm
+ */
+export const postApiV1RestoresByRestoreIdConfirm = async (restoreId: number,
+    restoreConfirmRequest: RestoreConfirmRequest, options?: RequestInit): Promise<postApiV1RestoresByRestoreIdConfirmResponse> => {
+
+  const res = await fetch(getPostApiV1RestoresByRestoreIdConfirmUrl(restoreId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(restoreConfirmRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1RestoresByRestoreIdConfirmResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1RestoresByRestoreIdConfirmResponse
+}
+
+
+
+export type getApiV1RestoresByRestoreIdStatusResponse200 = {
+  data: RestoreStageResponse
+  status: 200
+}
+
+export type getApiV1RestoresByRestoreIdStatusResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1RestoresByRestoreIdStatusResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1RestoresByRestoreIdStatusResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1RestoresByRestoreIdStatusResponseSuccess = (getApiV1RestoresByRestoreIdStatusResponse200) & {
+  headers: Headers;
+};
+export type getApiV1RestoresByRestoreIdStatusResponseError = (getApiV1RestoresByRestoreIdStatusResponse400 | getApiV1RestoresByRestoreIdStatusResponse403 | getApiV1RestoresByRestoreIdStatusResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1RestoresByRestoreIdStatusResponse = (getApiV1RestoresByRestoreIdStatusResponseSuccess | getApiV1RestoresByRestoreIdStatusResponseError)
+
+export const getGetApiV1RestoresByRestoreIdStatusUrl = (restoreId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/restores/${restoreId}/status`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/restores/{restore_id}/status.
+ * @summary Get Api V1 Restores By Restore Id Status
+ */
+export const getApiV1RestoresByRestoreIdStatus = async (restoreId: number, options?: RequestInit): Promise<getApiV1RestoresByRestoreIdStatusResponse> => {
+
+  const res = await fetch(getGetApiV1RestoresByRestoreIdStatusUrl(restoreId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1RestoresByRestoreIdStatusResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1RestoresByRestoreIdStatusResponse
 }
 
 

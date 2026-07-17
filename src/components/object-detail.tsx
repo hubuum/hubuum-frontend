@@ -34,6 +34,7 @@ import type {
 	GroupPermission,
 	HubuumClassExpanded,
 	HubuumObject,
+	HubuumObjectComputedResponse,
 	HubuumObjectWithPath,
 	Collection,
 	UpdateHubuumObject,
@@ -93,10 +94,13 @@ const OBJECT_DATA_FIELD_TYPES: Array<{
 async function fetchObject(
 	classId: number,
 	objectId: number,
-): Promise<HubuumObject> {
-	const response = await getApiV1ClassesByClassIdByObjectId(classId, objectId, {
-		credentials: "include",
-	});
+): Promise<HubuumObjectComputedResponse> {
+	const response = await getApiV1ClassesByClassIdByObjectId(
+		classId,
+		objectId,
+		{ include: "computed" },
+		{ credentials: "include" },
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -104,7 +108,7 @@ async function fetchObject(
 		);
 	}
 
-	return response.data;
+	return response.data as HubuumObjectComputedResponse;
 }
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
@@ -484,6 +488,55 @@ function ObjectPropertyItem({
 			<dt title={typeof label === "string" ? label : undefined}>{label}</dt>
 			<dd>{children}</dd>
 		</div>
+	);
+}
+
+function formatComputedValue(value: unknown): string {
+	if (typeof value === "string") return value;
+	const formatted = JSON.stringify(value);
+	return formatted ?? String(value);
+}
+
+function ComputedValueScope({
+	title,
+	values,
+	errors,
+}: {
+	title: string;
+	values: Record<string, unknown>;
+	errors: Record<string, { code: string; message: string; path?: string | null }>;
+}) {
+	const entries = Object.entries(values).sort(([left], [right]) =>
+		left.localeCompare(right),
+	);
+	const errorEntries = Object.entries(errors).sort(([left], [right]) =>
+		left.localeCompare(right),
+	);
+
+	return (
+		<section className="card stack panel-card">
+			<h3>{title}</h3>
+			{entries.length === 0 && errorEntries.length === 0 ? (
+				<p className="muted">No enabled computed values.</p>
+			) : null}
+			{entries.length > 0 ? (
+				<dl className="object-property-grid object-property-grid--data">
+					{entries.map(([key, value]) => (
+						<ObjectPropertyItem key={key} label={key}>
+							<span title={formatComputedValue(value)}>
+								{formatComputedValue(value)}
+							</span>
+						</ObjectPropertyItem>
+					))}
+				</dl>
+			) : null}
+			{errorEntries.map(([key, error]) => (
+				<div className="error-banner" key={key}>
+					<strong>{key}</strong>: {error.message} ({error.code})
+					{error.path ? ` at ${error.path}` : ""}
+				</div>
+			))}
+		</section>
 	);
 }
 
@@ -2312,6 +2365,36 @@ export function ObjectDetail({
 					</div>
 				) : null}
 			</form>
+
+			<section className="stack" aria-labelledby="object-computed-heading">
+				<header className="relations-toolbar">
+					<div>
+						<p className="eyebrow">Derived data</p>
+						<h2 id="object-computed-heading">Computed values</h2>
+					</div>
+					<Link className="link-chip" href={`/classes/${classId}#computed-fields`}>
+						Manage fields
+					</Link>
+				</header>
+				{objectData.computed.shared.materialization_stale ? (
+					<div className="error-banner" role="status">
+						Shared values are stale while revision{" "}
+						{objectData.computed.shared.revision} is being materialized.
+					</div>
+				) : null}
+				<div className="grid cols-2">
+					<ComputedValueScope
+						title={`Shared · revision ${objectData.computed.shared.revision}`}
+						values={objectData.computed.shared.values}
+						errors={objectData.computed.shared.errors}
+					/>
+					<ComputedValueScope
+						title="Personal"
+						values={objectData.computed.personal?.values ?? {}}
+						errors={objectData.computed.personal?.errors ?? {}}
+					/>
+				</div>
+			</section>
 
 			<RemoteInvocationsPanel
 				collectionId={objectData.collection_id}

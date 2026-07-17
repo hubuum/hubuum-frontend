@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
 
 env:
-  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.1@sha256:061fc4cb3af57e2db06c33012db93e60834d4618815e30af4ebb4aa05a21f445
+  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.2@sha256:8f543383b422124546c8d337fd557e1b182b1b6c7078d7870d3c5cd4f955ef1f
   IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
@@ -61,7 +61,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Test against Hubuum Server v0.0.1
+      - name: Test against Hubuum Server v0.0.2
         env:
           HUBUUM_LIVE_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: npm run test:live-backend
@@ -143,7 +143,7 @@ jobs:
           HUBUUM_FRONTEND_IMAGE: hubuum-frontend:ci
           HUBUUM_FRONTEND_PORT: 13001
         run: bash scripts/quickstart-smoke.sh
-      - name: Smoke test frontend BFF against Hubuum Server v0.0.1
+      - name: Smoke test frontend BFF against Hubuum Server v0.0.2
         env:
           HUBUUM_COMPAT_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: bash scripts/release-stack-smoke.sh
@@ -242,7 +242,7 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
             --username "${{ github.actor }}" \
             --password-stdin
-          version="0.0.1-main.${GITHUB_RUN_NUMBER}"
+          version="0.0.2-main.${GITHUB_RUN_NUMBER}"
           helm package charts/hubuum-frontend \
             --destination /tmp \
             --version "$version" \

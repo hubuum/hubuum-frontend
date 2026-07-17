@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 0.0.2
  */
 import type { TlsConfig } from './tlsConfig';
 
@@ -16,5 +16,6 @@ export interface ServerConfig {
   log_level: string;
   metrics_enabled: boolean;
   metrics_path: string;
+  runtime_role: string;
   tls: TlsConfig;
 }
