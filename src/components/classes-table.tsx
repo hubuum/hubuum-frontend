@@ -577,7 +577,6 @@ export function ClassesTable() {
 			<div className="card resource-index">
 				<div className="table-header">
 					<div className="resource-index-title">
-						<p className="eyebrow">Data model</p>
 						<div className="table-title-row">
 							<h2>Classes</h2>
 							<span className="muted table-count">

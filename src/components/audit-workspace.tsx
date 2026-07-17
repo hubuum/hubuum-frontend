@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
+import { EventDetailsModal } from "@/components/event-details-modal";
 import { TableExportMenu } from "@/components/table-export-menu";
 import {
 	type EventListOptions,
@@ -35,7 +36,10 @@ function formatTimestamp(value: string | null | undefined): string {
 	}
 }
 
-function formatActor(actorKind: string, actorUserId: number | null | undefined): string {
+function formatActor(
+	actorKind: string,
+	actorUserId: number | null | undefined,
+): string {
 	if (actorUserId == null) {
 		return actorKind;
 	}
@@ -77,6 +81,7 @@ const eventExportColumns: TableExportColumn<EventRecord>[] = [
 ];
 
 export function AuditWorkspace() {
+	const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
 	const [cursor, setCursor] = useState("");
 	const [filters, setFilters] = useState<EventListOptions>({
 		limit: 50,
@@ -140,6 +145,10 @@ export function AuditWorkspace() {
 
 	return (
 		<section className="stack">
+			<EventDetailsModal
+				event={selectedEvent}
+				onClose={() => setSelectedEvent(null)}
+			/>
 			<header className="stack action-card-header">
 				<div className="stack action-card-header">
 					<p className="eyebrow">Audit</p>
@@ -291,7 +300,22 @@ export function AuditWorkspace() {
 							</thead>
 							<tbody>
 								{eventsQuery.data.items.map((event) => (
-									<tr key={event.id}>
+									<tr
+										key={event.id}
+										className="audit-event-row"
+										tabIndex={0}
+										onClick={() => setSelectedEvent(event)}
+										onKeyDown={(keyboardEvent) => {
+											if (
+												keyboardEvent.key === "Enter" ||
+												keyboardEvent.key === " "
+											) {
+												keyboardEvent.preventDefault();
+												setSelectedEvent(event);
+											}
+										}}
+										aria-label={`View details for event ${event.event_id}`}
+									>
 										<td>{formatTimestamp(event.occurred_at)}</td>
 										<td>
 											{event.entity_type}
@@ -299,7 +323,9 @@ export function AuditWorkspace() {
 											{event.entity_name ? ` / ${event.entity_name}` : ""}
 										</td>
 										<td>{event.action}</td>
-										<td>{formatActor(event.actor_kind, event.actor_user_id)}</td>
+										<td>
+											{formatActor(event.actor_kind, event.actor_user_id)}
+										</td>
 										<td>{event.collection_id ?? "n/a"}</td>
 										<td>{event.summary}</td>
 										<td>{event.correlation_id ?? "n/a"}</td>

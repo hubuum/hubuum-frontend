@@ -2,6 +2,8 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ExportTemplatesByTemplateId,
 	getApiV1ExportTemplates,
+	getApiV1ExportTemplatesByTemplateId,
+	getApiV1ExportTemplatesByTemplateIdHistory,
 	getApiV1ExportsByTaskId,
 	patchApiV1ExportTemplatesByTemplateId,
 	postApiV1ExportTemplates,
@@ -24,6 +26,7 @@ import type {
 	ExportTemplateKind,
 	ExportTemplateRunRequest,
 	GetApiV1ExportTemplatesParams,
+	HistoryResponseExportTemplateHistory,
 	NewExportTemplate,
 	TaskResponse,
 	UpdateExportTemplate,
@@ -42,6 +45,7 @@ export type ReportRelationContext = ExportRelationContext;
 export type ReportRequest = ExportRequest;
 export type ReportScopeKind = ExportScopeKind;
 export type ReportTemplate = ExportTemplate;
+export type ReportTemplateHistory = HistoryResponseExportTemplateHistory;
 export type ReportTemplateKind = ExportTemplateKind;
 export type ReportTemplateRunRequest = ExportTemplateRunRequest;
 export type UpdateReportTemplate = UpdateExportTemplate;
@@ -121,6 +125,40 @@ export async function listReportTemplates(
 		items: response.data,
 		nextCursor: response.headers.get("x-next-cursor"),
 	};
+}
+
+export async function getReportTemplate(
+	templateId: number,
+): Promise<ReportTemplate> {
+	const response = await getApiV1ExportTemplatesByTemplateId(templateId, {
+		credentials: "include",
+	});
+
+	if (response.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to load export template."),
+		);
+	}
+
+	return response.data;
+}
+
+export async function listReportTemplateHistory(
+	templateId: number,
+): Promise<ReportTemplateHistory[]> {
+	const response = await getApiV1ExportTemplatesByTemplateIdHistory(
+		templateId,
+		{ include_total: false, limit: 50, sort: "valid_from.desc" },
+		{ credentials: "include" },
+	);
+
+	if (response.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to load template history."),
+		);
+	}
+
+	return response.data;
 }
 
 export async function createReportTemplate(

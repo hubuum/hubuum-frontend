@@ -1,16 +1,41 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FormEvent, useState } from "react";
+import { CreateModal } from "@/components/create-modal";
+import { JsonEditor } from "@/components/json-editor";
 import { TableExportMenu } from "@/components/table-export-menu";
 import {
+	createEventSink,
+	deleteEventSink,
 	fetchEventDeliveriesPage,
 	fetchEventDeliveryHealth,
 	fetchEventSinks,
 	markEventDeliveryDead,
 	retryEventDelivery,
+	updateEventSink,
 } from "@/lib/api/events";
-import type { EventDelivery, EventSink } from "@/lib/api/generated/models";
+import type {
+	EventDelivery,
+	EventSink,
+	EventSinkKind,
+	NewEventSink,
+} from "@/lib/api/generated/models";
+import { useConfirm } from "@/lib/confirm-context";
+import {
+	buildEventSinkPayload,
+	defaultEventSinkFormState,
+	EVENT_SINK_KINDS,
+	eventSinkToFormState,
+	type EventSinkFormState,
+} from "@/lib/event-sink-form";
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
+
+type SinkFormMode = "create" | "edit";
+
+function formatSinkKind(kind: EventSinkKind): string {
+	return kind.replaceAll("_", " ");
+}
 
 function formatTimestamp(value: string | null | undefined): string {
 	if (!value) {
@@ -41,7 +66,9 @@ function formatAgeSeconds(value: number | null | undefined): string {
 	return seconds ? `${minutes}m ${seconds}s` : `${minutes}m`;
 }
 
-function statusTone(status: string): "neutral" | "success" | "danger" | "accent" {
+function statusTone(
+	status: string,
+): "neutral" | "success" | "danger" | "accent" {
 	if (status === "succeeded") {
 		return "success";
 	}
@@ -107,6 +134,16 @@ const eventDeliveryExportColumns: TableExportColumn<EventDelivery>[] = [
 
 export function AdminEventsWorkspace() {
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
+	const [sinkFormMode, setSinkFormMode] = useState<SinkFormMode>("create");
+	const [editingSink, setEditingSink] = useState<EventSink | null>(null);
+	const [isSinkModalOpen, setSinkModalOpen] = useState(false);
+	const [sinkForm, setSinkForm] = useState<EventSinkFormState>(
+		defaultEventSinkFormState,
+	);
+	const [sinkFormError, setSinkFormError] = useState<string | null>(null);
+	const [sinkMessage, setSinkMessage] = useState<string | null>(null);
+	const [sinkTableError, setSinkTableError] = useState<string | null>(null);
 	const healthQuery = useQuery({
 		queryKey: ["event-deliveries", "health"],
 		queryFn: fetchEventDeliveryHealth,
@@ -120,6 +157,57 @@ export function AdminEventsWorkspace() {
 	const sinksQuery = useQuery({
 		queryKey: ["event-sinks", "list"],
 		queryFn: fetchEventSinks,
+	});
+
+	const createSinkMutation = useMutation({
+		mutationFn: createEventSink,
+		onSuccess: async (sink) => {
+			await queryClient.invalidateQueries({ queryKey: ["event-sinks"] });
+			setSinkModalOpen(false);
+			setSinkMessage(`Event sink "${sink.name}" created.`);
+			setSinkTableError(null);
+		},
+		onError: (error) => {
+			setSinkFormError(
+				error instanceof Error ? error.message : "Failed to create event sink.",
+			);
+		},
+	});
+
+	const updateSinkMutation = useMutation({
+		mutationFn: ({
+			payload,
+			sinkId,
+		}: {
+			payload: NewEventSink;
+			sinkId: number;
+		}) => updateEventSink(sinkId, payload),
+		onSuccess: async (sink) => {
+			await queryClient.invalidateQueries({ queryKey: ["event-sinks"] });
+			setSinkModalOpen(false);
+			setSinkMessage(`Event sink "${sink.name}" updated.`);
+			setSinkTableError(null);
+		},
+		onError: (error) => {
+			setSinkFormError(
+				error instanceof Error ? error.message : "Failed to update event sink.",
+			);
+		},
+	});
+
+	const deleteSinkMutation = useMutation({
+		mutationFn: (sink: EventSink) => deleteEventSink(sink.id),
+		onSuccess: async (_, sink) => {
+			await queryClient.invalidateQueries({ queryKey: ["event-sinks"] });
+			setSinkMessage(`Event sink "${sink.name}" deleted.`);
+			setSinkTableError(null);
+		},
+		onError: (error) => {
+			setSinkMessage(null);
+			setSinkTableError(
+				error instanceof Error ? error.message : "Failed to delete event sink.",
+			);
+		},
 	});
 
 	const retryMutation = useMutation({
@@ -152,8 +240,177 @@ export function AdminEventsWorkspace() {
 		rows: deliveriesQuery.data?.items ?? [],
 	};
 
+	function openCreateSink() {
+		setSinkFormMode("create");
+		setEditingSink(null);
+		setSinkForm(defaultEventSinkFormState);
+		setSinkFormError(null);
+		setSinkModalOpen(true);
+	}
+
+	function openEditSink(sink: EventSink) {
+		setSinkFormMode("edit");
+		setEditingSink(sink);
+		setSinkForm(eventSinkToFormState(sink));
+		setSinkFormError(null);
+		setSinkModalOpen(true);
+	}
+
+	function onSinkSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		setSinkFormError(null);
+		setSinkMessage(null);
+
+		let payload: NewEventSink;
+		try {
+			payload = buildEventSinkPayload(sinkForm);
+		} catch (error) {
+			setSinkFormError(
+				error instanceof Error ? error.message : "Invalid event sink data.",
+			);
+			return;
+		}
+
+		if (sinkFormMode === "edit" && editingSink) {
+			updateSinkMutation.mutate({ sinkId: editingSink.id, payload });
+			return;
+		}
+
+		createSinkMutation.mutate(payload);
+	}
+
+	async function onDeleteSink(sink: EventSink) {
+		setSinkMessage(null);
+		setSinkTableError(null);
+		const confirmed = await confirm({
+			title: "Delete event sink?",
+			description: `Delete "${sink.name}"? Existing subscriptions may need to be removed before the backend allows deletion.`,
+			confirmLabel: "Delete sink",
+			tone: "danger",
+		});
+		if (confirmed) {
+			deleteSinkMutation.mutate(sink);
+		}
+	}
+
+	const isSavingSink =
+		createSinkMutation.isPending || updateSinkMutation.isPending;
+
 	return (
 		<section className="stack">
+			<CreateModal
+				open={isSinkModalOpen}
+				title={
+					sinkFormMode === "edit" ? "Edit event sink" : "Create event sink"
+				}
+				onClose={() => setSinkModalOpen(false)}
+			>
+				<form className="stack" onSubmit={onSinkSubmit}>
+					<div className="form-grid">
+						<label className="control-field control-field--wide">
+							<span>Name</span>
+							<input
+								required
+								value={sinkForm.name}
+								onChange={(event) =>
+									setSinkForm((current) => ({
+										...current,
+										name: event.target.value,
+									}))
+								}
+								placeholder="Operations webhook"
+							/>
+						</label>
+
+						<label className="control-field">
+							<span>Kind</span>
+							<select
+								value={sinkForm.kind}
+								onChange={(event) =>
+									setSinkForm((current) => ({
+										...current,
+										kind: event.target.value as EventSinkKind,
+									}))
+								}
+							>
+								{EVENT_SINK_KINDS.map((kind) => (
+									<option key={kind} value={kind}>
+										{formatSinkKind(kind)}
+									</option>
+								))}
+							</select>
+						</label>
+
+						<label className="control-field">
+							<span>Secret reference</span>
+							<input
+								value={sinkForm.secretRef}
+								onChange={(event) =>
+									setSinkForm((current) => ({
+										...current,
+										secretRef: event.target.value,
+									}))
+								}
+								placeholder="event-webhook-secret"
+							/>
+							<span className="field-note">
+								Reference an externally managed secret; do not enter secret
+								values.
+							</span>
+						</label>
+					</div>
+
+					<JsonEditor
+						id="event-sink-config"
+						label="Configuration JSON"
+						value={sinkForm.configInput}
+						onChange={(configInput) =>
+							setSinkForm((current) => ({ ...current, configInput }))
+						}
+						mode="data"
+						rows={9}
+						disabled={isSavingSink}
+						helperText="Transport-specific configuration is validated by the backend."
+					/>
+
+					<label className="control-check">
+						<input
+							type="checkbox"
+							checked={sinkForm.enabled}
+							onChange={(event) =>
+								setSinkForm((current) => ({
+									...current,
+									enabled: event.target.checked,
+								}))
+							}
+						/>
+						<span>Enabled</span>
+					</label>
+
+					{sinkFormError ? (
+						<div className="error-banner">{sinkFormError}</div>
+					) : null}
+
+					<div className="form-actions">
+						<button type="submit" disabled={isSavingSink}>
+							{isSavingSink
+								? "Saving..."
+								: sinkFormMode === "edit"
+									? "Save sink"
+									: "Create sink"}
+						</button>
+						<button
+							type="button"
+							className="ghost"
+							onClick={() => setSinkModalOpen(false)}
+							disabled={isSavingSink}
+						>
+							Cancel
+						</button>
+					</div>
+				</form>
+			</CreateModal>
+
 			<article className="card stack panel-card">
 				<div className="stack action-card-header">
 					<h3>Delivery health</h3>
@@ -211,16 +468,26 @@ export function AdminEventsWorkspace() {
 					<div className="stack action-card-header">
 						<h3>Event sinks</h3>
 						<p className="muted">
-							Configured global transports. Sink configuration is shown in
-							summary form; secrets remain references only.
+							Create and manage global transports. Configuration is editable as
+							JSON; secrets remain references only.
 						</p>
 					</div>
-					<TableExportMenu
-						view={sinkExportView}
-						disabled={sinksQuery.isFetching}
-						compact
-					/>
+					<div className="action-row">
+						<TableExportMenu
+							view={sinkExportView}
+							disabled={sinksQuery.isFetching}
+							compact
+						/>
+						<button type="button" onClick={openCreateSink}>
+							Create sink
+						</button>
+					</div>
 				</div>
+
+				{sinkMessage ? <div className="info-banner">{sinkMessage}</div> : null}
+				{sinkTableError ? (
+					<div className="error-banner">{sinkTableError}</div>
+				) : null}
 
 				{sinksQuery.isLoading ? (
 					<div className="muted">Loading event sinks...</div>
@@ -249,6 +516,7 @@ export function AdminEventsWorkspace() {
 									<th>Enabled</th>
 									<th>Secret</th>
 									<th>Updated</th>
+									<th>Actions</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -256,10 +524,30 @@ export function AdminEventsWorkspace() {
 									<tr key={sink.id}>
 										<td>#{sink.id}</td>
 										<td>{sink.name}</td>
-										<td>{sink.kind}</td>
+										<td>{formatSinkKind(sink.kind)}</td>
 										<td>{sink.enabled ? "yes" : "no"}</td>
 										<td>{sink.secret_ref ?? "n/a"}</td>
 										<td>{formatTimestamp(sink.updated_at)}</td>
+										<td>
+											<div className="table-tools">
+												<button
+													type="button"
+													className="ghost"
+													onClick={() => openEditSink(sink)}
+													disabled={deleteSinkMutation.isPending}
+												>
+													Edit
+												</button>
+												<button
+													type="button"
+													className="danger"
+													onClick={() => onDeleteSink(sink)}
+													disabled={deleteSinkMutation.isPending}
+												>
+													Delete
+												</button>
+											</div>
+										</td>
 									</tr>
 								))}
 							</tbody>

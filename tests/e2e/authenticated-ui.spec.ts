@@ -50,6 +50,21 @@ test.describe("authenticated workspace", () => {
 		await expect(trigger).toBeFocused();
 	});
 
+	test("Escape closes the active account menu and restores focus", async ({
+		page,
+	}) => {
+		const trigger = page.getByRole("button", {
+			name: /Open account menu for/,
+		});
+		await trigger.click();
+		await expect(page.getByLabel("User menu")).toBeVisible();
+
+		await page.keyboard.press("Escape");
+
+		await expect(page.getByLabel("User menu")).toBeHidden();
+		await expect(trigger).toBeFocused();
+	});
+
 	test("mobile resource pages expose one primary create action", async ({
 		page,
 	}) => {
@@ -57,5 +72,96 @@ test.describe("authenticated workspace", () => {
 		await page.goto("/collections");
 		await expect(page.locator(".topbar .create-button")).toBeHidden();
 		await expect(page.locator(".fab--create")).toBeVisible();
+	});
+
+	test("exports separates running, templates, and history into task views", async ({
+		page,
+	}) => {
+		await page.route("**/api/v1/export-templates**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: "[]",
+			});
+		});
+		await page.goto("/exports");
+
+		const runTab = page.getByRole("tab", { name: /Run export/ });
+		const templatesTab = page.getByRole("tab", { name: /Templates/ });
+		const historyTab = page.getByRole("tab", { name: /History/ });
+
+		await expect(runTab).toHaveAttribute("aria-selected", "true");
+		await expect(
+			page.getByRole("heading", { name: "Create an export" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: /Saved template/ }),
+		).toHaveCount(0);
+		const createTemplate = page.getByRole("button", {
+			name: "Create a template",
+		});
+		await expect(createTemplate).toBeVisible();
+		await createTemplate.click();
+		await expect(page).toHaveURL(/\/exports\/templates\/new$/);
+		await expect(
+			page.getByRole("heading", { name: "Create export template" }),
+		).toBeVisible();
+		const targetTab = page.getByRole("tab", { name: /1\. Target/ });
+		const filtersTab = page.getByRole("tab", { name: /2\. Filters/ });
+		const relatedTab = page.getByRole("tab", { name: /3\. Related/ });
+		const rulesTab = page.getByRole("tab", { name: /4\. Rules/ });
+		const appearanceTab = page.getByRole("tab", { name: /5\. Appearance/ });
+		const templateHistoryTab = page.getByRole("tab", { name: /History/ });
+		await expect(targetTab).toHaveAttribute("aria-selected", "true");
+		await expect(
+			page.getByRole("heading", { name: "Export target" }),
+		).toBeVisible();
+		await expect(appearanceTab).toBeDisabled();
+		await expect(templateHistoryTab).toBeDisabled();
+		await page.getByLabel("Scope").selectOption("collections");
+		await expect(appearanceTab).toBeEnabled();
+		await page
+			.getByRole("button", { name: "Continue to filters" })
+			.first()
+			.click();
+		await expect(filtersTab).toHaveAttribute("aria-selected", "true");
+		await page.getByRole("button", { name: "Add filter" }).click();
+		await expect(page.getByText("Filter 1", { exact: true })).toBeVisible();
+		await page
+			.getByRole("button", { name: "Continue to related" })
+			.first()
+			.click();
+		await expect(relatedTab).toHaveAttribute("aria-selected", "true");
+		await page
+			.getByRole("button", { name: "Continue to rules" })
+			.first()
+			.click();
+		await expect(rulesTab).toHaveAttribute("aria-selected", "true");
+		await page
+			.getByRole("button", { name: "Continue to appearance" })
+			.first()
+			.click();
+		await expect(appearanceTab).toHaveAttribute("aria-selected", "true");
+		await expect(
+			page.getByRole("heading", { name: "Test output" }),
+		).toBeVisible();
+		await page.getByRole("button", { name: "Save", exact: true }).click();
+		await expect(page.getByText(/Review \d+ fields?/)).toBeVisible();
+		await expect(appearanceTab).toHaveAttribute("aria-selected", "true");
+		await page.getByRole("button", { name: "Back to templates" }).click();
+		await expect(page).toHaveURL(/\/exports\?view=templates$/);
+		await expect(templatesTab).toHaveAttribute("aria-selected", "true");
+		await expect(
+			page.getByRole("heading", { name: "Template library" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Create template" }),
+		).toBeVisible();
+
+		await historyTab.click();
+		await expect(historyTab).toHaveAttribute("aria-selected", "true");
+		await expect(
+			page.getByRole("heading", { name: "Recent export runs" }),
+		).toBeVisible();
 	});
 });

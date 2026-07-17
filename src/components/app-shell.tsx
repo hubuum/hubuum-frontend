@@ -58,6 +58,7 @@ import {
 	triggerActivePaginationPrevPage,
 } from "@/lib/pagination-shortcuts";
 import { normalizeSearchTerm } from "@/lib/resource-search";
+import { getRelationsContextVisibility } from "@/lib/relations-context";
 import {
 	countUnread,
 	diffNewlyTerminal,
@@ -74,6 +75,10 @@ import {
 	DEVICE_SETTING_KEYS,
 	PORTABLE_USER_SETTING_KEYS,
 } from "@/lib/user-settings-types";
+import {
+	hasActiveEscapeCancel,
+	useEscapeToCancel,
+} from "@/lib/use-escape-to-cancel";
 
 type AppShellProps = {
 	canViewAdmin: boolean;
@@ -745,15 +750,18 @@ export function AppShell({
 	const createSection = useMemo(() => getCreateSection(pathname), [pathname]);
 	const relationsView = useMemo(() => getRelationsView(pathname), [pathname]);
 	const isSearchRoute = pathname.startsWith("/search");
-	const isRelationsRoute = relationsView !== null;
 	const isObjectsListRoute = pathname === "/objects";
+	const relationsContextVisibility = getRelationsContextVisibility(
+		relationsView,
+		searchParams.get("classView"),
+	);
 	const selectedRelationsClassId = searchParams.get("classId") ?? "";
 	const selectedRelationsObjectId = searchParams.get("objectId") ?? "";
 	const selectedObjectsClassId = searchParams.get("classId") ?? "";
 	const topbarClassOptionsQuery = useQuery({
 		queryKey: ["classes", "topbar-context"],
 		queryFn: fetchTopbarClassOptions,
-		enabled: isObjectsListRoute || isRelationsRoute,
+		enabled: isObjectsListRoute || relationsContextVisibility.showClass,
 	});
 	const topbarClassOptions = topbarClassOptionsQuery.data ?? [];
 	const resolvedObjectsClassId = useMemo(() => {
@@ -780,7 +788,9 @@ export function AppShell({
 		queryKey: ["objects", "relations-topbar", parsedResolvedRelationsClassId],
 		queryFn: async () =>
 			fetchRelationsObjectOptions(parsedResolvedRelationsClassId ?? 0),
-		enabled: isRelationsRoute && parsedResolvedRelationsClassId !== null,
+		enabled:
+			relationsContextVisibility.showObject &&
+			parsedResolvedRelationsClassId !== null,
 	});
 	const relationsObjectOptions = relationsObjectOptionsQuery.data ?? [];
 	const resolvedRelationsObjectId = useMemo(() => {
@@ -1030,6 +1040,37 @@ export function AppShell({
 		setSearchInput(isSearchRoute ? (searchParams.get("q") ?? "") : "");
 	}, [isSearchRoute, searchParams]);
 
+	useEscapeToCancel({
+		enabled: isMobileSidebarOpen,
+		onCancel: () => setMobileSidebarOpen(false),
+	});
+	useEscapeToCancel({
+		enabled: isUserMenuOpen,
+		onCancel: () => {
+			setUserMenuOpen(false);
+			window.setTimeout(
+				() =>
+					userMenuRef.current
+						?.querySelector<HTMLButtonElement>(".user-trigger")
+						?.focus(),
+				0,
+			);
+		},
+	});
+	useEscapeToCancel({
+		enabled: isTaskMenuOpen,
+		onCancel: () => {
+			setTaskMenuOpen(false);
+			window.setTimeout(
+				() =>
+					taskMenuRef.current
+						?.querySelector<HTMLButtonElement>(".task-menu-trigger")
+						?.focus(),
+				0,
+			);
+		},
+	});
+
 	useEffect(() => {
 		if (!isUserMenuOpen) {
 			return;
@@ -1048,24 +1089,9 @@ export function AppShell({
 			setUserMenuOpen(false);
 		};
 
-		const onEscape = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				setUserMenuOpen(false);
-				window.setTimeout(
-					() =>
-						userMenuRef.current
-							?.querySelector<HTMLButtonElement>(".user-trigger")
-							?.focus(),
-					0,
-				);
-			}
-		};
-
 		document.addEventListener("pointerdown", onPointerDown);
-		document.addEventListener("keydown", onEscape);
 		return () => {
 			document.removeEventListener("pointerdown", onPointerDown);
-			document.removeEventListener("keydown", onEscape);
 		};
 	}, [isUserMenuOpen]);
 
@@ -1086,23 +1112,9 @@ export function AppShell({
 
 			setTaskMenuOpen(false);
 		};
-		const onEscape = (event: KeyboardEvent) => {
-			if (event.key !== "Escape") return;
-			setTaskMenuOpen(false);
-			window.setTimeout(
-				() =>
-					taskMenuRef.current
-						?.querySelector<HTMLButtonElement>(".task-menu-trigger")
-						?.focus(),
-				0,
-			);
-		};
-
 		document.addEventListener("pointerdown", onPointerDown);
-		document.addEventListener("keydown", onEscape);
 		return () => {
 			document.removeEventListener("pointerdown", onPointerDown);
-			document.removeEventListener("keydown", onEscape);
 		};
 	}, [isTaskMenuOpen]);
 
@@ -1118,6 +1130,10 @@ export function AppShell({
 			if (goToShortcutTimerRef.current !== null && event.key === "Escape") {
 				event.preventDefault();
 				clearGoToShortcut();
+				return;
+			}
+
+			if (event.key === "Escape" && hasActiveEscapeCancel()) {
 				return;
 			}
 
@@ -1611,16 +1627,9 @@ export function AppShell({
 							</button>
 
 							<div className="topbar-title-row">
-								<div className="topbar-title-stack">
-									<span className="topbar-caption">
-										{pathname.startsWith("/admin")
-											? "Administration"
-											: "Workspace"}
-									</span>
-									<h1 className="topbar-heading">
-										{detailTitle ?? sectionLabel}
-									</h1>
-								</div>
+								<h1 className="topbar-heading">
+									{detailTitle ?? sectionLabel}
+								</h1>
 								{detailPin ? (
 									<PinButton
 										type={detailPin.type}
@@ -1644,7 +1653,7 @@ export function AppShell({
 										}
 									/>
 								) : null}
-								{isRelationsRoute ? (
+								{relationsContextVisibility.showClass ? (
 									<>
 										<span className="topbar-divider" aria-hidden="true">
 											/
@@ -1677,6 +1686,10 @@ export function AppShell({
 												</option>
 											))}
 										</select>
+									</>
+								) : null}
+								{relationsContextVisibility.showObject ? (
+									<>
 										<span className="topbar-divider" aria-hidden="true">
 											/
 										</span>

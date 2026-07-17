@@ -1,9 +1,6 @@
 "use client";
 
-import {
-	acceptCompletion,
-	autocompletion,
-} from "@codemirror/autocomplete";
+import { acceptCompletion, autocompletion } from "@codemirror/autocomplete";
 import { indentWithTab } from "@codemirror/commands";
 import { closePercentBrace, jinja } from "@codemirror/lang-jinja";
 import type { Extension } from "@codemirror/state";
@@ -12,7 +9,10 @@ import { useMemo } from "react";
 
 import { CodeEditor } from "@/components/code-editor";
 import type { ReportScopeKind } from "@/lib/api/reporting";
-import { createTemplateCompletionSource } from "@/lib/template-completion";
+import {
+	createTemplateCompletionSource,
+	type TemplateDataFieldCompletion,
+} from "@/lib/template-completion";
 import { analyzeTemplate } from "@/lib/template-suggestions";
 
 type TemplateCodeEditorProps = {
@@ -21,10 +21,18 @@ type TemplateCodeEditorProps = {
 	onChange: (value: string) => void;
 	placeholder?: string;
 	disabled?: boolean;
+	rows?: number;
 	scopeKind?: ReportScopeKind;
 	relationHydrated?: boolean;
 	relationAliases?: string[];
 	templateNames?: string[];
+	dataFields?: TemplateDataFieldCompletion[];
+	inputId?: string;
+	error?: string;
+	insertRequest?: {
+		id: number;
+		text: string;
+	} | null;
 };
 
 export function TemplateCodeEditor({
@@ -33,15 +41,21 @@ export function TemplateCodeEditor({
 	onChange,
 	placeholder,
 	disabled,
+	rows = 11,
 	scopeKind,
 	relationHydrated = false,
 	relationAliases,
 	templateNames,
+	dataFields,
+	inputId,
+	error,
+	insertRequest,
 }: TemplateCodeEditorProps) {
 	const analysis = useMemo(() => analyzeTemplate(value), [value]);
 
 	const relationAliasesKey = (relationAliases ?? []).join(",");
 	const templateNamesKey = (templateNames ?? []).join(",");
+	const dataFieldsKey = JSON.stringify(dataFields ?? []);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: relationAliasesKey is a stable proxy for the array
 	const extensions = useMemo<Extension[]>(
 		() => [
@@ -67,12 +81,19 @@ export function TemplateCodeEditor({
 						relationHydrated,
 						relationAliases,
 						templateNames,
+						dataFields,
 					}),
 				],
 			}),
 		],
 		// relationAliasesKey is a stable string proxy for the array identity.
-		[scopeKind, relationHydrated, relationAliasesKey, templateNamesKey],
+		[
+			scopeKind,
+			relationHydrated,
+			relationAliasesKey,
+			templateNamesKey,
+			dataFieldsKey,
+		],
 	);
 
 	const balanceMessage =
@@ -92,10 +113,12 @@ export function TemplateCodeEditor({
 						onChange={onChange}
 						placeholder={placeholder}
 						disabled={disabled}
-						rows={11}
+						rows={rows}
 						extensions={extensions}
 						className="template-code-surface"
 						ariaLabel={label}
+						inputId={inputId}
+						insertRequest={insertRequest}
 					/>
 				</div>
 				<div className="template-editor-footer">
@@ -121,6 +144,11 @@ export function TemplateCodeEditor({
 						</span>
 					)}
 				</div>
+				{error ? (
+					<div className="field-error" role="alert">
+						{error}
+					</div>
+				) : null}
 			</div>
 		</div>
 	);
