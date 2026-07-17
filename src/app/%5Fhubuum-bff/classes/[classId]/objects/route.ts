@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetchRaw } from "@/lib/api/backend";
+import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
 import {
 	clearSessionCookie,
 	destroySession,
@@ -93,6 +94,7 @@ async function proxyClassObjects(request: NextRequest, context: RouteContext) {
 	if (contentType) {
 		response.headers.set("content-type", contentType);
 	}
+	copySafeUpstreamResponseHeaders(upstream.headers, response.headers);
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
 
 	// Forward pagination headers

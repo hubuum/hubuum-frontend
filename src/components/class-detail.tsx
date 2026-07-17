@@ -11,6 +11,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { ComputedFieldsPanel } from "@/components/computed-fields-panel";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { JsonEditor } from "@/components/json-editor";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
@@ -997,6 +998,8 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 					) : null}
 				</section>
 			</div>
+
+			<ComputedFieldsPanel classId={classId} />
 
 			<RemoteInvocationsPanel
 				collectionId={classData.collection.id}

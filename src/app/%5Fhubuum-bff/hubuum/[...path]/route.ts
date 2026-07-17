@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { buildBackendUrl, getSafeBackendPathForLogs } from "@/lib/api/backend";
 import { copyPaginationHeaders } from "@/lib/api/proxy-pagination-headers";
+import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
 import {
 	clearSessionCookie,
 	destroySession,
@@ -101,6 +102,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	const upstreamHeaders = new Headers();
 	const incomingContentType = request.headers.get("content-type");
 	const incomingAccept = request.headers.get("accept");
+	const restoreCapability = request.headers.get("x-hubuum-restore-capability");
 
 	if (incomingContentType) {
 		upstreamHeaders.set("content-type", incomingContentType);
@@ -108,6 +110,10 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 
 	if (incomingAccept) {
 		upstreamHeaders.set("accept", incomingAccept);
+	}
+
+	if (restoreCapability) {
+		upstreamHeaders.set("x-hubuum-restore-capability", restoreCapability);
 	}
 
 	upstreamHeaders.set("authorization", `Bearer ${session.token}`);
@@ -168,6 +174,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 		response.headers.set("content-type", contentType);
 	}
 	copyPaginationHeaders(upstreamResponse.headers, response.headers);
+	copySafeUpstreamResponseHeaders(upstreamResponse.headers, response.headers);
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
 
 	if (upstreamResponse.status === 401) {

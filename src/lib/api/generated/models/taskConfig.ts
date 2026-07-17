@@ -3,16 +3,24 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 0.0.2
  */
 
 export interface TaskConfig {
   /** @minimum 0 */
+  computed_reindex_batch_size: number;
+  /** @minimum 0 */
   export_max_active_per_user: number;
+  /** @minimum 0 */
+  heartbeat_seconds: number;
   /** @minimum 0 */
   import_max_active_per_user: number;
   /** @minimum 0 */
+  lease_seconds: number;
+  /** @minimum 0 */
   poll_interval_ms: number;
+  /** @minimum 0 */
+  recovery_interval_seconds: number;
   /** @minimum 0 */
   remote_call_max_active_per_user: number;
   /** @minimum 0 */

@@ -8,12 +8,12 @@ a digest-pinned Compose quickstart, checksums, and a GitHub Release.
 1. Update `package.json`, `package-lock.json`, the Helm chart, Compose defaults,
    and `CHANGELOG.md` to the same release version.
 2. Merge the release changes to `main` through a pull request.
-3. Wait for the required `validate`, `backend-contract`, and `package` checks
-   to pass on the exact `main` commit.
+3. Wait for the required `validate`, `backend-contract`, `browser-quality`, and
+   `package` checks to pass on the exact `main` commit.
 4. Check out that clean commit and run:
 
    ```sh
-   bash scripts/check-release-readiness.sh v0.0.1
+   bash scripts/check-release-readiness.sh v0.0.2
    ```
 
 ## Publish
@@ -21,8 +21,8 @@ a digest-pinned Compose quickstart, checksums, and a GitHub Release.
 Create and push an annotated tag from the verified commit:
 
 ```sh
-git tag -a v0.0.1 -m "Hubuum Frontend v0.0.1"
-git push origin v0.0.1
+git tag -a v0.0.2 -m "Hubuum Frontend v0.0.2"
+git push origin v0.0.2
 ```
 
 The tag workflow verifies that the commit passed CI on `main`, builds and

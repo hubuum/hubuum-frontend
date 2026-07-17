@@ -7,7 +7,7 @@
       "name": "MIT",
       "identifier": "MIT"
     },
-    "version": "0.0.1"
+    "version": "0.0.2"
   },
   "servers": [
     {
@@ -518,6 +518,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Shared limiter unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -556,6 +566,16 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Shared limiter unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -634,6 +654,16 @@
           },
           "404": {
             "description": "Entry not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Shared limiter unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -728,6 +758,267 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/backups": {
+      "post": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Post Api V1 Backups",
+        "description": "Auto-generated documentation for POST /api/v1/backups.",
+        "operationId": "postApiV1Backups",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Backup task accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unscoped administrator access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many active backup tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/backups/{task_id}": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Get Api V1 Backups By Task Id",
+        "description": "Auto-generated documentation for GET /api/v1/backups/{task_id}.",
+        "operationId": "getApiV1BackupsByTaskId",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Backup task ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup task projection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unscoped administrator access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Backup task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/backups/{task_id}/output": {
+      "get": {
+        "tags": [
+          "backups"
+        ],
+        "summary": "Get Api V1 Backups By Task Id Output",
+        "description": "Auto-generated documentation for GET /api/v1/backups/{task_id}/output.",
+        "operationId": "getApiV1BackupsByTaskIdOutput",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Backup task ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stored backup document",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store for credential-bearing artifacts"
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Attachment filename for the backup document"
+              },
+              "Digest": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Base64-encoded SHA-256 content digest"
+              },
+              "X-Hubuum-Backup-SHA256": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Lowercase hexadecimal SHA-256 digest"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unscoped administrator access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Backup output not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Backup output expired",
             "content": {
               "application/json": {
                 "schema": {
@@ -1117,6 +1408,15 @@
             }
           },
           {
+            "name": "include",
+            "in": "query",
+            "description": "Set to computed to enrich each object",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "description": "Maximum number of items to return. Defaults to 100. Maximum is 250.",
@@ -1155,7 +1455,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Objects in class The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
+            "description": "Objects in class, optionally enriched with computed fields The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
             "headers": {
               "X-Next-Cursor": {
                 "schema": {
@@ -1175,7 +1475,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/HubuumObject"
+                    "$ref": "#/components/schemas/HubuumObjectReadResponse"
                   }
                 }
               }
@@ -1241,7 +1541,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewHubuumObject"
+                "$ref": "#/components/schemas/NewHubuumObjectRequest"
               }
             }
           },
@@ -1280,6 +1580,405 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/computed-fields": {
+      "get": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Get Api V1 Classes By Class Id Computed Fields",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/computed-fields.",
+        "operationId": "getApiV1ClassesByClassIdComputedFields",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared computed-field definitions and rebuild state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputedFieldListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Class not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Post Api V1 Classes By Class Id Computed Fields",
+        "description": "Auto-generated documentation for POST /api/v1/classes/{class_id}/computed-fields.",
+        "operationId": "postApiV1ClassesByClassIdComputedFields",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputedFieldDefinitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Shared definition created and rebuild queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputedFieldMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid definition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Key conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/computed-fields/preview": {
+      "post": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Post Api V1 Classes By Class Id Computed Fields Preview",
+        "description": "Auto-generated documentation for POST /api/v1/classes/{class_id}/computed-fields/preview.",
+        "operationId": "postApiV1ClassesByClassIdComputedFieldsPreview",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputedFieldPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Computed-field preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputedFieldPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/computed-fields/rebuild": {
+      "post": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Post Api V1 Classes By Class Id Computed Fields Rebuild",
+        "description": "Auto-generated documentation for POST /api/v1/classes/{class_id}/computed-fields/rebuild.",
+        "operationId": "postApiV1ClassesByClassIdComputedFieldsRebuild",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Computed-field rebuild queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassComputationState"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/computed-fields/{field_id}": {
+      "delete": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Delete Api V1 Classes By Class Id Computed Fields By Field Id",
+        "description": "Auto-generated documentation for DELETE /api/v1/classes/{class_id}/computed-fields/{field_id}.",
+        "operationId": "deleteApiV1ClassesByClassIdComputedFieldsByFieldId",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "field_id",
+            "in": "path",
+            "description": "Computed-field definition ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "expected_revision",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Shared definition deleted and rebuild queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputedFieldDeleteResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Patch Api V1 Classes By Class Id Computed Fields By Field Id",
+        "description": "Auto-generated documentation for PATCH /api/v1/classes/{class_id}/computed-fields/{field_id}.",
+        "operationId": "patchApiV1ClassesByClassIdComputedFieldsByFieldId",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "field_id",
+            "in": "path",
+            "description": "Computed-field definition ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputedFieldDefinitionPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Shared definition updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputedFieldMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid definition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision or key conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -2893,15 +3592,24 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "description": "Set to computed to enrich the object",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Object in class",
+            "description": "Object in class, optionally enriched with computed fields",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HubuumObject"
+                  "$ref": "#/components/schemas/HubuumObjectReadResponse"
                 }
               }
             }
@@ -3026,7 +3734,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateHubuumObject"
+                "$ref": "#/components/schemas/UpdateHubuumObjectRequest"
               }
             }
           },
@@ -3221,6 +3929,16 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object not found in the requested class",
             "content": {
               "application/json": {
                 "schema": {
@@ -7594,6 +8312,16 @@
               }
             }
           },
+          "403": {
+            "description": "Runtime administrator required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict",
             "content": {
@@ -8549,6 +9277,258 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/iam/me/computed-fields": {
+      "get": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Get Api V1 Iam Me Computed Fields",
+        "description": "Auto-generated documentation for GET /api/v1/iam/me/computed-fields.",
+        "operationId": "getApiV1IamMeComputedFields",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "query",
+            "description": "Limit results to one class",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user's personal computed fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComputedFieldDefinition"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Service accounts are not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Post Api V1 Iam Me Computed Fields",
+        "description": "Auto-generated documentation for POST /api/v1/iam/me/computed-fields.",
+        "operationId": "postApiV1IamMeComputedFields",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalComputedFieldDefinitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Personal computed field created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputedFieldDefinition"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/iam/me/computed-fields/preview": {
+      "post": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Post Api V1 Iam Me Computed Fields Preview",
+        "description": "Auto-generated documentation for POST /api/v1/iam/me/computed-fields/preview.",
+        "operationId": "postApiV1IamMeComputedFieldsPreview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputedFieldPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Personal computed-field preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputedFieldPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/iam/me/computed-fields/{field_id}": {
+      "delete": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Delete Api V1 Iam Me Computed Fields By Field Id",
+        "description": "Auto-generated documentation for DELETE /api/v1/iam/me/computed-fields/{field_id}.",
+        "operationId": "deleteApiV1IamMeComputedFieldsByFieldId",
+        "parameters": [
+          {
+            "name": "field_id",
+            "in": "path",
+            "description": "Computed-field definition ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "expected_revision",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Personal computed field deleted"
+          },
+          "409": {
+            "description": "Revision conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "computed fields"
+        ],
+        "summary": "Patch Api V1 Iam Me Computed Fields By Field Id",
+        "description": "Auto-generated documentation for PATCH /api/v1/iam/me/computed-fields/{field_id}.",
+        "operationId": "patchApiV1IamMeComputedFieldsByFieldId",
+        "parameters": [
+          {
+            "name": "field_id",
+            "in": "path",
+            "description": "Computed-field definition ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputedFieldDefinitionPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Personal computed field updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputedFieldDefinition"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -10804,6 +11784,16 @@
               }
             }
           },
+          "403": {
+            "description": "Runtime administrator required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict",
             "content": {
@@ -12331,6 +13321,276 @@
         ]
       }
     },
+    "/api/v1/restores": {
+      "post": {
+        "tags": [
+          "restores"
+        ],
+        "summary": "Post Api V1 Restores",
+        "description": "Auto-generated documentation for POST /api/v1/restores.",
+        "operationId": "postApiV1Restores",
+        "requestBody": {
+          "description": "Full BackupDocument JSON bytes",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Restore document staged and validated",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store for restore capabilities and metadata"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreStageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid backup document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Administrator access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Restore upload too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/restores/{restore_id}/confirm": {
+      "post": {
+        "tags": [
+          "restores"
+        ],
+        "summary": "Post Api V1 Restores By Restore Id Confirm",
+        "description": "Auto-generated documentation for POST /api/v1/restores/{restore_id}/confirm.",
+        "operationId": "postApiV1RestoresByRestoreIdConfirm",
+        "parameters": [
+          {
+            "name": "restore_id",
+            "in": "path",
+            "description": "Restore stage ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Restore completed",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store for restore metadata"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreStageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Confirmation phrase is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Administrator or capability rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stage state or SHA-256 mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Restore stage expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/restores/{restore_id}/status": {
+      "get": {
+        "tags": [
+          "restores"
+        ],
+        "summary": "Get Api V1 Restores By Restore Id Status",
+        "description": "Auto-generated documentation for GET /api/v1/restores/{restore_id}/status.",
+        "operationId": "getApiV1RestoresByRestoreIdStatus",
+        "parameters": [
+          {
+            "name": "restore_id",
+            "in": "path",
+            "description": "Restore stage ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restore status",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Always no-store for restore metadata"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreStageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Restore capability header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Capability rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Restore stage not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "restore_capability": []
+          }
+        ]
+      }
+    },
     "/api/v1/search": {
       "get": {
         "tags": [
@@ -12580,7 +13840,7 @@
           {
             "name": "kind",
             "in": "query",
-            "description": "Optional task kind filter (import|export|reindex|remote_call)",
+            "description": "Optional task kind filter (import|export|backup|reindex|remote_call)",
             "required": true,
             "schema": {
               "type": "string"
@@ -12964,6 +14224,203 @@
           }
         }
       },
+      "BackupConfig": {
+        "type": "object",
+        "required": [
+          "output_retention_hours",
+          "max_active_tasks_per_user",
+          "max_output_bytes"
+        ],
+        "properties": {
+          "max_active_tasks_per_user": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_output_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "output_retention_hours": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "BackupDocument": {
+        "type": "object",
+        "required": [
+          "backup_version",
+          "created_at",
+          "source_version",
+          "state",
+          "manifest"
+        ],
+        "properties": {
+          "backup_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "history": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BackupHistory"
+              }
+            ]
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/BackupManifest"
+          },
+          "source_version": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/BackupState"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BackupHistory": {
+        "type": "object",
+        "description": "Privileged, restore-only table snapshots. In backup version 3, each section\nname and row shape corresponds to the PostgreSQL table restored from it.\nThese are versioned disaster-recovery internals, not portable import data.",
+        "required": [
+          "sections"
+        ],
+        "properties": {
+          "sections": {
+            "type": "object"
+          }
+        }
+      },
+      "BackupManifest": {
+        "type": "object",
+        "required": [
+          "item_counts",
+          "exclusions"
+        ],
+        "properties": {
+          "exclusions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "item_counts": {
+            "type": "object"
+          }
+        }
+      },
+      "BackupRequest": {
+        "type": "object",
+        "properties": {
+          "include_history": {
+            "type": "boolean",
+            "description": "Full-system backups include durable audit, task, delivery, and temporal\nhistory by default. Set this explicitly to false only when the eventual\nrestore is intended to reset that history."
+          }
+        },
+        "additionalProperties": false
+      },
+      "BackupState": {
+        "type": "object",
+        "description": "Exact logical rows used by the destructive full-system restore path.",
+        "required": [
+          "sections"
+        ],
+        "properties": {
+          "sections": {
+            "type": "object"
+          }
+        }
+      },
+      "BackupTaskDetails": {
+        "type": "object",
+        "required": [
+          "output_url",
+          "output_available",
+          "output_expired"
+        ],
+        "properties": {
+          "byte_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "output_available": {
+            "type": "boolean"
+          },
+          "output_expired": {
+            "type": "boolean"
+          },
+          "output_expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "output_url": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ClassComputationState": {
+        "type": "object",
+        "required": [
+          "class_id",
+          "evaluation_revision",
+          "rebuild_status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "active_task_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "class_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evaluation_revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rebuild_status": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ClassKey": {
         "type": "object",
         "required": [
@@ -13141,6 +14598,354 @@
               "null"
             ],
             "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ComputedFieldDefinition": {
+        "type": "object",
+        "required": [
+          "id",
+          "class_id",
+          "visibility",
+          "key",
+          "label",
+          "description",
+          "operation",
+          "result_type",
+          "enabled",
+          "revision",
+          "semantics_version",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "class_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "description": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "object"
+          },
+          "owner_user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "result_type": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "semantics_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "visibility": {
+            "type": "string"
+          }
+        }
+      },
+      "ComputedFieldDefinitionPatch": {
+        "type": "object",
+        "required": [
+          "expected_revision"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "expected_revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "operation": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "result_type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ComputedResultType"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComputedFieldDefinitionRequest": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "operation",
+          "result_type"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "object"
+          },
+          "result_type": {
+            "$ref": "#/components/schemas/ComputedResultType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComputedFieldDeleteResponse": {
+        "type": "object",
+        "required": [
+          "deleted_definition_id",
+          "state"
+        ],
+        "properties": {
+          "deleted_definition_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassComputationState"
+          }
+        }
+      },
+      "ComputedFieldErrorResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ComputedFieldListResponse": {
+        "type": "object",
+        "required": [
+          "definitions",
+          "state"
+        ],
+        "properties": {
+          "definitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComputedFieldDefinition"
+            }
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassComputationState"
+          }
+        }
+      },
+      "ComputedFieldMutationResponse": {
+        "type": "object",
+        "required": [
+          "definition",
+          "state"
+        ],
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/ComputedFieldDefinition"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassComputationState"
+          }
+        }
+      },
+      "ComputedFieldPreviewRequest": {
+        "type": "object",
+        "required": [
+          "definition"
+        ],
+        "properties": {
+          "class_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Required by the personal preview route and ignored on class-scoped routes."
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "definition": {
+            "$ref": "#/components/schemas/ComputedFieldDefinitionRequest"
+          },
+          "object_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComputedFieldPreviewResponse": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ComputedFieldErrorResponse"
+              }
+            ]
+          },
+          "value": {}
+        }
+      },
+      "ComputedObjectScopesResponse": {
+        "type": "object",
+        "required": [
+          "shared"
+        ],
+        "properties": {
+          "personal": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ComputedScopeResponse"
+              }
+            ]
+          },
+          "shared": {
+            "$ref": "#/components/schemas/SharedComputedScopeResponse"
+          }
+        }
+      },
+      "ComputedResultType": {
+        "type": "string",
+        "enum": [
+          "string",
+          "number",
+          "integer",
+          "boolean",
+          "object",
+          "array"
+        ]
+      },
+      "ComputedScopeResponse": {
+        "type": "object",
+        "required": [
+          "values",
+          "errors"
+        ],
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ComputedFieldErrorResponse"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
               "type": "string"
             }
           }
@@ -13944,6 +15749,17 @@
         "type": "integer",
         "format": "int32",
         "description": "Identifier wrapper for an event sink."
+      },
+      "EventSinkKey": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
       },
       "EventSinkKind": {
         "type": "string",
@@ -15899,6 +17715,24 @@
           }
         }
       },
+      "HubuumObjectComputedResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HubuumObject"
+          },
+          {
+            "type": "object",
+            "required": [
+              "computed"
+            ],
+            "properties": {
+              "computed": {
+                "$ref": "#/components/schemas/ComputedObjectScopesResponse"
+              }
+            }
+          }
+        ]
+      },
       "HubuumObjectHistory": {
         "type": "object",
         "required": [
@@ -15973,6 +17807,16 @@
         "type": "integer",
         "format": "int32",
         "description": "Identifier wrapper for a [`HubuumObject`]."
+      },
+      "HubuumObjectReadResponse": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/HubuumObject"
+          },
+          {
+            "$ref": "#/components/schemas/HubuumObjectComputedResponse"
+          }
+        ]
       },
       "HubuumObjectRelation": {
         "type": "object",
@@ -16063,6 +17907,17 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "IdentityScopeKey": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
           }
         }
       },
@@ -16262,6 +18117,262 @@
           "overwrite"
         ]
       },
+      "ImportEventSinkInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "enabled"
+        ],
+        "properties": {
+          "config": {},
+          "enabled": {
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EventSinkKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "secret_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timestamps": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RestoreTimestamps"
+              }
+            ]
+          }
+        }
+      },
+      "ImportEventSubscriptionInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "entity_types",
+          "actions",
+          "enabled"
+        ],
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "collection_key": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CollectionKey"
+              }
+            ]
+          },
+          "collection_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "entity_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filter": {},
+          "name": {
+            "type": "string"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "routing": {},
+          "sink_key": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventSinkKey"
+              }
+            ]
+          },
+          "sink_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timestamps": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RestoreTimestamps"
+              }
+            ]
+          }
+        }
+      },
+      "ImportExportTemplateInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "content_type",
+          "template",
+          "kind"
+        ],
+        "properties": {
+          "class_key": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ClassKey"
+              }
+            ]
+          },
+          "class_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "collection_key": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CollectionKey"
+              }
+            ]
+          },
+          "collection_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ExportContentType"
+          },
+          "default_limits": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExportLimits"
+              }
+            ]
+          },
+          "default_missing_data_policy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExportMissingDataPolicy"
+              }
+            ]
+          },
+          "default_query": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "include": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExportInclude"
+              }
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ExportTemplateKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "relation_context": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExportRelationContext"
+              }
+            ]
+          },
+          "scope_kind": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExportScopeKind"
+              }
+            ]
+          },
+          "template": {
+            "type": "string"
+          },
+          "timestamps": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RestoreTimestamps"
+              }
+            ]
+          }
+        }
+      },
       "ImportGraph": {
         "type": "object",
         "properties": {
@@ -16289,6 +18400,42 @@
               "$ref": "#/components/schemas/ImportCollectionInput"
             }
           },
+          "event_sinks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportEventSinkInput"
+            }
+          },
+          "event_subscriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportEventSubscriptionInput"
+            }
+          },
+          "export_templates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportExportTemplateInput"
+            }
+          },
+          "group_memberships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportGroupMembershipInput"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportGroupInput"
+            }
+          },
+          "identity_scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportIdentityScopeInput"
+            }
+          },
           "object_relations": {
             "type": "array",
             "items": {
@@ -16300,6 +18447,220 @@
             "items": {
               "$ref": "#/components/schemas/ImportObjectInput"
             }
+          },
+          "principals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportPrincipalInput"
+            }
+          },
+          "remote_targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRemoteTargetInput"
+            }
+          }
+        }
+      },
+      "ImportGroupInput": {
+        "type": "object",
+        "required": [
+          "groupname",
+          "description",
+          "managed_by"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "external_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "groupname": {
+            "type": "string"
+          },
+          "identity_scope_key": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/IdentityScopeKey"
+              }
+            ]
+          },
+          "identity_scope_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_sync_attempted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_sync_success_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "managed_by": {
+            "type": "string"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timestamps": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RestoreTimestamps"
+              }
+            ]
+          }
+        }
+      },
+      "ImportGroupMembershipInput": {
+        "type": "object",
+        "properties": {
+          "group_key": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GroupKey"
+              }
+            ]
+          },
+          "group_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "principal_key": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PrincipalKey"
+              }
+            ]
+          },
+          "principal_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportMembershipSourceInput"
+            }
+          },
+          "timestamps": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RestoreTimestamps"
+              }
+            ]
+          }
+        }
+      },
+      "ImportIdentityScopeInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "provider_kind"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "provider_kind": {
+            "type": "string"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timestamps": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RestoreTimestamps"
+              }
+            ]
+          }
+        }
+      },
+      "ImportMembershipSourceInput": {
+        "type": "object",
+        "required": [
+          "source",
+          "source_key"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "source_key": {
+            "type": "string"
+          },
+          "source_scope_key": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/IdentityScopeKey"
+              }
+            ]
+          },
+          "source_scope_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timestamps": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RestoreTimestamps"
+              }
+            ]
           }
         }
       },
@@ -16427,6 +18788,284 @@
           "continue"
         ]
       },
+      "ImportPrincipalInput": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ImportPrincipalSubtype"
+          },
+          {
+            "type": "object",
+            "required": [
+              "name",
+              "provider_managed"
+            ],
+            "properties": {
+              "external_subject": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "identity_scope_key": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IdentityScopeKey"
+                  }
+                ]
+              },
+              "identity_scope_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "last_sync_attempted_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "last_sync_success_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "name": {
+                "type": "string"
+              },
+              "provider_managed": {
+                "type": "boolean"
+              },
+              "ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "settings": {},
+              "timestamps": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RestoreTimestamps"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "ImportPrincipalSubtype": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "anonymized_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "email": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "human"
+                ]
+              },
+              "password": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "password_hash": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "proper_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "description",
+              "kind"
+            ],
+            "properties": {
+              "created_by_key": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/PrincipalKey"
+                  }
+                ]
+              },
+              "created_by_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "description": {
+                "type": "string"
+              },
+              "disabled_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "service_account"
+                ]
+              },
+              "owner_group_key": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GroupKey"
+                  }
+                ]
+              },
+              "owner_group_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "ImportRemoteTargetInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "method",
+          "url_template",
+          "allowed_subject_types",
+          "timeout_ms",
+          "enabled"
+        ],
+        "properties": {
+          "allowed_subject_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RemoteTargetSubjectType"
+            }
+          },
+          "auth_config": {
+            "$ref": "#/components/schemas/RemoteAuthConfig"
+          },
+          "body_template": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "class_key": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ClassKey"
+              }
+            ]
+          },
+          "class_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "collection_key": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CollectionKey"
+              }
+            ]
+          },
+          "collection_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "headers_template": {},
+          "method": {
+            "$ref": "#/components/schemas/RemoteHttpMethod"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timestamps": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RestoreTimestamps"
+              }
+            ]
+          },
+          "url_template": {
+            "type": "string"
+          }
+        }
+      },
       "ImportRequest": {
         "type": "object",
         "required": [
@@ -16534,9 +19173,16 @@
           "backoff_base_seconds",
           "backoff_max_seconds",
           "subnet_prefix_v4",
-          "subnet_prefix_v6"
+          "subnet_prefix_v6",
+          "backend",
+          "valkey_url",
+          "valkey_prefix",
+          "valkey_io_timeout_ms"
         ],
         "properties": {
+          "backend": {
+            "type": "string"
+          },
           "backoff_base_seconds": {
             "type": "integer",
             "format": "int64",
@@ -16572,6 +19218,17 @@
             "format": "int32",
             "minimum": 0
           },
+          "valkey_io_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "valkey_prefix": {
+            "type": "string"
+          },
+          "valkey_url": {
+            "$ref": "#/components/schemas/SecretStatus"
+          },
           "window_seconds": {
             "type": "integer",
             "format": "int64",
@@ -16584,6 +19241,7 @@
         "description": "Effective login rate-limit configuration, echoed back in the admin state endpoint.",
         "required": [
           "enabled",
+          "backend",
           "max_attempts",
           "max_attempts_per_ip",
           "max_attempts_per_subnet",
@@ -16594,6 +19252,9 @@
           "subnet_prefix_v6"
         ],
         "properties": {
+          "backend": {
+            "type": "string"
+          },
           "backoff_base_seconds": {
             "type": "integer",
             "format": "int64",
@@ -17234,6 +19895,33 @@
           "to_hubuum_object_id": 20
         }
       },
+      "NewHubuumObjectRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "collection_id",
+          "hubuum_class_id",
+          "data",
+          "description"
+        ],
+        "properties": {
+          "collection_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {},
+          "description": {
+            "type": "string"
+          },
+          "hubuum_class_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "NewRemoteTarget": {
         "type": "object",
         "required": [
@@ -17627,6 +20315,41 @@
           }
         }
       },
+      "PermissionConfig": {
+        "type": "object",
+        "required": [
+          "backend",
+          "treetop_url",
+          "treetop_connect_timeout_ms",
+          "treetop_request_timeout_ms",
+          "treetop_ca_certificate_configured",
+          "treetop_accept_invalid_certificates"
+        ],
+        "properties": {
+          "backend": {
+            "type": "string"
+          },
+          "treetop_accept_invalid_certificates": {
+            "type": "boolean"
+          },
+          "treetop_ca_certificate_configured": {
+            "type": "boolean"
+          },
+          "treetop_connect_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "treetop_request_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "treetop_url": {
+            "$ref": "#/components/schemas/SecretStatus"
+          }
+        }
+      },
       "Permissions": {
         "type": "string",
         "enum": [
@@ -17663,6 +20386,25 @@
           "ManageEventSubscription"
         ]
       },
+      "PersonalComputedFieldDefinitionRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ComputedFieldDefinitionRequest"
+          },
+          {
+            "type": "object",
+            "required": [
+              "class_id"
+            ],
+            "properties": {
+              "class_id": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          }
+        ]
+      },
       "PrincipalCollectionPermissions": {
         "type": "object",
         "description": "A principal's direct permission rows on a single collection, broken down by the\ngroup that grants them.",
@@ -17684,6 +20426,23 @@
             "items": {
               "$ref": "#/components/schemas/GroupGrant"
             }
+          }
+        }
+      },
+      "PrincipalKey": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "identity_scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
           }
         }
       },
@@ -18409,6 +21168,188 @@
           "object_relation"
         ]
       },
+      "RestoreConfig": {
+        "type": "object",
+        "required": [
+          "stage_retention_minutes",
+          "max_upload_bytes"
+        ],
+        "properties": {
+          "max_upload_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stage_retention_minutes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "RestoreConfirmRequest": {
+        "type": "object",
+        "required": [
+          "restore_capability",
+          "sha256",
+          "confirmation"
+        ],
+        "properties": {
+          "confirmation": {
+            "type": "string"
+          },
+          "restore_capability": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RestoreJobStatus": {
+        "type": "string",
+        "enum": [
+          "validated",
+          "confirmed",
+          "succeeded",
+          "failed",
+          "expired"
+        ]
+      },
+      "RestoreStageResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "requested_by_identity_scope",
+          "requested_by_name",
+          "sha256",
+          "byte_size",
+          "expires_at",
+          "created_at",
+          "updated_at",
+          "validation"
+        ],
+        "properties": {
+          "byte_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requested_by": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "requested_by_identity_scope": {
+            "type": "string"
+          },
+          "requested_by_name": {
+            "type": "string"
+          },
+          "restore_capability": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Returned only when a stage is created. It is stored only as a hash and\nmust be supplied to confirm or inspect the restore while its staging\nrecord exists. A successful restore deletes every staging record."
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RestoreJobStatus"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/RestoreValidationSummary"
+          }
+        }
+      },
+      "RestoreTimestamps": {
+        "type": "object",
+        "required": [
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RestoreValidationSummary": {
+        "type": "object",
+        "required": [
+          "backup_version",
+          "source_version",
+          "includes_history",
+          "total_items"
+        ],
+        "properties": {
+          "backup_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "includes_history": {
+            "type": "boolean"
+          },
+          "source_version": {
+            "type": "string"
+          },
+          "total_items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "RunningConfig": {
         "type": "object",
         "required": [
@@ -18417,14 +21358,20 @@
           "tasks",
           "events",
           "exports",
+          "backups",
+          "restores",
           "remote_calls",
           "authentication",
+          "permissions",
           "pagination",
           "network"
         ],
         "properties": {
           "authentication": {
             "$ref": "#/components/schemas/AuthenticationConfig"
+          },
+          "backups": {
+            "$ref": "#/components/schemas/BackupConfig"
           },
           "database": {
             "$ref": "#/components/schemas/DatabaseConfig"
@@ -18441,8 +21388,14 @@
           "pagination": {
             "$ref": "#/components/schemas/PaginationConfig"
           },
+          "permissions": {
+            "$ref": "#/components/schemas/PermissionConfig"
+          },
           "remote_calls": {
             "$ref": "#/components/schemas/RemoteCallConfig"
+          },
+          "restores": {
+            "$ref": "#/components/schemas/RestoreConfig"
           },
           "server": {
             "$ref": "#/components/schemas/ServerConfig"
@@ -18467,6 +21420,7 @@
       "ServerConfig": {
         "type": "object",
         "required": [
+          "runtime_role",
           "bind_ip",
           "bind_port",
           "log_level",
@@ -18495,6 +21449,9 @@
             "type": "boolean"
           },
           "metrics_path": {
+            "type": "string"
+          },
+          "runtime_role": {
             "type": "string"
           },
           "tls": {
@@ -18556,25 +21513,82 @@
           }
         }
       },
+      "SharedComputedScopeResponse": {
+        "type": "object",
+        "required": [
+          "revision",
+          "materialization_stale",
+          "values",
+          "errors"
+        ],
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ComputedFieldErrorResponse"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "materialization_stale": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "TaskConfig": {
         "type": "object",
         "required": [
           "workers",
           "poll_interval_ms",
+          "lease_seconds",
+          "heartbeat_seconds",
+          "recovery_interval_seconds",
+          "computed_reindex_batch_size",
           "import_max_active_per_user",
           "export_max_active_per_user",
           "remote_call_max_active_per_user"
         ],
         "properties": {
+          "computed_reindex_batch_size": {
+            "type": "integer",
+            "minimum": 0
+          },
           "export_max_active_per_user": {
             "type": "integer",
+            "minimum": 0
+          },
+          "heartbeat_seconds": {
+            "type": "integer",
+            "format": "int64",
             "minimum": 0
           },
           "import_max_active_per_user": {
             "type": "integer",
             "minimum": 0
           },
+          "lease_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
           "poll_interval_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "recovery_interval_seconds": {
             "type": "integer",
             "format": "int64",
             "minimum": 0
@@ -18592,6 +21606,16 @@
       "TaskDetails": {
         "type": "object",
         "properties": {
+          "backup": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BackupTaskDetails"
+              }
+            ]
+          },
           "export": {
             "oneOf": [
               {
@@ -18650,6 +21674,7 @@
         "enum": [
           "import",
           "export",
+          "backup",
           "reindex",
           "remote_call"
         ]
@@ -18661,6 +21686,18 @@
           "events"
         ],
         "properties": {
+          "backup": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "backup_output": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "events": {
             "type": "string"
           },
@@ -19427,6 +22464,38 @@
           "name": "srv-01"
         }
       },
+      "UpdateHubuumObjectRequest": {
+        "type": "object",
+        "properties": {
+          "collection_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "data": {},
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hubuum_class_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateRemoteTarget": {
         "type": "object",
         "properties": {
@@ -19634,6 +22703,12 @@
       "bearer_auth": {
         "type": "http",
         "scheme": "bearer"
+      },
+      "restore_capability": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Hubuum-Restore-Capability",
+        "description": "One-time restore capability returned when a backup document is staged"
       }
     }
   },
@@ -19693,6 +22768,14 @@
     {
       "name": "exports",
       "description": "Server-side export execution endpoints"
+    },
+    {
+      "name": "backups",
+      "description": "Administrator-only full-system logical backup creation and retrieval endpoints"
+    },
+    {
+      "name": "restores",
+      "description": "Administrator-only staged, destructive full-system restore endpoints"
     },
     {
       "name": "export-templates",

@@ -3,10 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 0.0.2
  */
+import type { SecretStatus } from './secretStatus';
 
 export interface LoginRateLimitConfig {
+  backend: string;
   /** @minimum 0 */
   backoff_base_seconds: number;
   /** @minimum 0 */
@@ -22,6 +24,10 @@ export interface LoginRateLimitConfig {
   subnet_prefix_v4: number;
   /** @minimum 0 */
   subnet_prefix_v6: number;
+  /** @minimum 0 */
+  valkey_io_timeout_ms: number;
+  valkey_prefix: string;
+  valkey_url: SecretStatus;
   /** @minimum 0 */
   window_seconds: number;
 }

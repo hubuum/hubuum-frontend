@@ -3,13 +3,14 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 0.0.2
  */
 
 /**
  * Effective login rate-limit configuration, echoed back in the admin state endpoint.
  */
 export interface LoginRateLimitConfigResponse {
+  backend: string;
   /** @minimum 0 */
   backoff_base_seconds: number;
   /** @minimum 0 */

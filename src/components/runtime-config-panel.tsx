@@ -12,8 +12,10 @@ const numberFormatter = new Intl.NumberFormat(undefined, {
 	maximumFractionDigits: 1,
 });
 
-function formatNumber(value: number): string {
-	return numberFormatter.format(value);
+function formatNumber(value: number | null | undefined): string {
+	return typeof value === "number" && Number.isFinite(value)
+		? numberFormatter.format(value)
+		: "n/a";
 }
 
 function formatBytes(value: number): string {
@@ -88,12 +90,16 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 	const remoteCalls = config.remote_calls;
 	const events = config.events;
 	const exportsConfig = config.exports;
+	const backups = config.backups;
+	const restores = config.restores;
+	const permissions = config.permissions;
 
 	return (
 		<div className="stats-grid">
 			<RuntimeStatCard
 				title="Server & network"
 				rows={[
+					{ label: "Runtime role", value: server.runtime_role ?? "n/a" },
 					{ label: "Listener", value: `${server.bind_ip}:${server.bind_port}` },
 					{ label: "Actix workers", value: formatNumber(server.actix_workers) },
 					{ label: "Log level", value: server.log_level },
@@ -169,6 +175,25 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 					{
 						label: "Task poll interval",
 						value: formatMilliseconds(tasks.poll_interval_ms),
+					},
+					{
+						label: "Task lease / heartbeat",
+						value:
+							typeof tasks.lease_seconds === "number" &&
+							typeof tasks.heartbeat_seconds === "number"
+								? `${formatSeconds(tasks.lease_seconds)} / ${formatSeconds(tasks.heartbeat_seconds)}`
+								: "n/a",
+					},
+					{
+						label: "Task recovery interval",
+						value:
+							typeof tasks.recovery_interval_seconds === "number"
+								? formatSeconds(tasks.recovery_interval_seconds)
+								: "n/a",
+					},
+					{
+						label: "Computed reindex batch",
+						value: formatNumber(tasks.computed_reindex_batch_size),
 					},
 					{
 						label: "Imports per user",
@@ -318,6 +343,59 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 					},
 				]}
 			/>
+
+			{backups && restores ? (
+				<RuntimeStatCard
+					title="Backup & restore"
+					rows={[
+						{
+							label: "Active backups per user",
+							value: formatNumber(backups.max_active_tasks_per_user),
+						},
+						{
+							label: "Maximum backup output",
+							value: formatBytes(backups.max_output_bytes),
+						},
+						{
+							label: "Backup retention",
+							value: `${formatNumber(backups.output_retention_hours)} h`,
+						},
+						{
+							label: "Maximum restore upload",
+							value: formatBytes(restores.max_upload_bytes),
+						},
+						{
+							label: "Restore staging retention",
+							value: `${formatNumber(restores.stage_retention_minutes)} min`,
+						},
+					]}
+				/>
+			) : null}
+
+			{permissions ? (
+				<RuntimeStatCard
+					title="Permissions"
+					rows={[
+						{ label: "Backend", value: permissions.backend },
+						{
+							label: "Treetop URL",
+							value: configured(permissions.treetop_url.configured),
+						},
+						{
+							label: "Treetop CA certificate",
+							value: configured(permissions.treetop_ca_certificate_configured),
+						},
+						{
+							label: "Accept invalid certificates",
+							value: enabled(permissions.treetop_accept_invalid_certificates),
+						},
+						{
+							label: "Connect / request timeout",
+							value: `${formatMilliseconds(permissions.treetop_connect_timeout_ms)} / ${formatMilliseconds(permissions.treetop_request_timeout_ms)}`,
+						},
+					]}
+				/>
+			) : null}
 		</div>
 	);
 }

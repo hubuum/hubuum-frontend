@@ -76,8 +76,9 @@ Hubuum `/api/v0/meta/...` endpoints are admin-only. The frontend must only call
 them after an admin access check, and current meta usage is limited to the
 admin statistics surface and admin-only landing-page counts. The statistics
 surface also reads the redacted `/api/v1/admin/config` projection when the
-backend provides it, while remaining compatible with older backends where that
-endpoint returns `404`.
+backend provides it. Administrators also have a dedicated read-only
+Configuration page; the server redacts secret values before returning the
+effective settings.
 
 Task activity shown to regular users comes from `/api/v1/tasks` through the BFF
 proxy, so users can see the task records available to their account without
@@ -128,9 +129,33 @@ label and a `|`-separated list of data paths. The table shows the first
 non-empty value, so a field like
 `os.fedora.version|os.redhat.version|os.macos.version` can display one
 normalized `OS version` column across differently shaped object data. Personal
-display definitions are stored as per-user, per-class console preferences.
-They affect presentation only. Shared or API-visible computed fields are domain
-resources and deliberately remain separate from the settings store.
+display definitions are stored as per-user, per-class console preferences and
+affect presentation only.
+
+Hubuum Server computed fields are separate domain resources. A class page can
+create and manage shared definitions for all class readers and personal
+definitions stored for the current user. Definitions support typed aggregation
+and presence operations over JSON Pointer paths, can be previewed against an
+existing object or sample data, and shared values can be explicitly rebuilt.
+Object reads opt in with `include=computed`; enabled shared and personal values
+then appear as object-table columns, in table exports and loaded-page search,
+and on object detail pages. Evaluation errors and stale shared materializations
+remain visible. Computed values are display-only for querying: Hubuum Server
+does not support filtering or sorting by them in `v0.0.2`.
+
+## Administrator backup and restore
+
+The admin-only Backup & restore workspace creates server background tasks and
+downloads their portable JSON output before the configured retention deadline.
+Backups can include resource and audit history, and the UI exposes the server's
+size, SHA-256, and expiry metadata.
+
+Restore is a deliberately staged operation. Selecting a backup first uploads
+and validates it without changing live data. The one-time restore capability is
+kept only in component memory, never browser storage. Confirmation requires the
+exact phrase `REPLACE ALL HUBUUM DATA` and a second danger dialog. A confirmed
+restore replaces the complete Hubuum database, including identities and
+permissions, and invalidates existing sessions and tokens.
 
 The BFF uses `/api/v1/iam/me/settings` when the backend exposes the principal
 settings API. Console preferences live under a versioned `hubuum_frontend`
@@ -256,17 +281,17 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Hubuum Frontend `v0.0.1` supports Hubuum Server `v0.0.1`. Releases provide:
+Hubuum Frontend `v0.0.2` targets Hubuum Server `v0.0.2`. Releases provide:
 
-- `ghcr.io/hubuum/hubuum-frontend:v0.0.1` for Linux AMD64 and ARM64;
-- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.1`;
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.2` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.2`;
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
 The application version is visible in the navigation, on the login page, and
 in `/healthz` and `/readyz` responses. Release images show the exact tag (for
-example, `v0.0.1`); commit images show `v0.0.1+<short-sha>`; unversioned local
-builds show `v0.0.1+dirty`. Image builds may set the immutable identity with
+example, `v0.0.2`); commit images show `v0.0.2+<short-sha>`; unversioned local
+builds show `v0.0.2+dirty`. Image builds may set the immutable identity with
 `docker build --build-arg APP_VERSION=...`.
 
 See [compatibility](docs/compatibility.md) and the
@@ -298,8 +323,11 @@ npm run test:live-backend
 The script defaults to `ghcr.io/hubuum/hubuum-server:main`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
-the auth, permission, events/audit, history/as-of, event sink, subscription,
-delivery lifecycle, and pagination APIs directly, and tears the stack down.
+the auth, permission, redacted admin configuration, backup/restore staging,
+shared and personal computed fields, events/audit, history/as-of, event sink,
+subscription, delivery lifecycle, and pagination APIs directly, and tears the
+stack down. Restore confirmation is intentionally excluded so this contract
+suite never replaces the live test database.
 
 Useful overrides:
 
@@ -354,7 +382,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.1 \
+  --version 0.0.2 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -363,7 +391,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.1 \
+  --version 0.0.2 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com

@@ -20,14 +20,20 @@ import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
+	fetchPersonalComputedFields,
+	fetchSharedComputedFields,
+} from "@/lib/api/computed-fields";
+import {
 	deleteApiV1ClassesByClassIdByObjectId,
 	getApiV1Classes,
 	getApiV1Collections,
 } from "@/lib/api/generated/client";
 import type {
 	Collection,
+	ComputedFieldDefinition,
+	ComputedFieldErrorResponse,
 	HubuumClassExpanded,
-	HubuumObject,
+	HubuumObjectComputedResponse,
 	NewHubuumObject,
 } from "@/lib/api/generated/models";
 import { useConfirm } from "@/lib/confirm-context";
@@ -114,7 +120,7 @@ const MAX_DATA_ARRAY_ITEMS = 3;
 const CUSTOM_DATA_FIELD_ID_PREFIX = "custom:";
 const EMPTY_CLASSES: HubuumClassExpanded[] = [];
 const EMPTY_NAMESPACES: Collection[] = [];
-const EMPTY_OBJECTS: HubuumObject[] = [];
+const EMPTY_OBJECTS: HubuumObjectComputedResponse[] = [];
 
 type DataPathCandidate = {
 	id: string;
@@ -150,6 +156,13 @@ type DataColumnSortState = {
 	direction: "asc" | "desc";
 };
 
+type ComputedColumn = {
+	id: string;
+	key: string;
+	label: string;
+	scope: "shared" | "personal";
+};
+
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
 		{ limit: 250, include_total: false },
@@ -181,7 +194,7 @@ async function parseJsonPayload(response: Response): Promise<unknown> {
 }
 
 type ObjectsPageData = {
-	objects: HubuumObject[];
+	objects: HubuumObjectComputedResponse[];
 	nextCursor: string | null;
 	prevCursor: string | null;
 	totalCount: number | null;
@@ -196,6 +209,7 @@ async function fetchObjectsByClass(
 ): Promise<ObjectsPageData> {
 	const params = new URLSearchParams();
 	params.set("limit", String(limit));
+	params.set("include", "computed");
 	if (cursor) params.set("cursor", cursor);
 	if (sort) params.set("sort", sort);
 	appendObjectServerFilters(params, serverFilters);
@@ -220,7 +234,10 @@ async function fetchObjectsByClass(
 		: null;
 
 	return {
-		objects: expectArrayPayload<HubuumObject>(payload, "class objects"),
+		objects: expectArrayPayload<HubuumObjectComputedResponse>(
+			payload,
+			"class objects",
+		),
 		nextCursor,
 		prevCursor,
 		totalCount: Number.isFinite(totalCount) ? totalCount : null,
@@ -258,6 +275,20 @@ function getDataSearchText(data: unknown): string {
 	} catch {
 		return "";
 	}
+}
+
+function getComputedColumnResult(
+	objectItem: HubuumObjectComputedResponse,
+	column: ComputedColumn,
+): { error: ComputedFieldErrorResponse | null; value: unknown } {
+	const computed =
+		column.scope === "shared"
+			? objectItem.computed.shared
+			: objectItem.computed.personal;
+	return {
+		error: computed?.errors[column.key] ?? null,
+		value: computed?.values[column.key],
+	};
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -930,6 +961,36 @@ export function ObjectsExplorer() {
 		() => classes.find((item) => item.id === parsedCreateClassId),
 		[classes, parsedCreateClassId],
 	);
+	const sharedComputedQuery = useQuery({
+		queryKey: ["computed-fields", "shared", parsedClassId],
+		queryFn: () => fetchSharedComputedFields(parsedClassId ?? 0),
+		enabled: parsedClassId !== null,
+	});
+	const personalComputedQuery = useQuery({
+		queryKey: ["computed-fields", "personal", parsedClassId],
+		queryFn: () => fetchPersonalComputedFields(parsedClassId ?? 0),
+		enabled: parsedClassId !== null,
+	});
+	const computedColumns = useMemo<ComputedColumn[]>(() => {
+		function columnsFor(
+			definitions: ComputedFieldDefinition[],
+			scope: ComputedColumn["scope"],
+		): ComputedColumn[] {
+			return definitions
+				.filter((definition) => definition.enabled)
+				.map((definition) => ({
+					id: `${scope}:${definition.key}`,
+					key: definition.key,
+					label: definition.label,
+					scope,
+				}));
+		}
+
+		return [
+			...columnsFor(sharedComputedQuery.data?.definitions ?? [], "shared"),
+			...columnsFor(personalComputedQuery.data ?? [], "personal"),
+		];
+	}, [personalComputedQuery.data, sharedComputedQuery.data?.definitions]);
 
 	const objectsQuery = useQuery({
 		queryKey: [
@@ -1238,6 +1299,8 @@ export function ObjectsExplorer() {
 					objectItem.name,
 					objectItem.description,
 					getDataSearchText(objectItem.data),
+					getDataSearchText(objectItem.computed.shared.values),
+					getDataSearchText(objectItem.computed.personal?.values),
 				),
 			),
 		[objects, searchTerm],
@@ -1266,8 +1329,10 @@ export function ObjectsExplorer() {
 			return left.id - right.id;
 		});
 	}, [activeDataColumns, dataColumnSort, filteredObjects]);
-	const objectExportColumns = useMemo<TableExportColumn<HubuumObject>[]>(() => {
-		const columns: TableExportColumn<HubuumObject>[] = [
+	const objectExportColumns = useMemo<
+		TableExportColumn<HubuumObjectComputedResponse>[]
+	>(() => {
+		const columns: TableExportColumn<HubuumObjectComputedResponse>[] = [
 			{ key: "id", label: "ID", getValue: (item) => item.id },
 			{ key: "name", label: "Name", getValue: (item) => item.name },
 			{
@@ -1300,6 +1365,13 @@ export function ObjectsExplorer() {
 					getValueAtFirstAvailableDataPath(item.data, column.paths),
 			});
 		}
+		for (const column of computedColumns) {
+			columns.push({
+				key: `computed.${column.id}`,
+				label: `${column.scope === "shared" ? "Shared" : "Personal"} · ${column.label}`,
+				getValue: (item) => getComputedColumnResult(item, column).value,
+			});
+		}
 		if (showRawDataColumn) {
 			columns.push({
 				key: "data",
@@ -1311,10 +1383,13 @@ export function ObjectsExplorer() {
 	}, [
 		activeDataColumns,
 		collectionNameById,
+		computedColumns,
 		dataColumnHeadings,
 		showRawDataColumn,
 	]);
-	const objectExportView = useMemo<TableExportView<HubuumObject>>(
+	const objectExportView = useMemo<
+		TableExportView<HubuumObjectComputedResponse>
+	>(
 		() => ({
 			id: parsedClassId === null ? "objects" : `objects.class.${parsedClassId}`,
 			fileName: `${selectedClass?.name ?? "objects"}-view`,
@@ -1331,6 +1406,7 @@ export function ObjectsExplorer() {
 			objectsQuery.data ? "ready" : "pending",
 			filteredObjects.length > 0 ? "visible" : "hidden",
 			...activeDataColumns.map((column) => column.id),
+			...computedColumns.map((column) => column.id),
 			showRawDataColumn ? "raw" : "no-raw",
 		].join("|"),
 	});
@@ -2112,10 +2188,13 @@ export function ObjectsExplorer() {
 							>
 								<IconColumns />
 								<span>Columns</span>
-								{activeStandardDataColumnCount + activeCustomDataColumnCount ? (
+								{activeStandardDataColumnCount +
+								activeCustomDataColumnCount +
+								computedColumns.length ? (
 									<span className="object-column-count">
 										{activeStandardDataColumnCount +
-											activeCustomDataColumnCount}
+											activeCustomDataColumnCount +
+											computedColumns.length}
 									</span>
 								) : null}
 							</button>
@@ -2168,6 +2247,30 @@ export function ObjectsExplorer() {
 											<small>{showRawDataColumn ? "shown" : "hidden"}</small>
 										</span>
 									</label>
+									{computedColumns.length > 0 ? (
+										<>
+											<div className="object-column-section-heading">
+												<strong>Computed fields</strong>
+												<Link
+													className="muted"
+													href={`/classes/${parsedClassId}#computed-fields`}
+												>
+													Manage
+												</Link>
+											</div>
+											<div className="object-column-options">
+												{computedColumns.map((column) => (
+													<div className="object-column-option" key={column.id}>
+														<input type="checkbox" checked readOnly />
+														<span>
+															<strong>{column.label}</strong>
+															<small>{column.scope} · server computed</small>
+														</span>
+													</div>
+												))}
+											</div>
+										</>
+									) : null}
 									{dataColumnCandidates.length === 0 ? (
 										<p className="muted">No data fields loaded.</p>
 									) : (
@@ -2333,6 +2436,22 @@ export function ObjectsExplorer() {
 						</form>
 					</div>
 				</div>
+				{sharedComputedQuery.isError || personalComputedQuery.isError ? (
+					<div className="muted" role="status">
+						Some computed field definitions could not be loaded. Object data is
+						still available.
+					</div>
+				) : null}
+				{objects.some(
+					(objectItem) => objectItem.computed.shared.materialization_stale,
+				) ? (
+					<div className="table-scope-note" role="status">
+						<span>
+							<strong>Shared computed values are rebuilding.</strong>{" "}
+							Displayed values may be stale until materialization finishes.
+						</span>
+					</div>
+				) : null}
 				{searchTerm || serverFilters.length > 0 || dataColumnSort.columnId ? (
 					<div className="table-scope-note" role="status">
 						{serverFilters.length > 0 ? (
@@ -2434,6 +2553,13 @@ export function ObjectsExplorer() {
 											key={column.id}
 											className="object-promoted-data-column"
 											data-column-key={`data:${column.id}`}
+										/>
+									))}
+									{computedColumns.map((column) => (
+										<col
+											key={column.id}
+											className="object-promoted-data-column"
+											data-column-key={`computed:${column.id}`}
 										/>
 									))}
 									{showRawDataColumn ? (
@@ -2557,6 +2683,27 @@ export function ObjectsExplorer() {
 												</th>
 											);
 										})}
+										{computedColumns.map((column) => (
+											<th
+												key={column.id}
+												className="object-data-field-heading"
+												data-column-key={`computed:${column.id}`}
+												title="Computed fields cannot be used for server sorting"
+											>
+												<span className="object-column-heading-context">
+													{column.scope}
+												</span>
+												<span
+													className="object-column-heading-separator"
+													aria-hidden="true"
+												>
+													·
+												</span>
+												<span className="object-column-heading-name">
+													{column.label}
+												</span>
+											</th>
+										))}
 										{showRawDataColumn ? (
 											<th
 												className="object-raw-data-heading"
@@ -2643,6 +2790,30 @@ export function ObjectsExplorer() {
 														)}
 													</td>
 												))}
+												{computedColumns.map((column) => {
+													const result = getComputedColumnResult(
+														objectItem,
+														column,
+													);
+													return (
+														<td
+															key={column.id}
+															className="object-data-field-cell"
+															data-column-key={`computed:${column.id}`}
+															title={
+																result.error
+																	? `${result.error.code}: ${result.error.message}`
+																	: undefined
+															}
+														>
+															{result.error ? (
+																<span className="error-banner">Error</span>
+															) : (
+																renderPromotedDataValue(result.value)
+															)}
+														</td>
+													);
+												})}
 												{showRawDataColumn ? (
 													<td className="data-cell">
 														{renderObjectDataPreview(

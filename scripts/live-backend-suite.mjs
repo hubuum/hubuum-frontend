@@ -42,6 +42,7 @@ async function request(method, path, options = {}) {
   const {
     body,
     expected = [200],
+    headers,
     query,
     token,
   } = options;
@@ -50,6 +51,7 @@ async function request(method, path, options = {}) {
     headers: {
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -144,13 +146,29 @@ async function main() {
     openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
     "OpenAPI is missing collection event subscriptions.",
   );
-  pass("server OpenAPI exposes events and subscriptions");
+  assert(openapi.data.paths?.["/api/v1/backups"], "OpenAPI is missing backups.");
+  assert(openapi.data.paths?.["/api/v1/restores"], "OpenAPI is missing restores.");
+  assert(
+    openapi.data.paths?.["/api/v1/classes/{class_id}/computed-fields"],
+    "OpenAPI is missing shared computed fields.",
+  );
+  assert(
+    openapi.data.paths?.["/api/v1/iam/me/computed-fields"],
+    "OpenAPI is missing personal computed fields.",
+  );
+  pass("server OpenAPI exposes events, backups, restores, and computed fields");
 
   const token = await loginAs(adminName, adminPassword);
   pass("admin login returns a bearer token");
 
   const auth = { token };
   const adminUserId = 1;
+
+  const runningConfig = await request("GET", "/api/v1/admin/config", auth);
+  assert(runningConfig.data.backups, "Admin config is missing backup settings.");
+  assert(runningConfig.data.restores, "Admin config is missing restore settings.");
+  assert(runningConfig.data.permissions, "Admin config is missing permission settings.");
+  pass("read redacted v0.0.2 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -202,6 +220,145 @@ async function main() {
   });
   expectId(hubuumObject.data, "Created object");
   pass("created object");
+
+  const sharedComputed = await request(
+    "POST",
+    `/api/v1/classes/${hubuumClass.data.id}/computed-fields`,
+    {
+      ...auth,
+      body: {
+        description: "Shared live-backend contract field",
+        enabled: true,
+        key: "live_flag",
+        label: "Live flag",
+        operation: { type: "first_non_null", paths: ["/live_backend_test"] },
+        result_type: "boolean",
+      },
+      expected: 201,
+    },
+  );
+  expectId(sharedComputed.data.definition, "Created shared computed field");
+  assert(sharedComputed.data.state?.class_id === hubuumClass.data.id, "Shared field response is missing class state.");
+  pass("created shared computed field");
+
+  const personalComputed = await request("POST", "/api/v1/iam/me/computed-fields", {
+    ...auth,
+    body: {
+      class_id: hubuumClass.data.id,
+      description: "Personal live-backend contract field",
+      enabled: true,
+      key: "live_suffix",
+      label: "Live suffix",
+      operation: { type: "first_non_null", paths: ["/suffix"] },
+      result_type: "string",
+    },
+    expected: 201,
+  });
+  expectId(personalComputed.data, "Created personal computed field");
+  pass("created personal computed field");
+
+  const computedPreview = await request(
+    "POST",
+    `/api/v1/classes/${hubuumClass.data.id}/computed-fields/preview`,
+    {
+      ...auth,
+      body: {
+        data: { live_backend_test: true },
+        definition: {
+          description: "Preview",
+          enabled: true,
+          key: "preview_flag",
+          label: "Preview flag",
+          operation: { type: "first_non_null", paths: ["/live_backend_test"] },
+          result_type: "boolean",
+        },
+      },
+    },
+  );
+  assert(computedPreview.data.value === true, "Computed preview should return true.");
+  pass("previewed a computed field against sample data");
+
+  const computedObject = await request(
+    "GET",
+    `/api/v1/classes/${hubuumClass.data.id}/${hubuumObject.data.id}`,
+    { ...auth, query: { include: "computed" } },
+  );
+  assert(computedObject.data.computed?.shared?.values?.live_flag === true, "Shared computed value is missing.");
+  assert(computedObject.data.computed?.personal?.values?.live_suffix === suffix, "Personal computed value is missing.");
+  pass("read shared and personal computed values on an object");
+
+  const sharedDefinitions = await request(
+    "GET",
+    `/api/v1/classes/${hubuumClass.data.id}/computed-fields`,
+    auth,
+  );
+  expectArray(sharedDefinitions.data.definitions, "Shared computed definitions");
+  const personalDefinitions = await request("GET", "/api/v1/iam/me/computed-fields", {
+    ...auth,
+    query: { class_id: hubuumClass.data.id },
+  });
+  expectArray(personalDefinitions.data, "Personal computed definitions");
+  pass("listed shared and personal computed definitions");
+
+  const rebuild = await request(
+    "POST",
+    `/api/v1/classes/${hubuumClass.data.id}/computed-fields/rebuild`,
+    { ...auth, expected: 202 },
+  );
+  assert(rebuild.data.class_id === hubuumClass.data.id, "Computed rebuild response has the wrong class.");
+  pass("queued a shared computed-field rebuild");
+
+  const backup = await request("POST", "/api/v1/backups", {
+    ...auth,
+    body: { include_history: false },
+    expected: 202,
+  });
+  expectId(backup.data, "Created backup task");
+  const completedBackup = await waitFor(
+    `backup task ${backup.data.id}`,
+    async () => {
+      const task = await request("GET", `/api/v1/backups/${backup.data.id}`, auth);
+      if (task.data.status === "failed" || task.data.status === "cancelled") {
+        throw new Error(`Backup task ended with ${task.data.status}.`);
+      }
+      return task.data.status === "succeeded" ? task.data : null;
+    },
+    { attempts: 60, intervalMs: 250 },
+  );
+  assert(completedBackup.details?.backup?.output_available, "Backup output should be available.");
+  pass("created and completed a backup task");
+
+  const backupOutput = await request("GET", `/api/v1/backups/${backup.data.id}/output`, auth);
+  assert(backupOutput.data.backup_version === 3, "Backup document should use format version 3.");
+  assert(hasHeader(backupOutput.headers, "digest"), "Backup output should include Digest.");
+  assert(
+    hasHeader(backupOutput.headers, "x-hubuum-backup-sha256"),
+    "Backup output should include X-Hubuum-Backup-SHA256.",
+  );
+  pass("downloaded backup output with integrity metadata");
+
+  const stagedRestore = await request("POST", "/api/v1/restores", {
+    ...auth,
+    body: backupOutput.data,
+    expected: 201,
+  });
+  expectId(stagedRestore.data, "Staged restore");
+  assert(
+    typeof stagedRestore.data.restore_capability === "string" &&
+      stagedRestore.data.restore_capability.length > 0,
+    "Staged restore should return a one-time capability.",
+  );
+  assert(stagedRestore.data.validation?.backup_version === 3, "Restore validation should report backup version 3.");
+  const restoreStatus = await request(
+    "GET",
+    `/api/v1/restores/${stagedRestore.data.id}/status`,
+    {
+      ...auth,
+      headers: { "X-Hubuum-Restore-Capability": stagedRestore.data.restore_capability },
+    },
+  );
+  assert(restoreStatus.data.status === "validated", "Staged restore should remain validated.");
+  pass("staged and inspected a restore without replacing live data");
 
   const limitedGroup = await request("POST", "/api/v1/iam/groups", {
     ...auth,
