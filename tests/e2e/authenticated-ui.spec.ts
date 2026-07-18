@@ -74,6 +74,26 @@ test.describe("authenticated workspace", () => {
 		await expect(page.locator(".fab--create")).toBeVisible();
 	});
 
+	test("imports starts with a gated file-first workflow", async ({ page }) => {
+		await page.goto("/imports");
+
+		const fileTab = page.getByRole("tab", { name: /1\. File/ });
+		const destinationTab = page.getByRole("tab", { name: /2\. Destination/ });
+		const policiesTab = page.getByRole("tab", { name: /3\. Policies/ });
+		const reviewTab = page.getByRole("tab", { name: /4\. Review/ });
+
+		await expect(fileTab).toHaveAttribute("aria-selected", "true");
+		await expect(destinationTab).toBeDisabled();
+		await expect(policiesTab).toBeDisabled();
+		await expect(reviewTab).toBeDisabled();
+		await expect(
+			page.getByRole("button", { name: "Choose file" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Continue to destination" }),
+		).toBeDisabled();
+	});
+
 	test("exports separates running, templates, and history into task views", async ({
 		page,
 	}) => {

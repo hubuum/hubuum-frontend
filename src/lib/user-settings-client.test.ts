@@ -138,7 +138,7 @@ describe("user settings synchronization", () => {
 		expect(storage.getItem(USER_SETTINGS_OWNER_KEY)).toBe("2");
 	});
 
-	it("retries transient failures and clears the durable queue on success", async () => {
+	it("retries transient failures and clears the durable override after snapshot confirmation", async () => {
 		const storage = createLocalStorage();
 		installWindow(storage);
 		vi.mocked(patchUserSettings)
@@ -159,7 +159,50 @@ describe("user settings synchronization", () => {
 		await vi.advanceTimersByTimeAsync(1_000);
 		expect(patchUserSettings).toHaveBeenCalledTimes(2);
 		expect(getUserSettingsSyncStatus()).toBe("synced");
+		expect(
+			JSON.parse(
+				storage.getItem(`${USER_SETTINGS_PENDING_KEY_PREFIX}7`) ?? "{}",
+			),
+		).toEqual({ [PORTABLE_USER_SETTING_KEYS.theme]: "dark" });
+
+		resetUserSettingsSyncForTests();
+		initializeUserSettings(
+			snapshot(7, { [PORTABLE_USER_SETTING_KEYS.theme]: "dark" }),
+		);
+
 		expect(storage.getItem(`${USER_SETTINGS_PENDING_KEY_PREFIX}7`)).toBeNull();
+	});
+
+	it("keeps a locally saved accent when a refresh receives a stale snapshot", async () => {
+		const storage = createLocalStorage();
+		installWindow(storage);
+		vi.mocked(patchUserSettings).mockResolvedValue();
+		initializeUserSettings(
+			snapshot(7, { [PORTABLE_USER_SETTING_KEYS.accent]: "teal" }),
+		);
+
+		writeUserSetting(PORTABLE_USER_SETTING_KEYS.accent, "violet");
+		await flushUserSettings();
+		expect(getUserSettingsSyncStatus()).toBe("synced");
+
+		resetUserSettingsSyncForTests();
+		initializeUserSettings(
+			snapshot(7, { [PORTABLE_USER_SETTING_KEYS.accent]: "teal" }),
+		);
+
+		expect(storage.getItem(PORTABLE_USER_SETTING_KEYS.accent)).toBe("violet");
+		expect(
+			JSON.parse(
+				storage.getItem(`${USER_SETTINGS_PENDING_KEY_PREFIX}7`) ?? "{}",
+			),
+		).toEqual({ [PORTABLE_USER_SETTING_KEYS.accent]: "violet" });
+		expect(getUserSettingsSyncStatus()).toBe("idle");
+
+		await vi.advanceTimersByTimeAsync(250);
+		expect(patchUserSettings).toHaveBeenLastCalledWith(
+			{ [PORTABLE_USER_SETTING_KEYS.accent]: "violet" },
+			{},
+		);
 	});
 
 	it("keeps a newer write when an older in-flight write fails", async () => {

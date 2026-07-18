@@ -10,6 +10,11 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	GuidedFlowContinue,
+	GuidedFlowPanel,
+	GuidedFlowTabs,
+} from "@/components/guided-flow";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1IamGroups,
@@ -46,6 +51,19 @@ type ImportFilePayload = ImportRequest & Record<string, unknown>;
 type ImportsWorkspaceProps = {
 	canCreateCollections: boolean;
 };
+
+const IMPORT_STEPS = [
+	{ id: "file", label: "File", hint: "Select and inspect" },
+	{
+		id: "destination",
+		label: "Destination",
+		hint: "Map collections and access",
+	},
+	{ id: "policies", label: "Policies", hint: "Conflicts and failures" },
+	{ id: "review", label: "Review", hint: "Validate or execute" },
+] as const;
+
+type ImportStep = (typeof IMPORT_STEPS)[number]["id"];
 
 type HintKey =
 	| "import-file"
@@ -216,6 +234,7 @@ export function ImportsWorkspace({
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [taskLookupInput, setTaskLookupInput] = useState("");
 	const [activeHint, setActiveHint] = useState<HintKey | null>(null);
+	const [activeStep, setActiveStep] = useState<ImportStep>("file");
 
 	const importSummary = useMemo(
 		() => (parsedImport ? summarizeImport(parsedImport) : null),
@@ -422,6 +441,7 @@ export function ImportsWorkspace({
 			setDelegateGroupName("");
 			setParseError(null);
 			setSubmitError(null);
+			setActiveStep("file");
 		} catch (error) {
 			setParsedImport(null);
 			setFileName(file.name);
@@ -430,6 +450,7 @@ export function ImportsWorkspace({
 					? error.message
 					: "Selected file is not a valid import document.",
 			);
+			setActiveStep("file");
 		}
 	}
 
@@ -603,6 +624,77 @@ export function ImportsWorkspace({
 		);
 	}
 
+	function getStepError(step: ImportStep): string | null {
+		if (step === "file") {
+			return parsedImport
+				? null
+				: (parseError ?? "Choose a valid import file.");
+		}
+		if (step === "destination") {
+			if (!canSubmitCollectionOptions) {
+				return "Choose an unambiguous destination collection and complete its details.";
+			}
+			if (!canSubmitFilePermissionGroups) {
+				return "Choose an existing delegate group for the file permissions.";
+			}
+		}
+		return null;
+	}
+
+	function continueFrom(step: ImportStep, nextStep: ImportStep) {
+		const error = getStepError(step);
+		setSubmitError(error);
+		if (!error) setActiveStep(nextStep);
+	}
+
+	function renderFileSummary() {
+		return (
+			<div className="file-summary">
+				<div>
+					<strong>Selected file</strong>
+					<p className="muted">
+						{fileName || "Choose a JSON import file to inspect it."}
+					</p>
+				</div>
+				{importSummary ? (
+					<div className="summary-grid">
+						<div className="summary-pill">
+							<span>Total items</span>
+							<strong>{importSummary.totalItems}</strong>
+						</div>
+						{importSummary.sections.map((section) => (
+							<div key={section.name} className="summary-pill">
+								<span>{section.name.replaceAll("_", " ")}</span>
+								<strong>{section.count}</strong>
+							</div>
+						))}
+					</div>
+				) : (
+					<div className="empty-state">
+						Load a valid import document to inspect section counts.
+					</div>
+				)}
+			</div>
+		);
+	}
+
+	const fileReady = getStepError("file") === null;
+	const destinationReady = fileReady && getStepError("destination") === null;
+	const importSteps = IMPORT_STEPS.map((step) => ({
+		...step,
+		enabled:
+			step.id === "file" ||
+			(step.id === "destination" && fileReady) ||
+			(step.id === "policies" && destinationReady) ||
+			(step.id === "review" && destinationReady),
+	}));
+	const destinationSummary =
+		collectionMode === "file"
+			? "Use collection declarations from the file"
+			: collectionMode === "existing_override"
+				? `Import into ${targetCollectionName || "an existing collection"}`
+				: `Create ${targetCollectionName || "a new collection"}`;
+
 	return (
 		<section className="stack">
 			<header className="stack action-card-header">
@@ -628,206 +720,327 @@ export function ImportsWorkspace({
 						</div>
 
 						<form className="stack" onSubmit={handleSubmit}>
-							<div className="form-grid">
-								<label className="control-field control-field--wide">
-									{renderFieldLabel(
-										"Import file",
-										"import-file",
-										"Choose a Hubuum import JSON file. The file is parsed locally before submission.",
-									)}
-									<input
-										ref={fileInputRef}
-										className="json-editor-file"
-										type="file"
-										accept=".json,application/json"
-										onChange={handleFileChange}
+							<GuidedFlowTabs
+								activeStep={activeStep}
+								ariaLabel="Import submission steps"
+								onChange={(step) => {
+									setSubmitError(null);
+									setActiveStep(step);
+								}}
+								steps={importSteps}
+							/>
+
+							{activeStep === "file" ? (
+								<GuidedFlowPanel stepId="file">
+									<label className="control-field control-field--wide">
+										{renderFieldLabel(
+											"Import file",
+											"import-file",
+											"Choose a Hubuum import JSON file. The file is parsed locally before submission.",
+										)}
+										<input
+											ref={fileInputRef}
+											className="json-editor-file"
+											type="file"
+											accept=".json,application/json"
+											onChange={handleFileChange}
+										/>
+										<div className="file-picker">
+											<button
+												type="button"
+												className="ghost"
+												onClick={() => fileInputRef.current?.click()}
+											>
+												{fileName ? "Replace file" : "Choose file"}
+											</button>
+											<span
+												className="muted file-picker-status"
+												aria-live="polite"
+											>
+												{fileName || "No file selected."}
+											</span>
+										</div>
+									</label>
+									{renderFileSummary()}
+									<GuidedFlowContinue
+										disabled={!fileReady}
+										nextLabel="Destination"
+										onContinue={() => continueFrom("file", "destination")}
+										summary={
+											importSummary
+												? `${importSummary.totalItems} items parsed locally`
+												: "Choose a valid Hubuum import document"
+										}
+										title={
+											fileReady
+												? "File ready"
+												: "Select and inspect an import file"
+										}
 									/>
-									<div className="file-picker">
+								</GuidedFlowPanel>
+							) : null}
+
+							{activeStep === "destination" ? (
+								<GuidedFlowPanel stepId="destination">
+									<div className="form-grid">
+										<label className="control-field">
+											{renderFieldLabel(
+												"Collection handling",
+												"collection-handling",
+												canCreateCollections
+													? "Use file collection keeps the JSON as-is. Use existing rewrites the import to an existing collection without permission changes. Create collection rewrites the import and includes collection creation and grants."
+													: "Your account can only import into an existing collection, so collection creation and permission changes are not submitted.",
+											)}
+											<select
+												value={collectionMode}
+												onChange={(event) => {
+													setCollectionMode(
+														event.target.value as CollectionMode,
+													);
+													setDelegateGroupName("");
+													setSubmitError(null);
+												}}
+												disabled={!canCreateCollections}
+											>
+												{canCreateCollections ? (
+													<option value="file">Use file collection</option>
+												) : null}
+												<option value="existing_override">
+													Use existing collection
+												</option>
+												{canCreateCollections ? (
+													<option value="create_override">
+														Create collection
+													</option>
+												) : null}
+											</select>
+										</label>
+										{requiresTargetCollection
+											? renderTargetCollectionControl()
+											: renderDelegateGroupOverrideControl()}
+										{requiresCollectionDescription ? (
+											<label className="control-field control-field--wide">
+												{renderFieldLabel(
+													"Collection description",
+													"collection-description",
+													"Description used for the collection declaration added to the import request.",
+												)}
+												<input
+													required
+													value={targetCollectionDescription}
+													onChange={(event) => {
+														setTargetCollectionDescription(event.target.value);
+														setSubmitError(null);
+													}}
+													placeholder="Collection purpose"
+												/>
+											</label>
+										) : null}
+										{requiresTargetCollection
+											? renderDelegateGroupOverrideControl()
+											: null}
+									</div>
+									{collectionsQuery.isError && isExistingCollectionMode ? (
+										<div className="muted">
+											Could not load collections. Reload the page before
+											submitting an import into an existing collection.
+										</div>
+									) : null}
+									{canUsePermissionControls && groupsQuery.isError ? (
+										<div className="muted">
+											Could not load groups automatically. You can still
+											override delegation by entering a group name manually.
+										</div>
+									) : null}
+									<GuidedFlowContinue
+										disabled={!destinationReady}
+										nextLabel="Policies"
+										onBack={() => setActiveStep("file")}
+										onContinue={() => continueFrom("destination", "policies")}
+										summary={destinationSummary}
+										title={
+											destinationReady
+												? "Destination ready"
+												: "Complete the destination and access mapping"
+										}
+									/>
+								</GuidedFlowPanel>
+							) : null}
+
+							{activeStep === "policies" ? (
+								<GuidedFlowPanel stepId="policies">
+									<div className="form-grid">
+										<label className="control-field">
+											{renderFieldLabel(
+												"Atomicity",
+												"atomicity",
+												"Strict aborts the import as a unit; best effort allows independent items to continue where possible.",
+											)}
+											<select
+												value={atomicity}
+												onChange={(event) =>
+													setAtomicity(
+														event.target.value as "strict" | "best_effort",
+													)
+												}
+											>
+												<option value="strict">Strict</option>
+												<option value="best_effort">Best effort</option>
+											</select>
+										</label>
+										<label className="control-field">
+											{renderFieldLabel(
+												"Collision policy",
+												"collision-policy",
+												"Choose whether existing matching records abort the import or are overwritten.",
+											)}
+											<select
+												value={collisionPolicy}
+												onChange={(event) =>
+													setCollisionPolicy(
+														event.target.value as "abort" | "overwrite",
+													)
+												}
+											>
+												<option value="abort">Abort</option>
+												<option value="overwrite">Overwrite</option>
+											</select>
+										</label>
+										<label className="control-field">
+											{renderFieldLabel(
+												"Permission policy",
+												"permission-policy",
+												"Choose whether collection permission errors abort the import or allow the remaining import to continue.",
+											)}
+											<select
+												value={permissionPolicy}
+												disabled={!canUsePermissionControls}
+												onChange={(event) =>
+													setPermissionPolicy(
+														event.target.value as "abort" | "continue",
+													)
+												}
+											>
+												<option value="abort">Abort</option>
+												<option value="continue">Continue</option>
+											</select>
+										</label>
+										<label className="control-field control-field--wide">
+											{renderFieldLabel(
+												"Idempotency key",
+												"idempotency-key",
+												"Optional key used by the backend to deduplicate repeated submissions of the same import.",
+											)}
+											<input
+												value={idempotencyKey}
+												onChange={(event) =>
+													setIdempotencyKey(event.target.value)
+												}
+												placeholder="inventory-import-2026-03-07"
+											/>
+										</label>
+									</div>
+									{collisionPolicy === "overwrite" ? (
+										<div className="warning-banner">
+											Matching records may be overwritten when this import
+											executes.
+										</div>
+									) : null}
+									<GuidedFlowContinue
+										nextLabel="Review"
+										onBack={() => setActiveStep("destination")}
+										onContinue={() => continueFrom("policies", "review")}
+										summary={`${atomicity === "strict" ? "Strict" : "Best effort"} · ${collisionPolicy} collisions · ${permissionPolicy} on permission errors`}
+										title="Execution policies ready"
+									/>
+								</GuidedFlowPanel>
+							) : null}
+
+							{activeStep === "review" ? (
+								<GuidedFlowPanel stepId="review">
+									{renderFileSummary()}
+									<dl className="guided-flow-review-list">
+										<div>
+											<dt>Destination</dt>
+											<dd>{destinationSummary}</dd>
+										</div>
+										<div>
+											<dt>Conflicts</dt>
+											<dd>
+												{collisionPolicy === "abort"
+													? "Abort on matching records"
+													: "Overwrite matching records"}
+											</dd>
+										</div>
+										<div>
+											<dt>Failure handling</dt>
+											<dd>
+												{atomicity === "strict"
+													? "Abort the import as one unit"
+													: "Continue independent items where possible"}
+											</dd>
+										</div>
+										<div>
+											<dt>Permission errors</dt>
+											<dd>
+												{permissionPolicy === "abort"
+													? "Abort"
+													: "Continue remaining work"}
+											</dd>
+										</div>
+									</dl>
+									<div className="segmented-options import-intent-picker">
+										<button
+											type="button"
+											className={dryRun ? "is-selected" : "ghost"}
+											aria-pressed={dryRun}
+											onClick={() => setDryRun(true)}
+										>
+											<span>Validate only</span>
+											<small>
+												Check the transformed request without changing data
+											</small>
+										</button>
+										<button
+											type="button"
+											className={!dryRun ? "is-selected" : "ghost"}
+											aria-pressed={!dryRun}
+											onClick={() => setDryRun(false)}
+										>
+											<span>Execute import</span>
+											<small>
+												Apply the reviewed import as a background task
+											</small>
+										</button>
+									</div>
+									{!dryRun && collisionPolicy === "overwrite" ? (
+										<div className="warning-banner">
+											This execution can replace matching records. Validate
+											first if you have not already reviewed a dry run.
+										</div>
+									) : null}
+									<div className="form-actions">
 										<button
 											type="button"
 											className="ghost"
-											onClick={() => fileInputRef.current?.click()}
+											onClick={() => setActiveStep("policies")}
+											disabled={submitMutation.isPending}
 										>
-											{fileName ? "Replace file" : "Choose file"}
+											Back
 										</button>
-										<span
-											className="muted file-picker-status"
-											aria-live="polite"
+										<button
+											type="submit"
+											disabled={submitMutation.isPending || !destinationReady}
 										>
-											{fileName || "No file selected."}
-										</span>
+											{submitMutation.isPending
+												? "Submitting..."
+												: dryRun
+													? "Submit validation"
+													: "Execute import"}
+										</button>
 									</div>
-								</label>
-
-								<label className="control-field">
-									{renderFieldLabel(
-										"Dry run",
-										"dry-run",
-										"Validate the transformed import request without applying changes.",
-									)}
-									<select
-										value={dryRun ? "true" : "false"}
-										onChange={(event) =>
-											setDryRun(event.target.value === "true")
-										}
-									>
-										<option value="false">Execute</option>
-										<option value="true">Validate only</option>
-									</select>
-								</label>
-
-								<label className="control-field">
-									{renderFieldLabel(
-										"Atomicity",
-										"atomicity",
-										"Strict aborts the import as a unit; best effort allows independent items to continue where possible.",
-									)}
-									<select
-										value={atomicity}
-										onChange={(event) =>
-											setAtomicity(
-												event.target.value as "strict" | "best_effort",
-											)
-										}
-									>
-										<option value="strict">Strict</option>
-										<option value="best_effort">Best effort</option>
-									</select>
-								</label>
-
-								<label className="control-field">
-									{renderFieldLabel(
-										"Collision policy",
-										"collision-policy",
-										"Choose whether existing matching records abort the import or are overwritten.",
-									)}
-									<select
-										value={collisionPolicy}
-										onChange={(event) =>
-											setCollisionPolicy(
-												event.target.value as "abort" | "overwrite",
-											)
-										}
-									>
-										<option value="abort">Abort</option>
-										<option value="overwrite">Overwrite</option>
-									</select>
-								</label>
-
-								<label className="control-field">
-									{renderFieldLabel(
-										"Collection handling",
-										"collection-handling",
-										canCreateCollections
-											? "Use file collection keeps the JSON as-is. Use existing rewrites the import to an existing collection without permission changes. Create collection rewrites the import and includes collection creation and grants."
-											: "Your account can only import into an existing collection, so collection creation and permission changes are not submitted.",
-									)}
-									<select
-										value={collectionMode}
-										onChange={(event) => {
-											setCollectionMode(event.target.value as CollectionMode);
-											setDelegateGroupName("");
-										}}
-										disabled={!canCreateCollections}
-									>
-										{canCreateCollections ? (
-											<option value="file">Use file collection</option>
-										) : null}
-										<option value="existing_override">
-											Use existing collection
-										</option>
-										{canCreateCollections ? (
-											<option value="create_override">Create collection</option>
-										) : null}
-									</select>
-								</label>
-
-								{requiresTargetCollection
-									? renderTargetCollectionControl()
-									: renderDelegateGroupOverrideControl()}
-
-								{requiresCollectionDescription ? (
-									<label className="control-field control-field--wide">
-										{renderFieldLabel(
-											"Collection description",
-											"collection-description",
-											"Description used for the collection declaration added to the import request.",
-										)}
-										<input
-											required
-											value={targetCollectionDescription}
-											onChange={(event) =>
-												setTargetCollectionDescription(event.target.value)
-											}
-											placeholder="Collection purpose"
-										/>
-									</label>
-								) : null}
-
-								<label className="control-field">
-									{renderFieldLabel(
-										"Permission policy",
-										"permission-policy",
-										"Choose whether collection permission errors abort the import or allow the remaining import to continue.",
-									)}
-									<select
-										value={permissionPolicy}
-										disabled={!canUsePermissionControls}
-										onChange={(event) =>
-											setPermissionPolicy(
-												event.target.value as "abort" | "continue",
-											)
-										}
-									>
-										<option value="abort">Abort</option>
-										<option value="continue">Continue</option>
-									</select>
-								</label>
-
-								{requiresTargetCollection
-									? renderDelegateGroupOverrideControl()
-									: null}
-
-								<label className="control-field control-field--wide">
-									{renderFieldLabel(
-										"Idempotency key",
-										"idempotency-key",
-										"Optional key used by the backend to deduplicate repeated submissions of the same import.",
-									)}
-									<input
-										value={idempotencyKey}
-										onChange={(event) => setIdempotencyKey(event.target.value)}
-										placeholder="inventory-import-2026-03-07"
-									/>
-								</label>
-							</div>
-
-							<div className="file-summary">
-								<div>
-									<strong>Selected file</strong>
-									<p className="muted">
-										{fileName || "Choose a JSON import file to inspect it."}
-									</p>
-								</div>
-								{importSummary ? (
-									<div className="summary-grid">
-										<div className="summary-pill">
-											<span>Total items</span>
-											<strong>{importSummary.totalItems}</strong>
-										</div>
-										{importSummary.sections.map((section) => (
-											<div key={section.name} className="summary-pill">
-												<span>{section.name.replaceAll("_", " ")}</span>
-												<strong>{section.count}</strong>
-											</div>
-										))}
-									</div>
-								) : (
-									<div className="empty-state">
-										Load a valid import document to inspect section counts.
-									</div>
-								)}
-							</div>
+								</GuidedFlowPanel>
+							) : null}
 
 							{parseError ? (
 								<div className="error-banner">{parseError}</div>
@@ -835,36 +1048,6 @@ export function ImportsWorkspace({
 							{submitError ? (
 								<div className="error-banner">{submitError}</div>
 							) : null}
-							{collectionsQuery.isError && isExistingCollectionMode ? (
-								<div className="muted">
-									Could not load collections. Reload the page before submitting
-									an import into an existing collection.
-								</div>
-							) : null}
-							{canUsePermissionControls && groupsQuery.isError ? (
-								<div className="muted">
-									Could not load groups automatically. You can still override
-									delegation by entering a group name manually.
-								</div>
-							) : null}
-
-							<div className="action-row">
-								<button
-									type="submit"
-									disabled={
-										submitMutation.isPending ||
-										!parsedImport ||
-										!canSubmitCollectionOptions ||
-										!canSubmitFilePermissionGroups
-									}
-								>
-									{submitMutation.isPending ? "Submitting..." : "Submit import"}
-								</button>
-								<span className="muted">
-									Successful submissions open a dedicated task page so you can
-									keep multiple imports in flight.
-								</span>
-							</div>
 						</form>
 					</article>
 				</section>

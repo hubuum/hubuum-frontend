@@ -2,13 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import {
-	type KeyboardEvent as ReactKeyboardEvent,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import {
+	GuidedFlowContinue,
+	GuidedFlowPanel,
+	GuidedFlowTabs,
+} from "@/components/guided-flow";
 import { fetchClassObjectSamples } from "@/lib/api/class-objects";
 import {
 	type ComputedFieldDraft,
@@ -130,32 +130,6 @@ function pathsError(paths: readonly string[]): string | null {
 		return "Input paths must be unique.";
 	const invalid = paths.find((path) => path !== "" && !path.startsWith("/"));
 	return invalid ? `JSON Pointer must start with “/”: ${invalid}` : null;
-}
-
-function EditorContinueBar({
-	disabled = false,
-	nextLabel,
-	onContinue,
-	summary,
-	title,
-}: {
-	disabled?: boolean;
-	nextLabel: string;
-	onContinue: () => void;
-	summary: string;
-	title: string;
-}) {
-	return (
-		<div className="card export-target-continue-bar">
-			<div className="stack action-card-header">
-				<strong>{title}</strong>
-				<span className="muted">{summary}</span>
-			</div>
-			<button type="button" onClick={onContinue} disabled={disabled}>
-				Continue to {nextLabel.toLocaleLowerCase()}
-			</button>
-		</div>
-	);
 }
 
 type ScopeCardProps = {
@@ -569,34 +543,6 @@ function ComputedFieldEditor({
 		return !inputError && calculationReady && detailsReady;
 	}
 
-	function handleStepKeyDown(
-		event: ReactKeyboardEvent<HTMLButtonElement>,
-		step: EditorStep,
-	) {
-		if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
-			return;
-		}
-		event.preventDefault();
-		const enabled = EDITOR_STEPS.filter((item) => stepEnabled(item.id));
-		const currentIndex = enabled.findIndex((item) => item.id === step);
-		const next =
-			event.key === "Home"
-				? enabled[0]
-				: event.key === "End"
-					? enabled.at(-1)
-					: enabled[
-							(currentIndex +
-								(event.key === "ArrowRight" ? 1 : -1) +
-								enabled.length) %
-								enabled.length
-						];
-		if (!next) return;
-		setActiveStep(next.id);
-		requestAnimationFrame(() =>
-			document.getElementById(`computed-field-tab-${next.id}`)?.focus(),
-		);
-	}
-
 	async function requestClose() {
 		if (!isDirty) {
 			onClose();
@@ -663,43 +609,19 @@ function ComputedFieldEditor({
 				</button>
 			</header>
 
-			<div
-				className="export-template-editor-tabs computed-field-editor-tabs"
-				role="tablist"
-				aria-label="Computed field editor sections"
-			>
-				{EDITOR_STEPS.map((step) => {
-					const enabled = stepEnabled(step.id);
-					return (
-						<button
-							key={step.id}
-							type="button"
-							id={`computed-field-tab-${step.id}`}
-							role="tab"
-							aria-selected={activeStep === step.id}
-							aria-controls={`computed-field-panel-${step.id}`}
-							tabIndex={activeStep === step.id ? 0 : -1}
-							className={activeStep === step.id ? "is-active" : ""}
-							disabled={!enabled}
-							onClick={() => setActiveStep(step.id)}
-							onKeyDown={(event) => handleStepKeyDown(event, step.id)}
-						>
-							<span>{step.label}</span>
-							<small>
-								{enabled ? step.hint : "Complete the previous step"}
-							</small>
-						</button>
-					);
-				})}
-			</div>
+			<GuidedFlowTabs
+				activeStep={activeStep}
+				ariaLabel="Computed field editor sections"
+				idPrefix="computed-field"
+				onChange={setActiveStep}
+				steps={EDITOR_STEPS.map((step) => ({
+					...step,
+					enabled: stepEnabled(step.id),
+				}))}
+			/>
 
 			{activeStep === "target" ? (
-				<div
-					id="computed-field-panel-target"
-					className="stack"
-					role="tabpanel"
-					aria-labelledby="computed-field-tab-target"
-				>
+				<GuidedFlowPanel idPrefix="computed-field" stepId="target">
 					<div className="computed-field-target-grid">
 						<div className="summary-pill">
 							<span>Collection</span>
@@ -722,22 +644,17 @@ function ComputedFieldEditor({
 							? "Shared values are visible to every reader and materialized by background tasks."
 							: "Personal values are visible only to you."}
 					</p>
-					<EditorContinueBar
+					<GuidedFlowContinue
 						title="Target ready"
 						summary={`${collectionName} · ${className} · ${scope}`}
 						nextLabel="Inputs"
 						onContinue={() => setActiveStep("inputs")}
 					/>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 
 			{activeStep === "inputs" ? (
-				<div
-					id="computed-field-panel-inputs"
-					className="stack"
-					role="tabpanel"
-					aria-labelledby="computed-field-tab-inputs"
-				>
+				<GuidedFlowPanel idPrefix="computed-field" stepId="inputs">
 					<div className="computed-field-input-layout">
 						<section
 							className="stack computed-field-palette"
@@ -979,23 +896,18 @@ function ComputedFieldEditor({
 							{inputError}
 						</div>
 					) : null}
-					<EditorContinueBar
+					<GuidedFlowContinue
 						title={inputError ? "Choose the field inputs" : "Inputs ready"}
 						summary={`${paths.length} of 16 inputs selected`}
 						nextLabel="Calculation"
 						onContinue={() => setActiveStep("calculation")}
 						disabled={Boolean(inputError)}
 					/>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 
 			{activeStep === "calculation" ? (
-				<div
-					id="computed-field-panel-calculation"
-					className="stack"
-					role="tabpanel"
-					aria-labelledby="computed-field-tab-calculation"
-				>
+				<GuidedFlowPanel idPrefix="computed-field" stepId="calculation">
 					<fieldset className="stack computed-operation-fieldset">
 						<legend>How should the inputs be combined?</legend>
 						<div className="computed-operation-grid">
@@ -1058,7 +970,7 @@ function ComputedFieldEditor({
 							{compatibility.reason}
 						</div>
 					) : null}
-					<EditorContinueBar
+					<GuidedFlowContinue
 						title={
 							calculationReady
 								? "Calculation ready"
@@ -1069,16 +981,11 @@ function ComputedFieldEditor({
 						onContinue={() => setActiveStep("details")}
 						disabled={!calculationReady}
 					/>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 
 			{activeStep === "details" ? (
-				<div
-					id="computed-field-panel-details"
-					className="stack"
-					role="tabpanel"
-					aria-labelledby="computed-field-tab-details"
-				>
+				<GuidedFlowPanel idPrefix="computed-field" stepId="details">
 					<div className="grid cols-2">
 						<label className="control-field">
 							<span>Label</span>
@@ -1155,7 +1062,7 @@ function ComputedFieldEditor({
 						/>
 						Enabled
 					</label>
-					<EditorContinueBar
+					<GuidedFlowContinue
 						title={detailsReady ? "Details ready" : "Name this computed field"}
 						summary={
 							draft.label.trim() || "A label and unique key are required"
@@ -1164,16 +1071,11 @@ function ComputedFieldEditor({
 						onContinue={() => setActiveStep("preview")}
 						disabled={!detailsReady}
 					/>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 
 			{activeStep === "preview" ? (
-				<div
-					id="computed-field-panel-preview"
-					className="stack"
-					role="tabpanel"
-					aria-labelledby="computed-field-tab-preview"
-				>
+				<GuidedFlowPanel idPrefix="computed-field" stepId="preview">
 					<div className="computed-preview-layout">
 						<section className="stack">
 							<div className="stack action-card-header">
@@ -1338,7 +1240,7 @@ function ComputedFieldEditor({
 							Cancel
 						</button>
 					</div>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 		</article>
 	);

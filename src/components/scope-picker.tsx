@@ -7,6 +7,7 @@ type ScopePickerProps = {
 	restrict: boolean;
 	selected: Permissions[];
 	disabled?: boolean;
+	showRestrictionToggle?: boolean;
 	onChange: (restrict: boolean, selected: Permissions[]) => void;
 };
 
@@ -14,6 +15,7 @@ export function ScopePicker({
 	restrict,
 	selected,
 	disabled,
+	showRestrictionToggle = true,
 	onChange,
 }: ScopePickerProps) {
 	const selectedSet = new Set(selected);
@@ -30,18 +32,20 @@ export function ScopePicker({
 
 	return (
 		<div className="stack">
-			<label className="control-field">
-				<span>Scopes</span>
-				<label className="checkbox-row">
-					<input
-						type="checkbox"
-						checked={restrict}
-						disabled={disabled}
-						onChange={(event) => onChange(event.target.checked, selected)}
-					/>
-					<span>Restrict this token to specific permissions</span>
+			{showRestrictionToggle ? (
+				<label className="control-field">
+					<span>Scopes</span>
+					<label className="checkbox-row">
+						<input
+							type="checkbox"
+							checked={restrict}
+							disabled={disabled}
+							onChange={(event) => onChange(event.target.checked, selected)}
+						/>
+						<span>Restrict this token to specific permissions</span>
+					</label>
 				</label>
-			</label>
+			) : null}
 
 			{restrict ? (
 				<div className="scope-grid">

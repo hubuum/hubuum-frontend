@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { Permissions } from "@/lib/api/generated/models";
 import { canSubmitScopes, toScopesPayload } from "@/lib/token-scope-selection";
+import { READ_ONLY_TOKEN_SCOPES } from "@/lib/token-scopes";
 
 describe("token-scope-selection", () => {
 	it("returns undefined (unscoped) when restriction is off", () => {
@@ -28,5 +29,20 @@ describe("token-scope-selection", () => {
 
 	it("allows submit when restricting with at least one scope", () => {
 		expect(canSubmitScopes(true, [Permissions.ReadObject])).toBe(true);
+	});
+
+	it("keeps the guided read-only preset explicit and non-mutating", () => {
+		expect(READ_ONLY_TOKEN_SCOPES).toContain(Permissions.ReadCollection);
+		expect(READ_ONLY_TOKEN_SCOPES).toContain(Permissions.ReadObject);
+		expect(READ_ONLY_TOKEN_SCOPES).toContain(Permissions.ReadAudit);
+		expect(READ_ONLY_TOKEN_SCOPES).not.toContain(Permissions.CreateObject);
+		expect(READ_ONLY_TOKEN_SCOPES).not.toContain(Permissions.UpdateObject);
+		expect(READ_ONLY_TOKEN_SCOPES).not.toContain(Permissions.DeleteObject);
+		expect(READ_ONLY_TOKEN_SCOPES).not.toContain(
+			Permissions.ExecuteRemoteTarget,
+		);
+		expect(READ_ONLY_TOKEN_SCOPES).not.toContain(
+			Permissions.ManageEventSubscription,
+		);
 	});
 });

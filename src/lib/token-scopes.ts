@@ -79,3 +79,14 @@ export const SCOPE_GROUPS: ScopeGroup[] = [
 export const ALL_SCOPES: Permissions[] = SCOPE_GROUPS.flatMap(
 	(group) => group.scopes,
 );
+
+export const READ_ONLY_TOKEN_SCOPES: Permissions[] = [
+	Permissions.ReadCollection,
+	Permissions.ReadClass,
+	Permissions.ReadObject,
+	Permissions.ReadClassRelation,
+	Permissions.ReadObjectRelation,
+	Permissions.ReadTemplate,
+	Permissions.ReadRemoteTarget,
+	Permissions.ReadAudit,
+];
