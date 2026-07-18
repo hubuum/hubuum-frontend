@@ -6,6 +6,37 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-07-18
+
+### Compatibility
+
+- Hubuum Frontend `v0.0.3` targets Hubuum Server `v0.0.2`; release checks run
+  against the immutable digest published for that server image tag.
+
+### Added
+
+- Page-local object grouping by object, data, custom, shared computed, or
+  personal computed fields, with aggregate counts, grouped-value sorting,
+  example object links, and grouped exports.
+- Grouping and aggregate-sorting examples in the report template editor,
+  populated from the selected class's fields.
+
+### Changed
+
+- Reworked computed-field creation into a staged field picker with available
+  and selected columns, reordering, operation guidance, and previews.
+- Made computed columns independently selectable, identified shared and
+  personal columns with compact icons, and sorted class data fields.
+- Added quick server-fetch limits for 50, 100, 250, and `MAX`, with the server
+  compatibility cap applied when its advertised maximum is unavailable.
+- Kept read-only runtime configuration on its dedicated admin page and removed
+  the duplicate statistics-page presentation.
+
+### Fixed
+
+- Hiding a computed column no longer changes computed-field definitions or
+  starts a shared-field reindex task.
+
 ## [0.0.2] - 2026-07-17
 
 ### Compatibility
@@ -80,6 +111,7 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.1

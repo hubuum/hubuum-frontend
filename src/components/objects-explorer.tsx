@@ -15,14 +15,18 @@ import {
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
+import {
+	ObjectGroupingMenu,
+	type ObjectGroupingField,
+} from "@/components/object-grouping-menu";
 import { ObjectServerFilterMenu } from "@/components/object-server-filter-menu";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
-import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	fetchPersonalComputedFields,
 	fetchSharedComputedFields,
 } from "@/lib/api/computed-fields";
+import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
 	getApiV1Classes,
@@ -54,9 +58,18 @@ import {
 	toServerFilterDataPath,
 } from "@/lib/object-server-filters";
 import {
+	groupObjectRows,
+	type ObjectGroup,
+	type ObjectGroupSort,
+} from "@/lib/object-grouping";
+import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
 } from "@/lib/resource-search";
+import {
+	MAX_PAGE_LIMIT_SENTINEL,
+	resolveServerPageLimit,
+} from "@/lib/server-page-limit";
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 import { useToast } from "@/lib/toast-context";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
@@ -102,6 +115,25 @@ function IconDataField() {
 	);
 }
 
+function IconSharedComputedField() {
+	return (
+		<svg viewBox="0 0 16 16" aria-hidden="true">
+			<circle cx="5.25" cy="5" r="2" />
+			<circle cx="11.25" cy="5.75" r="1.5" />
+			<path d="M1.75 13c.3-2.9 1.55-4.5 3.5-4.5s3.2 1.6 3.5 4.5M9.25 9.25c2.65-.65 4.3.7 4.75 3.25" />
+		</svg>
+	);
+}
+
+function IconPersonalComputedField() {
+	return (
+		<svg viewBox="0 0 16 16" aria-hidden="true">
+			<circle cx="8" cy="5" r="2.25" />
+			<path d="M3.5 13c.35-3 1.85-4.5 4.5-4.5s4.15 1.5 4.5 4.5" />
+		</svg>
+	);
+}
+
 function IconConnections() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -118,6 +150,12 @@ const MAX_SELECTED_DATA_COLUMNS = 6;
 const MAX_DATA_PATH_DEPTH = 3;
 const MAX_DATA_ARRAY_ITEMS = 3;
 const CUSTOM_DATA_FIELD_ID_PREFIX = "custom:";
+const OBJECT_FETCH_LIMIT_OPTIONS = [
+	{ label: "50", value: 50 },
+	{ label: "100", value: 100 },
+	{ label: "250", value: 250 },
+	{ label: "MAX", value: MAX_PAGE_LIMIT_SENTINEL },
+] as const;
 const EMPTY_CLASSES: HubuumClassExpanded[] = [];
 const EMPTY_NAMESPACES: Collection[] = [];
 const EMPTY_OBJECTS: HubuumObjectComputedResponse[] = [];
@@ -161,6 +199,10 @@ type ComputedColumn = {
 	key: string;
 	label: string;
 	scope: "shared" | "personal";
+};
+
+type ResolvedObjectGroupingField = ObjectGroupingField & {
+	getValue: (objectItem: HubuumObjectComputedResponse) => unknown;
 };
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
@@ -208,7 +250,7 @@ async function fetchObjectsByClass(
 	serverFilters: readonly ObjectServerFilter[] = [],
 ): Promise<ObjectsPageData> {
 	const params = new URLSearchParams();
-	params.set("limit", String(limit));
+	params.set("limit", String(resolveServerPageLimit(limit)));
 	params.set("include", "computed");
 	if (cursor) params.set("cursor", cursor);
 	if (sort) params.set("sort", sort);
@@ -845,6 +887,7 @@ export function ObjectsExplorer() {
 		queryFn: fetchCollections,
 	});
 	const selectedClassId = searchParams.get("classId") ?? "";
+	const groupingClassIdRef = useRef(selectedClassId);
 	const [createClassId, setCreateClassId] = useState("");
 	const [collectionId, setCollectionId] = useState("");
 	const [name, setName] = useState("");
@@ -854,6 +897,13 @@ export function ObjectsExplorer() {
 	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 	const [isColumnPickerOpen, setColumnPickerOpen] = useState(false);
 	const [selectedDataColumns, setSelectedDataColumns] = useState<string[]>([]);
+	const [hiddenComputedColumnIds, setHiddenComputedColumnIds] = useState<
+		string[]
+	>([]);
+	const [
+		loadedHiddenComputedColumnsStorageKey,
+		setLoadedHiddenComputedColumnsStorageKey,
+	] = useState<string | null>(null);
 	const [showRawDataColumn, setShowRawDataColumn] = useState(true);
 	const [customDataFields, setCustomDataFields] = useState<CustomDataField[]>(
 		[],
@@ -869,6 +919,9 @@ export function ObjectsExplorer() {
 		columnId: null,
 		direction: "asc",
 	});
+	const [groupFieldId, setGroupFieldId] = useState<string | null>(null);
+	const [groupSort, setGroupSort] =
+		useState<ObjectGroupSort>("count-desc");
 	const [searchInput, setSearchInput] = useState(
 		searchParams.get("search") ?? "",
 	);
@@ -921,6 +974,11 @@ export function ObjectsExplorer() {
 		const value = Number.parseInt(selectedClassId, 10);
 		return Number.isFinite(value) ? value : null;
 	}, [selectedClassId]);
+	useEffect(() => {
+		if (groupingClassIdRef.current === selectedClassId) return;
+		groupingClassIdRef.current = selectedClassId;
+		setGroupFieldId(null);
+	}, [selectedClassId]);
 	const classes = classesQuery.data ?? EMPTY_CLASSES;
 	const collections = collectionsQuery.data ?? EMPTY_NAMESPACES;
 	const collectionNameById = useMemo(() => {
@@ -943,6 +1001,10 @@ export function ObjectsExplorer() {
 		parsedClassId === null
 			? null
 			: PORTABLE_USER_SETTING_KEYS.objectDataColumns(parsedClassId);
+	const hiddenComputedColumnsStorageKey =
+		parsedClassId === null
+			? null
+			: PORTABLE_USER_SETTING_KEYS.objectHiddenComputedColumns(parsedClassId);
 	const rawDataColumnStorageKey =
 		parsedClassId === null
 			? null
@@ -991,6 +1053,13 @@ export function ObjectsExplorer() {
 			...columnsFor(personalComputedQuery.data ?? [], "personal"),
 		];
 	}, [personalComputedQuery.data, sharedComputedQuery.data?.definitions]);
+	const activeComputedColumns = useMemo(
+		() =>
+			computedColumns.filter(
+				(column) => !hiddenComputedColumnIds.includes(column.id),
+			),
+		[computedColumns, hiddenComputedColumnIds],
+	);
 
 	const objectsQuery = useQuery({
 		queryKey: [
@@ -1274,6 +1343,90 @@ export function ObjectsExplorer() {
 				),
 		[sortedDataColumnCandidates],
 	);
+	const groupingFields = useMemo<ResolvedObjectGroupingField[]>(() => {
+		const fields: ResolvedObjectGroupingField[] = [
+			{
+				id: "object:collection",
+				label: "Collection",
+				section: "Object fields",
+				getValue: (objectItem) => {
+					const collectionName = collectionNameById.get(
+						objectItem.collection_id,
+					);
+					return collectionName
+						? `${collectionName} (#${objectItem.collection_id})`
+						: `#${objectItem.collection_id}`;
+				},
+			},
+			{
+				id: "object:name",
+				label: "Name",
+				section: "Object fields",
+				getValue: (objectItem) => objectItem.name,
+			},
+			{
+				id: "object:description",
+				label: "Description",
+				section: "Object fields",
+				getValue: (objectItem) => objectItem.description,
+			},
+		];
+
+		for (const column of sortedDataColumnCandidates) {
+			fields.push({
+				id: `data:${column.id}`,
+				label: column.label,
+				section: "Data fields",
+				getValue: (objectItem) =>
+					getValueAtDataPath(objectItem.data, column.path),
+			});
+		}
+		if (
+			groupFieldId?.startsWith("data:") &&
+			!fields.some((field) => field.id === groupFieldId)
+		) {
+			const path = parseDataPathId(groupFieldId.slice("data:".length));
+			if (path) {
+				fields.push({
+					id: groupFieldId,
+					label: formatDataPathLabel(path),
+					section: "Data fields",
+					getValue: (objectItem) =>
+						getValueAtDataPath(objectItem.data, path),
+				});
+			}
+		}
+		for (const field of [...customDataFields].sort((left, right) =>
+			left.label.localeCompare(right.label),
+		)) {
+			fields.push({
+				id: `custom:${field.id}`,
+				label: field.label,
+				section: "Custom fields",
+				getValue: (objectItem) =>
+					getValueAtFirstAvailableDataPath(objectItem.data, field.paths),
+			});
+		}
+		for (const column of [...computedColumns].sort((left, right) =>
+			left.label.localeCompare(right.label),
+		)) {
+			fields.push({
+				id: `computed:${column.id}`,
+				label: `${column.scope === "shared" ? "Shared" : "Personal"} · ${column.label}`,
+				section: "Computed fields",
+				getValue: (objectItem) =>
+					getComputedColumnResult(objectItem, column).value,
+			});
+		}
+
+		return fields;
+	}, [
+		collectionNameById,
+		computedColumns,
+		customDataFields,
+		groupFieldId,
+		sortedDataColumnCandidates,
+	]);
 	const columnMenuWidth = useMemo(() => {
 		const standardLength = dataColumnCandidates.reduce(
 			(maxLength, column) => Math.max(maxLength, column.label.length),
@@ -1305,6 +1458,21 @@ export function ObjectsExplorer() {
 			),
 		[objects, searchTerm],
 	);
+	const activeGroupingField = useMemo(
+		() => groupingFields.find((field) => field.id === groupFieldId) ?? null,
+		[groupFieldId, groupingFields],
+	);
+	const groupedObjects = useMemo(
+		() =>
+			activeGroupingField
+				? groupObjectRows(
+						filteredObjects,
+						activeGroupingField.getValue,
+						groupSort,
+					)
+				: [],
+		[activeGroupingField, filteredObjects, groupSort],
+	);
 	const displayedObjects = useMemo(() => {
 		if (!dataColumnSort.columnId) {
 			return filteredObjects;
@@ -1329,6 +1497,37 @@ export function ObjectsExplorer() {
 			return left.id - right.id;
 		});
 	}, [activeDataColumns, dataColumnSort, filteredObjects]);
+	const groupedExportView = useMemo<
+		TableExportView<ObjectGroup<HubuumObjectComputedResponse>>
+	>(
+		() => ({
+			id:
+				parsedClassId === null
+					? "objects.grouped"
+					: `objects.class.${parsedClassId}.grouped`,
+			fileName: `${selectedClass?.name ?? "objects"}-grouped-view`,
+			sheetName: `${selectedClass?.name ?? "Objects"} groups`,
+			columns: [
+				{
+					key: "group",
+					label: activeGroupingField?.label ?? "Group",
+					getValue: (group) => group.label,
+				},
+				{
+					key: "count",
+					label: "Count",
+					getValue: (group) => group.count,
+				},
+			],
+			rows: groupedObjects,
+		}),
+		[
+			activeGroupingField?.label,
+			groupedObjects,
+			parsedClassId,
+			selectedClass?.name,
+		],
+	);
 	const objectExportColumns = useMemo<
 		TableExportColumn<HubuumObjectComputedResponse>[]
 	>(() => {
@@ -1365,10 +1564,10 @@ export function ObjectsExplorer() {
 					getValueAtFirstAvailableDataPath(item.data, column.paths),
 			});
 		}
-		for (const column of computedColumns) {
+		for (const column of activeComputedColumns) {
 			columns.push({
 				key: `computed.${column.id}`,
-				label: `${column.scope === "shared" ? "Shared" : "Personal"} · ${column.label}`,
+				label: `${column.scope === "shared" ? "S" : "P"}: ${column.label}`,
 				getValue: (item) => getComputedColumnResult(item, column).value,
 			});
 		}
@@ -1381,9 +1580,9 @@ export function ObjectsExplorer() {
 		}
 		return columns;
 	}, [
+		activeComputedColumns,
 		activeDataColumns,
 		collectionNameById,
-		computedColumns,
 		dataColumnHeadings,
 		showRawDataColumn,
 	]);
@@ -1405,12 +1604,14 @@ export function ObjectsExplorer() {
 		columnSignature: [
 			objectsQuery.data ? "ready" : "pending",
 			filteredObjects.length > 0 ? "visible" : "hidden",
+			activeGroupingField ? `group:${activeGroupingField.id}` : "ungrouped",
 			...activeDataColumns.map((column) => column.id),
-			...computedColumns.map((column) => column.id),
+			...activeComputedColumns.map((column) => column.id),
 			showRawDataColumn ? "raw" : "no-raw",
 		].join("|"),
 	});
 	const allSelected =
+		!activeGroupingField &&
 		displayedObjects.length > 0 &&
 		selectedObjectIds.length === displayedObjects.length;
 	const activeStandardDataColumnCount = activeDataColumns.filter(
@@ -1419,6 +1620,81 @@ export function ObjectsExplorer() {
 	const activeCustomDataColumnCount = activeDataColumns.filter(
 		(column) => column.source === "custom",
 	).length;
+
+	useEffect(() => {
+		if (!activeGroupingField) return;
+		setSelectedObjectIds((current) => (current.length ? [] : current));
+	}, [activeGroupingField]);
+
+	useEffect(() => {
+		setLoadedHiddenComputedColumnsStorageKey(null);
+		if (!hiddenComputedColumnsStorageKey) {
+			setHiddenComputedColumnIds((current) => (current.length ? [] : current));
+			return;
+		}
+		if (sharedComputedQuery.isLoading || personalComputedQuery.isLoading) {
+			return;
+		}
+
+		const availableIds = new Set(computedColumns.map((column) => column.id));
+		try {
+			const storedValue = window.localStorage.getItem(
+				hiddenComputedColumnsStorageKey,
+			);
+			if (storedValue !== null) {
+				const parsedValue = JSON.parse(storedValue);
+				if (Array.isArray(parsedValue)) {
+					const nextHiddenIds = parsedValue
+						.filter((value): value is string => typeof value === "string")
+						.filter((value, index, values) => values.indexOf(value) === index)
+						.filter((value) => availableIds.has(value));
+					setHiddenComputedColumnIds((current) =>
+						areStringArraysEqual(current, nextHiddenIds)
+							? current
+							: nextHiddenIds,
+					);
+					setLoadedHiddenComputedColumnsStorageKey(
+						hiddenComputedColumnsStorageKey,
+					);
+					return;
+				}
+			}
+		} catch {
+			// Ignore unavailable or malformed localStorage.
+		}
+
+		setHiddenComputedColumnIds((current) => (current.length ? [] : current));
+		setLoadedHiddenComputedColumnsStorageKey(hiddenComputedColumnsStorageKey);
+	}, [
+		computedColumns,
+		hiddenComputedColumnsStorageKey,
+		personalComputedQuery.isLoading,
+		sharedComputedQuery.isLoading,
+	]);
+
+	useEffect(() => {
+		if (
+			!hiddenComputedColumnsStorageKey ||
+			loadedHiddenComputedColumnsStorageKey !==
+				hiddenComputedColumnsStorageKey ||
+			!isUserSettingsSyncInitialized()
+		) {
+			return;
+		}
+
+		try {
+			writeUserSetting(
+				hiddenComputedColumnsStorageKey,
+				JSON.stringify(hiddenComputedColumnIds),
+			);
+		} catch {
+			// Ignore unavailable localStorage.
+		}
+	}, [
+		hiddenComputedColumnIds,
+		hiddenComputedColumnsStorageKey,
+		loadedHiddenComputedColumnsStorageKey,
+	]);
 
 	useEffect(() => {
 		setLoadedCustomDataFieldsStorageKey(null);
@@ -1643,9 +1919,7 @@ export function ObjectsExplorer() {
 			window.setTimeout(
 				() =>
 					columnPickerRef.current
-						?.querySelector<HTMLButtonElement>(
-							".object-column-picker-trigger",
-						)
+						?.querySelector<HTMLButtonElement>(".object-column-picker-trigger")
 						?.focus(),
 				0,
 			);
@@ -1812,6 +2086,42 @@ export function ObjectsExplorer() {
 		});
 	}
 
+	function setGroupedColumnSort(column: "value" | "count") {
+		setGroupSort((current) => {
+			if (column === "value") {
+				return current === "value-asc" ? "value-desc" : "value-asc";
+			}
+			return current === "count-desc" ? "count-asc" : "count-desc";
+		});
+	}
+
+	function renderGroupedSortIndicator(column: "value" | "count") {
+		const isActive = groupSort.startsWith(column);
+		return (
+			<span
+				className={`sort-indicator${isActive ? " sort-indicator--active" : ""}`}
+				aria-hidden="true"
+			>
+				{isActive ? (groupSort.endsWith("asc") ? "↑" : "↓") : "⇅"}
+			</span>
+		);
+	}
+
+	function getGroupedSortAria(
+		column: "value" | "count",
+	): "ascending" | "descending" | "none" {
+		if (!groupSort.startsWith(column)) return "none";
+		return groupSort.endsWith("asc") ? "ascending" : "descending";
+	}
+
+	function setGroupingField(nextFieldId: string | null) {
+		setGroupFieldId(nextFieldId);
+		if (nextFieldId) {
+			setDataColumnSort({ columnId: null, direction: "asc" });
+			setSelectedObjectIds([]);
+		}
+	}
+
 	function toggleDataColumnPicker() {
 		setColumnPickerOpen((current) => !current);
 	}
@@ -1937,6 +2247,15 @@ export function ObjectsExplorer() {
 		});
 	}
 
+	function toggleComputedColumn(columnId: string, checked: boolean) {
+		setHiddenComputedColumnIds((current) => {
+			if (checked) {
+				return current.filter((currentId) => currentId !== columnId);
+			}
+			return current.includes(columnId) ? current : [...current, columnId];
+		});
+	}
+
 	function addCustomDataField(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
@@ -2011,10 +2330,12 @@ export function ObjectsExplorer() {
 				.slice(0, DEFAULT_SELECTED_DATA_COLUMN_COUNT)
 				.map((column) => column.id),
 		);
+		setHiddenComputedColumnIds([]);
 	}
 
 	function clearDataColumns() {
 		setSelectedDataColumns([]);
+		setHiddenComputedColumnIds(computedColumns.map((column) => column.id));
 	}
 
 	function renderCollection(value: number): string {
@@ -2172,10 +2493,35 @@ export function ObjectsExplorer() {
 								{selectedObjectIds.length
 									? ` · ${selectedObjectIds.length} selected`
 									: ""}
+								{activeGroupingField
+									? ` · ${groupedObjects.length} group${groupedObjects.length === 1 ? "" : "s"}`
+									: ""}
 							</span>
 						</div>
 					</div>
 					<div className="table-tools">
+						<fieldset
+							className="object-fetch-limit"
+							disabled={parsedClassId === null}
+						>
+							<legend className="sr-only">Fetch</legend>
+							<div className="segmented-control">
+								{OBJECT_FETCH_LIMIT_OPTIONS.map((option) => (
+									<button
+										key={option.value}
+										type="button"
+										className={
+											pagination.limit === option.value ? "is-active" : ""
+										}
+										aria-pressed={pagination.limit === option.value}
+										onClick={() => pagination.setLimit(option.value)}
+										title={`${option.label} objects per server request`}
+									>
+										{option.label}
+									</button>
+								))}
+							</div>
+						</fieldset>
 						<div className="object-column-picker" ref={columnPickerRef}>
 							<button
 								type="button"
@@ -2190,11 +2536,11 @@ export function ObjectsExplorer() {
 								<span>Columns</span>
 								{activeStandardDataColumnCount +
 								activeCustomDataColumnCount +
-								computedColumns.length ? (
+								activeComputedColumns.length ? (
 									<span className="object-column-count">
 										{activeStandardDataColumnCount +
 											activeCustomDataColumnCount +
-											computedColumns.length}
+											activeComputedColumns.length}
 									</span>
 								) : null}
 							</button>
@@ -2259,18 +2605,43 @@ export function ObjectsExplorer() {
 												</Link>
 											</div>
 											<div className="object-column-options">
-												{computedColumns.map((column) => (
-													<div className="object-column-option" key={column.id}>
-														<input type="checkbox" checked readOnly />
-														<span>
-															<strong>{column.label}</strong>
-															<small>{column.scope} · server computed</small>
-														</span>
-													</div>
-												))}
+												{computedColumns.map((column) => {
+													const checked = !hiddenComputedColumnIds.includes(
+														column.id,
+													);
+													return (
+														<label
+															className="object-column-option"
+															key={column.id}
+														>
+															<input
+																type="checkbox"
+																checked={checked}
+																onChange={(event) =>
+																	toggleComputedColumn(
+																		column.id,
+																		event.target.checked,
+																	)
+																}
+																aria-label={`Show ${column.scope} computed field ${column.label}`}
+															/>
+															<span>
+																<strong>{column.label}</strong>
+																<small>
+																	{column.scope} ·{" "}
+																	{checked ? "shown" : "hidden"}
+																</small>
+															</span>
+														</label>
+													);
+												})}
 											</div>
 										</>
 									) : null}
+									<div className="object-column-section-heading">
+										<strong>Data fields</strong>
+										<span className="muted">Class data</span>
+									</div>
 									{dataColumnCandidates.length === 0 ? (
 										<p className="muted">No data fields loaded.</p>
 									) : (
@@ -2396,16 +2767,31 @@ export function ObjectsExplorer() {
 								</div>
 							) : null}
 						</div>
+						<ObjectGroupingMenu
+							fields={groupingFields}
+							fieldId={groupFieldId}
+							sort={groupSort}
+							onFieldChange={setGroupingField}
+							onSortChange={setGroupSort}
+							disabled={parsedClassId === null || objectsQuery.isFetching}
+						/>
 						<ObjectServerFilterMenu
 							filters={serverFilters}
 							dataFields={serverFilterDataFields}
 							onChange={updateServerFilters}
 							disabled={parsedClassId === null}
 						/>
-						<TableExportMenu
-							view={objectExportView}
-							disabled={objectsQuery.isFetching}
-						/>
+						{activeGroupingField ? (
+							<TableExportMenu
+								view={groupedExportView}
+								disabled={objectsQuery.isFetching}
+							/>
+						) : (
+							<TableExportMenu
+								view={objectExportView}
+								disabled={objectsQuery.isFetching}
+							/>
+						)}
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
 								<input
@@ -2442,17 +2828,21 @@ export function ObjectsExplorer() {
 						still available.
 					</div>
 				) : null}
-				{objects.some(
+				{activeComputedColumns.some((column) => column.scope === "shared") &&
+				objects.some(
 					(objectItem) => objectItem.computed.shared.materialization_stale,
 				) ? (
 					<div className="table-scope-note" role="status">
 						<span>
-							<strong>Shared computed values are rebuilding.</strong>{" "}
-							Displayed values may be stale until materialization finishes.
+							<strong>Shared computed values are rebuilding.</strong> Displayed
+							values may be stale until materialization finishes.
 						</span>
 					</div>
 				) : null}
-				{searchTerm || serverFilters.length > 0 || dataColumnSort.columnId ? (
+				{searchTerm ||
+				serverFilters.length > 0 ||
+				dataColumnSort.columnId ||
+				activeGroupingField ? (
 					<div className="table-scope-note" role="status">
 						{serverFilters.length > 0 ? (
 							<span>
@@ -2473,6 +2863,14 @@ export function ObjectsExplorer() {
 							<span>
 								<strong>Loaded-page sort</strong> is active for a data field;
 								standard columns sort the full server result.
+							</span>
+						) : null}
+						{activeGroupingField ? (
+							<span>
+								<strong>Grouped by {activeGroupingField.label}</strong> across the{" "}
+								{filteredObjects.length} loaded row
+								{filteredObjects.length === 1 ? "" : "s"}; counts update when
+								you change page.
 							</span>
 						) : null}
 					</div>
@@ -2525,6 +2923,64 @@ export function ObjectsExplorer() {
 							)
 						}
 					/>
+				) : activeGroupingField ? (
+					<section
+						className="object-table-scroll object-grouped-table-scroll"
+						aria-label="Grouped objects"
+					>
+						<table className="object-grouped-table">
+							<caption className="sr-only">
+								Objects grouped by {activeGroupingField.label}
+							</caption>
+							<thead>
+								<tr>
+									<th aria-sort={getGroupedSortAria("value")}>
+										<button
+											type="button"
+											className="table-sort-button"
+											onClick={() => setGroupedColumnSort("value")}
+										>
+											{activeGroupingField.label}
+											{renderGroupedSortIndicator("value")}
+										</button>
+									</th>
+									<th aria-sort={getGroupedSortAria("count")}>
+										<button
+											type="button"
+											className="table-sort-button"
+											onClick={() => setGroupedColumnSort("count")}
+										>
+											Count{renderGroupedSortIndicator("count")}
+										</button>
+									</th>
+									<th>Examples</th>
+								</tr>
+							</thead>
+							<tbody>
+								{groupedObjects.map((group) => (
+									<tr key={group.id}>
+										<td title={group.label}>{group.label}</td>
+										<td className="object-group-count">{group.count}</td>
+										<td>
+											<div className="object-group-examples">
+												{group.rows.slice(0, 3).map((objectItem) => (
+													<Link
+														key={objectItem.id}
+														href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
+													>
+														{objectItem.name}
+													</Link>
+												))}
+												{group.rows.length > 3 ? (
+													<span>+{group.rows.length - 3} more</span>
+												) : null}
+											</div>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</section>
 				) : (
 					<>
 						<p className="table-scroll-hint">
@@ -2555,7 +3011,7 @@ export function ObjectsExplorer() {
 											data-column-key={`data:${column.id}`}
 										/>
 									))}
-									{computedColumns.map((column) => (
+									{activeComputedColumns.map((column) => (
 										<col
 											key={column.id}
 											className="object-promoted-data-column"
@@ -2683,21 +3139,26 @@ export function ObjectsExplorer() {
 												</th>
 											);
 										})}
-										{computedColumns.map((column) => (
+										{activeComputedColumns.map((column) => (
 											<th
 												key={column.id}
-												className="object-data-field-heading"
+												className="object-data-field-heading object-computed-field-heading"
 												data-column-key={`computed:${column.id}`}
-												title="Computed fields cannot be used for server sorting"
+												title={`${column.scope === "shared" ? "Shared" : "Personal"} computed field · cannot be used for server sorting`}
 											>
-												<span className="object-column-heading-context">
-													{column.scope}
-												</span>
 												<span
-													className="object-column-heading-separator"
+													className="object-data-field-icon"
 													aria-hidden="true"
 												>
-													·
+													{column.scope === "shared" ? (
+														<IconSharedComputedField />
+													) : (
+														<IconPersonalComputedField />
+													)}
+												</span>
+												<span className="sr-only">
+													{column.scope === "shared" ? "Shared" : "Personal"}{" "}
+													computed field:{" "}
 												</span>
 												<span className="object-column-heading-name">
 													{column.label}
@@ -2790,7 +3251,7 @@ export function ObjectsExplorer() {
 														)}
 													</td>
 												))}
-												{computedColumns.map((column) => {
+												{activeComputedColumns.map((column) => {
 													const result = getComputedColumnResult(
 														objectItem,
 														column,

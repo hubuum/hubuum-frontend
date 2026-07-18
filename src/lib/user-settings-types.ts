@@ -14,6 +14,8 @@ export const PORTABLE_USER_SETTING_KEYS = {
 	pinnedItems: "hubuum.pinned-items",
 	objectDataColumns: (classId: number) =>
 		`hubuum.object-data-columns:${classId}`,
+	objectHiddenComputedColumns: (classId: number) =>
+		`hubuum.object-hidden-computed-columns:${classId}`,
 	objectRawDataColumn: (classId: number) =>
 		`hubuum.object-raw-data-column:${classId}`,
 	objectCustomDataFields: (classId: number) =>
@@ -40,6 +42,7 @@ const EXACT_PORTABLE_KEYS = new Set<string>([
 
 const PORTABLE_KEY_PATTERNS = [
 	/^hubuum\.object-data-columns:[1-9]\d*$/,
+	/^hubuum\.object-hidden-computed-columns:[1-9]\d*$/,
 	/^hubuum\.object-raw-data-column:[1-9]\d*$/,
 	/^hubuum\.object-custom-data-fields:[1-9]\d*:user$/,
 ];

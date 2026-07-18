@@ -12,6 +12,7 @@ version="${tag#v}"
 lock_version="$(node -p "require('./package-lock.json').packages[''].version")"
 chart_version="$(awk '$1 == "version:" { print $2; exit }' charts/hubuum-frontend/Chart.yaml | tr -d '\"')"
 app_version="$(awk '$1 == "appVersion:" { print $2; exit }' charts/hubuum-frontend/Chart.yaml | tr -d '\"')"
+compat_backend_image="$(awk '$1 == "COMPAT_BACKEND_IMAGE:" { print $2; exit }' .github/workflows/ci.yml)"
 
 check_equal() {
   local label="$1"
@@ -38,6 +39,19 @@ grep -Fq "ghcr.io/hubuum/hubuum-frontend:$tag" compose.quickstart.yml || {
 }
 grep -Fq "HUBUUM_FRONTEND_IMAGE=ghcr.io/hubuum/hubuum-frontend:$tag" .env.quickstart.example || {
   echo ".env.quickstart.example does not default to the $tag image." >&2
+  exit 1
+}
+
+if [[ "$compat_backend_image" =~ :(v[0-9]+\.[0-9]+\.[0-9]+)@sha256:[0-9a-f]{64}$ ]]; then
+  compat_server_tag="${BASH_REMATCH[1]}"
+else
+  echo "CI compatibility image is not pinned to a versioned server digest." >&2
+  exit 1
+fi
+
+compatibility_row="| \`$tag\` | \`$compat_server_tag\` | \`ghcr.io/hubuum/hubuum-server:$compat_server_tag\` |"
+grep -Fqx "$compatibility_row" docs/compatibility.md || {
+  echo "docs/compatibility.md has no $tag -> $compat_server_tag row matching CI." >&2
   exit 1
 }
 

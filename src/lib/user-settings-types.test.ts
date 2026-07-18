@@ -16,11 +16,13 @@ describe("user settings validation", () => {
 				[PORTABLE_USER_SETTING_KEYS.theme]: "dark",
 				[PORTABLE_USER_SETTING_KEYS.secondaryAccent]: "rose",
 				[PORTABLE_USER_SETTING_KEYS.objectDataColumns(4)]: null,
+				[PORTABLE_USER_SETTING_KEYS.objectHiddenComputedColumns(4)]: "[]",
 			}),
 		).toEqual({
 			[PORTABLE_USER_SETTING_KEYS.theme]: "dark",
 			[PORTABLE_USER_SETTING_KEYS.secondaryAccent]: "rose",
 			[PORTABLE_USER_SETTING_KEYS.objectDataColumns(4)]: null,
+			[PORTABLE_USER_SETTING_KEYS.objectHiddenComputedColumns(4)]: "[]",
 		});
 	});
 
@@ -45,6 +47,11 @@ describe("user settings validation", () => {
 		);
 		expect(
 			getUserSettingScope(PORTABLE_USER_SETTING_KEYS.objectCustomDataFields(9)),
+		).toBe("portable");
+		expect(
+			getUserSettingScope(
+				PORTABLE_USER_SETTING_KEYS.objectHiddenComputedColumns(9),
+			),
 		).toBe("portable");
 		expect(getUserSettingScope(DEVICE_SETTING_KEYS.sidebarCollapsed)).toBe(
 			"device",
