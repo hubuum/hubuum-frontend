@@ -67,10 +67,7 @@ export function useCursorPagination({
 
 	const goToNextPage = useCallback(
 		(nextCursor: string) => {
-			setCursorHistory((current) => [
-				...current,
-				cursor ?? FIRST_PAGE_CURSOR,
-			]);
+			setCursorHistory((current) => [...current, cursor ?? FIRST_PAGE_CURSOR]);
 			const params = new URLSearchParams(searchParams.toString());
 			params.set("cursor", nextCursor);
 			router.push(`${pathname}?${params.toString()}`);
@@ -91,7 +88,11 @@ export function useCursorPagination({
 						? undefined
 						: previousEntry;
 
-			if (targetCursor === undefined && !prevCursor && cursorHistory.length === 0) {
+			if (
+				targetCursor === undefined &&
+				!prevCursor &&
+				cursorHistory.length === 0
+			) {
 				return;
 			}
 

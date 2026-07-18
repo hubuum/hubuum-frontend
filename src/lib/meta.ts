@@ -87,7 +87,6 @@ export async function tryFetchRunningConfig(
 }
 
 export type SystemMetaSnapshot = {
-	config: RunningConfig | null;
 	counts: CountsWithOptionalCollections;
 	db: DbStateResponse;
 	tasks: TaskQueueStateResponse;
@@ -98,14 +97,13 @@ export async function tryFetchSystemMetaSnapshot(
 	correlationId?: string,
 ): Promise<SystemMetaSnapshot | null> {
 	try {
-		const [config, counts, db, tasks] = await Promise.all([
-			tryFetchRunningConfig(token, correlationId),
+		const [counts, db, tasks] = await Promise.all([
 			fetchMetaCounts(token, correlationId),
 			fetchDbState(token, correlationId),
 			fetchTaskQueueState(token, correlationId),
 		]);
 
-		return { config, counts, db, tasks };
+		return { counts, db, tasks };
 	} catch (error) {
 		if (
 			error instanceof BackendError &&

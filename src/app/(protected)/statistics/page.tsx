@@ -1,7 +1,6 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 
-import { RuntimeConfigPanel } from "@/components/runtime-config-panel";
 import { hasAdminAccess } from "@/lib/auth/admin";
 import { requireServerSession } from "@/lib/auth/guards";
 import {
@@ -133,7 +132,7 @@ export default async function StatisticsPage() {
 		);
 	}
 
-	const { config, counts, db, tasks } = snapshot;
+	const { counts, db, tasks } = snapshot;
 	const totalCollections = getTotalCollections(counts);
 
 	return (
@@ -312,32 +311,6 @@ export default async function StatisticsPage() {
 						</li>
 					</ul>
 				</article>
-			</div>
-
-			<div className="stack">
-				<header className="stack action-card-header">
-					<div className="stack action-card-header">
-						<p className="eyebrow">Configuration</p>
-						<h2>Effective runtime configuration</h2>
-					</div>
-					<p className="muted">
-						The backend exposes this administrator-only projection without
-						secret values, credential paths, proxy networks, or allowlist
-						contents.
-					</p>
-				</header>
-
-				{config ? (
-					<RuntimeConfigPanel config={config} />
-				) : (
-					<article className="card stack panel-card">
-						<h3>Runtime configuration unavailable</h3>
-						<p className="muted">
-							This backend may predate the redacted configuration endpoint, or
-							the current administrator token cannot access it.
-						</p>
-					</article>
-				)}
 			</div>
 		</section>
 	);

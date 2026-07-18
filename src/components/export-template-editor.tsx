@@ -7,7 +7,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { IncludeRows } from "@/components/include-rows";
 import { ReportQueryBuilder } from "@/components/report-query-builder";
 import { TemplateCodeEditor } from "@/components/template-code-editor";
-import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
+import { fetchClassObjectSamples } from "@/lib/api/class-objects";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1Classes,
 	getApiV1Collections,
@@ -15,7 +16,6 @@ import {
 import type {
 	Collection,
 	HubuumClassExpanded,
-	HubuumObject,
 } from "@/lib/api/generated/models";
 import {
 	createReportTemplate,
@@ -28,10 +28,10 @@ import {
 	type ReportExecutionResult,
 	type ReportTemplate,
 	type ReportTemplateHistory,
+	runTemplateReport,
 	type StoredReportContentType,
 	type TaskResponse,
 	type UpdateReportTemplate,
-	runTemplateReport,
 	updateReportTemplate,
 } from "@/lib/api/reporting";
 import { isTerminalTaskStatus } from "@/lib/api/tasking";
@@ -40,13 +40,13 @@ import {
 	formatCollectionOption,
 } from "@/lib/collection-hierarchy";
 import {
-	filterClassesForCollection,
-	getEditorTabForErrors,
-	parsePositiveInteger,
 	type ExportTemplateDraft,
 	type ExportTemplateDraftErrors,
 	type ExportTemplateDraftField,
 	type ExportTemplateEditorSection,
+	filterClassesForCollection,
+	getEditorTabForErrors,
+	parsePositiveInteger,
 	validateExportTemplateDraft,
 	validateExportTemplateRelated,
 	validateExportTemplateRules,
@@ -57,14 +57,14 @@ import {
 	formatExportScope,
 } from "@/lib/export-workspace";
 import {
-	discoverJsonFields,
 	type DiscoveredJsonField,
+	discoverJsonFields,
 } from "@/lib/json-field-discovery";
 import {
 	buildIncludeFromRows,
+	type IncludeBuilderRow,
 	includeAliasesOf,
 	includeRowsFromTemplate,
-	type IncludeBuilderRow,
 	newIncludeRow,
 } from "@/lib/report-include";
 
@@ -115,6 +115,47 @@ const TEMPLATE_HELP = [
 	"HTML templates are autoescaped; use | tojson or | csv_cell for sensitive values in text/CSV.",
 	"include/import/extends resolve within the same collection.",
 ] as const;
+
+function buildGroupingTemplateExamples(attribute: string) {
+	return [
+		{
+			label: "Group and count",
+			description: "Groups are ordered by the grouped value from A to Z.",
+			template: `{% for group in items | groupby("${attribute}", default="(unset)") %}
+{{ group.grouper }}: {{ group.list | length }}
+{% endfor %}`,
+		},
+		{
+			label: "Largest groups first",
+			description:
+				"Builds aggregate rows and sorts the computed count from high to low.",
+			template: `{% set ns = namespace(groups=[]) %}
+{% for group in items | groupby("${attribute}", default="(unset)") %}
+{% set ns.groups = ns.groups + [dict(value=group.grouper, count=group.list | length)] %}
+{% endfor %}
+{% for group in ns.groups | sort(attribute="count", reverse=true) %}
+{{ group.value }}: {{ group.count }}
+{% endfor %}`,
+		},
+		{
+			label: "Grouped values Z–A",
+			description:
+				"Reverses the grouped values and sorts object names inside each group.",
+			template: `{% set groups = items | groupby("${attribute}", default="(unset)") %}
+{% for group in groups | reverse %}
+{{ group.grouper }} ({{ group.list | length }})
+{% for item in group.list | sort(attribute="name") %}- {{ item.name }}
+{% endfor %}{% endfor %}`,
+		},
+		{
+			label: "Grouped CSV counts",
+			description: "Produces one CSV row per group, ordered Z to A.",
+			template: `group,count
+{% for group in items | groupby("${attribute}", default="(unset)") | reverse %}{{ group.grouper | csv_cell }},{{ group.list | length }}
+{% endfor %}`,
+		},
+	];
+}
 
 const DEFAULT_TEMPLATE_EDITOR: ExportTemplateDraft = {
 	mode: "create",
@@ -267,27 +308,6 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 		);
 	}
 	return response.data;
-}
-
-async function fetchClassObjectSamples(
-	classId: number,
-): Promise<HubuumObject[]> {
-	const params = new URLSearchParams({
-		include_total: "false",
-		limit: "100",
-		sort: "id.asc",
-	});
-	const response = await fetch(
-		`/_hubuum-bff/classes/${classId}/objects?${params.toString()}`,
-		{ credentials: "include" },
-	);
-	const payload: unknown = await response.json().catch(() => null);
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(payload, "Failed to inspect objects for data fields."),
-		);
-	}
-	return expectArrayPayload<HubuumObject>(payload, "class object samples");
 }
 
 function buildTemplatePayload(draft: ExportTemplateDraft) {
@@ -544,6 +564,8 @@ export function ExportTemplateEditor({
 	const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
 	const [testObjectId, setTestObjectId] = useState("");
 	const [testObjectError, setTestObjectError] = useState<string | null>(null);
+	const [groupingExampleField, setGroupingExampleField] =
+		useState("data.environment");
 	const [testTaskId, setTestTaskId] = useState<number | null>(
 		initialTestTaskId ?? null,
 	);
@@ -708,6 +730,26 @@ export function ExportTemplateEditor({
 						sampledObjects.map((objectItem) => objectItem.data),
 					),
 		[sampledObjects, schemaDataFields, usesSchemaFields],
+	);
+	const groupingExampleFields = useMemo(() => {
+		const options = new Map<string, string>([
+			["data.environment", "Data · environment (example)"],
+			["collection_id", "Object · collection ID"],
+			["name", "Object · name"],
+		]);
+		for (const field of discoveredDataFields) {
+			if (
+				field.path.length > 0 &&
+				field.path.every((segment) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(segment))
+			) {
+				options.set(`data.${field.path.join(".")}`, `Data · ${field.label}`);
+			}
+		}
+		return [...options].map(([value, label]) => ({ value, label }));
+	}, [discoveredDataFields]);
+	const groupingTemplateExamples = useMemo(
+		() => buildGroupingTemplateExamples(groupingExampleField),
+		[groupingExampleField],
 	);
 	const dataFieldCompletions = useMemo(
 		() =>
@@ -1398,6 +1440,63 @@ export function ExportTemplateEditor({
 								))}
 							</div>
 						</details>
+
+						{editorState.kind === "export" &&
+						editorState.scopeKind === "objects_in_class" ? (
+							<details className="export-disclosure report-grouping-examples">
+								<summary>
+									<span>Grouping examples</span>
+									<small>Group, count, and sort report values</small>
+								</summary>
+								<div className="export-disclosure-body">
+									<label className="control-field">
+										<span>Example group field</span>
+										<select
+											value={groupingExampleField}
+											onChange={(event) =>
+												setGroupingExampleField(event.target.value)
+											}
+										>
+											{groupingExampleFields.map((field) => (
+												<option key={field.value} value={field.value}>
+													{field.label}
+												</option>
+											))}
+										</select>
+									</label>
+									<p className="field-note">
+										These run over every item admitted by the report query and
+										limits. MiniJinja <code>groupby</code> orders grouped values;
+										<code>reverse</code> flips that order.
+									</p>
+									<div className="report-grouping-example-list">
+										{groupingTemplateExamples.map((example) => (
+											<article key={example.label}>
+												<div className="report-grouping-example-copy">
+													<strong>{example.label}</strong>
+													<p>{example.description}</p>
+												</div>
+												<button
+													type="button"
+													className="ghost compact-button report-grouping-example-insert"
+													onClick={() =>
+														setInsertRequest({
+															id: insertRequestIdRef.current++,
+															text: example.template,
+														})
+													}
+												>
+													Insert at cursor
+												</button>
+												<pre>
+													<code>{example.template}</code>
+												</pre>
+											</article>
+										))}
+									</div>
+								</div>
+							</details>
+						) : null}
 					</article>
 
 					<aside className="card stack panel-card export-template-preview-card">

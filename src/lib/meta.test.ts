@@ -56,14 +56,11 @@ describe("system metadata", () => {
 		await expect(tryFetchRunningConfig("token")).rejects.toBe(error);
 	});
 
-	it("keeps the system snapshot available when an older backend lacks config", async () => {
+	it("loads the system snapshot without requesting runtime configuration", async () => {
 		const counts = { total_classes: 1, total_objects: 2 };
 		const db = { db_size: 3 };
 		const tasks = { total_tasks: 4 };
 		vi.mocked(backendFetchJson).mockImplementation(async (path) => {
-			if (path === "/api/v1/admin/config") {
-				throw new BackendError("not found", 404, null);
-			}
 			if (path === "/api/v0/meta/counts") return counts;
 			if (path === "/api/v0/meta/db") return db;
 			if (path === "/api/v0/meta/tasks") return tasks;
@@ -71,10 +68,13 @@ describe("system metadata", () => {
 		});
 
 		await expect(tryFetchSystemMetaSnapshot("token")).resolves.toEqual({
-			config: null,
 			counts,
 			db,
 			tasks,
 		});
+		expect(backendFetchJson).not.toHaveBeenCalledWith(
+			"/api/v1/admin/config",
+			expect.anything(),
+		);
 	});
 });

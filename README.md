@@ -75,10 +75,9 @@ public prefix to the frontend's fixed `/_hubuum-bff/...` routes.
 Hubuum `/api/v0/meta/...` endpoints are admin-only. The frontend must only call
 them after an admin access check, and current meta usage is limited to the
 admin statistics surface and admin-only landing-page counts. The statistics
-surface also reads the redacted `/api/v1/admin/config` projection when the
-backend provides it. Administrators also have a dedicated read-only
-Configuration page; the server redacts secret values before returning the
-effective settings.
+surface shows system counts, database state, and global task state.
+Administrators also have a dedicated read-only Configuration page; the server
+redacts secret values before returning the effective settings.
 
 Task activity shown to regular users comes from `/api/v1/tasks` through the BFF
 proxy, so users can see the task records available to their account without
@@ -138,10 +137,20 @@ definitions stored for the current user. Definitions support typed aggregation
 and presence operations over JSON Pointer paths, can be previewed against an
 existing object or sample data, and shared values can be explicitly rebuilt.
 Object reads opt in with `include=computed`; enabled shared and personal values
-then appear as object-table columns, in table exports and loaded-page search,
-and on object detail pages. Evaluation errors and stale shared materializations
-remain visible. Computed values are display-only for querying: Hubuum Server
-does not support filtering or sorting by them in `v0.0.2`.
+then appear as individually selectable, per-user object-table columns, in table
+exports and loaded-page search, and on object detail pages. Evaluation errors
+and stale shared materializations remain visible. Computed values are
+display-only for querying: Hubuum Server does not support filtering or sorting
+by them in `v0.0.2`.
+
+The objects workspace can also group the currently fetched rows by an object,
+data, custom, shared-computed, or personal-computed field. The grouped table
+shows counts and object examples, can sort by the grouped value or aggregate
+count, and exports the grouped result. This is deliberately a loaded-page
+analysis: pagination changes the input rows and therefore the group counts. Use
+an export report when grouping must cover the full report query. The report
+template editor includes runnable MiniJinja `groupby` examples for counts,
+sorting grouped values, sorting rows within groups, and grouped CSV output.
 
 ## Administrator backup and restore
 
@@ -281,17 +290,17 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Hubuum Frontend `v0.0.2` targets Hubuum Server `v0.0.2`. Releases provide:
+Hubuum Frontend `v0.0.3` targets Hubuum Server `v0.0.2`. Releases provide:
 
-- `ghcr.io/hubuum/hubuum-frontend:v0.0.2` for Linux AMD64 and ARM64;
-- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.2`;
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.3` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.3`;
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
 The application version is visible in the navigation, on the login page, and
 in `/healthz` and `/readyz` responses. Release images show the exact tag (for
-example, `v0.0.2`); commit images show `v0.0.2+<short-sha>`; unversioned local
-builds show `v0.0.2+dirty`. Image builds may set the immutable identity with
+example, `v0.0.3`); commit images show `v0.0.3+<short-sha>`; unversioned local
+builds show `v0.0.3+dirty`. Image builds may set the immutable identity with
 `docker build --build-arg APP_VERSION=...`.
 
 See [compatibility](docs/compatibility.md) and the
@@ -382,7 +391,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.2 \
+  --version 0.0.3 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -391,7 +400,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.2 \
+  --version 0.0.3 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com

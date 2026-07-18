@@ -16,7 +16,6 @@ import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { JsonEditor } from "@/components/json-editor";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
-import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
@@ -26,17 +25,18 @@ import {
 	patchApiV1ClassesByClassId,
 } from "@/lib/api/generated/client";
 import type {
+	Collection,
 	HubuumClassExpanded,
 	HubuumClassRelation,
-	Collection,
 	UpdateHubuumClass,
 } from "@/lib/api/generated/models";
+import { presentClassRelation } from "@/lib/class-relation-presentation";
+import { useConfirm } from "@/lib/confirm-context";
 import {
 	EDIT_STATE_EVENT,
 	type EditStateEventDetail,
 	TITLE_STATE_EVENT,
 } from "@/lib/create-events";
-import { presentClassRelation } from "@/lib/class-relation-presentation";
 import { summarizeJsonDocument } from "@/lib/json-inspector";
 import { trackRecentItem } from "@/lib/recent-items";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
@@ -999,7 +999,12 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 				</section>
 			</div>
 
-			<ComputedFieldsPanel classId={classId} />
+			<ComputedFieldsPanel
+				classId={classId}
+				className={classData.name}
+				collectionName={collectionLabel}
+				jsonSchema={classData.json_schema}
+			/>
 
 			<RemoteInvocationsPanel
 				collectionId={classData.collection.id}

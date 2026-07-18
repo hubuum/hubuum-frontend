@@ -5,6 +5,7 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
+| `v0.0.3` | `v0.0.2` | `ghcr.io/hubuum/hubuum-server:v0.0.2` |
 | `v0.0.2` | `v0.0.2` | `ghcr.io/hubuum/hubuum-server:v0.0.2` |
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
@@ -14,7 +15,8 @@ the moving backend `:main` image to surface future compatibility changes
 without making normal CI nondeterministic.
 
 Compatibility means that authentication, session handling, and the frontend's
-core backend contract suite pass. Frontend `v0.0.2` relies on Server `v0.0.2`
-for admin backup/restore, the read-only runtime configuration projection, and
-shared and personal computed fields. These features are not available in the
-`v0.0.1` pairing.
+core backend contract suite pass. Frontend `v0.0.2` and `v0.0.3` rely on Server
+`v0.0.2` for admin backup/restore, the read-only runtime configuration
+projection, and shared and personal computed fields. Frontend `v0.0.3` adds
+console-side workflows without requiring a newer server contract. These
+features are not available in the `v0.0.1` pairing.
