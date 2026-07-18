@@ -1547,10 +1547,16 @@ body.modal-open {
 .remote-subject-section {
 	display: grid;
 	gap: 0.65rem;
+	margin: 0;
+	padding: 0;
+	border: 0;
 }
 
-.remote-subject-section h4 {
+.remote-subject-section h4,
+.remote-subject-section legend {
 	margin: 0;
+	padding: 0;
+	font-weight: 700;
 }
 
 .remote-subject-options {
@@ -4655,8 +4661,64 @@ button.template-data-field:hover {
 	overflow-wrap: anywhere;
 }
 
-.computed-field-editor-tabs {
-	grid-template-columns: repeat(5, minmax(0, 1fr));
+.guided-flow-tabs {
+	grid-template-columns: repeat(var(--guided-flow-columns), minmax(0, 1fr));
+}
+
+.guided-flow-panel {
+	min-width: 0;
+}
+
+.guided-flow-actions {
+	justify-content: flex-end;
+}
+
+.guided-flow-review-list {
+	display: grid;
+	gap: 0.65rem;
+	margin: 0;
+}
+
+.guided-flow-review-list > div {
+	display: grid;
+	grid-template-columns: minmax(9rem, 0.4fr) minmax(0, 1fr);
+	gap: 0.75rem;
+	padding: 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--bg-highlight);
+}
+
+.guided-flow-review-list dt {
+	color: var(--muted);
+	font-weight: 650;
+}
+
+.guided-flow-review-list dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.import-intent-picker,
+.token-access-picker {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.import-intent-picker button,
+.token-access-picker button {
+	display: grid;
+	gap: 0.25rem;
+	align-content: start;
+	min-width: 0;
+	padding: 0.8rem 0.9rem;
+	text-align: left;
+}
+
+.import-intent-picker button small,
+.token-access-picker button small {
+	color: var(--muted);
+	font-weight: 500;
 }
 
 .computed-field-target-grid {
@@ -4901,6 +4963,10 @@ button.template-data-field:hover {
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 	}
 
+	.guided-flow-tabs {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
 	.export-template-authoring-layout {
 		grid-template-columns: 1fr;
 	}
@@ -4964,6 +5030,11 @@ button.template-data-field:hover {
 
 	.export-template-editor-tabs button small {
 		display: none;
+	}
+
+	.guided-flow-review-list > div {
+		grid-template-columns: 1fr;
+		gap: 0.25rem;
 	}
 
 	.query-builder-row-fields,
