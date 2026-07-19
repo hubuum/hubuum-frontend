@@ -823,6 +823,7 @@ export function AppShell({
 	const [isMobileSearchOpen, setMobileSearchOpen] = useState(false);
 	const [isUserMenuOpen, setUserMenuOpen] = useState(false);
 	const [isTaskMenuOpen, setTaskMenuOpen] = useState(false);
+	const [preferencesReady, setPreferencesReady] = useState(false);
 	const [themePreference, setThemePreference] =
 		useState<ThemePreference>("system");
 	const [densityPreference, setDensityPreference] =
@@ -843,11 +844,6 @@ export function AppShell({
 	const goToShortcutTimerRef = useRef<number | null>(null);
 	const userMenuRef = useRef<HTMLDivElement | null>(null);
 	const taskMenuRef = useRef<HTMLDivElement | null>(null);
-	const didInitializeSidebarPreference = useRef(false);
-	const didInitializeThemePreference = useRef(false);
-	const didInitializeDensityPreference = useRef(false);
-	const didInitializeAccentPreference = useRef(false);
-	const didInitializeSecondaryAccentPreference = useRef(false);
 	const hasCustomSecondaryAccent = useRef(false);
 
 	const clearGoToShortcut = useCallback(() => {
@@ -899,9 +895,7 @@ export function AppShell({
 
 	useEffect(() => {
 		const storedCollapsed = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
-		if (storedCollapsed === "1") {
-			setSidebarCollapsed(true);
-		}
+		setSidebarCollapsed(storedCollapsed === "1");
 
 		const storedTheme = window.localStorage.getItem(THEME_PREFERENCE_KEY);
 		if (isThemePreference(storedTheme)) {
@@ -922,12 +916,16 @@ export function AppShell({
 		const storedSecondaryAccent = window.localStorage.getItem(
 			SECONDARY_ACCENT_PREFERENCE_KEY,
 		);
+		hasCustomSecondaryAccent.current = isAccentPreference(
+			storedSecondaryAccent,
+		);
 		if (isAccentPreference(storedSecondaryAccent)) {
-			hasCustomSecondaryAccent.current = true;
 			setSecondaryAccentPreference(storedSecondaryAccent);
 		} else {
 			setSecondaryAccentPreference(primaryAccent);
 		}
+
+		setPreferencesReady(true);
 	}, []);
 
 	useEffect(() => {
@@ -962,23 +960,17 @@ export function AppShell({
 	}, []);
 
 	useEffect(() => {
-		if (!didInitializeSidebarPreference.current) {
-			didInitializeSidebarPreference.current = true;
-			return;
-		}
+		if (!preferencesReady) return;
 		writeDeviceSetting(SIDEBAR_COLLAPSED_KEY, isSidebarCollapsed ? "1" : "0");
-	}, [isSidebarCollapsed]);
+	}, [isSidebarCollapsed, preferencesReady]);
 
 	useEffect(() => {
 		return () => clearGoToShortcut();
 	}, [clearGoToShortcut]);
 
 	useEffect(() => {
-		if (!didInitializeThemePreference.current) {
-			didInitializeThemePreference.current = true;
-		} else {
-			writeUserSetting(THEME_PREFERENCE_KEY, themePreference);
-		}
+		if (!preferencesReady) return;
+		writeUserSetting(THEME_PREFERENCE_KEY, themePreference);
 		const applyTheme = () => {
 			const resolvedTheme = resolveTheme(themePreference);
 			document.documentElement.setAttribute("data-theme", resolvedTheme);
@@ -1003,32 +995,23 @@ export function AppShell({
 
 		mediaQuery.addListener(onChange);
 		return () => mediaQuery.removeListener(onChange);
-	}, [themePreference]);
+	}, [preferencesReady, themePreference]);
 
 	useEffect(() => {
-		if (!didInitializeDensityPreference.current) {
-			didInitializeDensityPreference.current = true;
-		} else {
-			writeUserSetting(DENSITY_PREFERENCE_KEY, densityPreference);
-		}
+		if (!preferencesReady) return;
+		writeUserSetting(DENSITY_PREFERENCE_KEY, densityPreference);
 		document.documentElement.setAttribute("data-density", densityPreference);
-	}, [densityPreference]);
+	}, [densityPreference, preferencesReady]);
 
 	useEffect(() => {
-		if (!didInitializeAccentPreference.current) {
-			didInitializeAccentPreference.current = true;
-			return;
-		}
+		if (!preferencesReady) return;
 		writeUserSetting(ACCENT_PREFERENCE_KEY, accentPreference);
 		writeDeviceSetting(LOGIN_ACCENT_PREFERENCE_KEY, accentPreference);
 		document.documentElement.setAttribute("data-accent", accentPreference);
-	}, [accentPreference]);
+	}, [accentPreference, preferencesReady]);
 
 	useEffect(() => {
-		if (!didInitializeSecondaryAccentPreference.current) {
-			didInitializeSecondaryAccentPreference.current = true;
-			return;
-		}
+		if (!preferencesReady) return;
 		if (!hasCustomSecondaryAccent.current) {
 			writeDeviceSetting(
 				LOGIN_SECONDARY_ACCENT_PREFERENCE_KEY,
@@ -1039,7 +1022,7 @@ export function AppShell({
 			"data-secondary-accent",
 			secondaryAccentPreference,
 		);
-	}, [secondaryAccentPreference]);
+	}, [preferencesReady, secondaryAccentPreference]);
 
 	useEffect(() => {
 		if (!pathname) {
