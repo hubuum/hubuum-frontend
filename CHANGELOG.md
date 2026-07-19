@@ -21,6 +21,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Kept locally saved appearance and other portable preferences authoritative
   until a later server snapshot confirms them, and prevented application-shell
   initialization from resetting those preferences during a refresh.
+- Added branded favicon and Apple touch-icon assets, including the legacy
+  precomposed path, so browser icon discovery no longer reaches a 404 route.
 
 ## [0.0.3] - 2026-07-18
 
