@@ -19,8 +19,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Kept locally saved appearance and other portable preferences authoritative
-  until a later server snapshot confirms them, preventing stale refreshes from
-  resetting the primary color.
+  until a later server snapshot confirms them, and prevented application-shell
+  initialization from resetting those preferences during a refresh.
 
 ## [0.0.3] - 2026-07-18
 

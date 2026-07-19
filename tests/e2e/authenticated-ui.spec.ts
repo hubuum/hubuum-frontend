@@ -65,6 +65,49 @@ test.describe("authenticated workspace", () => {
 		await expect(trigger).toBeFocused();
 	});
 
+	test("primary color survives an immediate page refresh", async ({ page }) => {
+		await page.goto("/account/appearance");
+		const primaryColors = page.getByRole("group", { name: "Primary color" });
+		const selectedLabel =
+			(
+				await primaryColors.locator('button[aria-pressed="true"]').textContent()
+			)?.trim() ?? "Teal";
+		const targetLabel = selectedLabel === "Violet" ? "Blue" : "Violet";
+
+		try {
+			await primaryColors
+				.getByRole("button", { name: targetLabel, exact: true })
+				.click();
+			await expect(page.locator("html")).toHaveAttribute(
+				"data-accent",
+				targetLabel.toLocaleLowerCase(),
+			);
+
+			await page.reload();
+
+			await expect(page.locator("html")).toHaveAttribute(
+				"data-accent",
+				targetLabel.toLocaleLowerCase(),
+			);
+			await expect(
+				page
+					.getByRole("group", { name: "Primary color" })
+					.getByRole("button", { name: targetLabel, exact: true }),
+			).toHaveAttribute("aria-pressed", "true");
+		} finally {
+			await page.goto("/account/appearance");
+			const restored = page
+				.getByRole("group", { name: "Primary color" })
+				.getByRole("button", { name: selectedLabel, exact: true });
+			await restored.click();
+			await expect(page.locator("html")).toHaveAttribute(
+				"data-accent",
+				selectedLabel.toLocaleLowerCase(),
+			);
+			await page.waitForTimeout(300);
+		}
+	});
+
 	test("mobile resource pages expose one primary create action", async ({
 		page,
 	}) => {
