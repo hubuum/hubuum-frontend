@@ -103,7 +103,7 @@ async function createComputedFieldThroughFlow(
 	await expect(scopeCard.getByText(key, { exact: true })).toBeVisible();
 }
 
-test.describe("v0.0.2 server features", () => {
+test.describe("v0.0.3 server features", () => {
 	test.skip(
 		!username || !password,
 		"Set E2E_USERNAME and E2E_PASSWORD to run authenticated flows.",
@@ -199,7 +199,11 @@ test.describe("v0.0.2 server features", () => {
 				{
 					data: {
 						collection_id: collection.id,
-						data: { hostname: "e2e-host", port: 443 },
+						data: {
+							hostname: "e2e-host",
+							network: { interfaces: [{ name: "eth0" }] },
+							port: 443,
+						},
 						description: "Computed-field preview object",
 						hubuum_class_id: hubuumClass.id,
 						name: previewObjectName,
@@ -235,7 +239,11 @@ test.describe("v0.0.2 server features", () => {
 				{
 					data: {
 						collection_id: collection.id,
-						data: { hostname: "e2e-host", port: 443 },
+						data: {
+							hostname: "e2e-host",
+							network: { interfaces: [{ name: "eth0" }] },
+							port: 443,
+						},
 						description: "Computed-field object",
 						hubuum_class_id: hubuumClass.id,
 						name: objectName,
@@ -318,7 +326,7 @@ test.describe("v0.0.2 server features", () => {
 
 			await page.getByRole("button", { name: "Group" }).click();
 			const groupingMenu = page.getByRole("dialog", {
-				name: "Group loaded rows",
+				name: "Group objects",
 			});
 			await groupingMenu
 				.getByLabel("Group by")
@@ -328,7 +336,7 @@ test.describe("v0.0.2 server features", () => {
 			);
 			await page.keyboard.press("Escape");
 			const groupedTable = page.getByRole("region", {
-				name: "Grouped objects",
+				name: "Object aggregates",
 			});
 			const hostnameGroup = groupedTable
 				.getByRole("row")
@@ -355,14 +363,118 @@ test.describe("v0.0.2 server features", () => {
 			).toEqual([]);
 
 			await page.goto(`/objects/${hubuumClass.id}/${object.id}`);
+			const connectionsSection = page.locator("#object-connections");
+			const connectionsHeader = connectionsSection.locator(":scope > header");
+			await expect(
+				connectionsHeader.getByRole("heading", { name: "Connections" }),
+			).toBeVisible();
+			await expect(
+				connectionsHeader.getByLabel("Connection depth"),
+			).toBeVisible();
+			await expect(
+				connectionsHeader.locator(".relations-toggle"),
+			).toContainText("Include e2e_computed_class_");
+			await connectionsHeader
+				.getByRole("button", { name: "Class filters" })
+				.click();
+			await expect(
+				connectionsHeader.getByText("Hide classes", { exact: true }),
+			).toBeVisible();
+			await page.keyboard.press("Escape");
+			await expect(
+				page.getByText("Connection paths and filters", { exact: true }),
+			).toHaveCount(0);
+			await expect(page.locator(".object-record-heading .eyebrow")).toHaveCount(
+				0,
+			);
+			await expect(
+				page.locator(".object-property-section--data > header .eyebrow"),
+			).toHaveCount(0);
+			await expect(connectionsHeader.locator(".eyebrow")).toHaveCount(0);
+			await expect(page.getByRole("button", { name: "Edit all" })).toHaveCount(
+				0,
+			);
 			await expect(
 				page.getByRole("heading", { name: "Computed values" }),
 			).toBeVisible();
+			await expect(page.getByText("Derived data", { exact: true })).toHaveCount(
+				0,
+			);
 			await expect(
 				page.getByText("shared_hostname", { exact: true }),
 			).toBeVisible();
 			await expect(
 				page.getByText("personal_hostname", { exact: true }),
+			).toBeVisible();
+			await expect(
+				page.getByText(
+					"Click a field to edit · Enter saves the field · Esc cancels",
+					{ exact: true },
+				),
+			).toBeVisible();
+			const nestedPath = page
+				.locator("dt")
+				.filter({ hasText: "network.interfaces[0].name" });
+			await expect(nestedPath).toHaveCSS("white-space", "nowrap");
+			await page
+				.getByRole("button", {
+					name: /Edit network\.interfaces\[0\]\.name\./,
+				})
+				.click();
+			const inlineType = page.getByLabel("Type for network.interfaces[0].name");
+			const inlineValue = page.getByLabel(
+				"Value for network.interfaces[0].name",
+			);
+			const [typeBox, valueBox] = await Promise.all([
+				inlineType.boundingBox(),
+				inlineValue.boundingBox(),
+			]);
+			if (!typeBox || !valueBox) {
+				throw new Error("Inline data controls did not produce layout boxes.");
+			}
+			expect(typeBox.width).toBeLessThan(120);
+			expect(valueBox.width).toBeGreaterThan(typeBox.width);
+			await page.keyboard.press("Escape");
+
+			await page.getByRole("button", { name: /Edit as JSON/ }).click();
+			await expect(page.getByLabel("Data (JSON)")).toBeVisible();
+			await page.getByLabel("Data (JSON)").fill(
+				JSON.stringify(
+					{
+						hostname: "e2e-host-updated",
+						network: { interfaces: [{ name: "eth0" }] },
+						port: 443,
+					},
+					null,
+					2,
+				),
+			);
+			const changeReview = page.locator(".object-data-change-review");
+			await expect(
+				changeReview.getByText("1 change", { exact: true }),
+			).toBeVisible();
+			await expect(
+				changeReview.getByText("hostname", { exact: true }),
+			).toBeVisible();
+			const patchRequestPromise = page.waitForRequest(
+				(request) =>
+					request.method() === "PATCH" &&
+					new URL(request.url()).pathname.endsWith(
+						`/api/v1/classes/${hubuumClass.id}/${object.id}/data`,
+					),
+			);
+			await page.getByRole("button", { name: "Save changes" }).click();
+			const patchRequest = await patchRequestPromise;
+			expect(patchRequest.postDataJSON() as unknown).toEqual([
+				{ op: "test", path: "/hostname", value: "e2e-host" },
+				{
+					op: "replace",
+					path: "/hostname",
+					value: "e2e-host-updated",
+				},
+			]);
+			await expect(
+				page.getByText("Object updated.", { exact: true }),
 			).toBeVisible();
 		} finally {
 			if (objectId !== null) {

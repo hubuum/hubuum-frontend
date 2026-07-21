@@ -3,15 +3,16 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.2
+ * OpenAPI spec version: 0.0.3
  */
 
 export type GetApiV1EventDeliveriesParams = {
 /**
- * Cursor page size
- * @minimum 0
+ * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
+ * @minimum 1
+ * @maximum 250
  */
-limit: number;
+limit?: number;
 /**
  * Comma-separated sort fields. Supported fields: id, status, created_at, updated_at, next_attempt_at
  */
@@ -20,4 +21,8 @@ sort: string;
  * Cursor token from X-Next-Cursor
  */
 cursor: string;
+/**
+ * Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.
+ */
+include_total?: boolean;
 };

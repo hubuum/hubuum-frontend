@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.2
+ * OpenAPI spec version: 0.0.3
  */
 
 export type GetApiV1ClassesByClassIdTrailingParams = {
@@ -12,13 +12,15 @@ export type GetApiV1ClassesByClassIdTrailingParams = {
  */
 include?: string;
 /**
- * Maximum number of items to return. Defaults to 100. Maximum is 250.
- */
-limit?: number;
-/**
- * Comma-separated sort fields. Cursor pagination uses the requested sort order and appends a stable tie-breaker automatically.
+ * Sort by object fields or computed.shared.<key>/computed.personal.<key>; computed sorting supports at most two explicit sort fields
  */
 sort?: string;
+/**
+ * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
+ * @minimum 1
+ * @maximum 250
+ */
+limit?: number;
 /**
  * Opaque cursor returned in the X-Next-Cursor response header from a previous page. Supply it unchanged to fetch the next page.
  */

@@ -306,7 +306,9 @@ export async function fetchEventDeliveriesPage(
 }
 
 export async function fetchEventSinks(): Promise<EventSink[]> {
-	const response = await getApiV1EventSinks({ credentials: "include" });
+	const response = await getApiV1EventSinks(undefined, {
+		credentials: "include",
+	});
 
 	assertStatus(
 		response.status,
@@ -368,6 +370,7 @@ export async function fetchCollectionEventSubscriptions(
 ): Promise<EventSubscription[]> {
 	const response = await getApiV1CollectionsByCollectionIdEventSubscriptions(
 		collectionId,
+		undefined,
 		{ credentials: "include" },
 	);
 

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.2
+ * OpenAPI spec version: 0.0.3
  */
 import type {
   ApiErrorResponse,
@@ -12,6 +12,7 @@ import type {
   BackupRequest,
   ClassComputationState,
   ClearRateLimitResponse,
+  ClientConfig,
   Collection,
   ComputedFieldDefinition,
   ComputedFieldDefinitionPatch,
@@ -44,13 +45,23 @@ import type {
   GetApiV1ClassesByClassIdEventsParams,
   GetApiV1ClassesByClassIdHistoryAsOfParams,
   GetApiV1ClassesByClassIdHistoryParams,
+  GetApiV1ClassesByClassIdObjectAggregatesParams,
   GetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsParams,
   GetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsParams,
   GetApiV1ClassesByClassIdPermissionsParams,
   GetApiV1ClassesByClassIdRelatedClassesParams,
   GetApiV1ClassesByClassIdRelatedRelationsParams,
   GetApiV1ClassesByClassIdTrailingParams,
+  GetApiV1ClassesByNameByClassNameObjectAggregatesParams,
+  GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameParams,
+  GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsParams,
+  GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsParams,
+  GetApiV1ClassesByNameByClassNameObjectsParams,
+  GetApiV1ClassesByNameByClassNamePermissionsParams,
+  GetApiV1ClassesByNameByClassNameRelatedClassesParams,
+  GetApiV1ClassesByNameByClassNameRelatedRelationsParams,
   GetApiV1ClassesParams,
+  GetApiV1CollectionsByCollectionIdEventSubscriptionsParams,
   GetApiV1CollectionsByCollectionIdEventsParams,
   GetApiV1CollectionsByCollectionIdHasPermissionsByPermissionParams,
   GetApiV1CollectionsByCollectionIdHistoryAsOfParams,
@@ -59,6 +70,7 @@ import type {
   GetApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalIdParams,
   GetApiV1CollectionsParams,
   GetApiV1EventDeliveriesParams,
+  GetApiV1EventSinksParams,
   GetApiV1EventsParams,
   GetApiV1ExportTemplatesByTemplateIdEventsParams,
   GetApiV1ExportTemplatesByTemplateIdHistoryAsOfParams,
@@ -75,13 +87,16 @@ import type {
   GetApiV1IamServiceAccountsParams,
   GetApiV1IamUsersByUserIdEventsParams,
   GetApiV1IamUsersParams,
+  GetApiV1ImportsByTaskIdResultsParams,
   GetApiV1RelationsClassesParams,
   GetApiV1RelationsObjectsParams,
   GetApiV1RemoteTargetsByRemoteTargetIdHistoryAsOfParams,
   GetApiV1RemoteTargetsByRemoteTargetIdHistoryParams,
   GetApiV1RemoteTargetsByTargetIdEventsParams,
+  GetApiV1RemoteTargetsParams,
   GetApiV1SearchParams,
   GetApiV1SearchStreamParams,
+  GetApiV1TasksByTaskIdEventsParams,
   GetApiV1TasksParams,
   GroupPermission,
   GroupResponse,
@@ -119,6 +134,8 @@ import type {
   NewServiceAccount,
   NewTokenRequest,
   NewUser,
+  ObjectAggregateRow,
+  ObjectDataPatchDocument,
   Permission,
   Permissions,
   PersonalComputedFieldDefinitionRequest,
@@ -1289,6 +1306,1186 @@ export const postApiV1Classes = async (newHubuumClass: NewHubuumClass, options?:
 
 
 
+export type getApiV1ClassesByNameByClassNameResponse200 = {
+  data: HubuumClassExpanded
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameResponseSuccess = (getApiV1ClassesByNameByClassNameResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameResponseError = (getApiV1ClassesByNameByClassNameResponse401 | getApiV1ClassesByNameByClassNameResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameResponse = (getApiV1ClassesByNameByClassNameResponseSuccess | getApiV1ClassesByNameByClassNameResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameUrl = (className: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}`
+}
+
+/**
+ * Name-addressed alias for the class endpoint. The explicit by-name segment always treats numeric-looking values as names.
+ * @summary Get a class by name
+ */
+export const getApiV1ClassesByNameByClassName = async (className: string, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameUrl(className),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameResponse
+}
+
+
+
+export type deleteApiV1ClassesByNameByClassNameResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1ClassesByNameByClassNameResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1ClassesByNameByClassNameResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1ClassesByNameByClassNameResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1ClassesByNameByClassNameResponseSuccess = (deleteApiV1ClassesByNameByClassNameResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1ClassesByNameByClassNameResponseError = (deleteApiV1ClassesByNameByClassNameResponse401 | deleteApiV1ClassesByNameByClassNameResponse403 | deleteApiV1ClassesByNameByClassNameResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1ClassesByNameByClassNameResponse = (deleteApiV1ClassesByNameByClassNameResponseSuccess | deleteApiV1ClassesByNameByClassNameResponseError)
+
+export const getDeleteApiV1ClassesByNameByClassNameUrl = (className: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}`
+}
+
+/**
+ * Name-addressed alias for class deletion. The original name and resolved ID are rechecked under the transactional row lock.
+ * @summary Delete a class by name
+ */
+export const deleteApiV1ClassesByNameByClassName = async (className: string, options?: RequestInit): Promise<deleteApiV1ClassesByNameByClassNameResponse> => {
+
+  const res = await fetch(getDeleteApiV1ClassesByNameByClassNameUrl(className),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1ClassesByNameByClassNameResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByNameByClassNameResponse
+}
+
+
+
+export type patchApiV1ClassesByNameByClassNameResponse200 = {
+  data: HubuumClassExpanded
+  status: 200
+}
+
+export type patchApiV1ClassesByNameByClassNameResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1ClassesByNameByClassNameResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1ClassesByNameByClassNameResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1ClassesByNameByClassNameResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1ClassesByNameByClassNameResponseSuccess = (patchApiV1ClassesByNameByClassNameResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1ClassesByNameByClassNameResponseError = (patchApiV1ClassesByNameByClassNameResponse400 | patchApiV1ClassesByNameByClassNameResponse401 | patchApiV1ClassesByNameByClassNameResponse403 | patchApiV1ClassesByNameByClassNameResponse404) & {
+  headers: Headers;
+};
+
+export type patchApiV1ClassesByNameByClassNameResponse = (patchApiV1ClassesByNameByClassNameResponseSuccess | patchApiV1ClassesByNameByClassNameResponseError)
+
+export const getPatchApiV1ClassesByNameByClassNameUrl = (className: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}`
+}
+
+/**
+ * Name-addressed alias for class update. Authorization is bound to the resolved class, and the original name plus resolved ID are rechecked under the transactional row lock.
+ * @summary Update a class by name
+ */
+export const patchApiV1ClassesByNameByClassName = async (className: string,
+    updateHubuumClass: UpdateHubuumClass, options?: RequestInit): Promise<patchApiV1ClassesByNameByClassNameResponse> => {
+
+  const res = await fetch(getPatchApiV1ClassesByNameByClassNameUrl(className),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateHubuumClass)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1ClassesByNameByClassNameResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1ClassesByNameByClassNameResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNameObjectAggregatesResponse200 = {
+  data: ObjectAggregateRow[]
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameObjectAggregatesResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByNameByClassNameObjectAggregatesResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameObjectAggregatesResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameObjectAggregatesResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type getApiV1ClassesByNameByClassNameObjectAggregatesResponseSuccess = (getApiV1ClassesByNameByClassNameObjectAggregatesResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameObjectAggregatesResponseError = (getApiV1ClassesByNameByClassNameObjectAggregatesResponse400 | getApiV1ClassesByNameByClassNameObjectAggregatesResponse401 | getApiV1ClassesByNameByClassNameObjectAggregatesResponse404 | getApiV1ClassesByNameByClassNameObjectAggregatesResponse413) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameObjectAggregatesResponse = (getApiV1ClassesByNameByClassNameObjectAggregatesResponseSuccess | getApiV1ClassesByNameByClassNameObjectAggregatesResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameObjectAggregatesUrl = (className: string,
+    params: GetApiV1ClassesByNameByClassNameObjectAggregatesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["group_by"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : String(v));
+      });
+      return;
+    }
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/object-aggregates?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/object-aggregates`
+}
+
+/**
+ * Name-addressed alias for permission-scoped object aggregation. Numeric-looking class names remain names. Normal object filters and up to two enabled shared or owned personal computed filters are applied before grouping.
+ * @summary Aggregate objects in a class by class name
+ */
+export const getApiV1ClassesByNameByClassNameObjectAggregates = async (className: string,
+    params: GetApiV1ClassesByNameByClassNameObjectAggregatesParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameObjectAggregatesResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameObjectAggregatesUrl(className,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameObjectAggregatesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameObjectAggregatesResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNameObjectsResponse200 = {
+  data: HubuumObjectReadResponse[]
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsResponseSuccess = (getApiV1ClassesByNameByClassNameObjectsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameObjectsResponseError = (getApiV1ClassesByNameByClassNameObjectsResponse400 | getApiV1ClassesByNameByClassNameObjectsResponse401 | getApiV1ClassesByNameByClassNameObjectsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameObjectsResponse = (getApiV1ClassesByNameByClassNameObjectsResponseSuccess | getApiV1ClassesByNameByClassNameObjectsResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameObjectsUrl = (className: string,
+    params?: GetApiV1ClassesByNameByClassNameObjectsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects`
+}
+
+/**
+ * Name-addressed alias for listing the current objects in a class. Numeric-looking class names remain names. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary List objects in a class by class name
+ */
+export const getApiV1ClassesByNameByClassNameObjects = async (className: string,
+    params?: GetApiV1ClassesByNameByClassNameObjectsParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameObjectsResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameObjectsUrl(className,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameObjectsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameObjectsResponse
+}
+
+
+
+export type postApiV1ClassesByNameByClassNameObjectsResponse201 = {
+  data: HubuumObject
+  status: 201
+}
+
+export type postApiV1ClassesByNameByClassNameObjectsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByNameByClassNameObjectsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1ClassesByNameByClassNameObjectsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByNameByClassNameObjectsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1ClassesByNameByClassNameObjectsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ClassesByNameByClassNameObjectsResponseSuccess = (postApiV1ClassesByNameByClassNameObjectsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByNameByClassNameObjectsResponseError = (postApiV1ClassesByNameByClassNameObjectsResponse400 | postApiV1ClassesByNameByClassNameObjectsResponse401 | postApiV1ClassesByNameByClassNameObjectsResponse403 | postApiV1ClassesByNameByClassNameObjectsResponse404 | postApiV1ClassesByNameByClassNameObjectsResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByNameByClassNameObjectsResponse = (postApiV1ClassesByNameByClassNameObjectsResponseSuccess | postApiV1ClassesByNameByClassNameObjectsResponseError)
+
+export const getPostApiV1ClassesByNameByClassNameObjectsUrl = (className: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects`
+}
+
+/**
+ * Name-addressed alias for object creation. The original class name and resolved ID are rechecked under the same transaction that creates the object.
+ * @summary Create an object in a class by class name
+ */
+export const postApiV1ClassesByNameByClassNameObjects = async (className: string,
+    newHubuumObjectRequest: NewHubuumObjectRequest, options?: RequestInit): Promise<postApiV1ClassesByNameByClassNameObjectsResponse> => {
+
+  const res = await fetch(getPostApiV1ClassesByNameByClassNameObjectsUrl(className),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(newHubuumObjectRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByNameByClassNameObjectsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByNameByClassNameObjectsResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse200 = {
+  data: HubuumObjectReadResponse
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseSuccess = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseError = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse401 | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse403 | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseSuccess | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl = (className: string,
+    objectName: string,
+    params?: GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}`
+}
+
+/**
+ * Fully name-addressed alias for the object endpoint. Numeric-looking path values remain names.
+ * @summary Get an object by class and object name
+ */
+export const getApiV1ClassesByNameByClassNameObjectsByNameByObjectName = async (className: string,
+    objectName: string,
+    params?: GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl(className,objectName,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse
+}
+
+
+
+export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseSuccess = (deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseError = (deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse401 | deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse403 | deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse404) & {
+  headers: Headers;
+};
+
+export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse = (deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseSuccess | deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseError)
+
+export const getDeleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl = (className: string,
+    objectName: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}`
+}
+
+/**
+ * Fully name-addressed alias for object deletion. The original natural key and resolved IDs are rechecked under the transactional row lock.
+ * @summary Delete an object by class and object name
+ */
+export const deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectName = async (className: string,
+    objectName: string, options?: RequestInit): Promise<deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse> => {
+
+  const res = await fetch(getDeleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl(className,objectName),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse
+}
+
+
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse200 = {
+  data: HubuumObject
+  status: 200
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseSuccess = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseError = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse400 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse401 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse403 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse404) & {
+  headers: Headers;
+};
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseSuccess | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseError)
+
+export const getPatchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl = (className: string,
+    objectName: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}`
+}
+
+/**
+ * Fully name-addressed alias for object update. The original natural key and resolved IDs are rechecked under the transactional row lock.
+ * @summary Update an object by class and object name
+ */
+export const patchApiV1ClassesByNameByClassNameObjectsByNameByObjectName = async (className: string,
+    objectName: string,
+    updateHubuumObjectRequest: UpdateHubuumObjectRequest, options?: RequestInit): Promise<patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse> => {
+
+  const res = await fetch(getPatchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl(className,objectName),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateHubuumObjectRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse
+}
+
+
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse200 = {
+  data: HubuumObject
+  status: 200
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse406 = {
+  data: ApiErrorResponse
+  status: 406
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse415 = {
+  data: ApiErrorResponse
+  status: 415
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse500 = {
+  data: ApiErrorResponse
+  status: 500
+}
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponseSuccess = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponseError = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse400 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse401 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse403 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse404 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse406 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse409 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse413 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse415 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse500) & {
+  headers: Headers;
+};
+
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponseSuccess | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponseError)
+
+export const getPatchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataUrl = (className: string,
+    objectName: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/data`
+}
+
+/**
+ * Fully name-addressed alias for the atomic object-data JSON Patch endpoint. Class names are globally unique, object names are unique within their class, and both names are URL percent-decoded. The server resolves the natural key for authorization, then requires that same object ID, class ID, class name, and object name when taking the transactional row lock so a concurrent rename cannot redirect the patch. Numeric-looking names are always treated as names on this route. Every `path` and `from` remains relative to the root of the raw `data` document.
+ * @summary Apply JSON Patch to object data by object name
+ */
+export const patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameData = async (className: string,
+    objectName: string,
+    objectDataPatchDocument: ObjectDataPatchDocument, options?: RequestInit): Promise<patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse> => {
+
+  const res = await fetch(getPatchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataUrl(className,objectName),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json-patch+json', ...options?.headers },
+    body: JSON.stringify(objectDataPatchDocument)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse200 = {
+  data: RelatedObjectGraph
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponseSuccess = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponseError = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse400 | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse401 | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponseSuccess | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphUrl = (className: string,
+    objectName: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/related/graph`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}/related/graph.
+ * @summary Get the related-object graph by class and object name
+ */
+export const getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraph = async (className: string,
+    objectName: string, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphUrl(className,objectName),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraphResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse200 = {
+  data: HubuumObjectWithPath[]
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponseSuccess = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponseError = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse400 | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse401 | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponseSuccess | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsUrl = (className: string,
+    objectName: string,
+    params?: GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/related/objects?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/related/objects`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}/related/objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get related objects by class and object name
+ */
+export const getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjects = async (className: string,
+    objectName: string,
+    params?: GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsUrl(className,objectName,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse200 = {
+  data: HubuumObjectRelation[]
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponseSuccess = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponseError = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse400 | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse401 | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse = (getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponseSuccess | getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsUrl = (className: string,
+    objectName: string,
+    params?: GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/related/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/related/relations`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get related object relations by class and object name
+ */
+export const getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelations = async (className: string,
+    objectName: string,
+    params?: GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsUrl(className,objectName,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedRelationsResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNamePermissionsResponse200 = {
+  data: GroupPermission[]
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNamePermissionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNamePermissionsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNamePermissionsResponseSuccess = (getApiV1ClassesByNameByClassNamePermissionsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNamePermissionsResponseError = (getApiV1ClassesByNameByClassNamePermissionsResponse401 | getApiV1ClassesByNameByClassNamePermissionsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNamePermissionsResponse = (getApiV1ClassesByNameByClassNamePermissionsResponseSuccess | getApiV1ClassesByNameByClassNamePermissionsResponseError)
+
+export const getGetApiV1ClassesByNameByClassNamePermissionsUrl = (className: string,
+    params?: GetApiV1ClassesByNameByClassNamePermissionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/permissions?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/permissions`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/by-name/{class_name}/permissions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get class permissions by class name
+ */
+export const getApiV1ClassesByNameByClassNamePermissions = async (className: string,
+    params?: GetApiV1ClassesByNameByClassNamePermissionsParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNamePermissionsResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNamePermissionsUrl(className,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNamePermissionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNamePermissionsResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNameRelatedClassesResponse200 = {
+  data: HubuumClassWithPath[]
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedClassesResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedClassesResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedClassesResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedClassesResponseSuccess = (getApiV1ClassesByNameByClassNameRelatedClassesResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameRelatedClassesResponseError = (getApiV1ClassesByNameByClassNameRelatedClassesResponse400 | getApiV1ClassesByNameByClassNameRelatedClassesResponse401 | getApiV1ClassesByNameByClassNameRelatedClassesResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameRelatedClassesResponse = (getApiV1ClassesByNameByClassNameRelatedClassesResponseSuccess | getApiV1ClassesByNameByClassNameRelatedClassesResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameRelatedClassesUrl = (className: string,
+    params?: GetApiV1ClassesByNameByClassNameRelatedClassesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/related/classes?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/related/classes`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/by-name/{class_name}/related/classes. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get related classes by class name
+ */
+export const getApiV1ClassesByNameByClassNameRelatedClasses = async (className: string,
+    params?: GetApiV1ClassesByNameByClassNameRelatedClassesParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameRelatedClassesResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameRelatedClassesUrl(className,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameRelatedClassesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameRelatedClassesResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNameRelatedGraphResponse200 = {
+  data: RelatedClassGraph
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedGraphResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedGraphResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedGraphResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedGraphResponseSuccess = (getApiV1ClassesByNameByClassNameRelatedGraphResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameRelatedGraphResponseError = (getApiV1ClassesByNameByClassNameRelatedGraphResponse400 | getApiV1ClassesByNameByClassNameRelatedGraphResponse401 | getApiV1ClassesByNameByClassNameRelatedGraphResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameRelatedGraphResponse = (getApiV1ClassesByNameByClassNameRelatedGraphResponseSuccess | getApiV1ClassesByNameByClassNameRelatedGraphResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameRelatedGraphUrl = (className: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/related/graph`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/by-name/{class_name}/related/graph.
+ * @summary Get the related-class graph by class name
+ */
+export const getApiV1ClassesByNameByClassNameRelatedGraph = async (className: string, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameRelatedGraphResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameRelatedGraphUrl(className),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameRelatedGraphResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameRelatedGraphResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNameRelatedRelationsResponse200 = {
+  data: HubuumClassRelation[]
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedRelationsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedRelationsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedRelationsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameRelatedRelationsResponseSuccess = (getApiV1ClassesByNameByClassNameRelatedRelationsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameRelatedRelationsResponseError = (getApiV1ClassesByNameByClassNameRelatedRelationsResponse400 | getApiV1ClassesByNameByClassNameRelatedRelationsResponse401 | getApiV1ClassesByNameByClassNameRelatedRelationsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameRelatedRelationsResponse = (getApiV1ClassesByNameByClassNameRelatedRelationsResponseSuccess | getApiV1ClassesByNameByClassNameRelatedRelationsResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameRelatedRelationsUrl = (className: string,
+    params?: GetApiV1ClassesByNameByClassNameRelatedRelationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/related/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/related/relations`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/by-name/{class_name}/related/relations. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get related class relations by class name
+ */
+export const getApiV1ClassesByNameByClassNameRelatedRelations = async (className: string,
+    params?: GetApiV1ClassesByNameByClassNameRelatedRelationsParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameRelatedRelationsResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameRelatedRelationsUrl(className,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameRelatedRelationsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameRelatedRelationsResponse
+}
+
+
+
 export type getApiV1ClassesByClassIdResponse200 = {
   data: HubuumClassExpanded
   status: 200
@@ -1509,7 +2706,7 @@ export const getGetApiV1ClassesByClassIdTrailingUrl = (classId: number,
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Lists objects in the path class. Enabled computed fields can be filtered with computed.shared.<key> or computed.personal.<key> using the normal __operator suffix, and sorted with the same names. Computed querying supports at most two computed filter parameters and two explicit sort fields per request. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Trailing
  */
 export const getApiV1ClassesByClassIdTrailing = async (classId: number,
@@ -1983,7 +3180,7 @@ export const getGetApiV1ClassesByClassIdEventsUrl = (classId: number,
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/events.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/events. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Events
  */
 export const getApiV1ClassesByClassIdEvents = async (classId: number,
@@ -2148,6 +3345,89 @@ export const getApiV1ClassesByClassIdHistoryAsOf = async (classId: number,
 
   const data: getApiV1ClassesByClassIdHistoryAsOfResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdHistoryAsOfResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdObjectAggregatesResponse200 = {
+  data: ObjectAggregateRow[]
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdObjectAggregatesResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdObjectAggregatesResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdObjectAggregatesResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdObjectAggregatesResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type getApiV1ClassesByClassIdObjectAggregatesResponseSuccess = (getApiV1ClassesByClassIdObjectAggregatesResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdObjectAggregatesResponseError = (getApiV1ClassesByClassIdObjectAggregatesResponse400 | getApiV1ClassesByClassIdObjectAggregatesResponse401 | getApiV1ClassesByClassIdObjectAggregatesResponse404 | getApiV1ClassesByClassIdObjectAggregatesResponse413) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdObjectAggregatesResponse = (getApiV1ClassesByClassIdObjectAggregatesResponseSuccess | getApiV1ClassesByClassIdObjectAggregatesResponseError)
+
+export const getGetApiV1ClassesByClassIdObjectAggregatesUrl = (classId: number,
+    params: GetApiV1ClassesByClassIdObjectAggregatesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["group_by"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : String(v));
+      });
+      return;
+    }
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/object-aggregates?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/object-aggregates`
+}
+
+/**
+ * Permission-scoped object aggregation. Normal object filters and up to two enabled shared or owned personal computed filters are applied before grouping.
+ * @summary Get Api V1 Classes By Class Id Object Aggregates
+ */
+export const getApiV1ClassesByClassIdObjectAggregates = async (classId: number,
+    params: GetApiV1ClassesByClassIdObjectAggregatesParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdObjectAggregatesResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdObjectAggregatesUrl(classId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdObjectAggregatesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdObjectAggregatesResponse
 }
 
 
@@ -3135,6 +4415,100 @@ export const patchApiV1ClassesByClassIdByObjectId = async (classId: number,
 
 
 
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse200 = {
+  data: HubuumObject
+  status: 200
+}
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse406 = {
+  data: ApiErrorResponse
+  status: 406
+}
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse415 = {
+  data: ApiErrorResponse
+  status: 415
+}
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse500 = {
+  data: ApiErrorResponse
+  status: 500
+}
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponseSuccess = (patchApiV1ClassesByClassIdByObjectIdDataResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1ClassesByClassIdByObjectIdDataResponseError = (patchApiV1ClassesByClassIdByObjectIdDataResponse400 | patchApiV1ClassesByClassIdByObjectIdDataResponse401 | patchApiV1ClassesByClassIdByObjectIdDataResponse403 | patchApiV1ClassesByClassIdByObjectIdDataResponse404 | patchApiV1ClassesByClassIdByObjectIdDataResponse406 | patchApiV1ClassesByClassIdByObjectIdDataResponse409 | patchApiV1ClassesByClassIdByObjectIdDataResponse413 | patchApiV1ClassesByClassIdByObjectIdDataResponse415 | patchApiV1ClassesByClassIdByObjectIdDataResponse500) & {
+  headers: Headers;
+};
+
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse = (patchApiV1ClassesByClassIdByObjectIdDataResponseSuccess | patchApiV1ClassesByClassIdByObjectIdDataResponseError)
+
+export const getPatchApiV1ClassesByClassIdByObjectIdDataUrl = (classId: number,
+    objectId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/${objectId}/data`
+}
+
+/**
+ * Atomically applies an RFC 6902 JSON Patch document to the object's raw `data` document. Every `path` and `from` is an RFC 6901 JSON Pointer relative to the root of `data`; an empty path replaces the complete document. Operations are evaluated against the latest row-locked data. A successful change updates schema validation, computed-field materialization, history, timestamps, and the object update event in one transaction. A patch that produces no data change returns the current object without changing its timestamp or emitting an update event.
+ * @summary Apply JSON Patch to object data
+ */
+export const patchApiV1ClassesByClassIdByObjectIdData = async (classId: number,
+    objectId: number,
+    objectDataPatchDocument: ObjectDataPatchDocument, options?: RequestInit): Promise<patchApiV1ClassesByClassIdByObjectIdDataResponse> => {
+
+  const res = await fetch(getPatchApiV1ClassesByClassIdByObjectIdDataUrl(classId,objectId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json-patch+json', ...options?.headers },
+    body: JSON.stringify(objectDataPatchDocument)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1ClassesByClassIdByObjectIdDataResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1ClassesByClassIdByObjectIdDataResponse
+}
+
+
+
 export type getApiV1ClassesByClassIdByObjectIdEventsResponse200 = {
   data: EventResponse[]
   status: 200
@@ -3182,7 +4556,7 @@ export const getGetApiV1ClassesByClassIdByObjectIdEventsUrl = (classId: number,
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/events.
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/events. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id By Object Id Events
  */
 export const getApiV1ClassesByClassIdByObjectIdEvents = async (classId: number,
@@ -3795,21 +5169,30 @@ export type getApiV1CollectionsByCollectionIdEventSubscriptionsResponseError = (
 
 export type getApiV1CollectionsByCollectionIdEventSubscriptionsResponse = (getApiV1CollectionsByCollectionIdEventSubscriptionsResponseSuccess | getApiV1CollectionsByCollectionIdEventSubscriptionsResponseError)
 
-export const getGetApiV1CollectionsByCollectionIdEventSubscriptionsUrl = (collectionId: number,) => {
+export const getGetApiV1CollectionsByCollectionIdEventSubscriptionsUrl = (collectionId: number,
+    params?: GetApiV1CollectionsByCollectionIdEventSubscriptionsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-subscriptions`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-subscriptions?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-subscriptions`
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/collections/{collection_id}/event-subscriptions.
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/event-subscriptions. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Collections By Collection Id Event Subscriptions
  */
-export const getApiV1CollectionsByCollectionIdEventSubscriptions = async (collectionId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdEventSubscriptionsResponse> => {
+export const getApiV1CollectionsByCollectionIdEventSubscriptions = async (collectionId: number,
+    params?: GetApiV1CollectionsByCollectionIdEventSubscriptionsParams, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdEventSubscriptionsResponse> => {
 
-  const res = await fetch(getGetApiV1CollectionsByCollectionIdEventSubscriptionsUrl(collectionId),
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdEventSubscriptionsUrl(collectionId,params),
   {
     ...options,
     method: 'GET'
@@ -4140,7 +5523,7 @@ export const getGetApiV1CollectionsByCollectionIdEventsUrl = (collectionId: numb
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/collections/{collection_id}/events.
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/events. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Collections By Collection Id Events
  */
 export const getApiV1CollectionsByCollectionIdEvents = async (collectionId: number,
@@ -5126,6 +6509,57 @@ export const getApiV1CollectionsByCollectionIdPermissionsPrincipalByPrincipalId 
 
 
 
+export type getApiV1ConfigResponse200 = {
+  data: ClientConfig
+  status: 200
+}
+
+export type getApiV1ConfigResponse500 = {
+  data: ApiErrorResponse
+  status: 500
+}
+
+export type getApiV1ConfigResponseSuccess = (getApiV1ConfigResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ConfigResponseError = (getApiV1ConfigResponse500) & {
+  headers: Headers;
+};
+
+export type getApiV1ConfigResponse = (getApiV1ConfigResponseSuccess | getApiV1ConfigResponseError)
+
+export const getGetApiV1ConfigUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/config`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/config.
+ * @summary Get Api V1 Config
+ */
+export const getApiV1Config = async ( options?: RequestInit): Promise<getApiV1ConfigResponse> => {
+
+  const res = await fetch(getGetApiV1ConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ConfigResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ConfigResponse
+}
+
+
+
 export type getApiV1EventDeliveriesResponse200 = {
   data: EventDelivery[]
   status: 200
@@ -5171,7 +6605,7 @@ export const getGetApiV1EventDeliveriesUrl = (params: GetApiV1EventDeliveriesPar
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/event-deliveries.
+ * Auto-generated documentation for GET /api/v1/event-deliveries. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Event Deliveries
  */
 export const getApiV1EventDeliveries = async (params: GetApiV1EventDeliveriesParams, options?: RequestInit): Promise<getApiV1EventDeliveriesResponse> => {
@@ -5467,21 +6901,28 @@ export type getApiV1EventSinksResponseError = (getApiV1EventSinksResponse400 | g
 
 export type getApiV1EventSinksResponse = (getApiV1EventSinksResponseSuccess | getApiV1EventSinksResponseError)
 
-export const getGetApiV1EventSinksUrl = () => {
+export const getGetApiV1EventSinksUrl = (params?: GetApiV1EventSinksParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks`
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/event-sinks.
+ * Auto-generated documentation for GET /api/v1/event-sinks. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Event Sinks
  */
-export const getApiV1EventSinks = async ( options?: RequestInit): Promise<getApiV1EventSinksResponse> => {
+export const getApiV1EventSinks = async (params?: GetApiV1EventSinksParams, options?: RequestInit): Promise<getApiV1EventSinksResponse> => {
 
-  const res = await fetch(getGetApiV1EventSinksUrl(),
+  const res = await fetch(getGetApiV1EventSinksUrl(params),
   {
     ...options,
     method: 'GET'
@@ -5799,7 +7240,7 @@ export const getGetApiV1EventsUrl = (params?: GetApiV1EventsParams,) => {
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/events.
+ * Auto-generated documentation for GET /api/v1/events. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Events
  */
 export const getApiV1Events = async (params?: GetApiV1EventsParams, options?: RequestInit): Promise<getApiV1EventsResponse> => {
@@ -6186,7 +7627,7 @@ export const getGetApiV1ExportTemplatesByTemplateIdEventsUrl = (templateId: numb
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/export-templates/{template_id}/events.
+ * Auto-generated documentation for GET /api/v1/export-templates/{template_id}/events. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Export Templates By Template Id Events
  */
 export const getApiV1ExportTemplatesByTemplateIdEvents = async (templateId: number,
@@ -6989,7 +8430,7 @@ export const getGetApiV1IamGroupsByGroupIdEventsUrl = (groupId: number,
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/events.
+ * Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/events. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Groups By Group Id Events
  */
 export const getApiV1IamGroupsByGroupIdEvents = async (groupId: number,
@@ -7280,7 +8721,7 @@ export const getGetApiV1IamMeComputedFieldsUrl = (params?: GetApiV1IamMeComputed
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/me/computed-fields.
+ * Auto-generated documentation for GET /api/v1/iam/me/computed-fields. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Me Computed Fields
  */
 export const getApiV1IamMeComputedFields = async (params?: GetApiV1IamMeComputedFieldsParams, options?: RequestInit): Promise<getApiV1IamMeComputedFieldsResponse> => {
@@ -9244,7 +10685,7 @@ export const getGetApiV1IamUsersByUserIdEventsUrl = (userId: number,
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/events.
+ * Auto-generated documentation for GET /api/v1/iam/users/{user_id}/events. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Iam Users By User Id Events
  */
 export const getApiV1IamUsersByUserIdEvents = async (userId: number,
@@ -9429,21 +10870,30 @@ export type getApiV1ImportsByTaskIdResultsResponseError = (getApiV1ImportsByTask
 
 export type getApiV1ImportsByTaskIdResultsResponse = (getApiV1ImportsByTaskIdResultsResponseSuccess | getApiV1ImportsByTaskIdResultsResponseError)
 
-export const getGetApiV1ImportsByTaskIdResultsUrl = (taskId: number,) => {
+export const getGetApiV1ImportsByTaskIdResultsUrl = (taskId: number,
+    params?: GetApiV1ImportsByTaskIdResultsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/imports/${taskId}/results`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/imports/${taskId}/results?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/imports/${taskId}/results`
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/imports/{task_id}/results.
+ * Auto-generated documentation for GET /api/v1/imports/{task_id}/results. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Imports By Task Id Results
  */
-export const getApiV1ImportsByTaskIdResults = async (taskId: number, options?: RequestInit): Promise<getApiV1ImportsByTaskIdResultsResponse> => {
+export const getApiV1ImportsByTaskIdResults = async (taskId: number,
+    params?: GetApiV1ImportsByTaskIdResultsParams, options?: RequestInit): Promise<getApiV1ImportsByTaskIdResultsResponse> => {
 
-  const res = await fetch(getGetApiV1ImportsByTaskIdResultsUrl(taskId),
+  const res = await fetch(getGetApiV1ImportsByTaskIdResultsUrl(taskId,params),
   {
     ...options,
     method: 'GET'
@@ -9957,21 +11407,28 @@ export type getApiV1RemoteTargetsResponseError = (getApiV1RemoteTargetsResponse4
 
 export type getApiV1RemoteTargetsResponse = (getApiV1RemoteTargetsResponseSuccess | getApiV1RemoteTargetsResponseError)
 
-export const getGetApiV1RemoteTargetsUrl = () => {
+export const getGetApiV1RemoteTargetsUrl = (params?: GetApiV1RemoteTargetsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/remote-targets`
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/remote-targets.
+ * Auto-generated documentation for GET /api/v1/remote-targets. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Remote Targets
  */
-export const getApiV1RemoteTargets = async ( options?: RequestInit): Promise<getApiV1RemoteTargetsResponse> => {
+export const getApiV1RemoteTargets = async (params?: GetApiV1RemoteTargetsParams, options?: RequestInit): Promise<getApiV1RemoteTargetsResponse> => {
 
-  const res = await fetch(getGetApiV1RemoteTargetsUrl(),
+  const res = await fetch(getGetApiV1RemoteTargetsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -10435,7 +11892,7 @@ export const getGetApiV1RemoteTargetsByTargetIdEventsUrl = (targetId: number,
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/remote-targets/{target_id}/events.
+ * Auto-generated documentation for GET /api/v1/remote-targets/{target_id}/events. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Remote Targets By Target Id Events
  */
 export const getApiV1RemoteTargetsByTargetIdEvents = async (targetId: number,
@@ -11009,21 +12466,30 @@ export type getApiV1TasksByTaskIdEventsResponseError = (getApiV1TasksByTaskIdEve
 
 export type getApiV1TasksByTaskIdEventsResponse = (getApiV1TasksByTaskIdEventsResponseSuccess | getApiV1TasksByTaskIdEventsResponseError)
 
-export const getGetApiV1TasksByTaskIdEventsUrl = (taskId: number,) => {
+export const getGetApiV1TasksByTaskIdEventsUrl = (taskId: number,
+    params?: GetApiV1TasksByTaskIdEventsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/tasks/${taskId}/events`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/tasks/${taskId}/events?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/tasks/${taskId}/events`
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/tasks/{task_id}/events.
+ * Auto-generated documentation for GET /api/v1/tasks/{task_id}/events. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Tasks By Task Id Events
  */
-export const getApiV1TasksByTaskIdEvents = async (taskId: number, options?: RequestInit): Promise<getApiV1TasksByTaskIdEventsResponse> => {
+export const getApiV1TasksByTaskIdEvents = async (taskId: number,
+    params?: GetApiV1TasksByTaskIdEventsParams, options?: RequestInit): Promise<getApiV1TasksByTaskIdEventsResponse> => {
 
-  const res = await fetch(getGetApiV1TasksByTaskIdEventsUrl(taskId),
+  const res = await fetch(getGetApiV1TasksByTaskIdEventsUrl(taskId,params),
   {
     ...options,
     method: 'GET'

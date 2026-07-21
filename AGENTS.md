@@ -138,6 +138,18 @@ on the risk of the change.
 - Production dependency audit: `npm run audit:prod`
 - Live backend contract suite: `npm run test:live-backend`
 
+### Authenticated Playwright credentials
+
+- Use `admin` for `E2E_USERNAME` when testing against a disposable or local
+  Hubuum Server container.
+- Immediately before the run, obtain `E2E_PASSWORD` by executing
+  `/usr/local/bin/hubuum-admin --reset-password admin` inside the Hubuum Server
+  container. Capture the generated password directly into a shell variable;
+  never print it, write it to a file, commit it, or include it in test output.
+- Set `PLAYWRIGHT_BASE_URL` when targeting an already running frontend. Remove
+  only disposable frontend/backend containers and volumes created for the test;
+  do not stop developer-owned processes.
+
 For ordinary TypeScript changes, run lint, typecheck, and relevant unit tests.
 Also run the production build when changing routes, server/client boundaries,
 configuration, or build behavior. Run the relevant Playwright tests for user-

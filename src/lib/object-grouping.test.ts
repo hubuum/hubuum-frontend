@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { groupObjectRows } from "@/lib/object-grouping";
+import {
+	formatObjectAggregateDimension,
+	groupObjectRows,
+} from "@/lib/object-grouping";
 
 describe("groupObjectRows", () => {
 	it("groups equal values and keeps differently typed values separate", () => {
@@ -68,5 +71,18 @@ describe("groupObjectRows", () => {
 
 		expect(groups).toHaveLength(1);
 		expect(groups[0].count).toBe(2);
+	});
+
+	it("keeps server aggregate value states distinct", () => {
+		expect(formatObjectAggregateDimension({ state: "null" })).toBe("(null)");
+		expect(formatObjectAggregateDimension({ state: "missing" })).toBe(
+			"(missing)",
+		);
+		expect(formatObjectAggregateDimension({ state: "unavailable" })).toBe(
+			"(unavailable)",
+		);
+		expect(
+			formatObjectAggregateDimension({ state: "value", value: false }),
+		).toBe("false");
 	});
 });

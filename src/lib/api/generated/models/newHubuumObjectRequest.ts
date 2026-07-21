@@ -3,13 +3,15 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.2
+ * OpenAPI spec version: 0.0.3
  */
 
 export interface NewHubuumObjectRequest {
-  collection_id: number;
+  /** @nullable */
+  collection_id?: number | null;
   data: unknown;
   description: string;
-  hubuum_class_id: number;
+  /** @nullable */
+  hubuum_class_id?: number | null;
   name: string;
 }

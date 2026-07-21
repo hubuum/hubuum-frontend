@@ -1694,10 +1694,6 @@ body.modal-open {
 	min-width: 0;
 }
 
-.object-record-heading .eyebrow {
-	margin: 0;
-}
-
 .object-record-heading strong {
 	font-size: 0.95rem;
 }
@@ -1780,12 +1776,23 @@ body.modal-open {
 	font-size: 0.94rem;
 }
 
+.object-data-edit-guidance {
+	margin: 0.08rem 0 0;
+	color: var(--muted);
+	font-size: 0.72rem;
+	line-height: 1.35;
+}
+
 .object-property-section-actions {
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
 	gap: 0.45rem;
 	flex-wrap: wrap;
+}
+
+.object-connection-header-actions {
+	margin-left: auto;
 }
 
 .object-data-filter input {
@@ -1921,6 +1928,10 @@ body.modal-open {
 	line-height: 1.4;
 }
 
+.object-property-item--data {
+	grid-template-columns: minmax(13rem, 42%) minmax(0, 1fr);
+}
+
 .object-property-item--data-editing {
 	align-items: center;
 }
@@ -1928,7 +1939,7 @@ body.modal-open {
 .object-data-inline-editor {
 	--single-line-control-height: 2.15rem;
 	display: grid;
-	grid-template-columns: minmax(7rem, 0.55fr) minmax(0, 1.45fr);
+	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;
 	gap: 0.45rem;
 	width: 100%;
@@ -1945,6 +1956,19 @@ body.modal-open {
 .object-data-inline-editor select {
 	min-height: 2.15rem;
 	padding-block: 0.38rem;
+}
+
+.object-data-inline-editor .object-data-inline-type,
+.object-data-inline-type select {
+	width: auto;
+}
+
+.object-data-inline-type select {
+	min-width: 6rem;
+	padding-inline: 0.5rem 1.7rem;
+	color: var(--muted);
+	font-size: 0.76rem;
+	font-weight: 680;
 }
 
 .inline-field-edit-trigger {
@@ -2015,14 +2039,9 @@ body.modal-open {
 	-webkit-line-clamp: unset;
 }
 
-.object-data-inline-hint,
 .object-data-inline-error {
 	grid-column: 1 / -1;
 	font-size: 0.72rem;
-}
-
-.object-data-inline-hint {
-	color: var(--muted);
 }
 
 .object-data-inline-error {
@@ -2041,12 +2060,20 @@ body.modal-open {
 }
 
 .object-property-item--data dd > span,
-.object-property-item--data dt,
 .object-fact-display-value {
 	display: -webkit-box;
 	overflow: hidden;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 2;
+}
+
+.object-property-item--data dt {
+	display: block;
+	overflow: hidden;
+	font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+	overflow-wrap: normal;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .object-fact-display-value {
@@ -2088,6 +2115,40 @@ button.object-property-more {
 	border-top: 1px solid var(--line);
 	border-radius: 0;
 	background: var(--card);
+}
+
+button.object-property-json-action {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	width: 100%;
+	min-height: 2.65rem;
+	padding: 0.5rem 0.7rem;
+	border: 0;
+	border-top: 1px solid var(--line);
+	border-radius: 0;
+	background: var(--card);
+	color: var(--ink);
+	font-size: 0.84rem;
+	font-weight: 720;
+	text-align: left;
+}
+
+button.object-property-json-action::before {
+	content: "›";
+	color: var(--muted);
+	font-size: 1.1rem;
+}
+
+button.object-property-json-action > span:first-child {
+	margin-right: auto;
+}
+
+button.object-property-json-action > span:last-child {
+	color: var(--muted);
+	font-size: 0.76rem;
+	font-weight: 600;
 }
 
 .object-property-inspector {
@@ -2140,6 +2201,95 @@ button.object-property-more {
 	display: grid;
 	gap: 0.75rem;
 	padding: 0.75rem;
+}
+
+.object-data-change-review {
+	display: grid;
+	gap: 0.55rem;
+	padding: 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--bg-highlight);
+}
+
+.object-data-change-review p {
+	margin: 0;
+	font-size: 0.78rem;
+}
+
+.object-data-change-review-header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.object-data-change-review-header span {
+	color: var(--muted);
+	font-size: 0.76rem;
+	font-weight: 650;
+}
+
+.object-data-change-list {
+	display: grid;
+	gap: 1px;
+	margin: 0;
+	padding: 0;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--line);
+	list-style: none;
+	overflow: hidden;
+}
+
+.object-data-change-list li {
+	display: grid;
+	grid-template-columns: auto minmax(10rem, 0.8fr) minmax(0, 1.2fr);
+	align-items: center;
+	gap: 0.55rem;
+	min-width: 0;
+	padding: 0.48rem 0.55rem;
+	background: var(--card);
+}
+
+.object-data-change-list code,
+.object-data-change-values {
+	min-width: 0;
+	overflow: hidden;
+	font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+	font-size: 0.72rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.object-data-change-values {
+	color: var(--muted);
+}
+
+.object-data-change-operation {
+	min-width: 3.6rem;
+	padding: 0.18rem 0.34rem;
+	border-radius: 999px;
+	font-size: 0.66rem;
+	font-weight: 760;
+	letter-spacing: 0.035em;
+	text-align: center;
+	text-transform: uppercase;
+}
+
+.object-data-change-operation--add {
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.object-data-change-operation--remove {
+	background: var(--danger-soft);
+	color: var(--danger);
+}
+
+.object-data-change-operation--replace {
+	background: var(--accent-soft);
+	color: var(--accent);
 }
 
 .object-property-item--connection {
@@ -2208,18 +2358,33 @@ button.object-property-more {
 
 	.object-property-section-header,
 	.object-property-section-actions,
-	.object-property-inspector > summary {
+	.object-property-inspector > summary,
+	button.object-property-json-action {
 		align-items: stretch;
 		flex-direction: column;
+	}
+
+	.object-connection-header-actions {
+		align-items: center;
+		justify-content: flex-start;
+		flex-direction: row;
+		width: 100%;
 	}
 
 	.object-data-filter input {
 		width: 100%;
 	}
 
-	.object-data-add-panel,
-	.object-data-inline-editor {
+	.object-data-add-panel {
 		grid-template-columns: 1fr;
+	}
+
+	.object-data-change-list li {
+		grid-template-columns: auto minmax(0, 1fr);
+	}
+
+	.object-data-change-values {
+		grid-column: 1 / -1;
 	}
 
 	.object-data-add-actions {
@@ -3353,7 +3518,7 @@ button.table-export-option {
 .server-filter-menu {
 	display: grid;
 	gap: 0.75rem;
-	width: min(42rem, calc(100vw - 2rem));
+	width: min(56rem, calc(100vw - 2rem));
 	padding: 0.85rem;
 }
 
@@ -3413,10 +3578,10 @@ button.table-export-option {
 
 .server-filter-form {
 	display: grid;
-	grid-template-columns: minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(
+	grid-template-columns: minmax(10rem, 1fr) minmax(10rem, 1fr) minmax(
 			10rem,
 			1.35fr
-		) auto;
+		) auto auto;
 	align-items: end;
 	gap: 0.55rem;
 }
@@ -3443,6 +3608,22 @@ button.table-export-option {
 
 .server-filter-form > button {
 	white-space: nowrap;
+}
+
+.server-filter-form .server-filter-negate {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-height: 2.4rem;
+	padding: 0.45rem 0.55rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	white-space: nowrap;
+}
+
+.server-filter-form .server-filter-negate input {
+	width: auto;
+	min-width: auto;
 }
 
 .table-scope-note {
@@ -6137,17 +6318,6 @@ button.template-data-field:hover {
 	box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
 }
 
-.object-property-inspector.object-connection-tools .relations-filter-dropdown {
-	display: grid;
-}
-
-.object-property-inspector.object-connection-tools
-	.relations-filter-dropdown
-	.relations-filter-menu {
-	position: static;
-	margin-top: 0.45rem;
-}
-
 .relations-filter-option {
 	display: inline-flex;
 	align-items: center;
@@ -6157,15 +6327,6 @@ button.template-data-field:hover {
 
 .relations-filter-option input {
 	margin: 0;
-}
-
-.relations-child-path {
-	padding-left: 1rem;
-}
-
-.relations-path-list li {
-	display: grid;
-	justify-content: start;
 }
 
 .status-pill {
@@ -7746,6 +7907,40 @@ button.sidebar-link-button:hover {
 	background: var(--accent-soft);
 	color: var(--accent-strong);
 	transform: translateY(-1px);
+}
+
+.object-connection-header-actions .relations-depth-control,
+.object-connection-header-actions .relations-toggle {
+	min-height: 2.1rem;
+	padding: 0.3rem 0.5rem;
+	border: 1px solid var(--line);
+	border-radius: 9px;
+	background: var(--card);
+	font-size: 0.78rem;
+	font-weight: 680;
+	white-space: nowrap;
+}
+
+.object-connection-header-actions .relations-depth-input {
+	width: 3rem;
+	min-height: 1.45rem;
+	padding: 0.15rem 0.25rem;
+	font-size: 0.78rem;
+}
+
+.object-connection-header-actions .relations-filter-trigger,
+.object-connection-header-actions .link-chip {
+	min-height: 2.1rem;
+	padding-block: 0.35rem;
+	font-size: 0.78rem;
+}
+
+.object-connection-header-actions .relations-filter-menu {
+	top: auto;
+	right: 0;
+	bottom: calc(100% + 0.45rem);
+	left: auto;
+	z-index: 20;
 }
 
 .panel-card,

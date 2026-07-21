@@ -140,6 +140,19 @@ async function main() {
   await request("GET", "/readyz");
   pass("readiness endpoint is reachable");
 
+  const clientConfig = await request("GET", "/api/v1/config");
+  assert(
+    Number.isInteger(clientConfig.data.pagination?.default_page_limit) &&
+      clientConfig.data.pagination.default_page_limit > 0,
+    "Client config is missing the effective default page limit.",
+  );
+  assert(
+    Number.isInteger(clientConfig.data.pagination?.max_page_limit) &&
+      clientConfig.data.pagination.max_page_limit >= clientConfig.data.pagination.default_page_limit,
+    "Client config is missing the effective maximum page limit.",
+  );
+  pass("discovered public v0.0.3 pagination capabilities");
+
   const openapi = await request("GET", "/api-doc/openapi.json");
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
@@ -156,7 +169,27 @@ async function main() {
     openapi.data.paths?.["/api/v1/iam/me/computed-fields"],
     "OpenAPI is missing personal computed fields.",
   );
-  pass("server OpenAPI exposes events, backups, restores, and computed fields");
+  const v003Paths = [
+    "/api/v1/config",
+    "/api/v1/classes/{class_id}/object-aggregates",
+    "/api/v1/classes/{class_id}/{object_id}/data",
+    "/api/v1/classes/by-name/{class_name}",
+    "/api/v1/classes/by-name/{class_name}/object-aggregates",
+    "/api/v1/classes/by-name/{class_name}/objects",
+    "/api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}",
+    "/api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}/data",
+    "/api/v1/classes/by-name/{class_name}/permissions",
+    "/api/v1/classes/by-name/{class_name}/related/classes",
+    "/api/v1/classes/by-name/{class_name}/related/relations",
+    "/api/v1/classes/by-name/{class_name}/related/graph",
+    "/api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}/related/objects",
+    "/api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}/related/relations",
+    "/api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}/related/graph",
+  ];
+  for (const path of v003Paths) {
+    assert(openapi.data.paths?.[path], `OpenAPI is missing ${path}.`);
+  }
+  pass("server OpenAPI exposes the complete v0.0.3 endpoint surface");
 
   const token = await loginAs(adminName, adminPassword);
   pass("admin login returns a bearer token");
@@ -168,7 +201,7 @@ async function main() {
   assert(runningConfig.data.backups, "Admin config is missing backup settings.");
   assert(runningConfig.data.restores, "Admin config is missing restore settings.");
   assert(runningConfig.data.permissions, "Admin config is missing permission settings.");
-  pass("read redacted v0.0.2 admin runtime configuration");
+  pass("read redacted v0.0.3 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -299,6 +332,185 @@ async function main() {
   });
   expectArray(personalDefinitions.data, "Personal computed definitions");
   pass("listed shared and personal computed definitions");
+
+  const classNamePath = encodeURIComponent(hubuumClass.data.name);
+  const nameAddressedClass = await request(
+    "GET",
+    `/api/v1/classes/by-name/${classNamePath}`,
+    auth,
+  );
+  assert(nameAddressedClass.data.id === hubuumClass.data.id, "By-name class read resolved the wrong class.");
+  await request("PATCH", `/api/v1/classes/by-name/${classNamePath}`, {
+    ...auth,
+    body: { description: "Updated through the v0.0.3 by-name route" },
+  });
+  pass("read and updated a class through numeric-safe name addressing");
+
+  const secondObjectName = `live_object_second_${suffix}`;
+  const secondObject = await request(
+    "POST",
+    `/api/v1/classes/by-name/${classNamePath}/objects`,
+    {
+      ...auth,
+      body: {
+        data: { live_backend_test: true, suffix: `${suffix}_second` },
+        description: "Created without class or collection IDs",
+        name: secondObjectName,
+      },
+      expected: 201,
+    },
+  );
+  expectId(secondObject.data, "Name-addressed object creation");
+  const secondObjectNamePath = encodeURIComponent(secondObjectName);
+  const nameAddressedObject = await request(
+    "GET",
+    `/api/v1/classes/by-name/${classNamePath}/objects/by-name/${secondObjectNamePath}`,
+    auth,
+  );
+  assert(nameAddressedObject.data.id === secondObject.data.id, "By-name object read resolved the wrong object.");
+  await request(
+    "PATCH",
+    `/api/v1/classes/by-name/${classNamePath}/objects/by-name/${secondObjectNamePath}`,
+    { ...auth, body: { description: "Updated through the v0.0.3 by-name route" } },
+  );
+  const nameAddressedObjects = await request(
+    "GET",
+    `/api/v1/classes/by-name/${classNamePath}/objects`,
+    { ...auth, query: { limit: 25 } },
+  );
+  expectArray(nameAddressedObjects.data, "Name-addressed class objects");
+  assert(
+    nameAddressedObjects.data.some((item) => item.id === secondObject.data.id),
+    "Name-addressed object list omitted the created object.",
+  );
+  pass("created, listed, read, and updated objects through name-addressed routes");
+
+  const jsonPatchHeaders = { "Content-Type": "application/json-patch+json" };
+  const idPatchedObject = await request(
+    "PATCH",
+    `/api/v1/classes/${hubuumClass.data.id}/${hubuumObject.data.id}/data`,
+    {
+      ...auth,
+      body: [
+        { op: "test", path: "/live_backend_test", value: true },
+        { op: "add", path: "/patched_by_id", value: true },
+      ],
+      headers: jsonPatchHeaders,
+    },
+  );
+  assert(idPatchedObject.data.data?.patched_by_id === true, "ID-addressed JSON Patch did not persist.");
+  const namePatchedObject = await request(
+    "PATCH",
+    `/api/v1/classes/by-name/${classNamePath}/objects/by-name/${secondObjectNamePath}/data`,
+    {
+      ...auth,
+      body: [
+        { op: "test", path: "/live_backend_test", value: true },
+        { op: "add", path: "/patched_by_name", value: true },
+      ],
+      headers: jsonPatchHeaders,
+    },
+  );
+  assert(
+    namePatchedObject.data.data?.patched_by_name === true,
+    "Name-addressed JSON Patch did not persist.",
+  );
+  pass("applied guarded RFC 6902 object-data patches by ID and name");
+
+  const computedQuery = await request(
+    "GET",
+    `/api/v1/classes/${hubuumClass.data.id}/`,
+    {
+      ...auth,
+      query: {
+        "computed.shared.live_flag__equals": true,
+        include: "computed",
+        limit: 25,
+        sort: "computed.personal.live_suffix.desc",
+      },
+    },
+  );
+  expectArray(computedQuery.data, "Computed object query");
+  assert(computedQuery.data.length === 2, "Computed filtering should match both live objects.");
+  assert(
+    computedQuery.data[0]?.id === secondObject.data.id,
+    "Computed descending sort returned an unexpected first object.",
+  );
+  assert(hasHeader(computedQuery.headers, "x-page-limit"), "Computed query omitted X-Page-Limit.");
+  pass("filtered and cursor-sorted class objects by computed fields");
+
+  const idAggregates = await request(
+    "GET",
+    `/api/v1/classes/${hubuumClass.data.id}/object-aggregates`,
+    {
+      ...auth,
+      query: {
+        "computed.shared.live_flag__equals": true,
+        group_by: "computed.shared.live_flag",
+        limit: 1,
+        sort: "object_count.desc",
+      },
+    },
+  );
+  expectArray(idAggregates.data, "ID-addressed object aggregates");
+  assert(idAggregates.data[0]?.object_count === 2, "Computed aggregate count should include both objects.");
+  assert(hasHeader(idAggregates.headers, "x-total-count"), "Aggregates omitted X-Total-Count.");
+  assert(hasHeader(idAggregates.headers, "x-page-limit"), "Aggregates omitted X-Page-Limit.");
+  const nameAggregates = await request(
+    "GET",
+    `/api/v1/classes/by-name/${classNamePath}/object-aggregates`,
+    { ...auth, query: { group_by: "name", limit: 25, sort: "dimensions.asc" } },
+  );
+  expectArray(nameAggregates.data, "Name-addressed object aggregates");
+  assert(nameAggregates.data.length === 2, "Name-addressed aggregation should return two name groups.");
+  pass("queried permission-aware object aggregates by ID and name");
+
+  const classByNameReadPaths = ["permissions", "related/classes", "related/relations", "related/graph"];
+  for (const suffixPath of classByNameReadPaths) {
+    await request("GET", `/api/v1/classes/by-name/${classNamePath}/${suffixPath}`, auth);
+  }
+  const objectByNameReadPaths = ["related/objects", "related/relations", "related/graph"];
+  for (const suffixPath of objectByNameReadPaths) {
+    await request(
+      "GET",
+      `/api/v1/classes/by-name/${classNamePath}/objects/by-name/${secondObjectNamePath}/${suffixPath}`,
+      auth,
+    );
+  }
+  pass("read all class- and object-rooted by-name views");
+
+  const disposableObjectName = `live_disposable_object_${suffix}`;
+  await request("POST", `/api/v1/classes/by-name/${classNamePath}/objects`, {
+    ...auth,
+    body: {
+      data: {},
+      description: "Disposable object for by-name delete coverage",
+      name: disposableObjectName,
+    },
+    expected: 201,
+  });
+  await request(
+    "DELETE",
+    `/api/v1/classes/by-name/${classNamePath}/objects/by-name/${encodeURIComponent(disposableObjectName)}`,
+    { ...auth, expected: 204 },
+  );
+  const disposableClassName = `live_disposable_class_${suffix}`;
+  await request("POST", "/api/v1/classes", {
+    ...auth,
+    body: {
+      collection_id: collection.data.id,
+      description: "Disposable class for by-name delete coverage",
+      json_schema: {},
+      name: disposableClassName,
+      validate_schema: false,
+    },
+    expected: 201,
+  });
+  await request("DELETE", `/api/v1/classes/by-name/${encodeURIComponent(disposableClassName)}`, {
+    ...auth,
+    expected: 204,
+  });
+  pass("deleted disposable objects and classes through by-name routes");
 
   const rebuild = await request(
     "POST",

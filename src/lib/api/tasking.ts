@@ -213,7 +213,7 @@ export async function fetchTask(taskId: number): Promise<TaskResponse> {
 export async function fetchTaskEvents(
 	taskId: number,
 ): Promise<TaskEventResponse[]> {
-	const response = await getApiV1TasksByTaskIdEvents(taskId, {
+	const response = await getApiV1TasksByTaskIdEvents(taskId, undefined, {
 		credentials: "include",
 	});
 
@@ -245,7 +245,7 @@ export async function fetchImportProjection(
 export async function fetchImportResults(
 	taskId: number,
 ): Promise<ImportTaskResultResponse[]> {
-	const response = await getApiV1ImportsByTaskIdResults(taskId, {
+	const response = await getApiV1ImportsByTaskIdResults(taskId, undefined, {
 		credentials: "include",
 	});
 

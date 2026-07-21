@@ -19,14 +19,22 @@ import {
 	ObjectGroupingMenu,
 	type ObjectGroupingField,
 } from "@/components/object-grouping-menu";
-import { ObjectServerFilterMenu } from "@/components/object-server-filter-menu";
+import {
+	ObjectServerFilterMenu,
+	type ServerFilterComputedField,
+} from "@/components/object-server-filter-menu";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import {
 	fetchPersonalComputedFields,
 	fetchSharedComputedFields,
 } from "@/lib/api/computed-fields";
+import { fetchClientPaginationConfig } from "@/lib/api/client-config";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
+import {
+	fetchObjectAggregates,
+	type ObjectAggregateSort,
+} from "@/lib/api/object-aggregates";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
 	getApiV1Classes,
@@ -52,14 +60,15 @@ import { getDataColumnHeadings } from "@/lib/data-column-headings";
 import {
 	appendObjectServerFilters,
 	OBJECT_SERVER_FILTERS_QUERY_KEY,
+	type ObjectComputedResultType,
 	type ObjectServerFilter,
 	parseObjectServerFilters,
 	serializeObjectServerFilters,
 	toServerFilterDataPath,
 } from "@/lib/object-server-filters";
 import {
+	formatObjectAggregateDimension,
 	groupObjectRows,
-	type ObjectGroup,
 	type ObjectGroupSort,
 } from "@/lib/object-grouping";
 import {
@@ -199,11 +208,44 @@ type ComputedColumn = {
 	key: string;
 	label: string;
 	scope: "shared" | "personal";
+	resultType: ObjectComputedResultType;
 };
 
 type ResolvedObjectGroupingField = ObjectGroupingField & {
 	getValue: (objectItem: HubuumObjectComputedResponse) => unknown;
 };
+
+type DisplayedAggregateGroup = {
+	id: string;
+	label: string;
+	count: number;
+	rows?: HubuumObjectComputedResponse[];
+};
+
+const FIRST_AGGREGATE_PAGE = "__first_aggregate_page__";
+
+function toObjectAggregateSort(sort: ObjectGroupSort): ObjectAggregateSort {
+	if (sort === "count-asc") return "object_count.asc";
+	if (sort === "count-desc") return "object_count.desc";
+	if (sort === "value-desc") return "dimensions.desc";
+	return "dimensions.asc";
+}
+
+function normalizeComputedResultType(
+	value: string,
+): ObjectComputedResultType | null {
+	if (
+		value === "string" ||
+		value === "number" ||
+		value === "integer" ||
+		value === "boolean" ||
+		value === "object" ||
+		value === "array"
+	) {
+		return value;
+	}
+	return null;
+}
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	const response = await getApiV1Classes(
@@ -920,8 +962,11 @@ export function ObjectsExplorer() {
 		direction: "asc",
 	});
 	const [groupFieldId, setGroupFieldId] = useState<string | null>(null);
-	const [groupSort, setGroupSort] =
-		useState<ObjectGroupSort>("count-desc");
+	const [groupSort, setGroupSort] = useState<ObjectGroupSort>("count-desc");
+	const [aggregateCursor, setAggregateCursor] = useState<string | null>(null);
+	const [aggregateCursorHistory, setAggregateCursorHistory] = useState<
+		string[]
+	>([]);
 	const [searchInput, setSearchInput] = useState(
 		searchParams.get("search") ?? "",
 	);
@@ -941,6 +986,16 @@ export function ObjectsExplorer() {
 
 	const pagination = useCursorPagination({ defaultLimit: 100 });
 	const { sortState, setSort, clearSort, getSortParam } = useTableSort();
+	const clientPaginationQuery = useQuery({
+		queryKey: ["client-config", "pagination"],
+		queryFn: fetchClientPaginationConfig,
+		staleTime: Number.POSITIVE_INFINITY,
+		retry: false,
+	});
+	const effectiveFetchLimit = resolveServerPageLimit(
+		pagination.limit,
+		clientPaginationQuery.data?.max_page_limit,
+	);
 
 	useEffect(() => {
 		if (searchParams.get("create") !== "1") {
@@ -1038,14 +1093,20 @@ export function ObjectsExplorer() {
 			definitions: ComputedFieldDefinition[],
 			scope: ComputedColumn["scope"],
 		): ComputedColumn[] {
-			return definitions
-				.filter((definition) => definition.enabled)
-				.map((definition) => ({
-					id: `${scope}:${definition.key}`,
-					key: definition.key,
-					label: definition.label,
-					scope,
-				}));
+			return definitions.flatMap((definition) => {
+				const resultType = normalizeComputedResultType(definition.result_type);
+				return definition.enabled && resultType
+					? [
+							{
+								id: `${scope}:${definition.key}`,
+								key: definition.key,
+								label: definition.label,
+								scope,
+								resultType,
+							},
+						]
+					: [];
+			});
 		}
 
 		return [
@@ -1066,14 +1127,14 @@ export function ObjectsExplorer() {
 			"objects",
 			parsedClassId,
 			pagination.cursor,
-			pagination.limit,
+			effectiveFetchLimit,
 			getSortParam(),
 			serverFilterSignature,
 		],
 		queryFn: async () =>
 			fetchObjectsByClass(
 				parsedClassId ?? 0,
-				pagination.limit,
+				effectiveFetchLimit,
 				pagination.cursor,
 				getSortParam(),
 				serverFilters,
@@ -1106,6 +1167,9 @@ export function ObjectsExplorer() {
 		onSuccess: async (createdClassId) => {
 			await queryClient.invalidateQueries({
 				queryKey: ["objects", createdClassId],
+			});
+			await queryClient.invalidateQueries({
+				queryKey: ["object-aggregates", createdClassId],
 			});
 			setName("");
 			setDescription("");
@@ -1144,6 +1208,9 @@ export function ObjectsExplorer() {
 		onSuccess: async ({ classId: deletedClassId, count }) => {
 			await queryClient.invalidateQueries({
 				queryKey: ["objects", deletedClassId],
+			});
+			await queryClient.invalidateQueries({
+				queryKey: ["object-aggregates", deletedClassId],
 			});
 			setSelectedObjectIds([]);
 			showToast(`${count} object${count === 1 ? "" : "s"} deleted.`, "success");
@@ -1343,12 +1410,24 @@ export function ObjectsExplorer() {
 				),
 		[sortedDataColumnCandidates],
 	);
+	const serverFilterComputedFields = useMemo<ServerFilterComputedField[]>(
+		() =>
+			computedColumns.map((column) => ({
+				id: column.id,
+				key: column.key,
+				label: column.label,
+				scope: column.scope,
+				resultType: column.resultType,
+			})),
+		[computedColumns],
+	);
 	const groupingFields = useMemo<ResolvedObjectGroupingField[]>(() => {
 		const fields: ResolvedObjectGroupingField[] = [
 			{
 				id: "object:collection",
 				label: "Collection",
 				section: "Object fields",
+				serverGroupBy: "collection_id",
 				getValue: (objectItem) => {
 					const collectionName = collectionNameById.get(
 						objectItem.collection_id,
@@ -1362,21 +1441,41 @@ export function ObjectsExplorer() {
 				id: "object:name",
 				label: "Name",
 				section: "Object fields",
+				serverGroupBy: "name",
 				getValue: (objectItem) => objectItem.name,
 			},
 			{
 				id: "object:description",
 				label: "Description",
 				section: "Object fields",
+				serverGroupBy: "description",
 				getValue: (objectItem) => objectItem.description,
+			},
+			{
+				id: "object:created-at",
+				label: "Created at",
+				section: "Object fields",
+				serverGroupBy: "created_at",
+				getValue: (objectItem) => objectItem.created_at,
+			},
+			{
+				id: "object:updated-at",
+				label: "Updated at",
+				section: "Object fields",
+				serverGroupBy: "updated_at",
+				getValue: (objectItem) => objectItem.updated_at,
 			},
 		];
 
 		for (const column of sortedDataColumnCandidates) {
+			const serverPath = toServerFilterDataPath(column.path);
 			fields.push({
 				id: `data:${column.id}`,
 				label: column.label,
 				section: "Data fields",
+				serverGroupBy: serverPath
+					? `json_data.${serverPath.join(",")}`
+					: undefined,
 				getValue: (objectItem) =>
 					getValueAtDataPath(objectItem.data, column.path),
 			});
@@ -1391,8 +1490,10 @@ export function ObjectsExplorer() {
 					id: groupFieldId,
 					label: formatDataPathLabel(path),
 					section: "Data fields",
-					getValue: (objectItem) =>
-						getValueAtDataPath(objectItem.data, path),
+					serverGroupBy: toServerFilterDataPath(path)
+						? `json_data.${toServerFilterDataPath(path)?.join(",")}`
+						: undefined,
+					getValue: (objectItem) => getValueAtDataPath(objectItem.data, path),
 				});
 			}
 		}
@@ -1414,6 +1515,7 @@ export function ObjectsExplorer() {
 				id: `computed:${column.id}`,
 				label: `${column.scope === "shared" ? "Shared" : "Personal"} · ${column.label}`,
 				section: "Computed fields",
+				serverGroupBy: `computed.${column.scope}.${column.key}`,
 				getValue: (objectItem) =>
 					getComputedColumnResult(objectItem, column).value,
 			});
@@ -1462,17 +1564,79 @@ export function ObjectsExplorer() {
 		() => groupingFields.find((field) => field.id === groupFieldId) ?? null,
 		[groupFieldId, groupingFields],
 	);
+	const serverGroupingField = activeGroupingField?.serverGroupBy
+		? activeGroupingField
+		: null;
+	const objectAggregatesQuery = useQuery({
+		queryKey: [
+			"object-aggregates",
+			parsedClassId,
+			serverGroupingField?.serverGroupBy,
+			groupSort,
+			effectiveFetchLimit,
+			aggregateCursor,
+			serverFilterSignature,
+		],
+		queryFn: () =>
+			fetchObjectAggregates({
+				classId: parsedClassId ?? 0,
+				groupBy: [serverGroupingField?.serverGroupBy ?? "name"],
+				sort: toObjectAggregateSort(groupSort),
+				limit: effectiveFetchLimit,
+				cursor: aggregateCursor ?? undefined,
+				filters: serverFilters,
+			}),
+		enabled: parsedClassId !== null && serverGroupingField !== null,
+	});
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset aggregate pagination whenever its request scope changes.
+	useEffect(() => {
+		setAggregateCursor(null);
+		setAggregateCursorHistory([]);
+	}, [
+		effectiveFetchLimit,
+		groupSort,
+		selectedClassId,
+		serverFilterSignature,
+		serverGroupingField?.serverGroupBy,
+	]);
+	const serverAggregateGroups = useMemo<DisplayedAggregateGroup[]>(
+		() =>
+			(objectAggregatesQuery.data?.rows ?? []).map((row) => {
+				const dimension = row.dimensions[0];
+				let label = dimension
+					? formatObjectAggregateDimension(dimension)
+					: "(missing)";
+				if (
+					dimension?.field === "collection_id" &&
+					dimension.state === "value" &&
+					typeof dimension.value === "number"
+				) {
+					const collectionName = collectionNameById.get(dimension.value);
+					label = collectionName
+						? `${collectionName} (#${dimension.value})`
+						: `#${dimension.value}`;
+				}
+				return {
+					id: JSON.stringify(row.dimensions),
+					label,
+					count: row.object_count,
+				};
+			}),
+		[collectionNameById, objectAggregatesQuery.data?.rows],
+	);
 	const groupedObjects = useMemo(
 		() =>
-			activeGroupingField
+			activeGroupingField && !serverGroupingField
 				? groupObjectRows(
 						filteredObjects,
 						activeGroupingField.getValue,
 						groupSort,
 					)
 				: [],
-		[activeGroupingField, filteredObjects, groupSort],
+		[activeGroupingField, filteredObjects, groupSort, serverGroupingField],
 	);
+	const displayedGroups: readonly DisplayedAggregateGroup[] =
+		serverGroupingField ? serverAggregateGroups : groupedObjects;
 	const displayedObjects = useMemo(() => {
 		if (!dataColumnSort.columnId) {
 			return filteredObjects;
@@ -1497,9 +1661,7 @@ export function ObjectsExplorer() {
 			return left.id - right.id;
 		});
 	}, [activeDataColumns, dataColumnSort, filteredObjects]);
-	const groupedExportView = useMemo<
-		TableExportView<ObjectGroup<HubuumObjectComputedResponse>>
-	>(
+	const groupedExportView = useMemo<TableExportView<DisplayedAggregateGroup>>(
 		() => ({
 			id:
 				parsedClassId === null
@@ -1519,11 +1681,11 @@ export function ObjectsExplorer() {
 					getValue: (group) => group.count,
 				},
 			],
-			rows: groupedObjects,
+			rows: displayedGroups,
 		}),
 		[
 			activeGroupingField?.label,
-			groupedObjects,
+			displayedGroups,
 			parsedClassId,
 			selectedClass?.name,
 		],
@@ -2093,6 +2255,31 @@ export function ObjectsExplorer() {
 			}
 			return current === "count-desc" ? "count-asc" : "count-desc";
 		});
+		setAggregateCursor(null);
+		setAggregateCursorHistory([]);
+	}
+
+	function goToNextAggregatePage(nextCursor: string) {
+		setAggregateCursorHistory((current) => [
+			...current,
+			aggregateCursor ?? FIRST_AGGREGATE_PAGE,
+		]);
+		setAggregateCursor(nextCursor);
+	}
+
+	function goToPreviousAggregatePage(prevCursor?: string) {
+		const previousEntry = aggregateCursorHistory.at(-1);
+		const targetCursor =
+			previousEntry === FIRST_AGGREGATE_PAGE
+				? null
+				: (previousEntry ?? prevCursor ?? null);
+		setAggregateCursorHistory((current) => current.slice(0, -1));
+		setAggregateCursor(targetCursor);
+	}
+
+	function goToFirstAggregatePage() {
+		setAggregateCursorHistory([]);
+		setAggregateCursor(null);
 	}
 
 	function renderGroupedSortIndicator(column: "value" | "count") {
@@ -2116,6 +2303,8 @@ export function ObjectsExplorer() {
 
 	function setGroupingField(nextFieldId: string | null) {
 		setGroupFieldId(nextFieldId);
+		setAggregateCursor(null);
+		setAggregateCursorHistory([]);
 		if (nextFieldId) {
 			setDataColumnSort({ columnId: null, direction: "asc" });
 			setSelectedObjectIds([]);
@@ -2221,6 +2410,8 @@ export function ObjectsExplorer() {
 	}
 
 	function updateServerFilters(nextFilters: ObjectServerFilter[]) {
+		setAggregateCursor(null);
+		setAggregateCursorHistory([]);
 		const params = new URLSearchParams(searchParams.toString());
 		if (nextFilters.length > 0) {
 			params.set(
@@ -2480,21 +2671,25 @@ export function ObjectsExplorer() {
 						<div className="table-title-row">
 							<h2>Objects</h2>
 							<span className="muted table-count">
-								{objectsQuery.data
-									? searchTerm
-										? `${filteredObjects.length} shown on page · ${objects.length} loaded`
-										: typeof pageData?.totalCount === "number" &&
-												pageData?.totalCount !== objects.length
-											? `${objects.length} loaded · ${pageData?.totalCount} ${serverFilters.length ? "matches" : "total"}`
-											: `${objects.length} loaded`
-									: parsedClassId
-										? "Waiting..."
-										: "No class"}
+								{serverGroupingField
+									? objectAggregatesQuery.data
+										? `${serverAggregateGroups.length} group${serverAggregateGroups.length === 1 ? "" : "s"} loaded${typeof objectAggregatesQuery.data.totalCount === "number" && objectAggregatesQuery.data.totalCount !== serverAggregateGroups.length ? ` · ${objectAggregatesQuery.data.totalCount} total` : ""}`
+										: "Waiting..."
+									: objectsQuery.data
+										? searchTerm
+											? `${filteredObjects.length} shown on page · ${objects.length} loaded`
+											: typeof pageData?.totalCount === "number" &&
+													pageData?.totalCount !== objects.length
+												? `${objects.length} loaded · ${pageData?.totalCount} ${serverFilters.length ? "matches" : "total"}`
+												: `${objects.length} loaded`
+										: parsedClassId
+											? "Waiting..."
+											: "No class"}
 								{selectedObjectIds.length
 									? ` · ${selectedObjectIds.length} selected`
 									: ""}
-								{activeGroupingField
-									? ` · ${groupedObjects.length} group${groupedObjects.length === 1 ? "" : "s"}`
+								{activeGroupingField && !serverGroupingField
+									? ` · ${displayedGroups.length} group${displayedGroups.length === 1 ? "" : "s"}`
 									: ""}
 							</span>
 						</div>
@@ -2778,6 +2973,7 @@ export function ObjectsExplorer() {
 						<ObjectServerFilterMenu
 							filters={serverFilters}
 							dataFields={serverFilterDataFields}
+							computedFields={serverFilterComputedFields}
 							onChange={updateServerFilters}
 							disabled={parsedClassId === null}
 						/>
@@ -2867,10 +3063,10 @@ export function ObjectsExplorer() {
 						) : null}
 						{activeGroupingField ? (
 							<span>
-								<strong>Grouped by {activeGroupingField.label}</strong> across the{" "}
-								{filteredObjects.length} loaded row
-								{filteredObjects.length === 1 ? "" : "s"}; counts update when
-								you change page.
+								<strong>Grouped by {activeGroupingField.label}</strong>{" "}
+								{serverGroupingField
+									? "across every object matching the server filters; counts are permission-aware and do not depend on the loaded object page."
+									: `across the ${filteredObjects.length} loaded row${filteredObjects.length === 1 ? "" : "s"}; custom-field counts update when you change page.`}
 							</span>
 						) : null}
 					</div>
@@ -2878,16 +3074,41 @@ export function ObjectsExplorer() {
 
 				{parsedClassId === null ? (
 					<div className="muted">Select a class to load its objects.</div>
-				) : objectsQuery.isLoading ? (
+				) : serverGroupingField && objectAggregatesQuery.isLoading ? (
+					<div>Loading object aggregates...</div>
+				) : serverGroupingField && objectAggregatesQuery.isError ? (
+					<div className="error-banner">
+						Failed to aggregate objects.{" "}
+						{objectAggregatesQuery.error instanceof Error
+							? objectAggregatesQuery.error.message
+							: "Unknown error"}
+					</div>
+				) : !serverGroupingField && objectsQuery.isLoading ? (
 					<div>Loading objects...</div>
-				) : objectsQuery.isError ? (
+				) : !serverGroupingField && objectsQuery.isError ? (
 					<div className="error-banner">
 						Failed to load objects.{" "}
 						{objectsQuery.error instanceof Error
 							? objectsQuery.error.message
 							: "Unknown error"}
 					</div>
-				) : filteredObjects.length === 0 ? (
+				) : activeGroupingField && displayedGroups.length === 0 ? (
+					<EmptyState
+						title="No aggregate groups match this query."
+						description={
+							serverGroupingField
+								? "Change or clear the server filters to broaden the aggregation."
+								: "Change page or choose another grouping field."
+						}
+						action={
+							serverFilters.length > 0 ? (
+								<button type="button" onClick={() => updateServerFilters([])}>
+									Clear server filters
+								</button>
+							) : undefined
+						}
+					/>
+				) : !activeGroupingField && filteredObjects.length === 0 ? (
 					<EmptyState
 						title={
 							searchTerm
@@ -2926,7 +3147,9 @@ export function ObjectsExplorer() {
 				) : activeGroupingField ? (
 					<section
 						className="object-table-scroll object-grouped-table-scroll"
-						aria-label="Grouped objects"
+						aria-label={
+							serverGroupingField ? "Object aggregates" : "Grouped objects"
+						}
 					>
 						<table className="object-grouped-table">
 							<caption className="sr-only">
@@ -2953,29 +3176,31 @@ export function ObjectsExplorer() {
 											Count{renderGroupedSortIndicator("count")}
 										</button>
 									</th>
-									<th>Examples</th>
+									{serverGroupingField ? null : <th>Examples</th>}
 								</tr>
 							</thead>
 							<tbody>
-								{groupedObjects.map((group) => (
+								{displayedGroups.map((group) => (
 									<tr key={group.id}>
 										<td title={group.label}>{group.label}</td>
 										<td className="object-group-count">{group.count}</td>
-										<td>
-											<div className="object-group-examples">
-												{group.rows.slice(0, 3).map((objectItem) => (
-													<Link
-														key={objectItem.id}
-														href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
-													>
-														{objectItem.name}
-													</Link>
-												))}
-												{group.rows.length > 3 ? (
-													<span>+{group.rows.length - 3} more</span>
-												) : null}
-											</div>
-										</td>
+										{serverGroupingField ? null : (
+											<td>
+												<div className="object-group-examples">
+													{(group.rows ?? []).slice(0, 3).map((objectItem) => (
+														<Link
+															key={objectItem.id}
+															href={`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`}
+														>
+															{objectItem.name}
+														</Link>
+													))}
+													{(group.rows?.length ?? 0) > 3 ? (
+														<span>+{(group.rows?.length ?? 0) - 3} more</span>
+													) : null}
+												</div>
+											</td>
+										)}
 									</tr>
 								))}
 							</tbody>
@@ -3139,32 +3364,42 @@ export function ObjectsExplorer() {
 												</th>
 											);
 										})}
-										{activeComputedColumns.map((column) => (
-											<th
-												key={column.id}
-												className="object-data-field-heading object-computed-field-heading"
-												data-column-key={`computed:${column.id}`}
-												title={`${column.scope === "shared" ? "Shared" : "Personal"} computed field · cannot be used for server sorting`}
-											>
-												<span
-													className="object-data-field-icon"
-													aria-hidden="true"
+										{activeComputedColumns.map((column) => {
+											const sortColumn = `computed.${column.scope}.${column.key}`;
+											return (
+												<th
+													key={column.id}
+													className="sortable object-data-field-heading object-computed-field-heading"
+													data-column-key={`computed:${column.id}`}
+													title={`Sort all matching objects by ${column.scope === "shared" ? "shared" : "personal"} computed field ${column.label}`}
+													aria-sort={getServerSortAria(sortColumn)}
+													tabIndex={0}
+													onClick={() => setServerSort(sortColumn)}
+													onKeyDown={(event) =>
+														onServerSortKeyDown(event, sortColumn)
+													}
 												>
-													{column.scope === "shared" ? (
-														<IconSharedComputedField />
-													) : (
-														<IconPersonalComputedField />
-													)}
-												</span>
-												<span className="sr-only">
-													{column.scope === "shared" ? "Shared" : "Personal"}{" "}
-													computed field:{" "}
-												</span>
-												<span className="object-column-heading-name">
-													{column.label}
-												</span>
-											</th>
-										))}
+													<span
+														className="object-data-field-icon"
+														aria-hidden="true"
+													>
+														{column.scope === "shared" ? (
+															<IconSharedComputedField />
+														) : (
+															<IconPersonalComputedField />
+														)}
+													</span>
+													<span className="sr-only">
+														{column.scope === "shared" ? "Shared" : "Personal"}{" "}
+														computed field:{" "}
+													</span>
+													<span className="object-column-heading-name">
+														{column.label}
+														{renderSortIndicator(sortColumn)}
+													</span>
+												</th>
+											);
+										})}
 										{showRawDataColumn ? (
 											<th
 												className="object-raw-data-heading"
@@ -3293,10 +3528,34 @@ export function ObjectsExplorer() {
 						</section>
 					</>
 				)}
-				{pageData &&
-				(pageData.nextCursor ||
-					pageData.prevCursor ||
-					pagination.hasPrevPage) ? (
+				{serverGroupingField && objectAggregatesQuery.data ? (
+					objectAggregatesQuery.data.nextCursor ||
+					aggregateCursorHistory.length > 0 ||
+					objectAggregatesQuery.data.prevCursor ? (
+						<TablePagination
+							hasNextPage={Boolean(objectAggregatesQuery.data.nextCursor)}
+							hasPrevPage={
+								aggregateCursorHistory.length > 0 ||
+								Boolean(objectAggregatesQuery.data.prevCursor)
+							}
+							onNextPage={() => {
+								const nextCursor = objectAggregatesQuery.data?.nextCursor;
+								if (nextCursor) goToNextAggregatePage(nextCursor);
+							}}
+							onPrevPage={() =>
+								goToPreviousAggregatePage(
+									objectAggregatesQuery.data?.prevCursor ?? undefined,
+								)
+							}
+							onFirstPage={goToFirstAggregatePage}
+							currentCount={serverAggregateGroups.length}
+							totalCount={objectAggregatesQuery.data.totalCount}
+						/>
+					) : null
+				) : pageData &&
+					(pageData.nextCursor ||
+						pageData.prevCursor ||
+						pagination.hasPrevPage) ? (
 					<TablePagination
 						hasNextPage={!!pageData.nextCursor}
 						hasPrevPage={pagination.hasPrevPage || !!pageData.prevCursor}

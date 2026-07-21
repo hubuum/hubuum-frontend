@@ -6,6 +6,27 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Compatibility
+
+- Updated the pinned CI contract target to Hubuum Server `v0.0.3` and imported
+  its released OpenAPI contract, including all explicit by-name routes,
+  permission-aware object aggregates, client pagination discovery, computed
+  querying, and RFC 6902 object-data patching.
+
+### Added
+
+- Added full-class, permission-aware object grouping with server filters,
+  aggregate cursor pagination, exact aggregate totals, and distinct null,
+  missing, and unavailable groups. Personal custom fallback fields retain
+  page-local grouping because their display expressions are not server fields.
+- Added result-type-aware shared and personal computed-field filters and
+  full-result computed sorting to the objects workspace.
+- Added guarded JSON Patch saves for focused and data-only object edits,
+  including a granular advanced-editor change review, so stale values fail
+  safely and unrelated concurrent data changes can compose.
+- Added effective pagination-limit discovery for the object fetch controls and
+  forwarded the server's `X-Page-Limit` response metadata through the BFF.
+
 ### Changed
 
 - Reworked event-subscription, import, remote-target, and API-token creation
