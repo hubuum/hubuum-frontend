@@ -1316,6 +1316,57 @@ body.modal-open {
 	overflow: auto;
 }
 
+.modal-heading {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.7rem;
+	min-width: 0;
+}
+
+.modal-record-position {
+	font-size: 0.78rem;
+}
+
+.modal-panel--navigable .modal-content {
+	padding-inline: 4rem;
+}
+
+.modal-record-navigation {
+	position: absolute;
+	top: 50%;
+	z-index: 2;
+	display: grid;
+	place-items: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	padding: 0;
+	border-radius: 999px;
+	transform: translateY(-50%);
+	box-shadow: 0 8px 22px color-mix(in oklab, var(--text) 18%, transparent);
+}
+
+.modal-record-navigation svg {
+	width: 1.25rem;
+	height: 1.25rem;
+}
+
+.modal-record-navigation:disabled {
+	background: var(--bg-highlight);
+	color: var(--muted);
+	opacity: 0.38;
+	filter: none;
+	box-shadow: none;
+}
+
+.modal-record-navigation--previous {
+	left: 0.65rem;
+}
+
+.modal-record-navigation--next {
+	right: 0.65rem;
+}
+
 .confirm-dialog {
 	width: min(440px, 100%);
 }
@@ -1917,6 +1968,15 @@ body.modal-open {
 	margin: 0;
 	font-size: 0.88rem;
 	overflow-wrap: anywhere;
+}
+
+.object-fact-value > .control-field,
+.object-fact-value > .control-field input,
+.object-fact-value > .control-field select,
+.object-fact-value > .control-field textarea {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
 }
 
 .object-property-item {
@@ -6406,11 +6466,11 @@ html[data-theme="dark"] .status-pill--accent {
 	min-width: 0;
 }
 
-.audit-event-row {
+.activity-detail-row {
 	cursor: pointer;
 }
 
-.audit-event-row:focus-visible {
+.activity-detail-row:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: -2px;
 	background: var(--accent-soft);
@@ -6425,6 +6485,11 @@ html[data-theme="dark"] .status-pill--accent {
 	align-items: center;
 	justify-content: space-between;
 	gap: 0.75rem;
+}
+
+.event-diff-summary .status-pill {
+	flex: 0 0 auto;
+	white-space: nowrap;
 }
 
 .event-diff-json {
@@ -7909,7 +7974,6 @@ button.sidebar-link-button:hover {
 	transform: translateY(-1px);
 }
 
-.object-connection-header-actions .relations-depth-control,
 .object-connection-header-actions .relations-toggle {
 	min-height: 2.1rem;
 	padding: 0.3rem 0.5rem;
@@ -7921,11 +7985,29 @@ button.sidebar-link-button:hover {
 	white-space: nowrap;
 }
 
-.object-connection-header-actions .relations-depth-input {
-	width: 3rem;
-	min-height: 1.45rem;
-	padding: 0.15rem 0.25rem;
+.object-connection-depth-picker {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	color: var(--muted);
 	font-size: 0.78rem;
+	font-weight: 680;
+	white-space: nowrap;
+}
+
+.object-connection-depth-picker .relations-depth-options {
+	padding: 0.12rem;
+	border-radius: 9px;
+}
+
+.object-connection-depth-picker .relations-depth-options button {
+	min-height: 1.8rem;
+	padding: 0.25rem 0.46rem;
+	font-size: 0.76rem;
 }
 
 .object-connection-header-actions .relations-filter-trigger,

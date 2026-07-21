@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { FormEvent, useMemo, useState } from "react";
+import { EventDetailsModal } from "@/components/event-details-modal";
+import { HistoryDetailsModal } from "@/components/history-details-modal";
 import { JsonViewer } from "@/components/json-viewer";
 import { TableExportMenu } from "@/components/table-export-menu";
 import {
@@ -95,6 +97,10 @@ export function ResourceActivityPanel({
 	const stableScopeKey = useMemo(() => scopeKey(scope), [scope]);
 	const [eventCursor, setEventCursor] = useState("");
 	const [historyCursor, setHistoryCursor] = useState("");
+	const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
+	const [selectedHistory, setSelectedHistory] = useState<HistoryRecord | null>(
+		null,
+	);
 	const [asOfInput, setAsOfInput] = useState("");
 	const [asOfTimestamp, setAsOfTimestamp] = useState("");
 
@@ -136,6 +142,9 @@ export function ResourceActivityPanel({
 	}
 
 	const events = eventsQuery.data?.items ?? [];
+	const selectedEventIndex = selectedEvent
+		? events.findIndex((event) => event.id === selectedEvent.id)
+		: -1;
 	const eventExportView = {
 		id: `${stableScopeKey}-audit-events`,
 		fileName: `${stableScopeKey}-audit-events`,
@@ -171,6 +180,11 @@ export function ResourceActivityPanel({
 		rows: events,
 	};
 	const history = historyQuery.data?.items ?? [];
+	const selectedHistoryIndex = selectedHistory
+		? history.findIndex(
+				(record) => record.history_id === selectedHistory.history_id,
+			)
+		: -1;
 	const historyExportView = {
 		id: `${stableScopeKey}-version-history`,
 		fileName: `${stableScopeKey}-version-history`,
@@ -212,6 +226,50 @@ export function ResourceActivityPanel({
 
 	return (
 		<article className="card stack panel-card">
+			<EventDetailsModal
+				event={selectedEvent}
+				onClose={() => setSelectedEvent(null)}
+				navigation={
+					selectedEventIndex >= 0
+						? {
+								current: selectedEventIndex + 1,
+								itemLabel: "audit event",
+								onPrevious:
+									selectedEventIndex > 0
+										? () => setSelectedEvent(events[selectedEventIndex - 1])
+										: undefined,
+								onNext:
+									selectedEventIndex < events.length - 1
+										? () => setSelectedEvent(events[selectedEventIndex + 1])
+										: undefined,
+								total: events.length,
+							}
+						: undefined
+				}
+			/>
+			<HistoryDetailsModal
+				record={selectedHistory}
+				onClose={() => setSelectedHistory(null)}
+				navigation={
+					selectedHistoryIndex >= 0
+						? {
+								current: selectedHistoryIndex + 1,
+								itemLabel: "history version",
+								onPrevious:
+									selectedHistoryIndex > 0
+										? () =>
+												setSelectedHistory(history[selectedHistoryIndex - 1])
+										: undefined,
+								onNext:
+									selectedHistoryIndex < history.length - 1
+										? () =>
+												setSelectedHistory(history[selectedHistoryIndex + 1])
+										: undefined,
+								total: history.length,
+							}
+						: undefined
+				}
+			/>
 			<div className="panel-header">
 				<div className="stack action-card-header">
 					<h3>{title}</h3>
@@ -287,7 +345,22 @@ export function ResourceActivityPanel({
 							</thead>
 							<tbody>
 								{events.map((event) => (
-									<tr key={event.id}>
+									<tr
+										key={event.id}
+										className="activity-detail-row"
+										tabIndex={0}
+										onClick={() => setSelectedEvent(event)}
+										onKeyDown={(keyboardEvent) => {
+											if (
+												keyboardEvent.key === "Enter" ||
+												keyboardEvent.key === " "
+											) {
+												keyboardEvent.preventDefault();
+												setSelectedEvent(event);
+											}
+										}}
+										aria-label={`View details for audit event ${event.event_id}`}
+									>
 										<td>{formatTimestamp(event.occurred_at)}</td>
 										<td>
 											{event.entity_type}.{event.action}
@@ -369,7 +442,22 @@ export function ResourceActivityPanel({
 							</thead>
 							<tbody>
 								{history.map((record) => (
-									<tr key={record.history_id}>
+									<tr
+										key={record.history_id}
+										className="activity-detail-row"
+										tabIndex={0}
+										onClick={() => setSelectedHistory(record)}
+										onKeyDown={(keyboardEvent) => {
+											if (
+												keyboardEvent.key === "Enter" ||
+												keyboardEvent.key === " "
+											) {
+												keyboardEvent.preventDefault();
+												setSelectedHistory(record);
+											}
+										}}
+										aria-label={`View details for history version ${record.history_id}`}
+									>
 										<td>#{record.history_id}</td>
 										<td>{record.op}</td>
 										<td>{formatTimestamp(record.valid_from)}</td>

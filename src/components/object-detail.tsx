@@ -75,6 +75,7 @@ type ObjectDetailProps = {
 type EditableField = "name" | "description" | "collection" | "data";
 
 const CONNECTION_PROPERTY_LIMIT = 12;
+const CONNECTION_DEPTH_OPTIONS = [1, 2, 3, 5] as const;
 const OBJECT_DATA_CHANGE_PREVIEW_LIMIT = 24;
 
 const OBJECT_DATA_FIELD_TYPES: Array<{
@@ -2144,24 +2145,28 @@ export function ObjectDetail({
 								className="object-property-section-actions object-connection-header-actions"
 								data-object-nonsubmit
 							>
-								<label className="relations-depth-control">
-									<span>Depth</span>
-									<input
-										className="relations-depth-input"
-										type="number"
-										min={1}
-										step={1}
-										value={relationDepthLimit}
-										onChange={(event) => {
-											const nextDepth = Number.parseInt(event.target.value, 10);
-											if (Number.isFinite(nextDepth) && nextDepth > 0) {
-												setShowAllRelations(false);
-												setRelationDepthLimit(nextDepth);
-											}
-										}}
-										aria-label="Connection depth"
-									/>
-								</label>
+								<fieldset className="object-connection-depth-picker">
+									<legend className="sr-only">Connection depth</legend>
+									<span aria-hidden="true">Depth</span>
+									<div className="relations-depth-options">
+										{CONNECTION_DEPTH_OPTIONS.map((depth) => (
+											<button
+												key={depth}
+												type="button"
+												className={
+													relationDepthLimit === depth ? "is-active" : ""
+												}
+												aria-pressed={relationDepthLimit === depth}
+												onClick={() => {
+													setShowAllRelations(false);
+													setRelationDepthLimit(depth);
+												}}
+											>
+												{depth}
+											</button>
+										))}
+									</div>
+								</fieldset>
 								<label className="relations-toggle">
 									<input
 										type="checkbox"

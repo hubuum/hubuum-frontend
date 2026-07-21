@@ -1,6 +1,9 @@
 "use client";
 
-import { CreateModal } from "@/components/create-modal";
+import {
+	CreateModal,
+	type ModalRecordNavigation,
+} from "@/components/create-modal";
 import { JsonViewer } from "@/components/json-viewer";
 import type { EventRecord } from "@/lib/api/events";
 import { buildJsonDifference, formatJsonDifference } from "@/lib/json-diff";
@@ -8,6 +11,7 @@ import { buildJsonDifference, formatJsonDifference } from "@/lib/json-diff";
 type EventDetailsModalProps = {
 	event: EventRecord | null;
 	onClose: () => void;
+	navigation?: ModalRecordNavigation;
 };
 
 function formatTimestamp(value: string): string {
@@ -91,12 +95,17 @@ function EventChangeComparison({
 	);
 }
 
-export function EventDetailsModal({ event, onClose }: EventDetailsModalProps) {
+export function EventDetailsModal({
+	event,
+	onClose,
+	navigation,
+}: EventDetailsModalProps) {
 	return (
 		<CreateModal
 			open={event !== null}
 			title={event ? `Audit event #${event.id}` : "Audit event"}
 			onClose={onClose}
+			navigation={navigation}
 		>
 			{event ? (
 				<div className="stack">

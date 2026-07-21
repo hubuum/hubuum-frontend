@@ -368,9 +368,18 @@ test.describe("v0.0.3 server features", () => {
 			await expect(
 				connectionsHeader.getByRole("heading", { name: "Connections" }),
 			).toBeVisible();
+			const depthPicker = connectionsHeader.getByRole("group", {
+				name: "Connection depth",
+			});
+			await expect(depthPicker).toBeVisible();
+			await expect(depthPicker.getByRole("button")).toHaveCount(4);
 			await expect(
-				connectionsHeader.getByLabel("Connection depth"),
-			).toBeVisible();
+				depthPicker.getByRole("button", { name: "2" }),
+			).toHaveAttribute("aria-pressed", "true");
+			await depthPicker.getByRole("button", { name: "3" }).click();
+			await expect(
+				depthPicker.getByRole("button", { name: "3" }),
+			).toHaveAttribute("aria-pressed", "true");
 			await expect(
 				connectionsHeader.locator(".relations-toggle"),
 			).toContainText("Include e2e_computed_class_");
@@ -394,6 +403,23 @@ test.describe("v0.0.3 server features", () => {
 			await expect(page.getByRole("button", { name: "Edit all" })).toHaveCount(
 				0,
 			);
+			await page.getByRole("button", { name: /Edit object name\./ }).click();
+			const nameInput = page.getByLabel("Object name");
+			const nameValueCell = page
+				.locator(".object-fact-value")
+				.filter({ has: nameInput });
+			const [nameInputBox, nameValueCellBox] = await Promise.all([
+				nameInput.boundingBox(),
+				nameValueCell.boundingBox(),
+			]);
+			if (!nameInputBox || !nameValueCellBox) {
+				throw new Error("Object name editor did not produce layout boxes.");
+			}
+			expect(nameInputBox.x).toBeGreaterThanOrEqual(nameValueCellBox.x - 1);
+			expect(nameInputBox.x + nameInputBox.width).toBeLessThanOrEqual(
+				nameValueCellBox.x + nameValueCellBox.width + 1,
+			);
+			await page.keyboard.press("Escape");
 			await expect(
 				page.getByRole("heading", { name: "Computed values" }),
 			).toBeVisible();
@@ -476,6 +502,89 @@ test.describe("v0.0.3 server features", () => {
 			await expect(
 				page.getByText("Object updated.", { exact: true }),
 			).toBeVisible();
+			await page.reload();
+			await expect(
+				page.getByRole("heading", { name: objectName }),
+			).toBeVisible();
+
+			const activityPanel = page.getByRole("article").filter({
+				has: page.getByRole("heading", { name: "Object audit and history" }),
+			});
+			const auditSection = activityPanel.locator("section").filter({
+				has: page.getByText("Recent audit events", { exact: true }),
+			});
+			const auditEventRow = auditSection.locator("tbody tr").first();
+			await expect(auditEventRow).toBeVisible();
+			await auditEventRow.click();
+			const auditDialog = page.getByRole("dialog", {
+				name: /Audit event #/,
+			});
+			await expect(auditDialog.getByText("State changes")).toBeVisible();
+			await expect(
+				auditDialog.locator(".event-diff-summary .status-pill"),
+			).toHaveCSS("white-space", "nowrap");
+			await expect(
+				auditDialog.getByRole("button", { name: "Previous audit event" }),
+			).toBeDisabled();
+			await expect(
+				auditDialog.getByRole("button", { name: "Previous audit event" }),
+			).toHaveCSS("opacity", "0.38");
+			const nextAuditEvent = auditDialog.getByRole("button", {
+				name: "Next audit event",
+			});
+			await expect(nextAuditEvent).toBeEnabled();
+			await nextAuditEvent.click();
+			await expect(
+				auditDialog.getByRole("button", { name: "Previous audit event" }),
+			).toBeEnabled();
+			await auditDialog.getByRole("button", { name: "Close dialog" }).click();
+
+			const historySection = activityPanel.locator("section").filter({
+				has: page.getByText("Version history", { exact: true }),
+			});
+			const historyRow = historySection.locator("tbody tr").first();
+			await expect(historyRow).toBeVisible();
+			await historyRow.click();
+			const historyDialog = page.getByRole("dialog", {
+				name: /History version #/,
+			});
+			await expect(historyDialog.getByText("Stored state")).toBeVisible();
+			await expect(
+				historyDialog.getByRole("button", {
+					name: "Previous history version",
+				}),
+			).toBeDisabled();
+			const nextHistoryVersion = historyDialog.getByRole("button", {
+				name: "Next history version",
+			});
+			await expect(nextHistoryVersion).toBeEnabled();
+			await page.keyboard.press("ArrowRight");
+			await expect(
+				historyDialog.getByRole("button", {
+					name: "Previous history version",
+				}),
+			).toBeEnabled();
+			await historyDialog.getByRole("button", { name: "Close dialog" }).click();
+
+			await page.goto("/audit");
+			const globalAuditRow = page.locator("tbody tr").first();
+			await expect(globalAuditRow).toBeVisible();
+			await globalAuditRow.click();
+			const globalAuditDialog = page.getByRole("dialog", {
+				name: /Audit event #/,
+			});
+			await expect(globalAuditDialog.getByText("State changes")).toBeVisible();
+			await expect(
+				globalAuditDialog.getByRole("button", {
+					name: "Previous audit event",
+				}),
+			).toBeVisible();
+			await expect(
+				globalAuditDialog.getByRole("button", { name: "Next audit event" }),
+			).toBeVisible();
+			await globalAuditDialog
+				.getByRole("button", { name: "Close dialog" })
+				.click();
 		} finally {
 			if (objectId !== null) {
 				await page.request.delete(
