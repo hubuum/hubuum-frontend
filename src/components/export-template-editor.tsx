@@ -4,6 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import {
+	GuidedFlowContinue,
+	GuidedFlowPanel,
+	GuidedFlowTabs,
+} from "@/components/guided-flow";
 import { IncludeRows } from "@/components/include-rows";
 import { ReportQueryBuilder } from "@/components/report-query-builder";
 import { TemplateCodeEditor } from "@/components/template-code-editor";
@@ -521,30 +526,6 @@ function DataFieldPalette({
 	);
 }
 
-function WorkflowContinueBar({
-	title,
-	summary,
-	nextLabel,
-	onContinue,
-}: {
-	title: string;
-	summary: string;
-	nextLabel: string;
-	onContinue: () => void;
-}) {
-	return (
-		<div className="card export-target-continue-bar">
-			<div className="stack action-card-header">
-				<strong>{title}</strong>
-				<span className="muted">{summary}</span>
-			</div>
-			<button type="button" onClick={onContinue}>
-				Continue to {nextLabel.toLocaleLowerCase()}
-			</button>
-		</div>
-	);
-}
-
 export function ExportTemplateEditor({
 	templateId,
 	initialTestTaskId,
@@ -1047,31 +1028,6 @@ export function ExportTemplateEditor({
 		);
 	}
 
-	function handleTabKeyDown(
-		event: React.KeyboardEvent<HTMLButtonElement>,
-		tab: TemplateEditorTab,
-	) {
-		const availableTabs = EDITOR_TABS.filter(
-			(item) => !isEditorTabDisabled(item.id),
-		);
-		const index = availableTabs.findIndex((item) => item.id === tab);
-		let nextIndex: number | null = null;
-		if (event.key === "ArrowRight")
-			nextIndex = (index + 1) % availableTabs.length;
-		if (event.key === "ArrowLeft")
-			nextIndex = (index - 1 + availableTabs.length) % availableTabs.length;
-		if (event.key === "Home") nextIndex = 0;
-		if (event.key === "End") nextIndex = availableTabs.length - 1;
-		if (nextIndex == null) return;
-		event.preventDefault();
-		const nextTab = availableTabs[nextIndex].id;
-		setActiveTab(nextTab);
-		window.setTimeout(
-			() => document.getElementById(`template-editor-tab-${nextTab}`)?.focus(),
-			0,
-		);
-	}
-
 	if (templateId != null && templateQuery.isLoading) {
 		return <div className="card muted">Loading export template…</div>;
 	}
@@ -1193,46 +1149,29 @@ export function ExportTemplateEditor({
 				</div>
 			) : null}
 
-			<div
-				className="export-template-editor-tabs"
-				role="tablist"
-				aria-label="Template editor sections"
-			>
-				{EDITOR_TABS.map((tab) => {
-					const disabled = isEditorTabDisabled(tab.id);
-					const disabledHint =
+			<GuidedFlowTabs
+				activeStep={activeTab}
+				ariaLabel="Template editor sections"
+				idPrefix="template-editor"
+				numbered={false}
+				onChange={setActiveTab}
+				steps={EDITOR_TABS.map((tab) => ({
+					...tab,
+					disabledHint:
 						tab.id === "history"
 							? "Available after saving"
 							: editorState.kind === "fragment" && tab.id !== "appearance"
 								? "Executable exports only"
-								: "Complete the target first";
-					return (
-						<button
-							key={tab.id}
-							type="button"
-							id={`template-editor-tab-${tab.id}`}
-							role="tab"
-							aria-selected={activeTab === tab.id}
-							aria-controls={`template-editor-panel-${tab.id}`}
-							tabIndex={activeTab === tab.id ? 0 : -1}
-							className={activeTab === tab.id ? "is-active" : ""}
-							disabled={disabled}
-							onClick={() => setActiveTab(tab.id)}
-							onKeyDown={(event) => handleTabKeyDown(event, tab.id)}
-						>
-							<span>{tab.label}</span>
-							<small>{disabled ? disabledHint : tab.hint}</small>
-						</button>
-					);
-				})}
-			</div>
+								: "Complete the target first",
+					enabled: !isEditorTabDisabled(tab.id),
+				}))}
+			/>
 
 			{activeTab === "appearance" ? (
-				<div
-					id="template-editor-panel-appearance"
+				<GuidedFlowPanel
 					className="export-template-authoring-layout"
-					role="tabpanel"
-					aria-labelledby="template-editor-tab-appearance"
+					idPrefix="template-editor"
+					stepId="appearance"
 				>
 					<article className="card stack panel-card export-template-content-card">
 						<div className="target-context-summary">
@@ -1466,7 +1405,8 @@ export function ExportTemplateEditor({
 									</label>
 									<p className="field-note">
 										These run over every item admitted by the report query and
-										limits. MiniJinja <code>groupby</code> orders grouped values;
+										limits. MiniJinja <code>groupby</code> orders grouped
+										values;
 										<code>reverse</code> flips that order.
 									</p>
 									<div className="report-grouping-example-list">
@@ -1642,15 +1582,14 @@ export function ExportTemplateEditor({
 							</div>
 						) : null}
 					</aside>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 
 			{activeTab === "target" ? (
-				<div
-					id="template-editor-panel-target"
+				<GuidedFlowPanel
 					className="stack export-template-data-panel"
-					role="tabpanel"
-					aria-labelledby="template-editor-tab-target"
+					idPrefix="template-editor"
+					stepId="target"
 				>
 					<article className="card stack panel-card">
 						<div className="stack action-card-header">
@@ -1844,7 +1783,7 @@ export function ExportTemplateEditor({
 						</article>
 					) : null}
 
-					<WorkflowContinueBar
+					<GuidedFlowContinue
 						title={
 							targetReady
 								? "Target ready"
@@ -1858,15 +1797,14 @@ export function ExportTemplateEditor({
 						nextLabel={editorState.kind === "export" ? "Filters" : "Appearance"}
 						onContinue={handleContinue}
 					/>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 
 			{activeTab === "filters" ? (
-				<div
-					id="template-editor-panel-filters"
+				<GuidedFlowPanel
 					className="stack export-template-data-panel"
-					role="tabpanel"
-					aria-labelledby="template-editor-tab-filters"
+					idPrefix="template-editor"
+					stepId="filters"
 					tabIndex={-1}
 				>
 					<ReportQueryBuilder
@@ -1876,7 +1814,7 @@ export function ExportTemplateEditor({
 						onChange={(defaultQuery) => updateDraft({ defaultQuery })}
 						disabled={isSaving}
 					/>
-					<WorkflowContinueBar
+					<GuidedFlowContinue
 						title="Filters ready"
 						summary={
 							editorState.defaultQuery
@@ -1886,15 +1824,14 @@ export function ExportTemplateEditor({
 						nextLabel="Related"
 						onContinue={handleContinue}
 					/>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 
 			{activeTab === "related" ? (
-				<div
-					id="template-editor-panel-related"
+				<GuidedFlowPanel
 					className="stack export-template-data-panel"
-					role="tabpanel"
-					aria-labelledby="template-editor-tab-related"
+					idPrefix="template-editor"
+					stepId="related"
 					tabIndex={-1}
 				>
 					{scopeNeedsClass ? (
@@ -1955,7 +1892,7 @@ export function ExportTemplateEditor({
 							</div>
 						</article>
 					)}
-					<WorkflowContinueBar
+					<GuidedFlowContinue
 						title="Related data ready"
 						summary={
 							scopeNeedsClass
@@ -1969,15 +1906,14 @@ export function ExportTemplateEditor({
 						nextLabel="Rules"
 						onContinue={handleContinue}
 					/>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 
 			{activeTab === "rules" ? (
-				<div
-					id="template-editor-panel-rules"
+				<GuidedFlowPanel
 					className="stack export-template-data-panel"
-					role="tabpanel"
-					aria-labelledby="template-editor-tab-rules"
+					idPrefix="template-editor"
+					stepId="rules"
 					tabIndex={-1}
 				>
 					<article className="card stack panel-card">
@@ -2062,7 +1998,7 @@ export function ExportTemplateEditor({
 							</label>
 						</div>
 					</article>
-					<WorkflowContinueBar
+					<GuidedFlowContinue
 						title="Rules ready"
 						summary={`Missing values: ${editorState.missingDataPolicy} · ${
 							editorState.maxItems
@@ -2072,15 +2008,14 @@ export function ExportTemplateEditor({
 						nextLabel="Appearance"
 						onContinue={handleContinue}
 					/>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 
 			{activeTab === "history" ? (
-				<div
-					id="template-editor-panel-history"
+				<GuidedFlowPanel
 					className="stack"
-					role="tabpanel"
-					aria-labelledby="template-editor-tab-history"
+					idPrefix="template-editor"
+					stepId="history"
 				>
 					<article className="card stack panel-card">
 						<div className="stack action-card-header">
@@ -2114,7 +2049,7 @@ export function ExportTemplateEditor({
 							</div>
 						) : null}
 					</article>
-				</div>
+				</GuidedFlowPanel>
 			) : null}
 		</section>
 	);

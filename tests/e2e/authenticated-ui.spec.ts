@@ -65,6 +65,49 @@ test.describe("authenticated workspace", () => {
 		await expect(trigger).toBeFocused();
 	});
 
+	test("primary color survives an immediate page refresh", async ({ page }) => {
+		await page.goto("/account/appearance");
+		const primaryColors = page.getByRole("group", { name: "Primary color" });
+		const selectedLabel =
+			(
+				await primaryColors.locator('button[aria-pressed="true"]').textContent()
+			)?.trim() ?? "Teal";
+		const targetLabel = selectedLabel === "Violet" ? "Blue" : "Violet";
+
+		try {
+			await primaryColors
+				.getByRole("button", { name: targetLabel, exact: true })
+				.click();
+			await expect(page.locator("html")).toHaveAttribute(
+				"data-accent",
+				targetLabel.toLocaleLowerCase(),
+			);
+
+			await page.reload();
+
+			await expect(page.locator("html")).toHaveAttribute(
+				"data-accent",
+				targetLabel.toLocaleLowerCase(),
+			);
+			await expect(
+				page
+					.getByRole("group", { name: "Primary color" })
+					.getByRole("button", { name: targetLabel, exact: true }),
+			).toHaveAttribute("aria-pressed", "true");
+		} finally {
+			await page.goto("/account/appearance");
+			const restored = page
+				.getByRole("group", { name: "Primary color" })
+				.getByRole("button", { name: selectedLabel, exact: true });
+			await restored.click();
+			await expect(page.locator("html")).toHaveAttribute(
+				"data-accent",
+				selectedLabel.toLocaleLowerCase(),
+			);
+			await page.waitForTimeout(300);
+		}
+	});
+
 	test("mobile resource pages expose one primary create action", async ({
 		page,
 	}) => {
@@ -72,6 +115,26 @@ test.describe("authenticated workspace", () => {
 		await page.goto("/collections");
 		await expect(page.locator(".topbar .create-button")).toBeHidden();
 		await expect(page.locator(".fab--create")).toBeVisible();
+	});
+
+	test("imports starts with a gated file-first workflow", async ({ page }) => {
+		await page.goto("/imports");
+
+		const fileTab = page.getByRole("tab", { name: /1\. File/ });
+		const destinationTab = page.getByRole("tab", { name: /2\. Destination/ });
+		const policiesTab = page.getByRole("tab", { name: /3\. Policies/ });
+		const reviewTab = page.getByRole("tab", { name: /4\. Review/ });
+
+		await expect(fileTab).toHaveAttribute("aria-selected", "true");
+		await expect(destinationTab).toBeDisabled();
+		await expect(policiesTab).toBeDisabled();
+		await expect(reviewTab).toBeDisabled();
+		await expect(
+			page.getByRole("button", { name: "Choose file" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Continue to destination" }),
+		).toBeDisabled();
 	});
 
 	test("exports separates running, templates, and history into task views", async ({

@@ -6,6 +6,24 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Reworked event-subscription, import, remote-target, and API-token creation
+  into guided flows with progressive validation, contextual summaries, and a
+  final review step.
+- Standardized computed-field and export-template workflows on the shared,
+  keyboard-accessible flow navigation and continue controls.
+- Replaced remote-target authentication JSON with structured secret-reference
+  fields and made the explicit read-only preset the default for new API tokens.
+
+### Fixed
+
+- Kept locally saved appearance and other portable preferences authoritative
+  until a later server snapshot confirms them, and prevented application-shell
+  initialization from resetting those preferences during a refresh.
+- Added branded favicon and Apple touch-icon assets, including the legacy
+  precomposed path, so browser icon discovery no longer reaches a 404 route.
+
 ## [0.0.3] - 2026-07-18
 
 ### Compatibility

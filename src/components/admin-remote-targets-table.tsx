@@ -3,6 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import {
+	GuidedFlowContinue,
+	GuidedFlowPanel,
+	GuidedFlowTabs,
+} from "@/components/guided-flow";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -24,7 +29,6 @@ import type {
 } from "@/lib/api/generated/models";
 import {
 	fetchRemoteTargetsPage,
-	isPlainObject,
 	parseJsonObjectInput,
 } from "@/lib/api/remote-targets";
 import {
@@ -48,9 +52,23 @@ const SUBJECT_TYPES: RemoteTargetSubjectType[] = [
 
 type FormMode = "create" | "edit";
 
+const REMOTE_TARGET_STEPS = [
+	{ id: "scope", label: "Scope", hint: "Collection and subject" },
+	{ id: "request", label: "Request", hint: "Endpoint and method" },
+	{ id: "templates", label: "Templates", hint: "Headers and body" },
+	{ id: "authentication", label: "Authentication", hint: "Secret references" },
+	{ id: "review", label: "Review", hint: "Confirm and save" },
+] as const;
+
+type RemoteTargetStep = (typeof REMOTE_TARGET_STEPS)[number]["id"];
+type RemoteAuthType = RemoteAuthConfig["type"];
+
 type FormState = {
 	allowedSubjectTypes: RemoteTargetSubjectType[];
-	authConfigInput: string;
+	authHeader: string;
+	authSecret: string;
+	authType: RemoteAuthType;
+	authUsername: string;
 	bodyTemplate: string;
 	classId: string;
 	description: string;
@@ -65,7 +83,10 @@ type FormState = {
 
 const defaultFormState: FormState = {
 	allowedSubjectTypes: ["object"],
-	authConfigInput: '{\n  "type": "none"\n}',
+	authHeader: "X-API-Key",
+	authSecret: "",
+	authType: "none",
+	authUsername: "",
 	bodyTemplate: "",
 	classId: "",
 	description: "",
@@ -79,9 +100,12 @@ const defaultFormState: FormState = {
 };
 
 async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections({ include_total: false }, {
-		credentials: "include",
-	});
+	const response = await getApiV1Collections(
+		{ include_total: false },
+		{
+			credentials: "include",
+		},
+	);
 
 	if (response.status !== 200) {
 		throw new Error(
@@ -99,7 +123,9 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	);
 
 	if (response.status !== 200) {
-		throw new Error(getApiErrorMessage(response.data, "Failed to load classes."));
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to load classes."),
+		);
 	}
 
 	return response.data;
@@ -119,9 +145,13 @@ function stringifyJson(value: unknown): string {
 }
 
 function formStateFromTarget(target: RemoteTarget): FormState {
+	const authConfig = target.auth_config;
 	return {
 		allowedSubjectTypes: [target.allowed_subject_types[0] ?? "object"],
-		authConfigInput: stringifyJson(target.auth_config),
+		authHeader: "header" in authConfig ? authConfig.header : "X-API-Key",
+		authSecret: "secret" in authConfig ? authConfig.secret : "",
+		authType: authConfig.type,
+		authUsername: "username" in authConfig ? authConfig.username : "",
 		bodyTemplate: target.body_template ?? "",
 		classId: target.class_id == null ? "" : String(target.class_id),
 		description: target.description,
@@ -135,81 +165,81 @@ function formStateFromTarget(target: RemoteTarget): FormState {
 	};
 }
 
-function isRemoteAuthConfig(value: unknown): value is RemoteAuthConfig {
-	if (!isPlainObject(value) || typeof value.type !== "string") {
-		return false;
+function buildAuthConfig(state: FormState): RemoteAuthConfig {
+	if (state.authType === "none") return { type: "none" };
+
+	const secret = state.authSecret.trim();
+	if (!secret) throw new Error("Secret reference is required.");
+	if (state.authType === "bearer_secret") {
+		return { type: "bearer_secret", secret };
+	}
+	if (state.authType === "basic_secret") {
+		const username = state.authUsername.trim();
+		if (!username)
+			throw new Error("Basic authentication username is required.");
+		return { type: "basic_secret", secret, username };
 	}
 
-	if (value.type === "none") {
-		return true;
-	}
-	if (value.type === "bearer_secret") {
-		return typeof value.secret === "string" && value.secret.trim() !== "";
-	}
-	if (value.type === "basic_secret") {
-		return (
-			typeof value.username === "string" &&
-			value.username.trim() !== "" &&
-			typeof value.secret === "string" &&
-			value.secret.trim() !== ""
-		);
-	}
-	if (value.type === "api_key_secret") {
-		return (
-			typeof value.header === "string" &&
-			value.header.trim() !== "" &&
-			typeof value.secret === "string" &&
-			value.secret.trim() !== ""
-		);
-	}
-
-	return false;
+	const header = state.authHeader.trim();
+	if (!header) throw new Error("API key header is required.");
+	return { type: "api_key_secret", header, secret };
 }
 
-function buildPayload(state: FormState): NewRemoteTarget {
+function validateScope(state: FormState): void {
 	const collectionId = Number.parseInt(state.collectionId, 10);
 	if (!Number.isFinite(collectionId) || collectionId < 1) {
 		throw new Error("Collection is required.");
 	}
-
-	const name = state.name.trim();
-	if (!name) {
-		throw new Error("Name is required.");
-	}
-
-	const description = state.description.trim();
-	if (!description) {
-		throw new Error("Description is required.");
-	}
-
-	const urlTemplate = state.urlTemplate.trim();
-	if (!urlTemplate) {
-		throw new Error("URL template is required.");
-	}
-
 	if (state.allowedSubjectTypes.length !== 1) {
 		throw new Error("Select one subject type.");
 	}
-	const subjectType = state.allowedSubjectTypes[0];
 	const classIdText = state.classId.trim();
-	let classId: number | null = null;
-	if (subjectType === "object") {
-		classId = Number.parseInt(classIdText, 10);
+	if (state.allowedSubjectTypes[0] === "object") {
+		const classId = Number.parseInt(classIdText, 10);
 		if (!Number.isFinite(classId) || classId < 1) {
 			throw new Error("Class scope is required for object targets.");
 		}
 	} else if (classIdText) {
 		throw new Error("Class scope is only valid for object targets.");
 	}
+}
+
+function validateRequest(state: FormState): void {
+	if (!state.name.trim()) throw new Error("Name is required.");
+	if (!state.description.trim()) throw new Error("Description is required.");
+	if (!state.urlTemplate.trim()) throw new Error("URL template is required.");
+	if (state.timeoutMs.trim()) {
+		const timeoutMs = Number.parseInt(state.timeoutMs, 10);
+		if (!Number.isFinite(timeoutMs) || timeoutMs < 1) {
+			throw new Error("Timeout must be a positive integer.");
+		}
+	}
+}
+
+function validateTemplates(state: FormState): void {
+	parseJsonObjectInput(state.headersTemplateInput, "Headers template");
+}
+
+function buildPayload(state: FormState): NewRemoteTarget {
+	validateScope(state);
+	validateRequest(state);
+	validateTemplates(state);
+	const collectionId = Number.parseInt(state.collectionId, 10);
+	const name = state.name.trim();
+	const description = state.description.trim();
+	const urlTemplate = state.urlTemplate.trim();
+	const subjectType = state.allowedSubjectTypes[0];
+	const classIdText = state.classId.trim();
+	let classId: number | null = null;
+	if (subjectType === "object") {
+		classId = Number.parseInt(classIdText, 10);
+	}
 
 	const headersTemplate = parseJsonObjectInput(
 		state.headersTemplateInput,
 		"Headers template",
 	);
-	const authConfig = parseJsonObjectInput(state.authConfigInput, "Auth config");
-	if (!isRemoteAuthConfig(authConfig)) {
-		throw new Error("Auth config must match a supported remote auth shape.");
-	}
+	const authConfig = buildAuthConfig(state);
 
 	const payload: NewRemoteTarget = {
 		allowed_subject_types: state.allowedSubjectTypes,
@@ -234,9 +264,6 @@ function buildPayload(state: FormState): NewRemoteTarget {
 	const timeoutText = state.timeoutMs.trim();
 	if (timeoutText) {
 		const timeoutMs = Number.parseInt(timeoutText, 10);
-		if (!Number.isFinite(timeoutMs) || timeoutMs < 1) {
-			throw new Error("Timeout must be a positive integer.");
-		}
 		payload.timeout_ms = timeoutMs;
 	}
 
@@ -255,6 +282,7 @@ export function AdminRemoteTargetsTable() {
 	const [formMode, setFormMode] = useState<FormMode>("create");
 	const [editingTarget, setEditingTarget] = useState<RemoteTarget | null>(null);
 	const [formState, setFormState] = useState<FormState>(defaultFormState);
+	const [activeStep, setActiveStep] = useState<RemoteTargetStep>("scope");
 
 	const collectionsQuery = useQuery({
 		queryKey: ["collections", "admin-remote-targets"],
@@ -269,13 +297,17 @@ export function AdminRemoteTargetsTable() {
 		mutationFn: async (cursor?: string | null) =>
 			fetchRemoteTargetsPage({ cursor: cursor ?? undefined, limit: 100 }),
 		onSuccess: (page, cursor) => {
-			setTargets((current) => (cursor ? [...current, ...page.targets] : page.targets));
+			setTargets((current) =>
+				cursor ? [...current, ...page.targets] : page.targets,
+			);
 			setNextCursor(page.nextCursor);
 			setTableError(null);
 		},
 		onError: (error) => {
 			setTableError(
-				error instanceof Error ? error.message : "Failed to load remote targets.",
+				error instanceof Error
+					? error.message
+					: "Failed to load remote targets.",
 			);
 		},
 	});
@@ -303,7 +335,9 @@ export function AdminRemoteTargetsTable() {
 		},
 		onError: (error) => {
 			setFormError(
-				error instanceof Error ? error.message : "Failed to create remote target.",
+				error instanceof Error
+					? error.message
+					: "Failed to create remote target.",
 			);
 		},
 	});
@@ -338,7 +372,9 @@ export function AdminRemoteTargetsTable() {
 		},
 		onError: (error) => {
 			setFormError(
-				error instanceof Error ? error.message : "Failed to update remote target.",
+				error instanceof Error
+					? error.message
+					: "Failed to update remote target.",
 			);
 		},
 	});
@@ -363,7 +399,9 @@ export function AdminRemoteTargetsTable() {
 		onError: (error) => {
 			setTableSuccess(null);
 			setTableError(
-				error instanceof Error ? error.message : "Failed to delete remote target.",
+				error instanceof Error
+					? error.message
+					: "Failed to delete remote target.",
 			);
 		},
 	});
@@ -399,14 +437,24 @@ export function AdminRemoteTargetsTable() {
 	}, [formState.collectionId, collectionsQuery.data]);
 
 	const collectionsById = useMemo(() => {
-		return new Map((collectionsQuery.data ?? []).map((collection) => [collection.id, collection]));
+		return new Map(
+			(collectionsQuery.data ?? []).map((collection) => [
+				collection.id,
+				collection,
+			]),
+		);
 	}, [collectionsQuery.data]);
 	const collectionHierarchy = useMemo(
 		() => buildCollectionHierarchy(collectionsQuery.data ?? []),
 		[collectionsQuery.data],
 	);
 	const classesById = useMemo(() => {
-		return new Map((classesQuery.data ?? []).map((hubuumClass) => [hubuumClass.id, hubuumClass]));
+		return new Map(
+			(classesQuery.data ?? []).map((hubuumClass) => [
+				hubuumClass.id,
+				hubuumClass,
+			]),
+		);
 	}, [classesQuery.data]);
 	const classOptions = useMemo(() => {
 		const collectionId = Number.parseInt(formState.collectionId, 10);
@@ -432,7 +480,9 @@ export function AdminRemoteTargetsTable() {
 				String(target.collection_id),
 				collectionsById.get(target.collection_id)?.name ?? "",
 				target.class_id == null ? "" : String(target.class_id),
-				target.class_id == null ? "" : classesById.get(target.class_id)?.name ?? "",
+				target.class_id == null
+					? ""
+					: (classesById.get(target.class_id)?.name ?? ""),
 				target.allowed_subject_types.join(" "),
 			]
 				.join(" ")
@@ -507,6 +557,7 @@ export function AdminRemoteTargetsTable() {
 					? String(collectionsQuery.data[0].id)
 					: "",
 		});
+		setActiveStep("scope");
 		setModalOpen(true);
 	}
 
@@ -515,10 +566,12 @@ export function AdminRemoteTargetsTable() {
 		setEditingTarget(target);
 		setFormError(null);
 		setFormState(formStateFromTarget(target));
+		setActiveStep("scope");
 		setModalOpen(true);
 	}
 
 	function selectSubjectType(subjectType: RemoteTargetSubjectType) {
+		setFormError(null);
 		setFormState((current) => {
 			return {
 				...current,
@@ -526,6 +579,52 @@ export function AdminRemoteTargetsTable() {
 				classId: subjectType === "object" ? current.classId : "",
 			};
 		});
+	}
+
+	function patchFormState(patch: Partial<FormState>) {
+		setFormState((current) => ({ ...current, ...patch }));
+		setFormError(null);
+	}
+
+	function getStepError(step: RemoteTargetStep): string | null {
+		try {
+			if (step === "scope") {
+				validateScope(formState);
+				if (formState.allowedSubjectTypes[0] === "object") {
+					const classId = Number.parseInt(formState.classId, 10);
+					const collectionId = Number.parseInt(formState.collectionId, 10);
+					const selectedClass = classesById.get(classId);
+					if (!selectedClass || selectedClass.collection.id !== collectionId) {
+						throw new Error(
+							"Class scope must belong to the selected collection.",
+						);
+					}
+				}
+				return null;
+			}
+			if (step === "request") {
+				validateRequest(formState);
+				return null;
+			}
+			if (step === "templates") {
+				validateTemplates(formState);
+				return null;
+			}
+			if (step === "authentication") {
+				buildAuthConfig(formState);
+				return null;
+			}
+			buildPayload(formState);
+			return null;
+		} catch (error) {
+			return error instanceof Error ? error.message : "Invalid remote target.";
+		}
+	}
+
+	function continueFrom(step: RemoteTargetStep, nextStep: RemoteTargetStep) {
+		const error = getStepError(step);
+		setFormError(error);
+		if (!error) setActiveStep(nextStep);
 	}
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -538,13 +637,18 @@ export function AdminRemoteTargetsTable() {
 			payload = buildPayload(formState);
 			if (payload.class_id != null) {
 				const selectedClass = classesById.get(payload.class_id);
-				if (!selectedClass || selectedClass.collection.id !== payload.collection_id) {
+				if (
+					!selectedClass ||
+					selectedClass.collection.id !== payload.collection_id
+				) {
 					setFormError("Class scope must belong to the selected collection.");
 					return;
 				}
 			}
 		} catch (error) {
-			setFormError(error instanceof Error ? error.message : "Invalid form data.");
+			setFormError(
+				error instanceof Error ? error.message : "Invalid form data.",
+			);
 			return;
 		}
 
@@ -570,284 +674,455 @@ export function AdminRemoteTargetsTable() {
 	}
 
 	const isSaving = createMutation.isPending || updateMutation.isPending;
+	const scopeReady = getStepError("scope") === null;
+	const requestReady = scopeReady && getStepError("request") === null;
+	const templatesReady = requestReady && getStepError("templates") === null;
+	const authenticationReady =
+		templatesReady && getStepError("authentication") === null;
+	const remoteTargetSteps = REMOTE_TARGET_STEPS.map((step) => ({
+		...step,
+		enabled:
+			step.id === "scope" ||
+			(step.id === "request" && scopeReady) ||
+			(step.id === "templates" && requestReady) ||
+			(step.id === "authentication" && templatesReady) ||
+			(step.id === "review" && authenticationReady),
+	}));
+	const selectedSubjectType = formState.allowedSubjectTypes[0];
+	const selectedCollection = collectionsById.get(
+		Number.parseInt(formState.collectionId, 10),
+	);
+	const selectedClass = classesById.get(Number.parseInt(formState.classId, 10));
+	const authenticationSummary =
+		formState.authType === "none"
+			? "No authentication"
+			: formState.authType === "bearer_secret"
+				? `Bearer token from ${formState.authSecret || "a secret reference"}`
+				: formState.authType === "basic_secret"
+					? `Basic authentication as ${formState.authUsername || "a username"}`
+					: `${formState.authHeader || "API key header"} from ${formState.authSecret || "a secret reference"}`;
 
 	return (
 		<div className="stack">
 			<CreateModal
 				open={isModalOpen}
-				title={formMode === "edit" ? "Edit remote target" : "Create remote target"}
+				title={
+					formMode === "edit" ? "Edit remote target" : "Create remote target"
+				}
 				onClose={() => setModalOpen(false)}
 			>
 				<form className="stack" onSubmit={onSubmit}>
-					<div className="form-grid">
-						<label className="control-field" htmlFor="remote-target-collection">
-							<span>Collection</span>
-							{collectionsQuery.data?.length ? (
-								<select
-									id="remote-target-collection"
-									required
-									value={formState.collectionId}
-									onChange={(event) =>
-										setFormState((current) => ({
-											...current,
-											collectionId: event.target.value,
-										}))
-									}
+					<GuidedFlowTabs
+						activeStep={activeStep}
+						ariaLabel="Remote target steps"
+						onChange={(step) => {
+							setFormError(null);
+							setActiveStep(step);
+						}}
+						steps={remoteTargetSteps}
+					/>
+
+					{activeStep === "scope" ? (
+						<GuidedFlowPanel stepId="scope">
+							<div className="form-grid">
+								<label
+									className="control-field"
+									htmlFor="remote-target-collection"
 								>
-									<option value="">Select a collection</option>
-									{collectionsQuery.data.map((collection) => (
-										<option key={collection.id} value={collection.id}>
-											{formatCollectionOption(
-												collection,
-												collectionHierarchy.byId,
-											)}
-										</option>
+									<span>Collection</span>
+									{collectionsQuery.data?.length ? (
+										<select
+											id="remote-target-collection"
+											required
+											value={formState.collectionId}
+											onChange={(event) =>
+												patchFormState({
+													collectionId: event.target.value,
+													classId: "",
+												})
+											}
+										>
+											<option value="">Select a collection</option>
+											{collectionsQuery.data.map((collection) => (
+												<option key={collection.id} value={collection.id}>
+													{formatCollectionOption(
+														collection,
+														collectionHierarchy.byId,
+													)}
+												</option>
+											))}
+										</select>
+									) : (
+										<input
+											id="remote-target-collection"
+											required
+											type="number"
+											min={1}
+											value={formState.collectionId}
+											onChange={(event) =>
+												patchFormState({
+													collectionId: event.target.value,
+													classId: "",
+												})
+											}
+											placeholder="Collection ID"
+										/>
+									)}
+								</label>
+							</div>
+							<fieldset className="remote-subject-section">
+								<legend>Subject type</legend>
+								<div className="remote-subject-options">
+									{SUBJECT_TYPES.map((subjectType) => (
+										<label key={subjectType} className="remote-subject-option">
+											<input
+												type="radio"
+												name="remote-target-subject-type"
+												checked={formState.allowedSubjectTypes.includes(
+													subjectType,
+												)}
+												onChange={() => selectSubjectType(subjectType)}
+											/>
+											<span>{subjectType.replaceAll("_", " ")}</span>
+										</label>
 									))}
-								</select>
-							) : (
-								<input
-									id="remote-target-collection"
-									required
-									type="number"
-									min={1}
-									value={formState.collectionId}
-									onChange={(event) =>
-										setFormState((current) => ({
-											...current,
-											collectionId: event.target.value,
-										}))
-									}
-									placeholder="Collection ID"
-								/>
-							)}
-						</label>
-
-						<label className="control-field">
-							<span>Name</span>
-							<input
-								required
-								value={formState.name}
-								onChange={(event) =>
-									setFormState((current) => ({
-										...current,
-										name: event.target.value,
-									}))
-								}
-								placeholder="create-ticket"
-							/>
-						</label>
-
-						<label className="control-field control-field--wide">
-							<span>Description</span>
-							<input
-								required
-								value={formState.description}
-								onChange={(event) =>
-									setFormState((current) => ({
-										...current,
-										description: event.target.value,
-									}))
-								}
-								placeholder="Create an external ticket for this subject"
-							/>
-						</label>
-
-						<label className="control-field">
-							<span>Method</span>
-							<select
-								value={formState.method}
-								onChange={(event) =>
-									setFormState((current) => ({
-										...current,
-										method: event.target.value as RemoteHttpMethod,
-									}))
-								}
-							>
-								{METHODS.map((method) => (
-									<option key={method} value={method}>
-										{method.toUpperCase()}
-									</option>
-								))}
-							</select>
-						</label>
-
-						<label className="control-field">
-							<span>Timeout ms</span>
-							<input
-								type="number"
-								min={1}
-								value={formState.timeoutMs}
-								onChange={(event) =>
-									setFormState((current) => ({
-										...current,
-										timeoutMs: event.target.value,
-									}))
+								</div>
+							</fieldset>
+							{selectedSubjectType === "object" ? (
+								<label
+									className="control-field control-field--wide"
+									htmlFor="remote-target-class"
+								>
+									<span>Object class scope</span>
+									{classOptions.length > 0 ? (
+										<select
+											id="remote-target-class"
+											required
+											value={formState.classId}
+											onChange={(event) =>
+												patchFormState({ classId: event.target.value })
+											}
+										>
+											<option value="">Select a class</option>
+											{classOptions.map((hubuumClass) => (
+												<option key={hubuumClass.id} value={hubuumClass.id}>
+													{hubuumClass.name}
+												</option>
+											))}
+										</select>
+									) : (
+										<input
+											id="remote-target-class"
+											required
+											type="number"
+											min={1}
+											value={formState.classId}
+											onChange={(event) =>
+												patchFormState({ classId: event.target.value })
+											}
+											placeholder={
+												classesQuery.isLoading
+													? "Loading classes..."
+													: "Class ID"
+											}
+										/>
+									)}
+									<span className="field-note">
+										Object targets apply only to objects in this class.
+									</span>
+								</label>
+							) : null}
+							<GuidedFlowContinue
+								disabled={!scopeReady}
+								nextLabel="Request"
+								onContinue={() => continueFrom("scope", "request")}
+								summary={`${selectedCollection?.name ?? "Choose a collection"} · ${selectedSubjectType?.replaceAll("_", " ") ?? "choose a subject"}${selectedClass ? ` · ${selectedClass.name}` : ""}`}
+								title={
+									scopeReady
+										? "Scope ready"
+										: "Choose where and for which subject this target is available"
 								}
 							/>
-						</label>
+						</GuidedFlowPanel>
+					) : null}
 
-						<label className="control-field control-field--wide">
-							<span>URL template</span>
-							<input
-								required
-								value={formState.urlTemplate}
-								onChange={(event) =>
-									setFormState((current) => ({
-										...current,
-										urlTemplate: event.target.value,
-									}))
-								}
-								placeholder="https://service.example.com/assets/{{ object.id }}"
-							/>
-						</label>
-
-						{formState.allowedSubjectTypes.includes("object") ? (
-							<label
-								className="control-field control-field--wide"
-								htmlFor="remote-target-class"
-							>
-								<span>Object class scope</span>
-								{classOptions.length > 0 ? (
-									<select
-										id="remote-target-class"
+					{activeStep === "request" ? (
+						<GuidedFlowPanel stepId="request">
+							<div className="form-grid">
+								<label className="control-field">
+									<span>Name</span>
+									<input
 										required
-										value={formState.classId}
+										value={formState.name}
 										onChange={(event) =>
-											setFormState((current) => ({
-												...current,
-												classId: event.target.value,
-											}))
+											patchFormState({ name: event.target.value })
+										}
+										placeholder="create-ticket"
+									/>
+								</label>
+								<label className="control-field">
+									<span>Method</span>
+									<select
+										value={formState.method}
+										onChange={(event) =>
+											patchFormState({
+												method: event.target.value as RemoteHttpMethod,
+											})
 										}
 									>
-										<option value="">Select a class</option>
-										{classOptions.map((hubuumClass) => (
-											<option key={hubuumClass.id} value={hubuumClass.id}>
-												{hubuumClass.name}
+										{METHODS.map((method) => (
+											<option key={method} value={method}>
+												{method.toUpperCase()}
 											</option>
 										))}
 									</select>
-								) : (
+								</label>
+								<label className="control-field control-field--wide">
+									<span>Description</span>
 									<input
-										id="remote-target-class"
 										required
+										value={formState.description}
+										onChange={(event) =>
+											patchFormState({ description: event.target.value })
+										}
+										placeholder="Create an external ticket for this subject"
+									/>
+								</label>
+								<label className="control-field control-field--wide">
+									<span>URL template</span>
+									<input
+										required
+										value={formState.urlTemplate}
+										onChange={(event) =>
+											patchFormState({ urlTemplate: event.target.value })
+										}
+										placeholder="https://service.example.com/assets/{{ object.id }}"
+									/>
+								</label>
+								<label className="control-field">
+									<span>Timeout ms</span>
+									<input
 										type="number"
 										min={1}
-										value={formState.classId}
+										value={formState.timeoutMs}
 										onChange={(event) =>
-											setFormState((current) => ({
-												...current,
-												classId: event.target.value,
-											}))
-										}
-										placeholder={
-											classesQuery.isLoading
-												? "Loading classes..."
-												: "Class ID"
+											patchFormState({ timeoutMs: event.target.value })
 										}
 									/>
-								)}
+								</label>
+							</div>
+							<GuidedFlowContinue
+								disabled={!requestReady}
+								nextLabel="Templates"
+								onBack={() => setActiveStep("scope")}
+								onContinue={() => continueFrom("request", "templates")}
+								summary={`${formState.method.toUpperCase()} ${formState.urlTemplate || "URL template"}`}
+								title={
+									requestReady
+										? "Request ready"
+										: "Describe the outbound request"
+								}
+							/>
+						</GuidedFlowPanel>
+					) : null}
+
+					{activeStep === "templates" ? (
+						<GuidedFlowPanel stepId="templates">
+							<label className="control-field control-field--wide">
+								<span>Headers template JSON</span>
+								<textarea
+									rows={7}
+									value={formState.headersTemplateInput}
+									onChange={(event) =>
+										patchFormState({ headersTemplateInput: event.target.value })
+									}
+								/>
+							</label>
+							<label className="control-field control-field--wide">
+								<span>Body template (optional)</span>
+								<textarea
+									rows={8}
+									value={formState.bodyTemplate}
+									onChange={(event) =>
+										patchFormState({ bodyTemplate: event.target.value })
+									}
+									placeholder='{"object_id":{{ object.id }}}'
+								/>
 								<span className="field-note">
-									Object targets apply only to objects in this class.
+									Leave blank for requests without a body.
 								</span>
 							</label>
-						) : null}
-					</div>
-
-					<div className="remote-subject-section">
-						<h4>Subject type</h4>
-						<div className="remote-subject-options">
-							{SUBJECT_TYPES.map((subjectType) => (
-								<label key={subjectType} className="remote-subject-option">
-									<input
-										type="radio"
-										name="remote-target-subject-type"
-										checked={formState.allowedSubjectTypes.includes(subjectType)}
-										onChange={() => selectSubjectType(subjectType)}
-									/>
-									<span>{subjectType.replaceAll("_", " ")}</span>
-								</label>
-							))}
-						</div>
-					</div>
-
-					<div className="form-grid">
-						<label className="control-field control-field--wide">
-							<span>Headers template JSON</span>
-							<textarea
-								rows={5}
-								value={formState.headersTemplateInput}
-								onChange={(event) =>
-									setFormState((current) => ({
-										...current,
-										headersTemplateInput: event.target.value,
-									}))
+							<GuidedFlowContinue
+								disabled={!templatesReady}
+								nextLabel="Authentication"
+								onBack={() => setActiveStep("request")}
+								onContinue={() => continueFrom("templates", "authentication")}
+								summary={`${formState.headersTemplateInput.trim() === "{}" ? "No custom headers" : "Custom headers"} · ${formState.bodyTemplate.trim() ? "body template" : "no body"}`}
+								title={
+									templatesReady
+										? "Templates ready"
+										: "Fix the headers template JSON"
 								}
 							/>
-						</label>
+						</GuidedFlowPanel>
+					) : null}
 
-						<label className="control-field control-field--wide">
-							<span>Auth config JSON</span>
-							<textarea
-								rows={5}
-								value={formState.authConfigInput}
-								onChange={(event) =>
-									setFormState((current) => ({
-										...current,
-										authConfigInput: event.target.value,
-									}))
+					{activeStep === "authentication" ? (
+						<GuidedFlowPanel stepId="authentication">
+							<fieldset className="remote-subject-section">
+								<legend>Authentication method</legend>
+								<div className="remote-subject-options">
+									{(
+										[
+											["none", "None"],
+											["bearer_secret", "Bearer token"],
+											["basic_secret", "Basic"],
+											["api_key_secret", "API key"],
+										] as const
+									).map(([authType, label]) => (
+										<label key={authType} className="remote-subject-option">
+											<input
+												type="radio"
+												name="remote-target-auth-type"
+												checked={formState.authType === authType}
+												onChange={() => patchFormState({ authType })}
+											/>
+											<span>{label}</span>
+										</label>
+									))}
+								</div>
+							</fieldset>
+							{formState.authType !== "none" ? (
+								<div className="form-grid">
+									{formState.authType === "basic_secret" ? (
+										<label className="control-field">
+											<span>Username</span>
+											<input
+												value={formState.authUsername}
+												onChange={(event) =>
+													patchFormState({ authUsername: event.target.value })
+												}
+											/>
+										</label>
+									) : null}
+									{formState.authType === "api_key_secret" ? (
+										<label className="control-field">
+											<span>Header name</span>
+											<input
+												value={formState.authHeader}
+												onChange={(event) =>
+													patchFormState({ authHeader: event.target.value })
+												}
+												placeholder="X-API-Key"
+											/>
+										</label>
+									) : null}
+									<label className="control-field control-field--wide">
+										<span>Secret reference</span>
+										<input
+											value={formState.authSecret}
+											onChange={(event) =>
+												patchFormState({ authSecret: event.target.value })
+											}
+											placeholder="remote-target-credential"
+										/>
+										<span className="field-note">
+											Reference an externally managed secret; do not enter a
+											credential value.
+										</span>
+									</label>
+								</div>
+							) : (
+								<div className="info-banner">
+									The request will be sent without an authorization credential.
+								</div>
+							)}
+							<GuidedFlowContinue
+								disabled={!authenticationReady}
+								nextLabel="Review"
+								onBack={() => setActiveStep("templates")}
+								onContinue={() => continueFrom("authentication", "review")}
+								summary={authenticationSummary}
+								title={
+									authenticationReady
+										? "Authentication ready"
+										: "Complete the secret reference details"
 								}
 							/>
-						</label>
+						</GuidedFlowPanel>
+					) : null}
 
-						<label className="control-field control-field--wide">
-							<span>Body template</span>
-							<textarea
-								rows={5}
-								value={formState.bodyTemplate}
-								onChange={(event) =>
-									setFormState((current) => ({
-										...current,
-										bodyTemplate: event.target.value,
-									}))
-								}
-								placeholder='{"object_id":{{ object.id }}}'
-							/>
-						</label>
-					</div>
-
-					<label className="control-check">
-						<input
-							type="checkbox"
-							checked={formState.enabled}
-							onChange={(event) =>
-								setFormState((current) => ({
-									...current,
-									enabled: event.target.checked,
-								}))
-							}
-						/>
-						<span>Enabled</span>
-					</label>
+					{activeStep === "review" ? (
+						<GuidedFlowPanel stepId="review">
+							<dl className="guided-flow-review-list">
+								<div>
+									<dt>Target</dt>
+									<dd>
+										{formState.name} ·{" "}
+										{selectedCollection?.name ??
+											`collection #${formState.collectionId}`}
+									</dd>
+								</div>
+								<div>
+									<dt>Subject</dt>
+									<dd>
+										{selectedSubjectType?.replaceAll("_", " ")}
+										{selectedClass ? ` · ${selectedClass.name}` : ""}
+									</dd>
+								</div>
+								<div>
+									<dt>Request</dt>
+									<dd>
+										{formState.method.toUpperCase()} {formState.urlTemplate}
+									</dd>
+								</div>
+								<div>
+									<dt>Templates</dt>
+									<dd>
+										{formState.bodyTemplate.trim()
+											? "Headers and body configured"
+											: "Headers configured; no body"}
+									</dd>
+								</div>
+								<div>
+									<dt>Authentication</dt>
+									<dd>{authenticationSummary}</dd>
+								</div>
+							</dl>
+							<label className="control-check">
+								<input
+									type="checkbox"
+									checked={formState.enabled}
+									onChange={(event) =>
+										patchFormState({ enabled: event.target.checked })
+									}
+								/>
+								<span>Enable this target immediately</span>
+							</label>
+							<div className="form-actions">
+								<button
+									type="button"
+									className="ghost"
+									onClick={() => setActiveStep("authentication")}
+									disabled={isSaving}
+								>
+									Back
+								</button>
+								<button
+									type="submit"
+									disabled={isSaving || !authenticationReady}
+								>
+									{isSaving
+										? "Saving..."
+										: formMode === "edit"
+											? "Save target"
+											: "Create target"}
+								</button>
+							</div>
+						</GuidedFlowPanel>
+					) : null}
 
 					{formError ? <div className="error-banner">{formError}</div> : null}
-
-					<div className="form-actions">
-						<button type="submit" disabled={isSaving}>
-							{isSaving
-								? "Saving..."
-								: formMode === "edit"
-									? "Save target"
-									: "Create target"}
-						</button>
-						<button
-							type="button"
-							className="ghost"
-							onClick={() => setModalOpen(false)}
-							disabled={isSaving}
-						>
-							Cancel
-						</button>
-					</div>
 				</form>
 			</CreateModal>
 
@@ -922,8 +1197,8 @@ export function AdminRemoteTargetsTable() {
 										<td>
 											{target.class_id == null
 												? "n/a"
-												: classesById.get(target.class_id)?.name ??
-													`#${target.class_id}`}
+												: (classesById.get(target.class_id)?.name ??
+													`#${target.class_id}`)}
 										</td>
 										<td>{target.enabled ? "yes" : "no"}</td>
 										<td>{formatTimestamp(target.updated_at)}</td>

@@ -42,6 +42,9 @@ let flushTimer: number | null = null;
 let flushInFlight: Promise<void> | null = null;
 let retryAttempt = 0;
 const pendingUpdates = new Map<string, string | null>();
+// A successful write can race a refresh whose server render already read the
+// older settings. Keep the local value until a later snapshot confirms it.
+const unconfirmedUpdates = new Map<string, string | null>();
 
 function listPortableSettingKeys(): string[] {
 	const keys: string[] = [];
@@ -62,7 +65,7 @@ function pendingStorageKey(principalId: number): string {
 	return `${USER_SETTINGS_PENDING_KEY_PREFIX}${principalId}`;
 }
 
-function readPersistedPendingUpdates(
+function readPersistedUnconfirmedUpdates(
 	principalId: number,
 ): Record<string, string | null> {
 	try {
@@ -74,21 +77,31 @@ function readPersistedPendingUpdates(
 	}
 }
 
-function persistPendingUpdates(): void {
+function persistUnconfirmedUpdates(): void {
 	if (activePrincipalId === null) return;
 	try {
 		const key = pendingStorageKey(activePrincipalId);
-		if (pendingUpdates.size === 0) {
+		if (unconfirmedUpdates.size === 0) {
 			window.localStorage.removeItem(key);
 			return;
 		}
 		window.localStorage.setItem(
 			key,
-			JSON.stringify(Object.fromEntries(pendingUpdates)),
+			JSON.stringify(Object.fromEntries(unconfirmedUpdates)),
 		);
 	} catch {
-		// The in-memory queue still gives this tab a chance to retry.
+		// The in-memory state still gives this tab a chance to retry.
 	}
+}
+
+function settingMatchesSnapshot(
+	snapshot: UserSettingsSnapshot,
+	key: string,
+	value: string | null,
+): boolean {
+	return value === null
+		? snapshot.settings[key] === undefined
+		: snapshot.settings[key] === value;
 }
 
 function applyUpdatesToCache(updates: Record<string, string | null>): void {
@@ -138,6 +151,7 @@ export function prepareUserSettingsCache(principalId: number | null): void {
 	}
 
 	pendingUpdates.clear();
+	unconfirmedUpdates.clear();
 	activePrincipalId = principalId;
 	syncEnabled = false;
 	retryAttempt = 0;
@@ -153,9 +167,10 @@ export function prepareUserSettingsCache(principalId: number | null): void {
 		USER_SETTINGS_CACHE_VERSION_KEY,
 		String(USER_SETTINGS_SCHEMA_VERSION),
 	);
-	const persisted = readPersistedPendingUpdates(principalId);
+	const persisted = readPersistedUnconfirmedUpdates(principalId);
 	for (const [key, value] of Object.entries(persisted)) {
 		pendingUpdates.set(key, value);
+		unconfirmedUpdates.set(key, value);
 	}
 	applyUpdatesToCache(persisted);
 	setSyncStatus("idle");
@@ -176,7 +191,12 @@ export function initializeUserSettings(snapshot: UserSettingsSnapshot): void {
 		}
 	}
 
-	const persisted = readPersistedPendingUpdates(snapshot.principalId);
+	const persisted = readPersistedUnconfirmedUpdates(snapshot.principalId);
+	const unresolvedUpdates = Object.fromEntries(
+		Object.entries({ ...migration, ...persisted }).filter(
+			([key, value]) => !settingMatchesSnapshot(snapshot, key, value),
+		),
+	);
 	clearPortableSettingValues();
 	applyUpdatesToCache(
 		Object.fromEntries(
@@ -185,8 +205,7 @@ export function initializeUserSettings(snapshot: UserSettingsSnapshot): void {
 			),
 		),
 	);
-	applyUpdatesToCache(migration);
-	applyUpdatesToCache(persisted);
+	applyUpdatesToCache(unresolvedUpdates);
 	window.localStorage.setItem(USER_SETTINGS_OWNER_KEY, principalOwner);
 	window.localStorage.setItem(
 		USER_SETTINGS_CACHE_VERSION_KEY,
@@ -197,10 +216,12 @@ export function initializeUserSettings(snapshot: UserSettingsSnapshot): void {
 	syncEnabled = true;
 	retryAttempt = 0;
 	pendingUpdates.clear();
-	for (const [key, value] of Object.entries({ ...migration, ...persisted })) {
+	unconfirmedUpdates.clear();
+	for (const [key, value] of Object.entries(unresolvedUpdates)) {
 		pendingUpdates.set(key, value);
+		unconfirmedUpdates.set(key, value);
 	}
-	persistPendingUpdates();
+	persistUnconfirmedUpdates();
 	setSyncStatus(pendingUpdates.size > 0 ? "idle" : "synced");
 	if (pendingUpdates.size > 0) scheduleFlush();
 }
@@ -211,6 +232,7 @@ export function disableUserSettingsSync(): void {
 	if (flushTimer !== null) window.clearTimeout(flushTimer);
 	flushTimer = null;
 	pendingUpdates.clear();
+	unconfirmedUpdates.clear();
 	retryAttempt = 0;
 	setSyncStatus("disabled");
 }
@@ -255,6 +277,16 @@ function mergeFailedUpdates(updates: Record<string, string | null>): void {
 	}
 }
 
+function discardUnconfirmedUpdates(
+	updates: Record<string, string | null>,
+): void {
+	for (const [key, value] of Object.entries(updates)) {
+		if (unconfirmedUpdates.get(key) === value) {
+			unconfirmedUpdates.delete(key);
+		}
+	}
+}
+
 export function flushUserSettings(
 	options: { keepalive?: boolean } = {},
 ): Promise<void> {
@@ -280,7 +312,7 @@ export function flushUserSettings(
 		.then(() => {
 			if (!syncEnabled || activePrincipalId !== principalId) return;
 			retryAttempt = 0;
-			persistPendingUpdates();
+			persistUnconfirmedUpdates();
 			setSyncStatus(pendingUpdates.size > 0 ? "idle" : "synced");
 		})
 		.catch((error: unknown) => {
@@ -291,8 +323,10 @@ export function flushUserSettings(
 				(error.status === 401 || error.status === 403);
 			if (retryable || preserveForNextSession) {
 				mergeFailedUpdates(updates);
+			} else {
+				discardUnconfirmedUpdates(updates);
 			}
-			persistPendingUpdates();
+			persistUnconfirmedUpdates();
 			setSyncStatus("degraded");
 			if (retryable) {
 				retryAttempt += 1;
@@ -338,7 +372,8 @@ export function writeUserSetting(key: string, value: string): boolean {
 		window.localStorage.setItem(key, value);
 		if (activePrincipalId !== null) {
 			pendingUpdates.set(key, value);
-			persistPendingUpdates();
+			unconfirmedUpdates.set(key, value);
+			persistUnconfirmedUpdates();
 			if (syncEnabled) {
 				setSyncStatus("idle");
 				scheduleFlush();
@@ -358,7 +393,8 @@ export function removeUserSetting(key: string): boolean {
 		window.localStorage.removeItem(key);
 		if (activePrincipalId !== null) {
 			pendingUpdates.set(key, null);
-			persistPendingUpdates();
+			unconfirmedUpdates.set(key, null);
+			persistUnconfirmedUpdates();
 			if (syncEnabled) {
 				setSyncStatus("idle");
 				scheduleFlush();
@@ -406,4 +442,5 @@ export function resetUserSettingsSyncForTests(): void {
 	flushInFlight = null;
 	retryAttempt = 0;
 	pendingUpdates.clear();
+	unconfirmedUpdates.clear();
 }
