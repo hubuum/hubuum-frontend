@@ -14,6 +14,7 @@ export type ObjectGroupingField = {
 	id: string;
 	label: string;
 	section: ObjectGroupingFieldSection;
+	serverGroupBy?: string;
 };
 
 type ObjectGroupingMenuProps = {
@@ -71,6 +72,7 @@ export function ObjectGroupingMenu({
 		[fields],
 	);
 	const selectedField = fields.find((field) => field.id === fieldId) ?? null;
+	const usesServerAggregation = Boolean(selectedField?.serverGroupBy);
 
 	useEffect(() => {
 		if (!isOpen) return;
@@ -120,12 +122,22 @@ export function ObjectGroupingMenu({
 				<div
 					className="object-grouping-menu card"
 					role="dialog"
-					aria-label="Group loaded rows"
+					aria-label="Group objects"
 				>
 					<div className="object-grouping-menu-header">
 						<div>
-							<strong>Group loaded rows</strong>
-							<p>Counts are calculated from the current fetched page.</p>
+							<strong>
+								{usesServerAggregation
+									? "Group all matching objects"
+									: "Group objects"}
+							</strong>
+							<p>
+								{usesServerAggregation
+									? "Counts are permission-aware and calculated by the server."
+									: selectedField
+										? "Custom fallback fields are calculated from the current fetched page."
+										: "Supported fields use server aggregation across the full filtered class."}
+							</p>
 						</div>
 						{selectedField ? (
 							<button
@@ -142,9 +154,7 @@ export function ObjectGroupingMenu({
 						<select
 							ref={fieldRef}
 							value={selectedField?.id ?? ""}
-							onChange={(event) =>
-								onFieldChange(event.target.value || null)
-							}
+							onChange={(event) => onFieldChange(event.target.value || null)}
 						>
 							<option value="">No grouping</option>
 							{fieldsBySection.map((entry) => (
@@ -175,7 +185,9 @@ export function ObjectGroupingMenu({
 						</select>
 					</label>
 					<p className="object-grouping-footnote">
-						Use a report when the grouping must cover more rows than this page.
+						{usesServerAggregation
+							? "Server filters are applied before aggregation."
+							: "Use a server-supported field or report to group beyond this page."}
 					</p>
 				</div>
 			) : null}

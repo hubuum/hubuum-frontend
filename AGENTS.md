@@ -138,6 +138,18 @@ on the risk of the change.
 - Production dependency audit: `npm run audit:prod`
 - Live backend contract suite: `npm run test:live-backend`
 
+### Authenticated Playwright credentials
+
+- Use `admin` for `E2E_USERNAME` when testing against a disposable or local
+  Hubuum Server container.
+- Immediately before the run, obtain `E2E_PASSWORD` by executing
+  `/usr/local/bin/hubuum-admin --reset-password admin` inside the Hubuum Server
+  container. Capture the generated password directly into a shell variable;
+  never print it, write it to a file, commit it, or include it in test output.
+- Set `PLAYWRIGHT_BASE_URL` when targeting an already running frontend. Remove
+  only disposable frontend/backend containers and volumes created for the test;
+  do not stop developer-owned processes.
+
 For ordinary TypeScript changes, run lint, typecheck, and relevant unit tests.
 Also run the production build when changing routes, server/client boundaries,
 configuration, or build behavior. Run the relevant Playwright tests for user-
@@ -148,6 +160,19 @@ changes rather than every local edit.
 If a required check cannot run because credentials, Docker, a browser, network
 access, or a live backend is unavailable, report that explicitly; do not claim
 the check passed.
+
+### Release dependency gate
+
+- Before every release, update all application, development, and GitHub Actions
+  dependencies to their latest available versions and keep lockfiles and pinned
+  action SHAs in sync.
+- Merge or supersede every open Dependabot dependency pull request before
+  tagging. Do not release while a dependency update remains open or unresolved.
+- Run `npm outdated` and the production dependency audit after the updates. If
+  an update must be deferred for a concrete compatibility reason, document the
+  exception in the release pull request and release notes.
+- Rerun the full release verification against the combined dependency set;
+  green checks on the individual update pull requests are not a substitute.
 
 ## Change discipline
 

@@ -2,6 +2,7 @@ const PAGINATION_HEADERS = [
 	"X-Next-Cursor",
 	"X-Prev-Cursor",
 	"X-Total-Count",
+	"X-Page-Limit",
 ] as const;
 
 export function copyPaginationHeaders(

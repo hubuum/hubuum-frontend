@@ -1,4 +1,5 @@
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { collectAllCursorPages } from "@/lib/api/cursor-pages";
 import {
 	deleteApiV1EventSinksBySinkId,
 	getApiV1ClassesByClassIdByObjectIdEvents,
@@ -306,15 +307,23 @@ export async function fetchEventDeliveriesPage(
 }
 
 export async function fetchEventSinks(): Promise<EventSink[]> {
-	const response = await getApiV1EventSinks({ credentials: "include" });
+	return collectAllCursorPages(async (cursor) => {
+		const response = await getApiV1EventSinks(
+			{ cursor, include_total: false, limit: 250 },
+			{ credentials: "include" },
+		);
 
-	assertStatus(
-		response.status,
-		response.data,
-		200,
-		"Failed to load event sinks.",
-	);
-	return response.data as EventSink[];
+		assertStatus(
+			response.status,
+			response.data,
+			200,
+			"Failed to load event sinks.",
+		);
+		return {
+			items: response.data as EventSink[],
+			nextCursor: response.headers.get("x-next-cursor"),
+		};
+	});
 }
 
 export async function createEventSink(
@@ -366,18 +375,24 @@ export async function deleteEventSink(sinkId: number): Promise<void> {
 export async function fetchCollectionEventSubscriptions(
 	collectionId: number,
 ): Promise<EventSubscription[]> {
-	const response = await getApiV1CollectionsByCollectionIdEventSubscriptions(
-		collectionId,
-		{ credentials: "include" },
-	);
+	return collectAllCursorPages(async (cursor) => {
+		const response = await getApiV1CollectionsByCollectionIdEventSubscriptions(
+			collectionId,
+			{ cursor, include_total: false, limit: 250 },
+			{ credentials: "include" },
+		);
 
-	assertStatus(
-		response.status,
-		response.data,
-		200,
-		"Failed to load event subscriptions.",
-	);
-	return response.data as EventSubscription[];
+		assertStatus(
+			response.status,
+			response.data,
+			200,
+			"Failed to load event subscriptions.",
+		);
+		return {
+			items: response.data as EventSubscription[],
+			nextCursor: response.headers.get("x-next-cursor"),
+		};
+	});
 }
 
 export async function createCollectionEventSubscription(

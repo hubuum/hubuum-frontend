@@ -142,12 +142,33 @@ export function AuditWorkspace() {
 		columns: eventExportColumns,
 		rows: eventsQuery.data?.items ?? [],
 	};
+	const events = eventsQuery.data?.items ?? [];
+	const selectedEventIndex = selectedEvent
+		? events.findIndex((event) => event.id === selectedEvent.id)
+		: -1;
 
 	return (
 		<section className="stack">
 			<EventDetailsModal
 				event={selectedEvent}
 				onClose={() => setSelectedEvent(null)}
+				navigation={
+					selectedEventIndex >= 0
+						? {
+								current: selectedEventIndex + 1,
+								itemLabel: "audit event",
+								onPrevious:
+									selectedEventIndex > 0
+										? () => setSelectedEvent(events[selectedEventIndex - 1])
+										: undefined,
+								onNext:
+									selectedEventIndex < events.length - 1
+										? () => setSelectedEvent(events[selectedEventIndex + 1])
+										: undefined,
+								total: events.length,
+							}
+						: undefined
+				}
 			/>
 			<header className="stack action-card-header">
 				<div className="stack action-card-header">
@@ -299,10 +320,10 @@ export function AuditWorkspace() {
 								</tr>
 							</thead>
 							<tbody>
-								{eventsQuery.data.items.map((event) => (
+								{events.map((event) => (
 									<tr
 										key={event.id}
-										className="audit-event-row"
+										className="activity-detail-row"
 										tabIndex={0}
 										onClick={() => setSelectedEvent(event)}
 										onKeyDown={(keyboardEvent) => {

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.2
+ * OpenAPI spec version: 0.0.3
  */
 import type { BackupTaskDetails } from './backupTaskDetails';
 import type { ExportTaskDetails } from './exportTaskDetails';

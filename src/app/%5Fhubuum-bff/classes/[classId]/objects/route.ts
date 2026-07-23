@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetchRaw } from "@/lib/api/backend";
+import { copyPaginationHeaders } from "@/lib/api/proxy-pagination-headers";
 import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
 import {
 	clearSessionCookie,
@@ -95,21 +96,8 @@ async function proxyClassObjects(request: NextRequest, context: RouteContext) {
 		response.headers.set("content-type", contentType);
 	}
 	copySafeUpstreamResponseHeaders(upstream.headers, response.headers);
+	copyPaginationHeaders(upstream.headers, response.headers);
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
-
-	// Forward pagination headers
-	const nextCursor = upstream.headers.get("X-Next-Cursor");
-	if (nextCursor) {
-		response.headers.set("X-Next-Cursor", nextCursor);
-	}
-	const prevCursor = upstream.headers.get("X-Prev-Cursor");
-	if (prevCursor) {
-		response.headers.set("X-Prev-Cursor", prevCursor);
-	}
-	const totalCount = upstream.headers.get("X-Total-Count");
-	if (totalCount) {
-		response.headers.set("X-Total-Count", totalCount);
-	}
 
 	if (upstream.status === 401) {
 		await destroySession(session.sid);

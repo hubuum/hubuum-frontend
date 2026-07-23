@@ -103,7 +103,7 @@ async function createComputedFieldThroughFlow(
 	await expect(scopeCard.getByText(key, { exact: true })).toBeVisible();
 }
 
-test.describe("v0.0.2 server features", () => {
+test.describe("v0.0.3 server features", () => {
 	test.skip(
 		!username || !password,
 		"Set E2E_USERNAME and E2E_PASSWORD to run authenticated flows.",
@@ -199,7 +199,11 @@ test.describe("v0.0.2 server features", () => {
 				{
 					data: {
 						collection_id: collection.id,
-						data: { hostname: "e2e-host", port: 443 },
+						data: {
+							hostname: "e2e-host",
+							network: { interfaces: [{ name: "eth0" }] },
+							port: 443,
+						},
 						description: "Computed-field preview object",
 						hubuum_class_id: hubuumClass.id,
 						name: previewObjectName,
@@ -235,7 +239,11 @@ test.describe("v0.0.2 server features", () => {
 				{
 					data: {
 						collection_id: collection.id,
-						data: { hostname: "e2e-host", port: 443 },
+						data: {
+							hostname: "e2e-host",
+							network: { interfaces: [{ name: "eth0" }] },
+							port: 443,
+						},
 						description: "Computed-field object",
 						hubuum_class_id: hubuumClass.id,
 						name: objectName,
@@ -316,19 +324,30 @@ test.describe("v0.0.2 server features", () => {
 				}),
 			).toHaveCount(2);
 
+			const findOnPage = page.getByLabel("Find objects on this loaded page");
+			await findOnPage.fill("e2e-host");
+			await findOnPage.press("Enter");
+			await expect
+				.poll(() => new URL(page.url()).searchParams.get("search"))
+				.toBe("e2e-host");
 			await page.getByRole("button", { name: "Group" }).click();
 			const groupingMenu = page.getByRole("dialog", {
-				name: "Group loaded rows",
+				name: "Group objects",
 			});
 			await groupingMenu
 				.getByLabel("Group by")
 				.selectOption({ label: "Shared · Shared hostname" });
+			await expect(findOnPage).toBeDisabled();
+			await expect(findOnPage).toHaveValue("");
+			await expect
+				.poll(() => new URL(page.url()).searchParams.get("search"))
+				.toBeNull();
 			await expect(groupingMenu.getByLabel("Sort groups")).toHaveValue(
 				"count-desc",
 			);
 			await page.keyboard.press("Escape");
 			const groupedTable = page.getByRole("region", {
-				name: "Grouped objects",
+				name: "Object aggregates",
 			});
 			const hostnameGroup = groupedTable
 				.getByRole("row")
@@ -355,15 +374,228 @@ test.describe("v0.0.2 server features", () => {
 			).toEqual([]);
 
 			await page.goto(`/objects/${hubuumClass.id}/${object.id}`);
+			const connectionsSection = page.locator("#object-connections");
+			const connectionsHeader = connectionsSection.locator(":scope > header");
+			await expect(
+				connectionsHeader.getByRole("heading", { name: "Connections" }),
+			).toBeVisible();
+			const depthPicker = connectionsHeader.getByRole("group", {
+				name: "Connection depth",
+			});
+			await expect(depthPicker).toBeVisible();
+			await expect(depthPicker.getByRole("button")).toHaveCount(4);
+			await expect(
+				depthPicker.getByRole("button", { name: "2" }),
+			).toHaveAttribute("aria-pressed", "true");
+			await depthPicker.getByRole("button", { name: "3" }).click();
+			await expect(
+				depthPicker.getByRole("button", { name: "3" }),
+			).toHaveAttribute("aria-pressed", "true");
+			await expect(
+				connectionsHeader.locator(".relations-toggle"),
+			).toContainText("Include e2e_computed_class_");
+			await connectionsHeader
+				.getByRole("button", { name: "Class filters" })
+				.click();
+			await expect(
+				connectionsHeader.getByText("Hide classes", { exact: true }),
+			).toBeVisible();
+			await page.keyboard.press("Escape");
+			await expect(
+				page.getByText("Connection paths and filters", { exact: true }),
+			).toHaveCount(0);
+			await expect(page.locator(".object-record-heading .eyebrow")).toHaveCount(
+				0,
+			);
+			await expect(
+				page.locator(".object-property-section--data > header .eyebrow"),
+			).toHaveCount(0);
+			await expect(connectionsHeader.locator(".eyebrow")).toHaveCount(0);
+			await expect(page.getByRole("button", { name: "Edit all" })).toHaveCount(
+				0,
+			);
+			await page.getByRole("button", { name: /Edit object name\./ }).click();
+			const nameInput = page.getByLabel("Object name");
+			const nameValueCell = page
+				.locator(".object-fact-value")
+				.filter({ has: nameInput });
+			const [nameInputBox, nameValueCellBox] = await Promise.all([
+				nameInput.boundingBox(),
+				nameValueCell.boundingBox(),
+			]);
+			if (!nameInputBox || !nameValueCellBox) {
+				throw new Error("Object name editor did not produce layout boxes.");
+			}
+			expect(nameInputBox.x).toBeGreaterThanOrEqual(nameValueCellBox.x - 1);
+			expect(nameInputBox.x + nameInputBox.width).toBeLessThanOrEqual(
+				nameValueCellBox.x + nameValueCellBox.width + 1,
+			);
+			await page.keyboard.press("Escape");
 			await expect(
 				page.getByRole("heading", { name: "Computed values" }),
 			).toBeVisible();
+			await expect(page.getByText("Derived data", { exact: true })).toHaveCount(
+				0,
+			);
 			await expect(
 				page.getByText("shared_hostname", { exact: true }),
 			).toBeVisible();
 			await expect(
 				page.getByText("personal_hostname", { exact: true }),
 			).toBeVisible();
+			await expect(
+				page.getByText(
+					"Click a field to edit · Enter saves the field · Esc cancels",
+					{ exact: true },
+				),
+			).toBeVisible();
+			const nestedPath = page
+				.locator("dt")
+				.filter({ hasText: "network.interfaces[0].name" });
+			await expect(nestedPath).toHaveCSS("white-space", "nowrap");
+			await page
+				.getByRole("button", {
+					name: /Edit network\.interfaces\[0\]\.name\./,
+				})
+				.click();
+			const inlineType = page.getByLabel("Type for network.interfaces[0].name");
+			const inlineValue = page.getByLabel(
+				"Value for network.interfaces[0].name",
+			);
+			const [typeBox, valueBox] = await Promise.all([
+				inlineType.boundingBox(),
+				inlineValue.boundingBox(),
+			]);
+			if (!typeBox || !valueBox) {
+				throw new Error("Inline data controls did not produce layout boxes.");
+			}
+			expect(typeBox.width).toBeLessThan(120);
+			expect(valueBox.width).toBeGreaterThan(typeBox.width);
+			await page.keyboard.press("Escape");
+
+			await page.getByRole("button", { name: /Edit as JSON/ }).click();
+			await expect(page.getByLabel("Data (JSON)")).toBeVisible();
+			await page.getByLabel("Data (JSON)").fill(
+				JSON.stringify(
+					{
+						hostname: "e2e-host-updated",
+						network: { interfaces: [{ name: "eth0" }] },
+						port: 443,
+					},
+					null,
+					2,
+				),
+			);
+			const changeReview = page.locator(".object-data-change-review");
+			await expect(
+				changeReview.getByText("1 change", { exact: true }),
+			).toBeVisible();
+			await expect(
+				changeReview.getByText("hostname", { exact: true }),
+			).toBeVisible();
+			const patchRequestPromise = page.waitForRequest(
+				(request) =>
+					request.method() === "PATCH" &&
+					new URL(request.url()).pathname.endsWith(
+						`/api/v1/classes/${hubuumClass.id}/${object.id}/data`,
+					),
+			);
+			await page.getByRole("button", { name: "Save changes" }).click();
+			const patchRequest = await patchRequestPromise;
+			expect(patchRequest.postDataJSON() as unknown).toEqual([
+				{ op: "test", path: "/hostname", value: "e2e-host" },
+				{
+					op: "replace",
+					path: "/hostname",
+					value: "e2e-host-updated",
+				},
+			]);
+			await expect(
+				page.getByText("Object updated.", { exact: true }),
+			).toBeVisible();
+			await page.reload();
+			await expect(
+				page.getByRole("heading", { name: objectName }),
+			).toBeVisible();
+
+			const activityPanel = page.getByRole("article").filter({
+				has: page.getByRole("heading", { name: "Object audit and history" }),
+			});
+			const auditSection = activityPanel.locator("section").filter({
+				has: page.getByText("Recent audit events", { exact: true }),
+			});
+			const auditEventRow = auditSection.locator("tbody tr").first();
+			await expect(auditEventRow).toBeVisible();
+			await auditEventRow.click();
+			const auditDialog = page.getByRole("dialog", {
+				name: /Audit event #/,
+			});
+			await expect(auditDialog.getByText("State changes")).toBeVisible();
+			await expect(
+				auditDialog.locator(".event-diff-summary .status-pill"),
+			).toHaveCSS("white-space", "nowrap");
+			await expect(
+				auditDialog.getByRole("button", { name: "Previous audit event" }),
+			).toBeDisabled();
+			await expect(
+				auditDialog.getByRole("button", { name: "Previous audit event" }),
+			).toHaveCSS("opacity", "0.38");
+			const nextAuditEvent = auditDialog.getByRole("button", {
+				name: "Next audit event",
+			});
+			await expect(nextAuditEvent).toBeEnabled();
+			await nextAuditEvent.click();
+			await expect(
+				auditDialog.getByRole("button", { name: "Previous audit event" }),
+			).toBeEnabled();
+			await auditDialog.getByRole("button", { name: "Close dialog" }).click();
+
+			const historySection = activityPanel.locator("section").filter({
+				has: page.getByText("Version history", { exact: true }),
+			});
+			const historyRow = historySection.locator("tbody tr").first();
+			await expect(historyRow).toBeVisible();
+			await historyRow.click();
+			const historyDialog = page.getByRole("dialog", {
+				name: /History version #/,
+			});
+			await expect(historyDialog.getByText("Stored state")).toBeVisible();
+			await expect(
+				historyDialog.getByRole("button", {
+					name: "Previous history version",
+				}),
+			).toBeDisabled();
+			const nextHistoryVersion = historyDialog.getByRole("button", {
+				name: "Next history version",
+			});
+			await expect(nextHistoryVersion).toBeEnabled();
+			await page.keyboard.press("ArrowRight");
+			await expect(
+				historyDialog.getByRole("button", {
+					name: "Previous history version",
+				}),
+			).toBeEnabled();
+			await historyDialog.getByRole("button", { name: "Close dialog" }).click();
+
+			await page.goto("/audit");
+			const globalAuditRow = page.locator("tbody tr").first();
+			await expect(globalAuditRow).toBeVisible();
+			await globalAuditRow.click();
+			const globalAuditDialog = page.getByRole("dialog", {
+				name: /Audit event #/,
+			});
+			await expect(globalAuditDialog.getByText("State changes")).toBeVisible();
+			await expect(
+				globalAuditDialog.getByRole("button", {
+					name: "Previous audit event",
+				}),
+			).toBeVisible();
+			await expect(
+				globalAuditDialog.getByRole("button", { name: "Next audit event" }),
+			).toBeVisible();
+			await globalAuditDialog
+				.getByRole("button", { name: "Close dialog" })
+				.click();
 		} finally {
 			if (objectId !== null) {
 				await page.request.delete(

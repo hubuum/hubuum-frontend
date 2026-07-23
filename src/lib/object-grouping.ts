@@ -12,6 +12,11 @@ export type ObjectGroup<Row> = {
 	rows: Row[];
 };
 
+export type ObjectAggregateDimension = {
+	state: "value" | "null" | "missing" | "unavailable";
+	value?: unknown;
+};
+
 function stableJsonValue(value: unknown): unknown {
 	if (Array.isArray(value)) {
 		return value.map(stableJsonValue);
@@ -60,6 +65,15 @@ export function formatObjectGroupValue(value: unknown): string {
 	} catch {
 		return String(value);
 	}
+}
+
+export function formatObjectAggregateDimension(
+	dimension: ObjectAggregateDimension,
+): string {
+	if (dimension.state === "null") return "(null)";
+	if (dimension.state === "missing") return "(missing)";
+	if (dimension.state === "unavailable") return "(unavailable)";
+	return formatObjectGroupValue(dimension.value);
 }
 
 function compareGroupLabels(left: string, right: string): number {

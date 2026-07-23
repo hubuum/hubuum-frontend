@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.2
+ * OpenAPI spec version: 0.0.3
  */
 
 export type GetApiV1SearchStreamParams = {
@@ -16,8 +16,9 @@ q: string;
  */
 kinds?: string;
 /**
- * Maximum results per kind
- * @minimum 0
+ * Maximum results per kind. Defaults to 100. The server clamps values above 250.
+ * @minimum 1
+ * @maximum 250
  */
 limit_per_kind?: number;
 /**

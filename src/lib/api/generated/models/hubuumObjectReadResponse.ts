@@ -3,9 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.2
+ * OpenAPI spec version: 0.0.3
  */
 import type { HubuumObject } from './hubuumObject';
 import type { HubuumObjectComputedResponse } from './hubuumObjectComputedResponse';
 
+/**
+ * The two typed representations returned by object read endpoints.
+ */
 export type HubuumObjectReadResponse = HubuumObject | HubuumObjectComputedResponse;

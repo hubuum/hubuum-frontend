@@ -139,18 +139,21 @@ existing object or sample data, and shared values can be explicitly rebuilt.
 Object reads opt in with `include=computed`; enabled shared and personal values
 then appear as individually selectable, per-user object-table columns, in table
 exports and loaded-page search, and on object detail pages. Evaluation errors
-and stale shared materializations remain visible. Computed values are
-display-only for querying: Hubuum Server does not support filtering or sorting
-by them in `v0.0.2`.
+and stale shared materializations remain visible. With Hubuum Server `v0.0.3`,
+computed columns can sort the complete server result and the Server filters menu
+offers result-type-aware computed predicates, including null, numeric range,
+JSON containment, and negated matching.
 
-The objects workspace can also group the currently fetched rows by an object,
-data, custom, shared-computed, or personal-computed field. The grouped table
-shows counts and object examples, can sort by the grouped value or aggregate
-count, and exports the grouped result. This is deliberately a loaded-page
-analysis: pagination changes the input rows and therefore the group counts. Use
-an export report when grouping must cover the full report query. The report
-template editor includes runnable MiniJinja `groupby` examples for counts,
-sorting grouped values, sorting rows within groups, and grouped CSV output.
+The objects workspace can group by an object, nested data, shared-computed, or
+personal-computed field through the server's permission-aware aggregate
+resource. Server filters run before aggregation, counts cover the complete
+matching class rather than the loaded object page, and aggregate rows have
+their own cursor pagination and exact total. Null, missing, and unavailable
+computed values remain distinct. Personal custom fallback fields still use a
+loaded-page grouping because their first-non-empty path expression is a console
+display preference rather than a server field. The report template editor also
+includes runnable MiniJinja `groupby` examples for report-specific grouping and
+grouped CSV output.
 
 ## Administrator backup and restore
 
@@ -186,10 +189,15 @@ On an object detail page, editable values in this flattened grid open a focused,
 type-aware control when clicked. Enter saves that field immediately; Escape
 closes the control without changing its value. Text, numbers, booleans, nulls,
 empty objects, and empty arrays retain their JSON types unless the user
-explicitly changes the type. `Edit data` also exposes `Add field`, which accepts
-the same dotted/bracket path syntax and can create missing object branches or
-append the next array item. The advanced JSON editor remains available for bulk
-changes, deep branches, file loading, and schema previews.
+explicitly changes the type. Focused and data-only saves use guarded RFC 6902
+JSON Patch operations, so unrelated concurrent data edits compose and a stale
+value fails safely instead of being overwritten. `Edit data` also exposes `Add
+field`, which accepts the same dotted/bracket path syntax and can create missing
+object branches or append the next array item. `Edit as JSON` opens the raw
+object data document directly, shows a structural change review, and turns
+data-only saves into granular guarded patch operations. Read-only users get a
+plain raw JSON view. Arrays are replaced atomically at their own path, and
+unusually large edits fall back to a guarded whole-document replacement.
 
 Directly editable values on object, class, and collection detail pages use the
 same whole-field edit target instead of a separate pencil or Edit control. This
@@ -290,17 +298,18 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Hubuum Frontend `v0.0.3` targets Hubuum Server `v0.0.2`. Releases provide:
+Current `main` development and the published Hubuum Frontend `v0.0.4` release
+target Hubuum Server `v0.0.3`. Releases provide:
 
-- `ghcr.io/hubuum/hubuum-frontend:v0.0.3` for Linux AMD64 and ARM64;
-- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.3`;
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.4` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.4`;
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
 The application version is visible in the navigation, on the login page, and
 in `/healthz` and `/readyz` responses. Release images show the exact tag (for
-example, `v0.0.3`); commit images show `v0.0.3+<short-sha>`; unversioned local
-builds show `v0.0.3+dirty`. Image builds may set the immutable identity with
+example, `v0.0.4`); commit images show `v0.0.4+<short-sha>`; unversioned local
+builds show `v0.0.4+dirty`. Image builds may set the immutable identity with
 `docker build --build-arg APP_VERSION=...`.
 
 See [compatibility](docs/compatibility.md) and the
@@ -334,7 +343,8 @@ disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, permission, redacted admin configuration, backup/restore staging,
 shared and personal computed fields, events/audit, history/as-of, event sink,
-subscription, delivery lifecycle, and pagination APIs directly, and tears the
+subscription, delivery lifecycle, client pagination discovery, by-name routes,
+object aggregation, computed querying, JSON Patch, and pagination APIs directly, and tears the
 stack down. Restore confirmation is intentionally excluded so this contract
 suite never replaces the live test database.
 
@@ -391,7 +401,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.3 \
+  --version 0.0.4 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -400,7 +410,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.3 \
+  --version 0.0.4 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com

@@ -14,13 +14,17 @@ import {
 	useState,
 } from "react";
 import { JsonEditor } from "@/components/json-editor";
-import { JsonViewer } from "@/components/json-viewer";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
+import {
+	buildObjectDataPatchPlan,
+	buildObjectDataReplacePatch,
+	patchObjectData,
+} from "@/lib/api/object-data-patch";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
 	getApiV1Classes,
@@ -70,14 +74,9 @@ type ObjectDetailProps = {
 
 type EditableField = "name" | "description" | "collection" | "data";
 
-const ALL_EDITABLE_FIELDS: EditableField[] = [
-	"data",
-	"collection",
-	"description",
-	"name",
-];
-
 const CONNECTION_PROPERTY_LIMIT = 12;
+const CONNECTION_DEPTH_OPTIONS = [1, 2, 3, 5] as const;
+const OBJECT_DATA_CHANGE_PREVIEW_LIMIT = 24;
 
 const OBJECT_DATA_FIELD_TYPES: Array<{
 	value: ObjectDataFieldType;
@@ -277,6 +276,37 @@ function renderFieldText(value: string): string {
 	return value.trim() ? value : "No value";
 }
 
+function parseObjectDataDraft(
+	value: string,
+): { ok: true; value: unknown } | { ok: false } {
+	try {
+		return { ok: true, value: JSON.parse(value) };
+	} catch {
+		return { ok: false };
+	}
+}
+
+function formatObjectDataPatchPath(path: string): string {
+	if (!path) return "Data root";
+	return path
+		.slice(1)
+		.split("/")
+		.map((segment) => segment.replaceAll("~1", "/").replaceAll("~0", "~"))
+		.reduce((formatted, segment) => {
+			if (/^\d+$/.test(segment)) return `${formatted}[${segment}]`;
+			if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(segment)) {
+				return formatted ? `${formatted}.${segment}` : segment;
+			}
+			return `${formatted}[${JSON.stringify(segment)}]`;
+		}, "");
+}
+
+function formatObjectDataPatchValue(value: unknown): string {
+	const serialized = JSON.stringify(value);
+	const formatted = serialized ?? String(value);
+	return formatted.length > 96 ? `${formatted.slice(0, 93)}...` : formatted;
+}
+
 function ObjectDataValueEditor({
 	path,
 	value,
@@ -294,8 +324,7 @@ function ObjectDataValueEditor({
 	const typeSelectRef = useRef<HTMLSelectElement | null>(null);
 	const valueInputRef = useRef<HTMLInputElement | null>(null);
 	const valueSelectRef = useRef<HTMLSelectElement | null>(null);
-	const [draftType, setDraftType] =
-		useState<ObjectDataFieldType>(initialType);
+	const [draftType, setDraftType] = useState<ObjectDataFieldType>(initialType);
 	const [draftInput, setDraftInput] = useState(() => {
 		if (initialType === "string" || initialType === "number") {
 			return String(value);
@@ -306,7 +335,11 @@ function ObjectDataValueEditor({
 
 	useEffect(() => {
 		const frame = window.requestAnimationFrame(() => {
-			(valueInputRef.current ?? valueSelectRef.current ?? typeSelectRef.current)?.focus();
+			(
+				valueInputRef.current ??
+				valueSelectRef.current ??
+				typeSelectRef.current
+			)?.focus();
 			if (valueInputRef.current) {
 				valueInputRef.current.select();
 			}
@@ -316,9 +349,7 @@ function ObjectDataValueEditor({
 
 	function changeType(type: ObjectDataFieldType) {
 		setDraftType(type);
-		setDraftInput(
-			type === "number" ? "0" : type === "boolean" ? "false" : "",
-		);
+		setDraftInput(type === "number" ? "0" : type === "boolean" ? "false" : "");
 		setEditorError(null);
 		window.requestAnimationFrame(() =>
 			(valueInputRef.current ?? valueSelectRef.current)?.focus(),
@@ -359,25 +390,6 @@ function ObjectDataValueEditor({
 
 	return (
 		<div className="object-data-inline-editor" data-object-nonsubmit>
-			<label>
-				<span className="sr-only">Type for {path}</span>
-				<select
-					ref={typeSelectRef}
-					value={draftType}
-					onChange={(event) =>
-						changeType(event.target.value as ObjectDataFieldType)
-					}
-					disabled={disabled}
-					aria-label={`Type for ${path}`}
-					onKeyDown={handleKeyDown}
-				>
-					{OBJECT_DATA_FIELD_TYPES.map((option) => (
-						<option key={option.value} value={option.value}>
-							{option.label}
-						</option>
-					))}
-				</select>
-			</label>
 			{draftType === "string" ? (
 				<label className="object-data-inline-value">
 					<span className="sr-only">Value for {path}</span>
@@ -439,9 +451,26 @@ function ObjectDataValueEditor({
 					{draftType === "null" ? "Null value" : `Empty ${draftType}`}
 				</span>
 			) : null}
-			<span className="object-data-inline-hint">
-				Enter to save · Escape to undo
-			</span>
+			<label className="object-data-inline-type">
+				<span className="sr-only">Type for {path}</span>
+				<select
+					ref={typeSelectRef}
+					value={draftType}
+					onChange={(event) =>
+						changeType(event.target.value as ObjectDataFieldType)
+					}
+					disabled={disabled}
+					aria-label={`Type for ${path}`}
+					title={`JSON type: ${draftType}`}
+					onKeyDown={handleKeyDown}
+				>
+					{OBJECT_DATA_FIELD_TYPES.map((option) => (
+						<option key={option.value} value={option.value}>
+							{option.label}
+						</option>
+					))}
+				</select>
+			</label>
 			{editorError ? (
 				<span className="object-data-inline-error" role="alert">
 					{editorError}
@@ -504,7 +533,10 @@ function ComputedValueScope({
 }: {
 	title: string;
 	values: Record<string, unknown>;
-	errors: Record<string, { code: string; message: string; path?: string | null }>;
+	errors: Record<
+		string,
+		{ code: string; message: string; path?: string | null }
+	>;
 }) {
 	const entries = Object.entries(values).sort(([left], [right]) =>
 		left.localeCompare(right),
@@ -551,7 +583,7 @@ export function ObjectDetail({
 	const confirm = useConfirm();
 	const objectFormRef = useRef<HTMLFormElement | null>(null);
 	const ignoreClassesRef = useRef<HTMLDivElement | null>(null);
-	const editAllButtonRef = useRef<HTMLButtonElement | null>(null);
+	const objectHeadingRef = useRef<HTMLElement | null>(null);
 	const nameInputRef = useRef<HTMLInputElement | null>(null);
 	const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
 	const collectionSelectRef = useRef<HTMLSelectElement | null>(null);
@@ -567,11 +599,12 @@ export function ObjectDetail({
 	);
 	const [ignoredClassIds, setIgnoredClassIds] = useState<number[]>([]);
 	const [isIgnoreClassesOpen, setIgnoreClassesOpen] = useState(false);
-	const [isConnectionToolsOpen, setConnectionToolsOpen] = useState(false);
-	const [isDataInspectorOpen, setDataInspectorOpen] = useState(false);
+	const [isRawDataViewOpen, setRawDataViewOpen] = useState(false);
 	const [isAdvancedDataEditorOpen, setAdvancedDataEditorOpen] = useState(false);
 	const [isAddDataFieldOpen, setAddDataFieldOpen] = useState(false);
-	const [activeDataFieldId, setActiveDataFieldId] = useState<string | null>(null);
+	const [activeDataFieldId, setActiveDataFieldId] = useState<string | null>(
+		null,
+	);
 	const [dataFieldFilter, setDataFieldFilter] = useState("");
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -662,6 +695,17 @@ export function ObjectDetail({
 		() => flattenObjectPropertyEntries(dataDraft),
 		[dataDraft],
 	);
+	const parsedDataDraft = useMemo(
+		() => parseObjectDataDraft(dataInput),
+		[dataInput],
+	);
+	const dataPatchPlan = useMemo(() => {
+		if (!objectQuery.data || !parsedDataDraft.ok) return null;
+		return buildObjectDataPatchPlan(
+			objectQuery.data.data,
+			parsedDataDraft.value,
+		);
+	}, [objectQuery.data, parsedDataDraft]);
 
 	useEffect(() => {
 		if (!objectQuery.data) {
@@ -718,6 +762,42 @@ export function ObjectDetail({
 
 	const collections = collectionsQuery.data ?? [];
 
+	async function applyUpdatedObject(updatedObject: HubuumObject) {
+		const targetClassId = updatedObject.hubuum_class_id;
+		await queryClient.invalidateQueries({
+			queryKey: ["object", classId, objectId],
+		});
+		await queryClient.invalidateQueries({ queryKey: ["objects", classId] });
+		await queryClient.invalidateQueries({
+			queryKey: ["objects", targetClassId],
+		});
+		await queryClient.invalidateQueries({
+			queryKey: ["object-aggregates", classId],
+		});
+		await queryClient.invalidateQueries({
+			queryKey: ["collection", updatedObject.collection_id, "permissions"],
+		});
+		setName(updatedObject.name);
+		setDescription(updatedObject.description ?? "");
+		setDataInput(stringifyJson(updatedObject.data));
+		setDataDraft(updatedObject.data);
+		setAddDataFieldOpen(false);
+		setAdvancedDataEditorOpen(false);
+		setActiveDataFieldId(null);
+		setNewDataFieldError(null);
+		setCollectionId(String(updatedObject.collection_id));
+		setEditingFields([]);
+		setDirtyFields([]);
+		setFormError(null);
+		setFormSuccess("Object updated.");
+		window.requestAnimationFrame(() => objectHeadingRef.current?.focus());
+
+		if (targetClassId !== classId) {
+			router.replace(`/objects/${targetClassId}/${objectId}`);
+			router.refresh();
+		}
+	}
+
 	const updateMutation = useMutation({
 		mutationFn: async (payload: UpdateHubuumObject) => {
 			const response = await patchApiV1ClassesByClassIdByObjectId(
@@ -737,42 +817,24 @@ export function ObjectDetail({
 
 			return response.data;
 		},
-		onSuccess: async (updatedObject) => {
-			const targetClassId = updatedObject.hubuum_class_id;
-			await queryClient.invalidateQueries({
-				queryKey: ["object", classId, objectId],
-			});
-			await queryClient.invalidateQueries({ queryKey: ["objects", classId] });
-			await queryClient.invalidateQueries({
-				queryKey: ["objects", targetClassId],
-			});
-			await queryClient.invalidateQueries({
-				queryKey: ["collection", updatedObject.collection_id, "permissions"],
-			});
-			setName(updatedObject.name);
-			setDescription(updatedObject.description ?? "");
-			setDataInput(stringifyJson(updatedObject.data));
-			setDataDraft(updatedObject.data);
-			setAddDataFieldOpen(false);
-			setAdvancedDataEditorOpen(false);
-			setActiveDataFieldId(null);
-			setNewDataFieldError(null);
-			setCollectionId(String(updatedObject.collection_id));
-			setEditingFields([]);
-			setDirtyFields([]);
-			setFormError(null);
-			setFormSuccess("Object updated.");
-			window.requestAnimationFrame(() => editAllButtonRef.current?.focus());
-
-			if (targetClassId !== classId) {
-				router.replace(`/objects/${targetClassId}/${objectId}`);
-				router.refresh();
-			}
-		},
+		onSuccess: applyUpdatedObject,
 		onError: (error) => {
 			setFormSuccess(null);
 			setFormError(
 				error instanceof Error ? error.message : "Failed to update object.",
+			);
+		},
+	});
+	const dataPatchMutation = useMutation({
+		mutationFn: (patch: Parameters<typeof patchObjectData>[2]) =>
+			patchObjectData(classId, objectId, patch),
+		onSuccess: applyUpdatedObject,
+		onError: (error) => {
+			setFormSuccess(null);
+			setFormError(
+				error instanceof Error
+					? error.message
+					: "Failed to update object data.",
 			);
 		},
 	});
@@ -795,6 +857,9 @@ export function ObjectDetail({
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["objects", classId] });
+			await queryClient.invalidateQueries({
+				queryKey: ["object-aggregates", classId],
+			});
 			router.push("/objects");
 			router.refresh();
 		},
@@ -820,25 +885,9 @@ export function ObjectDetail({
 				canCurrentUserUpdateObject(permissionEntries, currentUserGroups)));
 	const hasActiveEdits = editingFields.length > 0;
 	const isSavingOrDeleting =
-		updateMutation.isPending || deleteMutation.isPending;
-	const beginGlobalEdit = useCallback(() => {
-		const objectData = objectQuery.data;
-		if (!canEditObject || isSavingOrDeleting || !objectData) {
-			return;
-		}
-
-		setFormError(null);
-		setFormSuccess(null);
-		setDataInput(stringifyJson(objectData.data));
-		setDataDraft(objectData.data);
-		setAddDataFieldOpen(false);
-		setAdvancedDataEditorOpen(false);
-		setActiveDataFieldId(null);
-		setNewDataFieldError(null);
-		setEditingFields(ALL_EDITABLE_FIELDS);
-		setDirtyFields([]);
-	}, [canEditObject, isSavingOrDeleting, objectQuery.data]);
-
+		updateMutation.isPending ||
+		dataPatchMutation.isPending ||
+		deleteMutation.isPending;
 	useEffect(() => {
 		const objectData = objectQuery.data;
 		if (!objectData) {
@@ -930,14 +979,13 @@ export function ObjectDetail({
 		setDirtyFields([]);
 		setFormError(null);
 		setFormSuccess(null);
-		window.requestAnimationFrame(() => editAllButtonRef.current?.focus());
+		window.requestAnimationFrame(() => objectHeadingRef.current?.focus());
 	}, [editingFields.length, objectQuery.data]);
 
 	useEscapeToCancel({
 		enabled: hasActiveEdits && !isSavingOrDeleting,
 		onCancel: cancelActiveEdits,
-		ignoreSelector:
-			".json-editor, .relations-filter-dropdown, [role='dialog']",
+		ignoreSelector: ".json-editor, .relations-filter-dropdown, [role='dialog']",
 	});
 
 	function toggleFieldEditing(field: EditableField, objectData: HubuumObject) {
@@ -967,6 +1015,24 @@ export function ObjectDetail({
 		}
 
 		setEditingFields((current) => [...current, field]);
+	}
+
+	function beginRawDataEdit(objectData: HubuumObject) {
+		if (!canEditObject || isSavingOrDeleting) {
+			return;
+		}
+
+		setFormError(null);
+		setFormSuccess(null);
+		setDataInput(stringifyJson(objectData.data));
+		setDataDraft(objectData.data);
+		setAddDataFieldOpen(false);
+		setActiveDataFieldId(null);
+		setNewDataFieldError(null);
+		setEditingFields((current) =>
+			current.includes("data") ? current : [...current, "data"],
+		);
+		setAdvancedDataEditorOpen(true);
 	}
 
 	function markFieldDirty(field: EditableField) {
@@ -1011,15 +1077,14 @@ export function ObjectDetail({
 			setDataInput(stringifyJson(objectData.data));
 			setDataDraft(objectData.data);
 		}
-		setEditingFields((current) =>
-			current.filter((field) => field !== "data"),
-		);
+		setEditingFields((current) => current.filter((field) => field !== "data"));
 	}
 
 	function commitInlineDataField(
 		segments: readonly ObjectPropertyPathSegment[],
 		value: unknown,
 	) {
+		const currentValue = getObjectDataValue(dataDraft, segments);
 		const updated = setObjectDataValue(dataDraft, segments, value);
 		if (!updated.ok) {
 			setFormError(updated.error);
@@ -1027,6 +1092,12 @@ export function ObjectDetail({
 		}
 		commitDataDraft(updated.value);
 		setActiveDataFieldId(null);
+		if (dirtyFields.length === 0 && currentValue.found) {
+			dataPatchMutation.mutate(
+				buildObjectDataReplacePatch(segments, currentValue.value, value),
+			);
+			return;
+		}
 		submitCurrentEdits({ dataOverride: updated.value });
 	}
 
@@ -1127,6 +1198,7 @@ export function ObjectDetail({
 		}
 
 		const payload: UpdateHubuumObject = {};
+		let dataPatchForSave: Parameters<typeof patchObjectData>[2] | null = null;
 		if (dirtyFields.includes("name")) {
 			const nextName = name.trim();
 			if (!nextName) {
@@ -1153,8 +1225,13 @@ export function ObjectDetail({
 				const parsedData = options
 					? options.dataOverride
 					: JSON.parse(dataInput);
-				if (stringifyJson(parsedData) !== stringifyJson(currentObject.data)) {
+				const patchPlan = buildObjectDataPatchPlan(
+					currentObject.data,
+					parsedData,
+				);
+				if (patchPlan.patch.length > 0) {
 					payload.data = parsedData;
+					dataPatchForSave = patchPlan.patch;
 				}
 			} catch {
 				setFormError("Object data must be valid JSON.");
@@ -1178,7 +1255,14 @@ export function ObjectDetail({
 			setEditingFields([]);
 			setDirtyFields([]);
 			setFormSuccess("No changes to save.");
-			window.requestAnimationFrame(() => editAllButtonRef.current?.focus());
+			window.requestAnimationFrame(() => objectHeadingRef.current?.focus());
+			return;
+		}
+		if (Object.keys(payload).length === 1 && "data" in payload) {
+			dataPatchMutation.mutate(
+				dataPatchForSave ??
+					buildObjectDataPatchPlan(currentObject.data, payload.data).patch,
+			);
 			return;
 		}
 
@@ -1355,69 +1439,15 @@ export function ObjectDetail({
 		);
 	}
 
-	const relatedObjectGroups = (() => {
-		const groups = new Map<
-			number,
-			{ rootPath: number[]; children: number[][] }
-		>();
-		for (const relatedObject of relatedObjects) {
-			const displayPath = getDisplayPath(relatedObject.path, relatedObject.id);
-			const rootId = displayPath[0];
-			if (!rootId) {
-				continue;
-			}
-
-			const existingGroup = groups.get(rootId);
-			if (!existingGroup) {
-				groups.set(rootId, {
-					rootPath: [rootId],
-					children: displayPath.length > 1 ? [displayPath.slice(1)] : [],
-				});
-				continue;
-			}
-
-			if (displayPath.length > 1) {
-				existingGroup.children.push(displayPath.slice(1));
-			}
-		}
-
-		return [...groups.entries()]
-			.map(([rootId, group]) => ({
-				rootId,
-				rootLabel: renderObjectLabel(rootId),
-				rootPath: group.rootPath,
-				children: [...group.children].sort((left, right) => {
-					const leftFirstHop = left[0];
-					const rightFirstHop = right[0];
-					const leftClassName =
-						leftFirstHop === undefined
-							? ""
-							: (classNameById.get(
-									objectContextById.get(leftFirstHop)?.classId ?? -1,
-								) ?? "");
-					const rightClassName =
-						rightFirstHop === undefined
-							? ""
-							: (classNameById.get(
-									objectContextById.get(rightFirstHop)?.classId ?? -1,
-								) ?? "");
-					const classCompare = leftClassName.localeCompare(rightClassName);
-					if (classCompare !== 0) {
-						return classCompare;
-					}
-
-					const leftLabel = left
-						.map((objectPathId) => renderObjectLabel(objectPathId))
-						.join(" / ");
-					const rightLabel = right
-						.map((objectPathId) => renderObjectLabel(objectPathId))
-						.join(" / ");
-					return leftLabel.localeCompare(rightLabel);
-				}),
-			}))
-			.sort((left, right) => left.rootLabel.localeCompare(right.rootLabel));
-	})();
 	const isEditingData = editingFields.includes("data");
+	const hasNonDataChanges = dirtyFields.some((field) => field !== "data");
+	const dataPatchPlanDescription = !dataPatchPlan
+		? null
+		: hasNonDataChanges
+			? "This change list is accurate, but saving data together with other object fields uses the combined object update route. Save data separately to use guarded path updates."
+			: dataPatchPlan.mode === "granular"
+				? `Saving sends ${dataPatchPlan.patch.length} guarded RFC 6902 operations. Changed values are tested first so stale edits are rejected instead of overwritten.`
+				: "This edit exceeds the server's 1,000-operation limit, so saving uses one guarded whole-document replacement.";
 	const flattenedData = isEditingData
 		? flattenedDataDraft
 		: flattenedObjectData;
@@ -1474,10 +1504,9 @@ export function ObjectDetail({
 				<header className="object-record-toolbar">
 					<h2 className="sr-only">Object properties</h2>
 					<div className="object-record-heading">
-						<span className="eyebrow">
-							{currentClass?.name ?? `Class #${objectData.hubuum_class_id}`}
-						</span>
-						<strong>Object #{objectData.id}</strong>
+						<strong ref={objectHeadingRef} tabIndex={-1}>
+							Object #{objectData.id}
+						</strong>
 						<span className="muted">
 							{flattenedData.entries.length}
 							{flattenedData.truncated ? "+" : ""} data field
@@ -1501,16 +1530,6 @@ export function ObjectDetail({
 								</time>
 							</span>
 						</div>
-						{canEditObject && !hasActiveEdits ? (
-							<button
-								ref={editAllButtonRef}
-								type="button"
-								onClick={beginGlobalEdit}
-								disabled={isSavingOrDeleting}
-							>
-								Edit all
-							</button>
-						) : null}
 					</div>
 				</header>
 
@@ -1588,9 +1607,7 @@ export function ObjectDetail({
 									) : canEditObject ? (
 										<InlineFieldEditTrigger
 											fieldLabel="object description"
-											valueText={renderFieldText(
-												objectData.description ?? "",
-											)}
+											valueText={renderFieldText(objectData.description ?? "")}
 											onClick={() =>
 												toggleFieldEditing("description", objectData)
 											}
@@ -1705,7 +1722,6 @@ export function ObjectDetail({
 					>
 						<header className="object-property-section-header">
 							<div>
-								<span className="eyebrow">Primary data</span>
 								<div className="table-title-row">
 									<h3 id="object-data-heading">Data fields</h3>
 									<span className="muted table-count">
@@ -1716,42 +1732,45 @@ export function ObjectDetail({
 												: flattenedData.entries.length}
 									</span>
 								</div>
+								{canEditObject ? (
+									<p className="object-data-edit-guidance">
+										Click a field to edit · Enter saves the field · Esc cancels
+									</p>
+								) : null}
 							</div>
 							<div className="object-property-section-actions">
 								<label className="object-data-filter" data-object-nonsubmit>
 									<span className="sr-only">Filter object data fields</span>
 									<input
 										type="search"
-									value={dataFieldFilter}
-									onChange={(event) => setDataFieldFilter(event.target.value)}
-									placeholder="Filter data fields"
-								/>
-							</label>
-							{isEditingData ? (
-								<button
-									type="button"
-									className="ghost"
-									onClick={() => {
-										setAddDataFieldOpen((current) => !current);
-										setActiveDataFieldId(null);
-										setNewDataFieldError(null);
-									}}
-									disabled={isSavingOrDeleting}
-									aria-expanded={isAddDataFieldOpen}
-								>
-									{isAddDataFieldOpen ? "Close add field" : "Add field"}
-								</button>
-							) : null}
-							{canEditObject ? (
+										value={dataFieldFilter}
+										onChange={(event) => setDataFieldFilter(event.target.value)}
+										placeholder="Filter data fields"
+									/>
+								</label>
+								{isEditingData ? (
+									<button
+										type="button"
+										className="ghost"
+										onClick={() => {
+											setAddDataFieldOpen((current) => !current);
+											setActiveDataFieldId(null);
+											setNewDataFieldError(null);
+										}}
+										disabled={isSavingOrDeleting}
+										aria-expanded={isAddDataFieldOpen}
+									>
+										{isAddDataFieldOpen ? "Close add field" : "Add field"}
+									</button>
+								) : null}
+								{canEditObject ? (
 									<button
 										type="button"
 										className="ghost"
 										onClick={() => toggleFieldEditing("data", objectData)}
 										disabled={isSavingOrDeleting}
 									>
-									{isEditingData
-										? "Cancel data edit"
-										: "Edit data"}
+										{isEditingData ? "Cancel data edit" : "Edit data"}
 									</button>
 								) : null}
 							</div>
@@ -1760,10 +1779,7 @@ export function ObjectDetail({
 						{isEditingData ? (
 							<>
 								{isAddDataFieldOpen ? (
-									<div
-										className="object-data-add-panel"
-										data-object-nonsubmit
-									>
+									<div className="object-data-add-panel" data-object-nonsubmit>
 										<label className="control-field object-data-add-path">
 											<span>Field path</span>
 											<input
@@ -1801,7 +1817,9 @@ export function ObjectDetail({
 													type={
 														newDataFieldType === "number" ? "number" : "text"
 													}
-													step={newDataFieldType === "number" ? "any" : undefined}
+													step={
+														newDataFieldType === "number" ? "any" : undefined
+													}
 													value={newDataFieldValue}
 													onChange={(event) => {
 														setNewDataFieldValue(event.target.value);
@@ -1858,11 +1876,14 @@ export function ObjectDetail({
 											</button>
 										</div>
 										<div className="object-data-add-help muted">
-											Use dotted paths for nested objects and brackets for arrays,
-											e.g. <code>hardware.cpu[0].model</code>.
+											Use dotted paths for nested objects and brackets for
+											arrays, e.g. <code>hardware.cpu[0].model</code>.
 										</div>
 										{newDataFieldError ? (
-											<div className="error-banner object-data-add-error" role="alert">
+											<div
+												className="error-banner object-data-add-error"
+												role="alert"
+											>
 												{newDataFieldError}
 											</div>
 										) : null}
@@ -1888,7 +1909,9 @@ export function ObjectDetail({
 													{isActive ? (
 														<ObjectDataValueEditor
 															path={entry.label}
-															value={currentValue.found ? currentValue.value : null}
+															value={
+																currentValue.found ? currentValue.value : null
+															}
 															disabled={isSavingOrDeleting}
 															onCommit={(value) =>
 																commitInlineDataField(entry.segments, value)
@@ -1917,7 +1940,8 @@ export function ObjectDetail({
 								{flattenedData.truncated ? (
 									<div className="object-property-note">
 										Showing the first {flattenedData.entries.length} flattened
-										fields. Deep branches remain unchanged unless edited in JSON.
+										fields. Deep branches remain unchanged unless edited in
+										JSON.
 									</div>
 								) : null}
 								<details
@@ -1932,8 +1956,8 @@ export function ObjectDetail({
 									}}
 								>
 									<summary>
-										<span>Advanced JSON editor</span>
-										<span>Full structure and schema preview</span>
+										<span>Edit as JSON</span>
+										<span>Raw object data with change review</span>
 									</summary>
 									{isAdvancedDataEditorOpen ? (
 										<div className="object-property-inspector-panel">
@@ -1955,6 +1979,71 @@ export function ObjectDetail({
 														: "This class does not currently enforce JSON schema validation."
 												}
 											/>
+											{dataPatchPlan ? (
+												<section
+													className="object-data-change-review"
+													aria-labelledby="object-data-change-review-heading"
+												>
+													<div className="object-data-change-review-header">
+														<strong id="object-data-change-review-heading">
+															Change review
+														</strong>
+														<span>
+															{dataPatchPlan.changes.length} change
+															{dataPatchPlan.changes.length === 1 ? "" : "s"}
+														</span>
+													</div>
+													{dataPatchPlan.changes.length === 0 ? (
+														<p className="muted">
+															The JSON is structurally unchanged.
+														</p>
+													) : (
+														<>
+															<p className="muted">
+																{dataPatchPlanDescription}
+															</p>
+															<ol className="object-data-change-list">
+																{dataPatchPlan.changes
+																	.slice(0, OBJECT_DATA_CHANGE_PREVIEW_LIMIT)
+																	.map((change) => (
+																		<li
+																			key={`${change.operation}:${change.path}`}
+																		>
+																			<span
+																				className={`object-data-change-operation object-data-change-operation--${change.operation}`}
+																			>
+																				{change.operation}
+																			</span>
+																			<code title={change.path || "/"}>
+																				{formatObjectDataPatchPath(change.path)}
+																			</code>
+																			<span className="object-data-change-values">
+																				{change.operation === "add"
+																					? formatObjectDataPatchValue(
+																							change.nextValue,
+																						)
+																					: change.operation === "remove"
+																						? formatObjectDataPatchValue(
+																								change.previousValue,
+																							)
+																						: `${formatObjectDataPatchValue(change.previousValue)} → ${formatObjectDataPatchValue(change.nextValue)}`}
+																			</span>
+																		</li>
+																	))}
+															</ol>
+															{dataPatchPlan.changes.length >
+															OBJECT_DATA_CHANGE_PREVIEW_LIMIT ? (
+																<p className="muted">
+																	+
+																	{dataPatchPlan.changes.length -
+																		OBJECT_DATA_CHANGE_PREVIEW_LIMIT}{" "}
+																	more changes
+																</p>
+															) : null}
+														</>
+													)}
+												</section>
+											) : null}
 										</div>
 									) : null}
 								</details>
@@ -1996,27 +2085,43 @@ export function ObjectDetail({
 								{flattenedData.truncated ? (
 									<div className="object-property-note">
 										Showing the first {flattenedData.entries.length} flattened
-										fields. Use the structured inspector for the complete value.
+										fields. Use the JSON {canEditObject ? "editor" : "view"} for
+										the complete value.
 									</div>
 								) : null}
-								<details
-									className="object-property-inspector"
-									data-object-nonsubmit
-									open={isDataInspectorOpen}
-									onToggle={(event) =>
-										setDataInspectorOpen(event.currentTarget.open)
-									}
-								>
-									<summary>
-										<span>Inspect structured data</span>
-										<span>Overview · Tree · JSON</span>
-									</summary>
-									{isDataInspectorOpen ? (
-										<div className="object-property-inspector-panel">
-											<JsonViewer value={objectData.data} defaultTab="tree" />
-										</div>
-									) : null}
-								</details>
+								{canEditObject ? (
+									<button
+										type="button"
+										className="object-property-json-action"
+										data-object-nonsubmit
+										onClick={() => beginRawDataEdit(objectData)}
+										disabled={isSavingOrDeleting}
+									>
+										<span>Edit as JSON</span>
+										<span>Raw object data with change review</span>
+									</button>
+								) : (
+									<details
+										className="object-property-inspector"
+										data-object-nonsubmit
+										open={isRawDataViewOpen}
+										onToggle={(event) =>
+											setRawDataViewOpen(event.currentTarget.open)
+										}
+									>
+										<summary>
+											<span>View as JSON</span>
+											<span>Raw object data</span>
+										</summary>
+										{isRawDataViewOpen ? (
+											<div className="object-property-inspector-panel">
+												<pre className="object-json-code is-expanded">
+													{stringifyJson(objectData.data)}
+												</pre>
+											</div>
+										) : null}
+									</details>
+								)}
 							</>
 						)}
 					</section>
@@ -2028,7 +2133,6 @@ export function ObjectDetail({
 					>
 						<header className="object-property-section-header">
 							<div>
-								<span className="eyebrow">Related properties</span>
 								<div className="table-title-row">
 									<h3 id="object-connections-heading">Connections</h3>
 									<span className="muted table-count">
@@ -2037,12 +2141,100 @@ export function ObjectDetail({
 									</span>
 								</div>
 							</div>
-							<Link
-								className="link-chip"
-								href={`/relations/objects?classId=${objectData.hubuum_class_id}&objectId=${objectId}&objectView=direct`}
+							<div
+								className="object-property-section-actions object-connection-header-actions"
+								data-object-nonsubmit
 							>
-								Manage relations
-							</Link>
+								<fieldset className="object-connection-depth-picker">
+									<legend className="sr-only">Connection depth</legend>
+									<span aria-hidden="true">Depth</span>
+									<div className="relations-depth-options">
+										{CONNECTION_DEPTH_OPTIONS.map((depth) => (
+											<button
+												key={depth}
+												type="button"
+												className={
+													relationDepthLimit === depth ? "is-active" : ""
+												}
+												aria-pressed={relationDepthLimit === depth}
+												onClick={() => {
+													setShowAllRelations(false);
+													setRelationDepthLimit(depth);
+												}}
+											>
+												{depth}
+											</button>
+										))}
+									</div>
+								</fieldset>
+								<label className="relations-toggle">
+									<input
+										type="checkbox"
+										checked={includeSelfClass}
+										onChange={(event) => {
+											setShowAllRelations(false);
+											setIncludeSelfClass(event.target.checked);
+										}}
+									/>
+									<span>Include {currentClass?.name ?? "current class"}</span>
+								</label>
+								<div
+									className="relations-filter-dropdown"
+									ref={ignoreClassesRef}
+								>
+									<button
+										type="button"
+										className="ghost relations-filter-trigger"
+										onClick={() => setIgnoreClassesOpen((current) => !current)}
+										aria-expanded={isIgnoreClassesOpen}
+										aria-controls="object-relation-class-filters"
+									>
+										Class filters
+										{ignoredClassIds.length
+											? ` (${ignoredClassIds.length})`
+											: ""}
+									</button>
+									{isIgnoreClassesOpen ? (
+										<div
+											id="object-relation-class-filters"
+											className="relations-filter-menu"
+										>
+											<strong>Hide classes</strong>
+											<span className="muted">
+												Exclude noisy classes from this view.
+											</span>
+											{ignoredClassOptions.length ? (
+												ignoredClassOptions.map((hubuumClass) => (
+													<label
+														key={hubuumClass.id}
+														className="relations-filter-option"
+													>
+														<input
+															type="checkbox"
+															checked={ignoredClassSet.has(hubuumClass.id)}
+															onChange={(event) =>
+																toggleIgnoredClass(
+																	hubuumClass.id,
+																	event.target.checked,
+																)
+															}
+														/>
+														<span>{hubuumClass.name}</span>
+													</label>
+												))
+											) : (
+												<div className="muted">No other classes available.</div>
+											)}
+										</div>
+									) : null}
+								</div>
+								<Link
+									className="link-chip"
+									href={`/relations/objects?classId=${objectData.hubuum_class_id}&objectId=${objectId}&objectView=direct`}
+								>
+									Manage relations
+								</Link>
+							</div>
 						</header>
 
 						{relatedObjectsQuery.isLoading ? (
@@ -2141,148 +2333,6 @@ export function ObjectDetail({
 								</div>
 							)
 						) : null}
-						<details
-							className="object-property-inspector object-connection-tools"
-							data-object-nonsubmit
-							open={isConnectionToolsOpen}
-							onToggle={(event) =>
-								setConnectionToolsOpen(event.currentTarget.open)
-							}
-						>
-							<summary>
-								<span>Connection paths and filters</span>
-								<span>
-									Depth {relationDepthLimit} ·{" "}
-									{includeSelfClass
-										? "same class included"
-										: "same class hidden"}
-								</span>
-							</summary>
-							{isConnectionToolsOpen ? (
-								<div className="object-property-inspector-panel">
-									<div className="relations-control-bar">
-										<label className="relations-depth-control">
-											<span>Depth</span>
-											<input
-												className="relations-depth-input"
-												type="number"
-												min={1}
-												step={1}
-												value={relationDepthLimit}
-												onChange={(event) => {
-													const nextDepth = Number.parseInt(
-														event.target.value,
-														10,
-													);
-													if (Number.isFinite(nextDepth) && nextDepth > 0) {
-														setShowAllRelations(false);
-														setRelationDepthLimit(nextDepth);
-													}
-												}}
-												aria-label="Connection depth"
-											/>
-										</label>
-										<label className="relations-toggle">
-											<input
-												type="checkbox"
-												checked={includeSelfClass}
-												onChange={(event) => {
-													setShowAllRelations(false);
-													setIncludeSelfClass(event.target.checked);
-												}}
-											/>
-											<span>
-												Include {currentClass?.name ?? "current class"}
-											</span>
-										</label>
-										<div
-											className="relations-filter-dropdown"
-											ref={ignoreClassesRef}
-										>
-											<button
-												type="button"
-												className="ghost relations-filter-trigger"
-												onClick={() =>
-													setIgnoreClassesOpen((current) => !current)
-												}
-												aria-expanded={isIgnoreClassesOpen}
-												aria-controls="object-relation-class-filters"
-											>
-												Class filters
-												{ignoredClassIds.length
-													? ` (${ignoredClassIds.length})`
-													: ""}
-											</button>
-											{isIgnoreClassesOpen ? (
-												<div
-													id="object-relation-class-filters"
-													className="relations-filter-menu"
-												>
-													<strong>Hide classes</strong>
-													<span className="muted">
-														Exclude noisy classes from this view.
-													</span>
-													{ignoredClassOptions.length ? (
-														ignoredClassOptions.map((hubuumClass) => (
-															<label
-																key={hubuumClass.id}
-																className="relations-filter-option"
-															>
-																<input
-																	type="checkbox"
-																	checked={ignoredClassSet.has(hubuumClass.id)}
-																	onChange={(event) =>
-																		toggleIgnoredClass(
-																			hubuumClass.id,
-																			event.target.checked,
-																		)
-																	}
-																/>
-																<span>{hubuumClass.name}</span>
-															</label>
-														))
-													) : (
-														<div className="muted">
-															No other classes available.
-														</div>
-													)}
-												</div>
-											) : null}
-										</div>
-									</div>
-									{relatedObjectGroups.length ? (
-										<ul className="stat-list compact-stat-list relations-path-list">
-											{relatedObjectGroups.map((group) => (
-												<li key={group.rootId}>
-													<div>
-														{renderObjectPath(
-															group.rootPath,
-															`root-${group.rootId}`,
-														)}
-													</div>
-													{group.children.map((childPath) => (
-														<div
-															key={`child-${group.rootId}-${childPath.join("-")}`}
-															className="relations-child-path"
-														>
-															<span className="muted">{"\u2192 "}</span>
-															{renderObjectPath(
-																childPath,
-																`child-${group.rootId}`,
-															)}
-														</div>
-													))}
-												</li>
-											))}
-										</ul>
-									) : (
-										<div className="muted">
-											No connection paths in this view.
-										</div>
-									)}
-								</div>
-							) : null}
-						</details>
 					</section>
 				</div>
 
@@ -2296,24 +2346,22 @@ export function ObjectDetail({
 							</strong>
 							<span>
 								{activeDataFieldId
-									? "Enter in the field to save · Escape to undo"
+									? "Finish or cancel the active data field before saving all changes"
 									: "Ctrl/Cmd + Enter to save · Esc to cancel"}
 							</span>
 						</div>
 						<div className="form-actions">
 							<button
 								type="submit"
-								disabled={
-									updateMutation.isPending || Boolean(activeDataFieldId)
-								}
+								disabled={isSavingOrDeleting || Boolean(activeDataFieldId)}
 							>
-								{updateMutation.isPending ? "Saving..." : "Save changes"}
+								{isSavingOrDeleting ? "Saving..." : "Save changes"}
 							</button>
 							<button
 								type="button"
 								className="ghost"
 								onClick={cancelActiveEdits}
-								disabled={updateMutation.isPending}
+								disabled={isSavingOrDeleting}
 							>
 								Cancel
 							</button>
@@ -2368,11 +2416,11 @@ export function ObjectDetail({
 
 			<section className="stack" aria-labelledby="object-computed-heading">
 				<header className="relations-toolbar">
-					<div>
-						<p className="eyebrow">Derived data</p>
-						<h2 id="object-computed-heading">Computed values</h2>
-					</div>
-					<Link className="link-chip" href={`/classes/${classId}#computed-fields`}>
+					<h2 id="object-computed-heading">Computed values</h2>
+					<Link
+						className="link-chip"
+						href={`/classes/${classId}#computed-fields`}
+					>
 						Manage fields
 					</Link>
 				</header>
