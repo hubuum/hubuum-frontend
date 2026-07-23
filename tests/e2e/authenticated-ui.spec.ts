@@ -181,7 +181,9 @@ test.describe("authenticated workspace", () => {
 		).toBeVisible();
 		await expect(appearanceTab).toBeDisabled();
 		await expect(templateHistoryTab).toBeDisabled();
-		await page.getByLabel("Scope").selectOption("collections");
+		await page
+			.getByRole("combobox", { name: "Scope", exact: true })
+			.selectOption("collections");
 		await expect(appearanceTab).toBeEnabled();
 		await page
 			.getByRole("button", { name: "Continue to filters" })
@@ -211,7 +213,13 @@ test.describe("authenticated workspace", () => {
 		await page.getByRole("button", { name: "Save", exact: true }).click();
 		await expect(page.getByText(/Review \d+ fields?/)).toBeVisible();
 		await expect(appearanceTab).toHaveAttribute("aria-selected", "true");
+		let discardPrompt = "";
+		page.once("dialog", async (dialog) => {
+			discardPrompt = dialog.message();
+			await dialog.accept();
+		});
 		await page.getByRole("button", { name: "Back to templates" }).click();
+		expect(discardPrompt).toBe("Discard the changes to this export template?");
 		await expect(page).toHaveURL(/\/exports\?view=templates$/);
 		await expect(templatesTab).toHaveAttribute("aria-selected", "true");
 		await expect(
