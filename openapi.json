@@ -18050,6 +18050,15 @@
               "null"
             ]
           },
+          "resource_scopes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TokenResourceScope"
+            }
+          },
           "scoped": {
             "type": "boolean"
           },
@@ -23080,6 +23089,17 @@
               "null"
             ]
           },
+          "resource_scopes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TokenResourceScope"
+            },
+            "description": "Optional resource boundary. Entries are additive within the boundary\nand are always intersected with the principal's live group grants. At\nmost 1,000 entries are accepted.",
+            "maxItems": 1000
+          },
           "scopes": {
             "type": [
               "array",
@@ -25412,6 +25432,65 @@
             "$ref": "#/components/schemas/SecretStatus"
           }
         }
+      },
+      "TokenResourceScope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "kind"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/CollectionID"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "collection"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "kind"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/HubuumClassID"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "class"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "kind"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/HubuumObjectID"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "object"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "One resource explicitly included in a token's resource boundary.\n\nResource scopes are additive within the boundary: a collection entry covers\nthat collection, its classes, and their objects; a class entry covers that\nclass and its objects; and an object entry covers only that object. The\nboundary is still intersected with the principal's live group grants."
       },
       "UnifiedSearchBatchResponse": {
         "type": "object",

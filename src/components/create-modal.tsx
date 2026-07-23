@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useId, useRef } from "react";
 
 import { useDialogAccessibility } from "@/lib/use-dialog-accessibility";
 
@@ -11,6 +11,7 @@ type CreateModalProps = {
 	onClose: () => void;
 	children: ReactNode;
 	navigation?: ModalRecordNavigation;
+	closeDisabled?: boolean;
 };
 
 export type ModalRecordNavigation = {
@@ -53,13 +54,19 @@ export function CreateModal({
 	onClose,
 	children,
 	navigation,
+	closeDisabled = false,
 }: CreateModalProps) {
 	const titleId = useId();
 	const overlayRef = useRef<HTMLDivElement | null>(null);
 	const panelRef = useRef<HTMLElement | null>(null);
+	const requestClose = useCallback(() => {
+		if (!closeDisabled) {
+			onClose();
+		}
+	}, [closeDisabled, onClose]);
 	useDialogAccessibility({
 		open,
-		onClose,
+		onClose: requestClose,
 		dialogRef: panelRef,
 		overlayRef,
 		initialFocusSelector:
@@ -113,7 +120,8 @@ export function CreateModal({
 			<button
 				type="button"
 				className="modal-backdrop"
-				onClick={onClose}
+				onClick={requestClose}
+				disabled={closeDisabled}
 				aria-label="Close dialog"
 			/>
 			<section
@@ -160,7 +168,8 @@ export function CreateModal({
 					<button
 						type="button"
 						className="ghost icon-button"
-						onClick={onClose}
+						onClick={requestClose}
+						disabled={closeDisabled}
 						aria-label="Close dialog"
 					>
 						<IconClose />

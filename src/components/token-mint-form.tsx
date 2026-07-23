@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { type FormEvent, useState } from "react";
 
 import {
 	GuidedFlowContinue,
@@ -9,37 +9,80 @@ import {
 	GuidedFlowTabs,
 } from "@/components/guided-flow";
 import { ScopePicker } from "@/components/scope-picker";
+import { TokenResourceScopePicker } from "@/components/token-resource-scope-picker";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { postApiV1IamPrincipalsByPrincipalIdTokens } from "@/lib/api/generated/client";
 import type {
+	LoginResponse,
 	NewTokenRequest,
 	Permissions,
-	PrincipalToken,
 } from "@/lib/api/generated/models";
-import { canSubmitScopes, toScopesPayload } from "@/lib/token-scope-selection";
+import { toNaiveDateTimePayload } from "@/lib/naive-datetime";
+import {
+	canSubmitResourceScopes,
+	countResourceScopesByKind,
+	type NamedTokenResourceScope,
+} from "@/lib/token-resource-scope-selection";
+import { canSubmitScopes } from "@/lib/token-scope-selection";
+import { toTokenScopeRequest } from "@/lib/token-scope-request";
 import { READ_ONLY_TOKEN_SCOPES } from "@/lib/token-scopes";
 
 type TokenMintFormProps = {
 	principalId: number;
-	onMinted: (token: PrincipalToken) => void;
+	onMinted: (token: LoginResponse) => void;
 };
 
 const TOKEN_STEPS = [
 	{ id: "details", label: "Details", hint: "Purpose and expiry" },
-	{ id: "access", label: "Access", hint: "Choose authority" },
+	{
+		id: "permissions",
+		label: "Permission scope",
+		hint: "Choose allowed operations",
+	},
+	{
+		id: "resources",
+		label: "Resource scope",
+		hint: "Choose resources by name",
+	},
 	{ id: "review", label: "Review", hint: "Confirm and create" },
 ] as const;
 
 type TokenStep = (typeof TOKEN_STEPS)[number]["id"];
-type TokenAccessMode = "full" | "read_only" | "custom";
+type TokenPermissionMode = "all" | "read_only" | "custom";
+type TokenResourceMode = "all" | "specific";
+
+function selectedResourceSummary(selected: NamedTokenResourceScope[]): string {
+	const counts = countResourceScopesByKind(selected);
+	const parts = (
+		[
+			["collection", counts.collection],
+			["class", counts.class],
+			["object", counts.object],
+		] as const
+	)
+		.filter(([, count]) => count > 0)
+		.map(
+			([kind, count]) =>
+				`${count} ${kind}${count === 1 ? "" : kind === "class" ? "es" : "s"}`,
+		);
+	return parts.join(", ");
+}
 
 export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 	const queryClient = useQueryClient();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [expiresAt, setExpiresAt] = useState("");
-	const [accessMode, setAccessMode] = useState<TokenAccessMode>("read_only");
-	const [selected, setSelected] = useState<Permissions[]>([]);
+	const [permissionMode, setPermissionMode] =
+		useState<TokenPermissionMode>("read_only");
+	const [selectedPermissions, setSelectedPermissions] = useState<Permissions[]>(
+		[],
+	);
+	const [resourceMode, setResourceMode] =
+		useState<TokenResourceMode>("specific");
+	const [selectedResources, setSelectedResources] = useState<
+		NamedTokenResourceScope[]
+	>([]);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [activeStep, setActiveStep] = useState<TokenStep>("details");
 
@@ -57,9 +100,7 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 				);
 			}
 
-			// The 201 body is the raw token (not modeled in OpenAPI); the runtime
-			// client parses it into `data`.
-			return response.data as unknown as PrincipalToken;
+			return response.data;
 		},
 		onSuccess: async (token) => {
 			await queryClient.invalidateQueries({
@@ -68,8 +109,10 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 			setName("");
 			setDescription("");
 			setExpiresAt("");
-			setAccessMode("read_only");
-			setSelected([]);
+			setPermissionMode("read_only");
+			setSelectedPermissions([]);
+			setResourceMode("specific");
+			setSelectedResources([]);
 			setFormError(null);
 			setActiveStep("details");
 			onMinted(token);
@@ -81,15 +124,59 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 		},
 	});
 
+	const effectivePermissions =
+		permissionMode === "read_only"
+			? READ_ONLY_TOKEN_SCOPES
+			: permissionMode === "custom"
+				? selectedPermissions
+				: [];
+	const restrictPermissions = permissionMode !== "all";
+	const restrictResources = resourceMode === "specific";
+	const permissionsReady = canSubmitScopes(
+		restrictPermissions,
+		effectivePermissions,
+	);
+	const resourcesReady = canSubmitResourceScopes(
+		restrictResources,
+		selectedResources,
+	);
+	const permissionSummary =
+		permissionMode === "all"
+			? "All permissions held by the principal"
+			: permissionMode === "read_only"
+				? `${READ_ONLY_TOKEN_SCOPES.length} read-only permissions`
+				: `${selectedPermissions.length} custom permission${selectedPermissions.length === 1 ? "" : "s"}`;
+	const resourceSummary =
+		resourceMode === "all"
+			? "All resources authorized for the principal"
+			: selectedResources.length > 0
+				? selectedResourceSummary(selectedResources)
+				: "No resources selected";
+	const tokenSteps = TOKEN_STEPS.map((step) => ({
+		...step,
+		enabled:
+			step.id === "details" ||
+			step.id === "permissions" ||
+			(step.id === "resources" && permissionsReady) ||
+			(step.id === "review" && permissionsReady && resourcesReady),
+	}));
+
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setFormError(null);
 
-		const restrict = accessMode !== "full";
-		const effectiveSelected =
-			accessMode === "read_only" ? READ_ONLY_TOKEN_SCOPES : selected;
-		if (!canSubmitScopes(restrict, effectiveSelected)) {
-			setFormError("Select at least one scope, or turn off scope restriction.");
+		if (!permissionsReady) {
+			setFormError("Select at least one custom permission.");
+			setActiveStep("permissions");
+			return;
+		}
+		if (!resourcesReady) {
+			setFormError("Select at least one resource, or allow all resources.");
+			setActiveStep("resources");
+			return;
+		}
+		if (activeStep !== "review") {
+			setActiveStep("review");
 			return;
 		}
 
@@ -103,45 +190,39 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 			payload.description = trimmedDescription;
 		}
 		if (expiresAt) {
-			payload.expires_at = new Date(expiresAt).toISOString();
+			const normalizedExpiresAt = toNaiveDateTimePayload(expiresAt);
+			if (!normalizedExpiresAt) {
+				setFormError("Enter a valid token expiration date and time.");
+				setActiveStep("details");
+				return;
+			}
+			payload.expires_at = normalizedExpiresAt;
 		}
-		const scopes = toScopesPayload(restrict, effectiveSelected);
-		if (scopes) {
-			payload.scopes = scopes;
-		}
+		Object.assign(
+			payload,
+			toTokenScopeRequest({
+				permissions: effectivePermissions,
+				resources: selectedResources,
+				restrictPermissions,
+				restrictResources,
+			}),
+		);
 
 		mintMutation.mutate(payload);
 	}
-
-	const effectiveSelected =
-		accessMode === "read_only"
-			? READ_ONLY_TOKEN_SCOPES
-			: accessMode === "custom"
-				? selected
-				: [];
-	const accessReady = accessMode !== "custom" || selected.length > 0;
-	const tokenSteps = TOKEN_STEPS.map((step) => ({
-		...step,
-		enabled: step.id !== "review" || accessReady,
-	}));
-	const accessSummary =
-		accessMode === "full"
-			? "Full principal authority"
-			: accessMode === "read_only"
-				? `${READ_ONLY_TOKEN_SCOPES.length} read-only permissions`
-				: `${selected.length} custom permission${selected.length === 1 ? "" : "s"}`;
 
 	return (
 		<form className="card stack" onSubmit={onSubmit}>
 			<h3>Create token</h3>
 			<p className="muted">
-				Describe the token, choose the smallest useful authority, and review it
-				before the one-time secret is created.
+				Permission and resource scopes independently narrow the principal&apos;s
+				live group grants. Neither scope can add authority.
 			</p>
 
 			<GuidedFlowTabs
 				activeStep={activeStep}
 				ariaLabel="Token creation steps"
+				idPrefix="token-create"
 				onChange={(step) => {
 					setFormError(null);
 					setActiveStep(step);
@@ -150,7 +231,7 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 			/>
 
 			{activeStep === "details" ? (
-				<GuidedFlowPanel stepId="details">
+				<GuidedFlowPanel idPrefix="token-create" stepId="details">
 					<div className="form-grid">
 						<label className="control-field">
 							<span>Name (optional)</span>
@@ -178,41 +259,41 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 						</label>
 					</div>
 					<GuidedFlowContinue
-						nextLabel="Access"
-						onContinue={() => setActiveStep("access")}
+						nextLabel="Permission scope"
+						onContinue={() => setActiveStep("permissions")}
 						summary={
 							expiresAt
 								? `Expires ${new Date(expiresAt).toLocaleString()}`
-								: "No expiration configured"
+								: "Uses the server's default token lifetime"
 						}
 						title="Token details ready"
 					/>
 				</GuidedFlowPanel>
 			) : null}
 
-			{activeStep === "access" ? (
-				<GuidedFlowPanel stepId="access">
+			{activeStep === "permissions" ? (
+				<GuidedFlowPanel idPrefix="token-create" stepId="permissions">
 					<div className="segmented-options token-access-picker">
 						<button
 							type="button"
-							className={accessMode === "read_only" ? "is-selected" : "ghost"}
-							aria-pressed={accessMode === "read_only"}
+							className={
+								permissionMode === "read_only" ? "is-selected" : "ghost"
+							}
+							aria-pressed={permissionMode === "read_only"}
 							onClick={() => {
-								setAccessMode("read_only");
+								setPermissionMode("read_only");
 								setFormError(null);
 							}}
 						>
 							<span>Read only</span>
-							<small>
-								Collections, data, relations, templates, targets, and audit
-							</small>
+							<small>Use the explicit read-permission preset</small>
 						</button>
 						<button
 							type="button"
-							className={accessMode === "custom" ? "is-selected" : "ghost"}
-							aria-pressed={accessMode === "custom"}
+							className={permissionMode === "custom" ? "is-selected" : "ghost"}
+							aria-pressed={permissionMode === "custom"}
 							onClick={() => {
-								setAccessMode("custom");
+								setPermissionMode("custom");
 								setFormError(null);
 							}}
 						>
@@ -221,64 +302,134 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 						</button>
 						<button
 							type="button"
-							className={accessMode === "full" ? "is-selected" : "ghost"}
-							aria-pressed={accessMode === "full"}
+							className={permissionMode === "all" ? "is-selected" : "ghost"}
+							aria-pressed={permissionMode === "all"}
 							onClick={() => {
-								setAccessMode("full");
+								setPermissionMode("all");
 								setFormError(null);
 							}}
 						>
-							<span>Full authority</span>
-							<small>Inherit all authority held by this principal</small>
+							<span>All permissions</span>
+							<small>Do not restrict the permission dimension</small>
 						</button>
 					</div>
-					{accessMode === "custom" ? (
+					{permissionMode === "custom" ? (
 						<ScopePicker
 							restrict
-							selected={selected}
+							selected={selectedPermissions}
 							disabled={mintMutation.isPending}
 							showRestrictionToggle={false}
 							onChange={(_, nextSelected) => {
-								setSelected(nextSelected);
+								setSelectedPermissions(nextSelected);
 								setFormError(null);
 							}}
 						/>
-					) : accessMode === "full" ? (
+					) : permissionMode === "all" ? (
 						<div className="warning-banner">
-							This unscoped token will carry the principal&apos;s full current
-							authority.
+							The permission dimension will be unrestricted. The resource scope
+							can still narrow where this token acts.
 						</div>
 					) : (
 						<div className="info-banner">
-							The read-only preset grants eight explicit read permissions and no
-							create, update, delete, delegation, execution, or
-							subscription-management permissions.
+							The preset includes explicit read permissions only—no create,
+							update, delete, delegation, execution, or subscription management.
 						</div>
 					)}
 					<GuidedFlowContinue
-						disabled={!accessReady}
-						nextLabel="Review"
+						disabled={!permissionsReady}
+						nextLabel="Resource scope"
 						onBack={() => setActiveStep("details")}
 						onContinue={() => {
-							if (accessReady) {
+							if (permissionsReady) {
 								setFormError(null);
-								setActiveStep("review");
+								setActiveStep("resources");
 							} else {
 								setFormError("Select at least one custom permission.");
 							}
 						}}
-						summary={accessSummary}
+						summary={permissionSummary}
 						title={
-							accessReady
-								? "Authority ready"
+							permissionsReady
+								? "Permission scope ready"
 								: "Choose at least one custom permission"
 						}
 					/>
 				</GuidedFlowPanel>
 			) : null}
 
+			{activeStep === "resources" ? (
+				<GuidedFlowPanel idPrefix="token-create" stepId="resources">
+					<div className="segmented-options token-access-picker">
+						<button
+							type="button"
+							className={resourceMode === "specific" ? "is-selected" : "ghost"}
+							aria-pressed={resourceMode === "specific"}
+							onClick={() => {
+								setResourceMode("specific");
+								setFormError(null);
+							}}
+						>
+							<span>Specific resources</span>
+							<small>Find collections, classes, or objects by name</small>
+						</button>
+						<button
+							type="button"
+							className={resourceMode === "all" ? "is-selected" : "ghost"}
+							aria-pressed={resourceMode === "all"}
+							onClick={() => {
+								setResourceMode("all");
+								setFormError(null);
+							}}
+						>
+							<span>All resources</span>
+							<small>Do not restrict the resource dimension</small>
+						</button>
+					</div>
+					{resourceMode === "specific" ? (
+						<TokenResourceScopePicker
+							selected={selectedResources}
+							disabled={mintMutation.isPending}
+							onChange={(nextSelected) => {
+								setSelectedResources(nextSelected);
+								setFormError(null);
+							}}
+						/>
+					) : (
+						<div className="warning-banner">
+							The resource dimension will be unrestricted. Live group grants
+							still determine which resources the principal can access.
+						</div>
+					)}
+					<GuidedFlowContinue
+						disabled={!resourcesReady}
+						nextLabel="Review"
+						onBack={() => setActiveStep("permissions")}
+						onContinue={() => {
+							if (resourcesReady) {
+								setFormError(null);
+								setActiveStep("review");
+							} else {
+								setFormError(
+									"Select at least one resource, or allow all resources.",
+								);
+							}
+						}}
+						summary={resourceSummary}
+						title={
+							resourcesReady
+								? "Resource scope ready"
+								: "Choose at least one named resource"
+						}
+					/>
+				</GuidedFlowPanel>
+			) : null}
+
 			{activeStep === "review" ? (
-				<GuidedFlowPanel stepId="review">
+				<GuidedFlowPanel idPrefix="token-create" stepId="review">
+					<div className="info-banner">
+						Effective authority = live principal/group grants ∩ permission scope
+						∩ resource scope.
+					</div>
 					<dl className="guided-flow-review-list">
 						<div>
 							<dt>Purpose</dt>
@@ -292,38 +443,52 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 							<dd>
 								{expiresAt
 									? new Date(expiresAt).toLocaleString()
-									: "Does not expire"}
+									: "Server default token lifetime"}
 							</dd>
 						</div>
 						<div>
-							<dt>Authority</dt>
-							<dd>{accessSummary}</dd>
+							<dt>Permission scope</dt>
+							<dd>{permissionSummary}</dd>
 						</div>
-						{accessMode !== "full" ? (
+						{permissionMode !== "all" ? (
 							<div>
 								<dt>Permissions</dt>
-								<dd>{effectiveSelected.join(", ")}</dd>
+								<dd>{effectivePermissions.join(", ")}</dd>
+							</div>
+						) : null}
+						<div>
+							<dt>Resource scope</dt>
+							<dd>{resourceSummary}</dd>
+						</div>
+						{resourceMode === "specific" ? (
+							<div>
+								<dt>Resources</dt>
+								<dd>
+									{selectedResources.map((scope) => scope.label).join(", ")}
+								</dd>
 							</div>
 						) : null}
 					</dl>
-					{accessMode === "full" ? (
+					{permissionMode === "all" && resourceMode === "all" ? (
 						<div className="warning-banner">
-							Confirm that full principal authority is required before creating
-							this token.
+							Both dimensions are unrestricted. This creates an unscoped token
+							with the principal&apos;s full current authority.
 						</div>
 					) : null}
 					<div className="form-actions">
 						<button
 							type="button"
 							className="ghost"
-							onClick={() => setActiveStep("access")}
+							onClick={() => setActiveStep("resources")}
 							disabled={mintMutation.isPending}
 						>
 							Back
 						</button>
 						<button
 							type="submit"
-							disabled={mintMutation.isPending || !accessReady}
+							disabled={
+								mintMutation.isPending || !permissionsReady || !resourcesReady
+							}
 						>
 							{mintMutation.isPending ? "Creating..." : "Create token"}
 						</button>
@@ -331,7 +496,11 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 				</GuidedFlowPanel>
 			) : null}
 
-			{formError ? <div className="error-banner">{formError}</div> : null}
+			{formError ? (
+				<div className="error-banner" role="alert">
+					{formError}
+				</div>
+			) : null}
 		</form>
 	);
 }
