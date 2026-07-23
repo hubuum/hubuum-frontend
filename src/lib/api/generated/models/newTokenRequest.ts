@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.0.3
  */
 import type { Permissions } from './permissions';
+import type { TokenResourceScope } from './tokenResourceScope';
 
 export interface NewTokenRequest {
   /** @nullable */
@@ -14,6 +15,14 @@ export interface NewTokenRequest {
   expires_at?: string | null;
   /** @nullable */
   name?: string | null;
+  /**
+     * Optional resource boundary. Entries are additive within the boundary
+     * and are always intersected with the principal's live group grants. At
+     * most 1,000 entries are accepted.
+     * @maxItems 1000
+     * @nullable
+     */
+  resource_scopes?: TokenResourceScope[] | null;
   /**
      * Optional scope set. Omit for an unscoped token; an **empty** array is
      * rejected (almost certainly a client bug, not "grant nothing").

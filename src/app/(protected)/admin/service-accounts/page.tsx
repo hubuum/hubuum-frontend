@@ -10,8 +10,8 @@ export default async function AdminServiceAccountsPage() {
 				<p className="eyebrow">Admin</p>
 				<h2>Service accounts</h2>
 				<p className="muted">
-					Non-human principals for automation. Create one, then mint scoped
-					tokens for it.
+					Non-human principals for automation. Create an account and its
+					least-privilege initial token in one guided flow.
 				</p>
 			</header>
 			<ServiceAccountsTable />

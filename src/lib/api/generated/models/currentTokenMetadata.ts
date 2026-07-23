@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.0.3
  */
 import type { Permissions } from './permissions';
+import type { TokenResourceScope } from './tokenResourceScope';
 
 export interface CurrentTokenMetadata {
   /** @nullable */
@@ -18,6 +19,8 @@ export interface CurrentTokenMetadata {
   last_used_at?: string | null;
   /** @nullable */
   name?: string | null;
+  /** @nullable */
+  resource_scopes?: TokenResourceScope[] | null;
   scoped: boolean;
   /** @nullable */
   scopes?: Permissions[] | null;

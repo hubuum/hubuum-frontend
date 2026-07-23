@@ -295,6 +295,7 @@ export * from './taskResponse';
 export * from './taskStatus';
 export * from './testOperation';
 export * from './tlsConfig';
+export * from './tokenResourceScope';
 export * from './unifiedSearchBatchResponse';
 export * from './unifiedSearchDoneEvent';
 export * from './unifiedSearchErrorEvent';

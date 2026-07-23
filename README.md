@@ -105,6 +105,17 @@ groups, including users that originated from a provider.
 Import permission selectors include `GroupKey.identity_scope`, and the import
 workspace defaults omitted scopes to `local` to match the backend contract.
 
+Service-account credentials expose the backend's two independent token-scope
+dimensions. Permission scopes select allowed operations, while resource scopes
+select collections, classes, and objects through unified name search. The
+effective authority remains the intersection of the principal's live group
+grants, the permission scope, and the resource scope. The admin creation flow
+creates the account and its first scoped token together; later tokens use the
+same guided scope controls on the account detail page. The owner group controls
+who can manage a service account but does not grant runtime access, so the
+account still needs live group membership before its token has effective
+authority.
+
 ## Object data columns
 
 The objects workspace can promote fields from each object's JSON `data` blob
