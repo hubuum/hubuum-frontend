@@ -161,6 +161,19 @@ If a required check cannot run because credentials, Docker, a browser, network
 access, or a live backend is unavailable, report that explicitly; do not claim
 the check passed.
 
+### Release dependency gate
+
+- Before every release, update all application, development, and GitHub Actions
+  dependencies to their latest available versions and keep lockfiles and pinned
+  action SHAs in sync.
+- Merge or supersede every open Dependabot dependency pull request before
+  tagging. Do not release while a dependency update remains open or unresolved.
+- Run `npm outdated` and the production dependency audit after the updates. If
+  an update must be deferred for a concrete compatibility reason, document the
+  exception in the release pull request and release notes.
+- Rerun the full release verification against the combined dependency set;
+  green checks on the individual update pull requests are not a substitute.
+
 ## Change discipline
 
 - Inspect the working tree before editing and preserve unrelated user changes.
