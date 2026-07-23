@@ -26,7 +26,7 @@ services:
       start_period: 5s
 
   frontend:
-    image: ${HUBUUM_FRONTEND_IMAGE:-ghcr.io/hubuum/hubuum-frontend:v0.0.3}
+    image: ${HUBUUM_FRONTEND_IMAGE:-ghcr.io/hubuum/hubuum-frontend:v0.0.4}
     restart: unless-stopped
     read_only: true
     tmpfs:

@@ -1,4 +1,5 @@
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
+import { collectAllCursorPages } from "@/lib/api/cursor-pages";
 import {
 	getApiV1ImportsByTaskId,
 	getApiV1ImportsByTaskIdResults,
@@ -213,17 +214,24 @@ export async function fetchTask(taskId: number): Promise<TaskResponse> {
 export async function fetchTaskEvents(
 	taskId: number,
 ): Promise<TaskEventResponse[]> {
-	const response = await getApiV1TasksByTaskIdEvents(taskId, undefined, {
-		credentials: "include",
-	});
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load task events."),
+	return collectAllCursorPages(async (cursor) => {
+		const response = await getApiV1TasksByTaskIdEvents(
+			taskId,
+			{ cursor, include_total: false, limit: 250 },
+			{ credentials: "include" },
 		);
-	}
 
-	return response.data;
+		if (response.status !== 200) {
+			throw new Error(
+				getApiErrorMessage(response.data, "Failed to load task events."),
+			);
+		}
+
+		return {
+			items: response.data,
+			nextCursor: response.headers.get("x-next-cursor"),
+		};
+	});
 }
 
 export async function fetchImportProjection(
@@ -245,15 +253,22 @@ export async function fetchImportProjection(
 export async function fetchImportResults(
 	taskId: number,
 ): Promise<ImportTaskResultResponse[]> {
-	const response = await getApiV1ImportsByTaskIdResults(taskId, undefined, {
-		credentials: "include",
-	});
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load import results."),
+	return collectAllCursorPages(async (cursor) => {
+		const response = await getApiV1ImportsByTaskIdResults(
+			taskId,
+			{ cursor, include_total: false, limit: 250 },
+			{ credentials: "include" },
 		);
-	}
 
-	return response.data;
+		if (response.status !== 200) {
+			throw new Error(
+				getApiErrorMessage(response.data, "Failed to load import results."),
+			);
+		}
+
+		return {
+			items: response.data,
+			nextCursor: response.headers.get("x-next-cursor"),
+		};
+	});
 }

@@ -1335,7 +1335,7 @@ export const getGetApiV1ClassesByNameByClassNameUrl = (className: string,) => {
 
 
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}`
 }
 
 /**
@@ -1396,7 +1396,7 @@ export const getDeleteApiV1ClassesByNameByClassNameUrl = (className: string,) =>
 
 
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}`
 }
 
 /**
@@ -1462,7 +1462,7 @@ export const getPatchApiV1ClassesByNameByClassNameUrl = (className: string,) => 
 
 
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}`
 }
 
 /**
@@ -1545,7 +1545,7 @@ export const getGetApiV1ClassesByNameByClassNameObjectAggregatesUrl = (className
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/object-aggregates?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/object-aggregates`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/object-aggregates?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/object-aggregates`
 }
 
 /**
@@ -1615,7 +1615,7 @@ export const getGetApiV1ClassesByNameByClassNameObjectsUrl = (className: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects`
 }
 
 /**
@@ -1687,7 +1687,7 @@ export const getPostApiV1ClassesByNameByClassNameObjectsUrl = (className: string
 
 
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects`
 }
 
 /**
@@ -1758,7 +1758,7 @@ export const getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl = (
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects/by-name/${encodeURIComponent(objectName)}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects/by-name/${encodeURIComponent(objectName)}`
 }
 
 /**
@@ -1822,7 +1822,7 @@ export const getDeleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl 
 
 
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects/by-name/${encodeURIComponent(objectName)}`
 }
 
 /**
@@ -1890,7 +1890,7 @@ export const getPatchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl =
 
 
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects/by-name/${encodeURIComponent(objectName)}`
 }
 
 /**
@@ -1984,7 +1984,7 @@ export const getPatchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataU
 
 
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/data`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects/by-name/${encodeURIComponent(objectName)}/data`
 }
 
 /**
@@ -2048,7 +2048,7 @@ export const getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelated
 
 
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/related/graph`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects/by-name/${encodeURIComponent(objectName)}/related/graph`
 }
 
 /**
@@ -2119,7 +2119,7 @@ export const getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelated
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/related/objects?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/related/objects`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects/by-name/${encodeURIComponent(objectName)}/related/objects?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects/by-name/${encodeURIComponent(objectName)}/related/objects`
 }
 
 /**
@@ -2191,7 +2191,7 @@ export const getGetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelated
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/related/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/objects/by-name/${objectName}/related/relations`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects/by-name/${encodeURIComponent(objectName)}/related/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/objects/by-name/${encodeURIComponent(objectName)}/related/relations`
 }
 
 /**
@@ -2257,7 +2257,7 @@ export const getGetApiV1ClassesByNameByClassNamePermissionsUrl = (className: str
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/permissions?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/permissions`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/permissions?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/permissions`
 }
 
 /**
@@ -2327,7 +2327,7 @@ export const getGetApiV1ClassesByNameByClassNameRelatedClassesUrl = (className: 
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/related/classes?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/related/classes`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/related/classes?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/related/classes`
 }
 
 /**
@@ -2389,7 +2389,7 @@ export const getGetApiV1ClassesByNameByClassNameRelatedGraphUrl = (className: st
 
 
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/related/graph`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/related/graph`
 }
 
 /**
@@ -2458,7 +2458,7 @@ export const getGetApiV1ClassesByNameByClassNameRelatedRelationsUrl = (className
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/related/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${className}/related/relations`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/related/relations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/related/relations`
 }
 
 /**

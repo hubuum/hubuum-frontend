@@ -2302,9 +2302,17 @@ export function ObjectsExplorer() {
 	}
 
 	function setGroupingField(nextFieldId: string | null) {
+		const nextGroupingField =
+			groupingFields.find((field) => field.id === nextFieldId) ?? null;
 		setGroupFieldId(nextFieldId);
 		setAggregateCursor(null);
 		setAggregateCursorHistory([]);
+		if (
+			nextGroupingField?.serverGroupBy &&
+			(searchTerm || normalizeSearchTerm(searchInput))
+		) {
+			clearFilter();
+		}
 		if (nextFieldId) {
 			setDataColumnSort({ columnId: null, direction: "asc" });
 			setSelectedObjectIds([]);
@@ -2995,7 +3003,12 @@ export function ObjectsExplorer() {
 									className="table-filter-input"
 									value={searchInput}
 									onChange={(event) => setSearchInput(event.target.value)}
-									placeholder="Find on this page"
+									placeholder={
+										serverGroupingField
+											? "Unavailable while grouping"
+											: "Find on this page"
+									}
+									disabled={serverGroupingField !== null}
 								/>
 								{normalizeSearchTerm(searchInput) ? (
 									<button
@@ -3012,6 +3025,7 @@ export function ObjectsExplorer() {
 								type="submit"
 								className="ghost icon-button"
 								aria-label="Find objects on this page"
+								disabled={serverGroupingField !== null}
 							>
 								<IconSearch />
 							</button>

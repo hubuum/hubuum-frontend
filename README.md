@@ -298,18 +298,18 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Current `main` development targets Hubuum Server `v0.0.3`. The published
-Hubuum Frontend `v0.0.3` release targets Hubuum Server `v0.0.2`. Releases provide:
+Current `main` development and the published Hubuum Frontend `v0.0.4` release
+target Hubuum Server `v0.0.3`. Releases provide:
 
-- `ghcr.io/hubuum/hubuum-frontend:v0.0.3` for Linux AMD64 and ARM64;
-- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.3`;
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.4` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.4`;
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
 The application version is visible in the navigation, on the login page, and
 in `/healthz` and `/readyz` responses. Release images show the exact tag (for
-example, `v0.0.3`); commit images show `v0.0.3+<short-sha>`; unversioned local
-builds show `v0.0.3+dirty`. Image builds may set the immutable identity with
+example, `v0.0.4`); commit images show `v0.0.4+<short-sha>`; unversioned local
+builds show `v0.0.4+dirty`. Image builds may set the immutable identity with
 `docker build --build-arg APP_VERSION=...`.
 
 See [compatibility](docs/compatibility.md) and the
@@ -401,7 +401,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.3 \
+  --version 0.0.4 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -410,7 +410,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.3 \
+  --version 0.0.4 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com

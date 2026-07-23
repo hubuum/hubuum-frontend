@@ -324,6 +324,12 @@ test.describe("v0.0.3 server features", () => {
 				}),
 			).toHaveCount(2);
 
+			const findOnPage = page.getByLabel("Find objects on this loaded page");
+			await findOnPage.fill("e2e-host");
+			await findOnPage.press("Enter");
+			await expect
+				.poll(() => new URL(page.url()).searchParams.get("search"))
+				.toBe("e2e-host");
 			await page.getByRole("button", { name: "Group" }).click();
 			const groupingMenu = page.getByRole("dialog", {
 				name: "Group objects",
@@ -331,6 +337,11 @@ test.describe("v0.0.3 server features", () => {
 			await groupingMenu
 				.getByLabel("Group by")
 				.selectOption({ label: "Shared · Shared hostname" });
+			await expect(findOnPage).toBeDisabled();
+			await expect(findOnPage).toHaveValue("");
+			await expect
+				.poll(() => new URL(page.url()).searchParams.get("search"))
+				.toBeNull();
 			await expect(groupingMenu.getByLabel("Sort groups")).toHaveValue(
 				"count-desc",
 			);

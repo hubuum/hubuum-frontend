@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-07-23
+
 ### Compatibility
 
 - Updated the pinned CI contract target to Hubuum Server `v0.0.3` and imported
@@ -26,6 +28,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   safely and unrelated concurrent data changes can compose.
 - Added effective pagination-limit discovery for the object fetch controls and
   forwarded the server's `X-Page-Limit` response metadata through the BFF.
+- Added consistent audit-event and resource-history detail dialogs with full
+  stored-state inspection, side-arrow navigation, and keyboard browsing.
 
 ### Changed
 
@@ -36,6 +40,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   keyboard-accessible flow navigation and continue controls.
 - Replaced remote-target authentication JSON with structured secret-reference
   fields and made the explicit read-only preset the default for new API tokens.
+- Streamlined object details around focused inline edits, a raw JSON data
+  editor, compact connection controls, and quick relation-depth selectors.
 
 ### Fixed
 
@@ -44,6 +50,18 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   initialization from resetting those preferences during a refresh.
 - Added branded favicon and Apple touch-icon assets, including the legacy
   precomposed path, so browser icon discovery no longer reaches a 404 route.
+- Collected every cursor page for task events, import outcomes, event sinks,
+  and collection event subscriptions so tables and exports do not silently
+  omit records after the first page.
+- Encoded by-name class and object path segments and reconciled Find-on-page
+  with server-side grouping.
+- Kept long object paths, inline controls, editor hints, and audit change
+  counts within their intended cells and lines.
+
+### Security
+
+- Updated Next.js to `16.2.11` and overrode Sharp to `0.35.3` to resolve the
+  production dependency advisories reported before release.
 
 ## [0.0.3] - 2026-07-18
 
@@ -150,7 +168,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.1

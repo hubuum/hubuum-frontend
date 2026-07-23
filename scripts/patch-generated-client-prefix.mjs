@@ -21,6 +21,11 @@ source = source.replace(/`\/api\/v([01])([^`]*)`/g, (_match, version, rest) =>
 	["`", "${", "HUBUUM_BFF_PREFIX", "}/api/v", version, rest, "`"].join(""),
 );
 
+source = source.replace(
+	/\$\{(className|objectName)\}/g,
+	(_match, parameter) => `\${encodeURIComponent(${parameter})}`,
+);
+
 source = source.replace(/[ \t]+$/gm, "");
 
 writeFileSync(clientPath, source);
