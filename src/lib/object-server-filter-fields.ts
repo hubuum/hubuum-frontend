@@ -69,32 +69,39 @@ export function resolveObjectServerFilterDataFields(
 	jsonSchema: unknown,
 	sampleData: readonly unknown[],
 ): ServerFilterDataField[] {
-	return discoverJsonFields(jsonSchema, [...sampleData]).flatMap((field) => {
-		const path = toServerFilterDataPath(field.path);
-		if (!path) return [];
+	return discoverJsonFields(jsonSchema, [...sampleData])
+		.flatMap((field) => {
+			const path = toServerFilterDataPath(field.path);
+			if (!path) return [];
 
-		const schemaDataType = getJsonSchemaServerFilterDataType(
-			jsonSchema,
-			field.path,
-		);
-		const inferredDataType = inferObjectServerFilterDataType(
-			sampleData.map((data) => getValueAtDataPath(data, field.path)),
-		);
-		const dataType =
-			schemaDataType === "string" &&
-			(inferredDataType === "date" || inferredDataType === "ip")
-				? inferredDataType
-				: (schemaDataType ?? inferredDataType);
+			const schemaDataType = getJsonSchemaServerFilterDataType(
+				jsonSchema,
+				field.path,
+			);
+			const inferredDataType = inferObjectServerFilterDataType(
+				sampleData.map((data) => getValueAtDataPath(data, field.path)),
+			);
+			const dataType =
+				schemaDataType === "string" &&
+				(inferredDataType === "date" || inferredDataType === "ip")
+					? inferredDataType
+					: (schemaDataType ?? inferredDataType);
 
-		return [
-			{
-				id: JSON.stringify(path),
-				label: field.label,
-				path,
-				dataType,
-			},
-		];
-	});
+			return [
+				{
+					id: JSON.stringify(path),
+					label: field.label,
+					path,
+					dataType,
+				},
+			];
+		})
+		.sort((left, right) =>
+			left.label.localeCompare(right.label, undefined, {
+				numeric: true,
+				sensitivity: "base",
+			}),
+		);
 }
 
 export function resolveObjectServerFilterComputedFields(

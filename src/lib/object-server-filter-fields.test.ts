@@ -33,8 +33,8 @@ describe("object server filter field setup", () => {
 			{
 				type: "object",
 				properties: {
-					commissioned_at: { type: "string" },
 					hostname: { type: "string" },
+					commissioned_at: { type: "string" },
 				},
 			},
 			[
@@ -69,6 +69,11 @@ describe("object server filter field setup", () => {
 		expect(fields.some((field) => field.label.includes("unsafe-key"))).toBe(
 			false,
 		);
+		expect(fields.map((field) => field.label)).toEqual([
+			"commissioned_at",
+			"hostname",
+			"network.address",
+		]);
 	});
 
 	it("normalizes enabled shared and personal computed fields", () => {
