@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { PrincipalGroupMemberships } from "@/components/principal-group-memberships";
 import { PrincipalPermissions } from "@/components/principal-permissions";
-import { RawTokenReveal } from "@/components/raw-token-reveal";
+import { TokenCreationModal } from "@/components/token-creation-modal";
 import { TokenList } from "@/components/token-list";
-import { TokenMintForm } from "@/components/token-mint-form";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamServiceAccountsByServiceAccountId,
@@ -73,7 +72,7 @@ export function ServiceAccountDetail({
 	const [initialized, setInitialized] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
-	const [rawToken, setRawToken] = useState<string | null>(null);
+	const [isTokenCreateModalOpen, setTokenCreateModalOpen] = useState(false);
 
 	const accountQuery = useQuery({
 		queryKey: ["service-account", serviceAccountId],
@@ -304,6 +303,11 @@ export function ServiceAccountDetail({
 
 	return (
 		<section className="stack">
+			<TokenCreationModal
+				open={isTokenCreateModalOpen && !disabled}
+				principalId={serviceAccountId}
+				onClose={() => setTokenCreateModalOpen(false)}
+			/>
 			<header className="detail-identity">
 				<div className="scope-heading">
 					<h2>
@@ -405,25 +409,16 @@ export function ServiceAccountDetail({
 
 			<div className="stack">
 				<h3>Tokens</h3>
+				<TokenList
+					createDisabled={disabled}
+					principalId={serviceAccountId}
+					onCreate={() => setTokenCreateModalOpen(true)}
+				/>
 				{disabled ? (
 					<div className="muted">
 						Disabled service accounts cannot mint new tokens.
 					</div>
-				) : (
-					<>
-						{rawToken ? (
-							<RawTokenReveal
-								token={rawToken}
-								onDismiss={() => setRawToken(null)}
-							/>
-						) : null}
-						<TokenMintForm
-							principalId={serviceAccountId}
-							onMinted={(token) => setRawToken(token.token)}
-						/>
-					</>
-				)}
-				<TokenList principalId={serviceAccountId} />
+				) : null}
 			</div>
 
 			<div className="stack">

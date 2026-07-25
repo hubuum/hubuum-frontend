@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
 import {
 	GuidedFlowContinue,
@@ -28,7 +28,9 @@ import { toTokenScopeRequest } from "@/lib/token-scope-request";
 import { READ_ONLY_TOKEN_SCOPES } from "@/lib/token-scopes";
 
 type TokenMintFormProps = {
+	embedded?: boolean;
 	principalId: number;
+	onCloseLockedChange?: (locked: boolean) => void;
 	onMinted: (token: LoginResponse) => void;
 };
 
@@ -68,7 +70,12 @@ function selectedResourceSummary(selected: NamedTokenResourceScope[]): string {
 	return parts.join(", ");
 }
 
-export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
+export function TokenMintForm({
+	embedded = false,
+	principalId,
+	onCloseLockedChange,
+	onMinted,
+}: TokenMintFormProps) {
 	const queryClient = useQueryClient();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -123,6 +130,11 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 			);
 		},
 	});
+
+	useEffect(() => {
+		onCloseLockedChange?.(mintMutation.isPending);
+		return () => onCloseLockedChange?.(false);
+	}, [mintMutation.isPending, onCloseLockedChange]);
 
 	const effectivePermissions =
 		permissionMode === "read_only"
@@ -212,8 +224,11 @@ export function TokenMintForm({ principalId, onMinted }: TokenMintFormProps) {
 	}
 
 	return (
-		<form className="card stack" onSubmit={onSubmit}>
-			<h3>Create token</h3>
+		<form
+			className={embedded ? "stack token-mint-form" : "card stack"}
+			onSubmit={onSubmit}
+		>
+			{embedded ? null : <h3>Create token</h3>}
 			<p className="muted">
 				Permission and resource scopes independently narrow the principal&apos;s
 				live group grants. Neither scope can add authority.

@@ -3492,6 +3492,7 @@ th.resizable {
 }
 
 .table-export-trigger,
+.token-create-trigger,
 .server-filter-trigger,
 .object-grouping-trigger {
 	display: inline-flex;
@@ -5253,6 +5254,10 @@ button.template-data-field:hover {
 
 .token-detail-security-note {
 	margin: 0;
+}
+
+.token-mint-form {
+	min-width: 0;
 }
 
 button.token-revoke-button {
@@ -8803,6 +8808,7 @@ fieldset.segmented-options {
 	.sidebar-link,
 	.user-menu .menu-item,
 	.table-export-trigger,
+	.token-create-trigger,
 	.server-filter-trigger,
 	.object-grouping-trigger,
 	.object-column-picker-trigger {

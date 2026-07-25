@@ -22,6 +22,8 @@ import { tokenResourceScopeKey } from "@/lib/token-resource-scope-selection";
 import { formatTokenMetadataScope } from "@/lib/token-scope-details";
 
 type TokenListProps = {
+	createDisabled?: boolean;
+	onCreate?: () => void;
 	principalId: number | "me";
 };
 
@@ -56,7 +58,11 @@ function formatTimestamp(value: string | null | undefined): string {
 	return new Date(value).toLocaleString();
 }
 
-export function TokenList({ principalId }: TokenListProps) {
+export function TokenList({
+	createDisabled = false,
+	onCreate,
+	principalId,
+}: TokenListProps) {
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
 	const [selectedTokenId, setSelectedTokenId] = useState<number | null>(null);
@@ -236,6 +242,16 @@ export function TokenList({ principalId }: TokenListProps) {
 						<p className="muted">Select a token to inspect its full scope.</p>
 					</div>
 					<div className="table-tools">
+						{onCreate ? (
+							<button
+								type="button"
+								className="token-create-trigger"
+								disabled={createDisabled}
+								onClick={onCreate}
+							>
+								Create new
+							</button>
+						) : null}
 						<TableExportMenu view={exportView} compact />
 					</div>
 				</div>

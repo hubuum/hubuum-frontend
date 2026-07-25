@@ -3,9 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { RawTokenReveal } from "@/components/raw-token-reveal";
+import { TokenCreationModal } from "@/components/token-creation-modal";
 import { TokenList } from "@/components/token-list";
-import { TokenMintForm } from "@/components/token-mint-form";
 import { useCurrentUserId } from "@/lib/use-current-user-id";
 
 type AccountTokensProps = {
@@ -15,7 +14,7 @@ type AccountTokensProps = {
 export function AccountTokens({ currentUsername }: AccountTokensProps) {
 	const queryClient = useQueryClient();
 	const principalId = useCurrentUserId(currentUsername);
-	const [rawToken, setRawToken] = useState<string | null>(null);
+	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
 	if (principalId == null) {
 		return <div className="card muted">Resolving your account…</div>;
@@ -23,19 +22,20 @@ export function AccountTokens({ currentUsername }: AccountTokensProps) {
 
 	return (
 		<div className="stack">
-			{rawToken ? (
-				<RawTokenReveal token={rawToken} onDismiss={() => setRawToken(null)} />
-			) : null}
-			<TokenMintForm
+			<TokenCreationModal
+				open={isCreateModalOpen}
 				principalId={principalId}
-				onMinted={(token) => {
-					setRawToken(token.token);
+				onClose={() => setCreateModalOpen(false)}
+				onMinted={() => {
 					void queryClient.invalidateQueries({
 						queryKey: ["principal-tokens", "me"],
 					});
 				}}
 			/>
-			<TokenList principalId="me" />
+			<TokenList
+				principalId="me"
+				onCreate={() => setCreateModalOpen(true)}
+			/>
 		</div>
 	);
 }
