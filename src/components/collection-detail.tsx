@@ -354,6 +354,10 @@ const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
 	},
 ];
 
+const ALL_COLLECTION_PERMISSIONS = PERMISSION_DEFINITIONS.map(
+	(definition) => definition.value,
+);
+
 async function fetchCollection(collectionId: number): Promise<Collection> {
 	const response = await getApiV1CollectionsByCollectionId(collectionId, {
 		credentials: "include",
@@ -1368,7 +1372,7 @@ export function CollectionDetail({
 		});
 	}
 
-	function onSaveNewPermissions() {
+	function grantNewPermissions(permissions: PermissionName[]) {
 		setPermissionsError(null);
 		setPermissionsSuccess(null);
 
@@ -1378,16 +1382,25 @@ export function CollectionDetail({
 			return;
 		}
 
-		if (newSelectedPermissions.length === 0) {
+		if (permissions.length === 0) {
 			setPermissionsError("Select at least one permission.");
 			return;
 		}
 
 		upsertPermissionsMutation.mutate({
 			groupId: parsedGroupId,
-			permissions: newSelectedPermissions,
+			permissions,
 			mode: "create",
 		});
+	}
+
+	function onSaveNewPermissions() {
+		grantNewPermissions(newSelectedPermissions);
+	}
+
+	function onGrantAllNewPermissions() {
+		setNewSelectedPermissions(ALL_COLLECTION_PERMISSIONS);
+		grantNewPermissions(ALL_COLLECTION_PERMISSIONS);
 	}
 
 	function renderPermissionEditor(
@@ -2139,6 +2152,18 @@ export function CollectionDetail({
 															{upsertPermissionsMutation.isPending
 																? "Saving..."
 																: "Grant"}
+														</button>
+														<button
+															type="button"
+															className="ghost"
+															onClick={onGrantAllNewPermissions}
+															disabled={
+																upsertPermissionsMutation.isPending ||
+																(usingGroupSelect &&
+																	availableGroups.length === 0)
+															}
+														>
+															Grant all
 														</button>
 														<button
 															type="button"
