@@ -3590,7 +3590,7 @@ button.table-export-option {
 .object-grouping-menu {
 	display: grid;
 	gap: 0.7rem;
-	width: min(24rem, calc(100vw - 2rem));
+	width: min(42rem, calc(100vw - 2rem));
 	padding: 0.85rem;
 }
 
@@ -3615,6 +3615,45 @@ button.table-export-option {
 
 .object-grouping-menu .control-field {
 	gap: 0.3rem;
+}
+
+.object-aggregate-measures {
+	display: grid;
+	gap: 0.6rem;
+	padding-block: 0.15rem;
+}
+
+.object-aggregate-measures-header {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 0.8rem;
+}
+
+.object-aggregate-measures-header p {
+	margin: 0.15rem 0 0;
+	color: var(--muted);
+	font-size: 0.78rem;
+}
+
+.object-aggregate-measures-header button {
+	flex: 0 0 auto;
+}
+
+.object-aggregate-measure-row {
+	display: grid;
+	grid-template-columns: minmax(7.5rem, 0.8fr) minmax(10rem, 1.4fr) auto;
+	align-items: end;
+	gap: 0.5rem;
+	padding: 0.6rem;
+	border: 1px solid var(--line);
+	border-radius: 0.65rem;
+	background: color-mix(in oklab, var(--card) 88%, var(--canvas));
+}
+
+.object-aggregate-measure-row > button {
+	margin-bottom: 0.05rem;
+	padding-inline: 0.5rem;
 }
 
 .object-grouping-footnote {
@@ -3888,6 +3927,17 @@ button.table-export-option {
 .object-group-count {
 	font-variant-numeric: tabular-nums;
 	font-weight: 760;
+}
+
+.object-group-measure {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.object-group-measure small {
+	display: block;
+	color: var(--muted);
+	font-size: 0.72rem;
 }
 
 .object-group-examples {
@@ -5144,6 +5194,85 @@ button.template-data-field:hover {
 	text-transform: uppercase;
 }
 
+.token-detail-intro,
+.token-detail-section-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.token-detail-intro > div,
+.token-detail-section-header > div {
+	min-width: 0;
+}
+
+.token-detail-intro p,
+.token-detail-section-header p {
+	margin-top: 0.25rem;
+}
+
+.token-detail-scope {
+	padding: 0.85rem;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	background: var(--field-bg);
+}
+
+.token-detail-scope-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+	align-items: start;
+}
+
+.token-detail-unrestricted {
+	padding: 0.75rem;
+	border: 1px dashed var(--line);
+	border-radius: 12px;
+	background: var(--bg-highlight);
+}
+
+.token-detail-chip-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.token-detail-resource {
+	gap: 0.35rem;
+}
+
+.token-detail-resource-groups {
+	gap: 0.75rem;
+}
+
+.token-detail-resource-groups > .stack {
+	gap: 0.35rem;
+}
+
+.token-detail-security-note {
+	margin: 0;
+}
+
+button.token-revoke-button {
+	padding: 0.45rem 0.7rem;
+	border-radius: 10px;
+	font-size: 0.82rem;
+	line-height: 1.2;
+}
+
+.token-list-table td {
+	vertical-align: middle;
+}
+
+@media (pointer: coarse) {
+	button.token-revoke-button {
+		min-height: 2.75rem;
+		padding: 0.55rem 0.8rem;
+	}
+}
+
 .token-resource-results {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -5162,6 +5291,12 @@ button.template-data-field:hover {
 	border: 1px solid var(--line);
 	border-radius: 12px;
 	background: var(--field-bg);
+}
+
+@media (max-width: 720px) {
+	.token-detail-scope-grid {
+		grid-template-columns: 1fr;
+	}
 }
 
 .token-resource-group legend {
@@ -9364,6 +9499,15 @@ fieldset.segmented-options {
 	.server-filter-menu-header button,
 	.object-grouping-menu-header button {
 		align-self: flex-start;
+	}
+
+	.object-aggregate-measure-row {
+		grid-template-columns: 1fr;
+		align-items: stretch;
+	}
+
+	.object-aggregate-measure-row > button {
+		justify-self: start;
 	}
 
 	.workspace-hero {

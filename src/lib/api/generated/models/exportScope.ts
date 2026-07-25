@@ -3,14 +3,20 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
 import type { ExportScopeKind } from './exportScopeKind';
 
 export interface ExportScope {
-  /** @nullable */
+  /**
+     * @minimum 1
+     * @nullable
+     */
   class_id?: number | null;
   kind: ExportScopeKind;
-  /** @nullable */
+  /**
+     * @minimum 1
+     * @nullable
+     */
   object_id?: number | null;
 }

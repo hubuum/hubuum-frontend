@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
 import type {
   ApiErrorResponse,
@@ -1525,11 +1525,11 @@ export type getApiV1ClassesByNameByClassNameObjectAggregatesResponseError = (get
 export type getApiV1ClassesByNameByClassNameObjectAggregatesResponse = (getApiV1ClassesByNameByClassNameObjectAggregatesResponseSuccess | getApiV1ClassesByNameByClassNameObjectAggregatesResponseError)
 
 export const getGetApiV1ClassesByNameByClassNameObjectAggregatesUrl = (className: string,
-    params: GetApiV1ClassesByNameByClassNameObjectAggregatesParams,) => {
+    params?: GetApiV1ClassesByNameByClassNameObjectAggregatesParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    const explodeParameters = ["group_by"];
+    const explodeParameters = ["group_by","aggregate"];
 
     if (Array.isArray(value) && explodeParameters.includes(key)) {
       value.forEach((v) => {
@@ -1549,11 +1549,11 @@ export const getGetApiV1ClassesByNameByClassNameObjectAggregatesUrl = (className
 }
 
 /**
- * Name-addressed alias for permission-scoped object aggregation. Numeric-looking class names remain names. Normal object filters and up to two enabled shared or owned personal computed filters are applied before grouping.
+ * Name-addressed alias for permission-scoped object aggregation. Numeric-looking class names remain names. Normal object filters and up to two enabled shared or owned personal computed filters are applied before optional grouping and numeric measures.
  * @summary Aggregate objects in a class by class name
  */
 export const getApiV1ClassesByNameByClassNameObjectAggregates = async (className: string,
-    params: GetApiV1ClassesByNameByClassNameObjectAggregatesParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameObjectAggregatesResponse> => {
+    params?: GetApiV1ClassesByNameByClassNameObjectAggregatesParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameObjectAggregatesResponse> => {
 
   const res = await fetch(getGetApiV1ClassesByNameByClassNameObjectAggregatesUrl(className,params),
   {
@@ -3384,11 +3384,11 @@ export type getApiV1ClassesByClassIdObjectAggregatesResponseError = (getApiV1Cla
 export type getApiV1ClassesByClassIdObjectAggregatesResponse = (getApiV1ClassesByClassIdObjectAggregatesResponseSuccess | getApiV1ClassesByClassIdObjectAggregatesResponseError)
 
 export const getGetApiV1ClassesByClassIdObjectAggregatesUrl = (classId: number,
-    params: GetApiV1ClassesByClassIdObjectAggregatesParams,) => {
+    params?: GetApiV1ClassesByClassIdObjectAggregatesParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    const explodeParameters = ["group_by"];
+    const explodeParameters = ["group_by","aggregate"];
 
     if (Array.isArray(value) && explodeParameters.includes(key)) {
       value.forEach((v) => {
@@ -3408,11 +3408,11 @@ export const getGetApiV1ClassesByClassIdObjectAggregatesUrl = (classId: number,
 }
 
 /**
- * Permission-scoped object aggregation. Normal object filters and up to two enabled shared or owned personal computed filters are applied before grouping.
+ * Permission-scoped object aggregation. Normal object filters and up to two enabled shared or owned personal computed filters are applied before optional grouping and numeric measures.
  * @summary Get Api V1 Classes By Class Id Object Aggregates
  */
 export const getApiV1ClassesByClassIdObjectAggregates = async (classId: number,
-    params: GetApiV1ClassesByClassIdObjectAggregatesParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdObjectAggregatesResponse> => {
+    params?: GetApiV1ClassesByClassIdObjectAggregatesParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdObjectAggregatesResponse> => {
 
   const res = await fetch(getGetApiV1ClassesByClassIdObjectAggregatesUrl(classId,params),
   {

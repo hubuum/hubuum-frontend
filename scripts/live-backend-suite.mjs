@@ -77,6 +77,14 @@ function expectId(value, label) {
   assert(value && Number.isInteger(value.id), `${label} should include an integer id.`);
 }
 
+function expectBearerToken(value, label) {
+  assert(
+    typeof value?.token === "string" && value.token.length > 0,
+    `${label} should include a bearer token.`,
+  );
+  return value.token;
+}
+
 function includesPermission(permissionRows, groupId, flag) {
   const rows = Array.isArray(permissionRows) ? permissionRows : [permissionRows];
   return rows.some((row) => row?.group_id === groupId && row?.[flag] === true);
@@ -151,9 +159,10 @@ async function main() {
       clientConfig.data.pagination.max_page_limit >= clientConfig.data.pagination.default_page_limit,
     "Client config is missing the effective maximum page limit.",
   );
-  pass("discovered public v0.0.3 pagination capabilities");
+  pass("discovered public v0.0.4 pagination capabilities");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
+  assert(openapi.data.info?.version === "0.0.4", "Server OpenAPI is not version 0.0.4.");
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
     openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
@@ -169,7 +178,7 @@ async function main() {
     openapi.data.paths?.["/api/v1/iam/me/computed-fields"],
     "OpenAPI is missing personal computed fields.",
   );
-  const v003Paths = [
+  const v004Paths = [
     "/api/v1/config",
     "/api/v1/classes/{class_id}/object-aggregates",
     "/api/v1/classes/{class_id}/{object_id}/data",
@@ -186,10 +195,22 @@ async function main() {
     "/api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}/related/relations",
     "/api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}/related/graph",
   ];
-  for (const path of v003Paths) {
+  for (const path of v004Paths) {
     assert(openapi.data.paths?.[path], `OpenAPI is missing ${path}.`);
   }
-  pass("server OpenAPI exposes the complete v0.0.3 endpoint surface");
+  assert(
+    openapi.data.components?.schemas?.TokenScopeDetails,
+    "OpenAPI is missing v0.0.4 token scope details.",
+  );
+  assert(
+    openapi.data.components?.schemas?.Provenance,
+    "OpenAPI is missing v0.0.4 provenance.",
+  );
+  assert(
+    openapi.data.components?.schemas?.ObjectAggregateMeasureValue,
+    "OpenAPI is missing v0.0.4 aggregate measures.",
+  );
+  pass("server OpenAPI exposes the expected v0.0.4 contract");
 
   const token = await loginAs(adminName, adminPassword);
   pass("admin login returns a bearer token");
@@ -201,7 +222,7 @@ async function main() {
   assert(runningConfig.data.backups, "Admin config is missing backup settings.");
   assert(runningConfig.data.restores, "Admin config is missing restore settings.");
   assert(runningConfig.data.permissions, "Admin config is missing permission settings.");
-  pass("read redacted v0.0.3 admin runtime configuration");
+  pass("read redacted v0.0.4 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -280,6 +301,18 @@ async function main() {
   expectId(collection.data, "Created collection");
   pass("created collection with group permissions");
 
+  const peerCollection = await request("POST", "/api/v1/collections", {
+    ...auth,
+    body: {
+      description: "Peer collection for token resource-scope checks",
+      group_id: group.data.id,
+      name: `live_peer_collection_${suffix}`,
+    },
+    expected: 201,
+  });
+  expectId(peerCollection.data, "Created peer collection");
+  pass("created peer collection for token scope boundaries");
+
   const hubuumClass = await request("POST", "/api/v1/classes", {
     ...auth,
     body: {
@@ -307,6 +340,170 @@ async function main() {
   });
   expectId(hubuumObject.data, "Created object");
   pass("created object");
+
+  const unscopedTokenResponse = await request(
+    "POST",
+    `/api/v1/iam/principals/${serviceAccount.data.id}/tokens`,
+    {
+      ...auth,
+      body: {
+        description: "Unscoped live-backend lifecycle token",
+        name: `live_unscoped_token_${suffix}`,
+      },
+      expected: 201,
+    },
+  );
+  const unscopedToken = expectBearerToken(
+    unscopedTokenResponse.data,
+    "Minted unscoped token",
+  );
+  const unscopedMe = await request("GET", "/api/v1/iam/me", {
+    token: unscopedToken,
+  });
+  assert(
+    unscopedMe.data.principal?.principal_id === serviceAccount.data.id,
+    "Unscoped token resolved the wrong principal.",
+  );
+  assert(
+    unscopedMe.data.token?.scope === null,
+    "Unscoped token metadata should expose scope as null.",
+  );
+  const unscopedTokenId = unscopedMe.data.token?.id;
+  assert(
+    Number.isInteger(unscopedTokenId) && unscopedTokenId > 0,
+    "Unscoped token metadata should include a positive token id.",
+  );
+  await request("GET", `/api/v1/collections/${collection.data.id}`, {
+    token: unscopedToken,
+  });
+  await request("GET", `/api/v1/collections/${peerCollection.data.id}`, {
+    token: unscopedToken,
+  });
+  await request("GET", `/api/v1/classes/${hubuumClass.data.id}`, {
+    token: unscopedToken,
+  });
+  const tokensWithUnscoped = await request(
+    "GET",
+    `/api/v1/iam/principals/${serviceAccount.data.id}/tokens`,
+    { ...auth, query: { include_total: false } },
+  );
+  expectArray(tokensWithUnscoped.data, "Service-account tokens");
+  const unscopedMetadata = tokensWithUnscoped.data.find(
+    (tokenMetadata) => tokenMetadata.id === unscopedTokenId,
+  );
+  assert(unscopedMetadata, "Unscoped token list metadata is missing.");
+  assert(
+    unscopedMetadata.scope === null,
+    "Listed unscoped token metadata should expose scope as null.",
+  );
+  assert(
+    !Object.hasOwn(unscopedMetadata, "token"),
+    "Token list metadata must not expose the raw bearer token.",
+  );
+  pass("minted, inspected, and used an unscoped service-account token");
+
+  await request(
+    "POST",
+    `/api/v1/iam/principals/${serviceAccount.data.id}/tokens/${unscopedTokenId}/revoke`,
+    { ...auth, expected: 204 },
+  );
+  await request("GET", "/api/v1/iam/me", {
+    expected: 401,
+    token: unscopedToken,
+  });
+  pass("revoked the unscoped token and rejected further use");
+
+  const scopedTokenResponse = await request(
+    "POST",
+    `/api/v1/iam/principals/${serviceAccount.data.id}/tokens`,
+    {
+      ...auth,
+      body: {
+        description: "Scoped live-backend lifecycle token",
+        name: `live_scoped_token_${suffix}`,
+        scope: {
+          permissions: ["ReadCollection"],
+          resources: [{ id: collection.data.id, kind: "collection" }],
+        },
+      },
+      expected: 201,
+    },
+  );
+  const scopedToken = expectBearerToken(
+    scopedTokenResponse.data,
+    "Minted scoped token",
+  );
+  const scopedMe = await request("GET", "/api/v1/iam/me", {
+    token: scopedToken,
+  });
+  assert(
+    scopedMe.data.principal?.principal_id === serviceAccount.data.id,
+    "Scoped token resolved the wrong principal.",
+  );
+  assert(
+    scopedMe.data.token?.scope?.permissions?.length === 1 &&
+      scopedMe.data.token.scope.permissions[0] === "ReadCollection",
+    "Scoped token metadata should preserve its permission boundary.",
+  );
+  const scopedMeResources = scopedMe.data.token?.scope?.resources;
+  assert(
+    scopedMeResources?.length === 1 &&
+      scopedMeResources[0]?.id === collection.data.id &&
+      scopedMeResources[0]?.kind === "collection",
+    "Scoped token metadata should preserve its resource boundary.",
+  );
+  const scopedTokenId = scopedMe.data.token?.id;
+  assert(
+    Number.isInteger(scopedTokenId) && scopedTokenId > 0,
+    "Scoped token metadata should include a positive token id.",
+  );
+  await request("GET", `/api/v1/collections/${collection.data.id}`, {
+    token: scopedToken,
+  });
+  await request("GET", `/api/v1/collections/${peerCollection.data.id}`, {
+    expected: [403, 404],
+    token: scopedToken,
+  });
+  await request("GET", `/api/v1/classes/${hubuumClass.data.id}`, {
+    expected: [403, 404],
+    token: scopedToken,
+  });
+  const tokensWithScoped = await request(
+    "GET",
+    `/api/v1/iam/principals/${serviceAccount.data.id}/tokens`,
+    { ...auth, query: { include_total: false } },
+  );
+  expectArray(tokensWithScoped.data, "Service-account tokens");
+  const scopedMetadata = tokensWithScoped.data.find(
+    (tokenMetadata) => tokenMetadata.id === scopedTokenId,
+  );
+  assert(scopedMetadata, "Scoped token list metadata is missing.");
+  const listedScopedPermissions = scopedMetadata.scope?.permissions;
+  const listedScopedResources = scopedMetadata.scope?.resources;
+  assert(
+    listedScopedPermissions?.length === 1 &&
+      listedScopedPermissions[0] === "ReadCollection" &&
+      listedScopedResources?.length === 1 &&
+      listedScopedResources[0]?.id === collection.data.id &&
+      listedScopedResources[0]?.kind === "collection",
+    "Listed scoped token metadata should preserve both boundaries.",
+  );
+  assert(
+    !Object.hasOwn(scopedMetadata, "token"),
+    "Scoped token list metadata must not expose the raw bearer token.",
+  );
+  pass("minted and enforced permission and resource boundaries on a scoped token");
+
+  await request(
+    "POST",
+    `/api/v1/iam/principals/${serviceAccount.data.id}/tokens/${scopedTokenId}/revoke`,
+    { ...auth, expected: 204 },
+  );
+  await request("GET", "/api/v1/iam/me", {
+    expected: 401,
+    token: scopedToken,
+  });
+  pass("revoked the scoped token and rejected further use");
 
   const sharedComputed = await request(
     "POST",

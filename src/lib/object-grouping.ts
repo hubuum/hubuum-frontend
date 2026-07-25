@@ -1,3 +1,8 @@
+import type {
+	ObjectAggregateMeasureOperation,
+	ObjectAggregateMeasureValue,
+} from "@/lib/api/generated/models";
+
 export type ObjectGroupSort =
 	| "count-desc"
 	| "count-asc"
@@ -74,6 +79,29 @@ export function formatObjectAggregateDimension(
 	if (dimension.state === "missing") return "(missing)";
 	if (dimension.state === "unavailable") return "(unavailable)";
 	return formatObjectGroupValue(dimension.value);
+}
+
+export function formatObjectAggregateMeasure(
+	measure: Pick<ObjectAggregateMeasureValue, "state" | "value">,
+): string {
+	return measure.state === "empty"
+		? "—"
+		: formatObjectGroupValue(measure.value);
+}
+
+export function formatObjectAggregateMeasureLabel(
+	operation: ObjectAggregateMeasureOperation,
+	fieldLabel: string,
+): string {
+	const operationLabel =
+		operation === "average"
+			? "Average"
+			: operation === "min"
+				? "Minimum"
+				: operation === "max"
+					? "Maximum"
+					: "Sum";
+	return `${operationLabel} · ${fieldLabel}`;
 }
 
 function compareGroupLabels(left: string, right: string): number {

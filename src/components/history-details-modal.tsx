@@ -1,11 +1,18 @@
 "use client";
 
+import Link from "next/link";
+
 import {
 	CreateModal,
 	type ModalRecordNavigation,
 } from "@/components/create-modal";
 import { JsonViewer } from "@/components/json-viewer";
 import type { HistoryRecord } from "@/lib/api/events";
+import {
+	formatEventActor,
+	formatEventInitiator,
+	getProvenanceTaskId,
+} from "@/lib/event-provenance";
 
 type HistoryDetailsModalProps = {
 	record: HistoryRecord | null;
@@ -30,6 +37,9 @@ function formatTimestamp(value: string | null | undefined): string {
 }
 
 function formatActor(record: HistoryRecord): string {
+	if (record.provenance) {
+		return formatEventActor(record);
+	}
 	if (record.actor_username) {
 		return record.actor_id == null
 			? record.actor_username
@@ -53,6 +63,8 @@ export function HistoryDetailsModal({
 	onClose,
 	navigation,
 }: HistoryDetailsModalProps) {
+	const taskId = record ? getProvenanceTaskId(record) : null;
+
 	return (
 		<CreateModal
 			open={record !== null}
@@ -86,6 +98,20 @@ export function HistoryDetailsModal({
 						<div>
 							<dt>Actor</dt>
 							<dd>{formatActor(record)}</dd>
+						</div>
+						<div>
+							<dt>Initiator</dt>
+							<dd>{formatEventInitiator(record)}</dd>
+						</div>
+						<div>
+							<dt>Root task</dt>
+							<dd>
+								{taskId == null ? (
+									"n/a"
+								) : (
+									<Link href={`/tasks/${taskId}`}>#{taskId}</Link>
+								)}
+							</dd>
 						</div>
 						<div>
 							<dt>Updated</dt>

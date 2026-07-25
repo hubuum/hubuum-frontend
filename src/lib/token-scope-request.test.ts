@@ -30,8 +30,10 @@ describe("toTokenScopeRequest", () => {
 				restrictResources: true,
 			}),
 		).toEqual({
-			scopes: [Permissions.ReadCollection],
-			resource_scopes: [{ kind: "collection", id: 17 }],
+			scope: {
+				permissions: [Permissions.ReadCollection],
+				resources: [{ kind: "collection", id: 17 }],
+			},
 		});
 	});
 
@@ -44,7 +46,9 @@ describe("toTokenScopeRequest", () => {
 				restrictResources: true,
 			}),
 		).toEqual({
-			resource_scopes: [{ kind: "collection", id: 17 }],
+			scope: {
+				resources: [{ kind: "collection", id: 17 }],
+			},
 		});
 	});
 });

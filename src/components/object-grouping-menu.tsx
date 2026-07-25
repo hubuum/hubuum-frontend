@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ObjectAggregateMeasureOperation } from "@/lib/api/generated/models";
+import type { ObjectAggregateMeasure } from "@/lib/api/object-aggregates";
 import type { ObjectGroupSort } from "@/lib/object-grouping";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
@@ -17,11 +19,28 @@ export type ObjectGroupingField = {
 	serverGroupBy?: string;
 };
 
+export type ObjectAggregateMeasureField = {
+	field: string;
+	id: string;
+	label: string;
+	section: Extract<
+		ObjectGroupingFieldSection,
+		"Data fields" | "Computed fields"
+	>;
+};
+
+export type ObjectAggregateMeasureSelection = ObjectAggregateMeasure & {
+	id: string;
+};
+
 type ObjectGroupingMenuProps = {
 	fields: readonly ObjectGroupingField[];
 	fieldId: string | null;
+	measureFields: readonly ObjectAggregateMeasureField[];
+	measures: readonly ObjectAggregateMeasureSelection[];
 	sort: ObjectGroupSort;
 	onFieldChange: (fieldId: string | null) => void;
+	onMeasuresChange: (measures: ObjectAggregateMeasureSelection[]) => void;
 	onSortChange: (sort: ObjectGroupSort) => void;
 	disabled?: boolean;
 };
@@ -40,6 +59,16 @@ const SORT_OPTIONS: Array<{ value: ObjectGroupSort; label: string }> = [
 	{ value: "value-desc", label: "Group value, Z–A" },
 ];
 
+const MEASURE_OPERATIONS: Array<{
+	value: ObjectAggregateMeasureOperation;
+	label: string;
+}> = [
+	{ value: "sum", label: "Sum" },
+	{ value: "average", label: "Average" },
+	{ value: "min", label: "Minimum" },
+	{ value: "max", label: "Maximum" },
+];
+
 function IconGroup() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -54,8 +83,11 @@ function IconGroup() {
 export function ObjectGroupingMenu({
 	fields,
 	fieldId,
+	measureFields,
+	measures,
 	sort,
 	onFieldChange,
+	onMeasuresChange,
 	onSortChange,
 	disabled = false,
 }: ObjectGroupingMenuProps) {
@@ -72,7 +104,42 @@ export function ObjectGroupingMenu({
 		[fields],
 	);
 	const selectedField = fields.find((field) => field.id === fieldId) ?? null;
-	const usesServerAggregation = Boolean(selectedField?.serverGroupBy);
+	const usesServerAggregation =
+		Boolean(selectedField?.serverGroupBy) || measures.length > 0;
+	const canConfigureMeasures =
+		selectedField === null || Boolean(selectedField.serverGroupBy);
+	const activeCount = (selectedField ? 1 : 0) + measures.length;
+
+	function addMeasure() {
+		const field = measureFields[0];
+		if (!field || measures.length >= 4 || !canConfigureMeasures) {
+			return;
+		}
+		onMeasuresChange([
+			...measures,
+			{
+				field: field.field,
+				id: crypto.randomUUID(),
+				operation: "sum",
+			},
+		]);
+	}
+
+	function updateMeasure(
+		index: number,
+		patch: Partial<ObjectAggregateMeasure>,
+	) {
+		onMeasuresChange(
+			measures.map((measure, measureIndex) =>
+				measureIndex === index ? { ...measure, ...patch } : measure,
+			),
+		);
+	}
+
+	function clearAggregation() {
+		onFieldChange(null);
+		onMeasuresChange([]);
+	}
 
 	useEffect(() => {
 		if (!isOpen) return;
@@ -111,10 +178,11 @@ export function ObjectGroupingMenu({
 				onClick={toggleMenu}
 			>
 				<IconGroup />
-				<span>Group</span>
-				{selectedField ? (
+				<span>Aggregate</span>
+				{activeCount > 0 ? (
 					<span className="object-grouping-active">
-						<span className="sr-only">Grouping active: </span>1
+						<span className="sr-only">Aggregate selections: </span>
+						{activeCount}
 					</span>
 				) : null}
 			</button>
@@ -126,24 +194,20 @@ export function ObjectGroupingMenu({
 				>
 					<div className="object-grouping-menu-header">
 						<div>
-							<strong>
-								{usesServerAggregation
-									? "Group all matching objects"
-									: "Group objects"}
-							</strong>
+							<strong>Aggregate matching objects</strong>
 							<p>
 								{usesServerAggregation
-									? "Counts are permission-aware and calculated by the server."
+									? "Counts and measures are permission-aware and calculated by the server."
 									: selectedField
 										? "Custom fallback fields are calculated from the current fetched page."
-										: "Supported fields use server aggregation across the full filtered class."}
+										: "Choose a group or numeric measure across the full filtered class."}
 							</p>
 						</div>
-						{selectedField ? (
+						{activeCount > 0 ? (
 							<button
 								type="button"
 								className="ghost"
-								onClick={() => onFieldChange(null)}
+								onClick={clearAggregation}
 							>
 								Clear
 							</button>
@@ -168,6 +232,102 @@ export function ObjectGroupingMenu({
 							))}
 						</select>
 					</label>
+					<div className="object-aggregate-measures">
+						<div className="object-aggregate-measures-header">
+							<div>
+								<strong>Numeric measures</strong>
+								<p>Optional · up to four ordered calculations.</p>
+							</div>
+							<button
+								type="button"
+								className="ghost"
+								onClick={addMeasure}
+								disabled={
+									!canConfigureMeasures ||
+									measureFields.length === 0 ||
+									measures.length >= 4
+								}
+							>
+								Add measure
+							</button>
+						</div>
+						{!canConfigureMeasures ? (
+							<p className="object-grouping-footnote">
+								Numeric measures require a server-supported group field.
+							</p>
+						) : measureFields.length === 0 ? (
+							<p className="object-grouping-footnote">
+								No numeric data or computed fields are available yet.
+							</p>
+						) : null}
+						{measures.map((measure, index) => (
+							<div
+								className="object-aggregate-measure-row"
+								key={measure.id}
+							>
+								<label className="control-field">
+									<span>Calculation {index + 1}</span>
+									<select
+										value={measure.operation}
+										onChange={(event) =>
+											updateMeasure(index, {
+												operation: event.target
+													.value as ObjectAggregateMeasureOperation,
+											})
+										}
+									>
+										{MEASURE_OPERATIONS.map((operation) => (
+											<option key={operation.value} value={operation.value}>
+												{operation.label}
+											</option>
+										))}
+									</select>
+								</label>
+								<label className="control-field">
+									<span>Numeric field</span>
+									<select
+										value={measure.field}
+										onChange={(event) =>
+											updateMeasure(index, { field: event.target.value })
+										}
+									>
+										{FIELD_SECTIONS.filter(
+											(section) =>
+												section === "Data fields" ||
+												section === "Computed fields",
+										).map((section) => {
+											const sectionFields = measureFields.filter(
+												(field) => field.section === section,
+											);
+											return sectionFields.length > 0 ? (
+												<optgroup key={section} label={section}>
+													{sectionFields.map((field) => (
+														<option key={field.id} value={field.field}>
+															{field.label}
+														</option>
+													))}
+												</optgroup>
+											) : null;
+										})}
+									</select>
+								</label>
+								<button
+									type="button"
+									className="ghost danger"
+									onClick={() =>
+										onMeasuresChange(
+											measures.filter(
+												(_, measureIndex) => measureIndex !== index,
+											),
+										)
+									}
+									aria-label={`Remove calculation ${index + 1}`}
+								>
+									Remove
+								</button>
+							</div>
+						))}
+					</div>
 					<label className="control-field">
 						<span>Sort groups</span>
 						<select

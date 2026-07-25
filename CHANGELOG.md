@@ -6,6 +6,37 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Compatibility
+
+- Imported the generated OpenAPI contract from the Hubuum Server `v0.0.4`
+  release PR, regenerated the BFF-prefixed client, and validated the complete
+  live backend suite against the released `v0.0.4` image. The compatibility
+  gate now pins that image by digest and covers minting, inspecting, exercising,
+  revoking, and rejecting both unscoped and explicitly scoped tokens.
+
+### Added
+
+- Added up to four ordered numeric object measures (`sum`, `average`, `min`,
+  and `max`) alongside grouped or global permission-aware aggregation, with
+  contributing/skipped counts and aggregate exports.
+- Added resolved actor, root initiator, and task provenance to audit, history,
+  and task-event views, plus initiator filters for audit queries and event
+  subscriptions.
+- Added keyboard-accessible token detail dialogs with complete permission and
+  resource boundaries, resolved collection/class/object names alongside their
+  exact IDs, lifecycle metadata, and a hash-free raw metadata view.
+
+### Changed
+
+- Updated token minting and token metadata for Server `v0.0.4`'s singular
+  `scope` object. Token lists now show the exact permission and resource
+  dimensions returned by the server.
+
+### Security
+
+- Reject transport-controlled remote-target headers before submission and
+  enforce the server's 255-byte limit for optional idempotency keys.
+
 ## [0.0.4] - 2026-07-23
 
 ### Compatibility

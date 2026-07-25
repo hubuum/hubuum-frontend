@@ -39,6 +39,10 @@ import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
+import {
+	assertRemoteTargetHeaderAllowed,
+	validateRemoteTargetHeaders,
+} from "@/lib/remote-target-headers";
 import type { TableExportView } from "@/lib/table-export";
 
 const METHODS: RemoteHttpMethod[] = ["get", "post", "patch", "delete"];
@@ -182,6 +186,7 @@ function buildAuthConfig(state: FormState): RemoteAuthConfig {
 
 	const header = state.authHeader.trim();
 	if (!header) throw new Error("API key header is required.");
+	assertRemoteTargetHeaderAllowed(header, "API key authentication");
 	return { type: "api_key_secret", header, secret };
 }
 
@@ -217,7 +222,11 @@ function validateRequest(state: FormState): void {
 }
 
 function validateTemplates(state: FormState): void {
-	parseJsonObjectInput(state.headersTemplateInput, "Headers template");
+	const headers = parseJsonObjectInput(
+		state.headersTemplateInput,
+		"Headers template",
+	);
+	validateRemoteTargetHeaders(headers);
 }
 
 function buildPayload(state: FormState): NewRemoteTarget {
@@ -239,6 +248,7 @@ function buildPayload(state: FormState): NewRemoteTarget {
 		state.headersTemplateInput,
 		"Headers template",
 	);
+	validateRemoteTargetHeaders(headersTemplate);
 	const authConfig = buildAuthConfig(state);
 
 	const payload: NewRemoteTarget = {
@@ -937,6 +947,10 @@ export function AdminRemoteTargetsTable() {
 										patchFormState({ headersTemplateInput: event.target.value })
 									}
 								/>
+								<span className="field-note">
+									Transport-controlled headers such as Host, Content-Length,
+									Connection, and Transfer-Encoding are not allowed.
+								</span>
 							</label>
 							<label className="control-field control-field--wide">
 								<span>Body template (optional)</span>

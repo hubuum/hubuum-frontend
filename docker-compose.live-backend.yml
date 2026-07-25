@@ -15,7 +15,7 @@ services:
       retries: 30
 
   hubuum:
-    image: ${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:main}
+    image: ${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.4}
     depends_on:
       postgres:
         condition: service_healthy

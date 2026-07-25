@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
 
 export type GetApiV1IamUsersByUserIdEventsParams = {
@@ -19,6 +19,10 @@ actor_kind?: string;
  * Optional actor principal id filter
  */
 actor_user_id?: number;
+/**
+ * Optional root task initiator principal id filter
+ */
+initiator_user_id?: number;
 /**
  * Optional collection id filter
  */

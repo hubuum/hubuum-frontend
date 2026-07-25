@@ -3,20 +3,26 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
 
 export interface HubuumClassHistory {
   /** @nullable */
   actor_id?: number | null;
+  /** @nullable */
+  actor_kind?: string | null;
   collection_id: number;
   created_at: string;
   description: string;
   history_id: number;
   id: number;
+  /** @nullable */
+  initiator_user_id?: number | null;
   json_schema?: unknown;
   name: string;
   op: string;
+  /** @nullable */
+  task_id?: number | null;
   updated_at: string;
   valid_from: string;
   /** @nullable */

@@ -9,6 +9,11 @@ import {
 	type EventRecord,
 	fetchEventsPage,
 } from "@/lib/api/events";
+import {
+	formatEventActor,
+	formatEventInitiator,
+	getProvenanceTaskId,
+} from "@/lib/event-provenance";
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 
 function parseOptionalNumber(value: string): number | undefined {
@@ -36,17 +41,6 @@ function formatTimestamp(value: string | null | undefined): string {
 	}
 }
 
-function formatActor(
-	actorKind: string,
-	actorUserId: number | null | undefined,
-): string {
-	if (actorUserId == null) {
-		return actorKind;
-	}
-
-	return `${actorKind} #${actorUserId}`;
-}
-
 const eventExportColumns: TableExportColumn<EventRecord>[] = [
 	{
 		key: "time",
@@ -65,7 +59,17 @@ const eventExportColumns: TableExportColumn<EventRecord>[] = [
 	{
 		key: "actor",
 		label: "Actor",
-		getValue: (event) => formatActor(event.actor_kind, event.actor_user_id),
+		getValue: formatEventActor,
+	},
+	{
+		key: "initiator",
+		label: "Initiator",
+		getValue: formatEventInitiator,
+	},
+	{
+		key: "task",
+		label: "Root task",
+		getValue: (event) => getProvenanceTaskId(event),
 	},
 	{
 		key: "collection",
@@ -93,6 +97,7 @@ export function AuditWorkspace() {
 	const [action, setAction] = useState("");
 	const [actorKind, setActorKind] = useState("");
 	const [actorUserId, setActorUserId] = useState("");
+	const [initiatorUserId, setInitiatorUserId] = useState("");
 	const [occurredAfter, setOccurredAfter] = useState("");
 	const [occurredBefore, setOccurredBefore] = useState("");
 
@@ -117,6 +122,7 @@ export function AuditWorkspace() {
 			action: action.trim() || undefined,
 			actor_kind: actorKind.trim() || undefined,
 			actor_user_id: parseOptionalNumber(actorUserId),
+			initiator_user_id: parseOptionalNumber(initiatorUserId),
 			occurred_after: occurredAfter.trim() || undefined,
 			occurred_before: occurredBefore.trim() || undefined,
 		});
@@ -130,6 +136,7 @@ export function AuditWorkspace() {
 		setAction("");
 		setActorKind("");
 		setActorUserId("");
+		setInitiatorUserId("");
 		setOccurredAfter("");
 		setOccurredBefore("");
 		setFilters({ limit: 50, sort: "-occurred_at,-id" });
@@ -232,6 +239,14 @@ export function AuditWorkspace() {
 						/>
 					</label>
 					<label>
+						<span>Initiator ID</span>
+						<input
+							value={initiatorUserId}
+							onChange={(event) => setInitiatorUserId(event.target.value)}
+							inputMode="numeric"
+						/>
+					</label>
+					<label>
 						<span>After</span>
 						<input
 							type="date"
@@ -314,6 +329,7 @@ export function AuditWorkspace() {
 									<th>Entity</th>
 									<th>Action</th>
 									<th>Actor</th>
+									<th>Initiator</th>
 									<th>Collection</th>
 									<th>Summary</th>
 									<th>Correlation</th>
@@ -344,9 +360,8 @@ export function AuditWorkspace() {
 											{event.entity_name ? ` / ${event.entity_name}` : ""}
 										</td>
 										<td>{event.action}</td>
-										<td>
-											{formatActor(event.actor_kind, event.actor_user_id)}
-										</td>
+										<td>{formatEventActor(event)}</td>
+										<td>{formatEventInitiator(event)}</td>
 										<td>{event.collection_id ?? "n/a"}</td>
 										<td>{event.summary}</td>
 										<td>{event.correlation_id ?? "n/a"}</td>

@@ -45,6 +45,7 @@ type SubscriptionFormState = {
 	entityNames: string;
 	entityTypes: string[];
 	includeCurrentCollection: boolean;
+	initiatorUserIds: string;
 	name: string;
 	collectionIds: string;
 	recipients: string;
@@ -104,6 +105,7 @@ const EMPTY_FORM: SubscriptionFormState = {
 	entityNames: "",
 	entityTypes: [],
 	includeCurrentCollection: true,
+	initiatorUserIds: "",
 	name: "",
 	collectionIds: "",
 	recipients: "",
@@ -257,6 +259,7 @@ function subscriptionToForm(
 		entityNames: (filter.entity_names ?? []).join(", "),
 		entityTypes: subscription.entity_types,
 		includeCurrentCollection,
+		initiatorUserIds: (filter.initiator_user_ids ?? []).join(", "),
 		name: subscription.name,
 		collectionIds: otherCollectionIds.join(", "),
 		relatedCollectionIds: (filter.related_collection_ids ?? []).join(", "),
@@ -294,6 +297,14 @@ function buildFilter(
 	const actorUserIds = parseNumberTokens(form.actorUserIds, "Actor filters");
 	if (actorUserIds) {
 		filter.actor_user_ids = actorUserIds;
+	}
+
+	const initiatorUserIds = parseNumberTokens(
+		form.initiatorUserIds,
+		"Initiator filters",
+	);
+	if (initiatorUserIds) {
+		filter.initiator_user_ids = initiatorUserIds;
 	}
 
 	const entityNames = optionalStringTokens(form.entityNames);
@@ -473,6 +484,9 @@ function formatFilterSummary(
 	}
 	if (filter.actor_user_ids?.length) {
 		parts.push(`actor IDs ${filter.actor_user_ids.join(", ")}`);
+	}
+	if (filter.initiator_user_ids?.length) {
+		parts.push(`initiator IDs ${filter.initiator_user_ids.join(", ")}`);
 	}
 	if (filter.request_ids?.length) {
 		parts.push(`requests ${filter.request_ids.length}`);
@@ -1055,6 +1069,16 @@ export function CollectionEventSubscriptionsPanel({
 										value={form.actorUserIds}
 										onChange={(event) =>
 											patchForm({ actorUserIds: event.target.value })
+										}
+										placeholder="5, 9"
+									/>
+								</label>
+								<label className="control-field">
+									<span>Initiator user IDs</span>
+									<input
+										value={form.initiatorUserIds}
+										onChange={(event) =>
+											patchForm({ initiatorUserIds: event.target.value })
 										}
 										placeholder="5, 9"
 									/>

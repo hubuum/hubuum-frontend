@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
 
 /**
@@ -21,9 +21,10 @@ export interface PrincipalToken {
   last_used_at?: string | null;
   /** @nullable */
   name?: string | null;
+  permission_scoped: boolean;
   principal_id: number;
+  resource_scoped: boolean;
   /** @nullable */
   revoked_at?: string | null;
-  scoped: boolean;
   token: string;
 }

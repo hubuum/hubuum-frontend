@@ -3,25 +3,24 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
-import type { Permissions } from './permissions';
-import type { TokenResourceScope } from './tokenResourceScope';
+import type { TokenID } from './tokenID';
+import type { TokenScopeDetails } from './tokenScopeDetails';
 
+/**
+ * Public metadata for the token authenticating the current request.
+ */
 export interface CurrentTokenMetadata {
   /** @nullable */
   description?: string | null;
   /** @nullable */
   expires_at?: string | null;
-  id: number;
+  id: TokenID;
   issued: string;
   /** @nullable */
   last_used_at?: string | null;
   /** @nullable */
   name?: string | null;
-  /** @nullable */
-  resource_scopes?: TokenResourceScope[] | null;
-  scoped: boolean;
-  /** @nullable */
-  scopes?: Permissions[] | null;
+  scope?: null | TokenScopeDetails;
 }
