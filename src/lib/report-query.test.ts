@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	buildObjectReportQuery,
 	buildReportQuery,
+	parseObjectReportQuery,
 	parseReportQuery,
 } from "@/lib/report-query";
 import { SCOPE_QUERY_FIELDS } from "@/lib/report-scope-fields";
@@ -65,5 +66,78 @@ describe("report query builder", () => {
 		expect(params.get("sort")).toBe("name.asc");
 		expect(params.get("include")).toBe("computed");
 		expect(params.has("cursor")).toBe(false);
+	});
+
+	it("round-trips the shared object server-filter grammar", () => {
+		const query = buildObjectReportQuery(
+			[
+				{ field: "name", operator: "icontains", value: "edge" },
+				{
+					field: "json_data",
+					operator: "not_is_null",
+					path: ["network", "address"],
+					value: "",
+				},
+				{
+					field: "computed",
+					operator: "gte",
+					value: "80",
+					computedScope: "shared",
+					computedKey: "health_score",
+					computedResultType: "integer",
+				},
+			],
+			[{ field: "updated_at", direction: "desc" }],
+			"include=computed",
+		);
+
+		const parsed = parseObjectReportQuery(
+			query,
+			SCOPE_QUERY_FIELDS.objects_in_class,
+			[
+				{
+					key: "health_score",
+					scope: "shared",
+					resultType: "integer",
+				},
+			],
+		);
+
+		expect(parsed.filters).toEqual([
+			{ field: "name", operator: "icontains", value: "edge" },
+			{
+				field: "json_data",
+				operator: "not_is_null",
+				path: ["network", "address"],
+				value: "",
+			},
+			{
+				field: "computed",
+				operator: "gte",
+				value: "80",
+				computedScope: "shared",
+				computedKey: "health_score",
+				computedResultType: "integer",
+			},
+		]);
+		expect(parsed.sorts).toEqual([
+			{ field: "updated_at", direction: "desc" },
+		]);
+		expect(parsed.advancedQuery).toBe("include=computed");
+	});
+
+	it("keeps unavailable computed and malformed data filters advanced", () => {
+		const parsed = parseObjectReportQuery(
+			"computed.shared.missing__gte=1&json_data__gte=missing-separator",
+			SCOPE_QUERY_FIELDS.objects_in_class,
+		);
+
+		expect(parsed.filters).toEqual([]);
+		expect(parsed.advancedQuery).toContain(
+			"computed.shared.missing__gte=1",
+		);
+		expect(parsed.advancedQuery).toContain(
+			"json_data__gte=missing-separator",
+		);
 	});
 });

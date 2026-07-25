@@ -2,12 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { ReportScopeKind } from "@/lib/api/reporting";
 import {
+	ObjectServerFilterMenu,
+	type ServerFilterComputedField,
+	type ServerFilterDataField,
+} from "@/components/object-server-filter-menu";
+import type { ReportScopeKind } from "@/lib/api/reporting";
+import type { ObjectServerFilter } from "@/lib/object-server-filters";
+import {
+	buildObjectReportQuery,
 	buildReportQuery,
 	formatReportQueryField,
 	formatReportQueryOperator,
 	getReportQueryOperators,
+	parseObjectReportQuery,
 	parseReportQuery,
 	type ReportQueryFilter,
 	type ReportQuerySort,
@@ -23,6 +31,10 @@ type ReportQueryBuilderProps = {
 	value: string;
 	onChange: (value: string) => void;
 	disabled?: boolean;
+	objectComputedFields?: readonly ServerFilterComputedField[];
+	objectDataFields?: readonly ServerFilterDataField[];
+	objectFiltersDisabled?: boolean;
+	objectFilterHint?: string;
 };
 
 function withIds<T extends object>(
@@ -37,21 +49,52 @@ export function ReportQueryBuilder({
 	value,
 	onChange,
 	disabled = false,
+	objectComputedFields = [],
+	objectDataFields = [],
+	objectFiltersDisabled = false,
+	objectFilterHint,
 }: ReportQueryBuilderProps) {
 	const fields = useMemo(() => SCOPE_QUERY_FIELDS[scopeKind], [scopeKind]);
 	const sortableFields = useMemo(
 		() => fields.filter((field) => field.sortable),
 		[fields],
 	);
-	const parsedInitialRef = useRef<ReturnType<typeof parseReportQuery> | null>(
-		null,
-	);
+	const usesObjectServerFilters = scopeKind === "objects_in_class";
+	const parsedInitialRef = useRef<{
+		filters: ReportQueryFilter[];
+		objectFilters: ObjectServerFilter[];
+		sorts: ReportQuerySort[];
+		advancedQuery: string;
+	} | null>(null);
 	if (parsedInitialRef.current == null) {
-		parsedInitialRef.current = parseReportQuery(value, fields);
+		if (usesObjectServerFilters) {
+			const parsed = parseObjectReportQuery(
+				value,
+				fields,
+				objectComputedFields,
+			);
+			parsedInitialRef.current = {
+				filters: [],
+				objectFilters: parsed.filters,
+				sorts: parsed.sorts,
+				advancedQuery: parsed.advancedQuery,
+			};
+		} else {
+			const parsed = parseReportQuery(value, fields);
+			parsedInitialRef.current = {
+				filters: parsed.filters,
+				objectFilters: [],
+				sorts: parsed.sorts,
+				advancedQuery: parsed.advancedQuery,
+			};
+		}
 	}
 	const parsedInitial = parsedInitialRef.current;
 	const [filters, setFilters] = useState<BuilderFilter[]>(() =>
 		withIds(parsedInitial.filters),
+	);
+	const [objectFilters, setObjectFilters] = useState<ObjectServerFilter[]>(
+		parsedInitial.objectFilters,
 	);
 	const [sorts, setSorts] = useState<BuilderSort[]>(() =>
 		withIds(parsedInitial.sorts),
@@ -62,63 +105,102 @@ export function ReportQueryBuilder({
 	const nextIdRef = useRef(filters.length + sorts.length + 1);
 	const lastEmittedValueRef = useRef(value);
 	const previousScopeRef = useRef(scopeKind);
+	const computedFieldSignature = objectComputedFields
+		.map((field) => `${field.scope}:${field.key}:${field.resultType}`)
+		.join("|");
+	const previousComputedFieldSignatureRef = useRef(computedFieldSignature);
 
 	const emit = useCallback(
 		function emit(
 			nextFilters: readonly BuilderFilter[],
+			nextObjectFilters: readonly ObjectServerFilter[],
 			nextSorts: readonly BuilderSort[],
 			nextAdvancedQuery: string,
 		) {
-			const nextValue = buildReportQuery(
-				nextFilters,
-				nextSorts,
-				nextAdvancedQuery,
-			);
+			const nextValue = usesObjectServerFilters
+				? buildObjectReportQuery(
+						nextObjectFilters,
+						nextSorts,
+						nextAdvancedQuery,
+					)
+				: buildReportQuery(nextFilters, nextSorts, nextAdvancedQuery);
 			lastEmittedValueRef.current = nextValue;
 			onChange(nextValue);
 		},
-		[onChange],
+		[onChange, usesObjectServerFilters],
 	);
 
 	useEffect(() => {
-		if (value === lastEmittedValueRef.current) return;
+		const scopeChanged = previousScopeRef.current !== scopeKind;
+		const computedFieldsChanged =
+			previousComputedFieldSignatureRef.current !== computedFieldSignature;
+		const valueChanged = value !== lastEmittedValueRef.current;
+		if (!scopeChanged && !computedFieldsChanged && !valueChanged) return;
+
+		previousScopeRef.current = scopeKind;
+		previousComputedFieldSignatureRef.current = computedFieldSignature;
+
+		if (usesObjectServerFilters) {
+			const parsed = parseObjectReportQuery(
+				value,
+				fields,
+				objectComputedFields,
+			);
+			const nextSorts = withIds(parsed.sorts);
+			nextIdRef.current = nextSorts.length + 1;
+			setFilters([]);
+			setObjectFilters(parsed.filters);
+			setSorts(nextSorts);
+			setAdvancedQuery(parsed.advancedQuery);
+			if (scopeChanged) {
+				emit([], parsed.filters, nextSorts, parsed.advancedQuery);
+			} else {
+				lastEmittedValueRef.current = value;
+			}
+			return;
+		}
+
 		const parsed = parseReportQuery(value, fields);
 		const nextFilters = withIds(parsed.filters);
 		const nextSorts = withIds(parsed.sorts);
 		nextIdRef.current = nextFilters.length + nextSorts.length + 1;
 		setFilters(nextFilters);
+		setObjectFilters([]);
 		setSorts(nextSorts);
 		setAdvancedQuery(parsed.advancedQuery);
-		lastEmittedValueRef.current = value;
-	}, [fields, value]);
-
-	useEffect(() => {
-		if (previousScopeRef.current === scopeKind) return;
-		previousScopeRef.current = scopeKind;
-		const allowedFields = new Set(fields.map((field) => field.key));
-		const allowedSorts = new Set(sortableFields.map((field) => field.key));
-		const nextFilters = filters.filter((filter) =>
-			allowedFields.has(filter.field),
-		);
-		const nextSorts = sorts.filter((sort) => allowedSorts.has(sort.field));
-		setFilters(nextFilters);
-		setSorts(nextSorts);
-		emit(nextFilters, nextSorts, advancedQuery);
-	}, [advancedQuery, emit, fields, filters, scopeKind, sortableFields, sorts]);
+		if (scopeChanged) {
+			emit(nextFilters, [], nextSorts, parsed.advancedQuery);
+		} else {
+			lastEmittedValueRef.current = value;
+		}
+	}, [
+		computedFieldSignature,
+		emit,
+		fields,
+		objectComputedFields,
+		scopeKind,
+		usesObjectServerFilters,
+		value,
+	]);
 
 	function updateFilters(nextFilters: BuilderFilter[]) {
 		setFilters(nextFilters);
-		emit(nextFilters, sorts, advancedQuery);
+		emit(nextFilters, objectFilters, sorts, advancedQuery);
+	}
+
+	function updateObjectFilters(nextObjectFilters: ObjectServerFilter[]) {
+		setObjectFilters(nextObjectFilters);
+		emit(filters, nextObjectFilters, sorts, advancedQuery);
 	}
 
 	function updateSorts(nextSorts: BuilderSort[]) {
 		setSorts(nextSorts);
-		emit(filters, nextSorts, advancedQuery);
+		emit(filters, objectFilters, nextSorts, advancedQuery);
 	}
 
 	function updateAdvancedQuery(nextAdvancedQuery: string) {
 		setAdvancedQuery(nextAdvancedQuery);
-		emit(filters, sorts, nextAdvancedQuery);
+		emit(filters, objectFilters, sorts, nextAdvancedQuery);
 	}
 
 	function addFilter() {
@@ -154,14 +236,25 @@ export function ReportQueryBuilder({
 					</p>
 				</div>
 				<div className="action-row">
-					<button
-						type="button"
-						className="ghost"
-						onClick={addFilter}
-						disabled={disabled}
-					>
-						Add filter
-					</button>
+					{usesObjectServerFilters ? (
+						<ObjectServerFilterMenu
+							filters={objectFilters}
+							dataFields={objectDataFields}
+							computedFields={objectComputedFields}
+							onChange={updateObjectFilters}
+							disabled={disabled || objectFiltersDisabled}
+							embeddedInForm
+						/>
+					) : (
+						<button
+							type="button"
+							className="ghost"
+							onClick={addFilter}
+							disabled={disabled}
+						>
+							Add filter
+						</button>
+					)}
 					<button
 						type="button"
 						className="ghost"
@@ -173,7 +266,12 @@ export function ReportQueryBuilder({
 				</div>
 			</div>
 
-			{filters.length ? (
+			{usesObjectServerFilters ? (
+				<p className="muted">
+					{objectFilterHint ??
+						"Open Server filters to add or review filters for the full selected class."}
+				</p>
+			) : filters.length ? (
 				<div className="stack query-builder-list">
 					{filters.map((filter, index) => {
 						const fieldDefinition =

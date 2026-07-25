@@ -40,7 +40,6 @@ import {
 	getApiV1Collections,
 } from "@/lib/api/generated/client";
 import type {
-	ComputedFieldDefinition,
 	HubuumClassExpanded,
 	Collection,
 } from "@/lib/api/generated/models";
@@ -85,13 +84,12 @@ import {
 	formatExportScope,
 	type ExportWorkspaceView,
 } from "@/lib/export-workspace";
-import { discoverJsonFields } from "@/lib/json-field-discovery";
 import {
-	getJsonSchemaServerFilterDataType,
-	inferObjectServerFilterDataType,
-	type ObjectComputedResultType,
+	resolveObjectServerFilterComputedFields,
+	resolveObjectServerFilterDataFields,
+} from "@/lib/object-server-filter-fields";
+import {
 	type ObjectServerFilter,
-	toServerFilterDataPath,
 } from "@/lib/object-server-filters";
 
 type QueryBuilderFilter = {
@@ -304,44 +302,6 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	return response.data;
 }
 
-function getValueAtDataPath(data: unknown, path: readonly string[]): unknown {
-	let current = data;
-	for (const segment of path) {
-		const arrayIndex = segment.match(/^\[(\d+)]$/);
-		if (arrayIndex) {
-			if (!Array.isArray(current)) return undefined;
-			current = current[Number.parseInt(arrayIndex[1], 10)];
-			continue;
-		}
-		if (
-			!current ||
-			typeof current !== "object" ||
-			Array.isArray(current) ||
-			!(segment in current)
-		) {
-			return undefined;
-		}
-		current = (current as Record<string, unknown>)[segment];
-	}
-	return current;
-}
-
-function normalizeComputedResultType(
-	value: string,
-): ObjectComputedResultType | null {
-	if (
-		value === "string" ||
-		value === "number" ||
-		value === "integer" ||
-		value === "boolean" ||
-		value === "object" ||
-		value === "array"
-	) {
-		return value;
-	}
-	return null;
-}
-
 type ExportsWorkspaceProps = {
 	initialView?: ExportWorkspaceView;
 };
@@ -494,72 +454,28 @@ export function ExportsWorkspace({
 		() => objectsQuery.data ?? [],
 		[objectsQuery.data],
 	);
-	const discoveredObjectDataFields = useMemo(
-		() =>
-			discoverJsonFields(
-				selectedClass?.json_schema,
-				objectSamples.map((objectItem) => objectItem.data),
-			),
-		[objectSamples, selectedClass?.json_schema],
+	const objectSampleData = useMemo(
+		() => objectSamples.map((objectItem) => objectItem.data),
+		[objectSamples],
 	);
 	const objectServerFilterDataFields = useMemo<ServerFilterDataField[]>(
 		() =>
-			discoveredObjectDataFields.flatMap((field) => {
-				const path = toServerFilterDataPath(field.path);
-				if (!path) return [];
-				const schemaDataType = getJsonSchemaServerFilterDataType(
-					selectedClass?.json_schema,
-					field.path,
-				);
-				const inferredDataType = inferObjectServerFilterDataType(
-					objectSamples.map((objectItem) =>
-						getValueAtDataPath(objectItem.data, field.path),
-					),
-				);
-				const dataType =
-					schemaDataType === "string" &&
-					(inferredDataType === "date" || inferredDataType === "ip")
-						? inferredDataType
-						: (schemaDataType ?? inferredDataType);
-				return [
-					{
-						id: JSON.stringify(path),
-						label: field.label,
-						path,
-						dataType,
-					},
-				];
-			}),
-		[discoveredObjectDataFields, objectSamples, selectedClass?.json_schema],
+			resolveObjectServerFilterDataFields(
+				selectedClass?.json_schema,
+				objectSampleData,
+			),
+		[objectSampleData, selectedClass?.json_schema],
 	);
 	const objectServerFilterComputedFields = useMemo<
 		ServerFilterComputedField[]
-	>(() => {
-		function fieldsFor(
-			definitions: readonly ComputedFieldDefinition[],
-			scope: ServerFilterComputedField["scope"],
-		): ServerFilterComputedField[] {
-			return definitions.flatMap((definition) => {
-				const resultType = normalizeComputedResultType(definition.result_type);
-				return definition.enabled && resultType
-					? [
-							{
-								id: `${scope}:${definition.key}`,
-								key: definition.key,
-								label: definition.label,
-								scope,
-								resultType,
-							},
-						]
-					: [];
-			});
-		}
-
-		return [
-			...fieldsFor(sharedComputedQuery.data?.definitions ?? [], "shared"),
-			...fieldsFor(personalComputedQuery.data ?? [], "personal"),
-		];
-	}, [personalComputedQuery.data, sharedComputedQuery.data?.definitions]);
+	>(
+		() =>
+			resolveObjectServerFilterComputedFields(
+				sharedComputedQuery.data?.definitions ?? [],
+				personalComputedQuery.data ?? [],
+			),
+		[personalComputedQuery.data, sharedComputedQuery.data?.definitions],
+	);
 	const usesObjectServerFilters = scopeKind === "objects_in_class";
 	const activeBuilderFilterCount = usesObjectServerFilters
 		? objectServerFilters.length

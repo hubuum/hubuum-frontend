@@ -18,6 +18,10 @@ import {
 	classObjectSamplesQueryKey,
 	fetchClassObjectSamples,
 } from "@/lib/api/class-objects";
+import {
+	fetchPersonalComputedFields,
+	fetchSharedComputedFields,
+} from "@/lib/api/computed-fields";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1Classes,
@@ -70,6 +74,12 @@ import {
 	type DiscoveredJsonField,
 	discoverJsonFields,
 } from "@/lib/json-field-discovery";
+import {
+	resolveObjectServerFilterComputedFields,
+	resolveObjectServerFilterDataFields,
+	type ServerFilterComputedField,
+	type ServerFilterDataField,
+} from "@/lib/object-server-filter-fields";
 import {
 	buildIncludeFromRows,
 	type IncludeBuilderRow,
@@ -565,6 +575,9 @@ export function ExportTemplateEditor({
 	const scopeNeedsClass =
 		editorState.scopeKind === "objects_in_class" ||
 		editorState.scopeKind === "related_objects";
+	const usesObjectServerFilters =
+		editorState.kind === "export" &&
+		editorState.scopeKind === "objects_in_class";
 
 	const collectionsQuery = useQuery({
 		queryKey: ["collections", "export-template-editor"],
@@ -701,13 +714,49 @@ export function ExportTemplateEditor({
 			editorState.kind === "export" &&
 			scopeNeedsClass &&
 			selectedClass != null &&
-			!usesSchemaFields,
+			(!usesSchemaFields || usesObjectServerFilters),
 		staleTime: CLASS_OBJECT_SAMPLES_STALE_TIME,
 		gcTime: CLASS_OBJECT_SAMPLES_GC_TIME,
 	});
-	const sampledObjects = Array.isArray(classObjectSamplesQuery.data)
-		? classObjectSamplesQuery.data
-		: [];
+	const sharedComputedQuery = useQuery({
+		queryKey: ["computed-fields", "shared", selectedClass?.id ?? null],
+		queryFn: () => fetchSharedComputedFields(selectedClass?.id ?? 0),
+		enabled: usesObjectServerFilters && selectedClass != null,
+	});
+	const personalComputedQuery = useQuery({
+		queryKey: ["computed-fields", "personal", selectedClass?.id ?? null],
+		queryFn: () => fetchPersonalComputedFields(selectedClass?.id ?? 0),
+		enabled: usesObjectServerFilters && selectedClass != null,
+	});
+	const sampledObjects = useMemo(
+		() =>
+			Array.isArray(classObjectSamplesQuery.data)
+				? classObjectSamplesQuery.data
+				: [],
+		[classObjectSamplesQuery.data],
+	);
+	const objectSampleData = useMemo(
+		() => sampledObjects.map((objectItem) => objectItem.data),
+		[sampledObjects],
+	);
+	const objectServerFilterDataFields = useMemo<ServerFilterDataField[]>(
+		() =>
+			resolveObjectServerFilterDataFields(
+				selectedClass?.json_schema,
+				objectSampleData,
+			),
+		[objectSampleData, selectedClass?.json_schema],
+	);
+	const objectServerFilterComputedFields = useMemo<
+		ServerFilterComputedField[]
+	>(
+		() =>
+			resolveObjectServerFilterComputedFields(
+				sharedComputedQuery.data?.definitions ?? [],
+				personalComputedQuery.data ?? [],
+			),
+		[personalComputedQuery.data, sharedComputedQuery.data?.definitions],
+	);
 	const discoveredDataFields = useMemo(
 		() =>
 			usesSchemaFields
@@ -1819,6 +1868,16 @@ export function ExportTemplateEditor({
 						value={editorState.defaultQuery}
 						onChange={(defaultQuery) => updateDraft({ defaultQuery })}
 						disabled={isSaving}
+						objectDataFields={objectServerFilterDataFields}
+						objectComputedFields={objectServerFilterComputedFields}
+						objectFiltersDisabled={selectedClass == null}
+						objectFilterHint={
+							selectedClass == null
+								? "Select a class to configure server filters."
+								: classObjectSamplesQuery.isLoading
+									? "Inspecting a cached object sample for nested fields and value types…"
+									: "Open Server filters to add or review filters. Data-field behavior matches the Objects and ad-hoc Export workspaces."
+						}
 					/>
 					<GuidedFlowContinue
 						title="Filters ready"

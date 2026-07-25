@@ -8,29 +8,21 @@ import {
 	MAX_OBJECT_SERVER_FILTERS,
 	normalizeObjectServerFilter,
 	resolveObjectServerFilterRelativeDates,
-	type ObjectComputedResultType,
-	type ObjectComputedFilterScope,
 	type ObjectServerFilterDataType,
 	type ObjectServerFilter,
 	type ObjectServerFilterBaseOperator,
 	type ObjectServerFilterOperator,
 } from "@/lib/object-server-filters";
+import type {
+	ServerFilterComputedField,
+	ServerFilterDataField,
+} from "@/lib/object-server-filter-fields";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
-export type ServerFilterDataField = {
-	id: string;
-	label: string;
-	path: string[];
-	dataType: ObjectServerFilterDataType;
-};
-
-export type ServerFilterComputedField = {
-	id: string;
-	key: string;
-	label: string;
-	scope: ObjectComputedFilterScope;
-	resultType: ObjectComputedResultType;
-};
+export type {
+	ServerFilterComputedField,
+	ServerFilterDataField,
+} from "@/lib/object-server-filter-fields";
 
 type ObjectServerFilterMenuProps = {
 	filters: readonly ObjectServerFilter[];

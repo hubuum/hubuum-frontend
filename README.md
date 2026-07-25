@@ -175,7 +175,10 @@ workspace can add up to four ordered `sum`, `average`, `min`, or `max` measures
 over numeric JSON and computed fields, either per group or as one global
 aggregate. Measure cells and exports retain contributing and skipped source
 counts. The report template editor also includes runnable MiniJinja `groupby`
-examples for report-specific grouping and grouped CSV output.
+examples for report-specific grouping and grouped CSV output. Object tables,
+ad-hoc exports, and object-scoped export templates share the same server-filter
+field discovery, typed operators, validation, and backend query grammar for
+object, nested JSON data, and computed fields.
 
 Server `v0.0.4` audit events, resource history, and task lifecycle events carry
 durable provenance. The console shows the immediate actor, root initiator, and

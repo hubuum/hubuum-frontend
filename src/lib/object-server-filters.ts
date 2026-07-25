@@ -70,6 +70,12 @@ export type ObjectServerFilter = {
 	computedResultType?: ObjectComputedResultType;
 };
 
+export type ObjectServerComputedFilterDefinition = {
+	key: string;
+	scope: ObjectComputedFilterScope;
+	resultType: ObjectComputedResultType;
+};
+
 const STRING_OPERATORS = new Set<ObjectServerFilterOperator>([
 	"equals",
 	"iequals",
@@ -594,6 +600,72 @@ export function normalizeObjectServerFilter(
 	}
 
 	return { field, operator, value: trimmedValue };
+}
+
+export function parseObjectServerFilterQueryParameter(
+	key: string,
+	value: string,
+	computedFields: readonly ObjectServerComputedFilterDefinition[] = [],
+): ObjectServerFilter | null {
+	const operatorIndex = key.lastIndexOf("__");
+	const fieldKey = operatorIndex > 0 ? key.slice(0, operatorIndex) : key;
+	const operator =
+		operatorIndex > 0 ? key.slice(operatorIndex + 2) : "equals";
+
+	if (
+		fieldKey === "name" ||
+		fieldKey === "description" ||
+		fieldKey === "id" ||
+		fieldKey === "collection_id"
+	) {
+		return normalizeObjectServerFilter({
+			field: fieldKey,
+			operator,
+			value,
+		});
+	}
+
+	if (fieldKey === "json_data") {
+		const baseOperator = getBaseOperator(
+			operator as ObjectServerFilterOperator,
+		);
+		const separatorIndex = value.indexOf("=");
+		const pathText =
+			baseOperator === "is_null"
+				? value
+				: separatorIndex >= 0
+					? value.slice(0, separatorIndex)
+					: "";
+		const filterValue =
+			baseOperator === "is_null" || separatorIndex < 0
+				? ""
+				: value.slice(separatorIndex + 1);
+		return normalizeObjectServerFilter({
+			field: "json_data",
+			operator,
+			value: filterValue,
+			path: pathText.split(",").filter(Boolean),
+		});
+	}
+
+	const computedMatch = fieldKey.match(
+		/^computed\.(shared|personal)\.([a-z][a-z0-9_]{0,63})$/,
+	);
+	if (!computedMatch) return null;
+	const [, scope, computedKey] = computedMatch;
+	const definition = computedFields.find(
+		(field) => field.scope === scope && field.key === computedKey,
+	);
+	if (!definition) return null;
+
+	return normalizeObjectServerFilter({
+		field: "computed",
+		operator,
+		value,
+		computedScope: definition.scope,
+		computedKey: definition.key,
+		computedResultType: definition.resultType,
+	});
 }
 
 export function parseObjectServerFilters(

@@ -23,7 +23,6 @@ import {
 } from "@/components/object-grouping-menu";
 import {
 	ObjectServerFilterMenu,
-	type ServerFilterComputedField,
 } from "@/components/object-server-filter-menu";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
@@ -50,7 +49,6 @@ import {
 } from "@/lib/api/generated/client";
 import type {
 	Collection,
-	ComputedFieldDefinition,
 	ComputedFieldErrorResponse,
 	HubuumClassExpanded,
 	HubuumObjectComputedResponse,
@@ -66,9 +64,11 @@ import {
 } from "@/lib/create-events";
 import { getDataColumnHeadings } from "@/lib/data-column-headings";
 import {
+	resolveObjectServerFilterComputedFields,
+	resolveObjectServerFilterDataFields,
+} from "@/lib/object-server-filter-fields";
+import {
 	appendObjectServerFilters,
-	getJsonSchemaServerFilterDataType,
-	inferObjectServerFilterDataType,
 	OBJECT_SERVER_FILTERS_QUERY_KEY,
 	type ObjectComputedResultType,
 	type ObjectServerFilter,
@@ -249,22 +249,6 @@ function toObjectAggregateSort(sort: ObjectGroupSort): ObjectAggregateSort {
 	if (sort === "count-desc") return "object_count.desc";
 	if (sort === "value-desc") return "dimensions.desc";
 	return "dimensions.asc";
-}
-
-function normalizeComputedResultType(
-	value: string,
-): ObjectComputedResultType | null {
-	if (
-		value === "string" ||
-		value === "number" ||
-		value === "integer" ||
-		value === "boolean" ||
-		value === "object" ||
-		value === "array"
-	) {
-		return value;
-	}
-	return null;
 }
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
@@ -1114,32 +1098,14 @@ export function ObjectsExplorer() {
 		queryFn: () => fetchPersonalComputedFields(parsedClassId ?? 0),
 		enabled: parsedClassId !== null,
 	});
-	const computedColumns = useMemo<ComputedColumn[]>(() => {
-		function columnsFor(
-			definitions: ComputedFieldDefinition[],
-			scope: ComputedColumn["scope"],
-		): ComputedColumn[] {
-			return definitions.flatMap((definition) => {
-				const resultType = normalizeComputedResultType(definition.result_type);
-				return definition.enabled && resultType
-					? [
-							{
-								id: `${scope}:${definition.key}`,
-								key: definition.key,
-								label: definition.label,
-								scope,
-								resultType,
-							},
-						]
-					: [];
-			});
-		}
-
-		return [
-			...columnsFor(sharedComputedQuery.data?.definitions ?? [], "shared"),
-			...columnsFor(personalComputedQuery.data ?? [], "personal"),
-		];
-	}, [personalComputedQuery.data, sharedComputedQuery.data?.definitions]);
+	const computedColumns = useMemo<ComputedColumn[]>(
+		() =>
+			resolveObjectServerFilterComputedFields(
+				sharedComputedQuery.data?.definitions ?? [],
+				personalComputedQuery.data ?? [],
+			),
+		[personalComputedQuery.data, sharedComputedQuery.data?.definitions],
+	);
 	const activeComputedColumns = useMemo(
 		() =>
 			computedColumns.filter(
@@ -1465,80 +1431,15 @@ export function ObjectsExplorer() {
 			),
 		[dataColumnCandidates],
 	);
-	const serverFilterDataCandidates = useMemo(() => {
-		const schemaPaths = getSchemaPropertyPaths(selectedClass?.json_schema);
-		const counts = new Map<string, number>();
-		for (const data of serverFilterSampleData) {
-			collectDataPaths(data, counts);
-		}
-
-		const ids = new Set(schemaPaths.map(getDataPathId));
-		for (const id of counts.keys()) ids.add(id);
-		return [...ids]
-			.map((id) => {
-				const path = parseDataPathId(id);
-				return path
-					? {
-							id,
-							label: formatDataPathLabel(path),
-							path,
-						}
-					: null;
-			})
-			.filter(
-				(candidate): candidate is NonNullable<typeof candidate> =>
-					candidate !== null,
-			)
-			.sort((left, right) => left.label.localeCompare(right.label));
-	}, [selectedClass?.json_schema, serverFilterSampleData]);
 	const serverFilterDataFields = useMemo(
 		() =>
-			serverFilterDataCandidates
-				.map((column) => {
-					const path = toServerFilterDataPath(column.path);
-					const schemaDataType = getJsonSchemaServerFilterDataType(
-						selectedClass?.json_schema,
-						column.path,
-					);
-					const inferredDataType = inferObjectServerFilterDataType(
-						serverFilterSampleData.map((data) =>
-							getValueAtDataPath(data, column.path),
-						),
-					);
-					const dataType =
-						schemaDataType === "string" &&
-						(inferredDataType === "date" || inferredDataType === "ip")
-							? inferredDataType
-							: (schemaDataType ?? inferredDataType);
-					return path
-						? {
-								id: column.id,
-								label: column.label,
-								path,
-								dataType,
-							}
-						: null;
-				})
-				.filter(
-					(column): column is NonNullable<typeof column> => column !== null,
-				),
-		[
-			selectedClass?.json_schema,
-			serverFilterDataCandidates,
-			serverFilterSampleData,
-		],
+			resolveObjectServerFilterDataFields(
+				selectedClass?.json_schema,
+				serverFilterSampleData,
+			),
+		[selectedClass?.json_schema, serverFilterSampleData],
 	);
-	const serverFilterComputedFields = useMemo<ServerFilterComputedField[]>(
-		() =>
-			computedColumns.map((column) => ({
-				id: column.id,
-				key: column.key,
-				label: column.label,
-				scope: column.scope,
-				resultType: column.resultType,
-			})),
-		[computedColumns],
-	);
+	const serverFilterComputedFields = computedColumns;
 	const aggregateMeasureFields = useMemo<ObjectAggregateMeasureField[]>(
 		() => [
 			...serverFilterDataFields
