@@ -30,6 +30,12 @@ import {
 	fetchSharedComputedFields,
 } from "@/lib/api/computed-fields";
 import { fetchClientPaginationConfig } from "@/lib/api/client-config";
+import {
+	CLASS_OBJECT_SAMPLES_GC_TIME,
+	CLASS_OBJECT_SAMPLES_STALE_TIME,
+	classObjectSamplesQueryKey,
+	fetchClassObjectSamples,
+} from "@/lib/api/class-objects";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	fetchObjectAggregates,
@@ -59,6 +65,8 @@ import {
 import { getDataColumnHeadings } from "@/lib/data-column-headings";
 import {
 	appendObjectServerFilters,
+	getJsonSchemaServerFilterDataType,
+	inferObjectServerFilterDataType,
 	OBJECT_SERVER_FILTERS_QUERY_KEY,
 	type ObjectComputedResultType,
 	type ObjectServerFilter,
@@ -947,6 +955,8 @@ export function ObjectsExplorer() {
 		setLoadedHiddenComputedColumnsStorageKey,
 	] = useState<string | null>(null);
 	const [showRawDataColumn, setShowRawDataColumn] = useState(true);
+	const [loadedRawDataColumnStorageKey, setLoadedRawDataColumnStorageKey] =
+		useState<string | null>(null);
 	const [customDataFields, setCustomDataFields] = useState<CustomDataField[]>(
 		[],
 	);
@@ -1141,6 +1151,18 @@ export function ObjectsExplorer() {
 			),
 		enabled: parsedClassId !== null,
 	});
+	const activePageCanSeedObjectSamples =
+		pagination.cursor === undefined && serverFilters.length === 0;
+	const objectSamplesQuery = useQuery({
+		queryKey: classObjectSamplesQueryKey(parsedClassId),
+		queryFn: () => fetchClassObjectSamples(parsedClassId ?? 0),
+		enabled:
+			parsedClassId !== null &&
+			!activePageCanSeedObjectSamples &&
+			objectsQuery.isFetched,
+		staleTime: CLASS_OBJECT_SAMPLES_STALE_TIME,
+		gcTime: CLASS_OBJECT_SAMPLES_GC_TIME,
+	});
 	const createMutation = useMutation({
 		mutationFn: async (payload: NewHubuumObject) => {
 			const response = await fetch(
@@ -1165,6 +1187,9 @@ export function ObjectsExplorer() {
 			return payload.hubuum_class_id;
 		},
 		onSuccess: async (createdClassId) => {
+			await queryClient.invalidateQueries({
+				queryKey: classObjectSamplesQueryKey(createdClassId),
+			});
 			await queryClient.invalidateQueries({
 				queryKey: ["objects", createdClassId],
 			});
@@ -1206,6 +1231,9 @@ export function ObjectsExplorer() {
 			return { classId: payload.classId, count: results.length };
 		},
 		onSuccess: async ({ classId: deletedClassId, count }) => {
+			await queryClient.invalidateQueries({
+				queryKey: classObjectSamplesQueryKey(deletedClassId),
+			});
 			await queryClient.invalidateQueries({
 				queryKey: ["objects", deletedClassId],
 			});
@@ -1314,6 +1342,35 @@ export function ObjectsExplorer() {
 
 	const pageData = objectsQuery.data;
 	const objects = pageData?.objects ?? EMPTY_OBJECTS;
+	useEffect(() => {
+		if (
+			parsedClassId === null ||
+			!activePageCanSeedObjectSamples ||
+			!objectsQuery.isSuccess
+		) {
+			return;
+		}
+		queryClient.setQueryData(
+			classObjectSamplesQueryKey(parsedClassId),
+			objects.slice(0, 100),
+		);
+	}, [
+		activePageCanSeedObjectSamples,
+		objects,
+		objectsQuery.isSuccess,
+		parsedClassId,
+		queryClient,
+	]);
+	const serverFilterSampleData = useMemo(() => {
+		const dataByObjectId = new Map<number, unknown>();
+		for (const objectItem of objectSamplesQuery.data ?? []) {
+			dataByObjectId.set(objectItem.id, objectItem.data);
+		}
+		for (const objectItem of objects) {
+			dataByObjectId.set(objectItem.id, objectItem.data);
+		}
+		return [...dataByObjectId.values()];
+	}, [objectSamplesQuery.data, objects]);
 	const dataColumnCandidates = useMemo<DataPathCandidate[]>(() => {
 		const schemaPaths = getSchemaPropertyPaths(selectedClass?.json_schema);
 		const counts = new Map<string, number>();
@@ -1392,23 +1449,68 @@ export function ObjectsExplorer() {
 			),
 		[dataColumnCandidates],
 	);
+	const serverFilterDataCandidates = useMemo(() => {
+		const schemaPaths = getSchemaPropertyPaths(selectedClass?.json_schema);
+		const counts = new Map<string, number>();
+		for (const data of serverFilterSampleData) {
+			collectDataPaths(data, counts);
+		}
+
+		const ids = new Set(schemaPaths.map(getDataPathId));
+		for (const id of counts.keys()) ids.add(id);
+		return [...ids]
+			.map((id) => {
+				const path = parseDataPathId(id);
+				return path
+					? {
+							id,
+							label: formatDataPathLabel(path),
+							path,
+						}
+					: null;
+			})
+			.filter(
+				(candidate): candidate is NonNullable<typeof candidate> =>
+					candidate !== null,
+			)
+			.sort((left, right) => left.label.localeCompare(right.label));
+	}, [selectedClass?.json_schema, serverFilterSampleData]);
 	const serverFilterDataFields = useMemo(
 		() =>
-			sortedDataColumnCandidates
+			serverFilterDataCandidates
 				.map((column) => {
 					const path = toServerFilterDataPath(column.path);
+					const schemaDataType = getJsonSchemaServerFilterDataType(
+						selectedClass?.json_schema,
+						column.path,
+					);
+					const inferredDataType = inferObjectServerFilterDataType(
+						serverFilterSampleData.map((data) =>
+							getValueAtDataPath(data, column.path),
+						),
+					);
+					const dataType =
+						schemaDataType === "string" &&
+						(inferredDataType === "date" || inferredDataType === "ip")
+							? inferredDataType
+							: (schemaDataType ?? inferredDataType);
 					return path
 						? {
 								id: column.id,
 								label: column.label,
 								path,
+								dataType,
 							}
 						: null;
 				})
 				.filter(
 					(column): column is NonNullable<typeof column> => column !== null,
 				),
-		[sortedDataColumnCandidates],
+		[
+			selectedClass?.json_schema,
+			serverFilterDataCandidates,
+			serverFilterSampleData,
+		],
 	);
 	const serverFilterComputedFields = useMemo<ServerFilterComputedField[]>(
 		() =>
@@ -2009,6 +2111,7 @@ export function ObjectsExplorer() {
 	]);
 
 	useEffect(() => {
+		setLoadedRawDataColumnStorageKey(null);
 		if (!rawDataColumnStorageKey || !isUserSettingsSyncInitialized()) {
 			setShowRawDataColumn((current) => (current ? current : true));
 			return;
@@ -2018,10 +2121,12 @@ export function ObjectsExplorer() {
 			const storedValue = window.localStorage.getItem(rawDataColumnStorageKey);
 			if (storedValue === "hidden") {
 				setShowRawDataColumn(false);
+				setLoadedRawDataColumnStorageKey(rawDataColumnStorageKey);
 				return;
 			}
 			if (storedValue === "visible") {
 				setShowRawDataColumn(true);
+				setLoadedRawDataColumnStorageKey(rawDataColumnStorageKey);
 				return;
 			}
 		} catch {
@@ -2029,10 +2134,15 @@ export function ObjectsExplorer() {
 		}
 
 		setShowRawDataColumn((current) => (current ? current : true));
+		setLoadedRawDataColumnStorageKey(rawDataColumnStorageKey);
 	}, [rawDataColumnStorageKey]);
 
 	useEffect(() => {
-		if (!rawDataColumnStorageKey) {
+		if (
+			!rawDataColumnStorageKey ||
+			loadedRawDataColumnStorageKey !== rawDataColumnStorageKey ||
+			!isUserSettingsSyncInitialized()
+		) {
 			return;
 		}
 
@@ -2044,7 +2154,11 @@ export function ObjectsExplorer() {
 		} catch {
 			// Ignore unavailable localStorage.
 		}
-	}, [rawDataColumnStorageKey, showRawDataColumn]);
+	}, [
+		loadedRawDataColumnStorageKey,
+		rawDataColumnStorageKey,
+		showRawDataColumn,
+	]);
 
 	useEffect(() => {
 		if (!dataColumnSort.columnId) {

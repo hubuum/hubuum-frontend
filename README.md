@@ -114,7 +114,9 @@ creates the account and its first scoped token together; later tokens use the
 same guided scope controls on the account detail page. The owner group controls
 who can manage a service account but does not grant runtime access, so the
 account still needs live group membership before its token has effective
-authority.
+authority. Local group membership editors can add either human users or service
+accounts by name, and each service-account detail page lists its current runtime
+group memberships separately from its owner group.
 
 ## Object data columns
 

@@ -214,6 +214,60 @@ async function main() {
   expectId(group.data, "Created group");
   pass("created IAM group");
 
+  const serviceAccount = await request("POST", "/api/v1/iam/service-accounts", {
+    ...auth,
+    body: {
+      description: "Created by frontend live backend contract tests",
+      name: `live_service_account_${suffix}`,
+      owner_group_id: group.data.id,
+    },
+    expected: 201,
+  });
+  expectId(serviceAccount.data, "Created service account");
+  pass("created service account");
+
+  await request(
+    "POST",
+    `/api/v1/iam/groups/${group.data.id}/members/${serviceAccount.data.id}`,
+    {
+      ...auth,
+      expected: 204,
+    },
+  );
+  const groupMembers = await request(
+    "GET",
+    `/api/v1/iam/groups/${group.data.id}/members`,
+    {
+      ...auth,
+      query: { include_total: false },
+    },
+  );
+  assert(
+    groupMembers.data.some(
+      (member) =>
+        member.principal_id === serviceAccount.data.id &&
+        member.kind === "service_account",
+    ),
+    "Group members should include the service-account principal.",
+  );
+  pass("added service-account principal to IAM group");
+
+  const serviceAccountGroups = await request(
+    "GET",
+    `/api/v1/iam/principals/${serviceAccount.data.id}/groups`,
+    {
+      ...auth,
+      query: { include_total: false },
+    },
+  );
+  assert(
+    serviceAccountGroups.data.some(
+      (membership) => membership.id === group.data.id,
+    ),
+    "Principal groups should include the service-account membership.",
+  );
+  pass("read service-account membership from principal groups");
+
   const collection = await request("POST", "/api/v1/collections", {
     ...auth,
     body: {

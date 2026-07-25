@@ -2,6 +2,10 @@ import type {
 	QueryFieldDefinition,
 	QueryFieldKind,
 } from "@/lib/report-scope-fields";
+import {
+	appendObjectServerFilters,
+	type ObjectServerFilter,
+} from "@/lib/object-server-filters";
 
 export type ReportQueryFilter = {
 	field: string;
@@ -105,6 +109,30 @@ export function buildReportQuery(
 				: `${filter.field}__${filter.operator}`;
 		params.append(key, filter.value.trim());
 	}
+
+	const sortValue = sorts
+		.filter((sort) => sort.field)
+		.map((sort) => `${sort.field}.${sort.direction}`)
+		.join(",");
+	if (sortValue) params.set("sort", sortValue);
+
+	const advancedParams = new URLSearchParams(
+		advancedQuery.startsWith("?") ? advancedQuery.slice(1) : advancedQuery,
+	);
+	advancedParams.forEach((value, key) => {
+		if (key !== "cursor") params.append(key, value);
+	});
+
+	return params.toString();
+}
+
+export function buildObjectReportQuery(
+	filters: readonly ObjectServerFilter[],
+	sorts: readonly ReportQuerySort[],
+	advancedQuery: string,
+): string {
+	const params = new URLSearchParams();
+	appendObjectServerFilters(params, filters);
 
 	const sortValue = sorts
 		.filter((sort) => sort.field)

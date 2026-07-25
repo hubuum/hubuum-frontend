@@ -4,12 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-
+import { PrincipalGroupMemberships } from "@/components/principal-group-memberships";
 import { PrincipalPermissions } from "@/components/principal-permissions";
 import { RawTokenReveal } from "@/components/raw-token-reveal";
 import { TokenList } from "@/components/token-list";
 import { TokenMintForm } from "@/components/token-mint-form";
-import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamServiceAccountsByServiceAccountId,
@@ -19,6 +18,7 @@ import {
 	postApiV1IamServiceAccountsByServiceAccountIdDisable,
 } from "@/lib/api/generated/client";
 import type { UpdateServiceAccount } from "@/lib/api/generated/models";
+import { useConfirm } from "@/lib/confirm-context";
 import {
 	type ConsoleGroup,
 	type ConsoleServiceAccount,
@@ -395,6 +395,13 @@ export function ServiceAccountDetail({
 					</div>
 				</div>
 			</form>
+
+			<PrincipalGroupMemberships
+				emptyMessage="This service account has no runtime group memberships. Add it from a local group's Members section."
+				exportId={`admin.service-account.${account.id}.groups`}
+				fileName={`${account.name}-group-memberships-view`}
+				principalId={account.id}
+			/>
 
 			<div className="stack">
 				<h3>Tokens</h3>

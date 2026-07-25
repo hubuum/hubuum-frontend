@@ -12,7 +12,12 @@ import {
 import { IncludeRows } from "@/components/include-rows";
 import { ReportQueryBuilder } from "@/components/report-query-builder";
 import { TemplateCodeEditor } from "@/components/template-code-editor";
-import { fetchClassObjectSamples } from "@/lib/api/class-objects";
+import {
+	CLASS_OBJECT_SAMPLES_GC_TIME,
+	CLASS_OBJECT_SAMPLES_STALE_TIME,
+	classObjectSamplesQueryKey,
+	fetchClassObjectSamples,
+} from "@/lib/api/class-objects";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1Classes,
@@ -690,14 +695,15 @@ export function ExportTemplateEditor({
 	);
 	const usesSchemaFields = schemaDataFields.length > 0;
 	const classObjectSamplesQuery = useQuery({
-		queryKey: ["export-template-data-fields", "v3", selectedClass?.id ?? null],
+		queryKey: classObjectSamplesQueryKey(selectedClass?.id ?? null),
 		queryFn: () => fetchClassObjectSamples(selectedClass?.id ?? 0),
 		enabled:
 			editorState.kind === "export" &&
 			scopeNeedsClass &&
 			selectedClass != null &&
 			!usesSchemaFields,
-		staleTime: 60_000,
+		staleTime: CLASS_OBJECT_SAMPLES_STALE_TIME,
+		gcTime: CLASS_OBJECT_SAMPLES_GC_TIME,
 	});
 	const sampledObjects = Array.isArray(classObjectSamplesQuery.data)
 		? classObjectSamplesQuery.data

@@ -1990,6 +1990,7 @@ body.modal-open {
 }
 
 .object-property-item--data dd {
+	align-self: center;
 	line-height: 1.4;
 }
 
@@ -2134,6 +2135,7 @@ body.modal-open {
 
 .object-property-item--data dt {
 	display: block;
+	align-self: center;
 	overflow: hidden;
 	font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
 	overflow-wrap: normal;
@@ -3687,8 +3689,15 @@ button.table-export-option {
 			10rem,
 			1.35fr
 		) auto auto;
-	align-items: end;
+	align-items: start;
 	gap: 0.55rem;
+}
+
+.server-filter-form .server-filter-field,
+.server-filter-form .server-filter-value {
+	display: grid;
+	gap: 0.25rem;
+	min-width: 0;
 }
 
 .server-filter-form label {
@@ -3705,6 +3714,102 @@ button.table-export-option {
 	text-transform: uppercase;
 }
 
+.server-filter-form .server-filter-data-types {
+	grid-column: 2 / -1;
+	min-width: 0;
+	margin: 0;
+	padding: 0.55rem 0.65rem 0.65rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+}
+
+.server-filter-data-types legend {
+	padding: 0 0.25rem;
+	color: var(--muted);
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.server-filter-data-types legend small {
+	margin-left: 0.5rem;
+	font-size: 0.68rem;
+	font-weight: 500;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.server-filter-data-type-options {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+}
+
+.server-filter-form .server-filter-data-type-option {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	min-height: 2rem;
+	padding: 0.3rem 0.55rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--field-bg);
+	cursor: pointer;
+}
+
+.server-filter-form .server-filter-data-type-option:has(input:checked) {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+	color: var(--ink);
+}
+
+.server-filter-form .server-filter-data-type-option input {
+	width: auto;
+	min-width: auto;
+	margin: 0;
+}
+
+.server-filter-form .server-filter-data-type-option > span {
+	color: inherit;
+	font-size: 0.76rem;
+	font-weight: 650;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.server-filter-date-pickers {
+	display: grid;
+	gap: 0.3rem;
+}
+
+.server-filter-date-mode {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.server-filter-date-mode button {
+	min-height: 1.9rem;
+	padding: 0.25rem 0.55rem;
+	border-radius: 999px;
+	font-size: 0.72rem;
+}
+
+.server-filter-date-mode button.is-selected {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+	color: var(--ink);
+}
+
+.server-filter-date-pickers input[type="datetime-local"] {
+	font-size: 0.78rem;
+}
+
 .server-filter-form select,
 .server-filter-form input {
 	width: 100%;
@@ -3712,6 +3817,7 @@ button.table-export-option {
 }
 
 .server-filter-form > button {
+	margin-top: 1.1rem;
 	white-space: nowrap;
 }
 
@@ -3723,6 +3829,7 @@ button.table-export-option {
 	padding: 0.45rem 0.55rem;
 	border: 1px solid var(--line);
 	border-radius: 8px;
+	margin-top: 1.1rem;
 	white-space: nowrap;
 }
 
@@ -4500,6 +4607,10 @@ button.table-sort-button:hover {
 	overflow: clip;
 }
 
+.export-disclosure--server-filter-host:has(.server-filter-menu) {
+	overflow: visible;
+}
+
 .export-disclosure > summary {
 	display: flex;
 	align-items: center;
@@ -5109,6 +5220,10 @@ button.template-data-field:hover {
 	align-items: start;
 }
 
+.computed-preview-layout > section {
+	min-width: 0;
+}
+
 .computed-field-palette,
 .computed-field-selected {
 	min-width: 0;
@@ -5314,22 +5429,31 @@ button.template-data-field:hover {
 .computed-preview-values {
 	display: grid;
 	gap: 0.5rem;
+	min-width: 0;
 	margin: 0;
 }
 
 .computed-preview-values > div {
 	display: grid;
-	grid-template-columns: minmax(9rem, 0.45fr) minmax(0, 1fr);
+	grid-template-columns: minmax(0, 0.45fr) minmax(0, 1fr);
 	gap: 0.75rem;
+	min-width: 0;
 	padding: 0.65rem;
 	border: 1px solid var(--line);
 	border-radius: 11px;
 	background: var(--bg-highlight);
 }
 
+.computed-preview-values dt,
 .computed-preview-values dd {
+	min-width: 0;
 	margin: 0;
 	overflow-wrap: anywhere;
+}
+
+.computed-preview-values dt code {
+	display: block;
+	white-space: normal;
 }
 
 @media (max-width: 1100px) {
@@ -9119,6 +9243,11 @@ fieldset.segmented-options {
 		width: 100%;
 	}
 
+	.server-filter-form > button,
+	.server-filter-form .server-filter-negate {
+		margin-top: 0;
+	}
+
 	.fab--create {
 		display: inline-flex;
 	}
@@ -9220,6 +9349,10 @@ fieldset.segmented-options {
 
 	.server-filter-form {
 		grid-template-columns: 1fr;
+	}
+
+	.server-filter-form .server-filter-data-types {
+		grid-column: 1 / -1;
 	}
 
 	.server-filter-menu-header,

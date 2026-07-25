@@ -18,6 +18,7 @@ import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
+import { classObjectSamplesQueryKey } from "@/lib/api/class-objects";
 import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -765,6 +766,12 @@ export function ObjectDetail({
 	async function applyUpdatedObject(updatedObject: HubuumObject) {
 		const targetClassId = updatedObject.hubuum_class_id;
 		await queryClient.invalidateQueries({
+			queryKey: classObjectSamplesQueryKey(classId),
+		});
+		await queryClient.invalidateQueries({
+			queryKey: classObjectSamplesQueryKey(targetClassId),
+		});
+		await queryClient.invalidateQueries({
 			queryKey: ["object", classId, objectId],
 		});
 		await queryClient.invalidateQueries({ queryKey: ["objects", classId] });
@@ -856,6 +863,9 @@ export function ObjectDetail({
 			}
 		},
 		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: classObjectSamplesQueryKey(classId),
+			});
 			await queryClient.invalidateQueries({ queryKey: ["objects", classId] });
 			await queryClient.invalidateQueries({
 				queryKey: ["object-aggregates", classId],
