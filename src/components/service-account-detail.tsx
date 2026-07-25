@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { PrincipalGroupMemberships } from "@/components/principal-group-memberships";
 import { PrincipalPermissions } from "@/components/principal-permissions";
-import { TokenCreationModal } from "@/components/token-creation-modal";
-import { TokenList } from "@/components/token-list";
+import { PrincipalTokenManager } from "@/components/principal-token-manager";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamServiceAccountsByServiceAccountId,
@@ -27,6 +26,7 @@ import {
 import { trackRecentItem } from "@/lib/recent-items";
 
 type ServiceAccountDetailProps = {
+	backHref?: string;
 	serviceAccountId: number;
 };
 
@@ -62,6 +62,7 @@ async function fetchGroups(): Promise<ConsoleGroup[]> {
 }
 
 export function ServiceAccountDetail({
+	backHref = "/admin/service-accounts",
 	serviceAccountId,
 }: ServiceAccountDetailProps) {
 	const router = useRouter();
@@ -72,7 +73,6 @@ export function ServiceAccountDetail({
 	const [initialized, setInitialized] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
-	const [isTokenCreateModalOpen, setTokenCreateModalOpen] = useState(false);
 
 	const accountQuery = useQuery({
 		queryKey: ["service-account", serviceAccountId],
@@ -198,7 +198,7 @@ export function ServiceAccountDetail({
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["service-accounts"] });
-			router.push("/admin/service-accounts");
+			router.push(backHref);
 			router.refresh();
 		},
 		onError: (error) => {
@@ -303,18 +303,13 @@ export function ServiceAccountDetail({
 
 	return (
 		<section className="stack">
-			<TokenCreationModal
-				open={isTokenCreateModalOpen && !disabled}
-				principalId={serviceAccountId}
-				onClose={() => setTokenCreateModalOpen(false)}
-			/>
 			<header className="detail-identity">
 				<div className="scope-heading">
 					<h2>
 						{formatScopedServiceAccountName(account)}{" "}
 						<span className="muted">#{account.id}</span>
 					</h2>
-					<Link className="link-chip" href="/admin/service-accounts">
+					<Link className="link-chip" href={backHref}>
 						Back to service accounts
 					</Link>
 				</div>
@@ -325,8 +320,8 @@ export function ServiceAccountDetail({
 				<div className="warning-banner">
 					This service account is disabled (since{" "}
 					{new Date(account.disabled_at as string).toLocaleString()}). Its
-					tokens no longer validate, and it cannot mint new tokens. Disabling is
-					irreversible.
+					tokens no longer validate, and it cannot receive new tokens. Disabling
+					is irreversible.
 				</div>
 			) : null}
 
@@ -407,19 +402,12 @@ export function ServiceAccountDetail({
 				principalId={account.id}
 			/>
 
-			<div className="stack">
-				<h3>Tokens</h3>
-				<TokenList
-					createDisabled={disabled}
-					principalId={serviceAccountId}
-					onCreate={() => setTokenCreateModalOpen(true)}
-				/>
-				{disabled ? (
-					<div className="muted">
-						Disabled service accounts cannot mint new tokens.
-					</div>
-				) : null}
-			</div>
+			<PrincipalTokenManager
+				authority="service_account_manager"
+				principalId={serviceAccountId}
+				targetDisabled={disabled}
+				targetKind="service_account"
+			/>
 
 			<div className="stack">
 				<h3>Effective permissions</h3>

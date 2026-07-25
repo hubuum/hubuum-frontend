@@ -119,8 +119,12 @@ authority. Server `v0.0.4` represents both boundaries under one nullable
 dimensions returned by the server. Selecting an active token opens its complete
 lifecycle metadata and every permission, collection, class, and object boundary.
 Resource names are resolved beside their exact IDs without exposing the bearer
-token or stored hash. Local group membership editors can add either human users
-or service accounts by name, and each
+token or stored hash. Human users with an unscoped session token can mint tokens
+for themselves from their Account page. Human admins can mint for any principal,
+and human members of a service account's owner group can manage its tokens from
+their Account page. Service-account actors never receive token-minting controls,
+and disabled service accounts cannot receive new tokens. Local group membership
+editors can add either human users or service accounts by name, and each
 service-account detail page lists its current runtime group memberships
 separately from its owner group.
 

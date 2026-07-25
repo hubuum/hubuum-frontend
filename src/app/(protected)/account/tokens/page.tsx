@@ -3,7 +3,7 @@ import { AccountTokens } from "@/components/account-tokens";
 import { requireServerSession } from "@/lib/auth/guards";
 
 export default async function AccountTokensPage() {
-	const session = await requireServerSession();
+	await requireServerSession();
 
 	return (
 		<section className="stack">
@@ -15,7 +15,7 @@ export default async function AccountTokensPage() {
 				</p>
 			</header>
 			<AccountTabs />
-			<AccountTokens currentUsername={session.username ?? null} />
+			<AccountTokens />
 		</section>
 	);
 }

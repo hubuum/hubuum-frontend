@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
 import { PrincipalGroupMemberships } from "@/components/principal-group-memberships";
+import { PrincipalTokenManager } from "@/components/principal-token-manager";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamUsersByUserId,
@@ -333,6 +334,12 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 				exportId={`admin.user.${user.id}.groups`}
 				fileName={`${user.name}-group-memberships-view`}
 				principalId={user.id}
+			/>
+
+			<PrincipalTokenManager
+				authority="admin"
+				principalId={user.id}
+				targetKind="human"
 			/>
 		</section>
 	);

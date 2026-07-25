@@ -50,6 +50,11 @@ type ServiceAccountsPageData = {
 	totalCount: number | null;
 };
 
+type ServiceAccountsTableProps = {
+	allowCreate?: boolean;
+	detailBasePath?: string;
+};
+
 async function fetchServiceAccounts(
 	limit: number,
 	cursor?: string,
@@ -95,7 +100,10 @@ async function fetchGroups(): Promise<ConsoleGroup[]> {
 	return response.data;
 }
 
-export function ServiceAccountsTable() {
+export function ServiceAccountsTable({
+	allowCreate = true,
+	detailBasePath = "/admin/service-accounts",
+}: ServiceAccountsTableProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -186,7 +194,7 @@ export function ServiceAccountsTable() {
 	);
 
 	useEffect(() => {
-		if (searchParams.get("create") !== "1") {
+		if (!allowCreate || searchParams.get("create") !== "1") {
 			return;
 		}
 
@@ -196,9 +204,12 @@ export function ServiceAccountsTable() {
 		router.replace(
 			params.toString() ? `${pathname}?${params.toString()}` : pathname,
 		);
-	}, [pathname, router, searchParams]);
+	}, [allowCreate, pathname, router, searchParams]);
 
 	useEffect(() => {
+		if (!allowCreate) {
+			return;
+		}
 		const onOpenCreate = (event: Event) => {
 			const customEvent = event as CustomEvent<OpenCreateEventDetail>;
 			if (customEvent.detail?.section !== "admin-service-accounts") {
@@ -211,7 +222,7 @@ export function ServiceAccountsTable() {
 
 		window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
 		return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
-	}, []);
+	}, [allowCreate]);
 
 	useEffect(() => {
 		setSearchInput(searchParams.get("search") ?? "");
@@ -258,26 +269,28 @@ export function ServiceAccountsTable() {
 
 	return (
 		<div className="stack">
-			<CreateModal
-				open={isCreateModalOpen}
-				title="Create service account"
-				closeDisabled={isCreateModalCloseLocked}
-				onClose={() => setCreateModalOpen(false)}
-			>
-				<ServiceAccountCreateFlow
+			{allowCreate ? (
+				<CreateModal
 					open={isCreateModalOpen}
-					groups={groups}
-					groupsLoading={groupsQuery.isLoading}
-					groupsError={groupsQuery.isError}
-					onCloseLockedChange={setCreateModalCloseLocked}
-					onFinished={(account) => {
-						setFormSuccess(
-							`Service account ${formatScopedServiceAccountName(account)} (#${account.id}) and its initial token were created.`,
-						);
-						setCreateModalOpen(false);
-					}}
-				/>
-			</CreateModal>
+					title="Create service account"
+					closeDisabled={isCreateModalCloseLocked}
+					onClose={() => setCreateModalOpen(false)}
+				>
+					<ServiceAccountCreateFlow
+						open={isCreateModalOpen}
+						groups={groups}
+						groupsLoading={groupsQuery.isLoading}
+						groupsError={groupsQuery.isError}
+						onCloseLockedChange={setCreateModalCloseLocked}
+						onFinished={(account) => {
+							setFormSuccess(
+								`Service account ${formatScopedServiceAccountName(account)} (#${account.id}) and its initial token were created.`,
+							);
+							setCreateModalOpen(false);
+						}}
+					/>
+				</CreateModal>
+			) : null}
 
 			{formSuccess ? (
 				<div className="info-banner" role="status">
@@ -337,10 +350,12 @@ export function ServiceAccountsTable() {
 						description={
 							searchTerm
 								? "Clear the filter to return to the full service account list."
-								: "Create a service account and choose its initial token's permission and resource scopes."
+								: allowCreate
+									? "Create a service account and choose its initial token's permission and resource scopes."
+									: "You are not currently a member of an owner group for a service account."
 						}
 						action={
-							searchTerm ? null : (
+							searchTerm || !allowCreate ? null : (
 								<button type="button" onClick={() => setCreateModalOpen(true)}>
 									New service account
 								</button>
@@ -369,7 +384,7 @@ export function ServiceAccountsTable() {
 											<td>
 												<Link
 													className="row-link"
-													href={`/admin/service-accounts/${account.id}`}
+													href={`${detailBasePath}/${account.id}`}
 												>
 													{formatScopedServiceAccountName(account)}
 												</Link>
