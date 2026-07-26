@@ -26,6 +26,7 @@ export function AccountTabs() {
 					<Link
 						key={tab.href}
 						href={tab.href}
+						prefetch={false}
 						className={active ? "tab tab--active" : "tab"}
 					>
 						{tab.label}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getCurrentPrincipalId } from "@/lib/auth/current-principal";
+import { invalidateProtectedLayoutBootstrap } from "@/lib/auth/protected-layout-bootstrap";
 import { getSessionFromRequest } from "@/lib/auth/session";
 import {
 	CORRELATION_ID_HEADER,
@@ -23,7 +24,7 @@ async function getRequestIdentity(request: NextRequest) {
 
 	const principalId = await getCurrentPrincipalId(session.token, correlationId);
 	return principalId
-		? { principalId, token: session.token, correlationId }
+		? { principalId, sid: session.sid, token: session.token, correlationId }
 		: null;
 }
 
@@ -73,9 +74,9 @@ export async function PATCH(request: NextRequest) {
 	}
 
 	try {
-		return NextResponse.json(
-			await patchUserSettingsForPrincipal(identity, updates),
-		);
+		const snapshot = await patchUserSettingsForPrincipal(identity, updates);
+		invalidateProtectedLayoutBootstrap(identity.sid);
+		return NextResponse.json(snapshot);
 	} catch (error) {
 		const isLimitError = error instanceof UserSettingsLimitError;
 		const backendStatus =

@@ -2,6 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { invalidateProtectedLayoutBootstrap } from "@/lib/auth/protected-layout-bootstrap";
 import { getSessionStore, type SessionPayload } from "@/lib/auth/session-store";
 import { getServerEnv } from "@/lib/env";
 
@@ -104,6 +105,7 @@ export async function getSessionFromServerCookies(): Promise<ActiveSession | nul
 }
 
 export async function destroySession(sid: string): Promise<void> {
+	invalidateProtectedLayoutBootstrap(sid);
 	await getSessionStore().destroy(sid);
 }
 
