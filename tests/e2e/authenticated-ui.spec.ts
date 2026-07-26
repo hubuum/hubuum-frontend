@@ -15,8 +15,9 @@ test.describe("authenticated workspace", () => {
 		await page.goto("/login");
 		const provider = page.locator("#identity-scope");
 		await expect(provider).toBeVisible();
-		if ((await provider.evaluate((element) => element.tagName)) === "SELECT") {
-			await provider.selectOption(identityScope);
+		const providerSelect = page.locator("select#identity-scope");
+		if (await providerSelect.isVisible()) {
+			await providerSelect.selectOption(identityScope);
 		} else {
 			await provider.fill(identityScope);
 		}
@@ -135,6 +136,38 @@ test.describe("authenticated workspace", () => {
 		await expect(
 			page.getByRole("button", { name: "Continue to destination" }),
 		).toBeDisabled();
+	});
+
+	test("token expiry shows the effective server default lifetime", async ({
+		page,
+	}) => {
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/config",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify({
+						authentication: {
+							default_token_lifetime_hours: 36,
+						},
+						pagination: {
+							default_page_limit: 50,
+							max_page_limit: 250,
+						},
+					}),
+				});
+			},
+		);
+		await page.goto("/account/tokens");
+		await page.getByRole("button", { name: "Create new" }).click();
+
+		await expect(
+			page.getByText(
+				"Leave blank to use the server default lifetime of 36 hours.",
+				{ exact: true },
+			),
+		).toBeVisible();
 	});
 
 	test("exports separates running, templates, and history into task views", async ({

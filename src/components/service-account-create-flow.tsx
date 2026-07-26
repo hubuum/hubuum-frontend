@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -12,6 +12,11 @@ import {
 import { RawTokenReveal } from "@/components/raw-token-reveal";
 import { ScopePicker } from "@/components/scope-picker";
 import { TokenResourceScopePicker } from "@/components/token-resource-scope-picker";
+import {
+	fetchClientAuthenticationConfig,
+	formatDefaultTokenLifetime,
+	formatDefaultTokenLifetimeNote,
+} from "@/lib/api/client-config";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	postApiV1IamPrincipalsByPrincipalIdTokens,
@@ -119,6 +124,20 @@ export function ServiceAccountCreateFlow({
 	const [createdAccount, setCreatedAccount] =
 		useState<ServiceAccountResponse | null>(null);
 	const [rawToken, setRawToken] = useState<string | null>(null);
+	const clientAuthenticationQuery = useQuery({
+		queryKey: ["client-config", "authentication"],
+		queryFn: fetchClientAuthenticationConfig,
+		staleTime: Number.POSITIVE_INFINITY,
+		retry: false,
+	});
+	const defaultLifetimeHours =
+		clientAuthenticationQuery.data?.default_token_lifetime_hours;
+	const defaultLifetime = formatDefaultTokenLifetime(defaultLifetimeHours);
+	const defaultLifetimeNote =
+		formatDefaultTokenLifetimeNote(defaultLifetimeHours);
+	const defaultLifetimeSummary = defaultLifetime
+		? `server default: ${defaultLifetime}`
+		: "server default lifetime";
 
 	const reset = useCallback(() => {
 		setName("");
@@ -434,6 +453,7 @@ export function ServiceAccountCreateFlow({
 								value={expiresAt}
 								onChange={(event) => setExpiresAt(event.target.value)}
 							/>
+							<small className="muted">{defaultLifetimeNote}</small>
 						</label>
 					</div>
 					{groupsError ? (
@@ -631,7 +651,7 @@ export function ServiceAccountCreateFlow({
 								{tokenName.trim() || "initial"} ·{" "}
 								{expiresAt
 									? `expires ${new Date(expiresAt).toLocaleString()}`
-									: "server default lifetime"}
+									: defaultLifetimeSummary}
 							</dd>
 						</div>
 						<div>

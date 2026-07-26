@@ -237,6 +237,24 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 						value: `${formatNumber(auth.token_lifetime_hours)} h`,
 					},
 					{
+						label: "Expired-token retention",
+						value: `${formatNumber(auth.token_retention_days)} d`,
+					},
+					{
+						label: "Token retention purge",
+						value: enabled(auth.token_retention_purge_enabled),
+					},
+					{
+						label: "Token purge interval",
+						value: formatSeconds(
+							auth.token_retention_purge_interval_seconds,
+						),
+					},
+					{
+						label: "Token purge batch",
+						value: formatNumber(auth.token_retention_purge_batch_size),
+					},
+					{
 						label: "Provider configuration",
 						value: configured(auth.provider_config_path.configured),
 					},

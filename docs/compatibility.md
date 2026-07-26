@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.4` | `ghcr.io/hubuum/hubuum-server:v0.0.4` |
+| `main` (unreleased) | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
+| `v0.0.6` | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
 | `v0.0.5` | `v0.0.4` | `ghcr.io/hubuum/hubuum-server:v0.0.4` |
 | `v0.0.4` | `v0.0.3` | `ghcr.io/hubuum/hubuum-server:v0.0.3` |
 | `v0.0.3` | `v0.0.2` | `ghcr.io/hubuum/hubuum-server:v0.0.2` |
@@ -13,9 +14,9 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Unreleased `main` validates the generated Server `v0.0.4`
+listed server tag. Unreleased `main` validates the generated Server `v0.0.5`
 contract and the live scoped and unscoped token lifecycles against
-`sha256:60142d605f423b1dc58d9dfe709164b0d5ec93befd2d702f9bdca7ee0654a583`.
+`sha256:6f3e0f0debd418acd5cbc2b1399db9859a85ca1fa397525a5ef0e2f493a77c9b`.
 A separate scheduled workflow tests the frontend against the moving backend
 `:main` image to surface future compatibility changes without making normal CI
 nondeterministic.
@@ -31,3 +32,6 @@ payloads, numeric aggregate measures, durable task provenance, initiator
 filters, bounded idempotency keys, and remote-header restrictions. The token
 payload change is breaking, so Frontend `v0.0.5` should not be used to mint
 tokens against Server `v0.0.3`.
+Frontend `v0.0.6` adopts Server `v0.0.5`'s public default-token lifetime,
+authoritative token expiry responses, token-retention configuration, and
+restored permission-aware import and export submission.

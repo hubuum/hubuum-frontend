@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.4
+ * OpenAPI spec version: 0.0.5
  */
 import type { ObjectAggregateMeasureOperation } from './objectAggregateMeasureOperation';
 import type { ObjectAggregateMeasureState } from './objectAggregateMeasureState';

@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.4
+ * OpenAPI spec version: 0.0.5
  */
+import type { ClientAuthenticationConfig } from './clientAuthenticationConfig';
 import type { ClientPaginationConfig } from './clientPaginationConfig';
 
 /**
@@ -14,5 +15,6 @@ import type { ClientPaginationConfig } from './clientPaginationConfig';
  * authentication through the client configuration endpoint.
  */
 export interface ClientConfig {
+  authentication: ClientAuthenticationConfig;
   pagination: ClientPaginationConfig;
 }
