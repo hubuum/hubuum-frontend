@@ -23,6 +23,7 @@ import {
 	type ServerFilterComputedField,
 	type ServerFilterDataField,
 } from "@/components/object-server-filter-menu";
+import { ReportTemplateCard } from "@/components/report-template-card";
 import { TableExportMenu } from "@/components/table-export-menu";
 import {
 	CLASS_OBJECT_SAMPLES_GC_TIME,
@@ -34,15 +35,10 @@ import {
 	fetchPersonalComputedFields,
 	fetchSharedComputedFields,
 } from "@/lib/api/computed-fields";
-import { getApiErrorMessage } from "@/lib/api/errors";
 import {
-	getApiV1Classes,
-	getApiV1Collections,
-} from "@/lib/api/generated/client";
-import type {
-	HubuumClassExpanded,
-	Collection,
-} from "@/lib/api/generated/models";
+	fetchExportClasses,
+	fetchExportCollections,
+} from "@/lib/api/export-options";
 import {
 	buildCollectionHierarchy,
 	formatCollectionOption,
@@ -59,12 +55,15 @@ import {
 	type ReportRequest,
 	type ReportScopeKind,
 	type ReportTemplate,
-	type ReportTemplateRunRequest,
-	runTemplateReport,
 	submitJsonReportTask,
 	type TaskResponse,
 } from "@/lib/api/reporting";
-import { fetchTasks, isTerminalTaskStatus } from "@/lib/api/tasking";
+import {
+	fetchTasks,
+	getTaskProgressPercent,
+	getTaskStatusTone,
+	isTerminalTaskStatus,
+} from "@/lib/api/tasking";
 import {
 	buildIncludeFromRows,
 	type IncludeBuilderRow,
@@ -79,10 +78,15 @@ import {
 } from "@/lib/report-query";
 import { SCOPE_QUERY_FIELDS } from "@/lib/report-scope-fields";
 import {
+	EXPORT_ACTION_HINTS,
 	filterReportTemplates,
+	formatExportBytes as formatBytes,
 	formatExportContentType,
 	formatExportScope,
+	formatExportTimestamp as formatTimestamp,
 	type ExportWorkspaceView,
+	getExportResultHref,
+	getReportResultText as getResultText,
 } from "@/lib/export-workspace";
 import {
 	resolveObjectServerFilterComputedFields,
@@ -91,6 +95,7 @@ import {
 import {
 	type ObjectServerFilter,
 } from "@/lib/object-server-filters";
+import { parsePositiveInteger } from "@/lib/number-input";
 
 type QueryBuilderFilter = {
 	id: string;
@@ -126,26 +131,6 @@ const EXPORT_WORKSPACE_VIEWS = ["run", "templates", "history"] as const;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
-function formatTimestamp(value: string | null): string {
-	if (!value) {
-		return "n/a";
-	}
-
-	try {
-		return new Intl.DateTimeFormat(undefined, {
-			dateStyle: "medium",
-			timeStyle: "short",
-		}).format(new Date(value));
-	} catch {
-		return value;
-	}
-}
-
-function parsePositiveInteger(value: string): number | null {
-	const parsed = Number.parseInt(value, 10);
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
 function createBuilderId(): string {
 	return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -177,47 +162,6 @@ function clampTextByBytes(
 		byteCount: end,
 		capped: true,
 	};
-}
-
-function formatBytes(byteCount: number): string {
-	if (byteCount < 1024) {
-		return `${byteCount} B`;
-	}
-	if (byteCount < 1024 * 1024) {
-		return `${(byteCount / 1024).toFixed(1)} KiB`;
-	}
-
-	return `${(byteCount / (1024 * 1024)).toFixed(2)} MiB`;
-}
-
-function getTaskStatusTone(
-	status: TaskResponse["status"],
-): "neutral" | "success" | "danger" | "accent" {
-	if (status === "succeeded") return "success";
-	if (status === "failed" || status === "cancelled") return "danger";
-	if (status === "partially_succeeded") return "accent";
-	return "neutral";
-}
-
-function getTaskProgressPercent(task: TaskResponse | null): number {
-	if (!task) return 0;
-	if (isTerminalTaskStatus(task.status)) return 100;
-	if (task.progress.total_items <= 0) return 0;
-
-	return Math.min(
-		100,
-		Math.round(
-			(task.progress.processed_items / task.progress.total_items) * 100,
-		),
-	);
-}
-
-function getResultText(result: ReportExecutionResult): string {
-	if (typeof result.text === "string") {
-		return result.text;
-	}
-
-	return result.json ? JSON.stringify(result.json, null, 2) : "";
 }
 
 function getReportResultView(result: ReportExecutionResult): ReportResultView {
@@ -268,40 +212,6 @@ function downloadReportResult(
 	URL.revokeObjectURL(url);
 }
 
-async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
-		);
-	}
-
-	return response.data;
-}
-
-async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load classes."),
-		);
-	}
-
-	return response.data;
-}
-
 type ExportsWorkspaceProps = {
 	initialView?: ExportWorkspaceView;
 };
@@ -315,8 +225,7 @@ export function ExportsWorkspace({
 		useState<ExportWorkspaceView>(initialView);
 	const [templateSearch, setTemplateSearch] = useState("");
 	const [templateCollectionFilter, setTemplateCollectionFilter] = useState("");
-	const [selectedTemplateId, setSelectedTemplateId] = useState("");
-	const [runMode, setRunMode] = useState<"json" | "template">("json");
+	const [runMode, setRunMode] = useState<"json" | "template">("template");
 	const [scopeKind, setScopeKind] = useState<ReportScopeKind>("collections");
 	const [classId, setClassId] = useState("");
 	const [objectId, setObjectId] = useState("");
@@ -326,14 +235,6 @@ export function ExportsWorkspace({
 	const [relationDepth, setRelationDepth] = useState("");
 	const [maxItems, setMaxItems] = useState("100");
 	const [maxOutputBytes, setMaxOutputBytes] = useState("262144");
-	// run-template overrides
-	const [overrideQuery, setOverrideQuery] = useState("");
-	const [overrideObjectId, setOverrideObjectId] = useState("");
-	const [overridePolicy, setOverridePolicy] = useState<
-		ReportMissingDataPolicy | ""
-	>("");
-	const [overrideMaxItems, setOverrideMaxItems] = useState("");
-	const [overrideMaxOutputBytes, setOverrideMaxOutputBytes] = useState("");
 	const [runnerError, setRunnerError] = useState<string | null>(null);
 	const [lastReportTask, setLastReportTask] = useState<TaskResponse | null>(
 		null,
@@ -365,11 +266,11 @@ export function ExportsWorkspace({
 	});
 	const collectionsQuery = useQuery({
 		queryKey: ["collections", "exports"],
-		queryFn: fetchCollections,
+		queryFn: fetchExportCollections,
 	});
 	const classesQuery = useQuery({
 		queryKey: ["classes", "exports"],
-		queryFn: fetchClasses,
+		queryFn: fetchExportClasses,
 	});
 	const parsedClassId = useMemo(() => parsePositiveInteger(classId), [classId]);
 	const selectedClass = useMemo(
@@ -438,12 +339,17 @@ export function ExportsWorkspace({
 			}),
 		[parsedTemplateCollectionFilter, templateSearch, templates],
 	);
-	const selectedTemplate = useMemo(
+	const filteredRunnableTemplates = useMemo(
 		() =>
-			runnableTemplates.find(
-				(template) => String(template.id) === selectedTemplateId,
-			) ?? null,
-		[selectedTemplateId, runnableTemplates],
+			filterReportTemplates(runnableTemplates, {
+				collectionId: parsedTemplateCollectionFilter,
+				query: templateSearch,
+			}),
+		[
+			parsedTemplateCollectionFilter,
+			runnableTemplates,
+			templateSearch,
+		],
 	);
 	const scopeFields = useMemo(() => SCOPE_QUERY_FIELDS[scopeKind], [scopeKind]);
 	const sortFields = useMemo(
@@ -561,23 +467,6 @@ export function ExportsWorkspace({
 	});
 
 	useEffect(() => {
-		if (!selectedTemplateId) return;
-		if (!runnableTemplates.some((t) => String(t.id) === selectedTemplateId)) {
-			setSelectedTemplateId("");
-		}
-	}, [selectedTemplateId, runnableTemplates]);
-
-	useEffect(() => {
-		if (
-			!templatesQuery.isLoading &&
-			runnableTemplates.length === 0 &&
-			runMode === "template"
-		) {
-			setRunMode("json");
-		}
-	}, [runMode, runnableTemplates.length, templatesQuery.isLoading]);
-
-	useEffect(() => {
 		if (reportTaskQuery.data) {
 			setLastReportTask(reportTaskQuery.data);
 		}
@@ -621,11 +510,8 @@ export function ExportsWorkspace({
 
 	const deleteTemplateMutation = useMutation({
 		mutationFn: deleteReportTemplate,
-		onSuccess: async (_, templateId) => {
+		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["export-templates"] });
-			if (selectedTemplateId === String(templateId)) {
-				setSelectedTemplateId("");
-			}
 		},
 	});
 
@@ -644,30 +530,6 @@ export function ExportsWorkspace({
 			setResultActionFeedback(null);
 			setRunnerError(
 				error instanceof Error ? error.message : "Failed to submit export.",
-			);
-		},
-	});
-
-	const runTemplateMutation = useMutation({
-		mutationFn: async (vars: {
-			templateId: number;
-			overrides: ReportTemplateRunRequest;
-		}) => runTemplateReport(vars.templateId, vars.overrides),
-		onSuccess: (task) => {
-			setRunnerError(null);
-			setLastReportTask(task);
-			setLastResult(null);
-			setResultActionFeedback(null);
-			void queryClient.invalidateQueries({ queryKey: ["export-runs"] });
-		},
-		onError: (error) => {
-			setLastResult(null);
-			setLastReportTask(null);
-			setResultActionFeedback(null);
-			setRunnerError(
-				error instanceof Error
-					? error.message
-					: "Failed to run template export.",
 			);
 		},
 	});
@@ -818,42 +680,6 @@ export function ExportsWorkspace({
 		});
 	}
 
-	function handleRunTemplate(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		if (!selectedTemplate) {
-			setRunnerError("Select a template to run.");
-			return;
-		}
-		const overrides: ReportTemplateRunRequest = {};
-		if (overrideQuery.trim()) overrides.query = overrideQuery.trim();
-		if (selectedTemplate.scope_kind === "related_objects") {
-			const parsed = parsePositiveInteger(overrideObjectId);
-			if (!parsed) {
-				setRunnerError(
-					"This template is related_objects-scoped; an object id is required.",
-				);
-				return;
-			}
-			overrides.object_id = parsed;
-		}
-		if (overridePolicy) overrides.missing_data_policy = overridePolicy;
-		const oMaxItems = overrideMaxItems.trim()
-			? parsePositiveInteger(overrideMaxItems)
-			: null;
-		const oMaxBytes = overrideMaxOutputBytes.trim()
-			? parsePositiveInteger(overrideMaxOutputBytes)
-			: null;
-		if (oMaxItems != null || oMaxBytes != null) {
-			overrides.limits = { max_items: oMaxItems, max_output_bytes: oMaxBytes };
-		}
-
-		setRunnerError(null);
-		setResultActionFeedback(null);
-		setLastResult(null);
-		setLastReportTask(null);
-		runTemplateMutation.mutate({ templateId: selectedTemplate.id, overrides });
-	}
-
 	async function copyReportText(text: string, label: string) {
 		try {
 			if (!navigator.clipboard?.writeText) {
@@ -922,21 +748,20 @@ export function ExportsWorkspace({
 	const classOptions = classesQuery.data ?? [];
 	const objectOptions = objectsQuery.data ?? [];
 	const activeReportProgress = getTaskProgressPercent(activeReportTask);
-
 	return (
 		<section className="stack export-workspace">
 			<header className="export-page-header">
 				<div className="stack action-card-header">
 					<p className="eyebrow">Exports</p>
-					<h2>Prepare, run, and retrieve exports</h2>
+					<h2>Open reports and retrieve exports</h2>
 					<p className="muted">
-						Start a one-off JSON export or run a reusable template, then
-						download the result when it is ready.
+						View saved reports in one click, refresh them when needed, or
+						open the full controls for a customized run.
 					</p>
 				</div>
 				{activeView === "templates" ? (
 					<button type="button" onClick={openCreateTemplate}>
-						Create template
+						Create new template
 					</button>
 				) : null}
 			</header>
@@ -957,8 +782,8 @@ export function ExportsWorkspace({
 					onClick={() => setActiveView("run")}
 					onKeyDown={(event) => handleWorkspaceTabKeyDown(event, "run")}
 				>
-					<span>Run export</span>
-					<small>Configure and retrieve</small>
+					<span>Reports</span>
+					<small>View and refresh</small>
 				</button>
 				<button
 					type="button"
@@ -1003,8 +828,8 @@ export function ExportsWorkspace({
 								<div className="stack action-card-header">
 									<h3>Template library</h3>
 									<p className="muted">
-										Reusable layouts and export settings, organized by
-										collection.
+										Create and deliberately maintain report definitions and
+										reusable fragments. Daily report use lives under Reports.
 									</p>
 								</div>
 							</div>
@@ -1076,7 +901,7 @@ export function ExportsWorkspace({
 								{filteredTemplates.map((template) => (
 									<article
 										key={template.id}
-										className={`template-card ${selectedTemplateId === String(template.id) ? "template-card--selected" : ""}`}
+										className="template-card"
 									>
 										<div className="template-card-header">
 											<div className="stack template-card-copy">
@@ -1104,26 +929,21 @@ export function ExportsWorkspace({
 													Updated {formatTimestamp(template.updated_at)}
 												</span>
 												<div className="action-row template-card-actions">
-													{template.kind === "export" ? (
-														<button
-															type="button"
-															onClick={() => {
-																setSelectedTemplateId(String(template.id));
-																setRunMode("template");
-																setRunnerError(null);
-																setActiveView("run");
-															}}
-														>
-															Run
-														</button>
-													) : null}
 													<button
 														type="button"
-														className="ghost"
+														className="link-chip link-chip--primary action-hint"
+														data-action-hint={EXPORT_ACTION_HINTS.editTemplate}
 														onClick={() => openEditTemplate(template)}
 													>
-														Edit
+														Edit template
 													</button>
+													<Link
+														className="link-chip action-hint"
+														data-action-hint={EXPORT_ACTION_HINTS.duplicate}
+														href={`/exports/templates/new?from=${template.id}`}
+													>
+														Duplicate
+													</Link>
 													<button
 														type="button"
 														className="danger"
@@ -1173,35 +993,32 @@ export function ExportsWorkspace({
 					>
 						{activeView === "run" ? (
 							<article className="card stack panel-card">
-								<div className="stack action-card-header">
-									<h3>Create an export</h3>
-									<p className="muted">
-										{runnableTemplates.length
-											? "Choose a reusable template or configure a one-off JSON export."
-											: "Configure a one-off JSON export, or create a reusable template for future runs."}
-									</p>
+								<div className="panel-header">
+									<div className="stack action-card-header">
+										<h3>
+											{runMode === "template"
+												? "Saved reports"
+												: "One-off JSON export"}
+										</h3>
+										<p className="muted">
+											{runMode === "template"
+												? "View the latest acceptable result, explicitly refresh it, or change only this run."
+												: "Keep the full ad-hoc query, hydration, and limit controls for work that should not become a template."}
+										</p>
+									</div>
+									{runMode === "template" ? (
+										<button type="button" onClick={openCreateTemplate}>
+											New template
+										</button>
+									) : null}
 								</div>
 
-								<div
-									className={`segmented-options export-method-picker${!templatesQuery.isLoading && runnableTemplates.length === 0 ? " export-method-picker--single" : ""}`}
-								>
-									<button
-										type="button"
-										className={runMode === "json" ? "is-selected" : "ghost"}
-										aria-pressed={runMode === "json"}
-										onClick={() => {
-											setRunMode("json");
-											setRunnerError(null);
-										}}
-									>
-										<span>Custom JSON</span>
-										<small>Choose the data and filters for this run</small>
-									</button>
+								<div className="segmented-options export-method-picker">
 									{templatesQuery.isLoading ? (
 										<div className="export-method-loading muted">
 											Checking saved templates…
 										</div>
-									) : runnableTemplates.length ? (
+									) : (
 										<button
 											type="button"
 											className={
@@ -1213,18 +1030,31 @@ export function ExportsWorkspace({
 												setRunnerError(null);
 											}}
 										>
-											<span>Saved template</span>
-											<small>Use a prepared layout and defaults</small>
+											<span>Saved reports</span>
+											<small>View, refresh, or run with changes</small>
 										</button>
-									) : null}
+									)}
+									<button
+										type="button"
+										className={runMode === "json" ? "is-selected" : "ghost"}
+										aria-pressed={runMode === "json"}
+										onClick={() => {
+											setRunMode("json");
+											setRunnerError(null);
+										}}
+									>
+										<span>One-off export</span>
+										<small>Full controls for an unsaved JSON run</small>
+									</button>
 								</div>
 
 								{!templatesQuery.isLoading &&
 								!templatesQuery.isError &&
-								runnableTemplates.length === 0 ? (
+								runnableTemplates.length === 0 &&
+								runMode === "template" ? (
 									<EmptyState
 										title="No saved export templates"
-										description="Create a reusable template when you need formatted text, HTML, or CSV output."
+										description="Create a report template once, then return here whenever you need its latest result."
 										action={
 											<button type="button" onClick={openCreateTemplate}>
 												Create a template
@@ -1388,7 +1218,7 @@ export function ExportsWorkspace({
 																? "Select a class to configure server filters."
 																: objectsQuery.isLoading
 																	? "Inspecting a cached object sample for nested fields and value types…"
-																	: "Open Server filters to add or review filters. Type detection uses the selected class and a cached sample; no schema is required."}
+																	: "Open Server filters to add or edit filters. Type detection uses the selected class and a cached sample; no schema is required."}
 														</p>
 													) : builderFilters.length ? (
 														<div className="stack">
@@ -1712,165 +1542,79 @@ export function ExportsWorkspace({
 								) : null}
 
 								{runMode === "template" ? (
-									<form className="stack" onSubmit={handleRunTemplate}>
-										<label className="control-field control-field--wide">
-											<span>Template</span>
-											<select
-												value={selectedTemplateId}
-												onChange={(event) =>
-													setSelectedTemplateId(event.target.value)
-												}
-											>
-												<option value="">Select an export template</option>
-												{runnableTemplates.map((template) => (
-													<option key={template.id} value={template.id}>
-														{template.name} (
-														{formatExportContentType(template.content_type)})
-													</option>
-												))}
-											</select>
-										</label>
-
-										{selectedTemplate ? (
-											<div className="preview-meta">
-												<span>
-													{formatExportScope(selectedTemplate.scope_kind)}
-												</span>
-												{selectedTemplate.class_id != null ? (
-													<span>class #{selectedTemplate.class_id}</span>
-												) : null}
-												{selectedTemplate.default_query ? (
-													<span>
-														default query: {selectedTemplate.default_query}
-													</span>
-												) : null}
-												{selectedTemplate.relation_context?.depth != null ? (
-													<span>
-														depth {selectedTemplate.relation_context.depth}
-													</span>
-												) : null}
-												<span>
-													{formatExportContentType(
-														selectedTemplate.content_type,
-													)}
-												</span>
-											</div>
-										) : null}
-
-										{selectedTemplate?.scope_kind === "related_objects" ? (
-											<div className="form-grid">
+									<div className="stack report-catalog">
+										{runnableTemplates.length ? (
+											<div className="export-template-toolbar">
 												<label className="control-field">
-													<span>Root object</span>
+													<span>Find a report</span>
 													<input
-														type="number"
-														min={1}
-														value={overrideObjectId}
+														type="search"
+														value={templateSearch}
 														onChange={(event) =>
-															setOverrideObjectId(event.target.value)
+															setTemplateSearch(event.target.value)
 														}
-														placeholder="Enter object ID"
+														placeholder="Search name, description, scope, or format"
 													/>
 												</label>
-											</div>
-										) : null}
-
-										<details className="export-disclosure">
-											<summary>
-												<span>Override template defaults</span>
-												<small>Query, missing data, and output limits</small>
-											</summary>
-											<div className="form-grid export-disclosure-body">
-												<label className="control-field control-field--wide">
-													<span>Query override</span>
-													<input
-														value={overrideQuery}
-														onChange={(event) =>
-															setOverrideQuery(event.target.value)
-														}
-														placeholder={
-															selectedTemplate?.default_query ??
-															"Use template default"
-														}
-													/>
-												</label>
-
 												<label className="control-field">
-													<span>Override missing data policy</span>
+													<span>Collection</span>
 													<select
-														value={overridePolicy}
+														value={templateCollectionFilter}
 														onChange={(event) =>
-															setOverridePolicy(
-																event.target.value as
-																	| ReportMissingDataPolicy
-																	| "",
-															)
+															setTemplateCollectionFilter(event.target.value)
 														}
 													>
-														<option value="">Use template default</option>
-														<option value="strict">Strict</option>
-														<option value="null">Null</option>
-														<option value="omit">Omit</option>
+														<option value="">All collections</option>
+														{collectionOptions.map((collection) => (
+															<option
+																key={collection.id}
+																value={collection.id}
+															>
+																{collectionLabels.get(collection.id)}
+															</option>
+														))}
 													</select>
 												</label>
-
-												<label className="control-field">
-													<span>Override max items</span>
-													<input
-														type="number"
-														min={1}
-														value={overrideMaxItems}
-														onChange={(event) =>
-															setOverrideMaxItems(event.target.value)
-														}
-														placeholder="template default"
-													/>
-												</label>
-
-												<label className="control-field">
-													<span>Maximum output size override (bytes)</span>
-													<input
-														type="number"
-														min={1}
-														value={overrideMaxOutputBytes}
-														onChange={(event) =>
-															setOverrideMaxOutputBytes(event.target.value)
-														}
-														placeholder="template default"
-													/>
-													{parsePositiveInteger(overrideMaxOutputBytes) ? (
-														<small className="field-note">
-															{formatBytes(
-																parsePositiveInteger(overrideMaxOutputBytes) ??
-																	0,
-															)}
-														</small>
-													) : null}
-												</label>
+												<span className="muted export-template-count">
+													{filteredRunnableTemplates.length} of{" "}
+													{runnableTemplates.length}
+												</span>
 											</div>
-										</details>
-
-										{runnerError ? (
-											<div className="error-banner">{runnerError}</div>
 										) : null}
 
-										<div className="export-submit-bar">
-											<span className="muted">
-												{selectedTemplate
-													? `${selectedTemplate.name} · ${formatExportContentType(selectedTemplate.content_type)}`
-													: "Select a template to continue"}
-											</span>
-											<button
-												type="submit"
-												disabled={
-													runTemplateMutation.isPending || !selectedTemplate
-												}
-											>
-												{runTemplateMutation.isPending
-													? "Submitting..."
-													: "Run template"}
-											</button>
+										{runnableTemplates.length > 0 &&
+										filteredRunnableTemplates.length === 0 ? (
+											<div className="empty-state">
+												No reports match the current search and collection
+												filter.
+											</div>
+										) : null}
+
+										<div className="report-card-grid">
+											{filteredRunnableTemplates.map((template) => (
+												<ReportTemplateCard
+													key={template.id}
+													template={template}
+													collectionLabel={collectionLabels.get(
+														template.collection_id,
+													)}
+												/>
+											))}
 										</div>
-									</form>
+
+										{templatesQuery.hasNextPage ? (
+											<button
+												type="button"
+												className="ghost"
+												onClick={() => templatesQuery.fetchNextPage()}
+												disabled={templatesQuery.isFetchingNextPage}
+											>
+												{templatesQuery.isFetchingNextPage
+													? "Loading more…"
+													: "Load more reports"}
+											</button>
+										) : null}
+									</div>
 								) : null}
 							</article>
 						) : null}
@@ -1981,6 +1725,15 @@ export function ExportsWorkspace({
 																			>
 																				Preview
 																			</button>
+																			<Link
+																				className="link-chip"
+																				href={getExportResultHref(task.id)}
+																				target="_blank"
+																				rel="noopener noreferrer"
+																				prefetch={false}
+																			>
+																				Open in new tab
+																			</Link>
 																			<button
 																				type="button"
 																				className="ghost"
@@ -2138,6 +1891,17 @@ export function ExportsWorkspace({
 											</div>
 
 											<div className="action-row">
+												{activeReportTask ? (
+													<Link
+														className="link-chip"
+														href={getExportResultHref(activeReportTask.id)}
+														target="_blank"
+														rel="noopener noreferrer"
+														prefetch={false}
+													>
+														Open in new tab
+													</Link>
+												) : null}
 												<button
 													type="button"
 													className="ghost"

@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
 
+import type { ReportTemplate } from "@/lib/api/reporting";
 import {
+	buildExportTemplateSavePayload,
+	createExportTemplateDraft,
+	duplicateExportTemplateDraft,
 	filterClassesForCollection,
 	getEditorTabForErrors,
+	parseStoredTemplateBody,
 	parsePositiveInteger,
+	reportTemplateToExportTemplateDraft,
+	serializeTemplateBody,
 	type ExportTemplateDraft,
 	validateExportTemplateDraft,
+	validateExportTemplateIdentity,
 	validateExportTemplateRelated,
 	validateExportTemplateRules,
 	validateExportTemplateTarget,
@@ -18,6 +26,7 @@ const validDraft: ExportTemplateDraft = {
 	name: "Server inventory",
 	description: "CSV for operations",
 	contentType: "text/csv",
+	htmlDocumentMode: "standard",
 	templateBody: "{% for item in items %}{{ item.name }}{% endfor %}",
 	kind: "export",
 	scopeKind: "objects_in_class",
@@ -31,6 +40,114 @@ const validDraft: ExportTemplateDraft = {
 };
 
 describe("validateExportTemplateDraft", () => {
+	it("creates independent empty drafts", () => {
+		const first = createExportTemplateDraft();
+		const second = createExportTemplateDraft();
+
+		expect(first).toMatchObject({
+			mode: "create",
+			contentType: "text/plain",
+			kind: "export",
+		});
+		expect(createExportTemplateDraft(41)).toMatchObject({
+			mode: "edit",
+			templateId: 41,
+		});
+		expect(first.includeRows).not.toBe(second.includeRows);
+	});
+
+	it("duplicates an existing definition as a separately named unsaved draft", () => {
+		expect(
+			duplicateExportTemplateDraft({
+				...validDraft,
+				mode: "edit",
+				templateId: 41,
+			}),
+		).toMatchObject({
+			mode: "create",
+			name: "Server inventory copy",
+			templateId: null,
+		});
+	});
+
+	it("builds contract-safe create and update payloads", () => {
+		const createPayload = buildExportTemplateSavePayload(validDraft);
+		expect(createPayload).toMatchObject({
+			mode: "create",
+			payload: {
+				collection_id: 7,
+				content_type: "text/csv",
+				scope_kind: "objects_in_class",
+				class_id: 42,
+				default_limits: {
+					max_items: 100,
+					max_output_bytes: 262_144,
+				},
+			},
+		});
+
+		const updatePayload = buildExportTemplateSavePayload({
+			...validDraft,
+			mode: "edit",
+			templateId: 41,
+		});
+		expect(updatePayload.mode).toBe("edit");
+		expect(updatePayload.payload).not.toHaveProperty("content_type");
+	});
+
+	it("maps stored templates into editable drafts", () => {
+		let nextId = 0;
+		const template = {
+			id: 41,
+			collection_id: 7,
+			name: "Server inventory",
+			description: "CSV for operations",
+			content_type: "text/csv",
+			template: "{{ items | tojson }}",
+			kind: "export",
+			scope_kind: "objects_in_class",
+			class_id: 42,
+			default_query: "sort=name.asc",
+			include: {
+				related_objects: {
+					rooms: {
+						class_id: 91,
+						direction: "outgoing",
+						sort: "name",
+					},
+				},
+			},
+			relation_context: { depth: 2 },
+			default_missing_data_policy: "omit",
+			default_limits: { max_items: 100, max_output_bytes: 262_144 },
+			created_at: "2026-07-26T00:00:00Z",
+			updated_at: "2026-07-26T00:00:00Z",
+		} satisfies ReportTemplate;
+
+		expect(
+			reportTemplateToExportTemplateDraft(template, () => `row-${++nextId}`),
+		).toMatchObject({
+			mode: "edit",
+			templateId: 41,
+			collectionId: "7",
+			classId: "42",
+			defaultQuery: "sort=name.asc",
+			depth: "2",
+			missingDataPolicy: "omit",
+			maxItems: "100",
+			maxOutputBytes: "262144",
+			includeRows: [
+				{
+					id: "row-1",
+					alias: "rooms",
+					classId: "91",
+					direction: "outgoing",
+					sort: "name",
+				},
+			],
+		});
+	});
+
 	it("accepts a complete executable template", () => {
 		expect(validateExportTemplateDraft(validDraft)).toEqual({});
 	});
@@ -48,8 +165,9 @@ describe("validateExportTemplateDraft", () => {
 		expect(errors.templateBody).toMatch(/endfor/i);
 		expect(errors.classId).toMatch(/class/i);
 		expect(errors.depth).toMatch(/1 or 2/i);
-		expect(getEditorTabForErrors(errors)).toBe("target");
-		expect(getEditorTabForErrors({ name: errors.name })).toBe("appearance");
+		expect(getEditorTabForErrors(errors)).toBe("identity");
+		expect(getEditorTabForErrors({ name: errors.name })).toBe("identity");
+		expect(getEditorTabForErrors({ classId: errors.classId })).toBe("target");
 		expect(getEditorTabForErrors({ depth: errors.depth })).toBe("related");
 		expect(getEditorTabForErrors({ maxItems: "Invalid" })).toBe("rules");
 	});
@@ -89,6 +207,54 @@ describe("validateExportTemplateDraft", () => {
 		expect(validateExportTemplateRules(draft)).toEqual({
 			maxItems: expect.stringMatching(/positive/i),
 			maxOutputBytes: expect.stringMatching(/positive/i),
+		});
+	});
+
+	it("validates recognizable template details before target selection", () => {
+		expect(
+			validateExportTemplateIdentity({
+				...validDraft,
+				name: "",
+				description: "",
+			}),
+		).toEqual({
+			name: expect.stringMatching(/name/i),
+			description: expect.stringMatching(/describe/i),
+		});
+	});
+
+	it("stores standard HTML as a complete deterministic document while editing only its body", () => {
+		const body = "<h1>{{ item.name }}</h1>";
+		const stored = serializeTemplateBody({
+			...validDraft,
+			name: "Inventory & status",
+			contentType: "text/html",
+			htmlDocumentMode: "standard",
+			templateBody: body,
+		});
+
+		expect(stored).toMatch(/^<!doctype html>/);
+		expect(stored).toContain("<title>Inventory &amp; status</title>");
+		expect(stored).toContain("tbody tr:nth-child(even)");
+		expect(parseStoredTemplateBody("text/html", stored)).toEqual({
+			htmlDocumentMode: "standard",
+			templateBody: body,
+		});
+	});
+
+	it("leaves advanced full HTML templates byte-for-byte unchanged", () => {
+		const document = "<!doctype html><title>Custom</title><p>Report</p>";
+		expect(
+			serializeTemplateBody({
+				...validDraft,
+				contentType: "text/html",
+				htmlDocumentMode: "full",
+				templateBody: document,
+			}),
+		).toBe(document);
+		expect(parseStoredTemplateBody("text/html", document)).toEqual({
+			htmlDocumentMode: "full",
+			templateBody: document,
 		});
 	});
 

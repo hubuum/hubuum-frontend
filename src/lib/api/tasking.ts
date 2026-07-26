@@ -63,6 +63,44 @@ export function isTerminalTaskStatus(
 	);
 }
 
+export type TaskStatusTone = "neutral" | "success" | "danger" | "accent";
+
+export function getTaskStatusTone(
+	status: TaskStatus | null | undefined,
+): TaskStatusTone {
+	if (status === "succeeded") {
+		return "success";
+	}
+	if (status === "failed" || status === "cancelled") {
+		return "danger";
+	}
+	if (status === "partially_succeeded") {
+		return "accent";
+	}
+	return "neutral";
+}
+
+export function getTaskProgressPercent(
+	task: Pick<TaskResponse, "progress" | "status"> | null | undefined,
+): number {
+	if (!task) {
+		return 0;
+	}
+	if (isTerminalTaskStatus(task.status)) {
+		return 100;
+	}
+	if (task.progress.total_items <= 0) {
+		return 0;
+	}
+
+	return Math.min(
+		100,
+		Math.round(
+			(task.progress.processed_items / task.progress.total_items) * 100,
+		),
+	);
+}
+
 function earlierTimestamp(
 	current: string | null,
 	candidate: string | null | undefined,

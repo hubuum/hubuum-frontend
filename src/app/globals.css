@@ -3303,6 +3303,53 @@ table {
 	background: var(--accent-soft);
 }
 
+.action-hint {
+	position: relative;
+}
+
+.action-hint::after {
+	content: attr(data-action-hint);
+	position: absolute;
+	inset-inline-start: 50%;
+	bottom: calc(100% + 0.55rem);
+	z-index: 100;
+	width: max-content;
+	max-width: min(20rem, calc(100vw - 2rem));
+	padding: 0.48rem 0.62rem;
+	border: 1px solid color-mix(in srgb, var(--line) 72%, var(--ink));
+	border-radius: 8px;
+	background: var(--ink);
+	box-shadow: var(--shadow-float);
+	color: var(--card);
+	font-size: 0.75rem;
+	font-weight: 550;
+	letter-spacing: normal;
+	line-height: 1.35;
+	opacity: 0;
+	pointer-events: none;
+	text-align: left;
+	text-transform: none;
+	transform: translate(-50%, 0.2rem);
+	transition:
+		opacity 120ms ease,
+		transform 120ms ease,
+		visibility 120ms;
+	visibility: hidden;
+	white-space: normal;
+}
+
+.action-hint:hover::after,
+.action-hint:focus-visible::after {
+	opacity: 1;
+	transform: translate(-50%, 0);
+	transition-delay: 260ms;
+	visibility: visible;
+}
+
+.action-hint:focus-visible::after {
+	transition-delay: 60ms;
+}
+
 th,
 td {
 	text-align: left;
@@ -3707,6 +3754,11 @@ button.table-export-option {
 	font-size: 0.78rem;
 }
 
+.server-filter-chip--editing {
+	border-color: var(--accent);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
 .server-filter-chip > span {
 	min-width: 0;
 	overflow: hidden;
@@ -3714,13 +3766,38 @@ button.table-export-option {
 	white-space: nowrap;
 }
 
-.server-filter-chip button {
+.server-filter-chip .server-filter-chip-edit {
+	width: auto;
+	min-height: 1.4rem;
+	padding: 0.15rem 0.42rem;
+	border-radius: 999px;
+	font-size: 0.72rem;
+}
+
+.server-filter-chip .server-filter-chip-remove {
 	display: inline-grid;
 	place-items: center;
 	width: 1.4rem;
 	height: 1.4rem;
 	padding: 0;
 	border-radius: 999px;
+}
+
+.server-filter-editing {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.55rem 0.65rem;
+	border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--accent-soft) 50%, var(--card));
+	font-size: 0.82rem;
+}
+
+.server-filter-editing button {
+	padding: 0.3rem 0.5rem;
+	white-space: nowrap;
 }
 
 .server-filter-form {
@@ -4799,8 +4876,264 @@ button.table-sort-button:hover {
 	white-space: nowrap;
 }
 
+.report-catalog {
+	gap: 1rem;
+}
+
+.report-card-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr));
+	gap: 0.9rem;
+}
+
+.report-card {
+	display: grid;
+	align-content: space-between;
+	gap: 1rem;
+	min-width: 0;
+	padding: 1.05rem;
+	border: 1px solid var(--line);
+	border-radius: 16px;
+	background:
+		linear-gradient(
+			145deg,
+			color-mix(in srgb, var(--accent) 5%, var(--card)),
+			var(--card) 42%
+		);
+	transition:
+		border-color 160ms ease,
+		box-shadow 160ms ease,
+		transform 160ms ease;
+}
+
+.report-card:hover {
+	border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+	box-shadow: var(--shadow);
+	transform: translateY(-1px);
+}
+
+.report-card-copy {
+	gap: 0.7rem;
+}
+
+.report-card-title-row {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.report-card-format {
+	flex: 0 0 auto;
+}
+
+.report-card h4 {
+	font-size: 1.05rem;
+}
+
+.report-card-freshness {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--bg-highlight) 78%, transparent);
+}
+
+.report-card-freshness > div {
+	display: grid;
+	gap: 0.2rem;
+}
+
+.report-card-freshness small {
+	color: var(--muted);
+	line-height: 1.35;
+}
+
+.report-card-updated {
+	max-width: 12rem;
+	text-align: right;
+}
+
+.report-card-actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.report-card-more {
+	position: relative;
+}
+
+.report-card-more > summary {
+	padding: 0.52rem 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	color: var(--ink);
+	cursor: pointer;
+	font-size: 0.82rem;
+	font-weight: 700;
+	list-style: none;
+}
+
+.report-card-more > summary::-webkit-details-marker {
+	display: none;
+}
+
+.report-card-more[open] > summary {
+	border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+	background: var(--bg-highlight);
+}
+
+.report-card-more[open] > summary.action-hint::after {
+	opacity: 0;
+	visibility: hidden;
+}
+
+.report-card-more-menu {
+	position: absolute;
+	right: 0;
+	bottom: calc(100% + 0.4rem);
+	z-index: 12;
+	display: grid;
+	min-width: 11rem;
+	padding: 0.35rem;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--card);
+	box-shadow: var(--shadow-float);
+}
+
+.report-card-more-menu a {
+	padding: 0.6rem 0.7rem;
+	border-radius: 8px;
+	color: var(--ink);
+	font-size: 0.86rem;
+	text-decoration: none;
+}
+
+.report-card-more-menu a:hover {
+	background: var(--bg-highlight);
+}
+
 .export-template-page {
 	gap: 1rem;
+}
+
+.report-configurator-page {
+	gap: 1rem;
+}
+
+.report-configurator-command {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.report-configurator-command > .stack {
+	max-width: 58rem;
+}
+
+.report-default-run-card {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 1.1rem;
+	border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+	background:
+		radial-gradient(
+			circle at 100% 0%,
+			color-mix(in srgb, var(--accent) 11%, transparent),
+			transparent 42%
+		),
+		var(--card);
+}
+
+.report-default-run-card > .stack {
+	max-width: 52rem;
+}
+
+.report-configurator-controls {
+	gap: 1.15rem;
+	width: min(100%, 76rem);
+	padding: 1.15rem;
+}
+
+.report-configurator-controls .form-grid {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-configurator-form-actions {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-start;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+}
+
+.report-configurator-form-actions {
+	align-items: stretch;
+}
+
+.report-configurator-form-actions > * {
+	min-width: 10rem;
+}
+
+.report-root-object-field,
+.report-freshness-field {
+	max-width: 38rem;
+}
+
+.report-query-choice {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.7rem;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.report-query-choice legend {
+	margin-bottom: 0.55rem;
+	font-weight: 750;
+}
+
+.report-query-choice label {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: flex-start;
+	gap: 0.65rem;
+	padding: 0.8rem;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--bg-highlight);
+	cursor: pointer;
+}
+
+.report-query-choice label:has(input:checked) {
+	border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+	background: color-mix(in srgb, var(--accent) 8%, var(--card));
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.report-query-choice input {
+	margin-top: 0.2rem;
+}
+
+.report-query-choice label > span {
+	display: grid;
+	gap: 0.18rem;
+}
+
+.report-query-choice small {
+	color: var(--muted);
+	line-height: 1.35;
 }
 
 .export-template-command-bar {
@@ -5638,6 +5971,33 @@ button.token-revoke-button {
 }
 
 @media (max-width: 720px) {
+	.report-configurator-command,
+	.report-configurator-form-actions,
+	.report-default-run-card,
+	.report-card-freshness {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.report-configurator-command-actions,
+	.report-configurator-form-actions > * {
+		width: 100%;
+	}
+
+	.report-configurator-command-actions > * {
+		width: 100%;
+	}
+
+	.report-configurator-controls .form-grid,
+	.report-query-choice {
+		grid-template-columns: 1fr;
+	}
+
+	.report-card-updated {
+		max-width: none;
+		text-align: left;
+	}
+
 	.export-template-command-bar {
 		position: static;
 		align-items: stretch;
@@ -7220,7 +7580,8 @@ html[data-theme="dark"] .status-pill--accent {
 		flex-direction: column;
 	}
 
-	.export-submit-bar button {
+	.export-submit-bar button,
+	.export-submit-bar .link-chip {
 		width: 100%;
 	}
 }
@@ -8373,6 +8734,18 @@ button.sidebar-link-button:hover {
 	background: var(--accent-soft);
 	color: var(--accent-strong);
 	transform: translateY(-1px);
+}
+
+.link-chip--primary {
+	border-color: var(--accent);
+	background: var(--accent);
+	color: var(--accent-contrast);
+}
+
+.link-chip--primary:hover {
+	border-color: var(--accent-strong);
+	background: var(--accent-strong);
+	color: var(--accent-contrast);
 }
 
 .object-connection-header-actions .relations-toggle {
@@ -9541,6 +9914,34 @@ fieldset.segmented-options {
 	.workflow-path,
 	.dashboard-rail {
 		grid-template-columns: 1fr;
+	}
+}
+
+@media print {
+	.app-shell:has(.report-configurator-page) .sidebar,
+	.app-shell:has(.report-configurator-page) .topbar,
+	.app-shell:has(.report-configurator-page) .fab,
+	.report-configurator-command,
+	.report-configurator-controls,
+	.report-configurator-preview-header,
+	.report-configurator-preview > .field-note {
+		display: none;
+	}
+
+	.app-shell:has(.report-configurator-page) .app-layout,
+	.report-configurator-layout {
+		display: block;
+	}
+
+	.app-shell:has(.report-configurator-page) .content,
+	.report-configurator-preview {
+		padding: 0;
+	}
+
+	.report-configurator-preview,
+	.report-configurator-frame-shell {
+		border: 0;
+		box-shadow: none;
 	}
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -26,15 +27,10 @@ import {
 	fetchPersonalComputedFields,
 	fetchSharedComputedFields,
 } from "@/lib/api/computed-fields";
-import { getApiErrorMessage } from "@/lib/api/errors";
 import {
-	getApiV1Classes,
-	getApiV1Collections,
-} from "@/lib/api/generated/client";
-import type {
-	Collection,
-	HubuumClassExpanded,
-} from "@/lib/api/generated/models";
+	fetchExportClasses,
+	fetchExportCollections,
+} from "@/lib/api/export-options";
 import {
 	createReportTemplate,
 	fetchReportOutput,
@@ -42,17 +38,18 @@ import {
 	getReportTemplate,
 	listReportTemplateHistory,
 	listReportTemplates,
-	type NewReportTemplate,
-	type ReportExecutionResult,
 	type ReportTemplate,
 	type ReportTemplateHistory,
 	runTemplateReport,
 	type StoredReportContentType,
 	type TaskResponse,
-	type UpdateReportTemplate,
 	updateReportTemplate,
 } from "@/lib/api/reporting";
-import { isTerminalTaskStatus } from "@/lib/api/tasking";
+import {
+	getTaskProgressPercent as getTaskProgress,
+	getTaskStatusTone,
+	isTerminalTaskStatus,
+} from "@/lib/api/tasking";
 import {
 	buildCollectionHierarchy,
 	formatCollectionOption,
@@ -63,17 +60,30 @@ import {
 	type ExportTemplateDraftField,
 	type ExportTemplateEditorSection,
 	type ExportTemplateValidationContext,
+	type HtmlDocumentMode,
+	buildExportTemplateSavePayload,
+	createExportTemplateDraft,
+	duplicateExportTemplateDraft,
 	filterClassesForCollection,
 	getEditorTabForErrors,
 	parsePositiveInteger,
+	reportTemplateToExportTemplateDraft,
 	validateExportTemplateDraft,
+	validateExportTemplateIdentity,
 	validateExportTemplateRelated,
 	validateExportTemplateRules,
 	validateExportTemplateTarget,
 } from "@/lib/export-template-editor";
 import {
+	EXPORT_ACTION_HINTS,
+	formatExportBytes as formatBytes,
 	formatExportContentType,
 	formatExportScope,
+	formatExportTimestamp as formatTimestamp,
+	getBookmarkableReportHref,
+	getExportResultHref,
+	getReportResultText as getResultText,
+	getReportConfigurationHref,
 } from "@/lib/export-workspace";
 import {
 	type DiscoveredJsonField,
@@ -87,11 +97,9 @@ import {
 } from "@/lib/object-server-filter-fields";
 import {
 	applyMinimumIncludeDepths,
-	buildIncludeFromRows,
 	buildRelatedClassMinimumDepths,
 	type IncludeBuilderRow,
 	includeAliasesOf,
-	includeRowsFromTemplate,
 	newIncludeRow,
 } from "@/lib/report-include";
 
@@ -99,6 +107,7 @@ type TemplateEditorTab = ExportTemplateEditorSection;
 type SaveIntent = "save" | "test";
 
 type ExportTemplateEditorProps = {
+	duplicateTemplateId?: number;
 	templateId?: number;
 	initialTestTaskId?: number;
 };
@@ -122,14 +131,15 @@ const EDITOR_TABS: Array<{
 	label: string;
 	hint: string;
 }> = [
-	{ id: "target", label: "1. Target", hint: "Collection, scope, and class" },
-	{ id: "filters", label: "2. Filters", hint: "Filter and sort defaults" },
-	{ id: "related", label: "3. Related", hint: "Includes and hydration" },
-	{ id: "rules", label: "4. Rules", hint: "Missing data and limits" },
+	{ id: "identity", label: "1. Details", hint: "Name, purpose, and format" },
+	{ id: "target", label: "2. Target", hint: "Collection, scope, and class" },
+	{ id: "filters", label: "3. Query", hint: "Filter and sort defaults" },
+	{ id: "related", label: "4. Related", hint: "Includes and hydration" },
+	{ id: "rules", label: "5. Rules", hint: "Missing data and limits" },
 	{
 		id: "appearance",
-		label: "5. Appearance",
-		hint: "Content and test output",
+		label: "6. Design",
+		hint: "Template body and test output",
 	},
 	{ id: "history", label: "History", hint: "Saved versions" },
 ];
@@ -184,26 +194,6 @@ function buildGroupingTemplateExamples(attribute: string) {
 	];
 }
 
-const DEFAULT_TEMPLATE_EDITOR: ExportTemplateDraft = {
-	mode: "create",
-	templateId: null,
-	collectionId: "",
-	name: "",
-	description: "",
-	contentType: "text/plain",
-	templateBody: `{% for item in items %}{{ item.name }}
-{% endfor %}`,
-	kind: "export",
-	scopeKind: "objects_in_class",
-	classId: "",
-	defaultQuery: "",
-	includeRows: [],
-	depth: "",
-	missingDataPolicy: "strict",
-	maxItems: "",
-	maxOutputBytes: "",
-};
-
 const FIELD_LABELS: Record<ExportTemplateDraftField, string> = {
 	collectionId: "Collection",
 	name: "Name",
@@ -230,175 +220,6 @@ const FIELD_IDS: Record<ExportTemplateDraftField, string> = {
 
 function createBuilderId(): string {
 	return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function formatBytes(byteCount: number): string {
-	if (byteCount < 1024) return `${byteCount} B`;
-	if (byteCount < 1024 * 1024) return `${(byteCount / 1024).toFixed(1)} KiB`;
-	return `${(byteCount / (1024 * 1024)).toFixed(2)} MiB`;
-}
-
-function formatTimestamp(value: string | null | undefined): string {
-	if (!value) return "Unknown time";
-	try {
-		return new Intl.DateTimeFormat(undefined, {
-			dateStyle: "medium",
-			timeStyle: "short",
-		}).format(new Date(value));
-	} catch {
-		return value;
-	}
-}
-
-function getResultText(result: ReportExecutionResult): string {
-	if (typeof result.text === "string") return result.text;
-	return result.json ? JSON.stringify(result.json, null, 2) : "";
-}
-
-function getTaskStatusTone(
-	status: TaskResponse["status"],
-): "neutral" | "success" | "danger" | "accent" {
-	if (status === "succeeded") return "success";
-	if (status === "failed" || status === "cancelled") return "danger";
-	if (status === "partially_succeeded") return "accent";
-	return "neutral";
-}
-
-function getTaskProgress(task: TaskResponse | null): number {
-	if (!task) return 0;
-	if (isTerminalTaskStatus(task.status)) return 100;
-	if (task.progress.total_items < 1) return 0;
-	return Math.min(
-		100,
-		Math.round(
-			(task.progress.processed_items / task.progress.total_items) * 100,
-		),
-	);
-}
-
-function buildTemplateEditorState(
-	template: ReportTemplate,
-): ExportTemplateDraft {
-	return {
-		mode: "edit",
-		templateId: template.id,
-		collectionId: String(template.collection_id),
-		name: template.name,
-		description: template.description,
-		contentType:
-			template.content_type === "application/json"
-				? "text/plain"
-				: template.content_type,
-		templateBody: template.template,
-		kind: template.kind,
-		scopeKind: template.scope_kind ?? "objects_in_class",
-		classId: template.class_id != null ? String(template.class_id) : "",
-		defaultQuery: template.default_query ?? "",
-		includeRows: includeRowsFromTemplate(template.include, createBuilderId),
-		depth:
-			template.relation_context?.depth != null
-				? String(template.relation_context.depth)
-				: "",
-		missingDataPolicy: template.default_missing_data_policy ?? "strict",
-		maxItems:
-			template.default_limits?.max_items != null
-				? String(template.default_limits.max_items)
-				: "",
-		maxOutputBytes:
-			template.default_limits?.max_output_bytes != null
-				? String(template.default_limits.max_output_bytes)
-				: "",
-	};
-}
-
-async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ include_total: false, limit: 250 },
-		{ credentials: "include" },
-	);
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
-		);
-	}
-	return response.data;
-}
-
-async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(
-		{ include_total: false, limit: 250 },
-		{ credentials: "include" },
-	);
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load classes."),
-		);
-	}
-	return response.data;
-}
-
-function buildTemplatePayload(
-	draft: ExportTemplateDraft,
-	validationContext: ExportTemplateValidationContext,
-) {
-	const collectionId = parsePositiveInteger(draft.collectionId);
-	if (!collectionId) throw new Error("Collection is required.");
-	const base = {
-		collection_id: collectionId,
-		name: draft.name.trim(),
-		description: draft.description.trim(),
-		content_type: draft.contentType,
-		template: draft.templateBody,
-		kind: draft.kind,
-	};
-
-	let reportFields: Partial<NewReportTemplate> = {};
-	if (draft.kind === "export") {
-		const scopeNeedsClass =
-			draft.scopeKind === "objects_in_class" ||
-			draft.scopeKind === "related_objects";
-		const classId = parsePositiveInteger(draft.classId);
-		const builtInclude = scopeNeedsClass
-			? buildIncludeFromRows(draft.includeRows, {
-					minimumDepthByClassId:
-						validationContext.relatedClassMinimumDepthById,
-					requireKnownClassDepth:
-						validationContext.relatedClassDepthStatus === "ready",
-				})
-			: { include: null };
-		if ("error" in builtInclude) throw new Error(builtInclude.error);
-		const depth = draft.depth.trim() ? parsePositiveInteger(draft.depth) : null;
-		const maxItems = draft.maxItems.trim()
-			? parsePositiveInteger(draft.maxItems)
-			: null;
-		const maxOutputBytes = draft.maxOutputBytes.trim()
-			? parsePositiveInteger(draft.maxOutputBytes)
-			: null;
-		reportFields = {
-			scope_kind: draft.scopeKind,
-			class_id: scopeNeedsClass ? classId : null,
-			default_query: draft.defaultQuery.trim() || null,
-			include: builtInclude.include,
-			relation_context: depth ? { depth } : null,
-			default_missing_data_policy: draft.missingDataPolicy,
-			default_limits:
-				maxItems != null || maxOutputBytes != null
-					? { max_items: maxItems, max_output_bytes: maxOutputBytes }
-					: null,
-		};
-	} else if (draft.mode === "edit") {
-		reportFields = {
-			scope_kind: null,
-			class_id: null,
-			default_query: null,
-			include: null,
-			relation_context: null,
-			default_missing_data_policy: null,
-			default_limits: null,
-		};
-	}
-
-	return { base, reportFields };
 }
 
 function HistoryEntry({ entry }: { entry: ReportTemplateHistory }) {
@@ -557,19 +378,19 @@ function DataFieldPalette({
 }
 
 export function ExportTemplateEditor({
+	duplicateTemplateId,
 	templateId,
 	initialTestTaskId,
 }: ExportTemplateEditorProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
+	const sourceTemplateId = templateId ?? duplicateTemplateId;
 	const [activeTab, setActiveTab] = useState<TemplateEditorTab>(
-		templateId == null ? "target" : "appearance",
+		templateId == null ? "identity" : "appearance",
 	);
-	const [editorState, setEditorState] = useState<ExportTemplateDraft>({
-		...DEFAULT_TEMPLATE_EDITOR,
-		mode: templateId == null ? "create" : "edit",
-		templateId: templateId ?? null,
-	});
+	const [editorState, setEditorState] = useState<ExportTemplateDraft>(() =>
+		createExportTemplateDraft(templateId ?? null),
+	);
 	const [fieldErrors, setFieldErrors] = useState<ExportTemplateDraftErrors>({});
 	const [editorError, setEditorError] = useState<string | null>(null);
 	const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
@@ -596,20 +417,20 @@ export function ExportTemplateEditor({
 
 	const collectionsQuery = useQuery({
 		queryKey: ["collections", "export-template-editor"],
-		queryFn: fetchCollections,
+		queryFn: fetchExportCollections,
 	});
 	const classesQuery = useQuery({
 		queryKey: ["classes", "export-template-editor"],
-		queryFn: fetchClasses,
+		queryFn: fetchExportClasses,
 	});
 	const templatesQuery = useQuery({
 		queryKey: ["export-templates", "editor-reference"],
 		queryFn: () => listReportTemplates(),
 	});
 	const templateQuery = useQuery({
-		queryKey: ["export-template", templateId ?? null],
-		queryFn: () => getReportTemplate(templateId ?? 0),
-		enabled: templateId != null,
+		queryKey: ["export-template", sourceTemplateId ?? null],
+		queryFn: () => getReportTemplate(sourceTemplateId ?? 0),
+		enabled: sourceTemplateId != null,
 	});
 	const effectiveTemplateId = editorState.templateId ?? templateId ?? null;
 	const historyQuery = useQuery({
@@ -638,17 +459,24 @@ export function ExportTemplateEditor({
 
 	useEffect(() => {
 		if (
-			templateId == null ||
+			sourceTemplateId == null ||
 			!templateQuery.data ||
-			loadedTemplateIdRef.current === templateId
+			loadedTemplateIdRef.current === sourceTemplateId
 		) {
 			return;
 		}
-		const nextState = buildTemplateEditorState(templateQuery.data);
-		loadedTemplateIdRef.current = templateId;
+		const loadedState = reportTemplateToExportTemplateDraft(
+			templateQuery.data,
+			createBuilderId,
+		);
+		const nextState =
+			duplicateTemplateId == null
+				? loadedState
+				: duplicateExportTemplateDraft(loadedState);
+		loadedTemplateIdRef.current = sourceTemplateId;
 		initialSnapshotRef.current = JSON.stringify(nextState);
 		setEditorState(nextState);
-	}, [templateId, templateQuery.data]);
+	}, [duplicateTemplateId, sourceTemplateId, templateQuery.data]);
 
 	useEffect(() => {
 		if (
@@ -741,6 +569,8 @@ export function ExportTemplateEditor({
 			relatedClassMinimumDepthById,
 		],
 	);
+	const identityErrors = validateExportTemplateIdentity(editorState);
+	const identityReady = Object.keys(identityErrors).length === 0;
 	const targetErrors = validateExportTemplateTarget(
 		editorState,
 		validationContext,
@@ -899,24 +729,25 @@ export function ExportTemplateEditor({
 			testObjectId,
 			skipSave,
 		}: SaveRequest) => {
-			const { base, reportFields } = buildTemplatePayload(
-				draft,
-				validationContext,
-			);
 			let template: ReportTemplate;
 			if (skipSave && draft.templateId) {
 				template = await getReportTemplate(draft.templateId);
-			} else if (draft.mode === "create") {
-				template = await createReportTemplate({
-					...base,
-					...reportFields,
-				} as NewReportTemplate);
 			} else {
-				if (!draft.templateId) throw new Error("Template id is missing.");
-				template = await updateReportTemplate(draft.templateId, {
-					...base,
-					...reportFields,
-				} as UpdateReportTemplate);
+				const savePayload = buildExportTemplateSavePayload(
+					draft,
+					validationContext,
+				);
+				if (savePayload.mode === "create") {
+					template = await createReportTemplate(savePayload.payload);
+				} else {
+					if (!draft.templateId) {
+						throw new Error("Template id is missing.");
+					}
+					template = await updateReportTemplate(
+						draft.templateId,
+						savePayload.payload,
+					);
+				}
 			}
 
 			let testTask: TaskResponse | null = null;
@@ -940,7 +771,10 @@ export function ExportTemplateEditor({
 			return { template, intent, testTask, testError } satisfies SaveResult;
 		},
 		onSuccess: async ({ template, intent, testTask, testError }) => {
-			const nextState = buildTemplateEditorState(template);
+			const nextState = reportTemplateToExportTemplateDraft(
+				template,
+				createBuilderId,
+			);
 			initialSnapshotRef.current = JSON.stringify(nextState);
 			setEditorState(nextState);
 			setFieldErrors({});
@@ -994,6 +828,10 @@ export function ExportTemplateEditor({
 		}
 	}
 
+	function updateHtmlDocumentMode(htmlDocumentMode: HtmlDocumentMode) {
+		updateDraft({ htmlDocumentMode });
+	}
+
 	function addIncludeRow() {
 		updateDraft(
 			{
@@ -1035,9 +873,10 @@ export function ExportTemplateEditor({
 
 	function isEditorTabDisabled(tab: TemplateEditorTab): boolean {
 		if (tab === "history") return effectiveTemplateId == null;
-		if (tab === "target") return false;
-		if (tab === "appearance") return !targetReady;
-		return editorState.kind !== "export" || !targetReady;
+		if (tab === "identity") return false;
+		if (tab === "target") return !identityReady;
+		if (tab === "appearance") return !identityReady || !targetReady;
+		return editorState.kind !== "export" || !identityReady || !targetReady;
 	}
 
 	function getNextWorkflowTab(
@@ -1045,8 +884,15 @@ export function ExportTemplateEditor({
 	): TemplateEditorTab | null {
 		const workflow: TemplateEditorTab[] =
 			editorState.kind === "export"
-				? ["target", "filters", "related", "rules", "appearance"]
-				: ["target", "appearance"];
+				? [
+						"identity",
+						"target",
+						"filters",
+						"related",
+						"rules",
+						"appearance",
+					]
+				: ["identity", "target", "appearance"];
 		const index = workflow.indexOf(tab);
 		return index >= 0 ? (workflow[index + 1] ?? null) : null;
 	}
@@ -1109,7 +955,9 @@ export function ExportTemplateEditor({
 
 	function handleContinue() {
 		const errors =
-			activeTab === "target"
+			activeTab === "identity"
+				? validateExportTemplateIdentity(editorState)
+				: activeTab === "target"
 				? validateExportTemplateTarget(editorState, validationContext)
 				: activeTab === "related"
 					? validateExportTemplateRelated(editorState, validationContext)
@@ -1117,6 +965,7 @@ export function ExportTemplateEditor({
 						? validateExportTemplateRules(editorState)
 						: {};
 		if (
+			activeTab === "identity" ||
 			activeTab === "target" ||
 			activeTab === "related" ||
 			activeTab === "rules"
@@ -1140,7 +989,7 @@ export function ExportTemplateEditor({
 			() =>
 				document
 					.getElementById(
-						nextTab === "appearance"
+						nextTab === "identity"
 							? "export-template-name"
 							: `template-editor-panel-${nextTab}`,
 					)
@@ -1149,11 +998,11 @@ export function ExportTemplateEditor({
 		);
 	}
 
-	if (templateId != null && templateQuery.isLoading) {
+	if (sourceTemplateId != null && templateQuery.isLoading) {
 		return <div className="card muted">Loading export template…</div>;
 	}
 
-	if (templateId != null && templateQuery.isError) {
+	if (sourceTemplateId != null && templateQuery.isError) {
 		return (
 			<div className="card stack panel-card">
 				<div className="error-banner">
@@ -1177,6 +1026,25 @@ export function ExportTemplateEditor({
 	const testProgress = getTaskProgress(testTask);
 	const testActionLabel =
 		editorState.mode === "edit" && !isDirty ? "Test" : "Save & test";
+	const bookmarkableReportObjectId =
+		editorState.scopeKind === "related_objects"
+			? parsePositiveInteger(testObjectId)
+			: null;
+	const bookmarkableReportHref =
+		effectiveTemplateId != null &&
+		editorState.kind === "export" &&
+		(editorState.scopeKind !== "related_objects" ||
+			bookmarkableReportObjectId !== null)
+			? getBookmarkableReportHref(effectiveTemplateId, {
+					object_id: bookmarkableReportObjectId,
+				})
+			: null;
+	const reportConfigurationHref =
+		effectiveTemplateId != null && editorState.kind === "export"
+			? getReportConfigurationHref(effectiveTemplateId, {
+					object_id: bookmarkableReportObjectId,
+				})
+			: null;
 	const pendingActionLabel =
 		saveTemplateMutation.variables?.intent === "test" ? "Testing…" : "Saving…";
 	const nextWorkflowTab = getNextWorkflowTab(activeTab);
@@ -1195,7 +1063,9 @@ export function ExportTemplateEditor({
 					<h2>
 						{editorState.mode === "edit"
 							? editorState.name || "Edit template"
-							: "Create export template"}
+							: duplicateTemplateId != null
+								? `Duplicate ${templateQuery.data?.name ?? "template"}`
+								: "Create export template"}
 					</h2>
 					<span
 						className={isDirty ? "save-state save-state--dirty" : "save-state"}
@@ -1216,6 +1086,36 @@ export function ExportTemplateEditor({
 					>
 						Back to templates
 					</button>
+					{reportConfigurationHref ? (
+						<Link
+							className="link-chip link-chip--primary action-hint"
+							data-action-hint={EXPORT_ACTION_HINTS.runWithChanges}
+							href={reportConfigurationHref}
+						>
+							Run with changes
+						</Link>
+					) : null}
+					{editorState.mode === "edit" && effectiveTemplateId != null ? (
+						<Link
+							className="link-chip action-hint"
+							data-action-hint={EXPORT_ACTION_HINTS.duplicate}
+							href={`/exports/templates/new?from=${effectiveTemplateId}`}
+						>
+							Duplicate
+						</Link>
+					) : null}
+					{bookmarkableReportHref ? (
+						<Link
+							className="link-chip action-hint"
+							data-action-hint={EXPORT_ACTION_HINTS.viewSavedLatest}
+							href={bookmarkableReportHref}
+							target="_blank"
+							rel="noopener noreferrer"
+							prefetch={false}
+						>
+							View report
+						</Link>
+					) : null}
 					{nextWorkflowTab ? (
 						<button type="button" onClick={handleContinue} disabled={isSaving}>
 							Continue to {nextWorkflowLabel?.toLocaleLowerCase()}
@@ -1281,12 +1181,114 @@ export function ExportTemplateEditor({
 					disabledHint:
 						tab.id === "history"
 							? "Available after saving"
+							: tab.id !== "identity" && !identityReady
+								? "Complete the template details first"
 							: editorState.kind === "fragment" && tab.id !== "appearance"
 								? "Executable exports only"
 								: "Complete the target first",
 					enabled: !isEditorTabDisabled(tab.id),
 				}))}
 			/>
+
+			{activeTab === "identity" ? (
+				<GuidedFlowPanel
+					className="stack export-template-data-panel"
+					idPrefix="template-editor"
+					stepId="identity"
+				>
+					<article className="card stack panel-card">
+						<div className="stack action-card-header">
+							<p className="eyebrow">Start with what people will recognize</p>
+							<h3>Template details</h3>
+							<p className="muted">
+								Give the report a clear name and purpose before choosing its
+								data target and writing the template.
+							</p>
+						</div>
+						<div className="form-grid">
+							<label className="control-field" htmlFor="export-template-name">
+								<span>Name</span>
+								<input
+									id="export-template-name"
+									value={editorState.name}
+									onChange={(event) =>
+										updateDraft({ name: event.target.value }, ["name"])
+									}
+									aria-invalid={Boolean(fieldErrors.name)}
+									placeholder="For example, Weekly server inventory"
+								/>
+								{fieldErrors.name ? (
+									<small className="field-error">{fieldErrors.name}</small>
+								) : null}
+							</label>
+							<label
+								className="control-field"
+								htmlFor="export-template-description"
+							>
+								<span>Description</span>
+								<input
+									id="export-template-description"
+									value={editorState.description}
+									onChange={(event) =>
+										updateDraft({ description: event.target.value }, [
+											"description",
+										])
+									}
+									aria-invalid={Boolean(fieldErrors.description)}
+									placeholder="When should someone use this report?"
+								/>
+								{fieldErrors.description ? (
+									<small className="field-error">
+										{fieldErrors.description}
+									</small>
+								) : null}
+							</label>
+							<div className="control-field">
+								<label htmlFor="export-template-content-type">
+									Output format
+								</label>
+								{editorState.mode === "create" ? (
+									<select
+										id="export-template-content-type"
+										value={editorState.contentType}
+										onChange={(event) =>
+											updateDraft({
+												contentType: event.target
+													.value as StoredReportContentType,
+											})
+										}
+									>
+										<option value="text/plain">Plain text</option>
+										<option value="text/html">HTML page</option>
+										<option value="text/csv">CSV</option>
+									</select>
+								) : (
+									<>
+										<input
+											id="export-template-content-type"
+											value={formatExportContentType(editorState.contentType)}
+											readOnly
+										/>
+										<small className="field-note">
+											Duplicate the template to use another format.
+										</small>
+									</>
+								)}
+							</div>
+						</div>
+					</article>
+					<GuidedFlowContinue
+						title={
+							identityReady
+								? "Details ready"
+								: "Name and describe the template to continue"
+						}
+						summary={`${editorState.name || "Untitled template"} · ${formatExportContentType(editorState.contentType)}`}
+						nextLabel="Target"
+						onContinue={handleContinue}
+					/>
+				</GuidedFlowPanel>
+			) : null}
 
 			{activeTab === "appearance" ? (
 				<GuidedFlowPanel
@@ -1317,81 +1319,47 @@ export function ExportTemplateEditor({
 							</button>
 						</div>
 						<div className="stack action-card-header">
-							<h3>Output appearance</h3>
+							<h3>Template design</h3>
 							<p className="muted">
-								Design how the selected target should render and insert
-								context-aware snippets at the cursor.
+								Write the generated document and insert context-aware values at
+								the cursor.
 							</p>
 						</div>
-						<div className="form-grid">
-							<label className="control-field" htmlFor="export-template-name">
-								<span>Name</span>
-								<input
-									id="export-template-name"
-									value={editorState.name}
-									onChange={(event) =>
-										updateDraft({ name: event.target.value }, ["name"])
-									}
-									aria-invalid={Boolean(fieldErrors.name)}
-								/>
-								{fieldErrors.name ? (
-									<small className="field-error">{fieldErrors.name}</small>
-								) : null}
-							</label>
-							<label
-								className="control-field"
-								htmlFor="export-template-description"
-							>
-								<span>Description</span>
-								<input
-									id="export-template-description"
-									value={editorState.description}
-									onChange={(event) =>
-										updateDraft({ description: event.target.value }, [
-											"description",
-										])
-									}
-									aria-invalid={Boolean(fieldErrors.description)}
-								/>
-								{fieldErrors.description ? (
-									<small className="field-error">
-										{fieldErrors.description}
-									</small>
-								) : null}
-							</label>
-							<div className="control-field">
-								<label htmlFor="export-template-content-type">
-									Content type
-								</label>
-								{editorState.mode === "create" ? (
-									<select
-										id="export-template-content-type"
-										value={editorState.contentType}
-										onChange={(event) =>
-											updateDraft({
-												contentType: event.target
-													.value as StoredReportContentType,
-											})
-										}
-									>
-										<option value="text/plain">Plain text</option>
-										<option value="text/html">HTML</option>
-										<option value="text/csv">CSV</option>
-									</select>
-								) : (
-									<>
-										<input
-											id="export-template-content-type"
-											value={formatExportContentType(editorState.contentType)}
-											readOnly
-										/>
-										<small className="field-note">
-											Duplicate the template to use another format.
+						{editorState.contentType === "text/html" ? (
+							<fieldset className="report-query-choice html-document-choice">
+								<legend>HTML document</legend>
+								<label>
+									<input
+										type="radio"
+										name="html-document-mode"
+										checked={editorState.htmlDocumentMode === "standard"}
+										onChange={() => updateHtmlDocumentMode("standard")}
+									/>
+									<span>
+										<strong>Standard page</strong>
+										<small>
+											Write only the body. Hubuum stores it inside a complete,
+											printable document with table defaults.
 										</small>
-									</>
-								)}
-							</div>
-						</div>
+									</span>
+								</label>
+								<label>
+									<input
+										type="radio"
+										name="html-document-mode"
+										checked={editorState.htmlDocumentMode === "full"}
+										onChange={() => updateHtmlDocumentMode("full")}
+									/>
+									<span>
+										<strong>Full document</strong>
+										<small>
+											Own the doctype, head, styles, and body without a
+											standard wrapper.
+										</small>
+									</span>
+								</label>
+							</fieldset>
+						) : null}
 
 						<div
 							className="template-insert-toolbar"
@@ -1680,13 +1648,30 @@ export function ExportTemplateEditor({
 						) : null}
 						{testResult ? (
 							<div className="stack template-test-result">
-								<div className="preview-meta">
-									<span>{formatExportContentType(testResult.contentType)}</span>
-									<span>
-										{formatBytes(new TextEncoder().encode(testText).byteLength)}
-									</span>
-									<span>{testResult.warningCount} warning(s)</span>
-									{testResult.truncated ? <span>Truncated</span> : null}
+								<div className="result-toolbar">
+									<div className="preview-meta">
+										<span>
+											{formatExportContentType(testResult.contentType)}
+										</span>
+										<span>
+											{formatBytes(
+												new TextEncoder().encode(testText).byteLength,
+											)}
+										</span>
+										<span>{testResult.warningCount} warning(s)</span>
+										{testResult.truncated ? <span>Truncated</span> : null}
+									</div>
+									{testTaskId ? (
+										<Link
+											className="link-chip"
+											href={getExportResultHref(testTaskId)}
+											target="_blank"
+											rel="noopener noreferrer"
+											prefetch={false}
+										>
+											Open in new tab
+										</Link>
+									) : null}
 								</div>
 								{testResult.contentType === "text/html" ? (
 									<iframe
@@ -1716,8 +1701,8 @@ export function ExportTemplateEditor({
 						<div className="stack action-card-header">
 							<h3>Export target</h3>
 							<p className="muted">
-								First choose what this template targets. Filters, related data,
-								and export rules follow before appearance.
+								Choose what {editorState.name || "this template"} reads.
+								Query, related data, rules, and design follow.
 							</p>
 						</div>
 						<div className="form-grid">
@@ -1915,7 +1900,7 @@ export function ExportTemplateEditor({
 								? formatExportScope(editorState.scopeKind)
 								: "Reusable fragment"
 						}${selectedClass ? ` · ${selectedClass.name}` : ""}`}
-						nextLabel={editorState.kind === "export" ? "Filters" : "Appearance"}
+						nextLabel={editorState.kind === "export" ? "Query" : "Design"}
 						onContinue={handleContinue}
 					/>
 				</GuidedFlowPanel>
@@ -1942,7 +1927,7 @@ export function ExportTemplateEditor({
 								? "Select a class to configure server filters."
 								: classObjectSamplesQuery.isLoading
 									? "Inspecting a cached object sample for nested fields and value types…"
-									: "Open Server filters to add or review filters. Data-field behavior matches the Objects and ad-hoc Export workspaces."
+									: "Open Server filters to add or edit filters. Data-field behavior matches the Objects and ad-hoc Export workspaces."
 						}
 					/>
 					<GuidedFlowContinue
@@ -2162,7 +2147,7 @@ export function ExportTemplateEditor({
 								? `up to ${editorState.maxItems} items`
 								: "server item limit"
 						}`}
-						nextLabel="Appearance"
+						nextLabel="Design"
 						onContinue={handleContinue}
 					/>
 				</GuidedFlowPanel>

@@ -242,7 +242,8 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
             --username "${{ github.actor }}" \
             --password-stdin
-          version="0.0.6-main.${GITHUB_RUN_NUMBER}"
+          package_version="$(jq --raw-output .version package.json)"
+          version="${package_version}-main.${GITHUB_RUN_NUMBER}"
           helm package charts/hubuum-frontend \
             --destination /tmp \
             --version "$version" \

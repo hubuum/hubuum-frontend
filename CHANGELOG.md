@@ -6,6 +6,44 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-07-27
+
+### Compatibility
+
+- Retained the Hubuum Server `v0.0.5` contract and immutable CI target.
+
+### Added
+
+- Added stable authenticated report URLs for saved export templates. Reports
+  reuse the latest viable task, regenerate when output expires or exceeds a
+  requested maximum age, and coordinate concurrent generation through Valkey.
+- Added raw task-output pages, explicit one-time refresh URLs, customized
+  bookmark links, and open-in-new-tab actions throughout export history and
+  task details.
+- Added a template-first report catalog and a visual one-run configurator for
+  query, freshness, missing-data, object, and output-limit overrides.
+- Added standard HTML document wrapping with useful metadata, responsive and
+  print styles, alternating table rows, and an advanced full-document mode.
+
+### Changed
+
+- Reworked template creation into a guided details, target, query, related,
+  rules, and design workflow while keeping the full existing export controls.
+- Made existing visual server filters editable in place and added contextual
+  hover and keyboard-focus explanations to ambiguous report actions.
+
+### Fixed
+
+- Preserved the requested report destination through authentication and
+  allowed raw report requests to select their actual response content type.
+- Rejected partially numeric export and include values instead of silently
+  accepting numeric prefixes.
+
+### Security
+
+- Serve generated HTML reports without console injection and with a
+  script-disabled sandbox policy on the authenticated console origin.
+
 ## [0.0.6] - 2026-07-26
 
 ### Compatibility
@@ -245,7 +283,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.6...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.7...HEAD
+[0.0.7]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.3...v0.0.4

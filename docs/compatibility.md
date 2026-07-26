@@ -6,6 +6,7 @@ should pin both components to explicit versions.
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
 | `main` (unreleased) | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
+| `v0.0.7` | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
 | `v0.0.6` | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
 | `v0.0.5` | `v0.0.4` | `ghcr.io/hubuum/hubuum-server:v0.0.4` |
 | `v0.0.4` | `v0.0.3` | `ghcr.io/hubuum/hubuum-server:v0.0.3` |
@@ -35,3 +36,5 @@ tokens against Server `v0.0.3`.
 Frontend `v0.0.6` adopts Server `v0.0.5`'s public default-token lifetime,
 authoritative token expiry responses, token-retention configuration, and
 restored permission-aware import and export submission.
+Frontend `v0.0.7` retains the Server `v0.0.5` contract while adding
+frontend-managed bookmarkable template reports and raw stored-output routes.

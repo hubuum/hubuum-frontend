@@ -112,4 +112,24 @@ describe("related include depth", () => {
 			error: expect.stringMatching(/maximum supported depth is 10/i),
 		});
 	});
+
+	it("rejects partially numeric include inputs", () => {
+		expect(buildIncludeFromRows([includeRow("30px")])).toEqual({
+			error: expect.stringMatching(/needs a class/i),
+		});
+		expect(
+			buildIncludeFromRows([
+				{ ...includeRow("30"), limit: "5px", maxDepth: "" },
+			]),
+		).toEqual({
+			error: expect.stringMatching(/limit must be/i),
+		});
+		expect(
+			buildIncludeFromRows([
+				{ ...includeRow("30"), limit: "", maxDepth: "2px" },
+			]),
+		).toEqual({
+			error: expect.stringMatching(/max depth must be/i),
+		});
+	});
 });
