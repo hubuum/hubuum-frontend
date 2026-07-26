@@ -3,9 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.4
+ * OpenAPI spec version: 0.0.5
  */
 
 export interface LoginResponse {
+  /** Authoritative expiry persisted for the newly issued token. */
+  expires_at: string;
+  /** Raw bearer token, shown only in this issuance response. */
   token: string;
 }

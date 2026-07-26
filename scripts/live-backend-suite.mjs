@@ -85,6 +85,21 @@ function expectBearerToken(value, label) {
   return value.token;
 }
 
+function expectAuthoritativeExpiry(value, label) {
+  const expiry = value?.expires_at;
+  const normalized =
+    typeof expiry === "string" && /(?:Z|[+-]\d{2}:\d{2})$/i.test(expiry)
+      ? expiry
+      : `${expiry}Z`;
+  const timestamp = Date.parse(normalized);
+  assert(
+    typeof expiry === "string" && Number.isFinite(timestamp),
+    `${label} should include an authoritative expires_at timestamp.`,
+  );
+  assert(timestamp > Date.now(), `${label} expires_at should be in the future.`);
+  return timestamp;
+}
+
 function includesPermission(permissionRows, groupId, flag) {
   const rows = Array.isArray(permissionRows) ? permissionRows : [permissionRows];
   return rows.some((row) => row?.group_id === groupId && row?.[flag] === true);
@@ -123,9 +138,8 @@ async function loginAs(name, password) {
   const login = await request("POST", "/api/v0/auth/login", {
     body: { name, password },
   });
-  const token = login.data.token;
-  assert(typeof token === "string" && token.length > 0, `Login for ${name} did not include a token.`);
-  return token;
+  expectAuthoritativeExpiry(login.data, `Login for ${name}`);
+  return expectBearerToken(login.data, `Login for ${name}`);
 }
 
 async function listDeliveries(token, query = { limit: 50, sort: "-updated_at" }) {
@@ -159,10 +173,16 @@ async function main() {
       clientConfig.data.pagination.max_page_limit >= clientConfig.data.pagination.default_page_limit,
     "Client config is missing the effective maximum page limit.",
   );
-  pass("discovered public v0.0.4 pagination capabilities");
+  const defaultTokenLifetimeHours =
+    clientConfig.data.authentication?.default_token_lifetime_hours;
+  assert(
+    Number.isInteger(defaultTokenLifetimeHours) && defaultTokenLifetimeHours > 0,
+    "Client config is missing the effective default token lifetime.",
+  );
+  pass("discovered public v0.0.5 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
-  assert(openapi.data.info?.version === "0.0.4", "Server OpenAPI is not version 0.0.4.");
+  assert(openapi.data.info?.version === "0.0.5", "Server OpenAPI is not version 0.0.5.");
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
     openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
@@ -210,7 +230,17 @@ async function main() {
     openapi.data.components?.schemas?.ObjectAggregateMeasureValue,
     "OpenAPI is missing v0.0.4 aggregate measures.",
   );
-  pass("server OpenAPI exposes the expected v0.0.4 contract");
+  assert(
+    openapi.data.components?.schemas?.ClientAuthenticationConfig,
+    "OpenAPI is missing v0.0.5 client authentication configuration.",
+  );
+  assert(
+    openapi.data.components?.schemas?.LoginResponse?.required?.includes(
+      "expires_at",
+    ),
+    "OpenAPI does not require authoritative token expiry responses.",
+  );
+  pass("server OpenAPI exposes the expected v0.0.5 contract");
 
   const token = await loginAs(adminName, adminPassword);
   pass("admin login returns a bearer token");
@@ -222,7 +252,26 @@ async function main() {
   assert(runningConfig.data.backups, "Admin config is missing backup settings.");
   assert(runningConfig.data.restores, "Admin config is missing restore settings.");
   assert(runningConfig.data.permissions, "Admin config is missing permission settings.");
-  pass("read redacted v0.0.4 admin runtime configuration");
+  assert(
+    runningConfig.data.authentication?.token_lifetime_hours ===
+      defaultTokenLifetimeHours,
+    "Public and admin token lifetime configuration should agree.",
+  );
+  assert(
+    typeof runningConfig.data.authentication?.token_retention_purge_enabled ===
+      "boolean" &&
+      Number.isInteger(
+        runningConfig.data.authentication?.token_retention_days,
+      ) &&
+      Number.isInteger(
+        runningConfig.data.authentication?.token_retention_purge_interval_seconds,
+      ) &&
+      Number.isInteger(
+        runningConfig.data.authentication?.token_retention_purge_batch_size,
+      ),
+    "Admin config is missing token-retention settings.",
+  );
+  pass("read redacted v0.0.5 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -356,6 +405,16 @@ async function main() {
   const unscopedToken = expectBearerToken(
     unscopedTokenResponse.data,
     "Minted unscoped token",
+  );
+  const unscopedExpiry = expectAuthoritativeExpiry(
+    unscopedTokenResponse.data,
+    "Minted unscoped token",
+  );
+  const expectedDefaultLifetimeMs = defaultTokenLifetimeHours * 60 * 60 * 1000;
+  assert(
+    Math.abs(unscopedExpiry - Date.now() - expectedDefaultLifetimeMs) <
+      5 * 60 * 1000,
+    "Token minted without expires_at should use the public default lifetime.",
   );
   const unscopedMe = await request("GET", "/api/v1/iam/me", {
     token: unscopedToken,

@@ -119,14 +119,18 @@ authority. Server `v0.0.4` represents both boundaries under one nullable
 dimensions returned by the server. Selecting an active token opens its complete
 lifecycle metadata and every permission, collection, class, and object boundary.
 Resource names are resolved beside their exact IDs without exposing the bearer
-token or stored hash. Human users with an unscoped session token can mint tokens
-for themselves from their Account page. Human admins can mint for any principal,
-and human members of a service account's owner group can manage its tokens from
-their Account page. Service-account actors never receive token-minting controls,
-and disabled service accounts cannot receive new tokens. Local group membership
-editors can add either human users or service accounts by name, and each
-service-account detail page lists its current runtime group memberships
-separately from its owner group.
+token or stored hash. Server `v0.0.5` publishes its effective default token
+lifetime and returns the authoritative expiry for each newly issued token. The
+console shows that default beside optional expiry fields while leaving the
+server responsible for materializing omitted expiries. Human users with an
+unscoped session token can mint tokens for themselves from their Account page.
+Human admins can mint for any principal, and human members of a service
+account's owner group can manage its tokens from their Account page.
+Service-account actors never receive token-minting controls, and disabled
+service accounts cannot receive new tokens. Local group membership editors can
+add either human users or service accounts by name, and each service-account
+detail page lists its current runtime group memberships separately from its
+owner group.
 
 ## Object data columns
 
@@ -332,19 +336,19 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Current `main` development and the published Hubuum Frontend `v0.0.5` release
-are validated against Hubuum Server `v0.0.4`.
+Current `main` development and Hubuum Frontend `v0.0.6` are validated against
+Hubuum Server `v0.0.5`.
 Releases provide:
 
-- `ghcr.io/hubuum/hubuum-frontend:v0.0.5` for Linux AMD64 and ARM64;
-- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.5`;
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.6` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.6`;
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
 The application version is visible in the navigation, on the login page, and
 in `/healthz` and `/readyz` responses. Release images show the exact tag (for
-example, `v0.0.5`); commit images show `v0.0.5+<short-sha>`; unversioned local
-builds show `v0.0.5+dirty`. Image builds may set the immutable identity with
+example, `v0.0.6`); commit images show `v0.0.6+<short-sha>`; unversioned local
+builds show `v0.0.6+dirty`. Image builds may set the immutable identity with
 `docker build --build-arg APP_VERSION=...`.
 
 See [compatibility](docs/compatibility.md) and the
@@ -373,20 +377,21 @@ server image:
 npm run test:live-backend
 ```
 
-The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.4`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.5`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
 redacted admin configuration, backup/restore staging, shared and personal
 computed fields, events/audit, history/as-of, event sink, subscription, delivery
-lifecycle, client pagination discovery, by-name routes, object aggregation,
-computed querying, JSON Patch, and pagination APIs directly, and tears the stack
-down. Restore confirmation is intentionally excluded so this contract suite
-never replaces the live test database.
+lifecycle, public token-lifetime discovery, authoritative token expiry,
+client pagination discovery, by-name routes, object aggregation, computed
+querying, JSON Patch, and pagination APIs directly, and tears the stack down.
+Restore confirmation is intentionally excluded so this contract suite never
+replaces the live test database.
 
 Useful overrides:
 
-- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.4`
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.5`
 - `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
 - `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
 - `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`
@@ -437,7 +442,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.5 \
+  --version 0.0.6 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -446,7 +451,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.5 \
+  --version 0.0.6 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com

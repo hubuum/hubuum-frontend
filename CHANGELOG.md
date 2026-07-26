@@ -6,6 +6,30 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-07-26
+
+### Compatibility
+
+- Imported the Hubuum Server `v0.0.5` OpenAPI contract and pinned the live
+  compatibility suite to its immutable multi-architecture image digest. The
+  suite now verifies public default-token lifetime discovery, authoritative
+  login and mint expiry timestamps, and redacted token-retention settings.
+
+### Added
+
+- Added the effective server default lifetime beside the optional expiry field
+  in regular token minting and initial service-account token creation.
+- Added expired-token retention, purge status, interval, and batch size to the
+  administrator runtime-configuration view.
+
+### Fixed
+
+- Inferred nested export relation depth from the selected class graph and
+  rendered the effective depth per include, preventing default nested includes
+  from silently stopping after the first hop.
+- Ordered export-template history with the resource-supported timestamp field
+  so opening saved history no longer fails with a `valid_from` sorting error.
+
 ## [0.0.5] - 2026-07-26
 
 ### Compatibility
@@ -221,7 +245,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.5...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.6...HEAD
+[0.0.6]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.2...v0.0.3

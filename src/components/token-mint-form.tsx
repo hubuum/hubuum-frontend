@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useState } from "react";
 
 import {
@@ -10,6 +10,11 @@ import {
 } from "@/components/guided-flow";
 import { ScopePicker } from "@/components/scope-picker";
 import { TokenResourceScopePicker } from "@/components/token-resource-scope-picker";
+import {
+	fetchClientAuthenticationConfig,
+	formatDefaultTokenLifetime,
+	formatDefaultTokenLifetimeNote,
+} from "@/lib/api/client-config";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { postApiV1IamPrincipalsByPrincipalIdTokens } from "@/lib/api/generated/client";
 import type {
@@ -92,6 +97,20 @@ export function TokenMintForm({
 	>([]);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [activeStep, setActiveStep] = useState<TokenStep>("details");
+	const clientAuthenticationQuery = useQuery({
+		queryKey: ["client-config", "authentication"],
+		queryFn: fetchClientAuthenticationConfig,
+		staleTime: Number.POSITIVE_INFINITY,
+		retry: false,
+	});
+	const defaultLifetimeHours =
+		clientAuthenticationQuery.data?.default_token_lifetime_hours;
+	const defaultLifetime = formatDefaultTokenLifetime(defaultLifetimeHours);
+	const defaultLifetimeNote =
+		formatDefaultTokenLifetimeNote(defaultLifetimeHours);
+	const defaultLifetimeSummary = defaultLifetime
+		? `Server default: ${defaultLifetime}`
+		: "Server default token lifetime";
 
 	const mintMutation = useMutation({
 		mutationFn: async (payload: NewTokenRequest) => {
@@ -263,6 +282,7 @@ export function TokenMintForm({
 								value={expiresAt}
 								onChange={(event) => setExpiresAt(event.target.value)}
 							/>
+							<small className="muted">{defaultLifetimeNote}</small>
 						</label>
 						<label className="control-field control-field--wide">
 							<span>Description (optional)</span>
@@ -279,7 +299,7 @@ export function TokenMintForm({
 						summary={
 							expiresAt
 								? `Expires ${new Date(expiresAt).toLocaleString()}`
-								: "Uses the server's default token lifetime"
+								: defaultLifetimeSummary
 						}
 						title="Token details ready"
 					/>
@@ -458,7 +478,7 @@ export function TokenMintForm({
 							<dd>
 								{expiresAt
 									? new Date(expiresAt).toLocaleString()
-									: "Server default token lifetime"}
+									: defaultLifetimeSummary}
 							</dd>
 						</div>
 						<div>

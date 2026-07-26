@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.4
+ * OpenAPI spec version: 0.0.5
  */
 
 export * from './addOperation';
@@ -24,6 +24,7 @@ export * from './classComputationState';
 export * from './classKey';
 export * from './clearRateLimitResponse';
 export * from './clientAllowlistStatus';
+export * from './clientAuthenticationConfig';
 export * from './clientConfig';
 export * from './clientPaginationConfig';
 export * from './collection';
