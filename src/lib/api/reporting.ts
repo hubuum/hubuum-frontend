@@ -149,7 +149,7 @@ export async function listReportTemplateHistory(
 ): Promise<ReportTemplateHistory[]> {
 	const response = await getApiV1ExportTemplatesByTemplateIdHistory(
 		templateId,
-		{ include_total: false, limit: 50, sort: "valid_from.desc" },
+		{ include_total: false, limit: 50, sort: "-history_id" },
 		{ credentials: "include" },
 	);
 
