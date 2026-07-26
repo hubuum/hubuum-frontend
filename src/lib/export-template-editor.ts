@@ -54,6 +54,8 @@ export type ExportTemplateEditorSection =
 
 export type ExportTemplateValidationContext = {
 	classCollectionById?: ReadonlyMap<number, number>;
+	relatedClassDepthStatus?: "loading" | "error" | "ready";
+	relatedClassMinimumDepthById?: ReadonlyMap<number, number>;
 };
 
 export function parsePositiveInteger(value: string): number | null {
@@ -96,6 +98,7 @@ export function validateExportTemplateTarget(
 
 export function validateExportTemplateRelated(
 	draft: ExportTemplateDraft,
+	context: ExportTemplateValidationContext = {},
 ): ExportTemplateDraftErrors {
 	const errors: ExportTemplateDraftErrors = {};
 	if (draft.kind !== "export") return errors;
@@ -109,7 +112,21 @@ export function validateExportTemplateRelated(
 		}
 	}
 	if (scopeNeedsClass) {
-		const include = buildIncludeFromRows(draft.includeRows);
+		if (
+			draft.includeRows.length > 0 &&
+			context.relatedClassDepthStatus !== undefined &&
+			context.relatedClassDepthStatus !== "ready"
+		) {
+			errors.includeRows =
+				context.relatedClassDepthStatus === "error"
+					? "Retry loading related class paths before saving includes."
+					: "Wait for related class paths before saving includes.";
+			return errors;
+		}
+		const include = buildIncludeFromRows(draft.includeRows, {
+			minimumDepthByClassId: context.relatedClassMinimumDepthById,
+			requireKnownClassDepth: context.relatedClassDepthStatus === "ready",
+		});
 		if ("error" in include) errors.includeRows = include.error;
 	}
 	return errors;
@@ -139,7 +156,7 @@ export function validateExportTemplateDraft(
 ): ExportTemplateDraftErrors {
 	const errors = {
 		...validateExportTemplateTarget(draft, context),
-		...validateExportTemplateRelated(draft),
+		...validateExportTemplateRelated(draft, context),
 		...validateExportTemplateRules(draft),
 	};
 	if (!draft.name.trim()) errors.name = "Enter a template name.";
