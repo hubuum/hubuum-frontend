@@ -17,18 +17,17 @@ export function toTokenScopeRequest({
 	resources,
 	restrictPermissions,
 	restrictResources,
-}: TokenScopeRequestInput): Pick<
-	NewTokenRequest,
-	"resource_scopes" | "scopes"
-> {
-	const request: Pick<NewTokenRequest, "resource_scopes" | "scopes"> = {};
-	const scopes = toScopesPayload(restrictPermissions, permissions);
-	if (scopes) {
-		request.scopes = scopes;
+}: TokenScopeRequestInput): Pick<NewTokenRequest, "scope"> {
+	const permissionScope = toScopesPayload(restrictPermissions, permissions);
+	const resourceScope = toResourceScopesPayload(restrictResources, resources);
+	if (!permissionScope && !resourceScope) {
+		return {};
 	}
-	const resourceScopes = toResourceScopesPayload(restrictResources, resources);
-	if (resourceScopes) {
-		request.resource_scopes = resourceScopes;
-	}
-	return request;
+
+	return {
+		scope: {
+			...(permissionScope ? { permissions: permissionScope } : {}),
+			...(resourceScope ? { resources: resourceScope } : {}),
+		},
+	};
 }

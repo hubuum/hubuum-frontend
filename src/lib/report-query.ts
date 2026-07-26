@@ -2,6 +2,13 @@ import type {
 	QueryFieldDefinition,
 	QueryFieldKind,
 } from "@/lib/report-scope-fields";
+import {
+	appendObjectServerFilters,
+	MAX_OBJECT_SERVER_FILTERS,
+	type ObjectServerComputedFilterDefinition,
+	type ObjectServerFilter,
+	parseObjectServerFilterQueryParameter,
+} from "@/lib/object-server-filters";
 
 export type ReportQueryFilter = {
 	field: string;
@@ -16,6 +23,12 @@ export type ReportQuerySort = {
 
 export type ParsedReportQuery = {
 	filters: ReportQueryFilter[];
+	sorts: ReportQuerySort[];
+	advancedQuery: string;
+};
+
+export type ParsedObjectReportQuery = {
+	filters: ObjectServerFilter[];
 	sorts: ReportQuerySort[];
 	advancedQuery: string;
 };
@@ -122,6 +135,30 @@ export function buildReportQuery(
 	return params.toString();
 }
 
+export function buildObjectReportQuery(
+	filters: readonly ObjectServerFilter[],
+	sorts: readonly ReportQuerySort[],
+	advancedQuery: string,
+): string {
+	const params = new URLSearchParams();
+	appendObjectServerFilters(params, filters);
+
+	const sortValue = sorts
+		.filter((sort) => sort.field)
+		.map((sort) => `${sort.field}.${sort.direction}`)
+		.join(",");
+	if (sortValue) params.set("sort", sortValue);
+
+	const advancedParams = new URLSearchParams(
+		advancedQuery.startsWith("?") ? advancedQuery.slice(1) : advancedQuery,
+	);
+	advancedParams.forEach((value, key) => {
+		if (key !== "cursor") params.append(key, value);
+	});
+
+	return params.toString();
+}
+
 export function parseReportQuery(
 	query: string,
 	fields: readonly QueryFieldDefinition[],
@@ -163,6 +200,54 @@ export function parseReportQuery(
 			getReportQueryOperators(fieldDefinition.kind).includes(operator)
 		) {
 			filters.push({ field, operator, value });
+		} else {
+			advancedParams.append(key, value);
+		}
+	});
+
+	return {
+		filters,
+		sorts,
+		advancedQuery: advancedParams.toString(),
+	};
+}
+
+export function parseObjectReportQuery(
+	query: string,
+	fields: readonly QueryFieldDefinition[],
+	computedFields: readonly ObjectServerComputedFilterDefinition[] = [],
+): ParsedObjectReportQuery {
+	const filters: ObjectServerFilter[] = [];
+	const sorts: ReportQuerySort[] = [];
+	const advancedParams = new URLSearchParams();
+	const fieldsByKey = new Map(fields.map((field) => [field.key, field]));
+	const params = new URLSearchParams(
+		query.startsWith("?") ? query.slice(1) : query,
+	);
+
+	params.forEach((value, key) => {
+		if (key === "sort") {
+			for (const part of value.split(",")) {
+				const [field, direction = "asc"] = part.split(".");
+				if (
+					fieldsByKey.get(field)?.sortable &&
+					(direction === "asc" || direction === "desc")
+				) {
+					sorts.push({ field, direction });
+				} else {
+					advancedParams.append("sort", part);
+				}
+			}
+			return;
+		}
+
+		const filter = parseObjectServerFilterQueryParameter(
+			key,
+			value,
+			computedFields,
+		);
+		if (filter && filters.length < MAX_OBJECT_SERVER_FILTERS) {
+			filters.push(filter);
 		} else {
 			advancedParams.append(key, value);
 		}

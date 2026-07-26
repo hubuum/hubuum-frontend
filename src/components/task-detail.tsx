@@ -6,6 +6,10 @@ import { useEffect } from "react";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiV1IamUsersByUserId } from "@/lib/api/generated/client";
 import {
+	formatEventActor,
+	formatEventInitiator,
+} from "@/lib/event-provenance";
+import {
 	fetchImportProjection,
 	fetchImportResults,
 	fetchTask,
@@ -198,6 +202,18 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 				key: "message",
 				label: "Message",
 				getValue: (event: (typeof taskEvents)[number]) => event.message,
+			},
+			{
+				key: "actor",
+				label: "Actor",
+				getValue: (event: (typeof taskEvents)[number]) =>
+					formatEventActor(event),
+			},
+			{
+				key: "initiator",
+				label: "Initiator",
+				getValue: (event: (typeof taskEvents)[number]) =>
+					formatEventInitiator(event),
 			},
 		],
 		rows: taskEvents,
@@ -425,6 +441,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 									<th>Time</th>
 									<th>Event</th>
 									<th>Message</th>
+									<th>Actor</th>
+									<th>Initiator</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -433,6 +451,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 										<td>{formatTimestamp(event.created_at)}</td>
 										<td>{event.event_type}</td>
 										<td>{event.message}</td>
+										<td>{formatEventActor(event)}</td>
+										<td>{formatEventInitiator(event)}</td>
 									</tr>
 								))}
 							</tbody>

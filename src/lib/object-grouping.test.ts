@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
 	formatObjectAggregateDimension,
+	formatObjectAggregateMeasure,
+	formatObjectAggregateMeasureLabel,
 	groupObjectRows,
 } from "@/lib/object-grouping";
 
@@ -84,5 +86,15 @@ describe("groupObjectRows", () => {
 		expect(
 			formatObjectAggregateDimension({ state: "value", value: false }),
 		).toBe("false");
+	});
+
+	it("formats numeric aggregate measures and labels", () => {
+		expect(
+			formatObjectAggregateMeasure({ state: "value", value: 42.5 }),
+		).toBe("42.5");
+		expect(formatObjectAggregateMeasure({ state: "empty" })).toBe("—");
+		expect(formatObjectAggregateMeasureLabel("average", "CPU load")).toBe(
+			"Average · CPU load",
+		);
 	});
 });

@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
+import type { Provenance } from './provenance';
 
 /**
  * A serialized history row plus the resolved username of its actor (if any).
@@ -12,6 +13,8 @@
 export type HistoryResponseRemoteTargetHistory = ({
   /** @nullable */
   actor_id?: number | null;
+  /** @nullable */
+  actor_kind?: string | null;
   allowed_subject_types: unknown;
   auth_config: unknown;
   /** @nullable */
@@ -25,9 +28,13 @@ export type HistoryResponseRemoteTargetHistory = ({
   headers_template: unknown;
   history_id: number;
   id: number;
+  /** @nullable */
+  initiator_user_id?: number | null;
   method: string;
   name: string;
   op: string;
+  /** @nullable */
+  task_id?: number | null;
   timeout_ms: number;
   updated_at: string;
   url_template: string;
@@ -37,4 +44,5 @@ export type HistoryResponseRemoteTargetHistory = ({
 }) & ({
   /** @nullable */
   actor_username?: string | null;
+  provenance: Provenance;
 });

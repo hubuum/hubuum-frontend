@@ -9,13 +9,24 @@ import {
 	deleteApiV1IamGroupsByGroupIdMembersByPrincipalId,
 	getApiV1IamGroupsByGroupId,
 	getApiV1IamGroupsByGroupIdMembers,
+	getApiV1IamServiceAccounts,
 	getApiV1IamUsers,
 	postApiV1IamGroupsByGroupIdMembersByPrincipalId,
 } from "@/lib/api/generated/client";
 import { useConfirm } from "@/lib/confirm-context";
 import {
+	formatGroupMembershipCandidateOption,
+	type GroupMembershipCandidate,
+	groupMembershipCandidateKindLabel,
+	groupMembershipCandidateMatches,
+	humanMembershipCandidate,
+	resolveGroupMembershipCandidate,
+	serviceAccountMembershipCandidate,
+} from "@/lib/group-membership-candidates";
+import {
 	type ConsoleGroup,
 	type ConsolePrincipalMember,
+	type ConsoleServiceAccount,
 	type ConsoleUser,
 	formatScopedIdentityName,
 	isProviderManagedGroup,
@@ -53,7 +64,7 @@ async function fetchGroup(groupId: number): Promise<ConsoleGroup> {
 
 async function fetchUsers(): Promise<ConsoleUser[]> {
 	const response = await getApiV1IamUsers(
-		{ include_total: false },
+		{ include_total: false, limit: 250 },
 		{
 			credentials: "include",
 		},
@@ -66,12 +77,27 @@ async function fetchUsers(): Promise<ConsoleUser[]> {
 	return response.data;
 }
 
+async function fetchServiceAccounts(): Promise<ConsoleServiceAccount[]> {
+	const response = await getApiV1IamServiceAccounts(
+		{ include_total: false, limit: 250 },
+		{ credentials: "include" },
+	);
+
+	if (response.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to load service accounts."),
+		);
+	}
+
+	return response.data;
+}
+
 async function fetchGroupMembers(
 	groupId: number,
 ): Promise<ConsolePrincipalMember[]> {
 	const response = await getApiV1IamGroupsByGroupIdMembers(
 		groupId,
-		{ include_total: false },
+		{ include_total: false, limit: 250 },
 		{
 			credentials: "include",
 		},
@@ -156,71 +182,6 @@ async function updateGroup(
 	);
 }
 
-function formatUserOption(user: ConsoleUser): string {
-	return `${formatScopedIdentityName(user.identity_scope, user.name)} (#${user.id})${user.email ? ` - ${user.email}` : ""}`;
-}
-
-function resolveUserFromInput(
-	input: string,
-	availableUsers: ConsoleUser[],
-): ConsoleUser | null {
-	const trimmed = input.trim();
-	if (!trimmed) {
-		return null;
-	}
-
-	const normalized = trimmed.toLowerCase();
-	const exactOption = availableUsers.find(
-		(user) => formatUserOption(user).toLowerCase() === normalized,
-	);
-	if (exactOption) {
-		return exactOption;
-	}
-
-	const extractedIdMatch = normalized.match(/#(\d+)\)/);
-	if (extractedIdMatch) {
-		const extractedId = Number.parseInt(extractedIdMatch[1], 10);
-		if (Number.isFinite(extractedId)) {
-			const matchedByExtractedId = availableUsers.find(
-				(user) => user.id === extractedId,
-			);
-			if (matchedByExtractedId) {
-				return matchedByExtractedId;
-			}
-		}
-	}
-
-	const parsedId = Number.parseInt(trimmed, 10);
-	if (Number.isFinite(parsedId)) {
-		const matchedById = availableUsers.find((user) => user.id === parsedId);
-		if (matchedById) {
-			return matchedById;
-		}
-	}
-
-	const matchedByScopedName = availableUsers.find(
-		(user) =>
-			formatScopedIdentityName(user.identity_scope, user.name).toLowerCase() ===
-			normalized,
-	);
-	if (matchedByScopedName) {
-		return matchedByScopedName;
-	}
-
-	const usernameMatches = availableUsers.filter(
-		(user) => user.name.toLowerCase() === normalized,
-	);
-	if (usernameMatches.length === 1) {
-		return usernameMatches[0];
-	}
-
-	return (
-		availableUsers.find(
-			(user) => (user.email ?? "").toLowerCase() === normalized,
-		) ?? null
-	);
-}
-
 const memberExportColumns: TableExportColumn<ConsolePrincipalMember>[] = [
 	{
 		key: "id",
@@ -265,6 +226,10 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		queryKey: ["admin-users", "group-detail"],
 		queryFn: fetchUsers,
 	});
+	const serviceAccountsQuery = useQuery({
+		queryKey: ["service-accounts", "group-detail"],
+		queryFn: fetchServiceAccounts,
+	});
 	const membersQuery = useQuery({
 		queryKey: ["admin-group-members", groupId],
 		queryFn: async () => fetchGroupMembers(groupId),
@@ -295,30 +260,42 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 
 	const members = membersQuery.data ?? [];
 	const users = usersQuery.data ?? [];
+	const serviceAccounts = serviceAccountsQuery.data ?? [];
 	const memberIdSet = useMemo(
 		() => new Set(members.map((member) => member.principal_id)),
 		[members],
 	);
 	const allMembersSelected =
 		members.length > 0 && selectedMemberIds.length === members.length;
-	const usersNotInGroup = useMemo(
-		() => users.filter((user) => !memberIdSet.has(user.id)),
-		[users, memberIdSet],
+	const membershipCandidates = useMemo(
+		() =>
+			[
+				...users.map(humanMembershipCandidate),
+				...serviceAccounts.map(serviceAccountMembershipCandidate),
+			].sort((left, right) =>
+				formatGroupMembershipCandidateOption(left).localeCompare(
+					formatGroupMembershipCandidateOption(right),
+				),
+			),
+		[serviceAccounts, users],
+	);
+	const candidatesNotInGroup = useMemo(
+		() =>
+			membershipCandidates.filter(
+				(candidate) => !memberIdSet.has(candidate.id),
+			),
+		[memberIdSet, membershipCandidates],
 	);
 	const memberInputTerm = memberInput.trim().toLowerCase();
 	const memberSuggestions = useMemo(() => {
-		const filteredUsers = memberInputTerm
-			? usersNotInGroup.filter((user) => {
-					return (
-						user.name.toLowerCase().includes(memberInputTerm) ||
-						(user.email ?? "").toLowerCase().includes(memberInputTerm) ||
-						String(user.id).includes(memberInputTerm)
-					);
-				})
-			: usersNotInGroup;
+		const filteredCandidates = memberInputTerm
+			? candidatesNotInGroup.filter((candidate) =>
+					groupMembershipCandidateMatches(candidate, memberInputTerm),
+				)
+			: candidatesNotInGroup;
 
-		return filteredUsers.slice(0, 50);
-	}, [memberInputTerm, usersNotInGroup]);
+		return filteredCandidates.slice(0, 50);
+	}, [candidatesNotInGroup, memberInputTerm]);
 
 	const updateMutation = useMutation({
 		mutationFn: async (payload: UpdateGroupPayload) =>
@@ -347,10 +324,10 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	});
 
 	const addMemberMutation = useMutation({
-		mutationFn: async (userId: number) => {
+		mutationFn: async (candidate: GroupMembershipCandidate) => {
 			const response = await postApiV1IamGroupsByGroupIdMembersByPrincipalId(
 				groupId,
-				userId,
+				candidate.id,
 				{
 					credentials: "include",
 				},
@@ -358,37 +335,46 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 
 			if (response.status !== 204) {
 				throw new Error(
-					getApiErrorMessage(response.data, "Failed to add user to group."),
+					getApiErrorMessage(response.data, "Failed to add member to group."),
 				);
 			}
+
+			return candidate;
 		},
-		onSuccess: async () => {
+		onSuccess: async (candidate) => {
 			await queryClient.invalidateQueries({
 				queryKey: ["admin-group-members", groupId],
 			});
 			await queryClient.invalidateQueries({
 				queryKey: ["admin-group-member-counts"],
 			});
+			await queryClient.invalidateQueries({
+				queryKey: ["principal-groups", candidate.id],
+			});
 			setMembershipError(null);
-			setMembershipSuccess("User added to group.");
+			setMembershipSuccess(
+				`${groupMembershipCandidateKindLabel(candidate)} ${candidate.name} added to group.`,
+			);
 			setMemberInput("");
 		},
 		onError: (error) => {
 			setMembershipSuccess(null);
 			setMembershipError(
-				error instanceof Error ? error.message : "Failed to add user to group.",
+				error instanceof Error
+					? error.message
+					: "Failed to add member to group.",
 			);
 		},
 	});
 
 	const removeMemberMutation = useMutation({
-		mutationFn: async (userIds: number[]) => {
+		mutationFn: async (principalIds: number[]) => {
 			await Promise.all(
-				userIds.map(async (userId) => {
+				principalIds.map(async (principalId) => {
 					const response =
 						await deleteApiV1IamGroupsByGroupIdMembersByPrincipalId(
 							groupId,
-							userId,
+							principalId,
 							{
 								credentials: "include",
 							},
@@ -398,14 +384,14 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 						throw new Error(
 							getApiErrorMessage(
 								response.data,
-								`Failed to remove user #${userId} from group.`,
+								`Failed to remove principal #${principalId} from group.`,
 							),
 						);
 					}
 				}),
 			);
 
-			return userIds.length;
+			return principalIds.length;
 		},
 		onSuccess: async (count) => {
 			await queryClient.invalidateQueries({
@@ -413,6 +399,9 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 			});
 			await queryClient.invalidateQueries({
 				queryKey: ["admin-group-member-counts"],
+			});
+			await queryClient.invalidateQueries({
+				queryKey: ["principal-groups"],
 			});
 			setSelectedMemberIds([]);
 			setMembershipError(null);
@@ -425,7 +414,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 			setMembershipError(
 				error instanceof Error
 					? error.message
-					: "Failed to remove user from group.",
+					: "Failed to remove member from group.",
 			);
 		},
 	});
@@ -480,18 +469,21 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 			return;
 		}
 
-		const targetUser = resolveUserFromInput(memberInput, usersNotInGroup);
-		if (!targetUser) {
+		const targetCandidate = resolveGroupMembershipCandidate(
+			memberInput,
+			candidatesNotInGroup,
+		);
+		if (!targetCandidate) {
 			setMembershipSuccess(null);
 			setMembershipError(
-				"Select a user from autocomplete suggestions, or enter exact username, email, or user ID.",
+				"Select a human or service account from the suggestions, or enter an exact scoped name, email, or principal ID.",
 			);
 			return;
 		}
 
 		setMembershipError(null);
 		setMembershipSuccess(null);
-		addMemberMutation.mutate(targetUser.id);
+		addMemberMutation.mutate(targetCandidate);
 	}
 
 	function toggleAllMembers(checked: boolean) {
@@ -504,14 +496,16 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		setSelectedMemberIds([]);
 	}
 
-	function toggleMember(userId: number, checked: boolean) {
+	function toggleMember(principalId: number, checked: boolean) {
 		if (groupQuery.data && isProviderManagedGroup(groupQuery.data)) return;
 		setSelectedMemberIds((current) => {
 			if (checked) {
-				return current.includes(userId) ? current : [...current, userId];
+				return current.includes(principalId)
+					? current
+					: [...current, principalId];
 			}
 
-			return current.filter((id) => id !== userId);
+			return current.filter((id) => id !== principalId);
 		});
 	}
 
@@ -534,7 +528,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 			title: `Remove ${selectedMemberIds.length} selected member${
 				selectedMemberIds.length === 1 ? "" : "s"
 			}?`,
-			description: "This removes the selected users from this group.",
+			description: "This removes the selected principals from this group.",
 			confirmLabel: "Remove",
 			tone: "danger",
 		});
@@ -570,6 +564,10 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 
 	const isMembershipUpdating =
 		addMemberMutation.isPending || removeMemberMutation.isPending;
+	const candidateSourcesLoading =
+		usersQuery.isLoading || serviceAccountsQuery.isLoading;
+	const candidateSourcesUnavailable =
+		usersQuery.isError && serviceAccountsQuery.isError;
 	const memberExportView: TableExportView<ConsolePrincipalMember> = {
 		id: `admin.group.${group.id}.members`,
 		fileName: `${group.groupname}-members-view`,
@@ -651,23 +649,26 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 
 				<div className="form-grid">
 					<label className="control-field control-field--wide">
-						<span>Add user</span>
+						<span>Add member</span>
 						<input
 							list={datalistId}
 							value={memberInput}
 							onChange={(event) => setMemberInput(event.target.value)}
-							placeholder="Type username, email, or user ID"
+							placeholder="Type a human or service account name, email, or principal ID"
 							disabled={
 								providerManaged ||
-								usersQuery.isLoading ||
-								usersQuery.isError ||
+								candidateSourcesLoading ||
+								candidateSourcesUnavailable ||
 								isMembershipUpdating ||
-								usersNotInGroup.length === 0
+								candidatesNotInGroup.length === 0
 							}
 						/>
 						<datalist id={datalistId}>
-							{memberSuggestions.map((user) => (
-								<option key={user.id} value={formatUserOption(user)} />
+							{memberSuggestions.map((candidate) => (
+								<option
+									key={candidate.id}
+									value={formatGroupMembershipCandidateOption(candidate)}
+								/>
 							))}
 						</datalist>
 					</label>
@@ -679,10 +680,10 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 						onClick={addMember}
 						disabled={
 							providerManaged ||
-							usersQuery.isLoading ||
-							usersQuery.isError ||
+							candidateSourcesLoading ||
+							candidateSourcesUnavailable ||
 							isMembershipUpdating ||
-							usersNotInGroup.length === 0
+							candidatesNotInGroup.length === 0
 						}
 					>
 						{addMemberMutation.isPending ? "Adding..." : "Add member"}
@@ -690,9 +691,13 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 					<span className="muted">
 						{providerManaged
 							? "Membership is synchronized from the identity provider."
-							: usersNotInGroup.length === 0
-								? "All users are already members."
-								: `${usersNotInGroup.length} user${usersNotInGroup.length === 1 ? "" : "s"} available to add.`}
+							: candidateSourcesLoading
+								? "Loading member candidates..."
+								: candidateSourcesUnavailable
+									? "Member candidates are unavailable."
+									: candidatesNotInGroup.length === 0
+										? "No additional principals are available."
+										: `${candidatesNotInGroup.length} principal${candidatesNotInGroup.length === 1 ? "" : "s"} available to add.`}
 					</span>
 				</div>
 
@@ -701,6 +706,14 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 						Failed to load users.{" "}
 						{usersQuery.error instanceof Error
 							? usersQuery.error.message
+							: "Unknown error"}
+					</div>
+				) : null}
+				{serviceAccountsQuery.isError ? (
+					<div className="error-banner">
+						Failed to load service accounts.{" "}
+						{serviceAccountsQuery.error instanceof Error
+							? serviceAccountsQuery.error.message
 							: "Unknown error"}
 					</div>
 				) : null}

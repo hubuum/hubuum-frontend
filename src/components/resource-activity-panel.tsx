@@ -14,6 +14,10 @@ import {
 	type HistoryRecord,
 	type ResourceEventScope,
 } from "@/lib/api/events";
+import {
+	formatEventActor,
+	formatEventInitiator,
+} from "@/lib/event-provenance";
 
 type ResourceActivityPanelProps = {
 	scope: ResourceEventScope;
@@ -35,17 +39,10 @@ function formatTimestamp(value: string | null | undefined): string {
 	}
 }
 
-function formatActor(
-	record: Pick<EventRecord, "actor_kind" | "actor_user_id">,
-): string {
-	if (record.actor_user_id == null) {
-		return record.actor_kind;
-	}
-
-	return `${record.actor_kind} #${record.actor_user_id}`;
-}
-
 function formatHistoryActor(record: HistoryRecord): string {
+	if (record.provenance) {
+		return formatEventActor(record);
+	}
 	if (record.actor_username) {
 		return record.actor_id == null
 			? record.actor_username
@@ -164,7 +161,12 @@ export function ResourceActivityPanel({
 			{
 				key: "actor",
 				label: "Actor",
-				getValue: (event: EventRecord) => formatActor(event),
+				getValue: (event: EventRecord) => formatEventActor(event),
+			},
+			{
+				key: "initiator",
+				label: "Initiator",
+				getValue: (event: EventRecord) => formatEventInitiator(event),
 			},
 			{
 				key: "summary",
@@ -214,6 +216,11 @@ export function ResourceActivityPanel({
 				key: "actor",
 				label: "Actor",
 				getValue: (record: HistoryRecord) => formatHistoryActor(record),
+			},
+			{
+				key: "initiator",
+				label: "Initiator",
+				getValue: (record: HistoryRecord) => formatEventInitiator(record),
 			},
 			{
 				key: "name",
@@ -339,6 +346,7 @@ export function ResourceActivityPanel({
 									<th>Time</th>
 									<th>Action</th>
 									<th>Actor</th>
+									<th>Initiator</th>
 									<th>Summary</th>
 									<th>Event ID</th>
 								</tr>
@@ -365,7 +373,8 @@ export function ResourceActivityPanel({
 										<td>
 											{event.entity_type}.{event.action}
 										</td>
-										<td>{formatActor(event)}</td>
+										<td>{formatEventActor(event)}</td>
+										<td>{formatEventInitiator(event)}</td>
 										<td>{event.summary}</td>
 										<td>{event.event_id}</td>
 									</tr>
@@ -437,6 +446,7 @@ export function ResourceActivityPanel({
 									<th>Valid from</th>
 									<th>Valid to</th>
 									<th>Actor</th>
+									<th>Initiator</th>
 									<th>Name</th>
 								</tr>
 							</thead>
@@ -463,6 +473,7 @@ export function ResourceActivityPanel({
 										<td>{formatTimestamp(record.valid_from)}</td>
 										<td>{formatTimestamp(record.valid_to)}</td>
 										<td>{formatHistoryActor(record)}</td>
+										<td>{formatEventInitiator(record)}</td>
 										<td>{record.name}</td>
 									</tr>
 								))}
@@ -519,6 +530,12 @@ export function ResourceActivityPanel({
 								<strong>Actor</strong>
 								<p className="muted">
 									{formatHistoryActor(snapshotQuery.data)}
+								</p>
+							</div>
+							<div>
+								<strong>Initiator</strong>
+								<p className="muted">
+									{formatEventInitiator(snapshotQuery.data)}
 								</p>
 							</div>
 						</div>

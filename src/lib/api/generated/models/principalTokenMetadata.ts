@@ -3,25 +3,29 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
+import type { PrincipalID } from './principalID';
+import type { TokenID } from './tokenID';
+import type { TokenScopeDetails } from './tokenScopeDetails';
 
 /**
- * Public, hash-free projection of a token for listing.
+ * Public, hash-free projection of a token for listing, including its exact
+ * permission and resource scope dimensions.
  */
 export interface PrincipalTokenMetadata {
   /** @nullable */
   description?: string | null;
   /** @nullable */
   expires_at?: string | null;
-  id: number;
+  id: TokenID;
   issued: string;
   /** @nullable */
   last_used_at?: string | null;
   /** @nullable */
   name?: string | null;
-  principal_id: number;
+  principal_id: PrincipalID;
   /** @nullable */
   revoked_at?: string | null;
-  scoped: boolean;
+  scope?: null | TokenScopeDetails;
 }

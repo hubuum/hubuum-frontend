@@ -1507,6 +1507,7 @@ export function AppShell({
 				<Link
 					key={item.href}
 					href={item.href}
+					prefetch={false}
 					className={`sidebar-link ${isActive ? "active" : ""}`}
 					aria-label={item.hint}
 					aria-current={isActive ? "page" : undefined}
@@ -1856,6 +1857,7 @@ export function AppShell({
 											<Link
 												className="link-chip"
 												href="/tasks"
+												prefetch={false}
 												onClick={() => setTaskMenuOpen(false)}
 											>
 												Open tasks
@@ -1882,6 +1884,7 @@ export function AppShell({
 														key={task.id}
 														className="task-menu-item"
 														href={`/tasks/${task.id}`}
+														prefetch={false}
 														onClick={() => setTaskMenuOpen(false)}
 													>
 														<span
@@ -1979,6 +1982,7 @@ export function AppShell({
 										<Link
 											className="menu-item menu-nav-item"
 											href="/account/appearance"
+											prefetch={false}
 											onClick={() => setUserMenuOpen(false)}
 										>
 											<span className="menu-nav-icon">
@@ -1995,6 +1999,7 @@ export function AppShell({
 										<Link
 											className="menu-item menu-nav-item"
 											href="/account"
+											prefetch={false}
 											onClick={() => setUserMenuOpen(false)}
 										>
 											<span className="menu-nav-icon">

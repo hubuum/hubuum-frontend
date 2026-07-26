@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
 
 /**
@@ -21,6 +21,7 @@ export interface EventSubscriptionFilter {
   correlation_ids?: string[];
   entity_ids?: number[];
   entity_names?: string[];
+  initiator_user_ids?: number[];
   related_collection_ids?: number[];
   request_ids?: string[];
 }

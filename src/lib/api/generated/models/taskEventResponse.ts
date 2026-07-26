@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
+import type { Provenance } from './provenance';
 
 export interface TaskEventResponse {
   created_at: string;
@@ -12,5 +13,6 @@ export interface TaskEventResponse {
   event_type: string;
   id: number;
   message: string;
+  provenance: Provenance;
   task_id: number;
 }

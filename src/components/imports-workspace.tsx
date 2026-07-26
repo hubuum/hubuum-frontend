@@ -37,6 +37,7 @@ import {
 	formatScopedGroupName,
 	normalizeIdentityScope,
 } from "@/lib/identity-scopes";
+import { MAX_IDEMPOTENCY_KEY_BYTES } from "@/lib/idempotency-key";
 
 type ImportSummary = {
 	totalItems: number;
@@ -933,11 +934,15 @@ export function ImportsWorkspace({
 											)}
 											<input
 												value={idempotencyKey}
+												maxLength={MAX_IDEMPOTENCY_KEY_BYTES}
 												onChange={(event) =>
 													setIdempotencyKey(event.target.value)
 												}
 												placeholder="inventory-import-2026-03-07"
 											/>
+											<span className="field-note">
+												At most {MAX_IDEMPOTENCY_KEY_BYTES} UTF-8 bytes.
+											</span>
 										</label>
 									</div>
 									{collisionPolicy === "overwrite" ? (

@@ -3,11 +3,13 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
 import type { ObjectAggregateDimensionValue } from './objectAggregateDimensionValue';
+import type { ObjectAggregateMeasureValue } from './objectAggregateMeasureValue';
 
 export interface ObjectAggregateRow {
   dimensions: ObjectAggregateDimensionValue[];
+  measures?: ObjectAggregateMeasureValue[];
   object_count: number;
 }

@@ -9,7 +9,12 @@ import {
 	GuidedFlowPanel,
 	GuidedFlowTabs,
 } from "@/components/guided-flow";
-import { fetchClassObjectSamples } from "@/lib/api/class-objects";
+import {
+	CLASS_OBJECT_SAMPLES_GC_TIME,
+	CLASS_OBJECT_SAMPLES_STALE_TIME,
+	classObjectSamplesQueryKey,
+	fetchClassObjectSamples,
+} from "@/lib/api/class-objects";
 import {
 	type ComputedFieldDraft,
 	type ComputedFieldScope,
@@ -345,9 +350,10 @@ function ComputedFieldEditor({
 	const [formError, setFormError] = useState<string | null>(null);
 
 	const objectSamplesQuery = useQuery({
-		queryKey: ["computed-field-object-options", classId],
+		queryKey: classObjectSamplesQueryKey(classId),
 		queryFn: () => fetchClassObjectSamples(classId),
-		staleTime: 60_000,
+		staleTime: CLASS_OBJECT_SAMPLES_STALE_TIME,
+		gcTime: CLASS_OBJECT_SAMPLES_GC_TIME,
 	});
 	const objects = objectSamplesQuery.data ?? [];
 	const schemaFields = useMemo(

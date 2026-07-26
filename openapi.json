@@ -7,7 +7,7 @@
       "name": "MIT",
       "identifier": "MIT"
     },
-    "version": "0.0.3"
+    "version": "0.0.4"
   },
   "servers": [
     {
@@ -1420,7 +1420,7 @@
           "classes"
         ],
         "summary": "Aggregate objects in a class by class name",
-        "description": "Name-addressed alias for permission-scoped object aggregation. Numeric-looking class names remain names. Normal object filters and up to two enabled shared or owned personal computed filters are applied before grouping.",
+        "description": "Name-addressed alias for permission-scoped object aggregation. Numeric-looking class names remain names. Normal object filters and up to two enabled shared or owned personal computed filters are applied before optional grouping and numeric measures.",
         "operationId": "getApiV1ClassesByNameByClassNameObjectAggregates",
         "parameters": [
           {
@@ -1435,8 +1435,20 @@
           {
             "name": "group_by",
             "in": "query",
-            "description": "One to three repeated ordered dimensions: name, description, collection_id, created_at, updated_at, json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>",
-            "required": true,
+            "description": "Up to three repeated ordered dimensions: name, description, collection_id, created_at, updated_at, json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "aggregate",
+            "in": "query",
+            "description": "Up to four repeated numeric measures in operation:field form. Operations are sum, average, min, and max; fields are json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>. At least one group_by or aggregate parameter is required.",
+            "required": false,
             "schema": {
               "type": "array",
               "items": {
@@ -1456,7 +1468,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Permission-scoped aggregated object counts. Value states distinguish value, JSON null, a missing JSON path, and an unavailable computed result.",
+            "description": "Permission-scoped grouped or global aggregate rows. Dimension states preserve null, missing, and unavailable values; numeric measures report contributing and skipped source counts.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1469,7 +1481,7 @@
             }
           },
           "400": {
-            "description": "Invalid filter, dimension, path, sort, cursor, or computed selector",
+            "description": "Invalid filter, dimension, measure, path, sort, cursor, or computed selector",
             "content": {
               "application/json": {
                 "schema": {
@@ -3819,6 +3831,16 @@
             }
           },
           {
+            "name": "initiator_user_id",
+            "in": "query",
+            "description": "Optional root task initiator principal id filter",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "collection_id",
             "in": "query",
             "description": "Optional collection id filter",
@@ -4173,7 +4195,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id Object Aggregates",
-        "description": "Permission-scoped object aggregation. Normal object filters and up to two enabled shared or owned personal computed filters are applied before grouping.",
+        "description": "Permission-scoped object aggregation. Normal object filters and up to two enabled shared or owned personal computed filters are applied before optional grouping and numeric measures.",
         "operationId": "getApiV1ClassesByClassIdObjectAggregates",
         "parameters": [
           {
@@ -4189,8 +4211,20 @@
           {
             "name": "group_by",
             "in": "query",
-            "description": "One to three repeated ordered dimensions: name, description, collection_id, created_at, updated_at, json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>",
-            "required": true,
+            "description": "Up to three repeated ordered dimensions: name, description, collection_id, created_at, updated_at, json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "aggregate",
+            "in": "query",
+            "description": "Up to four repeated numeric measures in operation:field form. Operations are sum, average, min, and max; fields are json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>. At least one group_by or aggregate parameter is required.",
+            "required": false,
             "schema": {
               "type": "array",
               "items": {
@@ -4210,7 +4244,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Permission-scoped aggregated object counts. Value states distinguish value, JSON null, a missing JSON path, and an unavailable computed result.",
+            "description": "Permission-scoped grouped or global aggregate rows. Dimension states preserve null, missing, and unavailable values; numeric measures report contributing and skipped source counts.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4223,7 +4257,7 @@
             }
           },
           "400": {
-            "description": "Invalid filter, dimension, path, sort, cursor, or computed selector",
+            "description": "Invalid filter, dimension, measure, path, sort, cursor, or computed selector",
             "content": {
               "application/json": {
                 "schema": {
@@ -5961,6 +5995,16 @@
             }
           },
           {
+            "name": "initiator_user_id",
+            "in": "query",
+            "description": "Optional root task initiator principal id filter",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "collection_id",
             "in": "query",
             "description": "Optional collection id filter",
@@ -7350,6 +7394,16 @@
             "name": "actor_user_id",
             "in": "query",
             "description": "Optional actor principal id filter",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "initiator_user_id",
+            "in": "query",
+            "description": "Optional root task initiator principal id filter",
             "required": false,
             "schema": {
               "type": "integer",
@@ -9710,6 +9764,16 @@
             }
           },
           {
+            "name": "initiator_user_id",
+            "in": "query",
+            "description": "Optional root task initiator principal id filter",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "collection_id",
             "in": "query",
             "description": "Optional collection id filter",
@@ -10292,6 +10356,16 @@
             "name": "actor_user_id",
             "in": "query",
             "description": "Optional actor principal id filter",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "initiator_user_id",
+            "in": "query",
+            "description": "Optional root task initiator principal id filter",
             "required": false,
             "schema": {
               "type": "integer",
@@ -11426,6 +11500,16 @@
             }
           },
           {
+            "name": "initiator_user_id",
+            "in": "query",
+            "description": "Optional root task initiator principal id filter",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "collection_id",
             "in": "query",
             "description": "Optional collection id filter",
@@ -11808,7 +11892,7 @@
         "operationId": "getApiV1IamMe",
         "responses": {
           "200": {
-            "description": "Current authenticated principal and token",
+            "description": "Current authenticated principal and token, including permission and resource scope dimensions",
             "content": {
               "application/json": {
                 "schema": {
@@ -14292,6 +14376,16 @@
             }
           },
           {
+            "name": "initiator_user_id",
+            "in": "query",
+            "description": "Optional root task initiator principal id filter",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "collection_id",
             "in": "query",
             "description": "Optional collection id filter",
@@ -15957,6 +16051,16 @@
             }
           },
           {
+            "name": "initiator_user_id",
+            "in": "query",
+            "description": "Optional root task initiator principal id filter",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "collection_id",
             "in": "query",
             "description": "Optional collection id filter",
@@ -17532,6 +17636,12 @@
             ],
             "format": "int32"
           },
+          "actor_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -17547,6 +17657,13 @@
             "type": "integer",
             "format": "int32"
           },
+          "initiator_user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
           "name": {
             "type": "string"
           },
@@ -17554,6 +17671,13 @@
             "type": "string"
           },
           "parent_collection_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "task_id": {
             "type": [
               "integer",
               "null"
@@ -18010,10 +18134,10 @@
       },
       "CurrentTokenMetadata": {
         "type": "object",
+        "description": "Public metadata for the token authenticating the current request.",
         "required": [
           "id",
-          "issued",
-          "scoped"
+          "issued"
         ],
         "properties": {
           "description": {
@@ -18030,8 +18154,7 @@
             "format": "date-time"
           },
           "id": {
-            "type": "integer",
-            "format": "int32"
+            "$ref": "#/components/schemas/TokenID"
           },
           "issued": {
             "type": "string",
@@ -18050,26 +18173,16 @@
               "null"
             ]
           },
-          "resource_scopes": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/TokenResourceScope"
-            }
-          },
-          "scoped": {
-            "type": "boolean"
-          },
-          "scopes": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/Permissions"
-            }
+          "scope": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TokenScopeDetails",
+                "description": "Exact permission and resource boundaries. `None` means that this token\nis unscoped."
+              }
+            ]
           }
         }
       },
@@ -18606,6 +18719,7 @@
           "entity_type",
           "action",
           "actor_kind",
+          "provenance",
           "summary",
           "metadata",
           "schema_version"
@@ -18667,6 +18781,9 @@
           "occurred_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
           },
           "request_id": {
             "type": [
@@ -18958,6 +19075,13 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "initiator_user_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
             }
           },
           "related_collection_ids": {
@@ -19390,7 +19514,8 @@
               "integer",
               "null"
             ],
-            "format": "int32"
+            "format": "int32",
+            "minimum": 1
           },
           "kind": {
             "$ref": "#/components/schemas/ExportScopeKind"
@@ -19400,7 +19525,8 @@
               "integer",
               "null"
             ],
-            "format": "int32"
+            "format": "int32",
+            "minimum": 1
           }
         },
         "example": {
@@ -19627,6 +19753,12 @@
             ],
             "format": "int32"
           },
+          "actor_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "class_id": {
             "type": [
               "integer",
@@ -19670,6 +19802,13 @@
             "format": "int32"
           },
           "include": {},
+          "initiator_user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
           "kind": {
             "type": "string"
           },
@@ -19685,6 +19824,13 @@
               "string",
               "null"
             ]
+          },
+          "task_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
           },
           "template": {
             "type": "string"
@@ -19987,6 +20133,12 @@
                 ],
                 "format": "int32"
               },
+              "actor_kind": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "created_at": {
                 "type": "string",
                 "format": "date-time"
@@ -20002,6 +20154,13 @@
                 "type": "integer",
                 "format": "int32"
               },
+              "initiator_user_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
               "name": {
                 "type": "string"
               },
@@ -20009,6 +20168,13 @@
                 "type": "string"
               },
               "parent_collection_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
+              "task_id": {
                 "type": [
                   "integer",
                   "null"
@@ -20034,12 +20200,18 @@
           },
           {
             "type": "object",
+            "required": [
+              "provenance"
+            ],
             "properties": {
               "actor_username": {
                 "type": [
                   "string",
                   "null"
                 ]
+              },
+              "provenance": {
+                "$ref": "#/components/schemas/Provenance"
               }
             }
           }
@@ -20071,6 +20243,12 @@
                   "null"
                 ],
                 "format": "int32"
+              },
+              "actor_kind": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "class_id": {
                 "type": [
@@ -20115,6 +20293,13 @@
                 "format": "int32"
               },
               "include": {},
+              "initiator_user_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
               "kind": {
                 "type": "string"
               },
@@ -20130,6 +20315,13 @@
                   "string",
                   "null"
                 ]
+              },
+              "task_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
               },
               "template": {
                 "type": "string"
@@ -20153,12 +20345,18 @@
           },
           {
             "type": "object",
+            "required": [
+              "provenance"
+            ],
             "properties": {
               "actor_username": {
                 "type": [
                   "string",
                   "null"
                 ]
+              },
+              "provenance": {
+                "$ref": "#/components/schemas/Provenance"
               }
             }
           }
@@ -20189,6 +20387,12 @@
                 ],
                 "format": "int32"
               },
+              "actor_kind": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "collection_id": {
                 "type": "integer",
                 "format": "int32"
@@ -20208,12 +20412,26 @@
                 "type": "integer",
                 "format": "int32"
               },
+              "initiator_user_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
               "json_schema": {},
               "name": {
                 "type": "string"
               },
               "op": {
                 "type": "string"
+              },
+              "task_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
               },
               "updated_at": {
                 "type": "string",
@@ -20237,12 +20455,18 @@
           },
           {
             "type": "object",
+            "required": [
+              "provenance"
+            ],
             "properties": {
               "actor_username": {
                 "type": [
                   "string",
                   "null"
                 ]
+              },
+              "provenance": {
+                "$ref": "#/components/schemas/Provenance"
               }
             }
           }
@@ -20274,6 +20498,12 @@
                 ],
                 "format": "int32"
               },
+              "actor_kind": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "collection_id": {
                 "type": "integer",
                 "format": "int32"
@@ -20298,11 +20528,25 @@
                 "type": "integer",
                 "format": "int32"
               },
+              "initiator_user_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
               "name": {
                 "type": "string"
               },
               "op": {
                 "type": "string"
+              },
+              "task_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
               },
               "updated_at": {
                 "type": "string",
@@ -20323,12 +20567,18 @@
           },
           {
             "type": "object",
+            "required": [
+              "provenance"
+            ],
             "properties": {
               "actor_username": {
                 "type": [
                   "string",
                   "null"
                 ]
+              },
+              "provenance": {
+                "$ref": "#/components/schemas/Provenance"
               }
             }
           }
@@ -20364,6 +20614,12 @@
                   "null"
                 ],
                 "format": "int32"
+              },
+              "actor_kind": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "allowed_subject_types": {},
               "auth_config": {},
@@ -20403,6 +20659,13 @@
                 "type": "integer",
                 "format": "int32"
               },
+              "initiator_user_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
               "method": {
                 "type": "string"
               },
@@ -20411,6 +20674,13 @@
               },
               "op": {
                 "type": "string"
+              },
+              "task_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
               },
               "timeout_ms": {
                 "type": "integer",
@@ -20438,12 +20708,18 @@
           },
           {
             "type": "object",
+            "required": [
+              "provenance"
+            ],
             "properties": {
               "actor_username": {
                 "type": [
                   "string",
                   "null"
                 ]
+              },
+              "provenance": {
+                "$ref": "#/components/schemas/Provenance"
               }
             }
           }
@@ -20551,6 +20827,12 @@
             ],
             "format": "int32"
           },
+          "actor_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "collection_id": {
             "type": "integer",
             "format": "int32"
@@ -20570,12 +20852,26 @@
             "type": "integer",
             "format": "int32"
           },
+          "initiator_user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
           "json_schema": {},
           "name": {
             "type": "string"
           },
           "op": {
             "type": "string"
+          },
+          "task_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
           },
           "updated_at": {
             "type": "string",
@@ -20782,6 +21078,12 @@
             ],
             "format": "int32"
           },
+          "actor_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "collection_id": {
             "type": "integer",
             "format": "int32"
@@ -20806,11 +21108,25 @@
             "type": "integer",
             "format": "int32"
           },
+          "initiator_user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
           "name": {
             "type": "string"
           },
           "op": {
             "type": "string"
+          },
+          "task_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
           },
           "updated_at": {
             "type": "string",
@@ -23089,28 +23405,19 @@
               "null"
             ]
           },
-          "resource_scopes": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/TokenResourceScope"
-            },
-            "description": "Optional resource boundary. Entries are additive within the boundary\nand are always intersected with the principal's live group grants. At\nmost 1,000 entries are accepted.",
-            "maxItems": 1000
-          },
-          "scopes": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/Permissions"
-            },
-            "description": "Optional scope set. Omit for an unscoped token; an **empty** array is\nrejected (almost certainly a client bug, not \"grant nothing\")."
+          "scope": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TokenScopeDetails",
+                "description": "Optional permission and resource boundaries. Omit or send `null` for an\nunscoped token."
+              }
+            ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "NewUser": {
         "type": "object",
@@ -23169,6 +23476,52 @@
           "value": {}
         }
       },
+      "ObjectAggregateMeasureOperation": {
+        "type": "string",
+        "enum": [
+          "sum",
+          "average",
+          "min",
+          "max"
+        ]
+      },
+      "ObjectAggregateMeasureState": {
+        "type": "string",
+        "enum": [
+          "value",
+          "empty"
+        ]
+      },
+      "ObjectAggregateMeasureValue": {
+        "type": "object",
+        "required": [
+          "field",
+          "operation",
+          "state",
+          "value_count",
+          "skipped_count"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "operation": {
+            "$ref": "#/components/schemas/ObjectAggregateMeasureOperation"
+          },
+          "skipped_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ObjectAggregateMeasureState"
+          },
+          "value": {},
+          "value_count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ObjectAggregateRow": {
         "type": "object",
         "required": [
@@ -23180,6 +23533,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ObjectAggregateDimensionValue"
+            }
+          },
+          "measures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObjectAggregateMeasureValue"
             }
           },
           "object_count": {
@@ -23835,6 +24194,11 @@
           }
         }
       },
+      "PrincipalID": {
+        "type": "integer",
+        "format": "int32",
+        "description": "Identifier wrapper for a [`Principal`]."
+      },
       "PrincipalKey": {
         "type": "object",
         "required": [
@@ -23899,7 +24263,8 @@
           "token",
           "principal_id",
           "issued",
-          "scoped"
+          "permission_scoped",
+          "resource_scoped"
         ],
         "properties": {
           "description": {
@@ -23936,9 +24301,15 @@
               "null"
             ]
           },
+          "permission_scoped": {
+            "type": "boolean"
+          },
           "principal_id": {
             "type": "integer",
             "format": "int32"
+          },
+          "resource_scoped": {
+            "type": "boolean"
           },
           "revoked_at": {
             "type": [
@@ -23946,9 +24317,6 @@
               "null"
             ],
             "format": "date-time"
-          },
-          "scoped": {
-            "type": "boolean"
           },
           "token": {
             "type": "string"
@@ -23957,12 +24325,11 @@
       },
       "PrincipalTokenMetadata": {
         "type": "object",
-        "description": "Public, hash-free projection of a token for listing.",
+        "description": "Public, hash-free projection of a token for listing, including its exact\npermission and resource scope dimensions.",
         "required": [
           "id",
           "principal_id",
-          "issued",
-          "scoped"
+          "issued"
         ],
         "properties": {
           "description": {
@@ -23979,8 +24346,7 @@
             "format": "date-time"
           },
           "id": {
-            "type": "integer",
-            "format": "int32"
+            "$ref": "#/components/schemas/TokenID"
           },
           "issued": {
             "type": "string",
@@ -24000,8 +24366,7 @@
             ]
           },
           "principal_id": {
-            "type": "integer",
-            "format": "int32"
+            "$ref": "#/components/schemas/PrincipalID"
           },
           "revoked_at": {
             "type": [
@@ -24010,8 +24375,16 @@
             ],
             "format": "date-time"
           },
-          "scoped": {
-            "type": "boolean"
+          "scope": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TokenScopeDetails",
+                "description": "Exact permission and resource boundaries. `None` means that this token\nis unscoped."
+              }
+            ]
           }
         }
       },
@@ -24023,6 +24396,76 @@
         "properties": {
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "Provenance": {
+        "type": "object",
+        "description": "Shared provenance returned by audit/history APIs and serialized to sinks.",
+        "required": [
+          "actor"
+        ],
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/ProvenanceActor"
+          },
+          "initiator": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProvenancePrincipal"
+              }
+            ]
+          },
+          "task_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ProvenanceActor": {
+        "type": "object",
+        "description": "The immediate actor that performed a mutation.",
+        "properties": {
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "principal": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProvenancePrincipal"
+              }
+            ]
+          }
+        }
+      },
+      "ProvenancePrincipal": {
+        "type": "object",
+        "description": "Durable principal identity used in provenance responses and sink envelopes.\n\nNames are resolved at read/delivery time rather than copied into immutable\nevent and history storage. The id therefore remains available even when no\ncurrent principal name can be resolved.",
+        "required": [
+          "principal_id"
+        ],
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "principal_id": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -24471,6 +24914,12 @@
             ],
             "format": "int32"
           },
+          "actor_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "allowed_subject_types": {},
           "auth_config": {},
           "body_template": {
@@ -24509,6 +24958,13 @@
             "type": "integer",
             "format": "int32"
           },
+          "initiator_user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
           "method": {
             "type": "string"
           },
@@ -24517,6 +24973,13 @@
           },
           "op": {
             "type": "string"
+          },
+          "task_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
           },
           "timeout_ms": {
             "type": "integer",
@@ -25081,7 +25544,8 @@
           "task_id",
           "event_type",
           "message",
-          "created_at"
+          "created_at",
+          "provenance"
         ],
         "properties": {
           "created_at": {
@@ -25098,6 +25562,9 @@
           },
           "message": {
             "type": "string"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
           },
           "task_id": {
             "type": "integer",
@@ -25433,6 +25900,11 @@
           }
         }
       },
+      "TokenID": {
+        "type": "integer",
+        "format": "int32",
+        "description": "Identifier wrapper for a [`PrincipalToken`]."
+      },
       "TokenResourceScope": {
         "oneOf": [
           {
@@ -25491,6 +25963,34 @@
           }
         ],
         "description": "One resource explicitly included in a token's resource boundary.\n\nResource scopes are additive within the boundary: a collection entry covers\nthat collection, its classes, and their objects; a class entry covers that\nclass and its objects; and an object entry covers only that object. The\nboundary is still intersected with the principal's live group grants."
+      },
+      "TokenScopeDetails": {
+        "type": "object",
+        "description": "API representation of a token's independent permission and resource\nboundaries.\n\nThis type is nested under a singular `scope` field. An absent outer\n`scope` means that the token is unscoped; within a present scope, an absent\ndimension is unrestricted.",
+        "properties": {
+          "permissions": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Permissions"
+            },
+            "description": "Permission boundary. `None` leaves this dimension unrestricted."
+          },
+          "resources": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TokenResourceScope"
+            },
+            "description": "Collection, class, and object boundary. `None` leaves this dimension\nunrestricted.",
+            "maxItems": 1000
+          }
+        },
+        "additionalProperties": false
       },
       "UnifiedSearchBatchResponse": {
         "type": "object",

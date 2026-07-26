@@ -1,11 +1,18 @@
 "use client";
 
+import Link from "next/link";
+
 import {
 	CreateModal,
 	type ModalRecordNavigation,
 } from "@/components/create-modal";
 import { JsonViewer } from "@/components/json-viewer";
 import type { EventRecord } from "@/lib/api/events";
+import {
+	formatEventActor,
+	formatEventInitiator,
+	getProvenanceTaskId,
+} from "@/lib/event-provenance";
 import { buildJsonDifference, formatJsonDifference } from "@/lib/json-diff";
 
 type EventDetailsModalProps = {
@@ -24,14 +31,6 @@ function formatTimestamp(value: string): string {
 		dateStyle: "medium",
 		timeStyle: "long",
 	}).format(parsed);
-}
-
-function formatActor(event: EventRecord): string {
-	if (event.actor_user_id == null) {
-		return event.actor_kind;
-	}
-
-	return `${event.actor_kind} #${event.actor_user_id}`;
 }
 
 function formatEntity(event: EventRecord): string {
@@ -100,6 +99,8 @@ export function EventDetailsModal({
 	onClose,
 	navigation,
 }: EventDetailsModalProps) {
+	const taskId = event ? getProvenanceTaskId(event) : null;
+
 	return (
 		<CreateModal
 			open={event !== null}
@@ -126,7 +127,21 @@ export function EventDetailsModal({
 						</div>
 						<div>
 							<dt>Actor</dt>
-							<dd>{formatActor(event)}</dd>
+							<dd>{formatEventActor(event)}</dd>
+						</div>
+						<div>
+							<dt>Initiator</dt>
+							<dd>{formatEventInitiator(event)}</dd>
+						</div>
+						<div>
+							<dt>Root task</dt>
+							<dd>
+								{taskId == null ? (
+									"n/a"
+								) : (
+									<Link href={`/tasks/${taskId}`}>#{taskId}</Link>
+								)}
+							</dd>
 						</div>
 						<div>
 							<dt>Collection</dt>

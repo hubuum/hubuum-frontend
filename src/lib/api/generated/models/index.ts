@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
 
 export * from './addOperation';
@@ -235,6 +235,9 @@ export * from './newServiceAccount';
 export * from './newTokenRequest';
 export * from './newUser';
 export * from './objectAggregateDimensionValue';
+export * from './objectAggregateMeasureOperation';
+export * from './objectAggregateMeasureState';
+export * from './objectAggregateMeasureValue';
 export * from './objectAggregateRow';
 export * from './objectAggregateValueState';
 export * from './objectDataPatchDocument';
@@ -248,12 +251,16 @@ export * from './permissionConfig';
 export * from './permissions';
 export * from './personalComputedFieldDefinitionRequest';
 export * from './principalCollectionPermissions';
+export * from './principalID';
 export * from './principalKey';
 export * from './principalMemberResponse';
 export * from './principalSettings';
 export * from './principalToken';
 export * from './principalTokenMetadata';
 export * from './probeResponse';
+export * from './provenance';
+export * from './provenanceActor';
+export * from './provenancePrincipal';
 export * from './relatedClassGraph';
 export * from './relatedObjectGraph';
 export * from './releaseRateLimitResponse';
@@ -295,7 +302,9 @@ export * from './taskResponse';
 export * from './taskStatus';
 export * from './testOperation';
 export * from './tlsConfig';
+export * from './tokenID';
 export * from './tokenResourceScope';
+export * from './tokenScopeDetails';
 export * from './unifiedSearchBatchResponse';
 export * from './unifiedSearchDoneEvent';
 export * from './unifiedSearchErrorEvent';

@@ -18,16 +18,29 @@ import {
 
 import { EmptyState } from "@/components/empty-state";
 import { IncludeRows } from "@/components/include-rows";
+import {
+	ObjectServerFilterMenu,
+	type ServerFilterComputedField,
+	type ServerFilterDataField,
+} from "@/components/object-server-filter-menu";
 import { TableExportMenu } from "@/components/table-export-menu";
+import {
+	CLASS_OBJECT_SAMPLES_GC_TIME,
+	CLASS_OBJECT_SAMPLES_STALE_TIME,
+	classObjectSamplesQueryKey,
+	fetchClassObjectSamples,
+} from "@/lib/api/class-objects";
+import {
+	fetchPersonalComputedFields,
+	fetchSharedComputedFields,
+} from "@/lib/api/computed-fields";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1Classes,
-	getApiV1ClassesByClassIdTrailing,
 	getApiV1Collections,
 } from "@/lib/api/generated/client";
 import type {
 	HubuumClassExpanded,
-	HubuumObject,
 	Collection,
 } from "@/lib/api/generated/models";
 import {
@@ -58,15 +71,26 @@ import {
 	newIncludeRow,
 } from "@/lib/report-include";
 import {
-	type QueryFieldKind,
-	SCOPE_QUERY_FIELDS,
-} from "@/lib/report-scope-fields";
+	buildObjectReportQuery,
+	buildReportQuery,
+	formatReportQueryField,
+	formatReportQueryOperator,
+	getReportQueryOperators,
+} from "@/lib/report-query";
+import { SCOPE_QUERY_FIELDS } from "@/lib/report-scope-fields";
 import {
 	filterReportTemplates,
 	formatExportContentType,
 	formatExportScope,
 	type ExportWorkspaceView,
 } from "@/lib/export-workspace";
+import {
+	resolveObjectServerFilterComputedFields,
+	resolveObjectServerFilterDataFields,
+} from "@/lib/object-server-filter-fields";
+import {
+	type ObjectServerFilter,
+} from "@/lib/object-server-filters";
 
 type QueryBuilderFilter = {
 	id: string;
@@ -96,37 +120,6 @@ type ReportResultView = {
 	showInlineHtmlPreview: boolean;
 };
 
-const STRING_OPERATORS = [
-	"equals",
-	"iequals",
-	"contains",
-	"icontains",
-	"startswith",
-	"istartswith",
-	"endswith",
-	"iendswith",
-	"like",
-	"regex",
-] as const;
-const NUMBER_OPERATORS = [
-	"equals",
-	"gt",
-	"gte",
-	"lt",
-	"lte",
-	"between",
-] as const;
-const ARRAY_OPERATORS = ["equals", "contains"] as const;
-const BOOLEAN_OPERATORS = ["equals"] as const;
-const JSON_OPERATORS = [
-	"equals",
-	"contains",
-	"gt",
-	"gte",
-	"lt",
-	"lte",
-	"between",
-] as const;
 const PREVIEW_BYTE_LIMIT = 64 * 1024;
 const FULL_COPY_BYTE_LIMIT = 1024 * 1024;
 const EXPORT_WORKSPACE_VIEWS = ["run", "templates", "history"] as const;
@@ -155,92 +148,6 @@ function parsePositiveInteger(value: string): number | null {
 
 function createBuilderId(): string {
 	return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function getOperatorsForField(kind: QueryFieldKind): readonly string[] {
-	if (kind === "number" || kind === "date") {
-		return NUMBER_OPERATORS;
-	}
-	if (kind === "boolean") {
-		return BOOLEAN_OPERATORS;
-	}
-	if (kind === "array") {
-		return ARRAY_OPERATORS;
-	}
-	if (kind === "json") {
-		return JSON_OPERATORS;
-	}
-	return STRING_OPERATORS;
-}
-
-function formatQueryField(value: string): string {
-	return value
-		.replaceAll("_", " ")
-		.replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function formatQueryOperator(value: string): string {
-	const labels: Record<string, string> = {
-		equals: "Equals",
-		iequals: "Equals, ignoring case",
-		contains: "Contains",
-		icontains: "Contains, ignoring case",
-		startswith: "Starts with",
-		istartswith: "Starts with, ignoring case",
-		endswith: "Ends with",
-		iendswith: "Ends with, ignoring case",
-		like: "Matches pattern",
-		regex: "Matches regular expression",
-		gt: "Greater than",
-		gte: "Greater than or equal to",
-		lt: "Less than",
-		lte: "Less than or equal to",
-		between: "Between",
-	};
-
-	return labels[value] ?? value;
-}
-
-function buildQueryString(
-	filters: QueryBuilderFilter[],
-	sorts: QueryBuilderSort[],
-	advancedQueryText: string,
-): string {
-	const params = new URLSearchParams();
-
-	filters.forEach((filter) => {
-		if (!filter.field || !filter.value.trim()) {
-			return;
-		}
-
-		const key =
-			filter.operator === "equals"
-				? filter.field
-				: `${filter.field}__${filter.operator}`;
-		params.append(key, filter.value.trim());
-	});
-
-	const sortValue = sorts
-		.filter((sort) => sort.field)
-		.map((sort) => `${sort.field}.${sort.direction}`)
-		.join(",");
-	if (sortValue) {
-		params.set("sort", sortValue);
-	}
-
-	const advancedQuery = new URLSearchParams(
-		advancedQueryText.startsWith("?")
-			? advancedQueryText.slice(1)
-			: advancedQueryText,
-	);
-	advancedQuery.forEach((value, key) => {
-		if (key === "cursor") {
-			return;
-		}
-		params.append(key, value);
-	});
-
-	return params.toString();
 }
 
 function getByteCount(text: string): number {
@@ -395,20 +302,6 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	return response.data;
 }
 
-async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
-	const response = await getApiV1ClassesByClassIdTrailing(classId, undefined, {
-		credentials: "include",
-	});
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load objects."),
-		);
-	}
-
-	return Array.isArray(response.data) ? (response.data as HubuumObject[]) : [];
-}
-
 type ExportsWorkspaceProps = {
 	initialView?: ExportWorkspaceView;
 };
@@ -458,6 +351,9 @@ export function ExportsWorkspace({
 	const [builderFilters, setBuilderFilters] = useState<QueryBuilderFilter[]>(
 		[],
 	);
+	const [objectServerFilters, setObjectServerFilters] = useState<
+		ObjectServerFilter[]
+	>([]);
 	const [builderSorts, setBuilderSorts] = useState<QueryBuilderSort[]>([]);
 	const [includeRows, setIncludeRows] = useState<IncludeBuilderRow[]>([]);
 
@@ -476,10 +372,28 @@ export function ExportsWorkspace({
 		queryFn: fetchClasses,
 	});
 	const parsedClassId = useMemo(() => parsePositiveInteger(classId), [classId]);
+	const selectedClass = useMemo(
+		() =>
+			classesQuery.data?.find((classItem) => classItem.id === parsedClassId) ??
+			null,
+		[classesQuery.data, parsedClassId],
+	);
 	const objectsQuery = useQuery({
-		queryKey: ["export-objects", parsedClassId],
-		queryFn: () => fetchObjectsByClass(parsedClassId ?? 0),
+		queryKey: classObjectSamplesQueryKey(parsedClassId),
+		queryFn: () => fetchClassObjectSamples(parsedClassId ?? 0),
 		enabled: parsedClassId !== null,
+		staleTime: CLASS_OBJECT_SAMPLES_STALE_TIME,
+		gcTime: CLASS_OBJECT_SAMPLES_GC_TIME,
+	});
+	const sharedComputedQuery = useQuery({
+		queryKey: ["computed-fields", "shared", parsedClassId],
+		queryFn: () => fetchSharedComputedFields(parsedClassId ?? 0),
+		enabled: parsedClassId !== null && scopeKind === "objects_in_class",
+	});
+	const personalComputedQuery = useQuery({
+		queryKey: ["computed-fields", "personal", parsedClassId],
+		queryFn: () => fetchPersonalComputedFields(parsedClassId ?? 0),
+		enabled: parsedClassId !== null && scopeKind === "objects_in_class",
 	});
 	const reportRunsQuery = useQuery({
 		queryKey: ["export-runs", "recent"],
@@ -536,9 +450,52 @@ export function ExportsWorkspace({
 		() => scopeFields.filter((field) => field.sortable),
 		[scopeFields],
 	);
+	const objectSamples = useMemo(
+		() => objectsQuery.data ?? [],
+		[objectsQuery.data],
+	);
+	const objectSampleData = useMemo(
+		() => objectSamples.map((objectItem) => objectItem.data),
+		[objectSamples],
+	);
+	const objectServerFilterDataFields = useMemo<ServerFilterDataField[]>(
+		() =>
+			resolveObjectServerFilterDataFields(
+				selectedClass?.json_schema,
+				objectSampleData,
+			),
+		[objectSampleData, selectedClass?.json_schema],
+	);
+	const objectServerFilterComputedFields = useMemo<
+		ServerFilterComputedField[]
+	>(
+		() =>
+			resolveObjectServerFilterComputedFields(
+				sharedComputedQuery.data?.definitions ?? [],
+				personalComputedQuery.data ?? [],
+			),
+		[personalComputedQuery.data, sharedComputedQuery.data?.definitions],
+	);
+	const usesObjectServerFilters = scopeKind === "objects_in_class";
+	const activeBuilderFilterCount = usesObjectServerFilters
+		? objectServerFilters.length
+		: builderFilters.length;
 	const builtQuery = useMemo(
-		() => buildQueryString(builderFilters, builderSorts, advancedQueryText),
-		[advancedQueryText, builderFilters, builderSorts],
+		() =>
+			usesObjectServerFilters
+				? buildObjectReportQuery(
+						objectServerFilters,
+						builderSorts,
+						advancedQueryText,
+					)
+				: buildReportQuery(builderFilters, builderSorts, advancedQueryText),
+		[
+			advancedQueryText,
+			builderFilters,
+			builderSorts,
+			objectServerFilters,
+			usesObjectServerFilters,
+		],
 	);
 	const lastResultView = useMemo(
 		() => (lastResult ? getReportResultView(lastResult) : null),
@@ -766,7 +723,7 @@ export function ExportsWorkspace({
 			{
 				id: createBuilderId(),
 				field: firstField.key,
-				operator: getOperatorsForField(firstField.kind)[0],
+				operator: getReportQueryOperators(firstField.kind)[0],
 				value: "",
 			},
 		]);
@@ -1374,12 +1331,12 @@ export function ExportsWorkspace({
 												</div>
 											) : null}
 
-											<details className="export-disclosure control-field--wide">
+											<details className="export-disclosure export-disclosure--server-filter-host control-field--wide">
 												<summary>
 													<span>Filters and sorting</span>
 													<small>
-														{builderFilters.length} filter
-														{builderFilters.length === 1 ? "" : "s"} ·{" "}
+														{activeBuilderFilterCount} filter
+														{activeBuilderFilterCount === 1 ? "" : "s"} ·{" "}
 														{builderSorts.length} sort
 														{builderSorts.length === 1 ? "" : "s"}
 													</small>
@@ -1389,18 +1346,32 @@ export function ExportsWorkspace({
 														<div className="stack action-card-header">
 															<h4>Query builder</h4>
 															<p className="muted">
-																Available fields in the selectors below are
-																limited to the current scope.
+																{usesObjectServerFilters
+																	? "Filter the full selected class with detected nested data, date, IP, and computed-field operators."
+																	: "Available fields in the selectors below are limited to the current scope."}
 															</p>
 														</div>
 														<div className="action-row">
-															<button
-																type="button"
-																className="ghost"
-																onClick={addFilter}
-															>
-																Add filter
-															</button>
+															{usesObjectServerFilters ? (
+																<ObjectServerFilterMenu
+																	filters={objectServerFilters}
+																	dataFields={objectServerFilterDataFields}
+																	computedFields={
+																		objectServerFilterComputedFields
+																	}
+																	onChange={setObjectServerFilters}
+																	disabled={parsedClassId === null}
+																	embeddedInForm
+																/>
+															) : (
+																<button
+																	type="button"
+																	className="ghost"
+																	onClick={addFilter}
+																>
+																	Add filter
+																</button>
+															)}
 															<button
 																type="button"
 																className="ghost"
@@ -1411,14 +1382,22 @@ export function ExportsWorkspace({
 														</div>
 													</div>
 
-													{builderFilters.length ? (
+													{usesObjectServerFilters ? (
+														<p className="muted">
+															{parsedClassId === null
+																? "Select a class to configure server filters."
+																: objectsQuery.isLoading
+																	? "Inspecting a cached object sample for nested fields and value types…"
+																	: "Open Server filters to add or review filters. Type detection uses the selected class and a cached sample; no schema is required."}
+														</p>
+													) : builderFilters.length ? (
 														<div className="stack">
 															{builderFilters.map((filter) => {
 																const fieldDefinition =
 																	scopeFields.find(
 																		(field) => field.key === filter.field,
 																	) ?? scopeFields[0];
-																const operatorOptions = getOperatorsForField(
+																const operatorOptions = getReportQueryOperators(
 																	fieldDefinition.kind,
 																);
 
@@ -1439,7 +1418,7 @@ export function ExportsWorkspace({
 																									...currentFilter,
 																									field: nextField.key,
 																									operator:
-																										getOperatorsForField(
+																										getReportQueryOperators(
 																											nextField.kind,
 																										)[0],
 																								}
@@ -1453,7 +1432,7 @@ export function ExportsWorkspace({
 																					key={field.key}
 																					value={field.key}
 																				>
-																					{formatQueryField(field.key)}
+																					{formatReportQueryField(field.key)}
 																				</option>
 																			))}
 																		</select>
@@ -1474,7 +1453,7 @@ export function ExportsWorkspace({
 																		>
 																			{operatorOptions.map((operator) => (
 																				<option key={operator} value={operator}>
-																					{formatQueryOperator(operator)}
+																					{formatReportQueryOperator(operator)}
 																				</option>
 																			))}
 																		</select>
@@ -1544,7 +1523,7 @@ export function ExportsWorkspace({
 																	>
 																		{sortFields.map((field) => (
 																			<option key={field.key} value={field.key}>
-																				{formatQueryField(field.key)}
+																				{formatReportQueryField(field.key)}
 																			</option>
 																		))}
 																	</select>

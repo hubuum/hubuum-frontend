@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
+import type { Provenance } from './provenance';
 
 export interface EventResponse {
   action: string;
@@ -26,6 +27,7 @@ export interface EventResponse {
   id: number;
   metadata: unknown;
   occurred_at: string;
+  provenance: Provenance;
   /** @nullable */
   request_id?: string | null;
   schema_version: number;

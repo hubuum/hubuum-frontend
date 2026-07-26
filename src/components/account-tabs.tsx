@@ -7,6 +7,7 @@ const TABS = [
 	{ href: "/account", label: "Profile" },
 	{ href: "/account/appearance", label: "Appearance" },
 	{ href: "/account/tokens", label: "Tokens" },
+	{ href: "/account/service-accounts", label: "Service accounts" },
 	{ href: "/account/groups", label: "Groups" },
 	{ href: "/account/permissions", label: "Permissions" },
 ];
@@ -25,6 +26,7 @@ export function AccountTabs() {
 					<Link
 						key={tab.href}
 						href={tab.href}
+						prefetch={false}
 						className={active ? "tab tab--active" : "tab"}
 					>
 						{tab.label}

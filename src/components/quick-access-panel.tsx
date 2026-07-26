@@ -257,6 +257,7 @@ export function QuickAccessPanel() {
 								<li key={`${item.type}-${item.id}`}>
 									<Link
 										href={href}
+										prefetch={false}
 										className="recent-item-link"
 									>
 										<span className="recent-item-icon">
@@ -304,6 +305,7 @@ export function QuickAccessPanel() {
 								<li key={key}>
 									<Link
 										href={href}
+										prefetch={false}
 										className="pinned-item-link"
 										title={tooltip}
 									>

@@ -40,7 +40,12 @@ export function BrandMark({ compact = false, href }: BrandMarkProps) {
 
 	if (href) {
 		return (
-			<Link className={className} href={href} aria-label="Hubuum Console home">
+			<Link
+				className={className}
+				href={href}
+				prefetch={false}
+				aria-label="Hubuum Console home"
+			>
 				<BrandContents compact={compact} />
 			</Link>
 		);

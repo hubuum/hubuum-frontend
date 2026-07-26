@@ -11,6 +11,16 @@ export type ObjectComputedResultType =
 	| "object"
 	| "array";
 
+export type ObjectServerFilterDataType =
+	| "string"
+	| "number"
+	| "boolean"
+	| "date"
+	| "ip"
+	| "array"
+	| "object"
+	| "unknown";
+
 export type ObjectServerFilterField =
 	| "name"
 	| "description"
@@ -38,7 +48,13 @@ export type ObjectServerFilterBaseOperator =
 	| "between"
 	| "is_null"
 	| "has_key"
-	| "array_length";
+	| "array_length"
+	| "all"
+	| "within_network"
+	| "contains_network"
+	| "contains_ip"
+	| "overlaps_network"
+	| "inet_equals";
 
 export type ObjectServerFilterOperator =
 	| ObjectServerFilterBaseOperator
@@ -52,6 +68,12 @@ export type ObjectServerFilter = {
 	computedScope?: ObjectComputedFilterScope;
 	computedKey?: string;
 	computedResultType?: ObjectComputedResultType;
+};
+
+export type ObjectServerComputedFilterDefinition = {
+	key: string;
+	scope: ObjectComputedFilterScope;
+	resultType: ObjectComputedResultType;
 };
 
 const STRING_OPERATORS = new Set<ObjectServerFilterOperator>([
@@ -74,6 +96,19 @@ const NUMBER_OPERATORS = new Set<ObjectServerFilterOperator>([
 const JSON_OPERATORS = new Set<ObjectServerFilterOperator>([
 	...STRING_OPERATORS,
 	...NUMBER_OPERATORS,
+	"like",
+	"regex",
+	"in",
+	"between",
+	"is_null",
+	"has_key",
+	"array_length",
+	"all",
+	"within_network",
+	"contains_network",
+	"contains_ip",
+	"overlaps_network",
+	"inet_equals",
 ]);
 const BASE_FIELDS = new Set<ObjectServerFilterField>([
 	"name",
@@ -144,6 +179,251 @@ function getBaseOperator(
 	return operator.startsWith("not_")
 		? (operator.slice(4) as ObjectServerFilterBaseOperator)
 		: (operator as ObjectServerFilterBaseOperator);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function getSchemaVariants(schema: unknown): Record<string, unknown>[] {
+	if (!isRecord(schema)) return [];
+	const variants = [schema];
+	for (const keyword of ["allOf", "anyOf", "oneOf"] as const) {
+		const children = schema[keyword];
+		if (!Array.isArray(children)) continue;
+		for (const child of children) {
+			variants.push(...getSchemaVariants(child));
+		}
+	}
+	return variants;
+}
+
+function getChildSchema(schema: unknown, segment: string): unknown {
+	const arrayIndex = segment.match(/^\[(?:#|\d+)]$/);
+	for (const variant of getSchemaVariants(schema)) {
+		if (arrayIndex) {
+			const index =
+				segment === "[#]" ? 0 : Number.parseInt(segment.slice(1), 10);
+			if (Array.isArray(variant.prefixItems) && variant.prefixItems[index]) {
+				return variant.prefixItems[index];
+			}
+			if (isRecord(variant.items)) return variant.items;
+			continue;
+		}
+
+		if (isRecord(variant.properties) && segment in variant.properties) {
+			return variant.properties[segment];
+		}
+	}
+	return undefined;
+}
+
+const DATE_SCHEMA_FORMATS = new Set(["date", "date-time"]);
+const IP_SCHEMA_FORMATS = new Set([
+	"ipv4",
+	"ipv6",
+	"ip",
+	"ip-address",
+	"inet",
+	"cidr",
+	"ipv4-cidr",
+	"ipv6-cidr",
+]);
+
+function getSchemaDataTypes(schema: unknown): Set<ObjectServerFilterDataType> {
+	const types = new Set<ObjectServerFilterDataType>();
+	for (const variant of getSchemaVariants(schema)) {
+		const format =
+			typeof variant.format === "string" ? variant.format.toLowerCase() : "";
+		if (DATE_SCHEMA_FORMATS.has(format)) {
+			types.add("date");
+			continue;
+		}
+		if (IP_SCHEMA_FORMATS.has(format)) {
+			types.add("ip");
+			continue;
+		}
+
+		const rawTypes = Array.isArray(variant.type)
+			? variant.type
+			: [variant.type];
+		for (const rawType of rawTypes) {
+			if (rawType === "integer" || rawType === "number") {
+				types.add("number");
+			} else if (
+				rawType === "string" ||
+				rawType === "boolean" ||
+				rawType === "array" ||
+				rawType === "object"
+			) {
+				types.add(rawType);
+			}
+		}
+		if (!rawTypes.some((rawType) => rawType !== undefined)) {
+			if (isRecord(variant.properties)) types.add("object");
+			if (variant.items !== undefined || variant.prefixItems !== undefined) {
+				types.add("array");
+			}
+		}
+	}
+	return types;
+}
+
+export function getJsonSchemaServerFilterDataType(
+	jsonSchema: unknown,
+	path: readonly string[],
+): ObjectServerFilterDataType | null {
+	let schema = jsonSchema;
+	for (const segment of path) {
+		schema = getChildSchema(schema, segment);
+		if (schema === undefined) return null;
+	}
+
+	const types = getSchemaDataTypes(schema);
+	return types.size === 1 ? [...types][0] : types.size > 1 ? "unknown" : null;
+}
+
+function isCalendarDate(value: string): boolean {
+	const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	if (!match) return false;
+	const year = Number.parseInt(match[1], 10);
+	const month = Number.parseInt(match[2], 10);
+	const day = Number.parseInt(match[3], 10);
+	const parsed = new Date(Date.UTC(year, month - 1, day));
+	return (
+		parsed.getUTCFullYear() === year &&
+		parsed.getUTCMonth() === month - 1 &&
+		parsed.getUTCDate() === day
+	);
+}
+
+function isRfc3339Timestamp(value: string): boolean {
+	const match = value.match(
+		/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i,
+	);
+	if (!match || !isCalendarDate(match[1])) return false;
+	if (
+		Number.parseInt(match[2], 10) > 23 ||
+		Number.parseInt(match[3], 10) > 59 ||
+		Number.parseInt(match[4], 10) > 59
+	) {
+		return false;
+	}
+	return Number.isFinite(Date.parse(value));
+}
+
+function isIpv4Address(value: string): boolean {
+	const octets = value.split(".");
+	return (
+		octets.length === 4 &&
+		octets.every(
+			(octet) =>
+				/^(?:0|[1-9]\d{0,2})$/.test(octet) && Number.parseInt(octet, 10) <= 255,
+		)
+	);
+}
+
+function isIpOrNetwork(value: string): boolean {
+	const slashIndex = value.lastIndexOf("/");
+	const address = slashIndex >= 0 ? value.slice(0, slashIndex) : value;
+	const prefix = slashIndex >= 0 ? value.slice(slashIndex + 1) : null;
+
+	if (address.includes(":")) {
+		if (
+			prefix !== null &&
+			(!/^\d{1,3}$/.test(prefix) || Number.parseInt(prefix, 10) > 128)
+		) {
+			return false;
+		}
+		try {
+			return new URL(`http://[${address}]/`).hostname.length > 2;
+		} catch {
+			return false;
+		}
+	}
+
+	return (
+		isIpv4Address(address) &&
+		(prefix === null ||
+			(/^\d{1,2}$/.test(prefix) && Number.parseInt(prefix, 10) <= 32))
+	);
+}
+
+function inferValueDataType(value: unknown): ObjectServerFilterDataType | null {
+	if (value === null || value === undefined) return null;
+	if (typeof value === "number") return "number";
+	if (typeof value === "boolean") return "boolean";
+	if (Array.isArray(value)) return "array";
+	if (isRecord(value)) return "object";
+	if (typeof value !== "string") return "unknown";
+	if (isCalendarDate(value) || isRfc3339Timestamp(value)) return "date";
+	if (isIpOrNetwork(value)) return "ip";
+	return "string";
+}
+
+export function inferObjectServerFilterDataType(
+	values: readonly unknown[],
+): ObjectServerFilterDataType {
+	const types = new Set(
+		values
+			.map(inferValueDataType)
+			.filter((type): type is ObjectServerFilterDataType => type !== null),
+	);
+	return types.size === 1 ? [...types][0] : "unknown";
+}
+
+function shiftCalendarDate(date: Date, amount: number, unit: "y" | "mo"): Date {
+	const shifted = new Date(date);
+	const day = shifted.getUTCDate();
+	shifted.setUTCDate(1);
+	if (unit === "y") {
+		shifted.setUTCFullYear(shifted.getUTCFullYear() + amount);
+	} else {
+		shifted.setUTCMonth(shifted.getUTCMonth() + amount);
+	}
+	const lastDayOfMonth = new Date(
+		Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, 0),
+	).getUTCDate();
+	shifted.setUTCDate(Math.min(day, lastDayOfMonth));
+	return shifted;
+}
+
+function resolveRelativeDatePart(value: string, now: Date): string {
+	const trimmed = value.trim();
+	if (!Number.isFinite(now.getTime())) return trimmed;
+	if (trimmed.toLowerCase() === "now") return now.toISOString();
+
+	const match = trimmed.match(/^([+-])(\d+)(mo|y|w|d|h|m|s)$/i);
+	if (!match) return trimmed;
+	const magnitude = Number.parseInt(match[2], 10);
+	if (!Number.isSafeInteger(magnitude)) return trimmed;
+	const amount = match[1] === "-" ? -magnitude : magnitude;
+	const unit = match[3].toLowerCase();
+	const resolved =
+		unit === "y" || unit === "mo"
+			? shiftCalendarDate(now, amount, unit)
+			: new Date(
+					now.getTime() +
+						amount *
+							{
+								w: 7 * 24 * 60 * 60_000,
+								d: 24 * 60 * 60_000,
+								h: 60 * 60_000,
+								m: 60_000,
+								s: 1_000,
+							}[unit as "w" | "d" | "h" | "m" | "s"],
+				);
+	return Number.isFinite(resolved.getTime()) ? resolved.toISOString() : trimmed;
+}
+
+export function resolveObjectServerFilterRelativeDates(
+	value: string,
+	now = new Date(),
+): string {
+	return value
+		.split(",")
+		.map((part) => resolveRelativeDatePart(part, now))
+		.join(",");
 }
 
 function isValidComputedValue(
@@ -238,17 +518,18 @@ export function normalizeObjectServerFilter(
 	const operator = candidate.operator as ObjectServerFilterOperator;
 	const baseOperator = getBaseOperator(operator);
 	const trimmedValue = candidate.value.trim();
-	if (!trimmedValue || trimmedValue.length > 500) return null;
+	if (trimmedValue.length > 500) return null;
 
 	if (
 		(field === "name" || field === "description") &&
-		!STRING_OPERATORS.has(baseOperator)
+		(!trimmedValue || !STRING_OPERATORS.has(baseOperator))
 	) {
 		return null;
 	}
 	if (
 		(field === "id" || field === "collection_id") &&
-		(!NUMBER_OPERATORS.has(baseOperator) ||
+		(!trimmedValue ||
+			!NUMBER_OPERATORS.has(baseOperator) ||
 			!Number.isFinite(Number(trimmedValue)))
 	) {
 		return null;
@@ -266,6 +547,20 @@ export function normalizeObjectServerFilter(
 		) {
 			return null;
 		}
+		if (baseOperator === "is_null") {
+			return { field, operator, value: "", path };
+		}
+		if (!trimmedValue) return null;
+		if (baseOperator === "array_length" && !/^\d+$/.test(trimmedValue)) {
+			return null;
+		}
+		if (
+			baseOperator === "between" &&
+			(trimmedValue.split(",").length !== 2 ||
+				trimmedValue.split(",").some((item) => !item.trim()))
+		) {
+			return null;
+		}
 		return { field, operator, value: trimmedValue, path };
 	}
 
@@ -280,7 +575,8 @@ export function normalizeObjectServerFilter(
 			typeof candidate.computedResultType !== "string" ||
 			!COMPUTED_RESULT_TYPES.has(
 				candidate.computedResultType as ObjectComputedResultType,
-			)
+			) ||
+			!trimmedValue
 		) {
 			return null;
 		}
@@ -304,6 +600,72 @@ export function normalizeObjectServerFilter(
 	}
 
 	return { field, operator, value: trimmedValue };
+}
+
+export function parseObjectServerFilterQueryParameter(
+	key: string,
+	value: string,
+	computedFields: readonly ObjectServerComputedFilterDefinition[] = [],
+): ObjectServerFilter | null {
+	const operatorIndex = key.lastIndexOf("__");
+	const fieldKey = operatorIndex > 0 ? key.slice(0, operatorIndex) : key;
+	const operator =
+		operatorIndex > 0 ? key.slice(operatorIndex + 2) : "equals";
+
+	if (
+		fieldKey === "name" ||
+		fieldKey === "description" ||
+		fieldKey === "id" ||
+		fieldKey === "collection_id"
+	) {
+		return normalizeObjectServerFilter({
+			field: fieldKey,
+			operator,
+			value,
+		});
+	}
+
+	if (fieldKey === "json_data") {
+		const baseOperator = getBaseOperator(
+			operator as ObjectServerFilterOperator,
+		);
+		const separatorIndex = value.indexOf("=");
+		const pathText =
+			baseOperator === "is_null"
+				? value
+				: separatorIndex >= 0
+					? value.slice(0, separatorIndex)
+					: "";
+		const filterValue =
+			baseOperator === "is_null" || separatorIndex < 0
+				? ""
+				: value.slice(separatorIndex + 1);
+		return normalizeObjectServerFilter({
+			field: "json_data",
+			operator,
+			value: filterValue,
+			path: pathText.split(",").filter(Boolean),
+		});
+	}
+
+	const computedMatch = fieldKey.match(
+		/^computed\.(shared|personal)\.([a-z][a-z0-9_]{0,63})$/,
+	);
+	if (!computedMatch) return null;
+	const [, scope, computedKey] = computedMatch;
+	const definition = computedFields.find(
+		(field) => field.scope === scope && field.key === computedKey,
+	);
+	if (!definition) return null;
+
+	return normalizeObjectServerFilter({
+		field: "computed",
+		operator,
+		value,
+		computedScope: definition.scope,
+		computedKey: definition.key,
+		computedResultType: definition.resultType,
+	});
 }
 
 export function parseObjectServerFilters(
@@ -351,7 +713,9 @@ export function appendObjectServerFilters(
 		const key = `${field}__${normalized.operator}`;
 		const value =
 			normalized.field === "json_data"
-				? `${normalized.path?.join(",")}=${normalized.value}`
+				? getBaseOperator(normalized.operator) === "is_null"
+					? (normalized.path?.join(",") ?? "")
+					: `${normalized.path?.join(",")}=${normalized.value}`
 				: normalized.value;
 		params.append(key, value);
 	}

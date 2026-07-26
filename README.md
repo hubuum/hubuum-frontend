@@ -114,7 +114,19 @@ creates the account and its first scoped token together; later tokens use the
 same guided scope controls on the account detail page. The owner group controls
 who can manage a service account but does not grant runtime access, so the
 account still needs live group membership before its token has effective
-authority.
+authority. Server `v0.0.4` represents both boundaries under one nullable
+`scope` object, and token lists show the exact permission and resource
+dimensions returned by the server. Selecting an active token opens its complete
+lifecycle metadata and every permission, collection, class, and object boundary.
+Resource names are resolved beside their exact IDs without exposing the bearer
+token or stored hash. Human users with an unscoped session token can mint tokens
+for themselves from their Account page. Human admins can mint for any principal,
+and human members of a service account's owner group can manage its tokens from
+their Account page. Service-account actors never receive token-minting controls,
+and disabled service accounts cannot receive new tokens. Local group membership
+editors can add either human users or service accounts by name, and each
+service-account detail page lists its current runtime group memberships
+separately from its owner group.
 
 ## Object data columns
 
@@ -162,9 +174,20 @@ matching class rather than the loaded object page, and aggregate rows have
 their own cursor pagination and exact total. Null, missing, and unavailable
 computed values remain distinct. Personal custom fallback fields still use a
 loaded-page grouping because their first-non-empty path expression is a console
-display preference rather than a server field. The report template editor also
-includes runnable MiniJinja `groupby` examples for report-specific grouping and
-grouped CSV output.
+display preference rather than a server field. With Server `v0.0.4`, the same
+workspace can add up to four ordered `sum`, `average`, `min`, or `max` measures
+over numeric JSON and computed fields, either per group or as one global
+aggregate. Measure cells and exports retain contributing and skipped source
+counts. The report template editor also includes runnable MiniJinja `groupby`
+examples for report-specific grouping and grouped CSV output. Object tables,
+ad-hoc exports, and object-scoped export templates share the same server-filter
+field discovery, typed operators, validation, and backend query grammar for
+object, nested JSON data, and computed fields.
+
+Server `v0.0.4` audit events, resource history, and task lifecycle events carry
+durable provenance. The console shows the immediate actor, root initiator, and
+originating task where available, and audit/subscription filters can match the
+root initiator independently of the worker or system actor.
 
 ## Administrator backup and restore
 
@@ -309,18 +332,19 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Current `main` development and the published Hubuum Frontend `v0.0.4` release
-target Hubuum Server `v0.0.3`. Releases provide:
+Current `main` development and the published Hubuum Frontend `v0.0.5` release
+are validated against Hubuum Server `v0.0.4`.
+Releases provide:
 
-- `ghcr.io/hubuum/hubuum-frontend:v0.0.4` for Linux AMD64 and ARM64;
-- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.4`;
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.5` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.5`;
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
 The application version is visible in the navigation, on the login page, and
 in `/healthz` and `/readyz` responses. Release images show the exact tag (for
-example, `v0.0.4`); commit images show `v0.0.4+<short-sha>`; unversioned local
-builds show `v0.0.4+dirty`. Image builds may set the immutable identity with
+example, `v0.0.5`); commit images show `v0.0.5+<short-sha>`; unversioned local
+builds show `v0.0.5+dirty`. Image builds may set the immutable identity with
 `docker build --build-arg APP_VERSION=...`.
 
 See [compatibility](docs/compatibility.md) and the
@@ -349,19 +373,20 @@ server image:
 npm run test:live-backend
 ```
 
-The script defaults to `ghcr.io/hubuum/hubuum-server:main`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.4`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
-the auth, permission, redacted admin configuration, backup/restore staging,
-shared and personal computed fields, events/audit, history/as-of, event sink,
-subscription, delivery lifecycle, client pagination discovery, by-name routes,
-object aggregation, computed querying, JSON Patch, and pagination APIs directly, and tears the
-stack down. Restore confirmation is intentionally excluded so this contract
-suite never replaces the live test database.
+the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
+redacted admin configuration, backup/restore staging, shared and personal
+computed fields, events/audit, history/as-of, event sink, subscription, delivery
+lifecycle, client pagination discovery, by-name routes, object aggregation,
+computed querying, JSON Patch, and pagination APIs directly, and tears the stack
+down. Restore confirmation is intentionally excluded so this contract suite
+never replaces the live test database.
 
 Useful overrides:
 
-- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:main`
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.4`
 - `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
 - `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
 - `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`
@@ -412,7 +437,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.4 \
+  --version 0.0.5 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -421,7 +446,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.4 \
+  --version 0.0.5 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com

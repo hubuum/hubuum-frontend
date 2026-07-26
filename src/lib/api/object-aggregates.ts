@@ -1,6 +1,9 @@
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import { hubuumBffPath } from "@/lib/api/frontend";
-import type { ObjectAggregateRow } from "@/lib/api/generated/models";
+import type {
+	ObjectAggregateMeasureOperation,
+	ObjectAggregateRow,
+} from "@/lib/api/generated/models";
 import {
 	appendObjectServerFilters,
 	type ObjectServerFilter,
@@ -20,9 +23,15 @@ export type ObjectAggregatePage = {
 	pageLimit: number | null;
 };
 
+export type ObjectAggregateMeasure = {
+	field: string;
+	operation: ObjectAggregateMeasureOperation;
+};
+
 type ObjectAggregateRequest = {
 	classId: number;
 	groupBy: readonly string[];
+	measures?: readonly ObjectAggregateMeasure[];
 	sort: ObjectAggregateSort;
 	limit: number;
 	cursor?: string;
@@ -45,8 +54,14 @@ export function buildObjectAggregateSearchParams(
 	request: Omit<ObjectAggregateRequest, "classId">,
 ): URLSearchParams {
 	const params = new URLSearchParams();
+	if (request.groupBy.length === 0 && !request.measures?.length) {
+		throw new Error("Choose at least one aggregate dimension or measure.");
+	}
 	for (const dimension of request.groupBy) {
 		params.append("group_by", dimension);
+	}
+	for (const measure of request.measures ?? []) {
+		params.append("aggregate", `${measure.operation}:${measure.field}`);
 	}
 	params.set("sort", request.sort);
 	params.set("limit", String(request.limit));

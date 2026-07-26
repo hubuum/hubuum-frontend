@@ -31,6 +31,7 @@ import type {
 	TaskResponse,
 	UpdateExportTemplate,
 } from "@/lib/api/generated/models";
+import { normalizeIdempotencyKey } from "@/lib/idempotency-key";
 
 export type NewReportTemplate = NewExportTemplate;
 export type ReportContentType = ExportContentType;
@@ -215,8 +216,9 @@ export async function submitJsonReportTask(
 	idempotencyKey?: string,
 ): Promise<TaskResponse> {
 	const headers = new Headers();
-	if (idempotencyKey?.trim()) {
-		headers.set("Idempotency-Key", idempotencyKey.trim());
+	const normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
+	if (normalizedIdempotencyKey) {
+		headers.set("Idempotency-Key", normalizedIdempotencyKey);
 	}
 
 	const response = await postApiV1Exports(request, {
@@ -243,8 +245,9 @@ export async function runTemplateReport(
 	idempotencyKey?: string,
 ): Promise<TaskResponse> {
 	const headers = new Headers();
-	if (idempotencyKey?.trim()) {
-		headers.set("Idempotency-Key", idempotencyKey.trim());
+	const normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
+	if (normalizedIdempotencyKey) {
+		headers.set("Idempotency-Key", normalizedIdempotencyKey);
 	}
 
 	const response = await postApiV1ExportTemplatesByTemplateIdExports(

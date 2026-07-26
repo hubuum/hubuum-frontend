@@ -4,12 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-
+import { PrincipalGroupMemberships } from "@/components/principal-group-memberships";
 import { PrincipalPermissions } from "@/components/principal-permissions";
-import { RawTokenReveal } from "@/components/raw-token-reveal";
-import { TokenList } from "@/components/token-list";
-import { TokenMintForm } from "@/components/token-mint-form";
-import { useConfirm } from "@/lib/confirm-context";
+import { PrincipalTokenManager } from "@/components/principal-token-manager";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamServiceAccountsByServiceAccountId,
@@ -19,6 +16,7 @@ import {
 	postApiV1IamServiceAccountsByServiceAccountIdDisable,
 } from "@/lib/api/generated/client";
 import type { UpdateServiceAccount } from "@/lib/api/generated/models";
+import { useConfirm } from "@/lib/confirm-context";
 import {
 	type ConsoleGroup,
 	type ConsoleServiceAccount,
@@ -28,6 +26,7 @@ import {
 import { trackRecentItem } from "@/lib/recent-items";
 
 type ServiceAccountDetailProps = {
+	backHref?: string;
 	serviceAccountId: number;
 };
 
@@ -63,6 +62,7 @@ async function fetchGroups(): Promise<ConsoleGroup[]> {
 }
 
 export function ServiceAccountDetail({
+	backHref = "/admin/service-accounts",
 	serviceAccountId,
 }: ServiceAccountDetailProps) {
 	const router = useRouter();
@@ -73,7 +73,6 @@ export function ServiceAccountDetail({
 	const [initialized, setInitialized] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
-	const [rawToken, setRawToken] = useState<string | null>(null);
 
 	const accountQuery = useQuery({
 		queryKey: ["service-account", serviceAccountId],
@@ -199,7 +198,7 @@ export function ServiceAccountDetail({
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["service-accounts"] });
-			router.push("/admin/service-accounts");
+			router.push(backHref);
 			router.refresh();
 		},
 		onError: (error) => {
@@ -310,7 +309,7 @@ export function ServiceAccountDetail({
 						{formatScopedServiceAccountName(account)}{" "}
 						<span className="muted">#{account.id}</span>
 					</h2>
-					<Link className="link-chip" href="/admin/service-accounts">
+					<Link className="link-chip" href={backHref}>
 						Back to service accounts
 					</Link>
 				</div>
@@ -321,8 +320,8 @@ export function ServiceAccountDetail({
 				<div className="warning-banner">
 					This service account is disabled (since{" "}
 					{new Date(account.disabled_at as string).toLocaleString()}). Its
-					tokens no longer validate, and it cannot mint new tokens. Disabling is
-					irreversible.
+					tokens no longer validate, and it cannot receive new tokens. Disabling
+					is irreversible.
 				</div>
 			) : null}
 
@@ -396,28 +395,19 @@ export function ServiceAccountDetail({
 				</div>
 			</form>
 
-			<div className="stack">
-				<h3>Tokens</h3>
-				{disabled ? (
-					<div className="muted">
-						Disabled service accounts cannot mint new tokens.
-					</div>
-				) : (
-					<>
-						{rawToken ? (
-							<RawTokenReveal
-								token={rawToken}
-								onDismiss={() => setRawToken(null)}
-							/>
-						) : null}
-						<TokenMintForm
-							principalId={serviceAccountId}
-							onMinted={(token) => setRawToken(token.token)}
-						/>
-					</>
-				)}
-				<TokenList principalId={serviceAccountId} />
-			</div>
+			<PrincipalGroupMemberships
+				emptyMessage="This service account has no runtime group memberships. Add it from a local group's Members section."
+				exportId={`admin.service-account.${account.id}.groups`}
+				fileName={`${account.name}-group-memberships-view`}
+				principalId={account.id}
+			/>
+
+			<PrincipalTokenManager
+				authority="service_account_manager"
+				principalId={serviceAccountId}
+				targetDisabled={disabled}
+				targetKind="service_account"
+			/>
 
 			<div className="stack">
 				<h3>Effective permissions</h3>

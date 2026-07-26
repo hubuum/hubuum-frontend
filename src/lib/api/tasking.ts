@@ -15,6 +15,7 @@ import type {
 	TaskResponse,
 	TaskStatus,
 } from "@/lib/api/generated/models";
+import { normalizeIdempotencyKey } from "@/lib/idempotency-key";
 
 export type {
 	ImportRequest,
@@ -179,8 +180,9 @@ export async function createImportTask(
 ): Promise<TaskResponse> {
 	const headers = new Headers();
 
-	if (idempotencyKey?.trim()) {
-		headers.set("Idempotency-Key", idempotencyKey.trim());
+	const normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
+	if (normalizedIdempotencyKey) {
+		headers.set("Idempotency-Key", normalizedIdempotencyKey);
 	}
 
 	const response = await postApiV1Imports(payload, {

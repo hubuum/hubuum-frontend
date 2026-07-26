@@ -3,14 +3,18 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
 
 export type GetApiV1ClassesByClassIdObjectAggregatesParams = {
 /**
- * One to three repeated ordered dimensions: name, description, collection_id, created_at, updated_at, json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>
+ * Up to three repeated ordered dimensions: name, description, collection_id, created_at, updated_at, json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>
  */
-group_by: string[];
+group_by?: string[];
+/**
+ * Up to four repeated numeric measures in operation:field form. Operations are sum, average, min, and max; fields are json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>. At least one group_by or aggregate parameter is required.
+ */
+aggregate?: string[];
 /**
  * Aggregate ordering: dimensions.asc, dimensions.desc, object_count.asc, or object_count.desc
  */

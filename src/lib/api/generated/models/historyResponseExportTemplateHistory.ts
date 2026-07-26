@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.3
+ * OpenAPI spec version: 0.0.4
  */
+import type { Provenance } from './provenance';
 
 /**
  * A serialized history row plus the resolved username of its actor (if any).
@@ -12,6 +13,8 @@
 export type HistoryResponseExportTemplateHistory = ({
   /** @nullable */
   actor_id?: number | null;
+  /** @nullable */
+  actor_kind?: string | null;
   /** @nullable */
   class_id?: number | null;
   collection_id: number;
@@ -26,12 +29,16 @@ export type HistoryResponseExportTemplateHistory = ({
   history_id: number;
   id: number;
   include?: unknown;
+  /** @nullable */
+  initiator_user_id?: number | null;
   kind: string;
   name: string;
   op: string;
   relation_context?: unknown;
   /** @nullable */
   scope_kind?: string | null;
+  /** @nullable */
+  task_id?: number | null;
   template: string;
   updated_at: string;
   valid_from: string;
@@ -40,4 +47,5 @@ export type HistoryResponseExportTemplateHistory = ({
 }) & ({
   /** @nullable */
   actor_username?: string | null;
+  provenance: Provenance;
 });

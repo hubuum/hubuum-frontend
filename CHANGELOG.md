@@ -6,6 +6,59 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-07-26
+
+### Compatibility
+
+- Imported the generated OpenAPI contract from the Hubuum Server `v0.0.4`
+  release PR, regenerated the BFF-prefixed client, and validated the complete
+  live backend suite against the released `v0.0.4` image. The compatibility
+  gate now pins that image by digest and covers minting, inspecting, exercising,
+  revoking, and rejecting both unscoped and explicitly scoped tokens.
+
+### Added
+
+- Added guided service-account creation with explicit owner groups, scoped
+  initial tokens, human and service-account group membership editing, and
+  owner-group token management from normal user accounts.
+- Added human token management for self-service and administrators while
+  suppressing mint controls for service-account actors and disabled service
+  accounts.
+- Added shared server-side object filter controls to object browsing, ad-hoc
+  exports, and export-template authoring, with alphabetically ordered schema
+  data fields.
+- Added a Grant all action to collection group-permission editing.
+- Added up to four ordered numeric object measures (`sum`, `average`, `min`,
+  and `max`) alongside grouped or global permission-aware aggregation, with
+  contributing/skipped counts and aggregate exports.
+- Added resolved actor, root initiator, and task provenance to audit, history,
+  and task-event views, plus initiator filters for audit queries and event
+  subscriptions.
+- Added keyboard-accessible token detail dialogs with complete permission and
+  resource boundaries, resolved collection/class/object names alongside their
+  exact IDs, lifecycle metadata, and a hash-free raw metadata view.
+
+### Changed
+
+- Updated token minting and token metadata for Server `v0.0.4`'s singular
+  `scope` object. Token lists now show the exact permission and resource
+  dimensions returned by the server.
+- Moved token creation into an Escape-dismissible guided modal launched beside
+  token exports, and aligned token lifecycle rows and actions.
+- Updated Next.js to `16.2.12`, Playwright to `1.62.0`, and the pinned Docker
+  login action to `v4.5.1`.
+
+### Fixed
+
+- Reduced protected-navigation backend request fan-out by disabling eager
+  prefetch on persistent navigation and coalescing principal, administrator,
+  and settings bootstrap reads in a short per-session cache.
+
+### Security
+
+- Reject transport-controlled remote-target headers before submission and
+  enforce the server's 255-byte limit for optional idempotency keys.
+
 ## [0.0.4] - 2026-07-23
 
 ### Compatibility
@@ -168,7 +221,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.4...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.5...HEAD
+[0.0.5]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.1...v0.0.2

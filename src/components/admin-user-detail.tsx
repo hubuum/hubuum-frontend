@@ -3,26 +3,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { TableExportMenu } from "@/components/table-export-menu";
+import { FormEvent, useEffect, useState } from "react";
+
+import { PrincipalGroupMemberships } from "@/components/principal-group-memberships";
+import { PrincipalTokenManager } from "@/components/principal-token-manager";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamUsersByUserId,
-	getApiV1IamPrincipalsByPrincipalIdGroups,
 	getApiV1IamUsersByUserId,
 	patchApiV1IamUsersByUserId,
 } from "@/lib/api/generated/client";
 import type { UpdateUser } from "@/lib/api/generated/models";
 import { useConfirm } from "@/lib/confirm-context";
 import {
-	type ConsoleGroup,
 	type ConsoleUser,
 	formatScopedIdentityName,
 	isProviderManagedUser,
 	normalizeIdentityScope,
 } from "@/lib/identity-scopes";
 import { trackRecentItem } from "@/lib/recent-items";
-import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 
 type AdminUserDetailProps = {
 	userId: number;
@@ -40,37 +39,6 @@ async function fetchUser(userId: number): Promise<ConsoleUser> {
 	return response.data;
 }
 
-async function fetchUserGroups(userId: number): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamPrincipalsByPrincipalIdGroups(
-		userId,
-		{ include_total: false },
-		{ credentials: "include" },
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load user groups."),
-		);
-	}
-
-	return response.data;
-}
-
-const groupMembershipExportColumns: TableExportColumn<ConsoleGroup>[] = [
-	{ key: "id", label: "ID", getValue: (group) => group.id },
-	{ key: "group", label: "Group", getValue: (group) => group.groupname },
-	{
-		key: "identity_scope",
-		label: "Identity scope",
-		getValue: (group) => normalizeIdentityScope(group.identity_scope),
-	},
-	{
-		key: "description",
-		label: "Description",
-		getValue: (group) => group.description || "-",
-	},
-];
-
 export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
@@ -86,10 +54,6 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	const userQuery = useQuery({
 		queryKey: ["admin-user", userId],
 		queryFn: async () => fetchUser(userId),
-	});
-	const groupsQuery = useQuery({
-		queryKey: ["admin-user-groups", userId],
-		queryFn: async () => fetchUserGroups(userId),
 	});
 
 	useEffect(() => {
@@ -114,13 +78,6 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 			name: formatScopedIdentityName(user.identity_scope, user.name),
 		});
 	}, [userQuery.data]);
-
-	const groups = groupsQuery.data ?? [];
-	const sortedGroups = useMemo(() => {
-		return [...groups].sort((left, right) =>
-			left.groupname.localeCompare(right.groupname),
-		);
-	}, [groups]);
 
 	const updateMutation = useMutation({
 		mutationFn: async (payload: UpdateUser) => {
@@ -173,7 +130,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 			await queryClient.invalidateQueries({
 				queryKey: ["admin-users", "group-detail"],
 			});
-			await queryClient.invalidateQueries({ queryKey: ["admin-user-groups"] });
+			await queryClient.invalidateQueries({ queryKey: ["principal-groups"] });
 			router.push("/admin/users");
 			router.refresh();
 		},
@@ -263,14 +220,6 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 		return <div className="card error-banner">User data is unavailable.</div>;
 	}
 	const providerManaged = isProviderManagedUser(user);
-	const groupMembershipExportView: TableExportView<ConsoleGroup> = {
-		id: `admin.user.${user.id}.groups`,
-		fileName: `${user.name}-group-memberships-view`,
-		sheetName: "Group memberships",
-		columns: groupMembershipExportColumns,
-		rows: sortedGroups,
-	};
-
 	return (
 		<section className="stack">
 			<header className="detail-identity">
@@ -380,66 +329,18 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 				</div>
 			</form>
 
-			<section className="card stack">
-				<div className="table-header">
-					<h3>Group memberships</h3>
-					<TableExportMenu
-						view={groupMembershipExportView}
-						disabled={groupsQuery.isFetching}
-						compact
-					/>
-				</div>
+			<PrincipalGroupMemberships
+				emptyMessage="This user is not a member of any groups."
+				exportId={`admin.user.${user.id}.groups`}
+				fileName={`${user.name}-group-memberships-view`}
+				principalId={user.id}
+			/>
 
-				{groupsQuery.isLoading ? (
-					<div className="muted">Loading groups...</div>
-				) : null}
-				{groupsQuery.isError ? (
-					<div className="error-banner">
-						Failed to load user groups.{" "}
-						{groupsQuery.error instanceof Error
-							? groupsQuery.error.message
-							: "Unknown error"}
-					</div>
-				) : null}
-				{!groupsQuery.isLoading &&
-				!groupsQuery.isError &&
-				sortedGroups.length === 0 ? (
-					<div className="muted">This user is not a member of any groups.</div>
-				) : null}
-				{!groupsQuery.isLoading &&
-				!groupsQuery.isError &&
-				sortedGroups.length > 0 ? (
-					<div className="table-wrap">
-						<table>
-							<thead>
-								<tr>
-									<th>ID</th>
-									<th>Scope</th>
-									<th>Group</th>
-									<th>Description</th>
-								</tr>
-							</thead>
-							<tbody>
-								{sortedGroups.map((group) => (
-									<tr key={group.id}>
-										<td>{group.id}</td>
-										<td>{normalizeIdentityScope(group.identity_scope)}</td>
-										<td>
-											<Link
-												className="row-link"
-												href={`/admin/groups/${group.id}`}
-											>
-												{group.groupname}
-											</Link>
-										</td>
-										<td>{group.description || "-"}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				) : null}
-			</section>
+			<PrincipalTokenManager
+				authority="admin"
+				principalId={user.id}
+				targetKind="human"
+			/>
 		</section>
 	);
 }

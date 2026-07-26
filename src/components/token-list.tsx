@@ -1,9 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { TableExportMenu } from "@/components/table-export-menu";
+import { TokenDetailsModal } from "@/components/token-details-modal";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -12,9 +13,17 @@ import {
 	postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevoke,
 } from "@/lib/api/generated/client";
 import type { PrincipalTokenMetadata } from "@/lib/api/generated/models";
+import {
+	resolveDirectTokenResourceNames,
+	resolveObjectTokenResourceNames,
+} from "@/lib/api/token-resource-names";
 import type { TableExportView } from "@/lib/table-export";
+import { tokenResourceScopeKey } from "@/lib/token-resource-scope-selection";
+import { formatTokenMetadataScope } from "@/lib/token-scope-details";
 
 type TokenListProps = {
+	createDisabled?: boolean;
+	onCreate?: () => void;
 	principalId: number | "me";
 };
 
@@ -49,9 +58,14 @@ function formatTimestamp(value: string | null | undefined): string {
 	return new Date(value).toLocaleString();
 }
 
-export function TokenList({ principalId }: TokenListProps) {
+export function TokenList({
+	createDisabled = false,
+	onCreate,
+	principalId,
+}: TokenListProps) {
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
+	const [selectedTokenId, setSelectedTokenId] = useState<number | null>(null);
 
 	const tokensQuery = useQuery({
 		queryKey: ["principal-tokens", principalId],
@@ -80,6 +94,50 @@ export function TokenList({ principalId }: TokenListProps) {
 		},
 	});
 	const tokens = tokensQuery.data ?? [];
+	const selectedTokenIndex =
+		selectedTokenId === null
+			? -1
+			: tokens.findIndex((token) => token.id === selectedTokenId);
+	const selectedToken =
+		selectedTokenIndex >= 0 ? tokens[selectedTokenIndex] : null;
+	const selectedResources = selectedToken?.scope?.resources ?? [];
+	const directResources = selectedResources.filter(
+		(resource) => resource.kind !== "object",
+	);
+	const objectResources = selectedResources.filter(
+		(resource) => resource.kind === "object",
+	);
+	const directResourceKeys = directResources
+		.map(tokenResourceScopeKey)
+		.sort();
+	const objectLookupResourceKeys = selectedResources
+		.filter((resource) => resource.kind === "class" || resource.kind === "object")
+		.map(tokenResourceScopeKey)
+		.sort();
+	const directResourceNamesQuery = useQuery({
+		queryKey: ["token-resource-names", "direct", directResourceKeys],
+		queryFn: ({ signal }) =>
+			resolveDirectTokenResourceNames(directResources, signal),
+		enabled: directResources.length > 0,
+		staleTime: 5 * 60 * 1000,
+	});
+	const objectResourceNamesQuery = useQuery({
+		queryKey: ["token-resource-names", "object", objectLookupResourceKeys],
+		queryFn: ({ signal }) =>
+			resolveObjectTokenResourceNames(selectedResources, signal),
+		enabled: objectResources.length > 0,
+		staleTime: 5 * 60 * 1000,
+	});
+	const resourceNames = {
+		...directResourceNamesQuery.data,
+		...objectResourceNamesQuery.data,
+	};
+	const resourceNamesLoading =
+		directResourceNamesQuery.isFetching || objectResourceNamesQuery.isFetching;
+	const unresolvedResourceNames = selectedResources.filter(
+		(resource) =>
+			!resourceNamesLoading && !resourceNames[tokenResourceScopeKey(resource)],
+	).length;
 	const exportView = useMemo<TableExportView<PrincipalTokenMetadata>>(
 		() => ({
 			id: `principal-${principalId}-tokens`,
@@ -89,9 +147,9 @@ export function TokenList({ principalId }: TokenListProps) {
 				{ key: "id", label: "ID", getValue: (token) => token.id },
 				{ key: "name", label: "Name", getValue: (token) => token.name },
 				{
-					key: "scoped",
-					label: "Scoped",
-					getValue: (token) => (token.scoped ? "Scoped" : "Unscoped"),
+					key: "scope",
+					label: "Scope",
+					getValue: formatTokenMetadataScope,
 				},
 				{
 					key: "issued",
@@ -150,68 +208,137 @@ export function TokenList({ principalId }: TokenListProps) {
 	}
 
 	return (
-		<section className="card stack">
-			<div className="table-header">
-				<h3>Tokens ({tokens.length})</h3>
-				<div className="table-tools">
-					<TableExportMenu view={exportView} compact />
+		<>
+			<TokenDetailsModal
+				token={selectedToken}
+				resourceNames={resourceNames}
+				resourceNamesLoading={resourceNamesLoading}
+				unresolvedResourceNames={unresolvedResourceNames}
+				onClose={() => setSelectedTokenId(null)}
+				navigation={
+					selectedTokenIndex >= 0
+						? {
+								current: selectedTokenIndex + 1,
+								itemLabel: "token",
+								onPrevious:
+									selectedTokenIndex > 0
+										? () =>
+												setSelectedTokenId(tokens[selectedTokenIndex - 1].id)
+										: undefined,
+								onNext:
+									selectedTokenIndex < tokens.length - 1
+										? () =>
+												setSelectedTokenId(tokens[selectedTokenIndex + 1].id)
+										: undefined,
+								total: tokens.length,
+							}
+						: undefined
+				}
+			/>
+			<section className="card stack">
+				<div className="table-header">
+					<div>
+						<h3>Tokens ({tokens.length})</h3>
+						<p className="muted">Select a token to inspect its full scope.</p>
+					</div>
+					<div className="table-tools">
+						{onCreate ? (
+							<button
+								type="button"
+								className="token-create-trigger"
+								disabled={createDisabled}
+								onClick={onCreate}
+							>
+								Create new
+							</button>
+						) : null}
+						<TableExportMenu view={exportView} compact />
+					</div>
 				</div>
-			</div>
 
-			{revokeMutation.isError ? (
-				<div className="error-banner">
-					{revokeMutation.error instanceof Error
-						? revokeMutation.error.message
-						: "Failed to revoke token."}
-				</div>
-			) : null}
+				{revokeMutation.isError ? (
+					<div className="error-banner">
+						{revokeMutation.error instanceof Error
+							? revokeMutation.error.message
+							: "Failed to revoke token."}
+					</div>
+				) : null}
 
-			{tokens.length === 0 ? (
-				<div className="muted">No tokens.</div>
-			) : (
-				<div className="table-wrap">
-					<table>
-						<thead>
-							<tr>
-								<th>ID</th>
-								<th>Name</th>
-								<th>Scoped</th>
-								<th>Issued</th>
-								<th>Expires</th>
-								<th>Last used</th>
-								<th>Status</th>
-								<th />
-							</tr>
-						</thead>
-						<tbody>
-							{tokens.map((token) => {
-								const revoked = Boolean(token.revoked_at);
-								return (
-									<tr key={token.id}>
-										<td>{token.id}</td>
-										<td>{token.name ?? "—"}</td>
-										<td>{token.scoped ? "Scoped" : "Unscoped"}</td>
-										<td>{formatTimestamp(token.issued)}</td>
-										<td>{formatTimestamp(token.expires_at)}</td>
-										<td>{formatTimestamp(token.last_used_at)}</td>
-										<td>{revoked ? "Revoked" : "Active"}</td>
-										<td>
-											<button
-												type="button"
-												className="danger"
-												onClick={() => revoke(token)}
-												disabled={revoked || revokeMutation.isPending}
-											>
-												Revoke
-											</button>
-										</td>
-									</tr>
-								);
-							})}
-						</tbody>
-					</table>
-				</div>
-			)}
-		</section>
+				{tokens.length === 0 ? (
+					<div className="muted">No active tokens.</div>
+				) : (
+					<div className="table-wrap">
+						<table className="token-list-table">
+							<thead>
+								<tr>
+									<th>ID</th>
+									<th>Name</th>
+									<th>Scope</th>
+									<th>Issued</th>
+									<th>Expires</th>
+									<th>Last used</th>
+									<th>Status</th>
+									<th />
+								</tr>
+							</thead>
+							<tbody>
+								{tokens.map((token) => {
+									const revoked = Boolean(token.revoked_at);
+									return (
+										<tr
+											key={token.id}
+											className="activity-detail-row"
+											tabIndex={0}
+											onClick={(event) => {
+												const target = event.target;
+												if (
+													target instanceof Element &&
+													target.closest("button, a, input, select, textarea")
+												) {
+													return;
+												}
+												setSelectedTokenId(token.id);
+											}}
+											onKeyDown={(event) => {
+												if (
+													event.currentTarget !== event.target ||
+													(event.key !== "Enter" && event.key !== " ")
+												) {
+													return;
+												}
+												event.preventDefault();
+												setSelectedTokenId(token.id);
+											}}
+											aria-label={`View details for token ${token.id}${token.name ? ` ${token.name}` : ""}`}
+										>
+											<td>#{token.id}</td>
+											<td>{token.name ?? "—"}</td>
+											<td>{formatTokenMetadataScope(token)}</td>
+											<td>{formatTimestamp(token.issued)}</td>
+											<td>{formatTimestamp(token.expires_at)}</td>
+											<td>{formatTimestamp(token.last_used_at)}</td>
+											<td>{revoked ? "Revoked" : "Active"}</td>
+											<td>
+												<button
+													type="button"
+													className="danger token-revoke-button"
+													onClick={(event) => {
+														event.stopPropagation();
+														void revoke(token);
+													}}
+													disabled={revoked || revokeMutation.isPending}
+												>
+													Revoke
+												</button>
+											</td>
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
+				)}
+			</section>
+		</>
 	);
 }
