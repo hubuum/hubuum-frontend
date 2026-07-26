@@ -17,6 +17,10 @@ import type {
 	ServerFilterComputedField,
 	ServerFilterDataField,
 } from "@/lib/object-server-filter-fields";
+import {
+	getObjectServerFilterEditorDraft,
+	replaceObjectServerFilter,
+} from "@/lib/object-server-filter-editor";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 export type {
@@ -210,6 +214,7 @@ export function ObjectServerFilterMenu({
 		"picker",
 	);
 	const [negated, setNegated] = useState(false);
+	const [editingIdentity, setEditingIdentity] = useState<string | null>(null);
 	const [dataTypeOverrides, setDataTypeOverrides] = useState<
 		Record<string, SelectableDataType>
 	>({});
@@ -274,6 +279,12 @@ export function ObjectServerFilterMenu({
 	const computedFilterCount = filters.filter(
 		(filter) => filter.field === "computed",
 	).length;
+	const editingFilter =
+		filters.find(
+			(filter) => getObjectServerFilterIdentity(filter) === editingIdentity,
+		) ?? null;
+	const editableComputedFilterCount =
+		computedFilterCount - (editingFilter?.field === "computed" ? 1 : 0);
 
 	useEffect(() => {
 		if (!operatorOptions.some((option) => option.value === operator)) {
@@ -303,7 +314,10 @@ export function ObjectServerFilterMenu({
 	}, [isOpen]);
 	useEscapeToCancel({
 		enabled: isOpen,
-		onCancel: () => closeMenu({ restoreFocus: true }),
+		onCancel: () =>
+			editingIdentity
+				? cancelEditing({ restoreFocus: true })
+				: closeMenu({ restoreFocus: true }),
 	});
 
 	const draftFilter = useMemo<ObjectServerFilter | null>(() => {
@@ -341,7 +355,19 @@ export function ObjectServerFilterMenu({
 	}, [dataFieldById, field, negated, operator, selectedComputedField, value]);
 	const computedLimitReached =
 		Boolean(selectedComputedField) &&
-		computedFilterCount >= MAX_OBJECT_COMPUTED_FILTERS;
+		editableComputedFilterCount >= MAX_OBJECT_COMPUTED_FILTERS;
+
+	useEffect(() => {
+		if (
+			editingIdentity &&
+			!filters.some(
+				(filter) =>
+					getObjectServerFilterIdentity(filter) === editingIdentity,
+			)
+		) {
+			setEditingIdentity(null);
+		}
+	}, [editingIdentity, filters]);
 
 	useEffect(() => {
 		if (field.startsWith("data:") && !dataFieldById.has(field.slice(5))) {
@@ -372,6 +398,45 @@ export function ObjectServerFilterMenu({
 		}
 	}
 
+	function resetFilterDraft() {
+		setField("name");
+		setOperator("icontains");
+		setValue("");
+		setDatePickerValues(["", ""]);
+		setDateInputMode("picker");
+		setNegated(false);
+	}
+
+	function beginEditing(filter: ObjectServerFilter) {
+		const draft = getObjectServerFilterEditorDraft(
+			filter,
+			dataFields,
+			computedFields,
+		);
+		if (!draft) return;
+		setEditingIdentity(getObjectServerFilterIdentity(filter));
+		setField(draft.field);
+		setOperator(draft.operator);
+		setValue(draft.value);
+		setDatePickerValues(["", ""]);
+		setDateInputMode(
+			draft.field.startsWith("data:") &&
+				dataFieldById.get(draft.field.slice(5))?.dataType === "date"
+				? "text"
+				: "picker",
+		);
+		setNegated(draft.negated);
+		window.setTimeout(() => fieldRef.current?.focus(), 0);
+	}
+
+	function cancelEditing({ restoreFocus = false } = {}) {
+		setEditingIdentity(null);
+		resetFilterDraft();
+		if (restoreFocus) {
+			window.setTimeout(() => fieldRef.current?.focus(), 0);
+		}
+	}
+
 	function addFilter(event?: { preventDefault(): void }) {
 		event?.preventDefault();
 		if (!draftFilter || computedLimitReached) return;
@@ -383,11 +448,24 @@ export function ObjectServerFilterMenu({
 					})
 				: draftFilter;
 		if (!resolvedDraftFilter) return;
-		const identity = getObjectServerFilterIdentity(resolvedDraftFilter);
-		const next = filters.filter(
-			(item) => getObjectServerFilterIdentity(item) !== identity,
-		);
-		onChange([...next, resolvedDraftFilter].slice(-MAX_OBJECT_SERVER_FILTERS));
+		if (editingIdentity) {
+			onChange(
+				replaceObjectServerFilter(
+					filters,
+					editingIdentity,
+					resolvedDraftFilter,
+				).slice(-MAX_OBJECT_SERVER_FILTERS),
+			);
+			setEditingIdentity(null);
+		} else {
+			const identity = getObjectServerFilterIdentity(resolvedDraftFilter);
+			const next = filters.filter(
+				(item) => getObjectServerFilterIdentity(item) !== identity,
+			);
+			onChange(
+				[...next, resolvedDraftFilter].slice(-MAX_OBJECT_SERVER_FILTERS),
+			);
+		}
 		setValue("");
 		setDatePickerValues(["", ""]);
 	}
@@ -472,7 +550,10 @@ export function ObjectServerFilterMenu({
 							<button
 								type="button"
 								className="ghost"
-								onClick={() => onChange([])}
+								onClick={() => {
+									cancelEditing();
+									onChange([]);
+								}}
 							>
 								Clear all
 							</button>
@@ -480,33 +561,72 @@ export function ObjectServerFilterMenu({
 					</div>
 					{filters.length > 0 ? (
 						<div className="server-filter-active">
-							{filters.map((filter, index) => (
-								<div
-									className="server-filter-chip"
-									key={getObjectServerFilterIdentity(filter)}
-								>
-									<span>
-										<strong>{getObjectServerFilterLabel(filter)}</strong>{" "}
-										{filter.operator.replaceAll("_", " ")}
-										{filter.field === "json_data" &&
-										filter.operator.endsWith("is_null")
-											? ""
-											: ` “${filter.value}”`}
-									</span>
-									<button
-										type="button"
-										className="ghost"
-										aria-label={`Remove ${getObjectServerFilterLabel(filter)} filter`}
-										onClick={() =>
-											onChange(
-												filters.filter((_, itemIndex) => itemIndex !== index),
-											)
-										}
+							{filters.map((filter, index) => {
+								const identity = getObjectServerFilterIdentity(filter);
+								const editable = getObjectServerFilterEditorDraft(
+									filter,
+									dataFields,
+									computedFields,
+								);
+								const label = getObjectServerFilterLabel(filter);
+								return (
+									<div
+										className={`server-filter-chip${identity === editingIdentity ? " server-filter-chip--editing" : ""}`}
+										key={identity}
 									>
-										×
-									</button>
-								</div>
-							))}
+										<span>
+											<strong>{label}</strong>{" "}
+											{filter.operator.replaceAll("_", " ")}
+											{filter.field === "json_data" &&
+											filter.operator.endsWith("is_null")
+												? ""
+												: ` “${filter.value}”`}
+										</span>
+										{editable ? (
+											<button
+												type="button"
+												className="ghost server-filter-chip-edit"
+												aria-label={`Edit ${label} filter`}
+												onClick={() => beginEditing(filter)}
+											>
+												Edit
+											</button>
+										) : null}
+										<button
+											type="button"
+											className="ghost server-filter-chip-remove"
+											aria-label={`Remove ${label} filter`}
+											onClick={() => {
+												if (identity === editingIdentity) {
+													cancelEditing();
+												}
+												onChange(
+													filters.filter(
+														(_, itemIndex) => itemIndex !== index,
+													),
+												);
+											}}
+										>
+											×
+										</button>
+									</div>
+								);
+							})}
+						</div>
+					) : null}
+					{editingFilter ? (
+						<div className="server-filter-editing">
+							<span>
+								Editing{" "}
+								<strong>{getObjectServerFilterLabel(editingFilter)}</strong>
+							</span>
+							<button
+								type="button"
+								className="ghost"
+								onClick={() => cancelEditing({ restoreFocus: true })}
+							>
+								Cancel editing
+							</button>
 						</div>
 					) : null}
 					<FilterControlsContainer
@@ -740,10 +860,11 @@ export function ObjectServerFilterMenu({
 							disabled={
 								!draftFilter ||
 								computedLimitReached ||
-								filters.length >= MAX_OBJECT_SERVER_FILTERS
+								(filters.length >= MAX_OBJECT_SERVER_FILTERS &&
+									!editingIdentity)
 							}
 						>
-							Add filter
+							{editingIdentity ? "Save changes" : "Add filter"}
 						</button>
 					</FilterControlsContainer>
 					{computedLimitReached ? (

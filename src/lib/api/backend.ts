@@ -62,7 +62,9 @@ export async function backendFetchRaw(
 	const safePath = getSafeBackendPathForLogs(path);
 	const startedAt = Date.now();
 
-	headers.set("Accept", "application/json");
+	if (!headers.has("Accept")) {
+		headers.set("Accept", "application/json");
+	}
 	const normalizedCorrelationId = normalizeCorrelationId(init.correlationId);
 	if (normalizedCorrelationId) {
 		headers.set(CORRELATION_ID_HEADER, normalizedCorrelationId);

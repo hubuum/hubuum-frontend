@@ -646,7 +646,7 @@ const workflowLinks: NavItem[] = [
 		href: "/exports",
 		label: "Exports",
 		icon: <IconReport />,
-		hint: "Exports: manage templates and render scoped output",
+		hint: "Exports: configure reports, manage templates, and retrieve output",
 	},
 	{
 		href: "/tasks",

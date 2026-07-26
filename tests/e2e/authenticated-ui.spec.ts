@@ -182,17 +182,17 @@ test.describe("authenticated workspace", () => {
 		});
 		await page.goto("/exports");
 
-		const runTab = page.getByRole("tab", { name: /Run export/ });
+		const runTab = page.getByRole("tab", { name: /Reports/ });
 		const templatesTab = page.getByRole("tab", { name: /Templates/ });
 		const historyTab = page.getByRole("tab", { name: /History/ });
 
 		await expect(runTab).toHaveAttribute("aria-selected", "true");
 		await expect(
-			page.getByRole("heading", { name: "Create an export" }),
+			page.getByRole("heading", { name: "Saved reports" }),
 		).toBeVisible();
 		await expect(
-			page.getByRole("button", { name: /Saved template/ }),
-		).toHaveCount(0);
+			page.getByRole("button", { name: /Saved reports/ }),
+		).toHaveAttribute("aria-pressed", "true");
 		const createTemplate = page.getByRole("button", {
 			name: "Create a template",
 		});
@@ -202,24 +202,32 @@ test.describe("authenticated workspace", () => {
 		await expect(
 			page.getByRole("heading", { name: "Create export template" }),
 		).toBeVisible();
-		const targetTab = page.getByRole("tab", { name: /1\. Target/ });
-		const filtersTab = page.getByRole("tab", { name: /2\. Filters/ });
-		const relatedTab = page.getByRole("tab", { name: /3\. Related/ });
-		const rulesTab = page.getByRole("tab", { name: /4\. Rules/ });
-		const appearanceTab = page.getByRole("tab", { name: /5\. Appearance/ });
+		const detailsTab = page.getByRole("tab", { name: /1\. Details/ });
+		const targetTab = page.getByRole("tab", { name: /2\. Target/ });
+		const filtersTab = page.getByRole("tab", { name: /3\. Query/ });
+		const relatedTab = page.getByRole("tab", { name: /4\. Related/ });
+		const rulesTab = page.getByRole("tab", { name: /5\. Rules/ });
+		const appearanceTab = page.getByRole("tab", { name: /6\. Design/ });
 		const templateHistoryTab = page.getByRole("tab", { name: /History/ });
-		await expect(targetTab).toHaveAttribute("aria-selected", "true");
+		await expect(detailsTab).toHaveAttribute("aria-selected", "true");
 		await expect(
-			page.getByRole("heading", { name: "Export target" }),
+			page.getByRole("heading", { name: "Template details" }),
 		).toBeVisible();
+		await expect(targetTab).toBeDisabled();
 		await expect(appearanceTab).toBeDisabled();
 		await expect(templateHistoryTab).toBeDisabled();
+		await page.getByLabel("Name").fill("Weekly inventory");
+		await page
+			.getByLabel("Description")
+			.fill("The current inventory for operations.");
+		await page.getByRole("button", { name: "Continue to target" }).click();
+		await expect(targetTab).toHaveAttribute("aria-selected", "true");
 		await page
 			.getByRole("combobox", { name: "Scope", exact: true })
 			.selectOption("collections");
 		await expect(appearanceTab).toBeEnabled();
 		await page
-			.getByRole("button", { name: "Continue to filters" })
+			.getByRole("button", { name: "Continue to query" })
 			.first()
 			.click();
 		await expect(filtersTab).toHaveAttribute("aria-selected", "true");
@@ -236,16 +244,13 @@ test.describe("authenticated workspace", () => {
 			.click();
 		await expect(rulesTab).toHaveAttribute("aria-selected", "true");
 		await page
-			.getByRole("button", { name: "Continue to appearance" })
+			.getByRole("button", { name: "Continue to design" })
 			.first()
 			.click();
 		await expect(appearanceTab).toHaveAttribute("aria-selected", "true");
 		await expect(
 			page.getByRole("heading", { name: "Test output" }),
 		).toBeVisible();
-		await page.getByRole("button", { name: "Save", exact: true }).click();
-		await expect(page.getByText(/Review \d+ fields?/)).toBeVisible();
-		await expect(appearanceTab).toHaveAttribute("aria-selected", "true");
 		let discardPrompt = "";
 		page.once("dialog", async (dialog) => {
 			discardPrompt = dialog.message();
@@ -259,7 +264,7 @@ test.describe("authenticated workspace", () => {
 			page.getByRole("heading", { name: "Template library" }),
 		).toBeVisible();
 		await expect(
-			page.getByRole("button", { name: "Create template" }),
+			page.getByRole("button", { name: "Create new template" }),
 		).toBeVisible();
 
 		await historyTab.click();
@@ -267,6 +272,176 @@ test.describe("authenticated workspace", () => {
 		await expect(
 			page.getByRole("heading", { name: "Recent export runs" }),
 		).toBeVisible();
+	});
+
+	test("exposes raw task and bookmarkable template report links", async ({
+		context,
+		page,
+	}) => {
+		const timestamp = "2026-07-26T08:00:00Z";
+		const template = {
+			id: 7,
+			collection_id: 1,
+			name: "Inventory",
+			description: "Current server inventory",
+			content_type: "text/plain",
+			template: "{% for item in items %}{{ item.name }}{% endfor %}",
+			kind: "export",
+			scope_kind: "collections",
+			class_id: null,
+			default_query: null,
+			include: null,
+			relation_context: null,
+			default_missing_data_policy: "strict",
+			default_limits: null,
+			created_at: timestamp,
+			updated_at: timestamp,
+		};
+		const task = {
+			id: 314,
+			kind: "export",
+			status: "succeeded",
+			created_at: timestamp,
+			started_at: timestamp,
+			finished_at: timestamp,
+			submitted_by: null,
+			summary: "Rendered inventory",
+			request_redacted_at: null,
+			progress: {
+				total_items: 2,
+				processed_items: 2,
+				success_items: 2,
+				failed_items: 0,
+			},
+			links: {
+				task: "/api/v1/tasks/314",
+				events: "/api/v1/tasks/314/events",
+				export: "/api/v1/exports/314",
+				export_output: "/api/v1/exports/314/output",
+			},
+			details: {
+				export: {
+					output_available: true,
+					output_expired: false,
+					output_expires_at: "2026-07-27T08:00:00Z",
+					output_content_type: "text/plain",
+					output_url: "/api/v1/exports/314/output",
+					template_name: "Inventory",
+					truncated: false,
+					warning_count: 0,
+				},
+			},
+		};
+
+		await context.route("**/api/v1/export-templates**", async (route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify(
+					pathname.endsWith(`/${template.id}`) ? template : [template],
+				),
+			});
+		});
+		await context.route("**/reports/7**", async (route) => {
+			if (new URL(route.request().url()).pathname !== "/reports/7") {
+				await route.fallback();
+				return;
+			}
+			await route.fulfill({
+				status: 200,
+				contentType: "text/plain",
+				body: "Configured inventory report",
+			});
+		});
+		await context.route("**/api/v1/tasks?**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify([task]),
+			});
+		});
+		await page.goto("/exports?view=history");
+		const taskRow = page.getByRole("row").filter({ hasText: "Export #314" });
+		const openResult = taskRow.getByRole("link", {
+			name: "Open in new tab",
+		});
+		await expect(openResult).toHaveAttribute("target", "_blank");
+		await expect(openResult).toHaveAttribute("rel", "noopener noreferrer");
+		await expect(openResult).toHaveAttribute("href", "/reports/runs/314");
+
+		await page.getByRole("tab", { name: /Reports/ }).click();
+		const configureReport = page.getByRole("link", {
+			name: "Run with changes",
+		});
+		await expect(configureReport).toHaveAttribute(
+			"href",
+			"/exports/reports/7",
+		);
+		const openReport = page.getByRole("link", { name: "View", exact: true });
+		await expect(openReport).toHaveAttribute("href", "/reports/7");
+		await expect(openReport).toHaveAttribute("target", "_blank");
+		await expect(openReport).toHaveAttribute(
+			"data-action-hint",
+			/Open the latest acceptable result/,
+		);
+		await expect(
+			page.getByRole("link", { name: "Refresh now" }),
+		).toHaveAttribute("href", "/reports/7/refresh");
+
+		await configureReport.click();
+		await expect(page).toHaveURL(/\/exports\/reports\/7$/);
+		await expect(
+			page.getByRole("heading", { name: "Open the report as designed" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("link", { name: "View report" }),
+		).toHaveAttribute("href", "/reports/7");
+		await page.getByText("Change it for this view", { exact: true }).click();
+		await page.getByRole("button", { name: "Add filter" }).click();
+		await expect(
+			page.getByText("Filter 1", { exact: true }),
+		).toBeVisible();
+		const viewWithChanges = page.getByRole("button", {
+			name: "View with changes",
+		});
+		const refreshWithChanges = page.getByRole("button", {
+			name: "Refresh now",
+		});
+		const copyCustomizedLink = page.getByRole("button", {
+			name: "Copy customized link",
+		});
+		await expect(viewWithChanges).toHaveAttribute(
+			"data-action-hint",
+			/Open this customized report/,
+		);
+		await expect(refreshWithChanges).toHaveAttribute(
+			"data-action-hint",
+			/Generate one fresh customized result/,
+		);
+		await expect(copyCustomizedLink).toHaveAttribute(
+			"data-action-hint",
+			/Copy a bookmarkable report URL/,
+		);
+		await viewWithChanges.hover();
+		await expect
+			.poll(() =>
+				viewWithChanges.evaluate(
+					(element) => getComputedStyle(element, "::after").visibility,
+				),
+			)
+			.toBe("visible");
+		const duplicateTemplate = page.getByRole("link", { name: "Duplicate" });
+		await expect(duplicateTemplate).toHaveAttribute(
+			"href",
+			"/exports/templates/new?from=7",
+		);
+		await duplicateTemplate.click();
+		await expect(page).toHaveURL(/\/exports\/templates\/new\?from=7$/);
+		await expect(
+			page.getByRole("heading", { name: "Duplicate Inventory" }),
+		).toBeVisible();
+		await expect(page.getByLabel("Name")).toHaveValue("Inventory copy");
 	});
 
 	test("selecting a related class infers its minimum include depth", async ({
@@ -377,7 +552,7 @@ test.describe("authenticated workspace", () => {
 		);
 
 		await page.goto("/exports/templates/2");
-		await page.getByRole("tab", { name: /3\. Related/ }).click();
+		await page.getByRole("tab", { name: /4\. Related/ }).click();
 		await page.getByRole("button", { name: "Add include" }).click();
 
 		const relatedClass = page.getByLabel("Related class");

@@ -4,6 +4,7 @@ import type {
 	ReportIncludeRelatedObject,
 	ReportIncludeRelatedSort,
 } from "@/lib/api/reporting";
+import { parsePositiveInteger } from "@/lib/number-input";
 
 export type IncludeBuilderRow = {
 	id: string;
@@ -77,11 +78,6 @@ export function includeRowsFromTemplate(
 	}));
 }
 
-function parsePositive(value: string): number | null {
-	const parsed = Number.parseInt(value, 10);
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
 export function minimumIncludeDepthFromPath(
 	path: readonly number[],
 ): number | null {
@@ -115,14 +111,14 @@ export function applyMinimumIncludeDepths(
 ): IncludeBuilderRow[] {
 	let changed = false;
 	const nextRows = rows.map((row) => {
-		const classId = parsePositive(row.classId);
+		const classId = parsePositiveInteger(row.classId);
 		const minimumDepth =
 			classId == null ? null : minimumDepthByClassId.get(classId);
 		if (minimumDepth == null || minimumDepth <= DEFAULT_INCLUDE_MAX_DEPTH) {
 			return row;
 		}
 		const configuredDepth = row.maxDepth.trim()
-			? parsePositive(row.maxDepth)
+			? parsePositiveInteger(row.maxDepth)
 			: DEFAULT_INCLUDE_MAX_DEPTH;
 		if (configuredDepth != null && configuredDepth >= minimumDepth) {
 			return row;
@@ -154,7 +150,7 @@ export function buildIncludeFromRows(
 		if (relatedObjects[alias]) {
 			return { error: `Duplicate include alias "${alias}".` };
 		}
-		const includeClassId = parsePositive(row.classId);
+		const includeClassId = parsePositiveInteger(row.classId);
 		if (!includeClassId) {
 			return { error: `Include "${alias}" needs a class.` };
 		}
@@ -174,14 +170,14 @@ export function buildIncludeFromRows(
 			sort: row.sort,
 		};
 		if (row.limit.trim()) {
-			const limit = parsePositive(row.limit);
+			const limit = parsePositiveInteger(row.limit);
 			if (!limit || limit > 50) {
 				return { error: `Include "${alias}" limit must be 1..50.` };
 			}
 			entry.limit = limit;
 		}
 		if (row.maxDepth.trim()) {
-			const maxDepth = parsePositive(row.maxDepth);
+			const maxDepth = parsePositiveInteger(row.maxDepth);
 			if (!maxDepth || maxDepth > MAX_INCLUDE_MAX_DEPTH) {
 				return {
 					error: `Include "${alias}" max depth must be 1..${MAX_INCLUDE_MAX_DEPTH}.`,

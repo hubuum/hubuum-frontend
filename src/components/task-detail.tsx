@@ -9,11 +9,13 @@ import {
 	formatEventActor,
 	formatEventInitiator,
 } from "@/lib/event-provenance";
+import { getExportResultHref } from "@/lib/export-workspace";
 import {
 	fetchImportProjection,
 	fetchImportResults,
 	fetchTask,
 	fetchTaskEvents,
+	getTaskStatusTone,
 	isTerminalTaskStatus,
 	type TaskRecord,
 } from "@/lib/api/tasking";
@@ -53,24 +55,6 @@ function formatTimestamp(value: string | null | undefined): string {
 	} catch {
 		return value;
 	}
-}
-
-function getTaskStatusTone(
-	task: TaskRecord | null | undefined,
-): "neutral" | "success" | "danger" | "accent" {
-	if (!task) {
-		return "neutral";
-	}
-	if (task.status === "succeeded") {
-		return "success";
-	}
-	if (task.status === "failed" || task.status === "cancelled") {
-		return "danger";
-	}
-	if (task.status === "partially_succeeded") {
-		return "accent";
-	}
-	return "neutral";
 }
 
 function getTaskHeading(task: TaskRecord | null, taskId: number): string {
@@ -161,7 +145,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 	}
 
 	const activeTask = importProjectionQuery.data ?? taskQuery.data ?? null;
-	const taskTone = getTaskStatusTone(activeTask);
+	const taskTone = getTaskStatusTone(activeTask?.status);
 	const isImportTask = activeTask?.kind === "import";
 	const exportDetails = activeTask?.details?.export ?? null;
 	const backHref =
@@ -290,6 +274,17 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 						<span className={`status-pill status-pill--${taskTone}`}>
 							{activeTask.status}
 						</span>
+						{activeTask.kind === "export" && exportDetails?.output_available ? (
+							<Link
+								className="link-chip"
+								href={getExportResultHref(activeTask.id)}
+								target="_blank"
+								rel="noopener noreferrer"
+								prefetch={false}
+							>
+								Open result in new tab
+							</Link>
+						) : null}
 						<Link className="link-chip" href={backHref}>
 							{backLabel}
 						</Link>

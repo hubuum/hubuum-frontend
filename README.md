@@ -188,6 +188,54 @@ ad-hoc exports, and object-scoped export templates share the same server-filter
 field discovery, typed operators, validation, and backend query grammar for
 object, nested JSON data, and computed fields.
 
+## Bookmarkable reports
+
+Saved executable export templates have stable, authenticated report URLs under
+`/reports/{template_id}`. The frontend remembers the latest task for the
+current session, template revision, and normalized set of run overrides. It
+reuses that task while its backend output remains available; otherwise it
+starts a new template export, waits for the task to finish, and remembers the
+replacement. Concurrent requests for the same report join one generation
+through a short Valkey lock instead of submitting duplicate tasks.
+
+The backend output body is streamed with its original content type. The
+response is not wrapped in console markup or parsed/reformatted, so saving the
+browser page saves the generated template result itself. HTML report responses
+receive a script-disabled sandbox policy because they are served from the
+console origin.
+
+Bookmark URLs can supply the supported template-run overrides through `query`,
+`object_id`, `missing_data_policy`, `max_items`, and `max_output_bytes` query
+parameters. Related-object templates require `object_id`. Existing stored task
+outputs use `/reports/runs/{task_id}` and are streamed through the same raw
+response boundary. `HEAD` requests never generate reports, and frontend links
+disable Next.js prefetching so merely rendering or hovering a link cannot start
+a task. An optional `max_age` parameter limits how old a completed task may be:
+whole numbers are seconds, and `s`, `m`, `h`, or `d` suffixes are accepted
+(`max_age=15m`). `max_age=0` explicitly forces a new run. Updating the saved
+template also causes the next request to generate a new report.
+
+The default Exports view is a catalog of executable saved reports. `View` opens
+the stable raw URL, `Refresh now` performs one forced generation and redirects
+to the clean bookmark URL, and `Run with changes` opens the authenticated
+configuration interface at `/exports/reports/{template_id}`. That interface
+uses the same visual query builder as template authoring and keeps freshness,
+missing-data, and output-limit overrides available without putting controls
+inside the generated result. These changes affect only the configured URL.
+Permanent layout, scope, include, and default changes remain in
+`/exports/templates/{template_id}`, while new definitions start under
+`/exports/templates/new`. Adding `?from={template_id}` to the new-template URL
+copies an existing definition into a separately named, unsaved template.
+
+New template authoring starts with its name, purpose, and output format before
+target, query, hydration, rules, and document design. HTML templates can use a
+standard-page mode where authors edit only the body. The frontend stores that
+body inside a deterministic full HTML template with title and viewport
+metadata, print styling, responsive typography, and readable alternating table
+rows. Advanced authors can instead own the complete HTML document. In both
+modes the raw report route still streams the exact generated backend output;
+it never injects console controls or response-time wrappers.
+
 Server `v0.0.4` audit events, resource history, and task lifecycle events carry
 durable provenance. The console shows the immediate actor, root initiator, and
 originating task where available, and audit/subscription filters can match the
@@ -336,19 +384,19 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Current `main` development and Hubuum Frontend `v0.0.6` are validated against
+Current `main` development and Hubuum Frontend `v0.0.7` are validated against
 Hubuum Server `v0.0.5`.
 Releases provide:
 
-- `ghcr.io/hubuum/hubuum-frontend:v0.0.6` for Linux AMD64 and ARM64;
-- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.6`;
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.7` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.7`;
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
 The application version is visible in the navigation, on the login page, and
 in `/healthz` and `/readyz` responses. Release images show the exact tag (for
-example, `v0.0.6`); commit images show `v0.0.6+<short-sha>`; unversioned local
-builds show `v0.0.6+dirty`. Image builds may set the immutable identity with
+example, `v0.0.7`); commit images show `v0.0.7+<short-sha>`; unversioned local
+builds show `v0.0.7+dirty`. Image builds may set the immutable identity with
 `docker build --build-arg APP_VERSION=...`.
 
 See [compatibility](docs/compatibility.md) and the
@@ -442,7 +490,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.6 \
+  --version 0.0.7 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -451,7 +499,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.6 \
+  --version 0.0.7 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com

@@ -18,6 +18,7 @@ import {
 	readAuthenticatedPrincipalIdentity,
 	type ScopedLoginCredentials,
 } from "@/lib/identity-scopes";
+import { normalizeReturnPath } from "@/lib/return-path";
 
 const optionalIdentityScopeSchema = z.preprocess(
 	(value) =>
@@ -55,6 +56,14 @@ function seeOther(location: string): NextResponse {
 			"Cache-Control": "no-store",
 		},
 	});
+}
+
+function loginErrorLocation(code: string, returnTo: string): string {
+	const searchParams = new URLSearchParams({ error: code });
+	if (returnTo !== "/app") {
+		searchParams.set("next", returnTo);
+	}
+	return `/login?${searchParams.toString()}`;
 }
 
 async function parseCredentials(
@@ -101,6 +110,7 @@ async function revokeIssuedToken(
 export async function POST(request: NextRequest) {
 	const correlationId =
 		normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER)) ?? "-";
+	const returnTo = normalizeReturnPath(request.nextUrl.searchParams.get("next"));
 	console.info(
 		`[hubuum-auth][cid=${correlationId}] login request received (${request.method} ${request.nextUrl.pathname})`,
 	);
@@ -114,7 +124,7 @@ export async function POST(request: NextRequest) {
 			`[hubuum-auth][cid=${correlationId}] login payload parse failed`,
 		);
 		if (fromForm) {
-			return seeOther("/login?error=invalid_credentials");
+			return seeOther(loginErrorLocation("invalid_credentials", returnTo));
 		}
 		return NextResponse.json(
 			{
@@ -144,7 +154,7 @@ export async function POST(request: NextRequest) {
 
 	if (!upstream.ok) {
 		if (fromForm) {
-			return seeOther("/login?error=invalid_credentials");
+			return seeOther(loginErrorLocation("invalid_credentials", returnTo));
 		}
 		return NextResponse.json(
 			payload ?? {
@@ -182,7 +192,9 @@ export async function POST(request: NextRequest) {
 	) {
 		await revokeIssuedToken(token, correlationId);
 		if (fromForm) {
-			return seeOther("/login?error=identity_scope_unavailable");
+			return seeOther(
+				loginErrorLocation("identity_scope_unavailable", returnTo),
+			);
 		}
 		return NextResponse.json(
 			{
@@ -211,7 +223,9 @@ export async function POST(request: NextRequest) {
 			`[hubuum-auth][cid=${correlationId}] session store unavailable; verify VALKEY_URL and Valkey connectivity`,
 		);
 		if (fromForm) {
-			return seeOther("/login?error=session_store_unavailable");
+			return seeOther(
+				loginErrorLocation("session_store_unavailable", returnTo),
+			);
 		}
 		return NextResponse.json(
 			{
@@ -222,7 +236,7 @@ export async function POST(request: NextRequest) {
 		);
 	}
 	const response = fromForm
-		? seeOther("/app")
+		? seeOther(returnTo)
 		: NextResponse.json({ authenticated: true }, { status: 200 });
 	setSessionCookie(response, sid, request);
 	console.info(

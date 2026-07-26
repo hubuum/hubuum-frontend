@@ -1,8 +1,22 @@
 import { ExportTemplateEditor } from "@/components/export-template-editor";
 import { requireServerSession } from "@/lib/auth/guards";
 
-export default async function NewExportTemplatePage() {
-	await requireServerSession();
+type NewExportTemplatePageProps = {
+	searchParams: Promise<{
+		from?: string;
+	}>;
+};
 
-	return <ExportTemplateEditor />;
+export default async function NewExportTemplatePage({
+	searchParams,
+}: NewExportTemplatePageProps) {
+	await requireServerSession();
+	const { from } = await searchParams;
+	const parsedDuplicateTemplateId =
+		from && /^[1-9]\d*$/.test(from) ? Number.parseInt(from, 10) : undefined;
+	const duplicateTemplateId = Number.isSafeInteger(parsedDuplicateTemplateId)
+		? parsedDuplicateTemplateId
+		: undefined;
+
+	return <ExportTemplateEditor duplicateTemplateId={duplicateTemplateId} />;
 }

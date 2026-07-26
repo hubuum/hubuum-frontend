@@ -30,7 +30,10 @@ type ReportQueryBuilderProps = {
 	scopeKind: ReportScopeKind;
 	value: string;
 	onChange: (value: string) => void;
+	description?: string;
 	disabled?: boolean;
+	emptyMessage?: string;
+	heading?: string;
 	objectComputedFields?: readonly ServerFilterComputedField[];
 	objectDataFields?: readonly ServerFilterDataField[];
 	objectFiltersDisabled?: boolean;
@@ -48,7 +51,10 @@ export function ReportQueryBuilder({
 	scopeKind,
 	value,
 	onChange,
+	description = "Build the query visually. Unsupported parameters remain in Advanced.",
 	disabled = false,
+	emptyMessage = "No default filters.",
+	heading = "Default filters and sorting",
 	objectComputedFields = [],
 	objectDataFields = [],
 	objectFiltersDisabled = false,
@@ -230,10 +236,8 @@ export function ReportQueryBuilder({
 		<div className="query-builder-card export-template-query-builder">
 			<div className="panel-header">
 				<div className="stack action-card-header">
-					<h4>Default filters and sorting</h4>
-					<p className="muted">
-						Build the query visually. Unsupported parameters remain in Advanced.
-					</p>
+					<h4>{heading}</h4>
+					<p className="muted">{description}</p>
 				</div>
 				<div className="action-row">
 					{usesObjectServerFilters ? (
@@ -269,7 +273,7 @@ export function ReportQueryBuilder({
 			{usesObjectServerFilters ? (
 				<p className="muted">
 					{objectFilterHint ??
-						"Open Server filters to add or review filters for the full selected class."}
+						"Open Server filters to add or edit filters for the full selected class."}
 				</p>
 			) : filters.length ? (
 				<div className="stack query-builder-list">
@@ -389,7 +393,7 @@ export function ReportQueryBuilder({
 					})}
 				</div>
 			) : (
-				<div className="empty-state">No default filters.</div>
+				<div className="empty-state">{emptyMessage}</div>
 			)}
 
 			{sorts.length ? (

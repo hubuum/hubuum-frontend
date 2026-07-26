@@ -21,8 +21,10 @@ type ProviderDiscoveryState =
 
 export function LoginForm({
 	initialError = null,
+	returnTo = "/app",
 }: {
 	initialError?: string | null;
+	returnTo?: string;
 }) {
 	const [identityScope, setIdentityScope] = useState("");
 	const [username, setUsername] = useState("");
@@ -31,6 +33,10 @@ export function LoginForm({
 		useState<ProviderDiscoveryState>({ status: "loading" });
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(initialError);
+	const loginEndpoint =
+		returnTo === "/app"
+			? "/_hubuum-bff/auth/login"
+			: `/_hubuum-bff/auth/login?next=${encodeURIComponent(returnTo)}`;
 
 	useEffect(() => {
 		const stored = window.localStorage.getItem(
@@ -85,7 +91,7 @@ export function LoginForm({
 					? { identity_scope: trimmedIdentityScope }
 					: {}),
 			};
-			const response = await fetch("/_hubuum-bff/auth/login", {
+			const response = await fetch(loginEndpoint, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -115,7 +121,7 @@ export function LoginForm({
 				window.localStorage.removeItem(LOGIN_IDENTITY_SCOPE_STORAGE_KEY);
 			}
 
-			window.location.assign("/app");
+			window.location.assign(returnTo);
 		} catch (caught) {
 			setError(caught instanceof Error ? caught.message : "Unexpected error");
 			setIsSubmitting(false);
@@ -124,7 +130,7 @@ export function LoginForm({
 
 	return (
 		<form
-			action="/_hubuum-bff/auth/login"
+			action={loginEndpoint}
 			aria-label="Login form"
 			className="card login-card"
 			method="post"

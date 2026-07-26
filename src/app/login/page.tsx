@@ -4,6 +4,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { LoginForm } from "@/components/login-form";
 import { APPLICATION_VERSION } from "@/lib/application-version";
 import { getSessionFromServerCookies } from "@/lib/auth/session";
+import { normalizeReturnPath } from "@/lib/return-path";
 
 type LoginPageProps = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -14,11 +15,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 	if ("username" in params || "password" in params) {
 		redirect("/login");
 	}
+	const requestedReturnPath = Array.isArray(params.next)
+		? params.next[0]
+		: params.next;
+	const returnTo = normalizeReturnPath(requestedReturnPath);
 
 	const session = await getSessionFromServerCookies();
 
 	if (session) {
-		redirect("/app");
+		redirect(returnTo);
 	}
 	const errorCode = Array.isArray(params.error)
 		? params.error[0]
@@ -62,7 +67,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 				</aside>
 
 				<div className="auth-form-panel">
-					<LoginForm initialError={initialError} />
+					<LoginForm initialError={initialError} returnTo={returnTo} />
 					<p className="footer-note">
 						{process.env.NEXT_PUBLIC_APP_NAME ?? "Hubuum Console"} ·{
 							APPLICATION_VERSION
