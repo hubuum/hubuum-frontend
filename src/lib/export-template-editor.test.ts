@@ -91,4 +91,64 @@ describe("validateExportTemplateDraft", () => {
 			maxOutputBytes: expect.stringMatching(/positive/i),
 		});
 	});
+
+	it("enforces the inferred minimum depth for a related include", () => {
+		const includeRow = {
+			id: "rooms",
+			alias: "rooms",
+			classId: "91",
+			direction: "any" as const,
+			sort: "path" as const,
+			limit: "",
+			maxDepth: "1",
+		};
+		const context = {
+			relatedClassDepthStatus: "ready" as const,
+			relatedClassMinimumDepthById: new Map([[91, 2]]),
+		};
+
+		expect(
+			validateExportTemplateRelated(
+				{ ...validDraft, includeRows: [includeRow] },
+				context,
+			).includeRows,
+		).toMatch(/at least 2/i);
+		expect(
+			validateExportTemplateRelated(
+				{
+					...validDraft,
+					includeRows: [{ ...includeRow, maxDepth: "2" }],
+				},
+				context,
+			),
+		).toEqual({});
+	});
+
+	it("waits for path verification before accepting related includes", () => {
+		const draft = {
+			...validDraft,
+			includeRows: [
+				{
+					id: "rooms",
+					alias: "rooms",
+					classId: "91",
+					direction: "any" as const,
+					sort: "path" as const,
+					limit: "",
+					maxDepth: "2",
+				},
+			],
+		};
+
+		expect(
+			validateExportTemplateRelated(draft, {
+				relatedClassDepthStatus: "loading",
+			}).includeRows,
+		).toMatch(/wait/i);
+		expect(
+			validateExportTemplateRelated(draft, {
+				relatedClassDepthStatus: "error",
+			}).includeRows,
+		).toMatch(/retry/i);
+	});
 });

@@ -235,4 +235,134 @@ test.describe("authenticated workspace", () => {
 			page.getByRole("heading", { name: "Recent export runs" }),
 		).toBeVisible();
 	});
+
+	test("selecting a related class infers its minimum include depth", async ({
+		page,
+	}) => {
+		const timestamp = "2026-07-26T00:00:00Z";
+		const collection = {
+			id: 7,
+			name: "Infrastructure",
+			description: "",
+			parent_collection_id: null,
+			created_at: timestamp,
+			updated_at: timestamp,
+		};
+		const classes = [
+			{
+				id: 10,
+				name: "Hosts",
+				description: "",
+				collection,
+				json_schema: {},
+				validate_schema: false,
+				created_at: timestamp,
+				updated_at: timestamp,
+			},
+			{
+				id: 20,
+				name: "Jacks",
+				description: "",
+				collection,
+				json_schema: {},
+				validate_schema: false,
+				created_at: timestamp,
+				updated_at: timestamp,
+			},
+			{
+				id: 30,
+				name: "Rooms",
+				description: "",
+				collection,
+				json_schema: {},
+				validate_schema: false,
+				created_at: timestamp,
+				updated_at: timestamp,
+			},
+		];
+		const template = {
+			id: 2,
+			collection_id: collection.id,
+			name: "Hosts with rooms",
+			description: "Hydrates rooms for every host",
+			content_type: "text/plain",
+			template: "{% for item in items %}{{ item.name }}{% endfor %}",
+			kind: "export",
+			scope_kind: "objects_in_class",
+			class_id: 10,
+			default_query: null,
+			include: null,
+			relation_context: null,
+			default_missing_data_policy: "strict",
+			default_limits: null,
+			created_at: timestamp,
+			updated_at: timestamp,
+		};
+
+		await page.route("**/api/v1/export-templates**", async (route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify(
+					pathname.endsWith("/api/v1/export-templates/2")
+						? template
+						: [template],
+				),
+			});
+		});
+		await page.route("**/api/v1/collections?**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify([collection]),
+			});
+		});
+		await page.route("**/api/v1/classes?**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify(classes),
+			});
+		});
+		await page.route(
+			"**/api/v1/classes/10/related/classes?**",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify([
+						{ ...classes[1], collection_id: collection.id, path: [10, 20] },
+						{
+							...classes[2],
+							collection_id: collection.id,
+							path: [10, 20, 30],
+						},
+					]),
+				});
+			},
+		);
+
+		await page.goto("/exports/templates/2");
+		await page.getByRole("tab", { name: /3\. Related/ }).click();
+		await page.getByRole("button", { name: "Add include" }).click();
+
+		const relatedClass = page.getByLabel("Related class");
+		const maximumDepth = page.getByLabel("Maximum path depth");
+		await relatedClass.selectOption("30");
+
+		await expect(maximumDepth).toHaveValue("2");
+		await expect(maximumDepth).toHaveAttribute("min", "2");
+		await expect(
+			page.getByText(/This class is 2 relations away/),
+		).toBeVisible();
+
+		await maximumDepth.fill("3");
+		await relatedClass.selectOption("20");
+		await relatedClass.selectOption("30");
+		await expect(maximumDepth).toHaveValue("3");
+
+		await maximumDepth.fill("");
+		await expect(maximumDepth).toHaveValue("2");
+	});
 });

@@ -1,9 +1,11 @@
 "use client";
 
 import {
+	DEFAULT_INCLUDE_MAX_DEPTH,
 	INCLUDE_DIRECTIONS,
 	INCLUDE_SORTS,
 	MAX_INCLUDE_ALIASES,
+	MAX_INCLUDE_MAX_DEPTH,
 	type IncludeBuilderRow,
 } from "@/lib/report-include";
 import type {
@@ -19,6 +21,7 @@ type IncludeRowsProps = {
 	onRemove: (id: string) => void;
 	error?: string;
 	disabled?: boolean;
+	minimumDepthByClassId?: ReadonlyMap<number, number>;
 };
 
 export function IncludeRows({
@@ -29,6 +32,7 @@ export function IncludeRows({
 	onRemove,
 	error,
 	disabled = false,
+	minimumDepthByClassId,
 }: IncludeRowsProps) {
 	return (
 		<div className="query-builder-card control-field--wide">
@@ -63,6 +67,14 @@ export function IncludeRows({
 					{rows.map((row, index) => {
 						const prefix = `include-${row.id}`;
 						const alias = row.alias.trim();
+						const parsedClassId = /^[1-9]\d*$/.test(row.classId.trim())
+							? Number.parseInt(row.classId, 10)
+							: null;
+						const minimumDepth =
+							parsedClassId == null
+								? DEFAULT_INCLUDE_MAX_DEPTH
+								: (minimumDepthByClassId?.get(parsedClassId) ??
+									DEFAULT_INCLUDE_MAX_DEPTH);
 						return (
 							<article key={row.id} className="include-builder-card">
 								<div className="include-builder-card-header">
@@ -107,6 +119,11 @@ export function IncludeRows({
 												{classOptions.map((classItem) => (
 													<option key={classItem.id} value={classItem.id}>
 														{classItem.name} (#{classItem.id})
+														{(minimumDepthByClassId?.get(classItem.id) ??
+															DEFAULT_INCLUDE_MAX_DEPTH) >
+														DEFAULT_INCLUDE_MAX_DEPTH
+															? ` · minimum depth ${minimumDepthByClassId?.get(classItem.id)}`
+															: ""}
 													</option>
 												))}
 											</select>
@@ -186,15 +203,25 @@ export function IncludeRows({
 										<input
 											id={`${prefix}-depth`}
 											type="number"
-											min={1}
-											max={10}
+											min={minimumDepth}
+											max={MAX_INCLUDE_MAX_DEPTH}
 											value={row.maxDepth}
 											onChange={(event) =>
 												onUpdate(row.id, { maxDepth: event.target.value })
 											}
-											placeholder="1–10"
+											placeholder={
+												minimumDepth > DEFAULT_INCLUDE_MAX_DEPTH
+													? `At least ${minimumDepth}`
+													: `Default: ${DEFAULT_INCLUDE_MAX_DEPTH}`
+											}
 											disabled={disabled}
 										/>
+										{minimumDepth > DEFAULT_INCLUDE_MAX_DEPTH ? (
+											<small className="field-note">
+												This class is {minimumDepth} relations away, so the
+												maximum path depth must be at least {minimumDepth}.
+											</small>
+										) : null}
 									</label>
 								</div>
 							</article>

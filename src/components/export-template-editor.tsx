@@ -19,6 +19,10 @@ import {
 	fetchClassObjectSamples,
 } from "@/lib/api/class-objects";
 import {
+	fetchRelatedClassPaths,
+	relatedClassPathsQueryKey,
+} from "@/lib/api/class-relations";
+import {
 	fetchPersonalComputedFields,
 	fetchSharedComputedFields,
 } from "@/lib/api/computed-fields";
@@ -58,6 +62,7 @@ import {
 	type ExportTemplateDraftErrors,
 	type ExportTemplateDraftField,
 	type ExportTemplateEditorSection,
+	type ExportTemplateValidationContext,
 	filterClassesForCollection,
 	getEditorTabForErrors,
 	parsePositiveInteger,
@@ -81,7 +86,9 @@ import {
 	type ServerFilterDataField,
 } from "@/lib/object-server-filter-fields";
 import {
+	applyMinimumIncludeDepths,
 	buildIncludeFromRows,
+	buildRelatedClassMinimumDepths,
 	type IncludeBuilderRow,
 	includeAliasesOf,
 	includeRowsFromTemplate,
@@ -330,7 +337,10 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	return response.data;
 }
 
-function buildTemplatePayload(draft: ExportTemplateDraft) {
+function buildTemplatePayload(
+	draft: ExportTemplateDraft,
+	validationContext: ExportTemplateValidationContext,
+) {
 	const collectionId = parsePositiveInteger(draft.collectionId);
 	if (!collectionId) throw new Error("Collection is required.");
 	const base = {
@@ -349,7 +359,12 @@ function buildTemplatePayload(draft: ExportTemplateDraft) {
 			draft.scopeKind === "related_objects";
 		const classId = parsePositiveInteger(draft.classId);
 		const builtInclude = scopeNeedsClass
-			? buildIncludeFromRows(draft.includeRows)
+			? buildIncludeFromRows(draft.includeRows, {
+					minimumDepthByClassId:
+						validationContext.relatedClassMinimumDepthById,
+					requireKnownClassDepth:
+						validationContext.relatedClassDepthStatus === "ready",
+				})
 			: { include: null };
 		if ("error" in builtInclude) throw new Error(builtInclude.error);
 		const depth = draft.depth.trim() ? parsePositiveInteger(draft.depth) : null;
@@ -687,21 +702,62 @@ export function ExportTemplateEditor({
 			),
 		[classOptions],
 	);
-	const validationContext = useMemo(
-		() => ({ classCollectionById }),
-		[classCollectionById],
-	);
-	const targetErrors = validateExportTemplateTarget(
-		editorState,
-		validationContext,
-	);
-	const targetReady = Object.keys(targetErrors).length === 0;
 	const selectedCollection = collectionOptions.find(
 		(collection) => String(collection.id) === editorState.collectionId,
 	);
 	const selectedClass = targetClassOptions.find(
 		(classItem) => String(classItem.id) === editorState.classId,
 	);
+	const relatedClassPathsQuery = useQuery({
+		queryKey: relatedClassPathsQueryKey(selectedClass?.id ?? null),
+		queryFn: () => fetchRelatedClassPaths(selectedClass?.id ?? 0),
+		enabled:
+			editorState.kind === "export" &&
+			scopeNeedsClass &&
+			selectedClass != null,
+		staleTime: 5 * 60_000,
+	});
+	const relatedClassMinimumDepthById = useMemo(
+		() => buildRelatedClassMinimumDepths(relatedClassPathsQuery.data ?? []),
+		[relatedClassPathsQuery.data],
+	);
+	const relatedClassDepthStatus =
+		editorState.kind !== "export" || !scopeNeedsClass || selectedClass == null
+			? undefined
+			: relatedClassPathsQuery.isSuccess
+				? "ready"
+				: relatedClassPathsQuery.isError
+					? "error"
+					: "loading";
+	const validationContext = useMemo<ExportTemplateValidationContext>(
+		() => ({
+			classCollectionById,
+			relatedClassDepthStatus,
+			relatedClassMinimumDepthById,
+		}),
+		[
+			classCollectionById,
+			relatedClassDepthStatus,
+			relatedClassMinimumDepthById,
+		],
+	);
+	const targetErrors = validateExportTemplateTarget(
+		editorState,
+		validationContext,
+	);
+	const targetReady = Object.keys(targetErrors).length === 0;
+	useEffect(() => {
+		if (relatedClassDepthStatus !== "ready") return;
+		setEditorState((current) => {
+			const includeRows = applyMinimumIncludeDepths(
+				current.includeRows,
+				relatedClassMinimumDepthById,
+			);
+			return includeRows === current.includeRows
+				? current
+				: { ...current, includeRows };
+		});
+	}, [relatedClassDepthStatus, relatedClassMinimumDepthById]);
 	const schemaDataFields = useMemo(
 		() => discoverJsonFields(selectedClass?.json_schema, []),
 		[selectedClass?.json_schema],
@@ -843,7 +899,10 @@ export function ExportTemplateEditor({
 			testObjectId,
 			skipSave,
 		}: SaveRequest) => {
-			const { base, reportFields } = buildTemplatePayload(draft);
+			const { base, reportFields } = buildTemplatePayload(
+				draft,
+				validationContext,
+			);
 			let template: ReportTemplate;
 			if (skipSave && draft.templateId) {
 				template = await getReportTemplate(draft.templateId);
@@ -948,11 +1007,18 @@ export function ExportTemplateEditor({
 	}
 
 	function updateIncludeRow(id: string, patch: Partial<IncludeBuilderRow>) {
+		const includeRows = editorState.includeRows.map((row) =>
+			row.id === id ? { ...row, ...patch } : row,
+		);
 		updateDraft(
 			{
-				includeRows: editorState.includeRows.map((row) =>
-					row.id === id ? { ...row, ...patch } : row,
-				),
+				includeRows:
+					relatedClassDepthStatus === "ready"
+						? applyMinimumIncludeDepths(
+								includeRows,
+								relatedClassMinimumDepthById,
+							)
+						: includeRows,
 			},
 			["includeRows"],
 		);
@@ -1046,7 +1112,7 @@ export function ExportTemplateEditor({
 			activeTab === "target"
 				? validateExportTemplateTarget(editorState, validationContext)
 				: activeTab === "related"
-					? validateExportTemplateRelated(editorState)
+					? validateExportTemplateRelated(editorState, validationContext)
 					: activeTab === "rules"
 						? validateExportTemplateRules(editorState)
 						: {};
@@ -1902,6 +1968,27 @@ export function ExportTemplateEditor({
 					{scopeNeedsClass ? (
 						<>
 							<section id="export-template-includes" tabIndex={-1}>
+								{relatedClassPathsQuery.isPending ? (
+									<p className="muted" role="status">
+										Calculating the required depth for related classes…
+									</p>
+								) : null}
+								{relatedClassPathsQuery.isError ? (
+									<div className="error-banner" role="alert">
+										<span>
+											{relatedClassPathsQuery.error instanceof Error
+												? relatedClassPathsQuery.error.message
+												: "Failed to load related class paths."}
+										</span>
+										<button
+											type="button"
+											className="ghost compact-button"
+											onClick={() => void relatedClassPathsQuery.refetch()}
+										>
+											Retry
+										</button>
+									</div>
+								) : null}
 								<IncludeRows
 									rows={editorState.includeRows}
 									classOptions={classOptions}
@@ -1910,6 +1997,11 @@ export function ExportTemplateEditor({
 									onRemove={removeIncludeRow}
 									error={fieldErrors.includeRows}
 									disabled={isSaving}
+									minimumDepthByClassId={
+										relatedClassDepthStatus === "ready"
+											? relatedClassMinimumDepthById
+											: undefined
+									}
 								/>
 							</section>
 							<article className="card stack panel-card">

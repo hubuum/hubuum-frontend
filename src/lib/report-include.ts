@@ -17,6 +17,8 @@ export type IncludeBuilderRow = {
 
 export const INCLUDE_ALIAS_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export const MAX_INCLUDE_ALIASES = 8;
+export const DEFAULT_INCLUDE_MAX_DEPTH = 1;
+export const MAX_INCLUDE_MAX_DEPTH = 10;
 export const INCLUDE_DIRECTIONS: ReportIncludeRelatedDirection[] = [
 	"any",
 	"outgoing",
@@ -27,6 +29,16 @@ export const INCLUDE_SORTS: ReportIncludeRelatedSort[] = [
 	"name",
 	"created_at",
 ];
+
+export type RelatedClassPath = {
+	id: number;
+	path: readonly number[];
+};
+
+export type IncludeDepthRequirements = {
+	minimumDepthByClassId?: ReadonlyMap<number, number>;
+	requireKnownClassDepth?: boolean;
+};
 
 export function newIncludeRow(id: string): IncludeBuilderRow {
 	return {
@@ -70,8 +82,60 @@ function parsePositive(value: string): number | null {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+export function minimumIncludeDepthFromPath(
+	path: readonly number[],
+): number | null {
+	if (
+		path.length < 2 ||
+		path.some((classId) => !Number.isSafeInteger(classId) || classId < 1)
+	) {
+		return null;
+	}
+	return path.length - 1;
+}
+
+export function buildRelatedClassMinimumDepths(
+	classes: readonly RelatedClassPath[],
+): Map<number, number> {
+	const minimumDepthByClassId = new Map<number, number>();
+	for (const classItem of classes) {
+		const minimumDepth = minimumIncludeDepthFromPath(classItem.path);
+		if (minimumDepth == null) continue;
+		const currentMinimum = minimumDepthByClassId.get(classItem.id);
+		if (currentMinimum == null || minimumDepth < currentMinimum) {
+			minimumDepthByClassId.set(classItem.id, minimumDepth);
+		}
+	}
+	return minimumDepthByClassId;
+}
+
+export function applyMinimumIncludeDepths(
+	rows: IncludeBuilderRow[],
+	minimumDepthByClassId: ReadonlyMap<number, number>,
+): IncludeBuilderRow[] {
+	let changed = false;
+	const nextRows = rows.map((row) => {
+		const classId = parsePositive(row.classId);
+		const minimumDepth =
+			classId == null ? null : minimumDepthByClassId.get(classId);
+		if (minimumDepth == null || minimumDepth <= DEFAULT_INCLUDE_MAX_DEPTH) {
+			return row;
+		}
+		const configuredDepth = row.maxDepth.trim()
+			? parsePositive(row.maxDepth)
+			: DEFAULT_INCLUDE_MAX_DEPTH;
+		if (configuredDepth != null && configuredDepth >= minimumDepth) {
+			return row;
+		}
+		changed = true;
+		return { ...row, maxDepth: String(minimumDepth) };
+	});
+	return changed ? nextRows : rows;
+}
+
 export function buildIncludeFromRows(
 	rows: IncludeBuilderRow[],
+	depthRequirements: IncludeDepthRequirements = {},
 ): { include: ReportInclude | null } | { error: string } {
 	if (!rows.length) {
 		return { include: null };
@@ -94,6 +158,16 @@ export function buildIncludeFromRows(
 		if (!includeClassId) {
 			return { error: `Include "${alias}" needs a class.` };
 		}
+		const minimumDepth =
+			depthRequirements.minimumDepthByClassId?.get(includeClassId);
+		if (
+			depthRequirements.requireKnownClassDepth &&
+			minimumDepth == null
+		) {
+			return {
+				error: `Include "${alias}" must target a class connected to the export class.`,
+			};
+		}
 		const entry: ReportIncludeRelatedObject = {
 			class_id: includeClassId,
 			direction: row.direction,
@@ -108,10 +182,24 @@ export function buildIncludeFromRows(
 		}
 		if (row.maxDepth.trim()) {
 			const maxDepth = parsePositive(row.maxDepth);
-			if (!maxDepth || maxDepth > 10) {
-				return { error: `Include "${alias}" max depth must be 1..10.` };
+			if (!maxDepth || maxDepth > MAX_INCLUDE_MAX_DEPTH) {
+				return {
+					error: `Include "${alias}" max depth must be 1..${MAX_INCLUDE_MAX_DEPTH}.`,
+				};
 			}
 			entry.max_depth = maxDepth;
+		}
+		const effectiveDepth =
+			entry.max_depth ?? DEFAULT_INCLUDE_MAX_DEPTH;
+		if (minimumDepth != null && minimumDepth > MAX_INCLUDE_MAX_DEPTH) {
+			return {
+				error: `Include "${alias}" needs depth ${minimumDepth} to reach its class, but the maximum supported depth is ${MAX_INCLUDE_MAX_DEPTH}.`,
+			};
+		}
+		if (minimumDepth != null && effectiveDepth < minimumDepth) {
+			return {
+				error: `Include "${alias}" max depth must be at least ${minimumDepth} to reach its class.`,
+			};
 		}
 		relatedObjects[alias] = entry;
 	}
