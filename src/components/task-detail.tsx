@@ -15,6 +15,7 @@ import {
 	fetchImportResults,
 	fetchTask,
 	fetchTaskEvents,
+	formatTaskElapsedTime,
 	getTaskStatusTone,
 	isTerminalTaskStatus,
 	type TaskRecord,
@@ -148,6 +149,10 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 	const taskTone = getTaskStatusTone(activeTask?.status);
 	const isImportTask = activeTask?.kind === "import";
 	const exportDetails = activeTask?.details?.export ?? null;
+	const elapsedTimeAsOf = Math.max(
+		taskQuery.dataUpdatedAt,
+		importProjectionQuery.dataUpdatedAt,
+	);
 	const backHref =
 		activeTask?.kind === "export"
 			? "/exports"
@@ -299,6 +304,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 					<div className="summary-pill">
 						<span>Kind</span>
 						<strong>{activeTask.kind}</strong>
+					</div>
+					<div className="summary-pill">
+						<span>Elapsed time</span>
+						<strong>
+							{formatTaskElapsedTime(activeTask, elapsedTimeAsOf)}
+						</strong>
 					</div>
 					<div className="summary-pill">
 						<span>Processed</span>

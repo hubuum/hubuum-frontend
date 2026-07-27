@@ -101,6 +101,64 @@ export function getTaskProgressPercent(
 	);
 }
 
+function formatDuration(milliseconds: number): string {
+	if (milliseconds < 1000) {
+		return `${Math.round(milliseconds)} ms`;
+	}
+	if (milliseconds < 10_000) {
+		return `${(milliseconds / 1000).toFixed(1).replace(/\.0$/, "")} s`;
+	}
+	if (milliseconds < 60_000) {
+		return `${Math.floor(milliseconds / 1000)} s`;
+	}
+
+	const totalSeconds = Math.floor(milliseconds / 1000);
+	const seconds = totalSeconds % 60;
+	const totalMinutes = Math.floor(totalSeconds / 60);
+	const minutes = totalMinutes % 60;
+	const totalHours = Math.floor(totalMinutes / 60);
+	const hours = totalHours % 24;
+	const days = Math.floor(totalHours / 24);
+
+	if (days > 0) {
+		return `${days}d ${hours}h ${minutes}m`;
+	}
+	if (totalHours > 0) {
+		return `${totalHours}h ${minutes}m ${seconds}s`;
+	}
+	return `${totalMinutes}m ${seconds}s`;
+}
+
+export function formatTaskElapsedTime(
+	task:
+		| Pick<TaskResponse, "finished_at" | "started_at" | "status">
+		| null
+		| undefined,
+	now: number,
+): string {
+	if (!task?.started_at) {
+		return "Not started";
+	}
+
+	const startedAt = Date.parse(task.started_at);
+	const finishedAt = task.finished_at
+		? Date.parse(task.finished_at)
+		: isTerminalTaskStatus(task.status)
+			? Number.NaN
+			: now;
+	const runtime = finishedAt - startedAt;
+
+	if (
+		Number.isNaN(startedAt) ||
+		Number.isNaN(finishedAt) ||
+		runtime < 0
+	) {
+		return "n/a";
+	}
+
+	return formatDuration(runtime);
+}
+
 function earlierTimestamp(
 	current: string | null,
 	candidate: string | null | undefined,
