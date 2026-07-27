@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	formatTaskElapsedTime,
 	getTaskProgressPercent,
 	getTaskStatusTone,
 } from "@/lib/api/tasking";
@@ -38,5 +39,67 @@ describe("task presentation helpers", () => {
 		).toBe(0);
 		expect(getTaskProgressPercent({ progress, status: "failed" })).toBe(100);
 		expect(getTaskProgressPercent(null)).toBe(0);
+	});
+
+	it("formats completed and active task elapsed times", () => {
+		expect(
+			formatTaskElapsedTime(
+				{
+					status: "succeeded",
+					started_at: "2026-07-27T07:33:00.100Z",
+					finished_at: "2026-07-27T07:33:00.850Z",
+				},
+				Date.parse("2026-07-27T08:00:00Z"),
+			),
+		).toBe("750 ms");
+		expect(
+			formatTaskElapsedTime(
+				{
+					status: "running",
+					started_at: "2026-07-27T07:33:00Z",
+					finished_at: null,
+				},
+				Date.parse("2026-07-27T07:35:05Z"),
+			),
+		).toBe("2m 5s");
+		expect(
+			formatTaskElapsedTime(
+				{
+					status: "succeeded",
+					started_at: "2026-07-25T04:30:00Z",
+					finished_at: "2026-07-27T07:35:05Z",
+				},
+				Date.parse("2026-07-27T08:00:00Z"),
+			),
+		).toBe("2d 3h 5m");
+	});
+
+	it("handles task elapsed times that cannot be calculated", () => {
+		expect(
+			formatTaskElapsedTime(
+				{ status: "queued", started_at: null, finished_at: null },
+				Date.parse("2026-07-27T08:00:00Z"),
+			),
+		).toBe("Not started");
+		expect(
+			formatTaskElapsedTime(
+				{
+					status: "succeeded",
+					started_at: "2026-07-27T07:33:00Z",
+					finished_at: null,
+				},
+				Date.parse("2026-07-27T08:00:00Z"),
+			),
+		).toBe("n/a");
+		expect(
+			formatTaskElapsedTime(
+				{
+					status: "failed",
+					started_at: "not-a-date",
+					finished_at: "2026-07-27T07:33:00Z",
+				},
+				Date.parse("2026-07-27T08:00:00Z"),
+			),
+		).toBe("n/a");
 	});
 });
