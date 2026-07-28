@@ -93,11 +93,21 @@ export function formatReportQueryOperator(value: string): string {
 		iendswith: "Ends with, ignoring case",
 		like: "Matches pattern",
 		regex: "Matches regular expression",
+		in: "Is one of",
 		gt: "Greater than",
 		gte: "Greater than or equal to",
 		lt: "Less than",
 		lte: "Less than or equal to",
 		between: "Between",
+		is_null: "Is missing or null",
+		has_key: "Has key",
+		array_length: "Has length",
+		all: "Contains all",
+		within_network: "Is within network",
+		contains_network: "Contains address or network",
+		contains_ip: "Strictly contains host IP",
+		overlaps_network: "Overlaps network",
+		inet_equals: "Equals normalized address or network",
 	};
 
 	return labels[value] ?? value;

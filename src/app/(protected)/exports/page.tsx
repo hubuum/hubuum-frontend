@@ -12,7 +12,9 @@ export default async function ExportsPage({ searchParams }: ExportsPageProps) {
 	await requireServerSession();
 	const { view } = await searchParams;
 	const initialView: ExportWorkspaceView =
-		view === "templates" || view === "history" ? view : "run";
+		view === "one-off" || view === "templates" || view === "history"
+			? view
+			: "run";
 
 	return <ExportsWorkspace initialView={initialView} />;
 }

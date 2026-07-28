@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import type { ReportTemplate } from "@/lib/api/reporting";
 import {
+	describeLatestReportResult,
+	describeSavedReportQuery,
 	EXPORT_ACTION_HINTS,
 	formatExportContentType,
 	formatExportScope,
@@ -10,26 +12,46 @@ import {
 	getReportConfigurationHref,
 	getReportRefreshHref,
 } from "@/lib/export-workspace";
+import type { ReportResultStatus } from "@/lib/report-result-status";
 
 type ReportTemplateCardProps = {
+	classLabel?: string;
 	collectionLabel?: string;
+	latestResultError?: boolean;
+	latestResultLoading?: boolean;
+	latestResultStatus?: ReportResultStatus | null;
 	template: ReportTemplate;
 };
 
 export function ReportTemplateCard({
+	classLabel,
 	collectionLabel,
+	latestResultError = false,
+	latestResultLoading = false,
+	latestResultStatus,
 	template,
 }: ReportTemplateCardProps) {
 	const needsObject = template.scope_kind === "related_objects";
 	const reportHref = getBookmarkableReportHref(template.id);
 	const refreshHref = getReportRefreshHref(template.id);
 	const configureHref = getReportConfigurationHref(template.id);
+	const latestResult = describeLatestReportResult({
+		error: latestResultError,
+		loading: latestResultLoading,
+		needsObject,
+		status: latestResultStatus,
+	});
+	const savedQuery = describeSavedReportQuery(template.default_query);
+	const templateClassLabel =
+		template.scope_kind === "objects_in_class" && template.class_id != null
+			? (classLabel ?? `Class #${template.class_id}`)
+			: null;
 
 	return (
 		<article className="report-card">
 			<div className="stack report-card-copy">
 				<div className="report-card-title-row">
-					<div className="stack action-card-header">
+					<div className="stack report-card-heading">
 						<h4>{template.name}</h4>
 						<p className="template-description">{template.description}</p>
 					</div>
@@ -42,24 +64,25 @@ export function ReportTemplateCard({
 						{collectionLabel ?? `Collection #${template.collection_id}`}
 					</span>
 					<span>{formatExportScope(template.scope_kind)}</span>
-					<span>{template.default_query ? "Saved query" : "No filters"}</span>
+					{templateClassLabel ? <span>Class: {templateClassLabel}</span> : null}
+					<span
+						className="report-card-query-meta action-hint"
+						data-action-hint={savedQuery.hint}
+						title={savedQuery.hint}
+					>
+						{savedQuery.label}
+					</span>
+					<span
+						className="report-card-result-meta action-hint"
+						data-action-hint={latestResult.hint}
+						title={latestResult.hint}
+					>
+						{latestResult.label}
+					</span>
+					<span className="report-card-template-meta">
+						Template: {formatExportTimestamp(template.updated_at)}
+					</span>
 				</div>
-			</div>
-
-			<div className="report-card-freshness">
-				<div>
-					<strong>
-						{needsObject ? "Object required" : "Latest available result"}
-					</strong>
-					<small>
-						{needsObject
-							? "Choose the root object before viewing."
-							: "Regenerates automatically when stored output expires."}
-					</small>
-				</div>
-				<span className="template-stamp report-card-updated">
-					Template updated {formatExportTimestamp(template.updated_at)}
-				</span>
 			</div>
 
 			<div className="report-card-actions">
@@ -110,7 +133,9 @@ export function ReportTemplateCard({
 						More
 					</summary>
 					<div className="report-card-more-menu">
-						<Link href={`/exports/templates/${template.id}`}>Edit template</Link>
+						<Link href={`/exports/templates/${template.id}`}>
+							Edit template
+						</Link>
 						<Link href={`/exports/templates/new?from=${template.id}`}>
 							Duplicate
 						</Link>

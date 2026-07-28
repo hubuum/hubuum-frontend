@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { ReportTemplate } from "@/lib/api/reporting";
 import {
+	describeLatestReportResult,
+	describeSavedReportQuery,
 	filterReportTemplates,
 	formatExportBytes,
 	formatExportContentType,
@@ -90,6 +92,60 @@ describe("export labels", () => {
 				text: null,
 			}),
 		).toContain('"items": []');
+	});
+
+	it("describes the current template result without confusing it with template updates", () => {
+		expect(
+			describeLatestReportResult({
+				status: {
+					generatedAt: "2026-07-28T20:01:00.000Z",
+					outputExpiresAt: "2026-07-29T20:01:00.000Z",
+					state: "available",
+					taskId: 42,
+					templateId: 7,
+				},
+			}),
+		).toEqual({
+			hint: expect.stringContaining("Stored output is available until"),
+			label: expect.stringMatching(/^Latest export: /),
+		});
+		expect(
+			describeLatestReportResult({
+				status: {
+					generatedAt: "2026-07-28T20:01:00.000Z",
+					outputExpiresAt: "2026-07-29T20:01:00.000Z",
+					state: "expired",
+					taskId: 42,
+					templateId: 7,
+				},
+			}).label,
+		).toContain("expired");
+		expect(describeLatestReportResult({ status: null })).toEqual({
+			hint: expect.stringContaining("first result"),
+			label: "Latest export: none yet",
+		});
+	});
+
+	it("describes saved filters and sorting without exposing query syntax", () => {
+		expect(
+			describeSavedReportQuery(
+				"name__icontains=old+machine&collection_id=2&sort=updated_at.desc",
+			),
+		).toEqual({
+			hint: "Filters — Name contains, ignoring case “old machine”; Collection ID equals “2”. Sort — Updated At descending.",
+			label: "Saved query · 2 filters · 1 sort",
+		});
+		expect(
+			describeSavedReportQuery(
+				"json_data__gte=hardware%2Cmemory_gb%3D16&sort=name.asc",
+			).hint,
+		).toBe(
+			"Filters — Data · Hardware · Memory Gb greater than or equal to “16”. Sort — Name ascending.",
+		);
+		expect(describeSavedReportQuery(null)).toEqual({
+			hint: "No saved filters or sorting; the report uses the full selected scope.",
+			label: "No filters",
+		});
 	});
 });
 

@@ -46,6 +46,7 @@ import {
 import {
 	deleteReportTemplate,
 	fetchReportOutput,
+	fetchReportResultStatuses,
 	fetchReportTask,
 	listReportTemplates,
 	type ReportContentType,
@@ -92,9 +93,7 @@ import {
 	resolveObjectServerFilterComputedFields,
 	resolveObjectServerFilterDataFields,
 } from "@/lib/object-server-filter-fields";
-import {
-	type ObjectServerFilter,
-} from "@/lib/object-server-filters";
+import { type ObjectServerFilter } from "@/lib/object-server-filters";
 import { parsePositiveInteger } from "@/lib/number-input";
 
 type QueryBuilderFilter = {
@@ -127,7 +126,12 @@ type ReportResultView = {
 
 const PREVIEW_BYTE_LIMIT = 64 * 1024;
 const FULL_COPY_BYTE_LIMIT = 1024 * 1024;
-const EXPORT_WORKSPACE_VIEWS = ["run", "templates", "history"] as const;
+const EXPORT_WORKSPACE_VIEWS = [
+	"run",
+	"one-off",
+	"templates",
+	"history",
+] as const;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -225,7 +229,6 @@ export function ExportsWorkspace({
 		useState<ExportWorkspaceView>(initialView);
 	const [templateSearch, setTemplateSearch] = useState("");
 	const [templateCollectionFilter, setTemplateCollectionFilter] = useState("");
-	const [runMode, setRunMode] = useState<"json" | "template">("template");
 	const [scopeKind, setScopeKind] = useState<ReportScopeKind>("collections");
 	const [classId, setClassId] = useState("");
 	const [objectId, setObjectId] = useState("");
@@ -327,6 +330,37 @@ export function ExportsWorkspace({
 		() => templates.filter((template) => template.kind === "export"),
 		[templates],
 	);
+	const statusTemplates = useMemo(
+		() =>
+			runnableTemplates.filter(
+				(template) => template.scope_kind !== "related_objects",
+			),
+		[runnableTemplates],
+	);
+	const reportResultStatusesQuery = useQuery({
+		queryKey: [
+			"export-reports",
+			"latest-results",
+			statusTemplates.map(
+				(template) => `${template.id}:${template.updated_at}`,
+			),
+		],
+		queryFn: () => fetchReportResultStatuses(statusTemplates),
+		enabled: statusTemplates.length > 0,
+		refetchInterval: (query) =>
+			query.state.data?.some((status) => status.state === "generating")
+				? 2000
+				: false,
+	});
+	const reportResultStatuses = useMemo(
+		() =>
+			new Map(
+				reportResultStatusesQuery.data?.map(
+					(status) => [status.templateId, status] as const,
+				) ?? [],
+			),
+		[reportResultStatusesQuery.data],
+	);
 	const parsedTemplateCollectionFilter = useMemo(
 		() => parsePositiveInteger(templateCollectionFilter),
 		[templateCollectionFilter],
@@ -345,11 +379,7 @@ export function ExportsWorkspace({
 				collectionId: parsedTemplateCollectionFilter,
 				query: templateSearch,
 			}),
-		[
-			parsedTemplateCollectionFilter,
-			runnableTemplates,
-			templateSearch,
-		],
+		[parsedTemplateCollectionFilter, runnableTemplates, templateSearch],
 	);
 	const scopeFields = useMemo(() => SCOPE_QUERY_FIELDS[scopeKind], [scopeKind]);
 	const sortFields = useMemo(
@@ -372,9 +402,7 @@ export function ExportsWorkspace({
 			),
 		[objectSampleData, selectedClass?.json_schema],
 	);
-	const objectServerFilterComputedFields = useMemo<
-		ServerFilterComputedField[]
-	>(
+	const objectServerFilterComputedFields = useMemo<ServerFilterComputedField[]>(
 		() =>
 			resolveObjectServerFilterComputedFields(
 				sharedComputedQuery.data?.definitions ?? [],
@@ -547,7 +575,7 @@ export function ExportsWorkspace({
 		setResultActionFeedback(null);
 		setLastResult(null);
 		setLastReportTask(task);
-		setActiveView("run");
+		setActiveView("one-off");
 	}
 
 	async function downloadReportRun(task: TaskResponse) {
@@ -746,6 +774,16 @@ export function ExportsWorkspace({
 		[collectionHierarchy.byId, collectionOptions],
 	);
 	const classOptions = classesQuery.data ?? [];
+	const classLabels = useMemo(
+		() =>
+			new Map(
+				(classesQuery.data ?? []).map((classItem) => [
+					classItem.id,
+					`${classItem.name} (#${classItem.id})`,
+				]),
+			),
+		[classesQuery.data],
+	);
 	const objectOptions = objectsQuery.data ?? [];
 	const activeReportProgress = getTaskProgressPercent(activeReportTask);
 	return (
@@ -755,8 +793,8 @@ export function ExportsWorkspace({
 					<p className="eyebrow">Exports</p>
 					<h2>Open reports and retrieve exports</h2>
 					<p className="muted">
-						View saved reports in one click, refresh them when needed, or
-						open the full controls for a customized run.
+						View saved reports in one click, refresh them when needed, or open
+						the full controls for a customized run.
 					</p>
 				</div>
 				{activeView === "templates" ? (
@@ -784,6 +822,20 @@ export function ExportsWorkspace({
 				>
 					<span>Reports</span>
 					<small>View and refresh</small>
+				</button>
+				<button
+					type="button"
+					id="export-tab-one-off"
+					role="tab"
+					aria-selected={activeView === "one-off"}
+					aria-controls="export-panel-one-off"
+					tabIndex={activeView === "one-off" ? 0 : -1}
+					className={activeView === "one-off" ? "is-active" : ""}
+					onClick={() => setActiveView("one-off")}
+					onKeyDown={(event) => handleWorkspaceTabKeyDown(event, "one-off")}
+				>
+					<span>One-off</span>
+					<small>Ad-hoc JSON</small>
 				</button>
 				<button
 					type="button"
@@ -899,10 +951,7 @@ export function ExportsWorkspace({
 
 							<div className="template-list">
 								{filteredTemplates.map((template) => (
-									<article
-										key={template.id}
-										className="template-card"
-									>
+									<article key={template.id} className="template-card">
 										<div className="template-card-header">
 											<div className="stack template-card-copy">
 												<h4>{template.name}</h4>
@@ -991,79 +1040,34 @@ export function ExportsWorkspace({
 						role="tabpanel"
 						aria-labelledby={`export-tab-${activeView}`}
 					>
-						{activeView === "run" ? (
+						{activeView === "run" || activeView === "one-off" ? (
 							<article className="card stack panel-card">
 								<div className="panel-header">
 									<div className="stack action-card-header">
 										<h3>
-											{runMode === "template"
+											{activeView === "run"
 												? "Saved reports"
 												: "One-off JSON export"}
 										</h3>
 										<p className="muted">
-											{runMode === "template"
+											{activeView === "run"
 												? "View the latest acceptable result, explicitly refresh it, or change only this run."
 												: "Keep the full ad-hoc query, hydration, and limit controls for work that should not become a template."}
 										</p>
 									</div>
-									{runMode === "template" ? (
-										<button type="button" onClick={openCreateTemplate}>
-											New template
-										</button>
-									) : null}
-								</div>
-
-								<div className="segmented-options export-method-picker">
-									{templatesQuery.isLoading ? (
-										<div className="export-method-loading muted">
-											Checking saved templates…
-										</div>
-									) : (
-										<button
-											type="button"
-											className={
-												runMode === "template" ? "is-selected" : "ghost"
-											}
-											aria-pressed={runMode === "template"}
-											onClick={() => {
-												setRunMode("template");
-												setRunnerError(null);
-											}}
-										>
-											<span>Saved reports</span>
-											<small>View, refresh, or run with changes</small>
-										</button>
-									)}
-									<button
-										type="button"
-										className={runMode === "json" ? "is-selected" : "ghost"}
-										aria-pressed={runMode === "json"}
-										onClick={() => {
-											setRunMode("json");
-											setRunnerError(null);
-										}}
-									>
-										<span>One-off export</span>
-										<small>Full controls for an unsaved JSON run</small>
-									</button>
 								</div>
 
 								{!templatesQuery.isLoading &&
 								!templatesQuery.isError &&
 								runnableTemplates.length === 0 &&
-								runMode === "template" ? (
+								activeView === "run" ? (
 									<EmptyState
 										title="No saved export templates"
-										description="Create a report template once, then return here whenever you need its latest result."
-										action={
-											<button type="button" onClick={openCreateTemplate}>
-												Create a template
-											</button>
-										}
+										description="Create report definitions in Templates, then return here whenever you need their latest result."
 									/>
 								) : null}
 
-								{runMode === "json" ? (
+								{activeView === "one-off" ? (
 									<form className="stack" onSubmit={handleRunReport}>
 										<div className="form-grid">
 											<label className="control-field">
@@ -1541,7 +1545,7 @@ export function ExportsWorkspace({
 									</form>
 								) : null}
 
-								{runMode === "template" ? (
+								{activeView === "run" ? (
 									<div className="stack report-catalog">
 										{runnableTemplates.length ? (
 											<div className="export-template-toolbar">
@@ -1566,10 +1570,7 @@ export function ExportsWorkspace({
 													>
 														<option value="">All collections</option>
 														{collectionOptions.map((collection) => (
-															<option
-																key={collection.id}
-																value={collection.id}
-															>
+															<option key={collection.id} value={collection.id}>
 																{collectionLabels.get(collection.id)}
 															</option>
 														))}
@@ -1595,6 +1596,18 @@ export function ExportsWorkspace({
 												<ReportTemplateCard
 													key={template.id}
 													template={template}
+													classLabel={
+														template.class_id == null
+															? undefined
+															: classLabels.get(template.class_id)
+													}
+													latestResultError={reportResultStatusesQuery.isError}
+													latestResultLoading={
+														reportResultStatusesQuery.isLoading
+													}
+													latestResultStatus={reportResultStatuses.get(
+														template.id,
+													)}
 													collectionLabel={collectionLabels.get(
 														template.collection_id,
 													)}
@@ -1762,7 +1775,7 @@ export function ExportsWorkspace({
 							</article>
 						) : null}
 
-						{activeView === "run" ? (
+						{activeView === "one-off" ? (
 							<article className="card stack panel-card">
 								<div className="panel-header">
 									<div className="stack action-card-header">

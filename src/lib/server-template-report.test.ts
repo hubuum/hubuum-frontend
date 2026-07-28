@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+	getBookmarkableTemplateReportStatus,
 	getStoredRawReport,
 	parseBookmarkableReportFreshness,
 	parseBookmarkableReportRequest,
@@ -100,15 +101,11 @@ describe("bookmarkable report requests", () => {
 	});
 
 	it("parses optional report freshness durations", () => {
-		expect(
-			parseBookmarkableReportFreshness(new URLSearchParams()),
-		).toEqual({
+		expect(parseBookmarkableReportFreshness(new URLSearchParams())).toEqual({
 			maxAgeMilliseconds: null,
 		});
 		expect(
-			parseBookmarkableReportFreshness(
-				new URLSearchParams({ max_age: "15m" }),
-			),
+			parseBookmarkableReportFreshness(new URLSearchParams({ max_age: "15m" })),
 		).toEqual({ maxAgeMilliseconds: 15 * 60 * 1000 });
 		expect(
 			parseBookmarkableReportFreshness(new URLSearchParams({ max_age: "0" })),
@@ -270,7 +267,9 @@ describe("raw template reports", () => {
 		await expect(first.text()).resolves.toBe("generated");
 		await expect(second.text()).resolves.toBe("generated");
 		expect(
-			backendFetch.mock.calls.filter(([, request]) => request.method === "POST"),
+			backendFetch.mock.calls.filter(
+				([, request]) => request.method === "POST",
+			),
 		).toHaveLength(1);
 	});
 
@@ -303,6 +302,107 @@ describe("raw template reports", () => {
 		]);
 	});
 
+	it("reports when the current saved result was generated and expires", async () => {
+		const runStore = new InMemoryTemplateReportRunStore();
+		const revision = "2026-07-26T09:00:00.000Z";
+		const backendFetch = vi
+			.fn()
+			.mockResolvedValueOnce(template(revision))
+			.mockResolvedValueOnce(task(36, "succeeded", null, 202))
+			.mockResolvedValueOnce(
+				Response.json({
+					created_at: "2026-07-26T10:00:00.000Z",
+					details: {
+						export: {
+							output_available: true,
+							output_expired: false,
+							output_expires_at: "2026-07-27T10:00:00.100Z",
+						},
+					},
+					finished_at: "2026-07-26T10:00:00.100Z",
+					id: 36,
+					status: "succeeded",
+				}),
+			)
+			.mockResolvedValueOnce(
+				Response.json({
+					created_at: "2026-07-26T10:00:00.000Z",
+					details: {
+						export: {
+							output_available: false,
+							output_expired: true,
+							output_expires_at: "2026-07-27T10:00:00.100Z",
+						},
+					},
+					finished_at: "2026-07-26T10:00:00.100Z",
+					id: 36,
+					status: "succeeded",
+				}),
+			);
+		const sharedOptions = {
+			correlationId: "correlation-status",
+			sessionId: "session-status",
+			templateId: 7,
+			token: "secret-token",
+			dependencies: {
+				backendFetch,
+				runStore,
+				sleep: vi.fn().mockResolvedValue(undefined),
+			},
+		};
+
+		await prepareBookmarkableTemplateReport({
+			...sharedOptions,
+			freshness: { maxAgeMilliseconds: 0 },
+			request: {},
+		});
+		const available = await getBookmarkableTemplateReportStatus({
+			...sharedOptions,
+			revision,
+		});
+		const expired = await getBookmarkableTemplateReportStatus({
+			...sharedOptions,
+			revision,
+		});
+
+		expect(available).toEqual({
+			generatedAt: "2026-07-26T10:00:00.100Z",
+			outputExpiresAt: "2026-07-27T10:00:00.100Z",
+			state: "available",
+			taskId: 36,
+		});
+		expect(expired).toEqual({
+			generatedAt: "2026-07-26T10:00:00.100Z",
+			outputExpiresAt: "2026-07-27T10:00:00.100Z",
+			state: "expired",
+			taskId: 36,
+		});
+	});
+
+	it("reports no current result without calling the backend", async () => {
+		const backendFetch = vi.fn();
+
+		await expect(
+			getBookmarkableTemplateReportStatus({
+				correlationId: "correlation-missing",
+				revision: "2026-07-26T09:00:00.000Z",
+				sessionId: "session-missing",
+				templateId: 7,
+				token: "secret-token",
+				dependencies: {
+					backendFetch,
+					runStore: new InMemoryTemplateReportRunStore(),
+				},
+			}),
+		).resolves.toEqual({
+			generatedAt: null,
+			outputExpiresAt: null,
+			state: "missing",
+			taskId: null,
+		});
+		expect(backendFetch).not.toHaveBeenCalled();
+	});
+
 	it("regenerates when max_age is exceeded and reuses the replacement", async () => {
 		const runStore = new InMemoryTemplateReportRunStore();
 		const backendFetch = vi
@@ -312,9 +412,7 @@ describe("raw template reports", () => {
 			.mockResolvedValueOnce(task(41, "succeeded"))
 			.mockResolvedValueOnce(new Response("old"))
 			.mockResolvedValueOnce(template())
-			.mockResolvedValueOnce(
-				completedTask(41, "2026-07-26T09:00:00.000Z"),
-			)
+			.mockResolvedValueOnce(completedTask(41, "2026-07-26T09:00:00.000Z"))
 			.mockResolvedValueOnce(task(42, "queued", null, 202))
 			.mockResolvedValueOnce(task(42, "succeeded"))
 			.mockResolvedValueOnce(new Response("new"))
@@ -351,7 +449,9 @@ describe("raw template reports", () => {
 		await expect(regenerated.text()).resolves.toBe("new");
 		await expect(reused.text()).resolves.toBe("new");
 		expect(
-			backendFetch.mock.calls.filter(([, request]) => request.method === "POST"),
+			backendFetch.mock.calls.filter(
+				([, request]) => request.method === "POST",
+			),
 		).toHaveLength(2);
 	});
 
@@ -397,7 +497,9 @@ describe("raw template reports", () => {
 		await expect(forced.text()).resolves.toBe("forced");
 		await expect(updated.text()).resolves.toBe("updated");
 		expect(
-			backendFetch.mock.calls.filter(([, request]) => request.method === "POST"),
+			backendFetch.mock.calls.filter(
+				([, request]) => request.method === "POST",
+			),
 		).toHaveLength(3);
 	});
 
@@ -438,7 +540,9 @@ describe("raw template reports", () => {
 
 		await expect(replacement.text()).resolves.toBe("replacement");
 		expect(
-			backendFetch.mock.calls.filter(([, request]) => request.method === "POST"),
+			backendFetch.mock.calls.filter(
+				([, request]) => request.method === "POST",
+			),
 		).toHaveLength(2);
 	});
 
