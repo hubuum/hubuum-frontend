@@ -31,7 +31,12 @@ import type {
 	TaskResponse,
 	UpdateExportTemplate,
 } from "@/lib/api/generated/models";
+import { frontendApiPath } from "@/lib/api/frontend";
 import { normalizeIdempotencyKey } from "@/lib/idempotency-key";
+import {
+	parseReportResultStatusResponse,
+	type ReportResultStatus,
+} from "@/lib/report-result-status";
 
 export type NewReportTemplate = NewExportTemplate;
 export type ReportContentType = ExportContentType;
@@ -126,6 +131,41 @@ export async function listReportTemplates(
 		items: response.data,
 		nextCursor: response.headers.get("x-next-cursor"),
 	};
+}
+
+export async function fetchReportResultStatuses(
+	templates: readonly Pick<ReportTemplate, "id" | "updated_at">[],
+): Promise<ReportResultStatus[]> {
+	if (templates.length === 0) {
+		return [];
+	}
+
+	const response = await fetch(frontendApiPath("/reports/latest"), {
+		body: JSON.stringify({
+			templates: templates.map((template) => ({
+				revision: template.updated_at,
+				templateId: template.id,
+			})),
+		}),
+		credentials: "include",
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const payload = await response.json().catch(() => null);
+	if (response.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(
+				payload,
+				"Failed to load latest report result status.",
+			),
+		);
+	}
+
+	const parsed = parseReportResultStatusResponse(payload);
+	if (!parsed) {
+		throw new Error("The frontend returned invalid report result status.");
+	}
+	return parsed;
 }
 
 export async function getReportTemplate(

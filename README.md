@@ -220,15 +220,21 @@ whole numbers are seconds, and `s`, `m`, `h`, or `d` suffixes are accepted
 (`max_age=15m`). `max_age=0` explicitly forces a new run. Updating the saved
 template also causes the next request to generate a new report.
 
-The default Exports view is a catalog of executable saved reports. `View` opens
-the stable raw URL, `Refresh now` performs one forced generation, waits for the
-task to finish without opening its output stream, and redirects to the clean
+The default Reports tab is a catalog of executable saved reports, while less
+common one-off JSON exports have their own top-level tab. `View` opens the
+stable raw URL, `Refresh now` performs one forced generation, waits for the task
+to finish without opening its output stream, and redirects to the clean
 bookmark URL. `Run with changes` opens the authenticated configuration
 interface at `/exports/reports/{template_id}`. That interface uses the same
 visual query builder as template authoring and keeps freshness, missing-data,
 and output-limit overrides available without putting controls inside the
-generated result. These changes affect only the configured URL. Permanent
-layout, scope, include, and default changes remain in
+generated result. Each catalog card distinguishes the template's update time
+from the current saved-default export's generation time and stored-output
+expiry without generating a report during inspection. Saved-query hints
+translate filters and sorting into readable field, operator, and value
+descriptions, and class-scoped reports identify their class. These changes
+affect only the configured URL. Permanent layout, scope, include, and default
+changes remain in
 `/exports/templates/{template_id}`, while new definitions start under
 `/exports/templates/new`. Adding `?from={template_id}` to the new-template URL
 copies an existing definition into a separately named, unsaved template.

@@ -141,24 +141,21 @@ test.describe("authenticated workspace", () => {
 	test("token expiry shows the effective server default lifetime", async ({
 		page,
 	}) => {
-		await page.route(
-			"**/_hubuum-bff/hubuum/api/v1/config",
-			async (route) => {
-				await route.fulfill({
-					status: 200,
-					contentType: "application/json",
-					body: JSON.stringify({
-						authentication: {
-							default_token_lifetime_hours: 36,
-						},
-						pagination: {
-							default_page_limit: 50,
-							max_page_limit: 250,
-						},
-					}),
-				});
-			},
-		);
+		await page.route("**/_hubuum-bff/hubuum/api/v1/config", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({
+					authentication: {
+						default_token_lifetime_hours: 36,
+					},
+					pagination: {
+						default_page_limit: 50,
+						max_page_limit: 250,
+					},
+				}),
+			});
+		});
 		await page.goto("/account/tokens");
 		await page.getByRole("button", { name: "Create new" }).click();
 
@@ -183,6 +180,7 @@ test.describe("authenticated workspace", () => {
 		await page.goto("/exports");
 
 		const runTab = page.getByRole("tab", { name: /Reports/ });
+		const oneOffTab = page.getByRole("tab", { name: /One-off/ });
 		const templatesTab = page.getByRole("tab", { name: /Templates/ });
 		const historyTab = page.getByRole("tab", { name: /History/ });
 
@@ -191,12 +189,22 @@ test.describe("authenticated workspace", () => {
 			page.getByRole("heading", { name: "Saved reports" }),
 		).toBeVisible();
 		await expect(
-			page.getByRole("button", { name: /Saved reports/ }),
-		).toHaveAttribute("aria-pressed", "true");
+			page.getByRole("button", { name: /(?:New|Create).*template/i }),
+		).toHaveCount(0);
+
+		await oneOffTab.click();
+		await expect(oneOffTab).toHaveAttribute("aria-selected", "true");
+		await expect(
+			page.getByRole("heading", { name: "One-off JSON export" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Run export" }),
+		).toBeVisible();
+
+		await templatesTab.click();
 		const createTemplate = page.getByRole("button", {
-			name: "Create a template",
+			name: "Create new template",
 		});
-		await expect(createTemplate).toBeVisible();
 		await createTemplate.click();
 		await expect(page).toHaveURL(/\/exports\/templates\/new$/);
 		await expect(
@@ -287,9 +295,10 @@ test.describe("authenticated workspace", () => {
 			content_type: "text/plain",
 			template: "{% for item in items %}{{ item.name }}{% endfor %}",
 			kind: "export",
-			scope_kind: "collections",
-			class_id: null,
-			default_query: null,
+			scope_kind: "objects_in_class",
+			class_id: 10,
+			default_query:
+				"name__icontains=server&updated_at__gte=2026-01-01&sort=updated_at.desc",
 			include: null,
 			relation_context: null,
 			default_missing_data_policy: "strict",
@@ -333,6 +342,13 @@ test.describe("authenticated workspace", () => {
 			},
 		};
 
+		await context.route("**/api/v1/classes?**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify([{ id: 10, name: "Machines" }]),
+			});
+		});
 		await context.route("**/api/v1/export-templates**", async (route) => {
 			const pathname = new URL(route.request().url()).pathname;
 			await route.fulfill({
@@ -361,6 +377,23 @@ test.describe("authenticated workspace", () => {
 				body: JSON.stringify([task]),
 			});
 		});
+		await context.route("**/_hubuum-bff/reports/latest", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({
+					results: [
+						{
+							generatedAt: task.finished_at,
+							outputExpiresAt: task.details.export.output_expires_at,
+							state: "available",
+							taskId: task.id,
+							templateId: template.id,
+						},
+					],
+				}),
+			});
+		});
 		await page.goto("/exports?view=history");
 		const taskRow = page.getByRole("row").filter({ hasText: "Export #314" });
 		const openResult = taskRow.getByRole("link", {
@@ -374,10 +407,7 @@ test.describe("authenticated workspace", () => {
 		const configureReport = page.getByRole("link", {
 			name: "Run with changes",
 		});
-		await expect(configureReport).toHaveAttribute(
-			"href",
-			"/exports/reports/7",
-		);
+		await expect(configureReport).toHaveAttribute("href", "/exports/reports/7");
 		const openReport = page.getByRole("link", { name: "View", exact: true });
 		await expect(openReport).toHaveAttribute("href", "/reports/7");
 		await expect(openReport).toHaveAttribute("target", "_blank");
@@ -388,6 +418,23 @@ test.describe("authenticated workspace", () => {
 		await expect(
 			page.getByRole("link", { name: "Refresh now" }),
 		).toHaveAttribute("href", "/reports/7/refresh");
+		const latestExport = page.getByText(/Latest export:/);
+		await expect(latestExport).toBeVisible();
+		await expect(latestExport).toHaveAttribute(
+			"data-action-hint",
+			/Stored output is available until/,
+		);
+		await expect(page.getByText("Class: Machines (#10)")).toBeVisible();
+		const savedQuery = page.getByText(/Saved query/);
+		await expect(savedQuery).toHaveAttribute(
+			"data-action-hint",
+			/Filters — Name contains, ignoring case “server”; Updated At greater than or equal to “2026-01-01”\. Sort — Updated At descending\./,
+		);
+		await expect(savedQuery).not.toHaveAttribute(
+			"data-action-hint",
+			/__|&|%3D/,
+		);
+		await expect(page.getByText(/Template:/)).toBeVisible();
 
 		await configureReport.click();
 		await expect(page).toHaveURL(/\/exports\/reports\/7$/);
@@ -399,9 +446,7 @@ test.describe("authenticated workspace", () => {
 		).toHaveAttribute("href", "/reports/7");
 		await page.getByText("Change it for this view", { exact: true }).click();
 		await page.getByRole("button", { name: "Add filter" }).click();
-		await expect(
-			page.getByText("Filter 1", { exact: true }),
-		).toBeVisible();
+		await expect(page.getByText("Filter 1", { exact: true })).toBeVisible();
 		const viewWithChanges = page.getByRole("button", {
 			name: "View with changes",
 		});

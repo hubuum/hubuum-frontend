@@ -6,16 +6,20 @@ import type {
 	ExportLimits,
 	ExportMissingDataPolicy,
 } from "@/lib/api/generated/models";
+import {
+	formatReportQueryField,
+	formatReportQueryOperator,
+} from "@/lib/report-query";
+import type { ReportResultStatus } from "@/lib/report-result-status";
 
-export type ExportWorkspaceView = "run" | "templates" | "history";
+export type ExportWorkspaceView = "run" | "one-off" | "templates" | "history";
 
 export const EXPORT_ACTION_HINTS = {
 	chooseObject:
 		"Select the required root object and, if useful, add one-run overrides.",
 	copyCustomizedLink:
 		"Copy a bookmarkable report URL containing the current query and freshness overrides.",
-	duplicate:
-		"Create a separately named copy without changing this template.",
+	duplicate: "Create a separately named copy without changing this template.",
 	editTemplate:
 		"Permanently change this saved template's targets, defaults, layout, or content.",
 	moreTemplateActions: "Edit or duplicate this report template.",
@@ -25,8 +29,7 @@ export const EXPORT_ACTION_HINTS = {
 		"Generate one fresh customized result, then open its clean bookmarkable URL.",
 	runWithChanges:
 		"Temporarily override query, freshness, missing-data rules, or limits without editing the template.",
-	view:
-		"Open the latest acceptable result in a new tab, generating one if needed.",
+	view: "Open the latest acceptable result in a new tab, generating one if needed.",
 	viewCustomized:
 		"Open this customized report in a new tab without changing the saved template.",
 	viewSaved:
@@ -122,6 +125,243 @@ export function formatExportTimestamp(
 	} catch {
 		return value;
 	}
+}
+
+function formatSavedQueryField(value: string): string {
+	const computedMatch = value.match(
+		/^computed\.(shared|personal)\.([a-z][a-z0-9_]*)$/i,
+	);
+	if (computedMatch) {
+		return `${computedMatch[1] === "shared" ? "Shared" : "Personal"} computed · ${formatReportQueryField(computedMatch[2])}`;
+	}
+	if (value === "json_data") {
+		return "Data";
+	}
+	return formatReportQueryField(value).replace(/\bId\b/g, "ID");
+}
+
+function formatSavedQueryValue(value: string): string {
+	let readable = value.trim().replace(/\s+/g, " ");
+	try {
+		const parsed: unknown = JSON.parse(readable);
+		if (typeof parsed === "string") {
+			readable = parsed;
+		} else if (
+			Array.isArray(parsed) &&
+			parsed.every(
+				(item) =>
+					typeof item === "string" ||
+					typeof item === "number" ||
+					typeof item === "boolean",
+			)
+		) {
+			readable = parsed.join(", ");
+		} else if (
+			parsed === null ||
+			typeof parsed === "number" ||
+			typeof parsed === "boolean"
+		) {
+			readable = String(parsed);
+		}
+	} catch {
+		// Query values are usually plain strings rather than JSON.
+	}
+
+	return readable.length > 96 ? `${readable.slice(0, 93)}…` : readable;
+}
+
+function formatSavedQueryOperator(value: string): string {
+	if (!value.startsWith("not_")) {
+		return formatReportQueryOperator(value).toLocaleLowerCase();
+	}
+
+	const baseOperator = value.slice(4);
+	const negativeLabels: Record<string, string> = {
+		contains: "does not contain",
+		equals: "does not equal",
+		icontains: "does not contain, ignoring case",
+		iendswith: "does not end with, ignoring case",
+		iequals: "does not equal, ignoring case",
+		istartswith: "does not start with, ignoring case",
+	};
+	return (
+		negativeLabels[baseOperator] ??
+		`not ${formatReportQueryOperator(baseOperator).toLocaleLowerCase()}`
+	);
+}
+
+function describeSavedQueryFilter(key: string, value: string): string {
+	const operatorIndex = key.lastIndexOf("__");
+	const rawField = operatorIndex > 0 ? key.slice(0, operatorIndex) : key;
+	const operator = operatorIndex > 0 ? key.slice(operatorIndex + 2) : "equals";
+	let field = formatSavedQueryField(rawField);
+	let readableValue = value;
+
+	if (rawField === "json_data") {
+		const pathSeparator = value.indexOf("=");
+		if (pathSeparator >= 0) {
+			const path = value
+				.slice(0, pathSeparator)
+				.split(",")
+				.filter(Boolean)
+				.map(formatSavedQueryField)
+				.join(" · ");
+			field = path ? `Data · ${path}` : "Data";
+			readableValue = value.slice(pathSeparator + 1);
+		} else if (operator === "is_null") {
+			const path = value
+				.split(",")
+				.filter(Boolean)
+				.map(formatSavedQueryField)
+				.join(" · ");
+			field = path ? `Data · ${path}` : "Data";
+			readableValue = "";
+		}
+	}
+
+	const operatorLabel = formatSavedQueryOperator(operator);
+	const formattedValue = formatSavedQueryValue(readableValue);
+	return formattedValue
+		? `${field} ${operatorLabel} “${formattedValue}”`
+		: `${field} ${operatorLabel}`;
+}
+
+function describeSavedQuerySort(value: string): string[] {
+	return value
+		.split(",")
+		.map((part) => part.trim())
+		.filter(Boolean)
+		.map((part) => {
+			const descending = part.startsWith("-") || part.endsWith(".desc");
+			const field = part.replace(/^-/, "").replace(/\.(?:asc|desc)$/, "");
+			return `${formatSavedQueryField(field)} ${
+				descending ? "descending" : "ascending"
+			}`;
+		});
+}
+
+export function describeSavedReportQuery(query: string | null | undefined): {
+	hint: string;
+	label: string;
+} {
+	if (!query?.trim()) {
+		return {
+			hint: "No saved filters or sorting; the report uses the full selected scope.",
+			label: "No filters",
+		};
+	}
+
+	const filters: string[] = [];
+	const sorts: string[] = [];
+	const params = new URLSearchParams(
+		query.startsWith("?") ? query.slice(1) : query,
+	);
+	params.forEach((value, key) => {
+		if (key === "sort") {
+			sorts.push(...describeSavedQuerySort(value));
+			return;
+		}
+		if (key !== "cursor") {
+			filters.push(describeSavedQueryFilter(key, value));
+		}
+	});
+
+	const counts = [
+		filters.length
+			? `${filters.length} ${filters.length === 1 ? "filter" : "filters"}`
+			: null,
+		sorts.length
+			? `${sorts.length} ${sorts.length === 1 ? "sort" : "sorts"}`
+			: null,
+	].filter((value): value is string => value !== null);
+	const details = [
+		filters.length ? `Filters — ${filters.join("; ")}.` : null,
+		sorts.length ? `Sort — ${sorts.join("; ")}.` : null,
+	].filter((value): value is string => value !== null);
+
+	return {
+		hint:
+			details.join(" ") ||
+			"Saved query settings are present, but contain no displayable filters or sorting.",
+		label: counts.length
+			? `Saved query · ${counts.join(" · ")}`
+			: "Saved query",
+	};
+}
+
+export function describeLatestReportResult({
+	error = false,
+	loading = false,
+	needsObject = false,
+	status,
+}: {
+	error?: boolean;
+	loading?: boolean;
+	needsObject?: boolean;
+	status?: ReportResultStatus | null;
+}): { hint: string; label: string } {
+	if (needsObject) {
+		return {
+			hint: "Choose the required root object before generating this report.",
+			label: "Latest export: choose object",
+		};
+	}
+	if (loading) {
+		return {
+			hint: "Checking the saved result for the current template version.",
+			label: "Latest export: checking",
+		};
+	}
+	if (error) {
+		return {
+			hint: "Result status could not be loaded. View still opens or generates the report.",
+			label: "Latest export: status unavailable",
+		};
+	}
+	if (!status || status.state === "missing") {
+		return {
+			hint: "View generates the first result for the current template version.",
+			label: "Latest export: none yet",
+		};
+	}
+	if (status.state === "generating") {
+		return {
+			hint: "The saved-default export for this template is still running.",
+			label: "Latest export: generating",
+		};
+	}
+
+	const generated = status.generatedAt
+		? formatExportTimestamp(status.generatedAt)
+		: null;
+	if (status.state === "available") {
+		const expiry = status.outputExpiresAt
+			? formatExportTimestamp(status.outputExpiresAt)
+			: null;
+		return {
+			hint: expiry
+				? `Stored output is available until ${expiry}. View reuses it until then and regenerates after it expires.`
+				: "Stored output is available. View reuses it until it expires, then regenerates automatically.",
+			label: generated
+				? `Latest export: ${generated}`
+				: "Latest export: available",
+		};
+	}
+	if (status.state === "expired") {
+		return {
+			hint: "The stored output has expired. View generates a fresh result.",
+			label: generated
+				? `Latest export: ${generated} · expired`
+				: "Latest export: expired",
+		};
+	}
+
+	return {
+		hint: "No stored output is available. View generates a fresh result.",
+		label: generated
+			? `Latest export: ${generated} · unavailable`
+			: "Latest export: unavailable",
+	};
 }
 
 export function getReportResultText(result: ReportExecutionResult): string {

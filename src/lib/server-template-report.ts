@@ -9,6 +9,7 @@ import type {
 	TaskStatus,
 } from "@/lib/api/generated/models";
 import { parseReportMaxAge } from "@/lib/report-max-age";
+import type { ReportResultStatus } from "@/lib/report-result-status";
 import {
 	getTemplateReportRunStore,
 	type TemplateReportRunStore,
@@ -32,6 +33,7 @@ type ReportTaskState = {
 	id: number;
 	outputAvailable: boolean | null;
 	outputExpired: boolean | null;
+	outputExpiresAt: string | null;
 	status: TaskStatus;
 	summary: string | null;
 };
@@ -215,18 +217,15 @@ function readTaskState(value: unknown): ReportTaskState | null {
 			? (details as {
 					output_available?: unknown;
 					output_expired?: unknown;
+					output_expires_at?: unknown;
 				})
 			: null;
 
 	return {
 		createdAt:
-			typeof candidate.created_at === "string"
-				? candidate.created_at
-				: null,
+			typeof candidate.created_at === "string" ? candidate.created_at : null,
 		finishedAt:
-			typeof candidate.finished_at === "string"
-				? candidate.finished_at
-				: null,
+			typeof candidate.finished_at === "string" ? candidate.finished_at : null,
 		id: candidate.id,
 		outputAvailable:
 			typeof exportDetails?.output_available === "boolean"
@@ -235,6 +234,10 @@ function readTaskState(value: unknown): ReportTaskState | null {
 		outputExpired:
 			typeof exportDetails?.output_expired === "boolean"
 				? exportDetails.output_expired
+				: null,
+		outputExpiresAt:
+			typeof exportDetails?.output_expires_at === "string"
+				? exportDetails.output_expires_at
 				: null,
 		status: candidate.status as TaskStatus,
 		summary: typeof candidate.summary === "string" ? candidate.summary : null,
@@ -327,10 +330,7 @@ function isActiveTask(task: ReportTaskState): boolean {
 }
 
 function isSuccessfulTask(task: ReportTaskState): boolean {
-	return (
-		task.status === "succeeded" ||
-		task.status === "partially_succeeded"
-	);
+	return task.status === "succeeded" || task.status === "partially_succeeded";
 }
 
 function taskIsFresh(
@@ -421,12 +421,7 @@ async function waitForTask(
 			);
 		}
 		await runtime.sleep(Math.min(REPORT_POLL_INTERVAL_MS, remaining));
-		const next = await fetchTask(
-			current.id,
-			correlationId,
-			token,
-			runtime,
-		);
+		const next = await fetchTask(current.id, correlationId, token, runtime);
 		if (!next) {
 			throw new RawReportError("The report task is no longer available.", 404);
 		}
@@ -453,11 +448,7 @@ async function submitTemplateReport(
 			token,
 		}),
 	);
-	return readTaskResponse(
-		submission,
-		202,
-		"Failed to generate the report.",
-	);
+	return readTaskResponse(submission, 202, "Failed to generate the report.");
 }
 
 async function completeTask(
@@ -482,12 +473,7 @@ async function renderTask(
 	token: string,
 	runtime: ReportRuntime,
 ): Promise<Response> {
-	const completed = await completeTask(
-		task,
-		correlationId,
-		token,
-		runtime,
-	);
+	const completed = await completeTask(task, correlationId, token, runtime);
 	return fetchRawOutput({
 		correlationId,
 		runtime,
@@ -567,6 +553,93 @@ async function reportCacheKey({
 	return `${sessionId}:${templateId}:${fingerprint}`;
 }
 
+export type BookmarkableTemplateReportStatus = Omit<
+	ReportResultStatus,
+	"templateId"
+>;
+
+export async function getBookmarkableTemplateReportStatus({
+	correlationId,
+	dependencies = {},
+	request = {},
+	revision,
+	sessionId,
+	templateId,
+	token,
+}: {
+	correlationId: string;
+	dependencies?: ReportDependencies;
+	request?: ExportTemplateRunRequest;
+	revision: string;
+	sessionId: string;
+	templateId: number;
+	token: string;
+}): Promise<BookmarkableTemplateReportStatus> {
+	const runtime = createRuntime(dependencies);
+	const runStore = dependencies.runStore ?? getTemplateReportRunStore();
+	const cacheKey = await reportCacheKey({
+		request,
+		revision,
+		sessionId,
+		templateId,
+	});
+	const taskId = await measureCache(runtime, () =>
+		runStore.getTaskId(cacheKey),
+	);
+	if (taskId === null) {
+		return {
+			generatedAt: null,
+			outputExpiresAt: null,
+			state: "missing",
+			taskId: null,
+		};
+	}
+
+	const task = await fetchTask(taskId, correlationId, token, runtime);
+	if (!task) {
+		await measureCache(runtime, () => runStore.deleteTaskId(cacheKey, taskId));
+		return {
+			generatedAt: null,
+			outputExpiresAt: null,
+			state: "missing",
+			taskId: null,
+		};
+	}
+
+	const generatedAt = task.finishedAt ?? task.createdAt;
+	if (isActiveTask(task)) {
+		return {
+			generatedAt: null,
+			outputExpiresAt: task.outputExpiresAt,
+			state: "generating",
+			taskId,
+		};
+	}
+	if (task.outputExpired === true) {
+		return {
+			generatedAt,
+			outputExpiresAt: task.outputExpiresAt,
+			state: "expired",
+			taskId,
+		};
+	}
+	if (isSuccessfulTask(task) && task.outputAvailable === true) {
+		return {
+			generatedAt,
+			outputExpiresAt: task.outputExpiresAt,
+			state: "available",
+			taskId,
+		};
+	}
+
+	return {
+		generatedAt,
+		outputExpiresAt: task.outputExpiresAt,
+		state: "unavailable",
+		taskId,
+	};
+}
+
 async function tryCachedReport({
 	cacheKey,
 	correlationId,
@@ -602,9 +675,7 @@ async function tryCachedReport({
 		task.outputExpired === true ||
 		!taskIsFresh(task, freshness.maxAgeMilliseconds, runtime.now())
 	) {
-		await measureCache(runtime, () =>
-			runStore.deleteTaskId(cacheKey, taskId),
-		);
+		await measureCache(runtime, () => runStore.deleteTaskId(cacheKey, taskId));
 		return null;
 	}
 

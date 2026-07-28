@@ -19,11 +19,22 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added `Server-Timing` diagnostics for bookmarkable report session access,
   template and cache reads, task validation or submission, output
   time-to-first-byte, and total response-header latency.
+- Added compact report-card metadata for the current saved-default export's
+  generation time and stored-output expiry, kept distinct from template update
+  time without triggering report generation.
 
 ### Changed
 
 - Updated CodeMirror View to `6.43.7`, Biome to `2.5.6`, Node.js types to
   `26.1.2`, and the pinned Docker login action to `v4.5.2`.
+- Tightened report-card spacing and moved result/template timing beside the
+  collection, scope, and saved-query metadata.
+- Added readable saved-query details and class identity to report-card
+  metadata.
+- Kept template creation in the Templates tab instead of repeating a
+  new-template action in the Reports tab.
+- Moved the less common one-off JSON exporter into its own top-level tab so the
+  Reports tab stays focused on saved reports.
 
 ### Fixed
 
