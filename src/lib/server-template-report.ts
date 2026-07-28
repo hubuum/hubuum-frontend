@@ -13,6 +13,7 @@ import {
 	getTemplateReportRunStore,
 	type TemplateReportRunStore,
 } from "@/lib/template-report-run-store";
+import { ServerTiming } from "@/lib/server-timing";
 
 const REPORT_POLL_INTERVAL_MS = 50;
 const REPORT_WAIT_TIMEOUT_MS = 30_000;
@@ -42,6 +43,7 @@ type ReportDependencies = {
 	now?: () => number;
 	runStore?: TemplateReportRunStore;
 	sleep?: (milliseconds: number) => Promise<void>;
+	timing?: ServerTiming;
 	timeoutMs?: number;
 };
 
@@ -50,6 +52,17 @@ type ReportRuntime = {
 	deadline: number;
 	now: () => number;
 	sleep: (milliseconds: number) => Promise<void>;
+	timing: ServerTiming;
+};
+
+type BookmarkableTemplateReportOptions = {
+	correlationId: string;
+	dependencies?: ReportDependencies;
+	freshness: BookmarkableReportFreshness;
+	request: ExportTemplateRunRequest;
+	sessionId: string;
+	templateId: number;
+	token: string;
 };
 
 export type BookmarkableReportFreshness = {
@@ -305,6 +318,7 @@ function createRuntime(dependencies: ReportDependencies): ReportRuntime {
 			dependencies.sleep ??
 			((milliseconds: number) =>
 				new Promise<void>((resolve) => setTimeout(resolve, milliseconds))),
+		timing: dependencies.timing ?? new ServerTiming(),
 	};
 }
 
@@ -338,6 +352,13 @@ function taskIsFresh(
 	return Math.max(0, now - timestamp) <= maxAgeMilliseconds;
 }
 
+async function measureCache<T>(
+	runtime: ReportRuntime,
+	operation: () => Promise<T>,
+): Promise<T> {
+	return runtime.timing.measure("cache", operation);
+}
+
 async function fetchRawOutput({
 	correlationId,
 	runtime,
@@ -349,16 +370,15 @@ async function fetchRawOutput({
 	taskId: number;
 	token: string;
 }): Promise<Response> {
-	const output = await runtime.backendFetch(
-		`/api/v1/exports/${taskId}/output`,
-		{
+	const output = await runtime.timing.measure("output", () =>
+		runtime.backendFetch(`/api/v1/exports/${taskId}/output`, {
 			correlationId,
 			headers: {
 				Accept: "*/*",
 			},
 			method: "GET",
 			token,
-		},
+		}),
 	);
 	if (!output.ok) {
 		throw await responseError(output, "Failed to load export output.");
@@ -372,11 +392,13 @@ async function fetchTask(
 	token: string,
 	runtime: ReportRuntime,
 ): Promise<ReportTaskState | null> {
-	const response = await runtime.backendFetch(`/api/v1/exports/${taskId}`, {
-		correlationId,
-		method: "GET",
-		token,
-	});
+	const response = await runtime.timing.measure("validation", () =>
+		runtime.backendFetch(`/api/v1/exports/${taskId}`, {
+			correlationId,
+			method: "GET",
+			token,
+		}),
+	);
 	if (response.status === 404 || response.status === 410) {
 		return null;
 	}
@@ -420,9 +442,8 @@ async function submitTemplateReport(
 	token: string,
 	runtime: ReportRuntime,
 ): Promise<ReportTaskState> {
-	const submission = await runtime.backendFetch(
-		`/api/v1/export-templates/${templateId}/exports`,
-		{
+	const submission = await runtime.timing.measure("submit", () =>
+		runtime.backendFetch(`/api/v1/export-templates/${templateId}/exports`, {
 			body: JSON.stringify(request),
 			correlationId,
 			headers: {
@@ -430,7 +451,7 @@ async function submitTemplateReport(
 			},
 			method: "POST",
 			token,
-		},
+		}),
 	);
 	return readTaskResponse(
 		submission,
@@ -439,12 +460,12 @@ async function submitTemplateReport(
 	);
 }
 
-async function renderTask(
+async function completeTask(
 	task: ReportTaskState,
 	correlationId: string,
 	token: string,
 	runtime: ReportRuntime,
-): Promise<Response> {
+): Promise<ReportTaskState> {
 	const completed = await waitForTask(task, correlationId, token, runtime);
 	if (!isSuccessfulTask(completed)) {
 		throw new RawReportError(
@@ -452,6 +473,21 @@ async function renderTask(
 			502,
 		);
 	}
+	return completed;
+}
+
+async function renderTask(
+	task: ReportTaskState,
+	correlationId: string,
+	token: string,
+	runtime: ReportRuntime,
+): Promise<Response> {
+	const completed = await completeTask(
+		task,
+		correlationId,
+		token,
+		runtime,
+	);
 	return fetchRawOutput({
 		correlationId,
 		runtime,
@@ -466,13 +502,12 @@ async function templateRevision(
 	token: string,
 	runtime: ReportRuntime,
 ): Promise<string> {
-	const response = await runtime.backendFetch(
-		`/api/v1/export-templates/${templateId}`,
-		{
+	const response = await runtime.timing.measure("revision", () =>
+		runtime.backendFetch(`/api/v1/export-templates/${templateId}`, {
 			correlationId,
 			method: "GET",
 			token,
-		},
+		}),
 	);
 	if (response.status !== 200) {
 		throw await responseError(response, "Failed to load export template.");
@@ -536,6 +571,7 @@ async function tryCachedReport({
 	cacheKey,
 	correlationId,
 	freshness,
+	includeOutput,
 	runStore,
 	runtime,
 	taskId,
@@ -544,11 +580,12 @@ async function tryCachedReport({
 	cacheKey: string;
 	correlationId: string;
 	freshness: BookmarkableReportFreshness;
+	includeOutput: boolean;
 	runStore: TemplateReportRunStore;
 	runtime: ReportRuntime;
 	taskId: number;
 	token: string;
-}): Promise<Response | null> {
+}): Promise<{ response: Response | null } | null> {
 	let task = await fetchTask(taskId, correlationId, token, runtime);
 	if (
 		task?.status === "queued" ||
@@ -565,23 +602,33 @@ async function tryCachedReport({
 		task.outputExpired === true ||
 		!taskIsFresh(task, freshness.maxAgeMilliseconds, runtime.now())
 	) {
-		await runStore.deleteTaskId(cacheKey, taskId);
+		await measureCache(runtime, () =>
+			runStore.deleteTaskId(cacheKey, taskId),
+		);
 		return null;
 	}
 
+	if (!includeOutput) {
+		return { response: null };
+	}
+
 	try {
-		return await fetchRawOutput({
-			correlationId,
-			runtime,
-			taskId,
-			token,
-		});
+		return {
+			response: await fetchRawOutput({
+				correlationId,
+				runtime,
+				taskId,
+				token,
+			}),
+		};
 	} catch (error) {
 		if (
 			error instanceof RawReportError &&
 			(error.status === 404 || error.status === 410)
 		) {
-			await runStore.deleteTaskId(cacheKey, taskId);
+			await measureCache(runtime, () =>
+				runStore.deleteTaskId(cacheKey, taskId),
+			);
 			return null;
 		}
 		throw error;
@@ -631,23 +678,18 @@ export async function renderFreshTemplateReport({
 	return renderTask(task, correlationId, token, runtime);
 }
 
-export async function renderBookmarkableTemplateReport({
-	correlationId,
-	freshness,
-	request,
-	sessionId,
-	templateId,
-	token,
-	dependencies = {},
-}: {
-	correlationId: string;
-	freshness: BookmarkableReportFreshness;
-	request: ExportTemplateRunRequest;
-	sessionId: string;
-	templateId: number;
-	token: string;
-	dependencies?: ReportDependencies;
-}): Promise<Response> {
+async function resolveBookmarkableTemplateReport(
+	{
+		correlationId,
+		freshness,
+		request,
+		sessionId,
+		templateId,
+		token,
+		dependencies = {},
+	}: BookmarkableTemplateReportOptions,
+	includeOutput: boolean,
+): Promise<Response | null> {
 	const runtime = createRuntime(dependencies);
 	const runStore = dependencies.runStore ?? getTemplateReportRunStore();
 	const revision = await templateRevision(
@@ -662,45 +704,49 @@ export async function renderBookmarkableTemplateReport({
 		sessionId,
 		templateId,
 	});
-	const initialTaskId = await runStore.getTaskId(cacheKey);
+	const initialTaskId = await measureCache(runtime, () =>
+		runStore.getTaskId(cacheKey),
+	);
 
 	if (initialTaskId !== null && freshness.maxAgeMilliseconds !== 0) {
 		const cached = await tryCachedReport({
 			cacheKey,
 			correlationId,
 			freshness,
+			includeOutput,
 			runStore,
 			runtime,
 			taskId: initialTaskId,
 			token,
 		});
 		if (cached) {
-			return cached;
+			return cached.response;
 		}
 	}
 
 	const owner = crypto.randomUUID();
 	while (runtime.now() < runtime.deadline) {
-		const acquired = await runStore.tryAcquireLock(
-			cacheKey,
-			owner,
-			REPORT_LOCK_TTL_MS,
+		const acquired = await measureCache(runtime, () =>
+			runStore.tryAcquireLock(cacheKey, owner, REPORT_LOCK_TTL_MS),
 		);
 		if (acquired) {
 			try {
-				const currentTaskId = await runStore.getTaskId(cacheKey);
+				const currentTaskId = await measureCache(runtime, () =>
+					runStore.getTaskId(cacheKey),
+				);
 				if (currentTaskId !== null && currentTaskId !== initialTaskId) {
 					const joined = await tryCachedReport({
 						cacheKey,
 						correlationId,
 						freshness: { maxAgeMilliseconds: null },
+						includeOutput,
 						runStore,
 						runtime,
 						taskId: currentTaskId,
 						token,
 					});
 					if (joined) {
-						return joined;
+						return joined.response;
 					}
 				}
 
@@ -711,26 +757,47 @@ export async function renderBookmarkableTemplateReport({
 					token,
 					runtime,
 				);
-				await runStore.setTaskId(cacheKey, task.id);
-				return await renderTask(task, correlationId, token, runtime);
+				await measureCache(runtime, () =>
+					runStore.setTaskId(cacheKey, task.id),
+				);
+				const completed = await completeTask(
+					task,
+					correlationId,
+					token,
+					runtime,
+				);
+				if (!includeOutput) {
+					return null;
+				}
+				return await fetchRawOutput({
+					correlationId,
+					runtime,
+					taskId: completed.id,
+					token,
+				});
 			} finally {
-				await runStore.releaseLock(cacheKey, owner);
+				await measureCache(runtime, () =>
+					runStore.releaseLock(cacheKey, owner),
+				);
 			}
 		}
 
-		const currentTaskId = await runStore.getTaskId(cacheKey);
+		const currentTaskId = await measureCache(runtime, () =>
+			runStore.getTaskId(cacheKey),
+		);
 		if (currentTaskId !== null && currentTaskId !== initialTaskId) {
 			const joined = await tryCachedReport({
 				cacheKey,
 				correlationId,
 				freshness: { maxAgeMilliseconds: null },
+				includeOutput,
 				runStore,
 				runtime,
 				taskId: currentTaskId,
 				token,
 			});
 			if (joined) {
-				return joined;
+				return joined.response;
 			}
 		}
 		await runtime.sleep(REPORT_POLL_INTERVAL_MS);
@@ -740,4 +807,20 @@ export async function renderBookmarkableTemplateReport({
 		"The report is still being generated. Reload the page to try again.",
 		504,
 	);
+}
+
+export async function renderBookmarkableTemplateReport(
+	options: BookmarkableTemplateReportOptions,
+): Promise<Response> {
+	const response = await resolveBookmarkableTemplateReport(options, true);
+	if (!response) {
+		throw new RawReportError("The report output is unavailable.", 502);
+	}
+	return response;
+}
+
+export async function prepareBookmarkableTemplateReport(
+	options: BookmarkableTemplateReportOptions,
+): Promise<void> {
+	await resolveBookmarkableTemplateReport(options, false);
 }

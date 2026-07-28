@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+	prepareBookmarkableTemplateReport: vi.fn(),
 	rawReportErrorResponse: vi.fn(),
 	requireRawReportSession: vi.fn(),
-	renderBookmarkableTemplateReport: vi.fn(),
 }));
 
 vi.mock("@/lib/raw-report-route", async (importOriginal) => ({
@@ -15,8 +15,8 @@ vi.mock("@/lib/raw-report-route", async (importOriginal) => ({
 
 vi.mock("@/lib/server-template-report", async (importOriginal) => ({
 	...(await importOriginal<typeof import("@/lib/server-template-report")>()),
-	renderBookmarkableTemplateReport:
-		mocks.renderBookmarkableTemplateReport,
+	prepareBookmarkableTemplateReport:
+		mocks.prepareBookmarkableTemplateReport,
 }));
 
 import { GET } from "@/app/reports/[templateId]/refresh/route";
@@ -31,9 +31,7 @@ describe("report refresh action", () => {
 				token: "backend-token",
 			},
 		});
-		mocks.renderBookmarkableTemplateReport.mockResolvedValue(
-			new Response("fresh output"),
-		);
+		mocks.prepareBookmarkableTemplateReport.mockResolvedValue(undefined);
 	});
 
 	it("forces one generation and redirects to the clean bookmark URL", async () => {
@@ -45,7 +43,7 @@ describe("report refresh action", () => {
 			params: Promise.resolve({ templateId: "7" }),
 		});
 
-		expect(mocks.renderBookmarkableTemplateReport).toHaveBeenCalledWith(
+		expect(mocks.prepareBookmarkableTemplateReport).toHaveBeenCalledWith(
 			expect.objectContaining({
 				freshness: { maxAgeMilliseconds: 0 },
 				request: { query: "sort=name" },
@@ -57,6 +55,12 @@ describe("report refresh action", () => {
 		expect(response.status).toBe(303);
 		expect(response.headers.get("Location")).toBe(
 			"http://localhost/reports/7?query=sort%3Dname&max_age=15m",
+		);
+		expect(response.headers.get("Server-Timing")).toMatch(
+			/session;dur=\d+\.\d;desc="Session"/,
+		);
+		expect(response.headers.get("Server-Timing")).toMatch(
+			/total;dur=\d+\.\d;desc="Total to headers"/,
 		);
 	});
 

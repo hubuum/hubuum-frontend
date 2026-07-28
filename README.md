@@ -204,6 +204,11 @@ browser page saves the generated template result itself. HTML report responses
 receive a script-disabled sandbox policy because they are served from the
 console origin.
 
+Report responses include `Server-Timing` metrics for session access, template
+revision lookup, report-cache access, task validation or submission, output
+time to first byte, and total server time to response headers. Body transfer
+and browser rendering happen after those measurements and are not included.
+
 Bookmark URLs can supply the supported template-run overrides through `query`,
 `object_id`, `missing_data_policy`, `max_items`, and `max_output_bytes` query
 parameters. Related-object templates require `object_id`. Existing stored task
@@ -216,13 +221,14 @@ whole numbers are seconds, and `s`, `m`, `h`, or `d` suffixes are accepted
 template also causes the next request to generate a new report.
 
 The default Exports view is a catalog of executable saved reports. `View` opens
-the stable raw URL, `Refresh now` performs one forced generation and redirects
-to the clean bookmark URL, and `Run with changes` opens the authenticated
-configuration interface at `/exports/reports/{template_id}`. That interface
-uses the same visual query builder as template authoring and keeps freshness,
-missing-data, and output-limit overrides available without putting controls
-inside the generated result. These changes affect only the configured URL.
-Permanent layout, scope, include, and default changes remain in
+the stable raw URL, `Refresh now` performs one forced generation, waits for the
+task to finish without opening its output stream, and redirects to the clean
+bookmark URL. `Run with changes` opens the authenticated configuration
+interface at `/exports/reports/{template_id}`. That interface uses the same
+visual query builder as template authoring and keeps freshness, missing-data,
+and output-limit overrides available without putting controls inside the
+generated result. These changes affect only the configured URL. Permanent
+layout, scope, include, and default changes remain in
 `/exports/templates/{template_id}`, while new definitions start under
 `/exports/templates/new`. Adding `?from={template_id}` to the new-template URL
 copies an existing definition into a separately named, unsaved template.

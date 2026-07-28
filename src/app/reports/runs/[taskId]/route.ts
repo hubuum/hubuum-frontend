@@ -9,6 +9,7 @@ import {
 	getStoredRawReport,
 	RawReportError,
 } from "@/lib/server-template-report";
+import { ServerTiming } from "@/lib/server-timing";
 
 type RouteContext = {
 	params: Promise<{
@@ -20,9 +21,17 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest, context: RouteContext) {
-	const auth = await requireRawReportSession(request);
+	const timing = new ServerTiming();
+	const finishTotal = timing.start("total");
+	const finishResponse = (response: Response) => {
+		finishTotal();
+		return timing.attach(response);
+	};
+	const auth = await timing.measure("session", () =>
+		requireRawReportSession(request),
+	);
 	if (auth instanceof Response) {
-		return auth;
+		return finishResponse(auth);
 	}
 
 	try {
@@ -34,13 +43,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
 			throw new RawReportError("Task ID must be a positive integer.", 404);
 		}
 
-		return await getStoredRawReport({
-			correlationId: auth.correlationId,
-			taskId: parsedTaskId,
-			token: auth.session.token,
-		});
+		return finishResponse(
+			await getStoredRawReport({
+				correlationId: auth.correlationId,
+				taskId: parsedTaskId,
+				token: auth.session.token,
+				dependencies: { timing },
+			}),
+		);
 	} catch (error) {
-		return rawReportErrorResponse(error, request, auth.session);
+		return finishResponse(
+			await rawReportErrorResponse(error, request, auth.session),
+		);
 	}
 }
 

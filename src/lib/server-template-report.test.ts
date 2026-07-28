@@ -4,6 +4,7 @@ import {
 	getStoredRawReport,
 	parseBookmarkableReportFreshness,
 	parseBookmarkableReportRequest,
+	prepareBookmarkableTemplateReport,
 	RawReportError,
 	renderBookmarkableTemplateReport,
 	renderFreshTemplateReport,
@@ -271,6 +272,35 @@ describe("raw template reports", () => {
 		expect(
 			backendFetch.mock.calls.filter(([, request]) => request.method === "POST"),
 		).toHaveLength(1);
+	});
+
+	it("prepares a fresh bookmarkable report without fetching its output", async () => {
+		const runStore = new InMemoryTemplateReportRunStore();
+		const backendFetch = vi
+			.fn()
+			.mockResolvedValueOnce(template())
+			.mockResolvedValueOnce(task(35, "queued", null, 202))
+			.mockResolvedValueOnce(task(35, "succeeded"));
+
+		await prepareBookmarkableTemplateReport({
+			correlationId: "correlation-prepare",
+			freshness: { maxAgeMilliseconds: 0 },
+			request: {},
+			sessionId: "session-prepare",
+			templateId: 7,
+			token: "secret-token",
+			dependencies: {
+				backendFetch,
+				runStore,
+				sleep: vi.fn().mockResolvedValue(undefined),
+			},
+		});
+
+		expect(backendFetch.mock.calls.map(([path]) => path)).toEqual([
+			"/api/v1/export-templates/7",
+			"/api/v1/export-templates/7/exports",
+			"/api/v1/exports/35",
+		]);
 	});
 
 	it("regenerates when max_age is exceeded and reuses the replacement", async () => {
