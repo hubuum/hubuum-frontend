@@ -6,6 +6,32 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-07-28
+
+### Compatibility
+
+- Retained the Hubuum Server `v0.0.5` contract and immutable CI target.
+
+### Added
+
+- Added live elapsed-time values to task details, derived from lifecycle
+  timestamps and refreshed through the existing active-task polling cycle.
+- Added `Server-Timing` diagnostics for bookmarkable report session access,
+  template and cache reads, task validation or submission, output
+  time-to-first-byte, and total response-header latency.
+
+### Changed
+
+- Updated CodeMirror View to `6.43.7`, Biome to `2.5.6`, Node.js types to
+  `26.1.2`, and the pinned Docker login action to `v4.5.2`.
+
+### Fixed
+
+- Redirected `Refresh now` as soon as report generation completes instead of
+  waiting for cancellation of an unused output stream, avoiding minute-long
+  stalls and duplicate output fetches.
+- Generated report correlation IDs with a cryptographically secure random UUID.
+
 ## [0.0.7] - 2026-07-27
 
 ### Compatibility
@@ -283,7 +309,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.7...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.8...HEAD
+[0.0.8]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.4...v0.0.5
