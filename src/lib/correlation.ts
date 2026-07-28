@@ -3,11 +3,7 @@ export const CORRELATION_ID_COOKIE = "hubuum.cid";
 const CORRELATION_ID_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
 
 export function generateCorrelationId(): string {
-	try {
-		return crypto.randomUUID();
-	} catch {
-		return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-	}
+	return crypto.randomUUID();
 }
 
 export function normalizeCorrelationId(

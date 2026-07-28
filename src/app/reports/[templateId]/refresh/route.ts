@@ -8,9 +8,10 @@ import {
 import {
 	parseBookmarkableReportFreshness,
 	parseBookmarkableReportRequest,
+	prepareBookmarkableTemplateReport,
 	RawReportError,
-	renderBookmarkableTemplateReport,
 } from "@/lib/server-template-report";
+import { ServerTiming } from "@/lib/server-timing";
 
 type RouteContext = {
 	params: Promise<{
@@ -31,9 +32,17 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest, context: RouteContext) {
-	const auth = await requireRawReportSession(request);
+	const timing = new ServerTiming();
+	const finishTotal = timing.start("total");
+	const finishResponse = (response: Response) => {
+		finishTotal();
+		return timing.attach(response);
+	};
+	const auth = await timing.measure("session", () =>
+		requireRawReportSession(request),
+	);
 	if (auth instanceof Response) {
-		return auth;
+		return finishResponse(auth);
 	}
 
 	try {
@@ -48,15 +57,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
 			request.nextUrl.searchParams,
 		);
 
-		const generated = await renderBookmarkableTemplateReport({
+		await prepareBookmarkableTemplateReport({
 			correlationId: auth.correlationId,
 			freshness: { maxAgeMilliseconds: 0 },
 			request: parseBookmarkableReportRequest(request.nextUrl.searchParams),
 			sessionId: auth.session.sid,
 			templateId: parsedTemplateId,
 			token: auth.session.token,
+			dependencies: { timing },
 		});
-		await generated.body?.cancel().catch(() => undefined);
 
 		const reportUrl = new URL(`/reports/${parsedTemplateId}`, request.url);
 		for (const name of REPORT_QUERY_PARAMETERS) {
@@ -69,9 +78,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
 				reportUrl.searchParams.set(name, value);
 			}
 		}
-		return NextResponse.redirect(reportUrl, 303);
+		return finishResponse(NextResponse.redirect(reportUrl, 303));
 	} catch (error) {
-		return rawReportErrorResponse(error, request, auth.session);
+		return finishResponse(
+			await rawReportErrorResponse(error, request, auth.session),
+		);
 	}
 }
 
