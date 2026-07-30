@@ -6,6 +6,7 @@ should pin both components to explicit versions.
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
 | `main` (unreleased) | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
+| `v0.0.9` | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
 | `v0.0.8` | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
 | `v0.0.7` | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
 | `v0.0.6` | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
@@ -41,3 +42,6 @@ Frontend `v0.0.7` retains the Server `v0.0.5` contract while adding
 frontend-managed bookmarkable template reports and raw stored-output routes.
 Frontend `v0.0.8` retains the Server `v0.0.5` contract while adding task
 elapsed-time display and faster, instrumented bookmarkable-report refreshes.
+Frontend `v0.0.9` retains the Server `v0.0.5` contract while introducing the
+Stillwater design system, runtime-mounted login backgrounds, and streamlined
+navigation and resource workflows.

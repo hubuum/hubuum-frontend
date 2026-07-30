@@ -6,6 +6,48 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.9] - 2026-07-30
+
+### Compatibility
+
+- Retained the Hubuum Server `v0.0.5` contract and immutable CI target.
+
+### Added
+
+- Added Stillwater atmospheres for Sunset, Golden Hour, Clouds, and Forest,
+  each with a complete light and dark palette, ambient artwork, and matching
+  variable typography.
+- Added selectable bundled login backgrounds and safe discovery and serving of
+  optional runtime-mounted private backgrounds across local, Compose, Docker,
+  and Helm deployments.
+- Added a Recent and Pinned home workspace with responsive multi-column lists,
+  direct class bookmarks, migration of legacy class pins, and a 30-pin limit.
+- Added contextual browser titles and focused unit and Playwright coverage for
+  themes, navigation, resource summaries, tables, workflows, and responsive
+  behavior.
+
+### Changed
+
+- Unified the console around the Stillwater design language, including
+  navigation, menus, controls, cards, resource pages, tables, imports, tasks,
+  administration, and account settings.
+- Reorganized navigation around Data, Workflows, Observe, and Administration,
+  aligned account destinations, and made classes and objects directly
+  reachable while preserving useful recent and pinned shortcuts.
+- Simplified page hierarchy and table controls, distinguished table downloads
+  from Hubuum export workflows, and improved object, relation, computed-field,
+  remote-invocation, and active-import exploration.
+- Updated Playwright to `1.62.1`, the pinned Docker login action to `v4.6.0`,
+  and the pinned artifact attestation action to `v4.2.1`.
+
+### Fixed
+
+- Improved light-theme navigation contrast, responsive top-bar behavior,
+  profile-menu opacity, table resizing, and polling while imports and tasks are
+  active.
+- Normalized legacy class shortcut variants so the same class is not pinned
+  multiple times under obsolete view and create destinations.
+
 ## [0.0.8] - 2026-07-28
 
 ### Compatibility
@@ -320,7 +362,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.8...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.9...HEAD
+[0.0.9]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.8...v0.0.9
 [0.0.8]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.5...v0.0.6
