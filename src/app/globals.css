@@ -2229,6 +2229,59 @@ body.modal-open {
 	padding-bottom: 0.35rem;
 }
 
+.runtime-config-grid {
+	display: grid;
+	gap: 1rem;
+	width: 100%;
+}
+
+.runtime-config-row {
+	display: grid;
+	gap: 1rem;
+	align-items: stretch;
+	width: 100%;
+}
+
+.runtime-config-row--three {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.runtime-config-row--four {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.runtime-config-row > .card {
+	min-width: 0;
+}
+
+.runtime-config-grid .stat-list li {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	align-items: start;
+}
+
+.runtime-config-grid .stat-list strong {
+	min-width: 0;
+	justify-self: end;
+	text-align: right;
+	overflow-wrap: anywhere;
+	font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1280px) {
+	.runtime-config-row--three,
+	.runtime-config-row--four {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 720px) {
+	.runtime-config-row--three,
+	.runtime-config-row--four {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
 .table-wrap {
 	overflow: auto;
 }
