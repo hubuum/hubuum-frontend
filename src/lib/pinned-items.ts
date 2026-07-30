@@ -1,5 +1,8 @@
 import type { PinnedItem, PinnedItemType } from "@/types/quick-access";
-import { writeUserSetting } from "@/lib/user-settings-client";
+import {
+	removeUserSetting,
+	writeUserSetting,
+} from "@/lib/user-settings-client";
 import { PORTABLE_USER_SETTING_KEYS } from "@/lib/user-settings-types";
 
 const PINNED_ITEMS_KEY = PORTABLE_USER_SETTING_KEYS.pinnedItems;
@@ -142,6 +145,14 @@ export function unpinItem(type: PinnedItemType, id: number): void {
 	} catch {
 		// Silently fail
 	}
+}
+
+export function clearPinnedItems(): void {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	removeUserSetting(PINNED_ITEMS_KEY);
 }
 
 export function isPinned(type: PinnedItemType, id: number): boolean {

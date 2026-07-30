@@ -110,6 +110,26 @@ export function trackRecentItem(item: Omit<RecentItem, "timestamp">): void {
 	}
 }
 
+export function removeRecentItem(type: RecentItem["type"], id: number): void {
+	if (typeof window === "undefined") {
+		return;
+	}
+
+	try {
+		const remaining = getRecentItems().filter(
+			(item) => item.type !== type || item.id !== id,
+		);
+		if (remaining.length === 0) {
+			removeDeviceSetting(RECENT_ITEMS_KEY);
+			return;
+		}
+
+		writeDeviceSetting(RECENT_ITEMS_KEY, JSON.stringify(remaining));
+	} catch {
+		// Silently fail
+	}
+}
+
 export function clearRecentItems(): void {
 	if (typeof window === "undefined") {
 		return;

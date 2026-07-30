@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getPinnedItems, MAX_PINNED_ITEMS, pinItem } from "@/lib/pinned-items";
-import { getRecentItems } from "@/lib/recent-items";
+import {
+	clearPinnedItems,
+	getPinnedItems,
+	MAX_PINNED_ITEMS,
+	pinItem,
+} from "@/lib/pinned-items";
+import { getRecentItems, removeRecentItem } from "@/lib/recent-items";
 
 function createLocalStorage(initial: Record<string, string> = {}) {
 	const store = new Map(Object.entries(initial));
@@ -39,6 +44,27 @@ describe("quick access storage", () => {
 			"hubuum.recent-items",
 			JSON.stringify([
 				{ type: "collection", id: 8, name: "collection", timestamp: 2 },
+			]),
+		);
+	});
+
+	it("removes one recent item without removing matching ids of other types", () => {
+		const localStorage = createLocalStorage({
+			"hubuum.recent-items": JSON.stringify([
+				{ type: "collection", id: 8, name: "Collection", timestamp: 3 },
+				{ type: "class", id: 8, name: "Class", timestamp: 2 },
+				{ type: "task", id: 9, name: "Task", timestamp: 1 },
+			]),
+		});
+		vi.stubGlobal("window", { localStorage });
+
+		removeRecentItem("class", 8);
+
+		expect(localStorage.setItem).toHaveBeenCalledWith(
+			"hubuum.recent-items",
+			JSON.stringify([
+				{ type: "collection", id: 8, name: "Collection", timestamp: 3 },
+				{ type: "task", id: 9, name: "Task", timestamp: 1 },
 			]),
 		);
 	});
@@ -104,5 +130,22 @@ describe("quick access storage", () => {
 				name: "One too many",
 			}),
 		).toBe(false);
+	});
+
+	it("clears all pinned shortcuts", () => {
+		const localStorage = createLocalStorage({
+			"hubuum.pinned-items": JSON.stringify([
+				{ type: "collection", id: 8, name: "Collection", timestamp: 1 },
+			]),
+		});
+		vi.stubGlobal("window", {
+			localStorage,
+			dispatchEvent: vi.fn(),
+		});
+
+		clearPinnedItems();
+
+		expect(localStorage.removeItem).toHaveBeenCalledWith("hubuum.pinned-items");
+		expect(getPinnedItems()).toEqual([]);
 	});
 });

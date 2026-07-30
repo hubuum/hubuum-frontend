@@ -5,8 +5,16 @@ import { useEffect, useState } from "react";
 
 import type { PinnedItem, RecentItem } from "@/types/quick-access";
 import { useConfirm } from "@/lib/confirm-context";
-import { clearRecentItems, getRecentItems } from "@/lib/recent-items";
-import { getPinnedItems, unpinItem } from "@/lib/pinned-items";
+import {
+	clearRecentItems,
+	getRecentItems,
+	removeRecentItem,
+} from "@/lib/recent-items";
+import {
+	clearPinnedItems,
+	getPinnedItems,
+	unpinItem,
+} from "@/lib/pinned-items";
 
 function IconCollection() {
 	return (
@@ -200,9 +208,29 @@ export function QuickAccessPanel() {
 		setRecentItems([]);
 	}
 
+	async function handleClearPinned() {
+		const confirmed = await confirm({
+			title: "Clear all pinned shortcuts?",
+			description: "This removes every pinned shortcut from your account.",
+			confirmLabel: "Clear",
+			tone: "danger",
+		});
+		if (!confirmed) {
+			return;
+		}
+
+		clearPinnedItems();
+		setPinnedItems([]);
+	}
+
 	function handleUnpin(item: PinnedItem) {
 		unpinItem(item.type, item.id);
 		setPinnedItems(getPinnedItems());
+	}
+
+	function handleRemoveRecent(item: RecentItem) {
+		removeRecentItem(item.type, item.id);
+		setRecentItems(getRecentItems().slice(0, 10));
 	}
 
 	return (
@@ -254,6 +282,14 @@ export function QuickAccessPanel() {
 											</span>
 										</span>
 									</Link>
+									<button
+										type="button"
+										className="ghost icon-button recent-item-remove"
+										onClick={() => handleRemoveRecent(item)}
+										aria-label={`Remove ${item.name} from recent items`}
+									>
+										<IconClose />
+									</button>
 								</li>
 							);
 						})}
@@ -262,7 +298,18 @@ export function QuickAccessPanel() {
 			</section>
 
 			<section className="stack">
-				<h2 className="eyebrow">Pinned Shortcuts</h2>
+				<div className="quick-access-header">
+					<h2 className="eyebrow">Pinned Shortcuts</h2>
+					{pinnedItems.length > 0 ? (
+						<button
+							type="button"
+							className="ghost quick-access-clear"
+							onClick={handleClearPinned}
+						>
+							Clear
+						</button>
+					) : null}
+				</div>
 
 				{pinnedItems.length === 0 ? (
 					<div className="quick-access-empty">
@@ -296,6 +343,9 @@ export function QuickAccessPanel() {
 										</span>
 										<span className="pinned-item-content">
 											<span className="pinned-item-name">{item.name}</span>
+											<span className="pinned-item-meta">
+												{formatItemType(item.type)}
+											</span>
 										</span>
 									</Link>
 									<button
