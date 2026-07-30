@@ -198,21 +198,20 @@ function ComputedScopeCard({
 	}
 
 	return (
-		<article className="card stack panel-card">
-			<header className="relations-toolbar">
-				<div>
-					<p className="eyebrow">{scope}</p>
+		<article className="card stack panel-card computed-scope-card">
+			<header className="computed-scope-card-heading">
+				<div className="relations-toolbar">
 					<h3>{scope === "shared" ? "Shared fields" : "Personal fields"}</h3>
+					<button type="button" onClick={onCreate} disabled={editorOpen}>
+						New field
+					</button>
 				</div>
-				<button type="button" onClick={onCreate} disabled={editorOpen}>
-					New field
-				</button>
+				<p className="muted">
+					{scope === "shared"
+						? "Shared definitions apply to every reader of this class and are materialized by background tasks."
+						: "Personal definitions are stored by the server and visible only to you."}
+				</p>
 			</header>
-			<p className="muted">
-				{scope === "shared"
-					? "Shared definitions apply to every reader of this class and are materialized by background tasks."
-					: "Personal definitions are stored by the server and visible only to you."}
-			</p>
 
 			{state ? (
 				<div className="summary-grid">
@@ -598,7 +597,6 @@ function ComputedFieldEditor({
 		<article className="card stack panel-card computed-field-editor">
 			<header className="relations-toolbar">
 				<div className="stack action-card-header">
-					<p className="eyebrow">{scope} computed field</p>
 					<h3>
 						{definition
 							? `Edit ${definition.label}`
@@ -1272,15 +1270,13 @@ export function ComputedFieldsPanel({
 
 	return (
 		<section id="computed-fields" className="stack">
-			<header className="stack action-card-header">
-				<div>
-					<p className="eyebrow">Derived data</p>
+			<header className="detail-section-heading">
+				<div className="detail-section-heading-copy">
 					<h2>Computed fields</h2>
+					<p className="muted">
+						Build typed values for object reads, filtering, and sorting.
+					</p>
 				</div>
-				<p className="muted">
-					Build typed values from fields in this class. Computed values appear
-					on object reads but cannot be used for backend filtering or sorting.
-				</p>
 			</header>
 
 			{editor ? (

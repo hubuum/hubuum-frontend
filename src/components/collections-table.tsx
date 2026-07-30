@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
+import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -42,6 +43,7 @@ import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
 } from "@/lib/resource-search";
+import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import { useResizableTable } from "@/lib/use-resizable-table";
@@ -513,6 +515,18 @@ export function CollectionsTable() {
 		);
 	}, [selectedCollectionIds.length, deleteSelectedCollections]);
 
+	const resourceSummary =
+		query.data
+			? buildResourceSummary({
+					shown: searchTerm ? filteredCollections.length : null,
+					loaded: collections.length,
+					total: pageData?.totalCount,
+					selected: selectedCollectionIds.length,
+				})
+			: query.isLoading
+				? buildResourceSummary({ status: "Loading…" })
+				: [];
+
 	if (query.isLoading) {
 		return <div className="card">Loading collections...</div>;
 	}
@@ -695,20 +709,13 @@ export function CollectionsTable() {
 
 			<div className="card resource-index">
 				<div className="table-header">
-					<div className="resource-index-title">
-						<div className="table-title-row">
-							<h2>Collections</h2>
-							<span className="muted table-count">
-								{searchTerm
-									? `${filteredCollections.length} shown of ${collections.length}`
-									: `${collections.length} loaded`}
-								{selectedCollectionIds.length
-									? ` · ${selectedCollectionIds.length} selected`
-									: ""}
-							</span>
-						</div>
-					</div>
-					<div className="table-tools">
+					<ResourceIndexHeading
+						title="Collections"
+						summary={resourceSummary}
+						createSection="collections"
+						createLabel="New collection"
+					/>
+					<div className="table-tools collections-table-tools">
 						<TableExportMenu view={exportView} compact />
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
@@ -773,6 +780,14 @@ export function CollectionsTable() {
 								className="responsive-data-table collections-data-table"
 							>
 								<caption className="sr-only">Collections</caption>
+								<colgroup>
+									<col className="table-select-column" />
+									<col className="table-id-column" />
+									<col className="table-name-column" />
+									<col className="table-context-column" />
+									<col className="table-count-column" />
+									<col className="table-description-column" />
+								</colgroup>
 								<thead>
 									<tr>
 										<th className="check-col">

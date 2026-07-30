@@ -22,6 +22,13 @@
         "tag": { "type": "string" }
       }
     },
+    "loginBackgrounds": {
+      "type": "object",
+      "required": ["existingClaim"],
+      "properties": {
+        "existingClaim": { "type": "string" }
+      }
+    },
     "session": {
       "type": "object",
       "required": ["prefix", "settingsPrefix", "ttlSeconds"],

@@ -14,10 +14,7 @@ import {
 	type HistoryRecord,
 	type ResourceEventScope,
 } from "@/lib/api/events";
-import {
-	formatEventActor,
-	formatEventInitiator,
-} from "@/lib/event-provenance";
+import { formatEventActor, formatEventInitiator } from "@/lib/event-provenance";
 
 type ResourceActivityPanelProps = {
 	scope: ResourceEventScope;
@@ -232,7 +229,7 @@ export function ResourceActivityPanel({
 	};
 
 	return (
-		<article className="card stack panel-card">
+		<section className="stack detail-content-section">
 			<EventDetailsModal
 				event={selectedEvent}
 				onClose={() => setSelectedEvent(null)}
@@ -277,272 +274,275 @@ export function ResourceActivityPanel({
 						: undefined
 				}
 			/>
-			<div className="panel-header">
-				<div className="stack action-card-header">
-					<h3>{title}</h3>
-					<p className="muted">
-						Audit events come from the append-only event stream. History rows
-						show stored versions for this resource.
-					</p>
+			<header className="detail-section-heading">
+				<div className="detail-section-heading-copy">
+					<h2>{title}</h2>
+					<p className="muted">Audit events and stored resource history.</p>
 				</div>
-			</div>
+			</header>
 
-			<section className="stack">
-				<div className="panel-header">
-					<div>
-						<strong>Recent audit events</strong>
-						<p className="muted">
-							{eventsQuery.data?.totalCount == null
-								? "Newest visible events for this resource."
-								: `${eventsQuery.data.totalCount} visible matching events.`}
-						</p>
-					</div>
-					<div className="action-row">
-						<TableExportMenu
-							view={eventExportView}
-							disabled={eventsQuery.isFetching}
-							compact
-						/>
-						<button
-							type="button"
-							className="secondary"
-							disabled={!eventCursor || eventsQuery.isFetching}
-							onClick={() => setEventCursor("")}
-						>
-							First page
-						</button>
-						<button
-							type="button"
-							className="secondary"
-							disabled={!eventsQuery.data?.nextCursor || eventsQuery.isFetching}
-							onClick={() => setEventCursor(eventsQuery.data?.nextCursor ?? "")}
-						>
-							Next page
-						</button>
-					</div>
-				</div>
-
-				{eventsQuery.isLoading ? (
-					<div className="muted">Loading audit events...</div>
-				) : null}
-				{eventsQuery.isError ? (
-					<div className="error-banner">
-						Failed to load audit events.{" "}
-						{eventsQuery.error instanceof Error
-							? eventsQuery.error.message
-							: "Unknown error"}
-					</div>
-				) : null}
-				{!eventsQuery.isLoading &&
-				!eventsQuery.isError &&
-				(eventsQuery.data?.items.length ?? 0) === 0 ? (
-					<div className="empty-state">No audit events are visible.</div>
-				) : null}
-				{eventsQuery.data?.items.length ? (
-					<div className="table-wrap">
-						<table>
-							<thead>
-								<tr>
-									<th>Time</th>
-									<th>Action</th>
-									<th>Actor</th>
-									<th>Initiator</th>
-									<th>Summary</th>
-									<th>Event ID</th>
-								</tr>
-							</thead>
-							<tbody>
-								{events.map((event) => (
-									<tr
-										key={event.id}
-										className="activity-detail-row"
-										tabIndex={0}
-										onClick={() => setSelectedEvent(event)}
-										onKeyDown={(keyboardEvent) => {
-											if (
-												keyboardEvent.key === "Enter" ||
-												keyboardEvent.key === " "
-											) {
-												keyboardEvent.preventDefault();
-												setSelectedEvent(event);
-											}
-										}}
-										aria-label={`View details for audit event ${event.event_id}`}
-									>
-										<td>{formatTimestamp(event.occurred_at)}</td>
-										<td>
-											{event.entity_type}.{event.action}
-										</td>
-										<td>{formatEventActor(event)}</td>
-										<td>{formatEventInitiator(event)}</td>
-										<td>{event.summary}</td>
-										<td>{event.event_id}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				) : null}
-			</section>
-
-			<section className="stack">
-				<div className="panel-header">
-					<div>
-						<strong>Version history</strong>
-						<p className="muted">Stored state changes for this resource.</p>
-					</div>
-					<div className="action-row">
-						<TableExportMenu
-							view={historyExportView}
-							disabled={historyQuery.isFetching}
-							compact
-						/>
-						<button
-							type="button"
-							className="secondary"
-							disabled={!historyCursor || historyQuery.isFetching}
-							onClick={() => setHistoryCursor("")}
-						>
-							First page
-						</button>
-						<button
-							type="button"
-							className="secondary"
-							disabled={
-								!historyQuery.data?.nextCursor || historyQuery.isFetching
-							}
-							onClick={() =>
-								setHistoryCursor(historyQuery.data?.nextCursor ?? "")
-							}
-						>
-							Next page
-						</button>
-					</div>
-				</div>
-
-				{historyQuery.isLoading ? (
-					<div className="muted">Loading version history...</div>
-				) : null}
-				{historyQuery.isError ? (
-					<div className="error-banner">
-						Failed to load version history.{" "}
-						{historyQuery.error instanceof Error
-							? historyQuery.error.message
-							: "Unknown error"}
-					</div>
-				) : null}
-				{!historyQuery.isLoading &&
-				!historyQuery.isError &&
-				(historyQuery.data?.items.length ?? 0) === 0 ? (
-					<div className="empty-state">No history rows are visible.</div>
-				) : null}
-				{historyQuery.data?.items.length ? (
-					<div className="table-wrap">
-						<table>
-							<thead>
-								<tr>
-									<th>Version</th>
-									<th>Operation</th>
-									<th>Valid from</th>
-									<th>Valid to</th>
-									<th>Actor</th>
-									<th>Initiator</th>
-									<th>Name</th>
-								</tr>
-							</thead>
-							<tbody>
-								{history.map((record) => (
-									<tr
-										key={record.history_id}
-										className="activity-detail-row"
-										tabIndex={0}
-										onClick={() => setSelectedHistory(record)}
-										onKeyDown={(keyboardEvent) => {
-											if (
-												keyboardEvent.key === "Enter" ||
-												keyboardEvent.key === " "
-											) {
-												keyboardEvent.preventDefault();
-												setSelectedHistory(record);
-											}
-										}}
-										aria-label={`View details for history version ${record.history_id}`}
-									>
-										<td>#{record.history_id}</td>
-										<td>{record.op}</td>
-										<td>{formatTimestamp(record.valid_from)}</td>
-										<td>{formatTimestamp(record.valid_to)}</td>
-										<td>{formatHistoryActor(record)}</td>
-										<td>{formatEventInitiator(record)}</td>
-										<td>{record.name}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				) : null}
-			</section>
-
-			<section className="stack">
-				<form className="filter-form" onSubmit={onAsOfSubmit}>
-					<label>
-						<span>Snapshot as of</span>
-						<input
-							type="datetime-local"
-							value={asOfInput}
-							onChange={(event) => setAsOfInput(event.target.value)}
-						/>
-					</label>
-					<button type="submit" disabled={!asOfInput.trim()}>
-						Load snapshot
-					</button>
-				</form>
-
-				{snapshotQuery.isFetching ? (
-					<div className="muted">Loading historical snapshot...</div>
-				) : null}
-				{snapshotQuery.isError ? (
-					<div className="error-banner">
-						Failed to load snapshot.{" "}
-						{snapshotQuery.error instanceof Error
-							? snapshotQuery.error.message
-							: "Unknown error"}
-					</div>
-				) : null}
-				{snapshotQuery.data ? (
-					<div className="stack">
-						<div className="task-details-grid">
-							<div>
-								<strong>Version</strong>
-								<p className="muted">#{snapshotQuery.data.history_id}</p>
-							</div>
-							<div>
-								<strong>Operation</strong>
-								<p className="muted">{snapshotQuery.data.op}</p>
-							</div>
-							<div>
-								<strong>Valid from</strong>
-								<p className="muted">
-									{formatTimestamp(snapshotQuery.data.valid_from)}
-								</p>
-							</div>
-							<div>
-								<strong>Actor</strong>
-								<p className="muted">
-									{formatHistoryActor(snapshotQuery.data)}
-								</p>
-							</div>
-							<div>
-								<strong>Initiator</strong>
-								<p className="muted">
-									{formatEventInitiator(snapshotQuery.data)}
-								</p>
-							</div>
+			<article className="card stack panel-card">
+				<section className="stack">
+					<div className="panel-header">
+						<div>
+							<strong>Recent audit events</strong>
+							<p className="muted">
+								{eventsQuery.data?.totalCount == null
+									? "Newest visible events for this resource."
+									: `${eventsQuery.data.totalCount} visible matching events.`}
+							</p>
 						</div>
-						<JsonViewer value={getSnapshotValue(snapshotQuery.data)} />
+						<div className="action-row">
+							<TableExportMenu
+								view={eventExportView}
+								disabled={eventsQuery.isFetching}
+								compact
+							/>
+							<button
+								type="button"
+								className="secondary"
+								disabled={!eventCursor || eventsQuery.isFetching}
+								onClick={() => setEventCursor("")}
+							>
+								First page
+							</button>
+							<button
+								type="button"
+								className="secondary"
+								disabled={
+									!eventsQuery.data?.nextCursor || eventsQuery.isFetching
+								}
+								onClick={() =>
+									setEventCursor(eventsQuery.data?.nextCursor ?? "")
+								}
+							>
+								Next page
+							</button>
+						</div>
 					</div>
-				) : null}
-			</section>
-		</article>
+
+					{eventsQuery.isLoading ? (
+						<div className="muted">Loading audit events...</div>
+					) : null}
+					{eventsQuery.isError ? (
+						<div className="error-banner">
+							Failed to load audit events.{" "}
+							{eventsQuery.error instanceof Error
+								? eventsQuery.error.message
+								: "Unknown error"}
+						</div>
+					) : null}
+					{!eventsQuery.isLoading &&
+					!eventsQuery.isError &&
+					(eventsQuery.data?.items.length ?? 0) === 0 ? (
+						<div className="empty-state">No audit events are visible.</div>
+					) : null}
+					{eventsQuery.data?.items.length ? (
+						<div className="table-wrap">
+							<table>
+								<thead>
+									<tr>
+										<th>Time</th>
+										<th>Action</th>
+										<th>Actor</th>
+										<th>Initiator</th>
+										<th>Summary</th>
+										<th>Event ID</th>
+									</tr>
+								</thead>
+								<tbody>
+									{events.map((event) => (
+										<tr
+											key={event.id}
+											className="activity-detail-row"
+											tabIndex={0}
+											onClick={() => setSelectedEvent(event)}
+											onKeyDown={(keyboardEvent) => {
+												if (
+													keyboardEvent.key === "Enter" ||
+													keyboardEvent.key === " "
+												) {
+													keyboardEvent.preventDefault();
+													setSelectedEvent(event);
+												}
+											}}
+											aria-label={`View details for audit event ${event.event_id}`}
+										>
+											<td>{formatTimestamp(event.occurred_at)}</td>
+											<td>
+												{event.entity_type}.{event.action}
+											</td>
+											<td>{formatEventActor(event)}</td>
+											<td>{formatEventInitiator(event)}</td>
+											<td>{event.summary}</td>
+											<td>{event.event_id}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					) : null}
+				</section>
+
+				<section className="stack">
+					<div className="panel-header">
+						<div>
+							<strong>Version history</strong>
+							<p className="muted">Stored state changes for this resource.</p>
+						</div>
+						<div className="action-row">
+							<TableExportMenu
+								view={historyExportView}
+								disabled={historyQuery.isFetching}
+								compact
+							/>
+							<button
+								type="button"
+								className="secondary"
+								disabled={!historyCursor || historyQuery.isFetching}
+								onClick={() => setHistoryCursor("")}
+							>
+								First page
+							</button>
+							<button
+								type="button"
+								className="secondary"
+								disabled={
+									!historyQuery.data?.nextCursor || historyQuery.isFetching
+								}
+								onClick={() =>
+									setHistoryCursor(historyQuery.data?.nextCursor ?? "")
+								}
+							>
+								Next page
+							</button>
+						</div>
+					</div>
+
+					{historyQuery.isLoading ? (
+						<div className="muted">Loading version history...</div>
+					) : null}
+					{historyQuery.isError ? (
+						<div className="error-banner">
+							Failed to load version history.{" "}
+							{historyQuery.error instanceof Error
+								? historyQuery.error.message
+								: "Unknown error"}
+						</div>
+					) : null}
+					{!historyQuery.isLoading &&
+					!historyQuery.isError &&
+					(historyQuery.data?.items.length ?? 0) === 0 ? (
+						<div className="empty-state">No history rows are visible.</div>
+					) : null}
+					{historyQuery.data?.items.length ? (
+						<div className="table-wrap">
+							<table>
+								<thead>
+									<tr>
+										<th>Version</th>
+										<th>Operation</th>
+										<th>Valid from</th>
+										<th>Valid to</th>
+										<th>Actor</th>
+										<th>Initiator</th>
+										<th>Name</th>
+									</tr>
+								</thead>
+								<tbody>
+									{history.map((record) => (
+										<tr
+											key={record.history_id}
+											className="activity-detail-row"
+											tabIndex={0}
+											onClick={() => setSelectedHistory(record)}
+											onKeyDown={(keyboardEvent) => {
+												if (
+													keyboardEvent.key === "Enter" ||
+													keyboardEvent.key === " "
+												) {
+													keyboardEvent.preventDefault();
+													setSelectedHistory(record);
+												}
+											}}
+											aria-label={`View details for history version ${record.history_id}`}
+										>
+											<td>#{record.history_id}</td>
+											<td>{record.op}</td>
+											<td>{formatTimestamp(record.valid_from)}</td>
+											<td>{formatTimestamp(record.valid_to)}</td>
+											<td>{formatHistoryActor(record)}</td>
+											<td>{formatEventInitiator(record)}</td>
+											<td>{record.name}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					) : null}
+				</section>
+
+				<section className="stack">
+					<form className="filter-form" onSubmit={onAsOfSubmit}>
+						<label>
+							<span>Snapshot as of</span>
+							<input
+								type="datetime-local"
+								value={asOfInput}
+								onChange={(event) => setAsOfInput(event.target.value)}
+							/>
+						</label>
+						<button type="submit" disabled={!asOfInput.trim()}>
+							Load snapshot
+						</button>
+					</form>
+
+					{snapshotQuery.isFetching ? (
+						<div className="muted">Loading historical snapshot...</div>
+					) : null}
+					{snapshotQuery.isError ? (
+						<div className="error-banner">
+							Failed to load snapshot.{" "}
+							{snapshotQuery.error instanceof Error
+								? snapshotQuery.error.message
+								: "Unknown error"}
+						</div>
+					) : null}
+					{snapshotQuery.data ? (
+						<div className="stack">
+							<div className="task-details-grid">
+								<div>
+									<strong>Version</strong>
+									<p className="muted">#{snapshotQuery.data.history_id}</p>
+								</div>
+								<div>
+									<strong>Operation</strong>
+									<p className="muted">{snapshotQuery.data.op}</p>
+								</div>
+								<div>
+									<strong>Valid from</strong>
+									<p className="muted">
+										{formatTimestamp(snapshotQuery.data.valid_from)}
+									</p>
+								</div>
+								<div>
+									<strong>Actor</strong>
+									<p className="muted">
+										{formatHistoryActor(snapshotQuery.data)}
+									</p>
+								</div>
+								<div>
+									<strong>Initiator</strong>
+									<p className="muted">
+										{formatEventInitiator(snapshotQuery.data)}
+									</p>
+								</div>
+							</div>
+							<JsonViewer value={getSnapshotValue(snapshotQuery.data)} />
+						</div>
+					) : null}
+				</section>
+			</article>
+		</section>
 	);
 }

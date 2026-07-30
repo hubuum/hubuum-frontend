@@ -232,7 +232,6 @@ export function AdminBackupRestoreWorkspace() {
 		<section className="stack">
 			<header className="stack action-card-header">
 				<div className="stack action-card-header">
-					<p className="eyebrow">Admin</p>
 					<h2>Backup &amp; restore</h2>
 				</div>
 				<p className="muted">

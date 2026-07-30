@@ -95,325 +95,351 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 	const permissions = config.permissions;
 
 	return (
-		<div className="stats-grid">
-			<RuntimeStatCard
-				title="Server & network"
-				rows={[
-					{ label: "Runtime role", value: server.runtime_role ?? "n/a" },
-					{ label: "Listener", value: `${server.bind_ip}:${server.bind_port}` },
-					{ label: "Actix workers", value: formatNumber(server.actix_workers) },
-					{ label: "Log level", value: server.log_level },
-					{
-						label: "Metrics",
-						value: server.metrics_enabled
-							? `Enabled at ${server.metrics_path}`
-							: "Disabled",
-					},
-					{
-						label: "TLS",
-						value: server.tls.enabled
-							? `Enabled${server.tls.backend ? ` (${server.tls.backend})` : ""}`
-							: "Disabled",
-					},
-					{
-						label: "TLS certificate",
-						value: configured(server.tls.certificate_path_configured),
-					},
-					{
-						label: "Trust IP headers",
-						value: enabled(network.trust_ip_headers),
-					},
-					{
-						label: "Trusted proxy networks",
-						value: formatNumber(network.trusted_proxy_networks),
-					},
-					{
-						label: "Trusted proxy hops",
-						value: formatNumber(network.trusted_proxy_hops),
-					},
-					{
-						label: "Client allowlist",
-						value: network.client_allowlist.allows_any
-							? "Allows any client"
-							: `${formatNumber(network.client_allowlist.network_count)} networks`,
-					},
-				]}
-			/>
-
-			<RuntimeStatCard
-				title="Database & pagination"
-				rows={[
-					{ label: "Database URL", value: configured(database.url.configured) },
-					{ label: "Pool size", value: formatNumber(database.pool_size) },
-					{
-						label: "Pool acquire timeout",
-						value: formatMilliseconds(database.pool_acquire_timeout_ms),
-					},
-					{
-						label: "Statement timeout",
-						value: formatMilliseconds(database.statement_timeout_ms),
-					},
-					{
-						label: "Default page limit",
-						value: formatNumber(pagination.default_page_limit),
-					},
-					{
-						label: "Maximum page limit",
-						value: formatNumber(pagination.max_page_limit),
-					},
-					{
-						label: "Maximum transitive depth",
-						value: formatNumber(pagination.max_transitive_depth),
-					},
-				]}
-			/>
-
-			<RuntimeStatCard
-				title="Tasks & remote calls"
-				rows={[
-					{ label: "Task workers", value: formatNumber(tasks.workers) },
-					{
-						label: "Task poll interval",
-						value: formatMilliseconds(tasks.poll_interval_ms),
-					},
-					{
-						label: "Task lease / heartbeat",
-						value:
-							typeof tasks.lease_seconds === "number" &&
-							typeof tasks.heartbeat_seconds === "number"
-								? `${formatSeconds(tasks.lease_seconds)} / ${formatSeconds(tasks.heartbeat_seconds)}`
-								: "n/a",
-					},
-					{
-						label: "Task recovery interval",
-						value:
-							typeof tasks.recovery_interval_seconds === "number"
-								? formatSeconds(tasks.recovery_interval_seconds)
-								: "n/a",
-					},
-					{
-						label: "Computed reindex batch",
-						value: formatNumber(tasks.computed_reindex_batch_size),
-					},
-					{
-						label: "Imports per user",
-						value: formatNumber(tasks.import_max_active_per_user),
-					},
-					{
-						label: "Exports per user",
-						value: formatNumber(tasks.export_max_active_per_user),
-					},
-					{
-						label: "Remote calls per user",
-						value: formatNumber(tasks.remote_call_max_active_per_user),
-					},
-					{
-						label: "Remote call timeout",
-						value: formatMilliseconds(remoteCalls.timeout_ms),
-					},
-					{
-						label: "Remote response limit",
-						value: formatBytes(remoteCalls.max_response_bytes),
-					},
-					{
-						label: "Private remote targets",
-						value: remoteCalls.allow_private_targets ? "Allowed" : "Blocked",
-					},
-				]}
-			/>
-
-			<RuntimeStatCard
-				title="Authentication"
-				rows={[
-					{
-						label: "Administrator group",
-						value: formatScopedIdentityName(
-							auth.admin_identity_scope,
-							auth.admin_groupname,
-						),
-					},
-					{
-						label: "Token lifetime",
-						value: `${formatNumber(auth.token_lifetime_hours)} h`,
-					},
-					{
-						label: "Expired-token retention",
-						value: `${formatNumber(auth.token_retention_days)} d`,
-					},
-					{
-						label: "Token retention purge",
-						value: enabled(auth.token_retention_purge_enabled),
-					},
-					{
-						label: "Token purge interval",
-						value: formatSeconds(
-							auth.token_retention_purge_interval_seconds,
-						),
-					},
-					{
-						label: "Token purge batch",
-						value: formatNumber(auth.token_retention_purge_batch_size),
-					},
-					{
-						label: "Provider configuration",
-						value: configured(auth.provider_config_path.configured),
-					},
-					{
-						label: "Stable token hash key",
-						value: configured(auth.stable_token_hash_key_configured),
-					},
-					{ label: "Login rate limit", value: enabled(loginRateLimit.enabled) },
-					{
-						label: "Attempts per identity / IP / subnet",
-						value: `${loginRateLimit.max_attempts} / ${loginRateLimit.max_attempts_per_ip} / ${loginRateLimit.max_attempts_per_subnet}`,
-					},
-					{
-						label: "Rate-limit window",
-						value: formatSeconds(loginRateLimit.window_seconds),
-					},
-					{
-						label: "Backoff range",
-						value: `${formatSeconds(loginRateLimit.backoff_base_seconds)} – ${formatSeconds(loginRateLimit.backoff_max_seconds)}`,
-					},
-				]}
-			/>
-
-			<RuntimeStatCard
-				title="Events"
-				rows={[
-					{
-						label: "Fanout workers / batch",
-						value: `${events.fanout_workers} / ${events.fanout_batch_size}`,
-					},
-					{
-						label: "Fanout poll interval",
-						value: formatMilliseconds(events.fanout_poll_interval_ms),
-					},
-					{
-						label: "Delivery workers / batch",
-						value: `${events.delivery_workers} / ${events.delivery_batch_size}`,
-					},
-					{
-						label: "Delivery poll interval",
-						value: formatMilliseconds(events.delivery_poll_interval_ms),
-					},
-					{
-						label: "Delivery attempts",
-						value: formatNumber(events.delivery_max_attempts),
-					},
-					{
-						label: "Delivery transport timeout",
-						value: formatMilliseconds(events.delivery_transport_timeout_ms),
-					},
-					{
-						label: "Event / delivery retention",
-						value: `${events.retention_days} / ${events.delivery_retention_days} days`,
-					},
-					{
-						label: "Retention purge",
-						value: enabled(events.retention_purge_enabled),
-					},
-					{
-						label: "File archive",
-						value: events.retention_file_archive_enabled
-							? configured(events.retention_archive_path_configured)
-							: "Disabled",
-					},
-				]}
-			/>
-
-			<RuntimeStatCard
-				title="Exports"
-				rows={[
-					{
-						label: "Output retention",
-						value: `${formatNumber(exportsConfig.output_retention_hours)} h`,
-					},
-					{
-						label: "Cleanup interval",
-						value: formatSeconds(exportsConfig.output_cleanup_interval_seconds),
-					},
-					{
-						label: "Maximum output",
-						value: formatBytes(exportsConfig.max_output_bytes),
-					},
-					{
-						label: "Stage timeout",
-						value: formatMilliseconds(exportsConfig.stage_timeout_ms),
-					},
-					{
-						label: "Database timeout",
-						value: formatMilliseconds(
-							exportsConfig.database_statement_timeout_ms,
-						),
-					},
-					{
-						label: "Template recursion limit",
-						value: formatNumber(exportsConfig.template_recursion_limit),
-					},
-					{
-						label: "Template object limit",
-						value: formatNumber(exportsConfig.template_max_objects),
-					},
-					{
-						label: "Template fuel",
-						value: formatNumber(exportsConfig.template_fuel),
-					},
-				]}
-			/>
-
-			{backups && restores ? (
+		<div className="runtime-config-grid">
+			<div className="runtime-config-row runtime-config-row--three">
 				<RuntimeStatCard
-					title="Backup & restore"
+					title="Server & network"
 					rows={[
+						{ label: "Runtime role", value: server.runtime_role ?? "n/a" },
 						{
-							label: "Active backups per user",
-							value: formatNumber(backups.max_active_tasks_per_user),
+							label: "Listener",
+							value: `${server.bind_ip}:${server.bind_port}`,
 						},
 						{
-							label: "Maximum backup output",
-							value: formatBytes(backups.max_output_bytes),
+							label: "Actix workers",
+							value: formatNumber(server.actix_workers),
+						},
+						{ label: "Log level", value: server.log_level },
+						{
+							label: "Metrics",
+							value: server.metrics_enabled
+								? `Enabled at ${server.metrics_path}`
+								: "Disabled",
 						},
 						{
-							label: "Backup retention",
-							value: `${formatNumber(backups.output_retention_hours)} h`,
+							label: "TLS",
+							value: server.tls.enabled
+								? `Enabled${server.tls.backend ? ` (${server.tls.backend})` : ""}`
+								: "Disabled",
 						},
 						{
-							label: "Maximum restore upload",
-							value: formatBytes(restores.max_upload_bytes),
+							label: "TLS certificate",
+							value: configured(server.tls.certificate_path_configured),
 						},
 						{
-							label: "Restore staging retention",
-							value: `${formatNumber(restores.stage_retention_minutes)} min`,
+							label: "Trust IP headers",
+							value: enabled(network.trust_ip_headers),
+						},
+						{
+							label: "Trusted proxy networks",
+							value: formatNumber(network.trusted_proxy_networks),
+						},
+						{
+							label: "Trusted proxy hops",
+							value: formatNumber(network.trusted_proxy_hops),
+						},
+						{
+							label: "Client allowlist",
+							value: network.client_allowlist.allows_any
+								? "Allows any client"
+								: `${formatNumber(network.client_allowlist.network_count)} networks`,
 						},
 					]}
 				/>
-			) : null}
 
-			{permissions ? (
 				<RuntimeStatCard
-					title="Permissions"
+					title="Database & pagination"
 					rows={[
-						{ label: "Backend", value: permissions.backend },
 						{
-							label: "Treetop URL",
-							value: configured(permissions.treetop_url.configured),
+							label: "Database URL",
+							value: configured(database.url.configured),
+						},
+						{ label: "Pool size", value: formatNumber(database.pool_size) },
+						{
+							label: "Pool acquire timeout",
+							value: formatMilliseconds(database.pool_acquire_timeout_ms),
 						},
 						{
-							label: "Treetop CA certificate",
-							value: configured(permissions.treetop_ca_certificate_configured),
+							label: "Statement timeout",
+							value: formatMilliseconds(database.statement_timeout_ms),
 						},
 						{
-							label: "Accept invalid certificates",
-							value: enabled(permissions.treetop_accept_invalid_certificates),
+							label: "Default page limit",
+							value: formatNumber(pagination.default_page_limit),
 						},
 						{
-							label: "Connect / request timeout",
-							value: `${formatMilliseconds(permissions.treetop_connect_timeout_ms)} / ${formatMilliseconds(permissions.treetop_request_timeout_ms)}`,
+							label: "Maximum page limit",
+							value: formatNumber(pagination.max_page_limit),
+						},
+						{
+							label: "Maximum transitive depth",
+							value: formatNumber(pagination.max_transitive_depth),
 						},
 					]}
 				/>
-			) : null}
+
+				<RuntimeStatCard
+					title="Tasks & remote calls"
+					rows={[
+						{ label: "Task workers", value: formatNumber(tasks.workers) },
+						{
+							label: "Task poll interval",
+							value: formatMilliseconds(tasks.poll_interval_ms),
+						},
+						{
+							label: "Task lease / heartbeat",
+							value:
+								typeof tasks.lease_seconds === "number" &&
+								typeof tasks.heartbeat_seconds === "number"
+									? `${formatSeconds(tasks.lease_seconds)} / ${formatSeconds(tasks.heartbeat_seconds)}`
+									: "n/a",
+						},
+						{
+							label: "Task recovery interval",
+							value:
+								typeof tasks.recovery_interval_seconds === "number"
+									? formatSeconds(tasks.recovery_interval_seconds)
+									: "n/a",
+						},
+						{
+							label: "Computed reindex batch",
+							value: formatNumber(tasks.computed_reindex_batch_size),
+						},
+						{
+							label: "Imports per user",
+							value: formatNumber(tasks.import_max_active_per_user),
+						},
+						{
+							label: "Exports per user",
+							value: formatNumber(tasks.export_max_active_per_user),
+						},
+						{
+							label: "Remote calls per user",
+							value: formatNumber(tasks.remote_call_max_active_per_user),
+						},
+						{
+							label: "Remote call timeout",
+							value: formatMilliseconds(remoteCalls.timeout_ms),
+						},
+						{
+							label: "Remote response limit",
+							value: formatBytes(remoteCalls.max_response_bytes),
+						},
+						{
+							label: "Private remote targets",
+							value: remoteCalls.allow_private_targets ? "Allowed" : "Blocked",
+						},
+					]}
+				/>
+			</div>
+
+			<div className="runtime-config-row runtime-config-row--four">
+				<RuntimeStatCard
+					title="Authentication"
+					rows={[
+						{
+							label: "Administrator group",
+							value: formatScopedIdentityName(
+								auth.admin_identity_scope,
+								auth.admin_groupname,
+							),
+						},
+						{
+							label: "Token lifetime",
+							value: `${formatNumber(auth.token_lifetime_hours)} h`,
+						},
+						{
+							label: "Expired-token retention",
+							value: `${formatNumber(auth.token_retention_days)} d`,
+						},
+						{
+							label: "Token retention purge",
+							value: enabled(auth.token_retention_purge_enabled),
+						},
+						{
+							label: "Token purge interval",
+							value: formatSeconds(auth.token_retention_purge_interval_seconds),
+						},
+						{
+							label: "Token purge batch",
+							value: formatNumber(auth.token_retention_purge_batch_size),
+						},
+						{
+							label: "Provider configuration",
+							value: configured(auth.provider_config_path.configured),
+						},
+						{
+							label: "Stable token hash key",
+							value: configured(auth.stable_token_hash_key_configured),
+						},
+						{
+							label: "Login rate limit",
+							value: enabled(loginRateLimit.enabled),
+						},
+						{
+							label: "Attempts per identity / IP / subnet",
+							value: `${loginRateLimit.max_attempts} / ${loginRateLimit.max_attempts_per_ip} / ${loginRateLimit.max_attempts_per_subnet}`,
+						},
+						{
+							label: "Rate-limit window",
+							value: formatSeconds(loginRateLimit.window_seconds),
+						},
+						{
+							label: "Backoff range",
+							value: `${formatSeconds(loginRateLimit.backoff_base_seconds)} – ${formatSeconds(loginRateLimit.backoff_max_seconds)}`,
+						},
+					]}
+				/>
+
+				<RuntimeStatCard
+					title="Events"
+					rows={[
+						{
+							label: "Fanout workers / batch",
+							value: `${events.fanout_workers} / ${events.fanout_batch_size}`,
+						},
+						{
+							label: "Fanout poll interval",
+							value: formatMilliseconds(events.fanout_poll_interval_ms),
+						},
+						{
+							label: "Delivery workers / batch",
+							value: `${events.delivery_workers} / ${events.delivery_batch_size}`,
+						},
+						{
+							label: "Delivery poll interval",
+							value: formatMilliseconds(events.delivery_poll_interval_ms),
+						},
+						{
+							label: "Delivery attempts",
+							value: formatNumber(events.delivery_max_attempts),
+						},
+						{
+							label: "Delivery transport timeout",
+							value: formatMilliseconds(events.delivery_transport_timeout_ms),
+						},
+						{
+							label: "Event / delivery retention",
+							value: `${events.retention_days} / ${events.delivery_retention_days} days`,
+						},
+						{
+							label: "Retention purge",
+							value: enabled(events.retention_purge_enabled),
+						},
+						{
+							label: "File archive",
+							value: events.retention_file_archive_enabled
+								? configured(events.retention_archive_path_configured)
+								: "Disabled",
+						},
+					]}
+				/>
+
+				<RuntimeStatCard
+					title="Exports"
+					rows={[
+						{
+							label: "Output retention",
+							value: `${formatNumber(exportsConfig.output_retention_hours)} h`,
+						},
+						{
+							label: "Cleanup interval",
+							value: formatSeconds(
+								exportsConfig.output_cleanup_interval_seconds,
+							),
+						},
+						{
+							label: "Maximum output",
+							value: formatBytes(exportsConfig.max_output_bytes),
+						},
+						{
+							label: "Stage timeout",
+							value: formatMilliseconds(exportsConfig.stage_timeout_ms),
+						},
+						{
+							label: "Database timeout",
+							value: formatMilliseconds(
+								exportsConfig.database_statement_timeout_ms,
+							),
+						},
+						{
+							label: "Template recursion limit",
+							value: formatNumber(exportsConfig.template_recursion_limit),
+						},
+						{
+							label: "Template object limit",
+							value: formatNumber(exportsConfig.template_max_objects),
+						},
+						{
+							label: "Template fuel",
+							value: formatNumber(exportsConfig.template_fuel),
+						},
+					]}
+				/>
+
+				{(backups && restores) || permissions ? (
+					<RuntimeStatCard
+						title={
+							backups && restores && permissions
+								? "Recovery & permissions"
+								: backups && restores
+									? "Backup & restore"
+									: "Permissions"
+						}
+						rows={[
+							...(backups && restores
+								? [
+										{
+											label: "Active backups per user",
+											value: formatNumber(backups.max_active_tasks_per_user),
+										},
+										{
+											label: "Maximum backup output",
+											value: formatBytes(backups.max_output_bytes),
+										},
+										{
+											label: "Backup retention",
+											value: `${formatNumber(backups.output_retention_hours)} h`,
+										},
+										{
+											label: "Maximum restore upload",
+											value: formatBytes(restores.max_upload_bytes),
+										},
+										{
+											label: "Restore staging retention",
+											value: `${formatNumber(restores.stage_retention_minutes)} min`,
+										},
+									]
+								: []),
+							...(permissions
+								? [
+										{ label: "Permission backend", value: permissions.backend },
+										{
+											label: "Treetop URL",
+											value: configured(permissions.treetop_url.configured),
+										},
+										{
+											label: "Treetop CA certificate",
+											value: configured(
+												permissions.treetop_ca_certificate_configured,
+											),
+										},
+										{
+											label: "Accept invalid certificates",
+											value: enabled(
+												permissions.treetop_accept_invalid_certificates,
+											),
+										},
+										{
+											label: "Connect / request timeout",
+											value: `${formatMilliseconds(permissions.treetop_connect_timeout_ms)} / ${formatMilliseconds(permissions.treetop_request_timeout_ms)}`,
+										},
+									]
+								: []),
+						]}
+					/>
+				) : null}
+			</div>
 		</div>
 	);
 }

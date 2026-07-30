@@ -8,7 +8,6 @@ export default async function AccountAppearancePage() {
 	return (
 		<section className="stack">
 			<header>
-				<p className="eyebrow">Account</p>
 				<h2>Appearance</h2>
 				<p className="muted">
 					Personalize the workspace without changing shared data.

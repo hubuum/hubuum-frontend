@@ -73,13 +73,17 @@ export function RemoteInvocationsPanel({
 				collectionId,
 			}),
 		onSuccess: (page, cursor) => {
-			setTargets((current) => (cursor ? [...current, ...page.targets] : page.targets));
+			setTargets((current) =>
+				cursor ? [...current, ...page.targets] : page.targets,
+			);
 			setNextCursor(page.nextCursor);
 			setLoadError(null);
 		},
 		onError: (error) => {
 			setLoadError(
-				error instanceof Error ? error.message : "Failed to load remote targets.",
+				error instanceof Error
+					? error.message
+					: "Failed to load remote targets.",
 			);
 		},
 	});
@@ -131,7 +135,8 @@ export function RemoteInvocationsPanel({
 	}, [reloadKey, loadMutation.mutate]);
 
 	const invokableTargets = useMemo(
-		() => filterInvokableTargets(targets, collectionId, subjectType, targetClassId),
+		() =>
+			filterInvokableTargets(targets, collectionId, subjectType, targetClassId),
 		[collectionId, subjectType, targetClassId, targets],
 	);
 	const visibleTargets = useMemo(() => {
@@ -171,7 +176,8 @@ export function RemoteInvocationsPanel({
 			);
 		} catch (error) {
 			updateDraft(target.id, {
-				error: error instanceof Error ? error.message : "Invalid invocation JSON.",
+				error:
+					error instanceof Error ? error.message : "Invalid invocation JSON.",
 			});
 			return;
 		}
@@ -181,10 +187,10 @@ export function RemoteInvocationsPanel({
 	}
 
 	return (
-		<section className="card stack panel-card">
-			<div className="panel-header">
-				<div className="stack action-card-header">
-					<h3>Remote invocations</h3>
+		<section className="stack detail-content-section">
+			<header className="detail-section-heading">
+				<div className="detail-section-heading-copy">
+					<h2>Remote invocations</h2>
 					<p className="muted">
 						Call configured remote targets for {subjectLabel}.
 					</p>
@@ -197,117 +203,121 @@ export function RemoteInvocationsPanel({
 						placeholder="Search invocations"
 					/>
 				</div>
+			</header>
+
+			<div className="card stack panel-card">
+				{loadMutation.isPending && targets.length === 0 ? (
+					<div className="muted">Loading remote invocations...</div>
+				) : null}
+				{loadError ? <div className="error-banner">{loadError}</div> : null}
+
+				{!loadMutation.isPending &&
+				!loadError &&
+				visibleTargets.length === 0 ? (
+					<div className="empty-state">
+						No remote invocations are available for this resource.
+					</div>
+				) : null}
+
+				{visibleTargets.length > 0 ? (
+					<div className="template-list">
+						{visibleTargets.map((target) => {
+							const draft = drafts[target.id] ?? emptyDraft;
+							const isInvoking =
+								invokeMutation.isPending &&
+								invokeMutation.variables?.target.id === target.id;
+
+							return (
+								<article key={target.id} className="template-card">
+									<div className="template-card-header">
+										<div>
+											<h4>{target.name}</h4>
+											<p className="muted">{target.description}</p>
+										</div>
+										<div className="preview-meta">
+											<span>{formatMethod(target.method)}</span>
+											<span>#{target.id}</span>
+										</div>
+									</div>
+
+									{draft.isExpanded ? (
+										<div className="form-grid">
+											<label className="control-field control-field--wide">
+												<span>Parameters JSON</span>
+												<textarea
+													rows={4}
+													value={draft.parametersInput}
+													onChange={(event) =>
+														updateDraft(target.id, {
+															error: null,
+															parametersInput: event.target.value,
+														})
+													}
+												/>
+											</label>
+											<label className="control-field control-field--wide">
+												<span>Body override JSON</span>
+												<textarea
+													rows={4}
+													value={draft.bodyOverrideInput}
+													onChange={(event) =>
+														updateDraft(target.id, {
+															bodyOverrideInput: event.target.value,
+															error: null,
+														})
+													}
+												/>
+											</label>
+										</div>
+									) : null}
+
+									{draft.error ? (
+										<div className="error-banner">{draft.error}</div>
+									) : null}
+
+									<div className="action-row">
+										<button
+											type="button"
+											onClick={() => onInvoke(target)}
+											disabled={isInvoking}
+										>
+											{isInvoking ? "Calling..." : "Call"}
+										</button>
+										<button
+											type="button"
+											className="ghost"
+											onClick={() =>
+												updateDraft(target.id, {
+													isExpanded: !draft.isExpanded,
+													error: null,
+												})
+											}
+										>
+											{draft.isExpanded ? "Hide payload" : "Payload"}
+										</button>
+										<Link className="link-chip" href="/tasks">
+											Tasks
+										</Link>
+									</div>
+								</article>
+							);
+						})}
+					</div>
+				) : null}
+
+				{nextCursor ? (
+					<div className="form-actions">
+						<button
+							type="button"
+							className="ghost"
+							onClick={() => loadMutation.mutate(nextCursor)}
+							disabled={loadMutation.isPending}
+						>
+							{loadMutation.isPending ? "Loading..." : "Load more"}
+						</button>
+					</div>
+				) : null}
 			</div>
-
-			{loadMutation.isPending && targets.length === 0 ? (
-				<div className="muted">Loading remote invocations...</div>
-			) : null}
-			{loadError ? <div className="error-banner">{loadError}</div> : null}
-
-			{!loadMutation.isPending && !loadError && visibleTargets.length === 0 ? (
-				<div className="empty-state">
-					No remote invocations are available for this resource.
-				</div>
-			) : null}
-
-			{visibleTargets.length > 0 ? (
-				<div className="template-list">
-					{visibleTargets.map((target) => {
-						const draft = drafts[target.id] ?? emptyDraft;
-						const isInvoking =
-							invokeMutation.isPending &&
-							invokeMutation.variables?.target.id === target.id;
-
-						return (
-							<article key={target.id} className="template-card">
-								<div className="template-card-header">
-									<div>
-										<h4>{target.name}</h4>
-										<p className="muted">{target.description}</p>
-									</div>
-									<div className="preview-meta">
-										<span>{formatMethod(target.method)}</span>
-										<span>#{target.id}</span>
-									</div>
-								</div>
-
-								{draft.isExpanded ? (
-									<div className="form-grid">
-										<label className="control-field control-field--wide">
-											<span>Parameters JSON</span>
-											<textarea
-												rows={4}
-												value={draft.parametersInput}
-												onChange={(event) =>
-													updateDraft(target.id, {
-														error: null,
-														parametersInput: event.target.value,
-													})
-												}
-											/>
-										</label>
-										<label className="control-field control-field--wide">
-											<span>Body override JSON</span>
-											<textarea
-												rows={4}
-												value={draft.bodyOverrideInput}
-												onChange={(event) =>
-													updateDraft(target.id, {
-														bodyOverrideInput: event.target.value,
-														error: null,
-													})
-												}
-											/>
-										</label>
-									</div>
-								) : null}
-
-								{draft.error ? (
-									<div className="error-banner">{draft.error}</div>
-								) : null}
-
-								<div className="action-row">
-									<button
-										type="button"
-										onClick={() => onInvoke(target)}
-										disabled={isInvoking}
-									>
-										{isInvoking ? "Calling..." : "Call"}
-									</button>
-									<button
-										type="button"
-										className="ghost"
-										onClick={() =>
-											updateDraft(target.id, {
-												isExpanded: !draft.isExpanded,
-												error: null,
-											})
-										}
-									>
-										{draft.isExpanded ? "Hide payload" : "Payload"}
-									</button>
-									<Link className="link-chip" href="/tasks">
-										Tasks
-									</Link>
-								</div>
-							</article>
-						);
-					})}
-				</div>
-			) : null}
-
-			{nextCursor ? (
-				<div className="form-actions">
-					<button
-						type="button"
-						className="ghost"
-						onClick={() => loadMutation.mutate(nextCursor)}
-						disabled={loadMutation.isPending}
-					>
-						{loadMutation.isPending ? "Loading..." : "Load more"}
-					</button>
-				</div>
-			) : null}
 		</section>
 	);
 }

@@ -6,14 +6,10 @@ export default async function AdminServiceAccountsPage() {
 
 	return (
 		<section className="stack">
-			<header>
-				<p className="eyebrow">Admin</p>
-				<h2>Service accounts</h2>
-				<p className="muted">
-					Non-human principals for automation. Create an account and its
-					least-privilege initial token in one guided flow.
-				</p>
-			</header>
+			<p className="muted resource-index-intro">
+				Non-human principals for automation. Create an account and its
+				least-privilege initial token in one guided flow.
+			</p>
 			<ServiceAccountsTable />
 		</section>
 	);

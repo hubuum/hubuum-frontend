@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -22,6 +23,7 @@ import {
 	normalizeIdentityScope,
 	type ScopedNewUser,
 } from "@/lib/identity-scopes";
+import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
 
 async function fetchUsers(): Promise<ConsoleUser[]> {
@@ -203,6 +205,16 @@ export function AdminUsersTable() {
 		);
 	}, [selectableUsers, selectedUserIds.length]);
 
+	const resourceSummary =
+		query.data
+			? buildResourceSummary({
+					loaded: users.length,
+					selected: selectedUserIds.length,
+				})
+			: query.isLoading
+				? buildResourceSummary({ status: "Loading…" })
+				: [];
+
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setFormError(null);
@@ -369,16 +381,15 @@ export function AdminUsersTable() {
 				{renderCreateUserForm()}
 			</CreateModal>
 
-			<div className="card">
+			<div className="card resource-index">
 				<div className="table-header">
-					<h3>User directory</h3>
+					<ResourceIndexHeading
+						title="Users"
+						summary={resourceSummary}
+						createSection="admin-users"
+						createLabel="New user"
+					/>
 					<div className="table-tools">
-						<span className="muted">
-							{users.length} loaded
-							{selectedUserIds.length
-								? ` • ${selectedUserIds.length} selected`
-								: ""}
-						</span>
 						<TableExportMenu view={exportView} compact />
 						<button
 							type="button"

@@ -52,6 +52,13 @@ npm run dev
 Open <http://localhost:3000>. Authenticated use requires both the configured
 Hubuum Server and Valkey; `/readyz` reports whether both dependencies are ready.
 
+Sunset, Mountains, Clouds, and Forest are bundled login backgrounds, with Sunset used
+on a device that has not selected one yet. Private login
+artwork can be placed in the repository's `login-backgrounds/` directory.
+AVIF, JPEG, PNG, and WebP files are discovered on each login-page request,
+remain ignored by Git, and appear in the background selector with a Random
+choice.
+
 ## Stop
 
 Stop Next.js with `Ctrl-C`, then remove the development Valkey container and

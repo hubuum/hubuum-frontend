@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PinMenu } from "@/components/pin-menu";
-import { isPinned, pinItem, unpinItem } from "@/lib/pinned-items";
+import {
+	isPinned,
+	MAX_PINNED_ITEMS,
+	pinItem,
+	unpinItem,
+} from "@/lib/pinned-items";
 import { useToast } from "@/lib/toast-context";
 import type { PinnedItemType } from "@/types/quick-access";
 
@@ -43,21 +47,21 @@ export function PinButton({
 	classId,
 	className,
 }: PinButtonProps) {
-	const [viewPinned, setViewPinned] = useState(false);
-	const [createPinned, setCreatePinned] = useState(false);
+	const [classPinned, setClassPinned] = useState(false);
 	const [collectionPinned, setCollectionPinned] = useState(false);
 	const [objectPinned, setObjectPinned] = useState(false);
-	const [isMenuOpen, setMenuOpen] = useState(false);
 	const { showToast } = useToast();
 
 	function showPinLimitToast() {
-		showToast("Maximum 10 items can be pinned. Unpin one to add another.", "error");
+		showToast(
+			`Maximum ${MAX_PINNED_ITEMS} items can be pinned. Unpin one to add another.`,
+			"error",
+		);
 	}
 
 	useEffect(() => {
 		if (type === "class") {
-			setViewPinned(isPinned("class", id, "view"));
-			setCreatePinned(isPinned("class", id, "create"));
+			setClassPinned(isPinned("class", id));
 		} else if (type === "collection") {
 			setCollectionPinned(isPinned("collection", id));
 		} else if (type === "object") {
@@ -105,10 +109,10 @@ export function PinButton({
 		}
 	}
 
-	function handleToggleView() {
-		if (viewPinned) {
-			unpinItem("class", id, "view");
-			setViewPinned(false);
+	function handleClassToggle() {
+		if (classPinned) {
+			unpinItem("class", id);
+			setClassPinned(false);
 		} else {
 			const success = pinItem({
 				type: "class",
@@ -116,37 +120,13 @@ export function PinButton({
 				name,
 				collectionId,
 				collectionName,
-				action: "view",
 			});
 			if (success) {
-				setViewPinned(true);
+				setClassPinned(true);
 			} else {
 				showPinLimitToast();
 			}
 		}
-		setMenuOpen(false);
-	}
-
-	function handleToggleCreate() {
-		if (createPinned) {
-			unpinItem("class", id, "create");
-			setCreatePinned(false);
-		} else {
-			const success = pinItem({
-				type: "class",
-				id,
-				name,
-				collectionId,
-				collectionName,
-				action: "create",
-			});
-			if (success) {
-				setCreatePinned(true);
-			} else {
-				showPinLimitToast();
-			}
-		}
-		setMenuOpen(false);
 	}
 
 	if (type === "collection") {
@@ -155,7 +135,9 @@ export function PinButton({
 				type="button"
 				className="pin-button-inline"
 				onClick={handleCollectionToggle}
-				aria-label={collectionPinned ? "Unpin this collection" : "Pin this collection"}
+				aria-label={
+					collectionPinned ? "Unpin this collection" : "Pin this collection"
+				}
 				title={collectionPinned ? "Unpin collection" : "Pin collection"}
 			>
 				<IconPin filled={collectionPinned} />
@@ -177,31 +159,15 @@ export function PinButton({
 		);
 	}
 
-	// type === "class"
-	const anyPinned = viewPinned || createPinned;
-
 	return (
-		<div className="pin-button-wrapper">
-			<button
-				type="button"
-				className="pin-button-inline"
-				onClick={() => setMenuOpen((current) => !current)}
-				aria-label={anyPinned ? "Manage class pins" : "Pin this class"}
-				aria-haspopup="menu"
-				aria-expanded={isMenuOpen}
-				title={anyPinned ? "Manage pins" : "Pin class"}
-			>
-				<IconPin filled={anyPinned} />
-			</button>
-			<PinMenu
-				isOpen={isMenuOpen}
-				onClose={() => setMenuOpen(false)}
-				className={name}
-				viewPinned={viewPinned}
-				createPinned={createPinned}
-				onToggleView={handleToggleView}
-				onToggleCreate={handleToggleCreate}
-			/>
-		</div>
+		<button
+			type="button"
+			className="pin-button-inline"
+			onClick={handleClassToggle}
+			aria-label={classPinned ? "Unpin this class" : "Pin this class"}
+			title={classPinned ? "Unpin class" : "Pin class"}
+		>
+			<IconPin filled={classPinned} />
+		</button>
 	);
 }

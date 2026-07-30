@@ -1,13 +1,20 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { BrandMark } from "@/components/brand-mark";
+import { LoginBackgroundPicker } from "@/components/login-background-picker";
 import { LoginForm } from "@/components/login-form";
 import { APPLICATION_VERSION } from "@/lib/application-version";
 import { getSessionFromServerCookies } from "@/lib/auth/session";
+import { listMountedLoginBackgrounds } from "@/lib/login-backgrounds";
 import { normalizeReturnPath } from "@/lib/return-path";
 
 type LoginPageProps = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export const metadata: Metadata = {
+	title: "Sign in",
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
@@ -25,6 +32,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 	if (session) {
 		redirect(returnTo);
 	}
+	const mountedBackgrounds = await listMountedLoginBackgrounds();
 	const errorCode = Array.isArray(params.error)
 		? params.error[0]
 		: params.error;
@@ -39,42 +47,23 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
 	return (
 		<main className="auth-page">
-			<div className="auth-grid" aria-hidden="true" />
-			<div className="gradient-orb gradient-orb--one" />
-			<div className="gradient-orb gradient-orb--two" />
-			<section className="auth-shell">
-				<aside className="auth-story">
-					<BrandMark />
-					<div className="auth-story-copy">
-						<p className="eyebrow">Connected knowledge</p>
-						<h2>Bring your data graph into focus.</h2>
-						<p>
-							Model, connect, and operate on your organisation&apos;s data from
-							one secure workspace.
-						</p>
-					</div>
-					<ol className="auth-capabilities" aria-label="Hubuum capabilities">
-						<li>
-							<strong>01</strong> Model
-						</li>
-						<li>
-							<strong>02</strong> Connect
-						</li>
-						<li>
-							<strong>03</strong> Operate
-						</li>
-					</ol>
-				</aside>
+			<div className="auth-background" aria-hidden="true" />
+			<header className="auth-masthead">
+				<BrandMark />
+			</header>
 
+			<section className="auth-shell" aria-label="Workspace sign in">
 				<div className="auth-form-panel">
 					<LoginForm initialError={initialError} returnTo={returnTo} />
 					<p className="footer-note">
 						{process.env.NEXT_PUBLIC_APP_NAME ?? "Hubuum Console"} ·{
 							APPLICATION_VERSION
-						} · Secure workspace
+						}
 					</p>
 				</div>
 			</section>
+
+			<LoginBackgroundPicker mountedBackgrounds={mountedBackgrounds} />
 		</main>
 	);
 }

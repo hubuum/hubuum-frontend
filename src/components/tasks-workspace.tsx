@@ -136,7 +136,6 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 		<section className="stack">
 			<header className="stack action-card-header">
 				<div className="stack action-card-header">
-					<p className="eyebrow">Tasks</p>
 					<h2>Background task overview</h2>
 				</div>
 				<p className="muted">

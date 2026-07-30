@@ -25,3 +25,7 @@ coverage
 playwright-report
 test-results
 *.tsbuildinfo
+
+# Private runtime login artwork. Keep the instructions, never the images.
+/login-backgrounds/*
+!/login-backgrounds/README.md

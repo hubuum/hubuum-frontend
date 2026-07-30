@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -23,6 +24,7 @@ import {
 	normalizeIdentityScope,
 	type ScopedNewGroup,
 } from "@/lib/identity-scopes";
+import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
 
 async function fetchGroups(): Promise<ConsoleGroup[]> {
@@ -247,6 +249,16 @@ export function AdminGroupsTable() {
 		);
 	}, [selectableGroups, selectedGroupIds.length]);
 
+	const resourceSummary =
+		query.data
+			? buildResourceSummary({
+					loaded: groups.length,
+					selected: selectedGroupIds.length,
+				})
+			: query.isLoading
+				? buildResourceSummary({ status: "Loading…" })
+				: [];
+
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setFormError(null);
@@ -380,16 +392,15 @@ export function AdminGroupsTable() {
 				{renderCreateGroupForm()}
 			</CreateModal>
 
-			<div className="card">
+			<div className="card resource-index">
 				<div className="table-header">
-					<h3>Group directory</h3>
+					<ResourceIndexHeading
+						title="Groups"
+						summary={resourceSummary}
+						createSection="admin-groups"
+						createLabel="New group"
+					/>
 					<div className="table-tools">
-						<span className="muted">
-							{groups.length} loaded
-							{selectedGroupIds.length
-								? ` • ${selectedGroupIds.length} selected`
-								: ""}
-						</span>
 						<TableExportMenu view={exportView} compact />
 						<button
 							type="button"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
 	FormEvent,
@@ -21,7 +22,15 @@ import {
 	getApiV1Collections,
 } from "@/lib/api/generated/client";
 import type { Collection } from "@/lib/api/generated/models";
-import { createImportTask, type ImportRequest } from "@/lib/api/tasking";
+import {
+	createImportTask,
+	fetchTasks,
+	getTaskProgressPercent,
+	getTaskStatusTone,
+	isTerminalTaskStatus,
+	type ImportRequest,
+	type TaskRecord,
+} from "@/lib/api/tasking";
 import {
 	buildCollectionHierarchy,
 	formatCollectionOption,
@@ -38,6 +47,8 @@ import {
 	normalizeIdentityScope,
 } from "@/lib/identity-scopes";
 import { MAX_IDEMPOTENCY_KEY_BYTES } from "@/lib/idempotency-key";
+import { filterMine } from "@/lib/task-notifications";
+import { useCurrentUserId } from "@/lib/use-current-user-id";
 
 type ImportSummary = {
 	totalItems: number;
@@ -51,6 +62,7 @@ type ImportFilePayload = ImportRequest & Record<string, unknown>;
 
 type ImportsWorkspaceProps = {
 	canCreateCollections: boolean;
+	currentUsername: string | null;
 };
 
 const IMPORT_STEPS = [
@@ -86,6 +98,65 @@ type FilePermissionGroupValidation =
 function parsePositiveInteger(value: string): number | null {
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function formatTaskTimestamp(value: string): string {
+	try {
+		return new Intl.DateTimeFormat(undefined, {
+			dateStyle: "medium",
+			timeStyle: "short",
+		}).format(new Date(value));
+	} catch {
+		return value;
+	}
+}
+
+function formatTaskProgress(task: TaskRecord): string {
+	const percent = getTaskProgressPercent(task);
+	if (task.progress.total_items <= 0) {
+		return `${percent}%`;
+	}
+
+	return `${task.progress.processed_items} / ${task.progress.total_items} (${percent}%)`;
+}
+
+function ImportTasksTable({ tasks }: { tasks: readonly TaskRecord[] }) {
+	return (
+		<div className="table-wrap">
+			<table>
+				<thead>
+					<tr>
+						<th>Import</th>
+						<th>Status</th>
+						<th>Progress</th>
+						<th>Created</th>
+						<th>Summary</th>
+					</tr>
+				</thead>
+				<tbody>
+					{tasks.map((task) => (
+						<tr key={task.id}>
+							<td>
+								<Link className="row-link" href={`/tasks/${task.id}`}>
+									Import #{task.id}
+								</Link>
+							</td>
+							<td>
+								<span
+									className={`status-pill status-pill--${getTaskStatusTone(task.status)}`}
+								>
+									{task.status.replaceAll("_", " ")}
+								</span>
+							</td>
+							<td>{formatTaskProgress(task)}</td>
+							<td>{formatTaskTimestamp(task.created_at)}</td>
+							<td>{task.summary ?? "n/a"}</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
+	);
 }
 
 function summarizeImport(payload: ImportRequest): ImportSummary {
@@ -205,9 +276,11 @@ async function fetchCollections(): Promise<Collection[]> {
 
 export function ImportsWorkspace({
 	canCreateCollections,
+	currentUsername,
 }: ImportsWorkspaceProps) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
+	const currentUserId = useCurrentUserId(currentUsername);
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [fileName, setFileName] = useState("");
 	const [parsedImport, setParsedImport] = useState<ImportFilePayload | null>(
@@ -233,7 +306,6 @@ export function ImportsWorkspace({
 	const [delegateGroupName, setDelegateGroupName] = useState("");
 	const [idempotencyKey, setIdempotencyKey] = useState("");
 	const [submitError, setSubmitError] = useState<string | null>(null);
-	const [taskLookupInput, setTaskLookupInput] = useState("");
 	const [activeHint, setActiveHint] = useState<HintKey | null>(null);
 	const [activeStep, setActiveStep] = useState<ImportStep>("file");
 
@@ -241,6 +313,33 @@ export function ImportsWorkspace({
 		() => (parsedImport ? summarizeImport(parsedImport) : null),
 		[parsedImport],
 	);
+	const importTasksQuery = useQuery({
+		queryKey: ["tasks", "imports", "tracker", currentUserId],
+		queryFn: async () => {
+			const page = await fetchTasks({
+				kind: "import",
+				submittedBy: currentUserId ?? undefined,
+				limit: 50,
+				sort: "created_at.desc,id.desc",
+			});
+			return currentUserId == null
+				? page.tasks
+				: filterMine(page.tasks, currentUserId);
+		},
+		refetchInterval: (query) => {
+			const hasActiveImports = (query.state.data ?? []).some(
+				(task) => !isTerminalTaskStatus(task.status),
+			);
+			return hasActiveImports ? 5000 : 15000;
+		},
+	});
+	const importTasks = importTasksQuery.data ?? [];
+	const activeImports = importTasks.filter(
+		(task) => !isTerminalTaskStatus(task.status),
+	);
+	const previousImports = importTasks
+		.filter((task) => isTerminalTaskStatus(task.status))
+		.slice(0, 10);
 	const groupsQuery = useQuery({
 		queryKey: ["groups", "imports-form"],
 		queryFn: fetchGroups,
@@ -459,16 +558,6 @@ export function ImportsWorkspace({
 		event.preventDefault();
 		setSubmitError(null);
 		submitMutation.mutate();
-	}
-
-	function handleLoadTask(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		const parsed = parsePositiveInteger(taskLookupInput);
-		if (!parsed) {
-			return;
-		}
-
-		router.push(`/tasks/${parsed}`);
 	}
 
 	function renderFieldLabel(label: string, hintKey: HintKey, hint: ReactNode) {
@@ -700,7 +789,6 @@ export function ImportsWorkspace({
 		<section className="stack">
 			<header className="stack action-card-header">
 				<div className="stack action-card-header">
-					<p className="eyebrow">Imports</p>
 					<h2>Submit import tasks</h2>
 				</div>
 				<p className="muted">
@@ -709,7 +797,7 @@ export function ImportsWorkspace({
 				</p>
 			</header>
 
-			<div className="imports-layout">
+			<div className="stack">
 				<section className="stack">
 					<article className="card stack panel-card">
 						<div className="stack action-card-header">
@@ -1055,50 +1143,54 @@ export function ImportsWorkspace({
 							) : null}
 						</form>
 					</article>
-				</section>
 
-				<section className="stack">
-					<article className="card stack panel-card">
-						<div className="stack action-card-header">
-							<h3>Open an existing task</h3>
-							<p className="muted">
-								Resume any known import task by ID without reloading an import
-								file.
-							</p>
-						</div>
+					{activeImports.length > 0 ? (
+						<section className="stack detail-content-section">
+							<header className="detail-section-heading">
+								<div className="detail-section-heading-copy">
+									<h2>Active imports</h2>
+								</div>
+								<span className="muted">{activeImports.length} active</span>
+							</header>
 
-						<form className="action-row" onSubmit={handleLoadTask}>
-							<input
-								type="number"
-								min={1}
-								value={taskLookupInput}
-								onChange={(event) => setTaskLookupInput(event.target.value)}
-								placeholder="Task ID"
-							/>
-							<button type="submit" className="ghost">
-								Open task
-							</button>
-						</form>
-					</article>
+							<article className="card stack panel-card">
+								<ImportTasksTable tasks={activeImports} />
+							</article>
+						</section>
+					) : null}
 
-					<article className="card stack panel-card">
-						<div className="stack action-card-header">
-							<h3>What happens next</h3>
-						</div>
-						<div className="template-help">
-							<span>
-								Submit an import here, then continue on `/tasks/[taskId]`.
-							</span>
-							<span>
-								The task page shows status, lifecycle events, and
-								import-specific results.
-							</span>
-							<span>
-								Polling stops automatically when the task reaches a terminal
-								state.
-							</span>
-						</div>
-					</article>
+					<section className="stack detail-content-section">
+						<header className="detail-section-heading">
+							<div className="detail-section-heading-copy">
+								<h2>Previous imports</h2>
+							</div>
+							<Link className="link-chip" href="/tasks">
+								Browse tasks
+							</Link>
+						</header>
+
+						<article className="card stack panel-card">
+							{importTasksQuery.isLoading ? (
+								<div className="muted">Loading previous imports...</div>
+							) : null}
+							{importTasksQuery.isError ? (
+								<div className="error-banner">
+									Failed to load previous imports.{" "}
+									{importTasksQuery.error instanceof Error
+										? importTasksQuery.error.message
+										: "Unknown error"}
+								</div>
+							) : null}
+							{!importTasksQuery.isLoading &&
+							!importTasksQuery.isError &&
+							previousImports.length === 0 ? (
+								<div className="empty-state">No previous imports.</div>
+							) : null}
+							{previousImports.length > 0 ? (
+								<ImportTasksTable tasks={previousImports} />
+							) : null}
+						</article>
+					</section>
 				</section>
 			</div>
 		</section>

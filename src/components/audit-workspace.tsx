@@ -179,7 +179,6 @@ export function AuditWorkspace() {
 			/>
 			<header className="stack action-card-header">
 				<div className="stack action-card-header">
-					<p className="eyebrow">Audit</p>
 					<h2>Event stream</h2>
 				</div>
 				<p className="muted">

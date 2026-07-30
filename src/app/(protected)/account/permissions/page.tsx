@@ -8,7 +8,6 @@ export default async function AccountPermissionsPage() {
 	return (
 		<section className="stack">
 			<header>
-				<p className="eyebrow">Account</p>
 				<h2>Permissions</h2>
 				<p className="muted">
 					Your direct collection permission rows, by granting group.

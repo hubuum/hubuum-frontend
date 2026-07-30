@@ -62,6 +62,9 @@ backend:
 
 appName: Hubuum Console
 
+loginBackgrounds:
+  existingClaim: ""
+
 session:
   ttlSeconds: 28800
   prefix: "hubuum:sess:"

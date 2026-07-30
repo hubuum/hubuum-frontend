@@ -8,7 +8,6 @@ export default async function AccountTokensPage() {
 	return (
 		<section className="stack">
 			<header>
-				<p className="eyebrow">Account</p>
 				<h2>Tokens</h2>
 				<p className="muted">
 					Create and revoke API tokens for your own account.

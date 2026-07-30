@@ -7,6 +7,14 @@ import {
 	normalizeCorrelationId,
 } from "@/lib/correlation";
 
+const LEGACY_DESIGN_COOKIE = "hubuum.design";
+
+function stripLegacyDesignPrefix(pathname: string): string | null {
+	const match = pathname.match(/^\/(?:v2|v4|v6)(?=\/|$)/);
+	if (!match) return null;
+	return pathname.slice(match[0].length) || "/app";
+}
+
 function requestIsHttps(request: NextRequest): boolean {
 	const forwardedProto = request.headers
 		.get("x-forwarded-proto")
@@ -39,13 +47,41 @@ export function proxy(request: NextRequest) {
 
 	const forwardedHeaders = new Headers(request.headers);
 	forwardedHeaders.set(CORRELATION_ID_HEADER, correlationId);
-	const response = NextResponse.next({
-		request: {
-			headers: forwardedHeaders,
-		},
-	});
+	const canonicalDesignPath = stripLegacyDesignPrefix(path);
+	const requestMethodCanRedirect =
+		request.method === "GET" || request.method === "HEAD";
+
+	let response: NextResponse;
+	if (canonicalDesignPath && requestMethodCanRedirect) {
+		const redirectUrl = request.nextUrl.clone();
+		redirectUrl.pathname = canonicalDesignPath;
+		response = NextResponse.redirect(redirectUrl);
+	} else if (canonicalDesignPath) {
+		const rewriteUrl = request.nextUrl.clone();
+		rewriteUrl.pathname = canonicalDesignPath;
+		response = NextResponse.rewrite(rewriteUrl, {
+			request: {
+				headers: forwardedHeaders,
+			},
+		});
+	} else {
+		response = NextResponse.next({
+			request: {
+				headers: forwardedHeaders,
+			},
+		});
+	}
 
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
+	if (request.cookies.has(LEGACY_DESIGN_COOKIE)) {
+		response.cookies.set(LEGACY_DESIGN_COOKIE, "", {
+			httpOnly: true,
+			maxAge: 0,
+			path: "/",
+			sameSite: "lax",
+			secure: requestIsHttps(request),
+		});
+	}
 
 	const shouldUpdateCookie = isApiRequest
 		? !headerCorrelationId && cookieCorrelationId !== correlationId

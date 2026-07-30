@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 
 import {
-	ACCENT_OPTIONS,
-	type AccentPreference,
+	ATMOSPHERE_OPTIONS,
+	type AtmospherePreset,
+	DEFAULT_ATMOSPHERE,
 	type DensityPreference,
-	isAccentPreference,
+	getAtmosphereAccent,
 	isDensityPreference,
 	isThemePreference,
+	resolveAtmospherePreset,
 	type ThemePreference,
 } from "@/lib/appearance-preferences";
 import {
@@ -34,9 +36,8 @@ const DENSITY_OPTIONS: Array<{ value: DensityPreference; label: string }> = [
 export function AccountAppearance() {
 	const [theme, setTheme] = useState<ThemePreference>("system");
 	const [density, setDensity] = useState<DensityPreference>("comfortable");
-	const [accent, setAccent] = useState<AccentPreference>("teal");
-	const [secondaryAccent, setSecondaryAccent] =
-		useState<AccentPreference>("teal");
+	const [atmosphere, setAtmosphere] =
+		useState<AtmospherePreset>(DEFAULT_ATMOSPHERE);
 
 	useEffect(() => {
 		const storedTheme = window.localStorage.getItem(
@@ -51,17 +52,10 @@ export function AccountAppearance() {
 		const storedSecondaryAccent = window.localStorage.getItem(
 			PORTABLE_USER_SETTING_KEYS.secondaryAccent,
 		);
-		const resolvedAccent = isAccentPreference(storedAccent)
-			? storedAccent
-			: "teal";
-
 		if (isThemePreference(storedTheme)) setTheme(storedTheme);
 		if (isDensityPreference(storedDensity)) setDensity(storedDensity);
-		setAccent(resolvedAccent);
-		setSecondaryAccent(
-			isAccentPreference(storedSecondaryAccent)
-				? storedSecondaryAccent
-				: resolvedAccent,
+		setAtmosphere(
+			resolveAtmospherePreset(storedSecondaryAccent, storedAccent),
 		);
 	}, []);
 
@@ -75,16 +69,13 @@ export function AccountAppearance() {
 		writeUserSetting(PORTABLE_USER_SETTING_KEYS.density, value);
 	}
 
-	function selectPrimaryAccent(value: AccentPreference) {
-		setAccent(value);
-		writeUserSetting(PORTABLE_USER_SETTING_KEYS.accent, value);
-		writeDeviceSetting(DEVICE_SETTING_KEYS.loginAccent, value);
-	}
-
-	function selectSecondaryAccent(value: AccentPreference) {
-		setSecondaryAccent(value);
-		writeUserSetting(PORTABLE_USER_SETTING_KEYS.secondaryAccent, value);
-		writeDeviceSetting(DEVICE_SETTING_KEYS.loginSecondaryAccent, value);
+	function selectAtmosphere(value: AtmospherePreset) {
+		const accent = getAtmosphereAccent(value);
+		setAtmosphere(value);
+		writeUserSetting(PORTABLE_USER_SETTING_KEYS.accent, accent);
+		writeUserSetting(PORTABLE_USER_SETTING_KEYS.secondaryAccent, accent);
+		writeDeviceSetting(DEVICE_SETTING_KEYS.loginAccent, accent);
+		writeDeviceSetting(DEVICE_SETTING_KEYS.loginSecondaryAccent, accent);
 	}
 
 	return (
@@ -137,54 +128,42 @@ export function AccountAppearance() {
 
 			<section className="card stack appearance-card appearance-card--wide">
 				<div>
-					<h3>Workspace colors</h3>
+					<h3>Workspace atmosphere</h3>
 					<p className="muted">
-						Primary colors identify actions and focus. Secondary colors tint
-						navigation and the canvas.
+						Choose a complete visual language for the workspace.
 					</p>
 				</div>
-				<div className="appearance-color-groups">
-					<fieldset>
-						<legend>Primary color</legend>
-						<div className="appearance-color-options">
-							{ACCENT_OPTIONS.map((option) => (
-								<button
-									key={option.value}
-									type="button"
-									className={`accent-option ${accent === option.value ? "is-selected" : ""}`}
-									onClick={() => selectPrimaryAccent(option.value)}
-									aria-pressed={accent === option.value}
-								>
-									<span
-										className={`accent-swatch accent-swatch--${option.value}`}
-										aria-hidden="true"
-									/>
-									<span>{option.label}</span>
-								</button>
-							))}
-						</div>
-					</fieldset>
-					<fieldset>
-						<legend>Secondary color</legend>
-						<div className="appearance-color-options">
-							{ACCENT_OPTIONS.map((option) => (
-								<button
-									key={option.value}
-									type="button"
-									className={`accent-option accent-option--secondary ${secondaryAccent === option.value ? "is-selected" : ""}`}
-									onClick={() => selectSecondaryAccent(option.value)}
-									aria-pressed={secondaryAccent === option.value}
-								>
-									<span
-										className={`accent-swatch accent-swatch--${option.value}`}
-										aria-hidden="true"
-									/>
-									<span>{option.label}</span>
-								</button>
-							))}
-						</div>
-					</fieldset>
-				</div>
+				<fieldset className="appearance-atmosphere-fieldset">
+					<legend>Atmosphere</legend>
+					<p className="muted">
+						Each atmosphere includes purpose-built light and dark palettes for
+						canvas, navigation, typography, actions and ambient detail.
+					</p>
+					<div className="atmosphere-options">
+						{ATMOSPHERE_OPTIONS.map((option) => (
+							<button
+								key={option.value}
+								type="button"
+								className={`atmosphere-option ${atmosphere === option.value ? "is-selected" : ""}`}
+								onClick={() => selectAtmosphere(option.value)}
+								aria-pressed={atmosphere === option.value}
+							>
+								<span
+									className={`atmosphere-option-art atmosphere-option-art--${option.value}`}
+									aria-hidden="true"
+								/>
+								<span className="atmosphere-option-copy">
+									<strong>{option.label}</strong>
+									<small>{option.description}</small>
+									<span className="atmosphere-option-meta">
+										<span>{option.palette}</span>
+										<span>Light + dark</span>
+									</span>
+								</span>
+							</button>
+						))}
+					</div>
+				</fieldset>
 			</section>
 		</div>
 	);

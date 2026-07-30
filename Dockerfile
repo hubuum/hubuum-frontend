@@ -18,7 +18,10 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-RUN addgroup -S -g 1001 nextjs && adduser -S -u 1001 -G nextjs nextjs
+RUN addgroup -S -g 1001 nextjs \
+	&& adduser -S -u 1001 -G nextjs nextjs \
+	&& mkdir -p /app/login-backgrounds \
+	&& chown nextjs:nextjs /app/login-backgrounds
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static

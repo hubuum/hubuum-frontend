@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/empty-state";
 import { CollectionEventSubscriptionsPanel } from "@/components/collection-event-subscriptions-panel";
 import { CollectionDetailTracker } from "@/components/collection-detail-tracker";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
+import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { TableExportMenu } from "@/components/table-export-menu";
@@ -1166,11 +1167,7 @@ export function CollectionDetail({
 			new CustomEvent(TITLE_STATE_EVENT, {
 				detail: {
 					title: collectionData.name,
-					pin: {
-						type: "collection",
-						id: collectionData.id,
-						name: collectionData.name,
-					},
+					pin: null,
 				},
 			}),
 		);
@@ -1678,6 +1675,14 @@ export function CollectionDetail({
 				collectionName={collectionData.name}
 			/>
 			<section className="stack">
+				<div className="detail-title-line">
+					<h1 className="detail-title">{collectionData.name}</h1>
+					<PinButton
+						type="collection"
+						id={collectionData.id}
+						name={collectionData.name}
+					/>
+				</div>
 				<form
 					className="card stack"
 					onSubmit={onSubmit}

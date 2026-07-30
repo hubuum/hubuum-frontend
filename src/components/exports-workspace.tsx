@@ -790,7 +790,6 @@ export function ExportsWorkspace({
 		<section className="stack export-workspace">
 			<header className="export-page-header">
 				<div className="stack action-card-header">
-					<p className="eyebrow">Exports</p>
 					<h2>Open reports and retrieve exports</h2>
 					<p className="muted">
 						View saved reports in one click, refresh them when needed, or open

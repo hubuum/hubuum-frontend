@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-	type ChangeEvent,
 	type FormEvent,
 	ReactNode,
 	useCallback,
@@ -17,29 +16,32 @@ import { BrandMark } from "@/components/brand-mark";
 import { CreateModal } from "@/components/create-modal";
 import { KeyboardHelp } from "@/components/keyboard-help";
 import { LogoutButton } from "@/components/logout-button";
-import { PinButton } from "@/components/pin-button";
 import { ToastContainer } from "@/components/toast-container";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV1Classes } from "@/lib/api/generated/client";
-import type {
-	HubuumClassExpanded,
-	HubuumObject,
-} from "@/lib/api/generated/models";
+import type { HubuumClassExpanded } from "@/lib/api/generated/models";
 import {
 	fetchTasks,
 	isTerminalTaskStatus,
 	type TaskRecord,
 } from "@/lib/api/tasking";
 import {
-	type AccentPreference,
+	applyAtmospherePreference,
+	type AtmospherePreset,
+	DEFAULT_ATMOSPHERE,
 	type DensityPreference,
-	isAccentPreference,
+	getAtmosphereAccent,
 	isDensityPreference,
 	isThemePreference,
+	resolveAtmospherePreset,
 	resolveTheme,
 	type ThemePreference,
 } from "@/lib/appearance-preferences";
 import { APPLICATION_VERSION } from "@/lib/application-version";
+import {
+	ACCOUNT_SECTIONS,
+	isAccountSectionActive,
+} from "@/lib/account-sections";
 import {
 	type CreateSection,
 	DESELECT_ALL_EVENT,
@@ -52,19 +54,22 @@ import {
 	TITLE_STATE_EVENT,
 	type TitleStateEventDetail,
 } from "@/lib/create-events";
-import { OBJECT_SERVER_FILTERS_QUERY_KEY } from "@/lib/object-server-filters";
 import {
 	triggerActivePaginationNextPage,
 	triggerActivePaginationPrevPage,
 } from "@/lib/pagination-shortcuts";
+import { buildDocumentTitle, getRouteTitle } from "@/lib/page-title";
+import { getPinnedItems } from "@/lib/pinned-items";
+import { getRecentItems } from "@/lib/recent-items";
+import { buildNavigationClassShortcuts } from "@/lib/navigation-class-shortcuts";
 import { normalizeSearchTerm } from "@/lib/resource-search";
-import { getRelationsContextVisibility } from "@/lib/relations-context";
 import {
 	countUnread,
 	diffNewlyTerminal,
 	filterMine,
 	toastForTransition,
 } from "@/lib/task-notifications";
+import { usesCompactTopbar } from "@/lib/topbar-visibility";
 import { useToast } from "@/lib/toast-context";
 import {
 	USER_SETTINGS_CHANGED_EVENT,
@@ -104,6 +109,7 @@ const LOGIN_ACCENT_PREFERENCE_KEY = DEVICE_SETTING_KEYS.loginAccent;
 const LOGIN_SECONDARY_ACCENT_PREFERENCE_KEY =
 	DEVICE_SETTING_KEYS.loginSecondaryAccent;
 const GO_TO_SHORTCUT_TIMEOUT_MS = 1500;
+const NAVIGATION_CLASS_LIMIT = 10;
 const GO_TO_ROUTES: Record<string, string> = {
 	a: "/audit",
 	h: "/app",
@@ -119,127 +125,12 @@ const GO_TO_ROUTES: Record<string, string> = {
 	m: "/admin/groups",
 };
 
-async function fetchTopbarClassOptions(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(
-		{ limit: 250, include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load classes."),
-		);
-	}
-
-	return response.data;
-}
-
-async function parseJsonPayload(response: Response): Promise<unknown> {
-	const text = await response.text();
-	if (!text) {
-		return null;
-	}
-
-	try {
-		return JSON.parse(text);
-	} catch {
-		return null;
-	}
-}
-
-async function fetchRelationsObjectOptions(
-	classId: number,
-): Promise<HubuumObject[]> {
-	const response = await fetch(`/_hubuum-bff/classes/${classId}/objects`, {
-		credentials: "include",
-	});
-	const payload = await parseJsonPayload(response);
-
-	if (response.status !== 200) {
-		throw new Error(getApiErrorMessage(payload, "Failed to load objects."));
-	}
-
-	if (!Array.isArray(payload)) {
-		throw new Error("Unexpected objects payload.");
-	}
-
-	return payload as HubuumObject[];
-}
-
-function parseId(value: string): number | null {
-	const parsed = Number.parseInt(value, 10);
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
 function isLinkActive(pathname: string, href: string): boolean {
 	if (href === "/app") {
 		return pathname === "/app";
 	}
 
 	return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function getSectionLabel(pathname: string): string {
-	if (pathname.startsWith("/tasks")) {
-		return "Tasks";
-	}
-	if (pathname.startsWith("/audit")) {
-		return "Audit";
-	}
-	if (pathname.startsWith("/search")) {
-		return "Search";
-	}
-	if (pathname.startsWith("/exports")) {
-		return "Exports";
-	}
-	if (pathname.startsWith("/imports")) {
-		return "Imports";
-	}
-	if (pathname.startsWith("/statistics")) {
-		return "Statistics";
-	}
-	if (pathname.startsWith("/account")) {
-		return "Account";
-	}
-	if (pathname.startsWith("/collections")) {
-		return "Collections";
-	}
-	if (pathname.startsWith("/classes")) {
-		return "Classes";
-	}
-	if (pathname.startsWith("/objects")) {
-		return "Objects";
-	}
-	if (pathname.startsWith("/relations")) {
-		return "Relations";
-	}
-	if (pathname.startsWith("/admin/users")) {
-		return "Users";
-	}
-	if (pathname.startsWith("/admin/groups")) {
-		return "Groups";
-	}
-	if (pathname.startsWith("/admin/service-accounts")) {
-		return "Service accounts";
-	}
-	if (pathname.startsWith("/admin/remote-targets")) {
-		return "Remote targets";
-	}
-	if (pathname.startsWith("/admin/events")) {
-		return "Events";
-	}
-	if (pathname.startsWith("/admin/configuration")) {
-		return "Configuration";
-	}
-	if (pathname.startsWith("/admin/backups")) {
-		return "Backup & restore";
-	}
-	if (pathname.startsWith("/admin")) {
-		return "Admin";
-	}
-	return "Home";
 }
 
 function getCreateSection(pathname: string): CreateSection | null {
@@ -446,17 +337,6 @@ function IconDarkTheme() {
 	);
 }
 
-function IconPalette() {
-	return (
-		<svg viewBox="0 0 24 24" aria-hidden="true">
-			<path
-				d="M12 3a9 9 0 0 0 0 18h1.5a2.5 2.5 0 0 0 0-5H12a1.5 1.5 0 0 1 0-3h3.8A5.2 5.2 0 0 0 21 7.8C21 5.1 16.8 3 12 3M7 13a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m2-5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m5-1a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0"
-				fill="currentColor"
-			/>
-		</svg>
-	);
-}
-
 function IconArrowRight() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -608,31 +488,39 @@ const overviewLinks: NavItem[] = [
 	},
 ];
 
+const collectionsNavItem: NavItem = {
+	href: "/collections",
+	label: "Collections",
+	icon: <IconCollection />,
+	hint: "Collections: organize classes and permissions",
+};
+
+const classesNavItem: NavItem = {
+	href: "/classes",
+	label: "Classes",
+	icon: <IconClass />,
+	hint: "Classes: define object schemas inside collections",
+};
+
+const objectsNavItem: NavItem = {
+	href: "/objects",
+	label: "Objects",
+	icon: <IconObject />,
+	hint: "Objects: manage instances within classes",
+};
+
+const relationsNavItem: NavItem = {
+	href: "/relations",
+	label: "Relations",
+	icon: <IconRelation />,
+	hint: "Relations: connect classes and objects",
+};
+
 const dataModelLinks: NavItem[] = [
-	{
-		href: "/collections",
-		label: "Collections",
-		icon: <IconCollection />,
-		hint: "Collections: organize classes and permissions",
-	},
-	{
-		href: "/classes",
-		label: "Classes",
-		icon: <IconClass />,
-		hint: "Classes: define object schemas inside collections",
-	},
-	{
-		href: "/objects",
-		label: "Objects",
-		icon: <IconObject />,
-		hint: "Objects: manage instances within classes",
-	},
-	{
-		href: "/relations",
-		label: "Relations",
-		icon: <IconRelation />,
-		hint: "Relations: connect classes and objects",
-	},
+	collectionsNavItem,
+	classesNavItem,
+	objectsNavItem,
+	relationsNavItem,
 ];
 
 const workflowLinks: NavItem[] = [
@@ -665,7 +553,7 @@ const observeLinks: NavItem[] = [
 	},
 ];
 
-const adminLinks: NavItem[] = [
+const adminIdentityLinks: NavItem[] = [
 	{
 		href: "/admin/users",
 		label: "Users",
@@ -684,6 +572,9 @@ const adminLinks: NavItem[] = [
 		icon: <IconUser />,
 		hint: "Service accounts: non-human principals for automation",
 	},
+];
+
+const adminOperationsLinks: NavItem[] = [
 	{
 		href: "/admin/remote-targets",
 		label: "Remote targets",
@@ -696,6 +587,9 @@ const adminLinks: NavItem[] = [
 		icon: <IconAudit />,
 		hint: "Events: inspect delivery health and retries",
 	},
+];
+
+const adminSystemLinks: NavItem[] = [
 	{
 		href: "/admin/configuration",
 		label: "Configuration",
@@ -710,6 +604,12 @@ const adminLinks: NavItem[] = [
 	},
 ];
 
+const adminLinks: NavItem[] = [
+	...adminIdentityLinks,
+	...adminOperationsLinks,
+	...adminSystemLinks,
+];
+
 const systemLinks: NavItem[] = [
 	{
 		href: "/statistics",
@@ -718,6 +618,25 @@ const systemLinks: NavItem[] = [
 		hint: "Statistics: workspace counts and database status",
 	},
 ];
+
+async function fetchNavigationClasses(): Promise<HubuumClassExpanded[]> {
+	const response = await getApiV1Classes(
+		{
+			include_total: false,
+			limit: NAVIGATION_CLASS_LIMIT,
+			sort: "name.asc,id.asc",
+		},
+		{ credentials: "include" },
+	);
+
+	if (response.status !== 200) {
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to load class shortcuts."),
+		);
+	}
+
+	return response.data;
+}
 
 export function AppShell({
 	canViewAdmin,
@@ -728,6 +647,7 @@ export function AppShell({
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
+	const appPathname = pathname;
 	const { showToast } = useToast();
 	const currentUserId = currentPrincipalId;
 	const prevMyTasksRef = useRef<TaskRecord[] | null>(null);
@@ -764,87 +684,82 @@ export function AppShell({
 		},
 	});
 
-	const sectionLabel = useMemo(() => getSectionLabel(pathname), [pathname]);
-	const createSection = useMemo(() => getCreateSection(pathname), [pathname]);
-	const relationsView = useMemo(() => getRelationsView(pathname), [pathname]);
-	const isSearchRoute = pathname.startsWith("/search");
-	const isObjectsListRoute = pathname === "/objects";
-	const relationsContextVisibility = getRelationsContextVisibility(
-		relationsView,
-		searchParams.get("classView"),
+	const sectionLabel = useMemo(
+		() => getRouteTitle(appPathname),
+		[appPathname],
 	);
-	const selectedRelationsClassId = searchParams.get("classId") ?? "";
-	const selectedRelationsObjectId = searchParams.get("objectId") ?? "";
-	const selectedObjectsClassId = searchParams.get("classId") ?? "";
-	const topbarClassOptionsQuery = useQuery({
-		queryKey: ["classes", "topbar-context"],
-		queryFn: fetchTopbarClassOptions,
-		enabled: isObjectsListRoute || relationsContextVisibility.showClass,
-	});
-	const topbarClassOptions = topbarClassOptionsQuery.data ?? [];
-	const resolvedObjectsClassId = useMemo(() => {
-		return topbarClassOptions.some(
-			(classItem) => String(classItem.id) === selectedObjectsClassId,
-		)
-			? selectedObjectsClassId
-			: "";
-	}, [selectedObjectsClassId, topbarClassOptions]);
-	const resolvedRelationsClassId = useMemo(() => {
-		return topbarClassOptions.some(
-			(classItem) => String(classItem.id) === selectedRelationsClassId,
-		)
-			? selectedRelationsClassId
-			: topbarClassOptions.length
-				? String(topbarClassOptions[0].id)
-				: "";
-	}, [selectedRelationsClassId, topbarClassOptions]);
-	const parsedResolvedRelationsClassId = useMemo(
-		() => parseId(resolvedRelationsClassId),
-		[resolvedRelationsClassId],
+	const createSection = useMemo(
+		() => getCreateSection(appPathname),
+		[appPathname],
 	);
-	const relationsObjectOptionsQuery = useQuery({
-		queryKey: ["objects", "relations-topbar", parsedResolvedRelationsClassId],
-		queryFn: async () =>
-			fetchRelationsObjectOptions(parsedResolvedRelationsClassId ?? 0),
-		enabled:
-			relationsContextVisibility.showObject &&
-			parsedResolvedRelationsClassId !== null,
-	});
-	const relationsObjectOptions = relationsObjectOptionsQuery.data ?? [];
-	const resolvedRelationsObjectId = useMemo(() => {
-		return relationsObjectOptions.some(
-			(objectItem) => String(objectItem.id) === selectedRelationsObjectId,
-		)
-			? selectedRelationsObjectId
-			: "";
-	}, [relationsObjectOptions, selectedRelationsObjectId]);
+	const relationsView = useMemo(
+		() => getRelationsView(appPathname),
+		[appPathname],
+	);
+	const isSearchRoute = appPathname.startsWith("/search");
+	const hasCompactTopbar = usesCompactTopbar(appPathname);
 	const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 	const [isMobileSearchOpen, setMobileSearchOpen] = useState(false);
 	const [isUserMenuOpen, setUserMenuOpen] = useState(false);
 	const [isTaskMenuOpen, setTaskMenuOpen] = useState(false);
+	const [openTopologyMenu, setOpenTopologyMenu] = useState<string | null>(null);
+	const [openTopologyFlyout, setOpenTopologyFlyout] = useState<string | null>(
+		null,
+	);
+	const [navigationHistory, setNavigationHistory] = useState<{
+		pinnedItems: ReturnType<typeof getPinnedItems>;
+		recentItems: ReturnType<typeof getRecentItems>;
+	}>({ pinnedItems: [], recentItems: [] });
 	const [preferencesReady, setPreferencesReady] = useState(false);
 	const [themePreference, setThemePreference] =
 		useState<ThemePreference>("system");
 	const [densityPreference, setDensityPreference] =
 		useState<DensityPreference>("comfortable");
-	const [accentPreference, setAccentPreference] =
-		useState<AccentPreference>("teal");
-	const [secondaryAccentPreference, setSecondaryAccentPreference] =
-		useState<AccentPreference>("teal");
+	const [atmospherePreference, setAtmospherePreference] =
+		useState<AtmospherePreset>(DEFAULT_ATMOSPHERE);
 	const [searchInput, setSearchInput] = useState("");
 	const [selectionCount, setSelectionCount] = useState(0);
 	const [deleteHandler, setDeleteHandler] = useState<(() => void) | null>(null);
 	const [editLabel, setEditLabel] = useState("Edit item");
 	const [editHandler, setEditHandler] = useState<(() => void) | null>(null);
 	const [detailTitle, setDetailTitle] = useState<string | null>(null);
-	const [detailPin, setDetailPin] =
-		useState<TitleStateEventDetail["pin"]>(null);
 	const [isKeyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
 	const goToShortcutTimerRef = useRef<number | null>(null);
 	const userMenuRef = useRef<HTMLDivElement | null>(null);
 	const taskMenuRef = useRef<HTMLDivElement | null>(null);
-	const hasCustomSecondaryAccent = useRef(false);
+	const navigationClassesQuery = useQuery({
+		queryKey: ["classes", "shell-navigation"],
+		queryFn: fetchNavigationClasses,
+		enabled: openTopologyMenu === "Data",
+		staleTime: 5 * 60 * 1000,
+	});
+	const navigationClassShortcuts = useMemo(
+		() =>
+			buildNavigationClassShortcuts({
+				fallbackClasses: navigationClassesQuery.data ?? [],
+				limit: NAVIGATION_CLASS_LIMIT,
+				pinnedItems: navigationHistory.pinnedItems,
+				recentItems: navigationHistory.recentItems,
+			}),
+		[navigationClassesQuery.data, navigationHistory],
+	);
+
+	const closeTopologyNavigation = useCallback(() => {
+		setOpenTopologyMenu(null);
+		setOpenTopologyFlyout(null);
+	}, []);
+
+	useEffect(() => {
+		if (openTopologyMenu !== "Data") {
+			return;
+		}
+
+		setNavigationHistory({
+			pinnedItems: getPinnedItems(),
+			recentItems: getRecentItems(),
+		});
+	}, [openTopologyMenu]);
 
 	const clearGoToShortcut = useCallback(() => {
 		if (goToShortcutTimerRef.current === null) {
@@ -908,22 +823,12 @@ export function AppShell({
 		}
 
 		const storedAccent = window.localStorage.getItem(ACCENT_PREFERENCE_KEY);
-		const primaryAccent = isAccentPreference(storedAccent)
-			? storedAccent
-			: "teal";
-		setAccentPreference(primaryAccent);
-
 		const storedSecondaryAccent = window.localStorage.getItem(
 			SECONDARY_ACCENT_PREFERENCE_KEY,
 		);
-		hasCustomSecondaryAccent.current = isAccentPreference(
-			storedSecondaryAccent,
+		setAtmospherePreference(
+			resolveAtmospherePreset(storedSecondaryAccent, storedAccent),
 		);
-		if (isAccentPreference(storedSecondaryAccent)) {
-			setSecondaryAccentPreference(storedSecondaryAccent);
-		} else {
-			setSecondaryAccentPreference(primaryAccent);
-		}
 
 		setPreferencesReady(true);
 	}, []);
@@ -939,18 +844,16 @@ export function AppShell({
 				const value = window.localStorage.getItem(DENSITY_PREFERENCE_KEY);
 				if (isDensityPreference(value)) setDensityPreference(value);
 			}
-			if (key === ACCENT_PREFERENCE_KEY) {
-				const value = window.localStorage.getItem(ACCENT_PREFERENCE_KEY);
-				if (isAccentPreference(value)) setAccentPreference(value);
-			}
-			if (key === SECONDARY_ACCENT_PREFERENCE_KEY) {
-				const value = window.localStorage.getItem(
-					SECONDARY_ACCENT_PREFERENCE_KEY,
+			if (
+				key === ACCENT_PREFERENCE_KEY ||
+				key === SECONDARY_ACCENT_PREFERENCE_KEY
+			) {
+				setAtmospherePreference(
+					resolveAtmospherePreset(
+						window.localStorage.getItem(SECONDARY_ACCENT_PREFERENCE_KEY),
+						window.localStorage.getItem(ACCENT_PREFERENCE_KEY),
+					),
 				);
-				if (isAccentPreference(value)) {
-					hasCustomSecondaryAccent.current = true;
-					setSecondaryAccentPreference(value);
-				}
 			}
 		};
 
@@ -1005,24 +908,16 @@ export function AppShell({
 
 	useEffect(() => {
 		if (!preferencesReady) return;
-		writeUserSetting(ACCENT_PREFERENCE_KEY, accentPreference);
-		writeDeviceSetting(LOGIN_ACCENT_PREFERENCE_KEY, accentPreference);
-		document.documentElement.setAttribute("data-accent", accentPreference);
-	}, [accentPreference, preferencesReady]);
-
-	useEffect(() => {
-		if (!preferencesReady) return;
-		if (!hasCustomSecondaryAccent.current) {
-			writeDeviceSetting(
-				LOGIN_SECONDARY_ACCENT_PREFERENCE_KEY,
-				secondaryAccentPreference,
-			);
-		}
-		document.documentElement.setAttribute(
-			"data-secondary-accent",
-			secondaryAccentPreference,
+		const accent = getAtmosphereAccent(atmospherePreference);
+		writeUserSetting(ACCENT_PREFERENCE_KEY, accent);
+		writeUserSetting(SECONDARY_ACCENT_PREFERENCE_KEY, accent);
+		writeDeviceSetting(LOGIN_ACCENT_PREFERENCE_KEY, accent);
+		writeDeviceSetting(LOGIN_SECONDARY_ACCENT_PREFERENCE_KEY, accent);
+		applyAtmospherePreference(
+			document.documentElement,
+			atmospherePreference,
 		);
-	}, [preferencesReady, secondaryAccentPreference]);
+	}, [atmospherePreference, preferencesReady]);
 
 	useEffect(() => {
 		if (!pathname) {
@@ -1033,9 +928,9 @@ export function AppShell({
 		setMobileSearchOpen(false);
 		setUserMenuOpen(false);
 		setTaskMenuOpen(false);
+		closeTopologyNavigation();
 		setDetailTitle(null);
-		setDetailPin(null);
-	}, [pathname]);
+	}, [closeTopologyNavigation, pathname]);
 
 	useEffect(() => {
 		setSearchInput(isSearchRoute ? (searchParams.get("q") ?? "") : "");
@@ -1070,6 +965,10 @@ export function AppShell({
 				0,
 			);
 		},
+	});
+	useEscapeToCancel({
+		enabled: openTopologyMenu !== null,
+		onCancel: closeTopologyNavigation,
 	});
 
 	useEffect(() => {
@@ -1118,6 +1017,26 @@ export function AppShell({
 			document.removeEventListener("pointerdown", onPointerDown);
 		};
 	}, [isTaskMenuOpen]);
+
+	useEffect(() => {
+		if (openTopologyMenu === null) {
+			return;
+		}
+
+		const onPointerDown = (event: PointerEvent) => {
+			const target = event.target;
+			if (target instanceof Element && target.closest(".topology-navigation")) {
+				return;
+			}
+
+			closeTopologyNavigation();
+		};
+
+		document.addEventListener("pointerdown", onPointerDown);
+		return () => {
+			document.removeEventListener("pointerdown", onPointerDown);
+		};
+	}, [closeTopologyNavigation, openTopologyMenu]);
 
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
@@ -1288,13 +1207,16 @@ export function AppShell({
 		const onTitleStateChange = (event: Event) => {
 			const customEvent = event as CustomEvent<TitleStateEventDetail>;
 			setDetailTitle(customEvent.detail?.title ?? null);
-			setDetailPin(customEvent.detail?.pin ?? null);
 		};
 
 		window.addEventListener(TITLE_STATE_EVENT, onTitleStateChange);
 		return () =>
 			window.removeEventListener(TITLE_STATE_EVENT, onTitleStateChange);
 	}, []);
+
+	useEffect(() => {
+		document.title = buildDocumentTitle(detailTitle ?? sectionLabel);
+	}, [detailTitle, sectionLabel]);
 
 	useEffect(() => {
 		if (currentUserId == null) {
@@ -1321,7 +1243,7 @@ export function AppShell({
 	}, [currentUserId]);
 
 	useEffect(() => {
-		if (currentUserId == null || !pathname.startsWith("/tasks")) {
+		if (currentUserId == null || !appPathname.startsWith("/tasks")) {
 			return;
 		}
 
@@ -1331,7 +1253,7 @@ export function AppShell({
 			String(now),
 		);
 		setLastSeenAt(now);
-	}, [pathname, currentUserId]);
+	}, [appPathname, currentUserId]);
 
 	useEffect(() => {
 		const data = myTasksQuery.data;
@@ -1410,63 +1332,6 @@ export function AppShell({
 		})
 		.slice(0, 6);
 
-	function onObjectsClassChange(event: ChangeEvent<HTMLSelectElement>) {
-		const nextClassId = event.target.value;
-		const params = new URLSearchParams(searchParams.toString());
-
-		if (nextClassId) {
-			params.set("classId", nextClassId);
-		} else {
-			params.delete("classId");
-		}
-		params.delete("cursor");
-		params.delete("search");
-		params.delete(OBJECT_SERVER_FILTERS_QUERY_KEY);
-
-		const query = params.toString();
-		router.push(query ? `/objects?${query}` : "/objects");
-	}
-
-	function onRelationsClassChange(event: ChangeEvent<HTMLSelectElement>) {
-		const nextClassId = event.target.value;
-		const params = new URLSearchParams(searchParams.toString());
-
-		if (nextClassId) {
-			params.set("classId", nextClassId);
-		} else {
-			params.delete("classId");
-		}
-
-		params.delete("objectId");
-		params.delete("objectView");
-
-		const query = params.toString();
-		router.push(query ? `/relations/classes?${query}` : "/relations/classes");
-	}
-
-	function onRelationsObjectChange(event: ChangeEvent<HTMLSelectElement>) {
-		const nextObjectId = event.target.value;
-		const params = new URLSearchParams(searchParams.toString());
-
-		if (resolvedRelationsClassId) {
-			params.set("classId", resolvedRelationsClassId);
-		} else {
-			params.delete("classId");
-		}
-
-		if (nextObjectId) {
-			params.set("objectId", nextObjectId);
-			const query = params.toString();
-			router.push(query ? `/relations/objects?${query}` : "/relations/objects");
-			return;
-		}
-
-		params.delete("objectId");
-		params.delete("objectView");
-		const query = params.toString();
-		router.push(query ? `/relations/classes?${query}` : "/relations/classes");
-	}
-
 	function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setMobileSearchOpen(false);
@@ -1499,9 +1364,9 @@ export function AppShell({
 		router.push(query ? `/search?${query}` : "/search");
 	}
 
-	function renderNavigationLinks(items: NavItem[]) {
+	function renderNavigationLinks(items: NavItem[], onNavigate?: () => void) {
 		return items.map((item) => {
-			const isActive = isLinkActive(pathname, item.href);
+			const isActive = isLinkActive(appPathname, item.href);
 
 			return (
 				<Link
@@ -1512,6 +1377,7 @@ export function AppShell({
 					aria-label={item.hint}
 					aria-current={isActive ? "page" : undefined}
 					data-tooltip={item.hint}
+					onClick={onNavigate}
 				>
 					<span
 						className={`sidebar-icon ${
@@ -1534,6 +1400,289 @@ export function AppShell({
 		});
 	}
 
+	function renderTopologyFlyout({
+		children,
+		hint,
+		icon,
+		id,
+		isActive,
+		label,
+		href,
+	}: {
+		children: ReactNode;
+		hint: string;
+		icon: ReactNode;
+		id: string;
+		isActive: boolean;
+		label: string;
+		href?: string;
+	}) {
+		const isOpen = openTopologyFlyout === id;
+		const panelId = `${id}-panel`;
+		const triggerContent = (
+			<>
+				<span className="sidebar-icon">{icon}</span>
+				<span>{label}</span>
+				<IconChevron />
+			</>
+		);
+
+		return (
+			<div
+				className="topology-flyout"
+				data-open={isOpen ? "true" : undefined}
+				onPointerEnter={() => setOpenTopologyFlyout(id)}
+			>
+				{href ? (
+					<Link
+						href={href}
+						prefetch={false}
+						className={`topology-flyout-trigger${isActive ? " active" : ""}`}
+						aria-controls={panelId}
+						aria-expanded={isOpen}
+						aria-haspopup="true"
+						aria-label={hint}
+						data-tooltip={hint}
+						onClick={closeTopologyNavigation}
+						onFocus={() => setOpenTopologyFlyout(id)}
+					>
+						{triggerContent}
+					</Link>
+				) : (
+					<button
+						type="button"
+						className={`topology-flyout-trigger${isActive ? " active" : ""}`}
+						aria-controls={panelId}
+						aria-expanded={isOpen}
+						aria-haspopup="true"
+						aria-label={hint}
+						data-tooltip={hint}
+						onClick={() => setOpenTopologyFlyout(id)}
+						onFocus={() => setOpenTopologyFlyout(id)}
+					>
+						{triggerContent}
+					</button>
+				)}
+				{isOpen ? (
+					<section
+						className="topology-flyout-panel"
+						id={panelId}
+						aria-label={`${label} navigation`}
+					>
+						{children}
+					</section>
+				) : null}
+			</div>
+		);
+	}
+
+	function renderClassFlyoutContent(
+		kind: "classes" | "objects",
+		location: "drawer" | "topbar",
+	) {
+		const isClassDefinition = kind === "classes";
+
+		return (
+			<>
+				<div className="topology-flyout-heading">
+					<div>
+						<strong>
+							{isClassDefinition ? "Class definitions" : "Objects by class"}
+						</strong>
+						<small>Pinned and recent first · up to 10 shortcuts</small>
+					</div>
+				</div>
+				{navigationClassShortcuts.length ? (
+					<div className="topology-class-shortcuts">
+						{navigationClassShortcuts.map((hubuumClass) => (
+							<Link
+								key={`${location}-${kind}-${hubuumClass.id}`}
+								href={
+									isClassDefinition
+										? `/classes/${hubuumClass.id}`
+										: `/objects?classId=${hubuumClass.id}`
+								}
+								prefetch={false}
+								onClick={closeTopologyNavigation}
+							>
+								<span>{hubuumClass.name}</span>
+								<small>Class {hubuumClass.id}</small>
+							</Link>
+						))}
+					</div>
+				) : navigationClassesQuery.isLoading ? (
+					<p className="topology-flyout-status">Loading shortcuts…</p>
+				) : navigationClassesQuery.isError ? (
+					<p className="topology-flyout-status">
+						Shortcuts are temporarily unavailable.
+					</p>
+				) : (
+					<p className="topology-flyout-status">
+						No class shortcuts are available yet.
+					</p>
+				)}
+			</>
+		);
+	}
+
+	function renderTopologyMenu(
+		label: string,
+		items: NavItem[],
+		location: "drawer" | "topbar",
+	) {
+		const isActive = items.some((item) => isLinkActive(appPathname, item.href));
+		const isOpen = openTopologyMenu === label;
+		const menuId = `topology-${location}-${label
+			.toLowerCase()
+			.replaceAll(" ", "-")}`;
+		const isDataMenu = label === "Data";
+		const isAdministrationMenu = label === "Administration";
+
+		return (
+			<div
+				className="topology-nav-menu"
+				data-open={isOpen ? "true" : undefined}
+				key={`${location}-${label}`}
+				onPointerLeave={closeTopologyNavigation}
+			>
+				<button
+					type="button"
+					className={`topology-nav-trigger${isActive ? " is-active" : ""}`}
+					aria-controls={menuId}
+					aria-expanded={isOpen}
+					onClick={() => {
+						setOpenTopologyFlyout(null);
+						setOpenTopologyMenu((current) =>
+							current === label ? null : label,
+						);
+					}}
+				>
+					<span>{label}</span>
+					<IconChevron />
+				</button>
+				{isOpen ? (
+					<div className="topology-nav-menu-items" id={menuId}>
+						<div className="topology-nav-menu-panel">
+							{isDataMenu ? (
+								<>
+									{renderNavigationLinks(
+										[collectionsNavItem],
+										closeTopologyNavigation,
+									)}
+									{renderTopologyFlyout({
+										children: renderClassFlyoutContent("classes", location),
+										hint: classesNavItem.hint,
+										icon: classesNavItem.icon,
+										id: `${menuId}-classes`,
+										isActive: isLinkActive(
+											appPathname,
+											classesNavItem.href,
+										),
+										label: classesNavItem.label,
+										href: classesNavItem.href,
+									})}
+									{renderTopologyFlyout({
+										children: renderClassFlyoutContent("objects", location),
+										hint: objectsNavItem.hint,
+										icon: objectsNavItem.icon,
+										id: `${menuId}-objects`,
+										isActive: isLinkActive(
+											appPathname,
+											objectsNavItem.href,
+										),
+										label: objectsNavItem.label,
+										href: objectsNavItem.href,
+									})}
+									{renderNavigationLinks(
+										[relationsNavItem],
+										closeTopologyNavigation,
+									)}
+								</>
+							) : isAdministrationMenu ? (
+								<>
+									{renderTopologyFlyout({
+										children: renderNavigationLinks(
+											adminIdentityLinks,
+											closeTopologyNavigation,
+										),
+										hint:
+											"IAM: manage users, groups, and service accounts",
+										icon: <IconUsers />,
+										id: `${menuId}-iam`,
+										isActive: adminIdentityLinks.some((item) =>
+											isLinkActive(appPathname, item.href),
+										),
+										label: "IAM",
+									})}
+									{renderTopologyFlyout({
+										children: renderNavigationLinks(
+											adminOperationsLinks,
+											closeTopologyNavigation,
+										),
+										hint:
+											"Operations: manage remote targets and event delivery",
+										icon: <IconRemoteTarget />,
+										id: `${menuId}-operations`,
+										isActive: adminOperationsLinks.some((item) =>
+											isLinkActive(appPathname, item.href),
+										),
+										label: "Operations",
+									})}
+									{renderTopologyFlyout({
+										children: renderNavigationLinks(
+											adminSystemLinks,
+											closeTopologyNavigation,
+										),
+										hint:
+											"System: inspect configuration and manage backups",
+										icon: <IconOverview />,
+										id: `${menuId}-system`,
+										isActive: adminSystemLinks.some((item) =>
+											isLinkActive(appPathname, item.href),
+										),
+										label: "System",
+									})}
+								</>
+							) : (
+								renderNavigationLinks(items, closeTopologyNavigation)
+							)}
+						</div>
+					</div>
+				) : null}
+			</div>
+		);
+	}
+
+	function renderTopologyNavigation(
+		location: "drawer" | "topbar",
+		className: string,
+	) {
+		return (
+			<nav
+				className={`topology-navigation ${className}`}
+				aria-label={
+					location === "topbar" ? "Primary navigation" : "Grouped navigation"
+				}
+			>
+				<div className="topology-home-link">
+					{renderNavigationLinks(overviewLinks, () =>
+						closeTopologyNavigation(),
+					)}
+				</div>
+				{renderTopologyMenu("Data", dataModelLinks, location)}
+				{renderTopologyMenu("Workflows", workflowLinks, location)}
+				{canViewAdmin
+					? renderTopologyMenu("Administration", adminLinks, location)
+					: null}
+				{renderTopologyMenu(
+					"Observe",
+					[...observeLinks, ...(canViewAdmin ? systemLinks : [])],
+					location,
+				)}
+			</nav>
+		);
+	}
+
 	return (
 		<div className={shellClassName}>
 			<a className="skip-link" href="#main-content">
@@ -1546,66 +1695,66 @@ export function AppShell({
 							<BrandMark href="/app" />
 						</div>
 
-						<nav>
-							<div className="sidebar-group">
-								<p className="sidebar-label">Overview</p>
-								{isSidebarCollapsed ? (
-									<button
-										type="button"
-										className="sidebar-link sidebar-link-button desktop-only"
-										onClick={() => setSidebarCollapsed(false)}
-										aria-label="Expand sidebar"
-										data-tooltip="Expand sidebar"
-									>
-										<span className="sidebar-icon">
-											<IconCollapse />
-										</span>
-										<span className="sidebar-text">Expand sidebar</span>
-									</button>
-								) : null}
-								{renderNavigationLinks(overviewLinks)}
-							</div>
-
-							<div className="sidebar-group">
-								<p className="sidebar-label">Data model</p>
-								{renderNavigationLinks(dataModelLinks)}
-							</div>
-
-							<div className="sidebar-group">
-								<p className="sidebar-label">Workflows</p>
-								{renderNavigationLinks(workflowLinks)}
-							</div>
-
-							{canViewAdmin ? (
+						<nav className="sidebar-navigation">
 								<div className="sidebar-group">
-									<p className="sidebar-label">Administration</p>
-									{renderNavigationLinks(adminLinks)}
+									<p className="sidebar-label">Overview</p>
+									{isSidebarCollapsed ? (
+										<button
+											type="button"
+											className="sidebar-link sidebar-link-button desktop-only"
+											onClick={() => setSidebarCollapsed(false)}
+											aria-label="Expand sidebar"
+											data-tooltip="Expand sidebar"
+										>
+											<span className="sidebar-icon">
+												<IconCollapse />
+											</span>
+											<span className="sidebar-text">Expand sidebar</span>
+										</button>
+									) : null}
+									{renderNavigationLinks(overviewLinks)}
 								</div>
-							) : null}
 
-							<div className="sidebar-group">
-								<p className="sidebar-label">Observe</p>
-								{renderNavigationLinks([
-									...observeLinks,
-									...(canViewAdmin ? systemLinks : []),
-								])}
-							</div>
-
-							{!isSidebarCollapsed ? (
-								<div className="sidebar-group desktop-only">
-									<button
-										type="button"
-										className="sidebar-link sidebar-link-button"
-										onClick={() => setSidebarCollapsed(true)}
-										aria-label="Collapse sidebar"
-									>
-										<span className="sidebar-icon">
-											<IconExpand />
-										</span>
-										<span className="sidebar-text">Collapse sidebar</span>
-									</button>
+								<div className="sidebar-group">
+									<p className="sidebar-label">Data model</p>
+									{renderNavigationLinks(dataModelLinks)}
 								</div>
-							) : null}
+
+								<div className="sidebar-group">
+									<p className="sidebar-label">Workflows</p>
+									{renderNavigationLinks(workflowLinks)}
+								</div>
+
+								{canViewAdmin ? (
+									<div className="sidebar-group">
+										<p className="sidebar-label">Administration</p>
+										{renderNavigationLinks(adminLinks)}
+									</div>
+								) : null}
+
+								<div className="sidebar-group">
+									<p className="sidebar-label">Observe</p>
+									{renderNavigationLinks([
+										...observeLinks,
+										...(canViewAdmin ? systemLinks : []),
+									])}
+								</div>
+
+								{!isSidebarCollapsed ? (
+									<div className="sidebar-group desktop-only">
+										<button
+											type="button"
+											className="sidebar-link sidebar-link-button"
+											onClick={() => setSidebarCollapsed(true)}
+											aria-label="Collapse sidebar"
+										>
+											<span className="sidebar-icon">
+												<IconExpand />
+											</span>
+											<span className="sidebar-text">Collapse sidebar</span>
+										</button>
+									</div>
+								) : null}
 						</nav>
 					</div>
 					<p
@@ -1617,8 +1766,14 @@ export function AppShell({
 				</aside>
 
 				<div className="app-main">
-					<header className="topbar card">
-						<div className="topbar-left">
+					<header
+						className={`topbar card${createSection ? " topbar--resource-index" : ""}${hasCompactTopbar ? " topbar--compact" : ""}`}
+					>
+						<div className="topology-topbar-identity">
+							<BrandMark compact href="/app" />
+						</div>
+
+						{createSection || hasCompactTopbar ? (
 							<button
 								type="button"
 								className="ghost icon-button mobile-only"
@@ -1627,160 +1782,29 @@ export function AppShell({
 							>
 								<IconMenu />
 							</button>
+						) : (
+							<div className="topbar-left">
+								<button
+									type="button"
+									className="ghost icon-button mobile-only"
+									onClick={() => setMobileSidebarOpen(true)}
+									aria-label="Open navigation"
+								>
+									<IconMenu />
+								</button>
 
-							<div className="topbar-title-row">
-								<h1 className="topbar-heading">
-									{detailTitle ?? sectionLabel}
-								</h1>
-								{detailPin ? (
-									<PinButton
-										type={detailPin.type}
-										id={detailPin.id}
-										name={detailPin.name}
-										collectionId={
-											"collectionId" in detailPin
-												? detailPin.collectionId
-												: undefined
-										}
-										collectionName={
-											"collectionName" in detailPin
-												? detailPin.collectionName
-												: undefined
-										}
-										classId={
-											"classId" in detailPin ? detailPin.classId : undefined
-										}
-										className={
-											"className" in detailPin ? detailPin.className : undefined
-										}
-									/>
-								) : null}
-								{relationsContextVisibility.showClass ? (
-									<>
-										<span className="topbar-divider" aria-hidden="true">
-											/
-										</span>
-										<select
-											aria-label="Relations class context"
-											className="topbar-inline-select"
-											value={resolvedRelationsClassId}
-											onChange={onRelationsClassChange}
-											disabled={
-												topbarClassOptionsQuery.isLoading ||
-												topbarClassOptionsQuery.isError ||
-												topbarClassOptions.length === 0
-											}
-										>
-											{topbarClassOptionsQuery.isLoading ? (
-												<option value="">Loading classes...</option>
-											) : null}
-											{topbarClassOptionsQuery.isError ? (
-												<option value="">Failed to load classes</option>
-											) : null}
-											{!topbarClassOptionsQuery.isLoading &&
-											!topbarClassOptionsQuery.isError &&
-											topbarClassOptions.length === 0 ? (
-												<option value="">No classes available</option>
-											) : null}
-											{topbarClassOptions.map((hubuumClass) => (
-												<option key={hubuumClass.id} value={hubuumClass.id}>
-													{hubuumClass.name}
-												</option>
-											))}
-										</select>
-									</>
-								) : null}
-								{relationsContextVisibility.showObject ? (
-									<>
-										<span className="topbar-divider" aria-hidden="true">
-											/
-										</span>
-										<select
-											aria-label="Relations object context"
-											className="topbar-inline-select"
-											value={resolvedRelationsObjectId}
-											onChange={onRelationsObjectChange}
-											disabled={
-												!resolvedRelationsClassId ||
-												relationsObjectOptionsQuery.isLoading ||
-												relationsObjectOptionsQuery.isError
-											}
-										>
-											<option value=""></option>
-											{relationsObjectOptionsQuery.isLoading ? (
-												<option value="" disabled>
-													Loading objects...
-												</option>
-											) : null}
-											{relationsObjectOptionsQuery.isError ? (
-												<option value="" disabled>
-													Failed to load objects
-												</option>
-											) : null}
-											{!relationsObjectOptionsQuery.isLoading &&
-											!relationsObjectOptionsQuery.isError &&
-											relationsObjectOptions.length === 0 ? (
-												<option value="" disabled>
-													No objects available
-												</option>
-											) : null}
-											{relationsObjectOptions.map((objectItem) => (
-												<option key={objectItem.id} value={objectItem.id}>
-													{objectItem.name}
-												</option>
-											))}
-										</select>
-									</>
-								) : null}
-								{isObjectsListRoute ? (
-									<>
-										<span className="topbar-context-label">of</span>
-										<select
-											aria-label="Objects class context"
-											className="topbar-inline-select"
-											value={resolvedObjectsClassId}
-											onChange={onObjectsClassChange}
-											disabled={
-												topbarClassOptionsQuery.isLoading ||
-												topbarClassOptionsQuery.isError ||
-												topbarClassOptions.length === 0
-											}
-										>
-											{topbarClassOptionsQuery.isLoading ? (
-												<option value="">Loading classes...</option>
-											) : null}
-											{topbarClassOptionsQuery.isError ? (
-												<option value="">Failed to load classes</option>
-											) : null}
-											{!topbarClassOptionsQuery.isLoading &&
-											!topbarClassOptionsQuery.isError &&
-											topbarClassOptions.length === 0 ? (
-												<option value="">No classes available</option>
-											) : null}
-											{topbarClassOptions.map((hubuumClass) => (
-												<option key={hubuumClass.id} value={hubuumClass.id}>
-													{hubuumClass.name}
-												</option>
-											))}
-										</select>
-									</>
-								) : null}
-								{createSection ? (
-									<button
-										type="button"
-										className="create-button"
-										onClick={openCreateModal}
-										aria-label={getCreateLabel(createSection, relationsView)}
-										title={getCreateLabel(createSection, relationsView)}
-									>
-										<IconPlus />
-										<span className="create-button-text">
-											{getCreateLabel(createSection, relationsView)}
-										</span>
-									</button>
-								) : null}
+								<div className="topbar-title-row">
+									<h1 className="topbar-heading">
+										{detailTitle ?? sectionLabel}
+									</h1>
+								</div>
 							</div>
-						</div>
+						)}
+
+						{renderTopologyNavigation(
+							"topbar",
+							"topology-navigation--topbar",
+						)}
 
 						<div className="topbar-right" ref={userMenuRef}>
 							<form
@@ -1979,40 +2003,33 @@ export function AppShell({
 									</div>
 
 									<div className="menu-group menu-navigation-group">
-										<Link
-											className="menu-item menu-nav-item"
-											href="/account/appearance"
-											prefetch={false}
-											onClick={() => setUserMenuOpen(false)}
-										>
-											<span className="menu-nav-icon">
-												<IconPalette />
-											</span>
-											<span className="menu-nav-copy">
-												<strong>Appearance</strong>
-												<small>Theme, color and density</small>
-											</span>
-											<span className="menu-nav-arrow">
-												<IconArrowRight />
-											</span>
-										</Link>
-										<Link
-											className="menu-item menu-nav-item"
-											href="/account"
-											prefetch={false}
-											onClick={() => setUserMenuOpen(false)}
-										>
-											<span className="menu-nav-icon">
-												<IconUser />
-											</span>
-											<span className="menu-nav-copy">
-												<strong>Account</strong>
-												<small>Profile, tokens and access</small>
-											</span>
-											<span className="menu-nav-arrow">
-												<IconArrowRight />
-											</span>
-										</Link>
+										{ACCOUNT_SECTIONS.map((section, index) => {
+											const active = isAccountSectionActive(
+												appPathname,
+												section.href,
+											);
+											return (
+												<Link
+													key={section.href}
+													className={`menu-item menu-nav-item${active ? " is-active" : ""}`}
+													href={section.href}
+													prefetch={false}
+													aria-current={active ? "page" : undefined}
+													onClick={() => setUserMenuOpen(false)}
+												>
+													<span className="menu-nav-icon menu-nav-index">
+														{String(index + 1).padStart(2, "0")}
+													</span>
+													<span className="menu-nav-copy">
+														<strong>{section.label}</strong>
+														<small>{section.hint}</small>
+													</span>
+													<span className="menu-nav-arrow">
+														<IconArrowRight />
+													</span>
+												</Link>
+											);
+										})}
 									</div>
 
 									<div className="menu-group menu-signout-group">

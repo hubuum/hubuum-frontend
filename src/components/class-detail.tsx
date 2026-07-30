@@ -14,6 +14,7 @@ import {
 import { ComputedFieldsPanel } from "@/components/computed-fields-panel";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { JsonEditor } from "@/components/json-editor";
+import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
@@ -412,13 +413,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 			new CustomEvent(TITLE_STATE_EVENT, {
 				detail: {
 					title: classData.name,
-					pin: {
-						type: "class",
-						id: classData.id,
-						name: classData.name,
-						collectionId: classData.collection.id,
-						collectionName: classData.collection.name,
-					},
+					pin: null,
 				},
 			}),
 		);
@@ -573,345 +568,365 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 	return (
 		<section className="stack class-detail-page">
 			<div className="class-detail-primary-grid">
-				<form
-					className="card stack class-detail-definition-card"
-					onSubmit={onSubmit}
-					onKeyDownCapture={onSubmitShortcut}
-				>
-					<header className="class-detail-card-header">
-						<div className="class-detail-card-heading">
-							<p className="eyebrow">Class definition</p>
-							<h2>Configuration</h2>
-							<p className="class-detail-context-line">
-								<Link href={`/collections/${classData.collection.id}`}>
-									{collectionLabel}
-								</Link>
-								<span aria-hidden="true">·</span>
-								<span>Class #{classId}</span>
-							</p>
+				<section className="stack class-detail-section">
+					<header className="detail-section-heading">
+						<div className="detail-section-heading-copy">
+							<div className="detail-title-line">
+								<h1 className="detail-title">{classData.name}</h1>
+								<PinButton
+									type="class"
+									id={classData.id}
+									name={classData.name}
+									collectionId={classData.collection.id}
+									collectionName={classData.collection.name}
+								/>
+							</div>
 						</div>
 						<div className="class-detail-header-actions">
+							<Link
+								className="link-chip"
+								href={`/objects?create=1&classId=${classId}`}
+							>
+								Create object
+							</Link>
 							<Link className="link-chip" href={`/objects?classId=${classId}`}>
 								Browse objects
 							</Link>
 						</div>
 					</header>
 
-					<div className="object-detail-list class-detail-field-grid">
-						<section
-							className={`object-detail-row${editingFields.includes("name") ? " is-editing" : ""}`}
-						>
-							<div className="object-detail-label">Name</div>
-							<div className="object-detail-body">
-								{editingFields.includes("name") ? (
-									<label className="control-field">
-										<span className="sr-only">Class name</span>
-										<input
-											ref={nameInputRef}
-											required
-											value={name}
-											onChange={(event) => setName(event.target.value)}
-										/>
-									</label>
-								) : (
-									<InlineFieldEditTrigger
-										fieldLabel="class name"
-										valueText={renderFieldText(classData.name)}
-										onClick={() => toggleFieldEditing("name", classData)}
-									>
-										{renderFieldText(classData.name)}
-									</InlineFieldEditTrigger>
-								)}
-							</div>
-							<div className="object-detail-row-actions">
-								{editingFields.includes("name") ? (
-									<button
-										type="button"
-										className="ghost"
-										onClick={() => toggleFieldEditing("name", classData)}
-									>
-										Cancel
-									</button>
-								) : null}
-							</div>
-						</section>
-
-						<section
-							className={`object-detail-row${editingFields.includes("description") ? " is-editing" : ""}`}
-						>
-							<div className="object-detail-label">Description</div>
-							<div className="object-detail-body">
-								{editingFields.includes("description") ? (
-									<label className="control-field">
-										<span className="sr-only">Class description</span>
-										<input
-											ref={descriptionInputRef}
-											required
-											value={description}
-											onChange={(event) => setDescription(event.target.value)}
-										/>
-									</label>
-								) : (
-									<InlineFieldEditTrigger
-										fieldLabel="class description"
-										valueText={renderFieldText(classData.description ?? "")}
-										onClick={() => toggleFieldEditing("description", classData)}
-									>
-										{renderFieldText(classData.description ?? "")}
-									</InlineFieldEditTrigger>
-								)}
-							</div>
-							<div className="object-detail-row-actions">
-								{editingFields.includes("description") ? (
-									<button
-										type="button"
-										className="ghost"
-										onClick={() => toggleFieldEditing("description", classData)}
-									>
-										Cancel
-									</button>
-								) : null}
-							</div>
-						</section>
-
-						<section
-							className={`object-detail-row${editingFields.includes("collection") ? " is-editing" : ""}`}
-						>
-							<div className="object-detail-label">Collection</div>
-							<div className="object-detail-body">
-								{editingFields.includes("collection") ? (
-									<div className="control-field">
-										<label
-											htmlFor="class-detail-collection"
-											className="sr-only"
-										>
-											Collection
-										</label>
-										{hasCollectionOptions ? (
-											<select
-												ref={collectionSelectRef}
-												id="class-detail-collection"
-												required
-												value={hasCollectionSelection ? collectionId : ""}
-												onChange={(event) =>
-													setCollectionId(event.target.value)
-												}
-											>
-												{!hasCollectionSelection ? (
-													<option value="">Select a collection...</option>
-												) : null}
-												{collectionOptions.map((collection) => (
-													<option key={collection.id} value={collection.id}>
-														{collection.name}
-													</option>
-												))}
-											</select>
-										) : (
+					<form
+						className="card stack class-detail-definition-card"
+						onSubmit={onSubmit}
+						onKeyDownCapture={onSubmitShortcut}
+					>
+						<div className="object-detail-list class-detail-field-grid">
+							<section
+								className={`object-detail-row${editingFields.includes("name") ? " is-editing" : ""}`}
+							>
+								<div className="object-detail-label">Name</div>
+								<div className="object-detail-body">
+									{editingFields.includes("name") ? (
+										<label className="control-field">
+											<span className="sr-only">Class name</span>
 											<input
-												ref={collectionInputRef}
-												id="class-detail-collection"
+												ref={nameInputRef}
 												required
-												type="number"
-												min={1}
-												value={collectionId}
-												onChange={(event) =>
-													setCollectionId(event.target.value)
-												}
-												placeholder={
-													collectionsQuery.isLoading
-														? "Loading collections..."
-														: "Enter collection ID"
-												}
-												disabled={collectionsQuery.isLoading}
+												value={name}
+												onChange={(event) => setName(event.target.value)}
 											/>
-										)}
-									</div>
-								) : (
-									<InlineFieldEditTrigger
-										fieldLabel="class collection"
-										valueText={collectionLabel}
-										onClick={() => toggleFieldEditing("collection", classData)}
-									>
-										{collectionLabel}
-									</InlineFieldEditTrigger>
-								)}
-							</div>
-							<div className="object-detail-row-actions">
-								{editingFields.includes("collection") ? (
-									<button
-										type="button"
-										className="ghost"
-										onClick={() => toggleFieldEditing("collection", classData)}
-									>
-										Cancel
-									</button>
-								) : null}
-							</div>
-						</section>
+										</label>
+									) : (
+										<InlineFieldEditTrigger
+											fieldLabel="class name"
+											valueText={renderFieldText(classData.name)}
+											onClick={() => toggleFieldEditing("name", classData)}
+										>
+											{renderFieldText(classData.name)}
+										</InlineFieldEditTrigger>
+									)}
+								</div>
+								<div className="object-detail-row-actions">
+									{editingFields.includes("name") ? (
+										<button
+											type="button"
+											className="ghost"
+											onClick={() => toggleFieldEditing("name", classData)}
+										>
+											Cancel
+										</button>
+									) : null}
+								</div>
+							</section>
 
-						<section
-							className={`object-detail-row${editingFields.includes("validate_schema") ? " is-editing" : ""}`}
-						>
-							<div className="object-detail-label">Schema validation</div>
-							<div className="object-detail-body">
-								{editingFields.includes("validate_schema") ? (
-									<label className="control-check">
-										<input
-											ref={validateSchemaInputRef}
-											type="checkbox"
-											checked={validateSchema}
-											onChange={(event) =>
-												setValidateSchema(event.target.checked)
+							<section
+								className={`object-detail-row${editingFields.includes("description") ? " is-editing" : ""}`}
+							>
+								<div className="object-detail-label">Description</div>
+								<div className="object-detail-body">
+									{editingFields.includes("description") ? (
+										<label className="control-field">
+											<span className="sr-only">Class description</span>
+											<input
+												ref={descriptionInputRef}
+												required
+												value={description}
+												onChange={(event) => setDescription(event.target.value)}
+											/>
+										</label>
+									) : (
+										<InlineFieldEditTrigger
+											fieldLabel="class description"
+											valueText={renderFieldText(classData.description ?? "")}
+											onClick={() =>
+												toggleFieldEditing("description", classData)
 											}
-										/>
-										<span>Validate objects against JSON schema</span>
-									</label>
-								) : (
-									<InlineFieldEditTrigger
-										fieldLabel="schema validation"
-										valueText={
-											classData.validate_schema ? "Enabled" : "Disabled"
-										}
-										onClick={() =>
-											toggleFieldEditing("validate_schema", classData)
-										}
-									>
-										{classData.validate_schema ? "Enabled" : "Disabled"}
-									</InlineFieldEditTrigger>
-								)}
-							</div>
-							<div className="object-detail-row-actions">
-								{editingFields.includes("validate_schema") ? (
-									<button
-										type="button"
-										className="ghost"
-										onClick={() =>
-											toggleFieldEditing("validate_schema", classData)
-										}
-									>
-										Cancel
-									</button>
-								) : null}
-							</div>
-						</section>
-					</div>
+										>
+											{renderFieldText(classData.description ?? "")}
+										</InlineFieldEditTrigger>
+									)}
+								</div>
+								<div className="object-detail-row-actions">
+									{editingFields.includes("description") ? (
+										<button
+											type="button"
+											className="ghost"
+											onClick={() =>
+												toggleFieldEditing("description", classData)
+											}
+										>
+											Cancel
+										</button>
+									) : null}
+								</div>
+							</section>
 
-					<div className="object-detail-list class-detail-schema-panel">
-						<section
-							className={`object-detail-row object-detail-row--data${editingFields.includes("json_schema") ? " is-editing" : ""}`}
-						>
-							<div className="object-detail-label">JSON schema</div>
-							<div className="object-detail-body">
-								{editingFields.includes("json_schema") ? (
-									<div ref={jsonSchemaEditorRef}>
-										<JsonEditor
-											id="class-detail-json-schema"
-											label="JSON schema (optional)"
-											value={jsonSchemaInput}
-											onChange={setJsonSchemaInput}
-											placeholder='{"type":"object","properties":{"name":{"type":"string"}}}'
-											mode="schema"
-											rows={8}
-											helperText="Use a JSON Schema object for object validation preview and backend enforcement."
-										/>
-									</div>
-								) : (
-									<InlineFieldEditTrigger
-										className={`inline-field-edit-trigger--complex${isSchemaExpanded ? " is-expanded" : ""}`}
-										fieldLabel="JSON schema"
-										valueText={
-											classData.json_schema === undefined
-												? "No JSON schema defined"
-												: "JSON schema configured"
-										}
-										onClick={() => toggleFieldEditing("json_schema", classData)}
-									>
-										{classData.json_schema === undefined ? (
-											<span className="muted">No JSON schema defined.</span>
-										) : (
-											<span className="inline-schema-preview">
-												{schemaSummary.length > 0 ? (
-													<span className="inline-schema-summary">
-														{schemaSummary.join(" · ")}
-													</span>
-												) : null}
-												<span className="inline-schema-code">
-													{schemaPreview}
-												</span>
-											</span>
-										)}
-									</InlineFieldEditTrigger>
-								)}
-							</div>
-							<div className="object-detail-row-actions">
-								{editingFields.includes("json_schema") ? (
-									<button
-										type="button"
-										className="ghost"
-										onClick={() => toggleFieldEditing("json_schema", classData)}
-									>
-										Cancel
-									</button>
-								) : classData.json_schema !== undefined ? (
-									<button
-										type="button"
-										className="ghost"
-										onClick={() => setSchemaExpanded((current) => !current)}
-									>
-										{isSchemaExpanded ? "Collapse" : "Expand"}
-									</button>
-								) : null}
-							</div>
-						</section>
-					</div>
+							<section
+								className={`object-detail-row${editingFields.includes("collection") ? " is-editing" : ""}`}
+							>
+								<div className="object-detail-label">Collection</div>
+								<div className="object-detail-body">
+									{editingFields.includes("collection") ? (
+										<div className="control-field">
+											<label
+												htmlFor="class-detail-collection"
+												className="sr-only"
+											>
+												Collection
+											</label>
+											{hasCollectionOptions ? (
+												<select
+													ref={collectionSelectRef}
+													id="class-detail-collection"
+													required
+													value={hasCollectionSelection ? collectionId : ""}
+													onChange={(event) =>
+														setCollectionId(event.target.value)
+													}
+												>
+													{!hasCollectionSelection ? (
+														<option value="">Select a collection...</option>
+													) : null}
+													{collectionOptions.map((collection) => (
+														<option key={collection.id} value={collection.id}>
+															{collection.name}
+														</option>
+													))}
+												</select>
+											) : (
+												<input
+													ref={collectionInputRef}
+													id="class-detail-collection"
+													required
+													type="number"
+													min={1}
+													value={collectionId}
+													onChange={(event) =>
+														setCollectionId(event.target.value)
+													}
+													placeholder={
+														collectionsQuery.isLoading
+															? "Loading collections..."
+															: "Enter collection ID"
+													}
+													disabled={collectionsQuery.isLoading}
+												/>
+											)}
+										</div>
+									) : (
+										<InlineFieldEditTrigger
+											fieldLabel="class collection"
+											valueText={collectionLabel}
+											onClick={() =>
+												toggleFieldEditing("collection", classData)
+											}
+										>
+											{collectionLabel}
+										</InlineFieldEditTrigger>
+									)}
+								</div>
+								<div className="object-detail-row-actions">
+									{editingFields.includes("collection") ? (
+										<button
+											type="button"
+											className="ghost"
+											onClick={() =>
+												toggleFieldEditing("collection", classData)
+											}
+										>
+											Cancel
+										</button>
+									) : null}
+								</div>
+							</section>
 
-					{formError ? <div className="error-banner">{formError}</div> : null}
-					{collectionsQuery.isError ? (
-						<div className="muted">
-							Could not load collections automatically. Manual collection ID
-							input is enabled.
+							<section
+								className={`object-detail-row${editingFields.includes("validate_schema") ? " is-editing" : ""}`}
+							>
+								<div className="object-detail-label">Schema validation</div>
+								<div className="object-detail-body">
+									{editingFields.includes("validate_schema") ? (
+										<label className="control-check">
+											<input
+												ref={validateSchemaInputRef}
+												type="checkbox"
+												checked={validateSchema}
+												onChange={(event) =>
+													setValidateSchema(event.target.checked)
+												}
+											/>
+											<span>Validate objects against JSON schema</span>
+										</label>
+									) : (
+										<InlineFieldEditTrigger
+											fieldLabel="schema validation"
+											valueText={
+												classData.validate_schema ? "Enabled" : "Disabled"
+											}
+											onClick={() =>
+												toggleFieldEditing("validate_schema", classData)
+											}
+										>
+											{classData.validate_schema ? "Enabled" : "Disabled"}
+										</InlineFieldEditTrigger>
+									)}
+								</div>
+								<div className="object-detail-row-actions">
+									{editingFields.includes("validate_schema") ? (
+										<button
+											type="button"
+											className="ghost"
+											onClick={() =>
+												toggleFieldEditing("validate_schema", classData)
+											}
+										>
+											Cancel
+										</button>
+									) : null}
+								</div>
+							</section>
 						</div>
-					) : null}
-					{formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
-					<footer className="class-detail-form-footer">
-						{hasActiveEdits ? (
-							<div className="form-actions">
-								<button type="submit" disabled={updateMutation.isPending}>
-									{updateMutation.isPending ? "Saving..." : "Save changes"}
-								</button>
+						<div className="object-detail-list class-detail-schema-panel">
+							<section
+								className={`object-detail-row object-detail-row--data${editingFields.includes("json_schema") ? " is-editing" : ""}`}
+							>
+								<div className="object-detail-label">JSON schema</div>
+								<div className="object-detail-body">
+									{editingFields.includes("json_schema") ? (
+										<div ref={jsonSchemaEditorRef}>
+											<JsonEditor
+												id="class-detail-json-schema"
+												label="JSON schema (optional)"
+												value={jsonSchemaInput}
+												onChange={setJsonSchemaInput}
+												placeholder='{"type":"object","properties":{"name":{"type":"string"}}}'
+												mode="schema"
+												rows={8}
+												helperText="Use a JSON Schema object for object validation preview and backend enforcement."
+											/>
+										</div>
+									) : (
+										<InlineFieldEditTrigger
+											className={`inline-field-edit-trigger--complex${isSchemaExpanded ? " is-expanded" : ""}`}
+											fieldLabel="JSON schema"
+											valueText={
+												classData.json_schema === undefined
+													? "No JSON schema defined"
+													: "JSON schema configured"
+											}
+											onClick={() =>
+												toggleFieldEditing("json_schema", classData)
+											}
+										>
+											{classData.json_schema === undefined ? (
+												<span className="muted">No JSON schema defined.</span>
+											) : (
+												<span className="inline-schema-preview">
+													{schemaSummary.length > 0 ? (
+														<span className="inline-schema-summary">
+															{schemaSummary.join(" · ")}
+														</span>
+													) : null}
+													<span className="inline-schema-code">
+														{schemaPreview}
+													</span>
+												</span>
+											)}
+										</InlineFieldEditTrigger>
+									)}
+								</div>
+								<div className="object-detail-row-actions">
+									{editingFields.includes("json_schema") ? (
+										<button
+											type="button"
+											className="ghost"
+											onClick={() =>
+												toggleFieldEditing("json_schema", classData)
+											}
+										>
+											Cancel
+										</button>
+									) : classData.json_schema !== undefined ? (
+										<button
+											type="button"
+											className="ghost"
+											onClick={() => setSchemaExpanded((current) => !current)}
+										>
+											{isSchemaExpanded ? "Collapse" : "Expand"}
+										</button>
+									) : null}
+								</div>
+							</section>
+						</div>
+
+						{formError ? <div className="error-banner">{formError}</div> : null}
+						{collectionsQuery.isError ? (
+							<div className="muted">
+								Could not load collections automatically. Manual collection ID
+								input is enabled.
+							</div>
+						) : null}
+						{formSuccess ? <div className="muted">{formSuccess}</div> : null}
+
+						<footer className="class-detail-form-footer">
+							{hasActiveEdits ? (
+								<div className="form-actions">
+									<button type="submit" disabled={updateMutation.isPending}>
+										{updateMutation.isPending ? "Saving..." : "Save changes"}
+									</button>
+									<button
+										type="button"
+										className="ghost"
+										onClick={cancelActiveEdits}
+										disabled={updateMutation.isPending}
+									>
+										Cancel
+									</button>
+								</div>
+							) : (
+								<p className="class-detail-record-times">
+									<span>Created {formatTimestamp(classData.created_at)}</span>
+									<span>Updated {formatTimestamp(classData.updated_at)}</span>
+								</p>
+							)}
+							{hasActiveEdits ? null : (
 								<button
 									type="button"
-									className="ghost"
-									onClick={cancelActiveEdits}
-									disabled={updateMutation.isPending}
+									className="danger"
+									onClick={onDelete}
+									disabled={deleteMutation.isPending}
 								>
-									Cancel
+									{deleteMutation.isPending ? "Deleting..." : "Delete class"}
 								</button>
-							</div>
-						) : (
-							<p className="class-detail-record-times">
-								<span>Created {formatTimestamp(classData.created_at)}</span>
-								<span>Updated {formatTimestamp(classData.updated_at)}</span>
-							</p>
-						)}
-						{hasActiveEdits ? null : (
-							<button
-								type="button"
-								className="danger"
-								onClick={onDelete}
-								disabled={deleteMutation.isPending}
-							>
-								{deleteMutation.isPending ? "Deleting..." : "Delete class"}
-							</button>
-						)}
-					</footer>
-				</form>
+							)}
+						</footer>
+					</form>
+				</section>
 
-				<section className="card stack class-detail-relations-card">
-					<header className="class-detail-relations-header">
-						<div>
-							<p className="eyebrow">Model connections</p>
+				<section className="stack class-detail-section class-detail-relations-section">
+					<header className="detail-section-heading">
+						<div className="detail-section-heading-copy">
 							<div className="class-detail-relations-title-line">
 								<h2>Relations</h2>
 								{!classRelationsQuery.isLoading &&
@@ -933,69 +948,71 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 								className="link-chip"
 								href={`/relations/classes?classId=${classId}&classView=connected`}
 							>
-								Explore connections
+								Browse relations
 							</Link>
 						</div>
 					</header>
 
-					{classRelationsQuery.isLoading ? (
-						<div className="muted">Loading direct class relations...</div>
-					) : null}
-					{classRelationsQuery.isError ? (
-						<div className="error-banner">
-							Failed to load class relations.{" "}
-							{classRelationsQuery.error instanceof Error
-								? classRelationsQuery.error.message
-								: "Unknown error"}
-						</div>
-					) : null}
-					{!classRelationsQuery.isLoading && !classRelationsQuery.isError ? (
-						directRelations.length === 0 ? (
-							<div className="class-detail-relations-empty">
-								<strong>No direct connections yet</strong>
-								<p className="muted">
-									Connect this class to make related objects and paths
-									discoverable.
-								</p>
+					<article className="card stack class-detail-relations-card">
+						{classRelationsQuery.isLoading ? (
+							<div className="muted">Loading direct class relations...</div>
+						) : null}
+						{classRelationsQuery.isError ? (
+							<div className="error-banner">
+								Failed to load class relations.{" "}
+								{classRelationsQuery.error instanceof Error
+									? classRelationsQuery.error.message
+									: "Unknown error"}
 							</div>
-						) : (
-							<div className="class-detail-relations-list">
-								{visibleRelatedRelations.map(
-									({ relation, relatedClassId, direction, alias }) => (
-										<Link
-											key={relation.id}
-											className="class-detail-relation-row"
-											href={`/classes/${relatedClassId}`}
-										>
-											<span className="class-detail-relation-copy">
-												<strong>{renderClassLabel(relatedClassId)}</strong>
-												<span>
-													{alias?.trim() || `Relation #${relation.id}`}
+						) : null}
+						{!classRelationsQuery.isLoading && !classRelationsQuery.isError ? (
+							directRelations.length === 0 ? (
+								<div className="class-detail-relations-empty">
+									<strong>No direct connections yet</strong>
+									<p className="muted">
+										Connect this class to make related objects and paths
+										discoverable.
+									</p>
+								</div>
+							) : (
+								<div className="class-detail-relations-list">
+									{visibleRelatedRelations.map(
+										({ relation, relatedClassId, direction, alias }) => (
+											<Link
+												key={relation.id}
+												className="class-detail-relation-row"
+												href={`/classes/${relatedClassId}`}
+											>
+												<span className="class-detail-relation-copy">
+													<strong>{renderClassLabel(relatedClassId)}</strong>
+													<span>
+														{alias?.trim() || `Relation #${relation.id}`}
+													</span>
 												</span>
-											</span>
-											<span className="class-detail-relation-direction">
-												{direction}
-											</span>
-											<span aria-hidden="true">→</span>
+												<span className="class-detail-relation-direction">
+													{direction}
+												</span>
+												<span aria-hidden="true">→</span>
+											</Link>
+										),
+									)}
+									{relatedRelations.length > visibleRelatedRelations.length ? (
+										<Link
+											className="class-detail-relations-more"
+											href={`/relations/classes?classId=${classId}&classView=connected`}
+										>
+											View all {relatedRelations.length} connections
 										</Link>
-									),
-								)}
-								{relatedRelations.length > visibleRelatedRelations.length ? (
-									<Link
-										className="class-detail-relations-more"
-										href={`/relations/classes?classId=${classId}&classView=connected`}
-									>
-										View all {relatedRelations.length} connections
-									</Link>
-								) : null}
+									) : null}
+								</div>
+							)
+						) : null}
+						{classesQuery.isError ? (
+							<div className="muted">
+								Could not load class names automatically. Showing IDs instead.
 							</div>
-						)
-					) : null}
-					{classesQuery.isError ? (
-						<div className="muted">
-							Could not load class names automatically. Showing IDs instead.
-						</div>
-					) : null}
+						) : null}
+					</article>
 				</section>
 			</div>
 

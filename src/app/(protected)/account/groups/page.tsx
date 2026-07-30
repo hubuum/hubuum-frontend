@@ -8,7 +8,6 @@ export default async function AccountGroupsPage() {
 	return (
 		<section className="stack">
 			<header>
-				<p className="eyebrow">Account</p>
 				<h2>Groups</h2>
 				<p className="muted">Groups you belong to.</p>
 			</header>

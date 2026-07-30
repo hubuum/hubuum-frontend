@@ -8,6 +8,7 @@ import {
 	GuidedFlowPanel,
 	GuidedFlowTabs,
 } from "@/components/guided-flow";
+import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -43,6 +44,7 @@ import {
 	assertRemoteTargetHeaderAllowed,
 	validateRemoteTargetHeaders,
 } from "@/lib/remote-target-headers";
+import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
 
 const METHODS: RemoteHttpMethod[] = ["get", "post", "patch", "delete"];
@@ -555,6 +557,12 @@ export function AdminRemoteTargetsTable() {
 		}),
 		[classesById, collectionsById, visibleTargets],
 	);
+
+	const resourceSummary = buildResourceSummary({
+			shown: search.trim() ? visibleTargets.length : null,
+			loaded: targets.length,
+			details: nextCursor ? ["more available"] : [],
+		});
 
 	function openCreateModal() {
 		setFormMode("create");
@@ -1140,9 +1148,14 @@ export function AdminRemoteTargetsTable() {
 				</form>
 			</CreateModal>
 
-			<div className="card stack">
+			<div className="card stack resource-index">
 				<div className="table-header">
-					<h3>Remote targets</h3>
+					<ResourceIndexHeading
+						title="Remote targets"
+						summary={resourceSummary}
+						createSection="admin-remote-targets"
+						createLabel="New remote target"
+					/>
 					<div className="table-tools">
 						<input
 							value={search}
@@ -1154,9 +1167,6 @@ export function AdminRemoteTargetsTable() {
 							disabled={loadTargetsMutation.isPending}
 							compact
 						/>
-						<button type="button" onClick={openCreateModal}>
-							Create target
-						</button>
 					</div>
 				</div>
 
