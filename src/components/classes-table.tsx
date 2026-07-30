@@ -7,6 +7,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
+import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -37,6 +38,7 @@ import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
 } from "@/lib/resource-search";
+import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import { useResizableTable } from "@/lib/use-resizable-table";
@@ -418,6 +420,18 @@ export function ClassesTable() {
 		);
 	}, [selectedClassIds.length, deleteSelectedClasses]);
 
+	const resourceSummary =
+		classesQuery.data
+			? buildResourceSummary({
+					shown: searchTerm ? filteredClasses.length : null,
+					loaded: classes.length,
+					total: pageData?.totalCount,
+					selected: selectedClassIds.length,
+				})
+			: classesQuery.isLoading
+				? buildResourceSummary({ status: "Loading…" })
+				: [];
+
 	if (classesQuery.isLoading) {
 		return <div className="card">Loading classes...</div>;
 	}
@@ -576,20 +590,13 @@ export function ClassesTable() {
 
 			<div className="card resource-index">
 				<div className="table-header">
-					<div className="resource-index-title">
-						<div className="table-title-row">
-							<h2>Classes</h2>
-							<span className="muted table-count">
-								{searchTerm
-									? `${filteredClasses.length} shown of ${classes.length}`
-									: `${classes.length} loaded`}
-								{selectedClassIds.length
-									? ` · ${selectedClassIds.length} selected`
-									: ""}
-							</span>
-						</div>
-					</div>
-					<div className="table-tools">
+					<ResourceIndexHeading
+						title="Classes"
+						summary={resourceSummary}
+						createSection="classes"
+						createLabel="New class"
+					/>
+					<div className="table-tools classes-table-tools">
 						<TableExportMenu view={exportView} compact />
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
@@ -658,6 +665,13 @@ export function ClassesTable() {
 								className="responsive-data-table classes-data-table"
 							>
 								<caption className="sr-only">Classes</caption>
+								<colgroup>
+									<col className="table-select-column" />
+									<col className="table-id-column" />
+									<col className="table-name-column" />
+									<col className="table-context-column" />
+									<col className="table-description-column" />
+								</colgroup>
 								<thead>
 									<tr>
 										<th className="check-col">

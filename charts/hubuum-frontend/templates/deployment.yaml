@@ -95,6 +95,11 @@ spec:
               mountPath: /tmp
             - name: next-cache
               mountPath: /app/.next/cache
+            {{- if .Values.loginBackgrounds.existingClaim }}
+            - name: login-backgrounds
+              mountPath: /app/login-backgrounds
+              readOnly: true
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir:
@@ -103,6 +108,11 @@ spec:
         - name: next-cache
           emptyDir:
             sizeLimit: 128Mi
+        {{- if .Values.loginBackgrounds.existingClaim }}
+        - name: login-backgrounds
+          persistentVolumeClaim:
+            claimName: {{ .Values.loginBackgrounds.existingClaim | quote }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

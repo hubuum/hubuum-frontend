@@ -2,34 +2,37 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const TABS = [
-	{ href: "/account", label: "Profile" },
-	{ href: "/account/appearance", label: "Appearance" },
-	{ href: "/account/tokens", label: "Tokens" },
-	{ href: "/account/service-accounts", label: "Service accounts" },
-	{ href: "/account/groups", label: "Groups" },
-	{ href: "/account/permissions", label: "Permissions" },
-];
+import {
+	ACCOUNT_SECTIONS,
+	isAccountSectionActive,
+} from "@/lib/account-sections";
 
 export function AccountTabs() {
 	const pathname = usePathname();
 
 	return (
-		<nav className="tab-strip" aria-label="Account sections">
-			{TABS.map((tab) => {
-				const active =
-					tab.href === "/account"
-						? pathname === "/account"
-						: pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+		<nav className="account-section-nav" aria-label="Account sections">
+			{ACCOUNT_SECTIONS.map((tab, index) => {
+				const active = isAccountSectionActive(pathname, tab.href);
 				return (
 					<Link
 						key={tab.href}
 						href={tab.href}
 						prefetch={false}
-						className={active ? "tab tab--active" : "tab"}
+						className={
+							active
+								? "account-section-link is-active"
+								: "account-section-link"
+						}
+						aria-current={active ? "page" : undefined}
 					>
-						{tab.label}
+						<span className="account-section-index" aria-hidden="true">
+							{String(index + 1).padStart(2, "0")}
+						</span>
+						<span className="account-section-copy">
+							<strong>{tab.label}</strong>
+							<small>{tab.hint}</small>
+						</span>
 					</Link>
 				);
 			})}

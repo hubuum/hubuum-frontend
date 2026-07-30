@@ -5,10 +5,7 @@ import { useEffect, useState } from "react";
 
 import type { PinnedItem, RecentItem } from "@/types/quick-access";
 import { useConfirm } from "@/lib/confirm-context";
-import {
-	clearRecentItems,
-	getRecentItems,
-} from "@/lib/recent-items";
+import { clearRecentItems, getRecentItems } from "@/lib/recent-items";
 import { getPinnedItems, unpinItem } from "@/lib/pinned-items";
 
 function IconCollection() {
@@ -47,10 +44,7 @@ function IconObject() {
 function IconGenericRecord() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
-			<path
-				d="M4 4h16v16H4zm2 2v3h12V6zm0 5v7h12v-7z"
-				fill="currentColor"
-			/>
+			<path d="M4 4h16v16H4zm2 2v3h12V6zm0 5v7h12v-7z" fill="currentColor" />
 		</svg>
 	);
 }
@@ -160,10 +154,7 @@ function getPinItemHref(item: PinnedItem): string | null {
 		case "collection":
 			return `/collections/${item.id}`;
 		case "class":
-			if (item.action === "view") {
-				return `/objects?classId=${item.id}`;
-			}
-			return `/objects?create=1&classId=${item.id}`;
+			return `/classes/${item.id}`;
 		case "object":
 			if (!item.classId) {
 				return null;
@@ -182,10 +173,6 @@ function getPinItemTooltip(item: PinnedItem): string | undefined {
 		return item.collectionName;
 	}
 	return `${item.collectionName} > ${item.className}`;
-}
-
-function getPinItemBadge(item: PinnedItem): string | undefined {
-	return item.type === "class" ? item.action : undefined;
 }
 
 export function QuickAccessPanel() {
@@ -214,11 +201,7 @@ export function QuickAccessPanel() {
 	}
 
 	function handleUnpin(item: PinnedItem) {
-		if (item.type === "class") {
-			unpinItem("class", item.id, item.action);
-		} else {
-			unpinItem(item.type, item.id);
-		}
+		unpinItem(item.type, item.id);
 		setPinnedItems(getPinnedItems());
 	}
 
@@ -266,7 +249,8 @@ export function QuickAccessPanel() {
 										<span className="recent-item-content">
 											<span className="recent-item-name">{item.name}</span>
 											<span className="recent-item-meta">
-												{formatItemType(item.type)} • {formatTimestamp(item.timestamp)}
+												{formatItemType(item.type)} •{" "}
+												{formatTimestamp(item.timestamp)}
 											</span>
 										</span>
 									</Link>
@@ -284,7 +268,8 @@ export function QuickAccessPanel() {
 					<div className="quick-access-empty">
 						<p className="muted">No pinned items yet</p>
 						<p className="muted quick-access-empty-subtext">
-							Pin your favorite collections, classes, and objects for quick access
+							Pin your favorite collections, classes, and objects for quick
+							access
 						</p>
 					</div>
 				) : (
@@ -296,10 +281,7 @@ export function QuickAccessPanel() {
 							}
 
 							const tooltip = getPinItemTooltip(item);
-							const badge = getPinItemBadge(item);
-							const key = item.type === "class"
-								? `${item.type}-${item.id}-${item.action}`
-								: `${item.type}-${item.id}`;
+							const key = `${item.type}-${item.id}`;
 
 							return (
 								<li key={key}>
@@ -313,12 +295,7 @@ export function QuickAccessPanel() {
 											{getPinItemIcon(item.type)}
 										</span>
 										<span className="pinned-item-content">
-											<span className="pinned-item-name">
-												{item.name}
-												{badge ? (
-													<span className="pinned-item-badge">{badge}</span>
-												) : null}
-											</span>
+											<span className="pinned-item-name">{item.name}</span>
 										</span>
 									</Link>
 									<button

@@ -16,6 +16,7 @@ import {
 import { JsonEditor } from "@/components/json-editor";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
+import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { classObjectSamplesQueryKey } from "@/lib/api/class-objects";
@@ -44,8 +45,8 @@ import type {
 	Collection,
 	UpdateHubuumObject,
 } from "@/lib/api/generated/models";
-import type { ConsoleGroup } from "@/lib/identity-scopes";
 import { TITLE_STATE_EVENT } from "@/lib/create-events";
+import type { ConsoleGroup } from "@/lib/identity-scopes";
 import {
 	buildRelatedObjectSearchParams,
 	DEFAULT_INCLUDE_SELF_CLASS,
@@ -584,7 +585,7 @@ export function ObjectDetail({
 	const confirm = useConfirm();
 	const objectFormRef = useRef<HTMLFormElement | null>(null);
 	const ignoreClassesRef = useRef<HTMLDivElement | null>(null);
-	const objectHeadingRef = useRef<HTMLElement | null>(null);
+	const objectHeadingRef = useRef<HTMLHeadingElement | null>(null);
 	const nameInputRef = useRef<HTMLInputElement | null>(null);
 	const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
 	const collectionSelectRef = useRef<HTMLSelectElement | null>(null);
@@ -913,21 +914,7 @@ export function ObjectDetail({
 
 		window.dispatchEvent(
 			new CustomEvent(TITLE_STATE_EVENT, {
-				detail: {
-					title,
-					pin: {
-						type: "object",
-						id: objectData.id,
-						name: objectData.name,
-						collectionId: objectData.collection_id,
-						collectionName:
-							(collectionsQuery.data ?? []).find(
-								(collection) => collection.id === objectData.collection_id,
-							)?.name ?? "Collection",
-						classId: objectData.hubuum_class_id,
-						className: currentClass?.name,
-					},
-				},
+				detail: { title, pin: null },
 			}),
 		);
 
@@ -938,7 +925,7 @@ export function ObjectDetail({
 				}),
 			);
 		};
-	}, [classesQuery.data, collectionsQuery.data, objectQuery.data]);
+	}, [classesQuery.data, objectQuery.data]);
 
 	function resetFieldDraft(field: EditableField, objectData: HubuumObject) {
 		if (field === "name") {
@@ -1512,11 +1499,35 @@ export function ObjectDetail({
 				onKeyDownCapture={onSubmitShortcut}
 			>
 				<header className="object-record-toolbar">
-					<h2 className="sr-only">Object properties</h2>
 					<div className="object-record-heading">
-						<strong ref={objectHeadingRef} tabIndex={-1}>
-							Object #{objectData.id}
-						</strong>
+						<div className="object-record-title-row">
+							<h1
+								className="object-record-title"
+								ref={objectHeadingRef}
+								tabIndex={-1}
+							>
+								<Link
+									className="object-record-class-link"
+									href={`/classes/${objectData.hubuum_class_id}`}
+								>
+									{currentClass?.name ??
+										`Class #${objectData.hubuum_class_id}`}
+								</Link>
+								<span className="object-record-title-separator" aria-hidden="true">
+									/
+								</span>
+								<span>{objectData.name}</span>
+							</h1>
+							<PinButton
+								type="object"
+								id={objectData.id}
+								name={objectData.name}
+								collectionId={objectData.collection_id}
+								collectionName={collectionLabel}
+								classId={objectData.hubuum_class_id}
+								className={currentClass?.name}
+							/>
+						</div>
 						<span className="muted">
 							{flattenedData.entries.length}
 							{flattenedData.truncated ? "+" : ""} data field

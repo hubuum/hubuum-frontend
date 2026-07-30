@@ -1,13 +1,9 @@
-import type {
-	PinnedItem,
-	PinnedItemType,
-	ClassPinAction,
-} from "@/types/quick-access";
+import type { PinnedItem, PinnedItemType } from "@/types/quick-access";
 import { writeUserSetting } from "@/lib/user-settings-client";
 import { PORTABLE_USER_SETTING_KEYS } from "@/lib/user-settings-types";
 
 const PINNED_ITEMS_KEY = PORTABLE_USER_SETTING_KEYS.pinnedItems;
-const MAX_PINNED_ITEMS = 10;
+export const MAX_PINNED_ITEMS = 30;
 const PINNED_ITEM_TYPES = new Set(["collection", "class", "object"]);
 
 function isPositiveInteger(value: unknown): value is number {
@@ -31,7 +27,6 @@ function normalizePinnedItem(value: unknown): PinnedItem | null {
 		return null;
 	}
 
-	const action = item.action === "create" ? "create" : "view";
 	const name =
 		typeof item.name === "string" && item.name.trim()
 			? item.name
@@ -56,7 +51,6 @@ function normalizePinnedItem(value: unknown): PinnedItem | null {
 		...(typeof item.className === "string"
 			? { className: item.className }
 			: {}),
-		...(type === "class" ? { action } : {}),
 	};
 }
 
@@ -76,9 +70,18 @@ export function getPinnedItems(): PinnedItem[] {
 			return [];
 		}
 
+		const seenItems = new Set<string>();
 		const items = parsed
 			.map(normalizePinnedItem)
 			.filter((item): item is PinnedItem => item !== null)
+			.filter((item) => {
+				const key = `${item.type}:${item.id}`;
+				if (seenItems.has(key)) {
+					return false;
+				}
+				seenItems.add(key);
+				return true;
+			})
 			.slice(0, MAX_PINNED_ITEMS);
 		if (items.length !== parsed.length || JSON.stringify(items) !== stored) {
 			writeUserSetting(PINNED_ITEMS_KEY, JSON.stringify(items));
@@ -98,16 +101,10 @@ export function pinItem(item: Omit<PinnedItem, "timestamp">): boolean {
 		const existing = getPinnedItems();
 
 		// Deduplication logic
-		const isDuplicate = existing.some((existingItem) => {
-			if (existingItem.type !== item.type || existingItem.id !== item.id) {
-				return false;
-			}
-			// For classes, check action too (same class can be pinned twice with different actions)
-			if (item.type === "class" && existingItem.type === "class") {
-				return existingItem.action === item.action;
-			}
-			return true;
-		});
+		const isDuplicate = existing.some(
+			(existingItem) =>
+				existingItem.type === item.type && existingItem.id === item.id,
+		);
 
 		if (isDuplicate) {
 			return false;
@@ -130,27 +127,16 @@ export function pinItem(item: Omit<PinnedItem, "timestamp">): boolean {
 	}
 }
 
-export function unpinItem(
-	type: PinnedItemType,
-	id: number,
-	action?: ClassPinAction,
-): void {
+export function unpinItem(type: PinnedItemType, id: number): void {
 	if (typeof window === "undefined") {
 		return;
 	}
 
 	try {
 		const existing = getPinnedItems();
-		const filtered = existing.filter((item) => {
-			if (item.type !== type || item.id !== id) {
-				return true;
-			}
-			// For classes, match action too
-			if (type === "class" && action !== undefined) {
-				return item.action !== action;
-			}
-			return false;
-		});
+		const filtered = existing.filter(
+			(item) => item.type !== type || item.id !== id,
+		);
 
 		writeUserSetting(PINNED_ITEMS_KEY, JSON.stringify(filtered));
 	} catch {
@@ -158,24 +144,11 @@ export function unpinItem(
 	}
 }
 
-export function isPinned(
-	type: PinnedItemType,
-	id: number,
-	action?: ClassPinAction,
-): boolean {
+export function isPinned(type: PinnedItemType, id: number): boolean {
 	if (typeof window === "undefined") {
 		return false;
 	}
 
 	const items = getPinnedItems();
-	return items.some((item) => {
-		if (item.type !== type || item.id !== id) {
-			return false;
-		}
-		// For classes, check action too
-		if (type === "class" && item.type === "class" && action !== undefined) {
-			return item.action === action;
-		}
-		return true;
-	});
+	return items.some((item) => item.type === type && item.id === id);
 }

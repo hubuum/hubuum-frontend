@@ -8,7 +8,6 @@ export default async function AccountPage() {
 	return (
 		<section className="stack">
 			<header>
-				<p className="eyebrow">Account</p>
 				<h2>Profile</h2>
 				<p className="muted">Manage your own Hubuum user profile.</p>
 			</header>

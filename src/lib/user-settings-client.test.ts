@@ -178,7 +178,7 @@ describe("user settings synchronization", () => {
 		installWindow(storage);
 		vi.mocked(patchUserSettings).mockResolvedValue();
 		initializeUserSettings(
-			snapshot(7, { [PORTABLE_USER_SETTING_KEYS.accent]: "teal" }),
+			snapshot(7, { [PORTABLE_USER_SETTING_KEYS.accent]: "dusk" }),
 		);
 
 		writeUserSetting(PORTABLE_USER_SETTING_KEYS.accent, "violet");
@@ -187,7 +187,7 @@ describe("user settings synchronization", () => {
 
 		resetUserSettingsSyncForTests();
 		initializeUserSettings(
-			snapshot(7, { [PORTABLE_USER_SETTING_KEYS.accent]: "teal" }),
+			snapshot(7, { [PORTABLE_USER_SETTING_KEYS.accent]: "dusk" }),
 		);
 
 		expect(storage.getItem(PORTABLE_USER_SETTING_KEYS.accent)).toBe("violet");

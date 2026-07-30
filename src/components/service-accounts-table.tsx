@@ -7,6 +7,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
+import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { ServiceAccountCreateFlow } from "@/components/service-account-create-flow";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
@@ -29,6 +30,7 @@ import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
 } from "@/lib/resource-search";
+import { buildResourceSummary } from "@/lib/resource-summary";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import type { TableExportView } from "@/lib/table-export";
 
@@ -228,6 +230,16 @@ export function ServiceAccountsTable({
 		setSearchInput(searchParams.get("search") ?? "");
 	}, [searchParams]);
 
+	const resourceSummary = query.data
+			? buildResourceSummary({
+					shown: searchTerm ? filteredAccounts.length : null,
+					loaded: accounts.length,
+					total: query.data.totalCount,
+				})
+			: query.isLoading
+				? buildResourceSummary({ status: "Loading…" })
+				: [];
+
 	function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
@@ -298,16 +310,28 @@ export function ServiceAccountsTable({
 				</div>
 			) : null}
 
-			<div className="card">
+			<div className="card resource-index">
 				<div className="table-header">
-					<div className="table-title-row">
-						<h3>Service accounts</h3>
-						<span className="muted table-count">
-							{searchTerm
-								? `${filteredAccounts.length} shown of ${accounts.length}`
-								: `${accounts.length} loaded`}
-						</span>
-					</div>
+					{allowCreate ? (
+						<ResourceIndexHeading
+							title="Service accounts"
+							summary={resourceSummary}
+							createSection="admin-service-accounts"
+							createLabel="New service account"
+						/>
+					) : (
+						<div className="table-title-row">
+							<h3>Service accounts</h3>
+							<span className="muted table-count">
+								{searchTerm
+									? `${filteredAccounts.length} shown of ${accounts.length}`
+									: `${accounts.length} loaded`}
+								{typeof query.data?.totalCount === "number"
+									? ` · ${query.data.totalCount} total`
+									: ""}
+							</span>
+						</div>
+					)}
 					<div className="table-tools">
 						<TableExportMenu view={exportView} compact />
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
@@ -405,9 +429,9 @@ export function ServiceAccountsTable({
 					</div>
 				)}
 				{query.data &&
-				(query.data.nextCursor ||
-					query.data.prevCursor ||
-					pagination.hasPrevPage) ? (
+					(query.data.nextCursor ||
+						query.data.prevCursor ||
+						pagination.hasPrevPage) ? (
 					<TablePagination
 						hasNextPage={!!query.data.nextCursor}
 						hasPrevPage={pagination.hasPrevPage || !!query.data.prevCursor}

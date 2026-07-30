@@ -71,7 +71,6 @@ export default async function StatisticsPage() {
 			<section className="stack">
 				<header className="stack action-card-header">
 					<div className="stack action-card-header">
-						<p className="eyebrow">Statistics</p>
 						<h2>Administrator access required</h2>
 					</div>
 					<p className="muted">
@@ -107,7 +106,6 @@ export default async function StatisticsPage() {
 			<section className="stack">
 				<header className="stack action-card-header">
 					<div className="stack action-card-header">
-						<p className="eyebrow">Statistics</p>
 						<h2>Administrator access required</h2>
 					</div>
 					<p className="muted">
@@ -139,7 +137,6 @@ export default async function StatisticsPage() {
 		<section className="stack">
 			<header className="stack action-card-header">
 				<div className="stack action-card-header">
-					<p className="eyebrow">Statistics</p>
 					<h2>System snapshot</h2>
 				</div>
 				<p className="muted">

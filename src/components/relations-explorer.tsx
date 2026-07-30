@@ -12,6 +12,7 @@ import {
 	useState,
 } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
@@ -45,6 +46,7 @@ import {
 	MAX_RELATED_OBJECT_DEPTH_LIMIT,
 	normalizeRelatedObjectDepthLimit,
 } from "@/lib/object-relation-summary";
+import { buildResourceSummary } from "@/lib/resource-summary";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 
@@ -1288,21 +1290,6 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		});
 	}
 
-	if (classesQuery.isLoading) {
-		return <div className="card">Loading class options...</div>;
-	}
-
-	if (classesQuery.isError) {
-		return (
-			<div className="card error-banner">
-				Failed to load class options.{" "}
-				{classesQuery.error instanceof Error
-					? classesQuery.error.message
-					: "Unknown error"}
-			</div>
-		);
-	}
-
 	const selectedClass = classes.find((item) => item.id === parsedSourceClassId);
 	const canCreateClassRelation =
 		parsedClassRelationSourceClassId !== null &&
@@ -1586,6 +1573,38 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		setObjectRelationsView(nextView);
 	}
 
+	function onContextClassChange(event: ChangeEvent<HTMLSelectElement>) {
+		const params = new URLSearchParams(searchParams.toString());
+		const nextClassId = event.target.value;
+
+		if (nextClassId) {
+			params.set("classId", nextClassId);
+		} else {
+			params.delete("classId");
+		}
+		params.delete("objectId");
+
+		const query = params.toString();
+		router.push(query ? `${pathname}?${query}` : pathname);
+	}
+
+	function onContextObjectChange(event: ChangeEvent<HTMLSelectElement>) {
+		const params = new URLSearchParams(searchParams.toString());
+		const nextObjectId = event.target.value;
+
+		if (resolvedSourceClassId) {
+			params.set("classId", resolvedSourceClassId);
+		}
+		if (nextObjectId) {
+			params.set("objectId", nextObjectId);
+		} else {
+			params.delete("objectId");
+		}
+
+		const query = params.toString();
+		router.push(query ? `${pathname}?${query}` : pathname);
+	}
+
 	function _deleteClassRelation(relationId: number) {
 		if (!window.confirm(`Delete class relation #${relationId}?`)) {
 			return;
@@ -1807,6 +1826,58 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		);
 	}
 
+	const resourceSummary =
+		isClassMode
+			? classRelationsView === "direct"
+				? allClassRelationsQuery.data
+					? buildResourceSummary({
+							shown: hasClassRelationFilters
+								? classDirectRelations.length
+								: null,
+							loaded: allClassRelations.length,
+							selected: selectedClassRelationIds.length,
+						})
+					: parsedSourceClassId
+						? buildResourceSummary({ status: "Loading…" })
+						: buildResourceSummary({ status: "No class selected" })
+				: classConnectedClassesQuery.data
+					? buildResourceSummary({ loaded: connectedClasses.length })
+					: parsedSourceClassId
+						? buildResourceSummary({ status: "Loading…" })
+						: buildResourceSummary({ status: "No class selected" })
+			: objectRelationsView === "direct"
+				? objectDirectRelationsQuery.data
+					? buildResourceSummary({
+							loaded: objectDirectRelations.length,
+							selected: selectedObjectRelationIds.length,
+						})
+					: parsedResolvedSourceObjectId !== null
+						? buildResourceSummary({ status: "Loading…" })
+						: buildResourceSummary({ status: "No object selected" })
+				: relatedObjectsQuery.data
+					? buildResourceSummary({
+							loaded: relatedObjects.length,
+							details: [`depth ${reachabilityDepth}`],
+						})
+					: parsedResolvedSourceObjectId !== null
+						? buildResourceSummary({ status: "Loading…" })
+						: buildResourceSummary({ status: "No object selected" });
+
+	if (classesQuery.isLoading) {
+		return <div className="card">Loading class options...</div>;
+	}
+
+	if (classesQuery.isError) {
+		return (
+			<div className="card error-banner">
+				Failed to load class options.{" "}
+				{classesQuery.error instanceof Error
+					? classesQuery.error.message
+					: "Unknown error"}
+			</div>
+		);
+	}
+
 	return (
 		<div className="stack">
 			<CreateModal
@@ -1822,28 +1893,37 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			</CreateModal>
 
 			{isClassMode ? (
-				<div className="card table-wrap">
+				<div className="card table-wrap resource-index">
 					<div className="table-header">
-						<div className="table-title-row">
-							<h3>Class relations</h3>
-							<span className="muted table-count">
-								{classRelationsView === "direct"
-									? allClassRelationsQuery.data
-										? hasClassRelationFilters
-											? `${classDirectRelations.length} shown of ${allClassRelations.length}`
-											: `${allClassRelations.length} loaded`
-										: "Waiting..."
-									: classConnectedClassesQuery.data
-										? `${connectedClasses.length} loaded`
-										: parsedSourceClassId
-											? "Waiting..."
-											: "No class"}
-								{classRelationsView === "direct" &&
-								selectedClassRelationIds.length
-									? ` · ${selectedClassRelationIds.length} selected`
-									: ""}
-							</span>
-						</div>
+						<ResourceIndexHeading
+							title="Class relations"
+							summary={resourceSummary}
+							createSection="relations"
+							createLabel="New class relation"
+							context={
+								classRelationsView === "connected" ? (
+									<>
+										<span className="resource-index-context-label">of</span>
+										<select
+											aria-label="Relations class context"
+											className="resource-index-context-select"
+											value={resolvedSourceClassId}
+											onChange={onContextClassChange}
+											disabled={classes.length === 0}
+										>
+											{classes.length === 0 ? (
+												<option value="">No classes available</option>
+											) : null}
+											{classes.map((classItem) => (
+												<option key={classItem.id} value={classItem.id}>
+													{classItem.name}
+												</option>
+											))}
+										</select>
+									</>
+								) : null
+							}
+						/>
 						<div className="table-tools">
 							{classRelationsView === "direct" ? (
 								<TableExportMenu
@@ -1943,6 +2023,12 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 							</div>
 						) : (
 							<table id="class-relations-table">
+								<colgroup>
+									<col className="table-select-column" />
+									<col className="table-id-column" />
+									<col className="table-relation-endpoint-column" />
+									<col className="table-relation-endpoint-column" />
+								</colgroup>
 								<thead>
 									<tr>
 										<th className="check-col">
@@ -2058,31 +2144,59 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			) : null}
 
 			{isObjectMode ? (
-				<div className="card table-wrap">
+				<div className="card table-wrap resource-index">
 					<div className="table-header">
-						<div className="table-title-row">
-							<h3>Object relations</h3>
-							<span className="muted table-count">
-								{objectRelationsView === "direct"
-									? objectDirectRelationsQuery.data
-										? `${objectDirectRelations.length} loaded`
-										: parsedResolvedSourceObjectId !== null
-											? "Waiting..."
-											: "No object"
-									: relatedObjectsQuery.data
-										? `${relatedObjects.length} loaded`
-										: parsedResolvedSourceObjectId !== null
-											? "Waiting..."
-											: "No object"}
-								{objectRelationsView === "reachable"
-									? ` · depth ${reachabilityDepth}`
-									: ""}
-								{objectRelationsView === "direct" &&
-								selectedObjectRelationIds.length
-									? ` · ${selectedObjectRelationIds.length} selected`
-									: ""}
-							</span>
-						</div>
+						<ResourceIndexHeading
+							title="Object relations"
+							summary={resourceSummary}
+							createSection="relations"
+							createLabel="New object relation"
+							context={
+								<>
+									<span className="resource-index-context-label">of</span>
+									<select
+										aria-label="Relations class context"
+										className="resource-index-context-select"
+										value={resolvedSourceClassId}
+										onChange={onContextClassChange}
+										disabled={classes.length === 0}
+									>
+										{classes.length === 0 ? (
+											<option value="">No classes available</option>
+										) : null}
+										{classes.map((classItem) => (
+											<option key={classItem.id} value={classItem.id}>
+												{classItem.name}
+											</option>
+										))}
+									</select>
+									<span
+										className="resource-index-context-label"
+										aria-hidden="true"
+									>
+										/
+									</span>
+									<select
+										aria-label="Relations object context"
+										className="resource-index-context-select"
+										value={resolvedSourceObjectId}
+										onChange={onContextObjectChange}
+										disabled={
+											!resolvedSourceClassId ||
+											sourceObjectsQuery.isLoading ||
+											sourceObjectsQuery.isError
+										}
+									>
+										<option value="">Select an object</option>
+										{sourceObjects.map((objectItem) => (
+											<option key={objectItem.id} value={objectItem.id}>
+												{objectItem.name}
+											</option>
+										))}
+									</select>
+								</>
+							}
+						/>
 						<div className="table-tools">
 							{objectRelationsView === "reachable" ? (
 								<label className="relations-depth-control">
@@ -2168,6 +2282,11 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 							</div>
 						) : (
 							<table id="object-relations-table">
+								<colgroup>
+									<col className="table-select-column" />
+									<col className="table-relation-endpoint-column" />
+									<col className="table-relation-label-column" />
+								</colgroup>
 								<thead>
 									<tr>
 										<th className="check-col">

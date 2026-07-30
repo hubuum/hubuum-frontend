@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
+	type ChangeEvent,
 	FormEvent,
 	type KeyboardEvent as ReactKeyboardEvent,
 	useCallback,
@@ -24,6 +25,7 @@ import {
 import {
 	ObjectServerFilterMenu,
 } from "@/components/object-server-filter-menu";
+import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import {
@@ -87,6 +89,7 @@ import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
 } from "@/lib/resource-search";
+import { buildResourceSummary } from "@/lib/resource-summary";
 import {
 	MAX_PAGE_LIMIT_SENTINEL,
 	resolveServerPageLimit,
@@ -836,7 +839,11 @@ function formatDataPreviewValue(value: unknown): string {
 
 function renderObjectDataPreview(data: unknown, omittedPaths: string[][] = []) {
 	if (data === null || data === undefined) {
-		return <span className="muted">No data</span>;
+		return (
+			<span className="object-data-chip object-data-chip--empty muted">
+				No data
+			</span>
+		);
 	}
 
 	if (typeof data !== "object" || Array.isArray(data)) {
@@ -849,7 +856,11 @@ function renderObjectDataPreview(data: unknown, omittedPaths: string[][] = []) {
 
 	const previewEntries = collectDataPreviewEntries(data, omittedPaths);
 	if (previewEntries.length === 0) {
-		return <span className="muted">No other data</span>;
+		return (
+			<span className="object-data-chip object-data-chip--empty muted">
+				No other data
+			</span>
+		);
 	}
 
 	const visibleEntries = previewEntries.slice(0, 10);
@@ -880,13 +891,15 @@ function renderObjectDataPreview(data: unknown, omittedPaths: string[][] = []) {
 
 function renderPromotedDataValue(value: unknown) {
 	if (isEmptyDataValue(value)) {
-		return <span className="muted">-</span>;
+		return <span className="object-data-column-value muted">-</span>;
 	}
 
 	if (isPlainObject(value)) {
 		const childEntries = collectDataPreviewEntries(value, []);
 		if (childEntries.length === 0) {
-			return <span className="muted">Empty object</span>;
+			return (
+				<span className="object-data-column-value muted">Empty object</span>
+			);
 		}
 
 		const visibleEntries = childEntries.slice(0, 3);
@@ -2521,21 +2534,6 @@ export function ObjectsExplorer() {
 		event.currentTarget.requestSubmit(submitButton);
 	}
 
-	if (classesQuery.isLoading) {
-		return <div className="card">Loading class options...</div>;
-	}
-
-	if (classesQuery.isError) {
-		return (
-			<div className="card error-banner">
-				Failed to load class options.{" "}
-				{classesQuery.error instanceof Error
-					? classesQuery.error.message
-					: "Unknown error"}
-			</div>
-		);
-	}
-
 	function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
@@ -2547,6 +2545,23 @@ export function ObjectsExplorer() {
 			params.delete("search");
 		}
 		params.delete("cursor");
+
+		const query = params.toString();
+		router.push(query ? `${pathname}?${query}` : pathname);
+	}
+
+	function onClassContextChange(event: ChangeEvent<HTMLSelectElement>) {
+		const params = new URLSearchParams(searchParams.toString());
+		const nextClassId = event.target.value;
+
+		if (nextClassId) {
+			params.set("classId", nextClassId);
+		} else {
+			params.delete("classId");
+		}
+		params.delete("cursor");
+		params.delete("search");
+		params.delete(OBJECT_SERVER_FILTERS_QUERY_KEY);
 
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
@@ -2808,6 +2823,53 @@ export function ObjectsExplorer() {
 		);
 	}
 
+	const resourceSummary =
+		serverAggregationActive
+			? objectAggregatesQuery.data
+				? buildResourceSummary({
+						loaded: serverAggregateGroups.length,
+						loadedNoun:
+							serverAggregateGroups.length === 1 ? "group" : "groups",
+						total: objectAggregatesQuery.data.totalCount,
+						selected: selectedObjectIds.length,
+					})
+				: parsedClassId
+					? buildResourceSummary({ status: "Loading…" })
+					: buildResourceSummary({ status: "No class selected" })
+			: objectsQuery.data
+				? buildResourceSummary({
+						shown: searchTerm ? filteredObjects.length : null,
+						shownLabel: "shown on page",
+						loaded: objects.length,
+						total: pageData?.totalCount,
+						totalLabel: serverFilters.length ? "matches" : "total",
+						selected: selectedObjectIds.length,
+						details:
+							activeGroupingField && !serverGroupingField
+								? [
+										`${displayedGroups.length} group${displayedGroups.length === 1 ? "" : "s"}`,
+									]
+								: [],
+					})
+				: parsedClassId
+					? buildResourceSummary({ status: "Loading…" })
+					: buildResourceSummary({ status: "No class selected" });
+
+	if (classesQuery.isLoading) {
+		return <div className="card">Loading class options...</div>;
+	}
+
+	if (classesQuery.isError) {
+		return (
+			<div className="card error-banner">
+				Failed to load class options.{" "}
+				{classesQuery.error instanceof Error
+					? classesQuery.error.message
+					: "Unknown error"}
+			</div>
+		);
+	}
+
 	return (
 		<div className="stack">
 			<CreateModal
@@ -2820,33 +2882,36 @@ export function ObjectsExplorer() {
 
 			<div className="card table-wrap resource-index objects-resource-index">
 				<div className="table-header">
-					<div className="resource-index-title">
-						<div className="table-title-row">
-							<h2>Objects</h2>
-							<span className="muted table-count">
-								{serverAggregationActive
-									? objectAggregatesQuery.data
-										? `${serverAggregateGroups.length} group${serverAggregateGroups.length === 1 ? "" : "s"} loaded${typeof objectAggregatesQuery.data.totalCount === "number" && objectAggregatesQuery.data.totalCount !== serverAggregateGroups.length ? ` · ${objectAggregatesQuery.data.totalCount} total` : ""}`
-										: "Waiting..."
-									: objectsQuery.data
-										? searchTerm
-											? `${filteredObjects.length} shown on page · ${objects.length} loaded`
-											: typeof pageData?.totalCount === "number" &&
-													pageData?.totalCount !== objects.length
-												? `${objects.length} loaded · ${pageData?.totalCount} ${serverFilters.length ? "matches" : "total"}`
-												: `${objects.length} loaded`
-										: parsedClassId
-											? "Waiting..."
-											: "No class"}
-								{selectedObjectIds.length
-									? ` · ${selectedObjectIds.length} selected`
-									: ""}
-								{activeGroupingField && !serverGroupingField
-									? ` · ${displayedGroups.length} group${displayedGroups.length === 1 ? "" : "s"}`
-									: ""}
-							</span>
-						</div>
-					</div>
+					<ResourceIndexHeading
+						title="Objects"
+						summary={resourceSummary}
+						createSection="objects"
+						createLabel="New object"
+						context={
+							<>
+								<span className="resource-index-context-label">of</span>
+								<select
+									aria-label="Objects class context"
+									className="resource-index-context-select"
+									value={selectedClass ? String(selectedClass.id) : ""}
+									onChange={onClassContextChange}
+									disabled={classes.length === 0}
+								>
+									{!selectedClass && classes.length > 0 ? (
+										<option value="">Select a class</option>
+									) : null}
+									{classes.length === 0 ? (
+										<option value="">No classes available</option>
+									) : null}
+									{classes.map((classItem) => (
+										<option key={classItem.id} value={classItem.id}>
+											{classItem.name}
+										</option>
+									))}
+								</select>
+							</>
+						}
+					/>
 					<div className="table-tools">
 						<fieldset
 							className="object-fetch-limit"
@@ -3137,53 +3202,59 @@ export function ObjectsExplorer() {
 							onChange={updateServerFilters}
 							disabled={parsedClassId === null}
 						/>
-						{hasAggregateView ? (
-							<TableExportMenu
-								view={groupedExportView}
-								disabled={
-									objectsQuery.isFetching || objectAggregatesQuery.isFetching
-								}
-							/>
-						) : (
-							<TableExportMenu
-								view={objectExportView}
-								disabled={objectsQuery.isFetching}
-							/>
-						)}
-						<form className="table-filter-form" onSubmit={onFilterSubmit}>
-							<div className="table-filter-field">
-								<input
-									aria-label="Find objects on this loaded page"
-									className="table-filter-input"
-									value={searchInput}
-									onChange={(event) => setSearchInput(event.target.value)}
-									placeholder={
-										serverAggregationActive
-											? "Unavailable while grouping"
-											: "Find on this page"
+						<div className="object-export-search-tools">
+							{hasAggregateView ? (
+								<TableExportMenu
+									view={groupedExportView}
+									disabled={
+										objectsQuery.isFetching ||
+										objectAggregatesQuery.isFetching
 									}
-									disabled={serverAggregationActive}
 								/>
-								{normalizeSearchTerm(searchInput) ? (
-									<button
-										type="button"
-										className="ghost table-filter-clear"
-										onClick={clearFilter}
-										aria-label="Clear object filter"
-									>
-										Clear
-									</button>
-								) : null}
-							</div>
-							<button
-								type="submit"
-								className="ghost icon-button"
-								aria-label="Find objects on this page"
-								disabled={serverAggregationActive}
+							) : (
+								<TableExportMenu
+									view={objectExportView}
+									disabled={objectsQuery.isFetching}
+								/>
+							)}
+							<form
+								className="table-filter-form object-page-filter"
+								onSubmit={onFilterSubmit}
 							>
-								<IconSearch />
-							</button>
-						</form>
+								<div className="table-filter-field">
+									<input
+										aria-label="Find objects on this loaded page"
+										className="table-filter-input"
+										value={searchInput}
+										onChange={(event) => setSearchInput(event.target.value)}
+										placeholder={
+											serverAggregationActive
+												? "Unavailable while grouping"
+												: "Find on this page"
+										}
+										disabled={serverAggregationActive}
+									/>
+									{normalizeSearchTerm(searchInput) ? (
+										<button
+											type="button"
+											className="ghost table-filter-clear"
+											onClick={clearFilter}
+											aria-label="Clear object filter"
+										>
+											Clear
+										</button>
+									) : null}
+								</div>
+								<button
+									type="submit"
+									className="ghost icon-button"
+									aria-label="Find objects on this page"
+									disabled={serverAggregationActive}
+								>
+									<IconSearch />
+								</button>
+							</form>
+						</div>
 					</div>
 				</div>
 				{sharedComputedQuery.isError || personalComputedQuery.isError ? (

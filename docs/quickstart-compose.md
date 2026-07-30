@@ -23,6 +23,12 @@ Open <http://localhost:3000>. Check dependency readiness with:
 curl --fail http://localhost:3000/readyz
 ```
 
+The quickstart mounts `./login-backgrounds` read-only into the frontend. Put
+private AVIF, JPEG, PNG, or WebP files there before starting Compose. To keep
+the artwork elsewhere, set `LOGIN_BACKGROUNDS_HOST_DIR` in `.env.quickstart` to
+that host directory. The images remain outside the container image and source
+repository.
+
 For Docker Desktop, a server running directly on the host is normally
 reachable as `http://host.docker.internal:8080`. On Linux Docker Engine, add
 `extra_hosts: ["host.docker.internal:host-gateway"]` to the frontend service or
@@ -43,3 +49,7 @@ out all stored sessions.
 
 This quickstart binds the frontend to loopback and does not configure TLS. Use
 the Helm chart or the Hubuum Server single-host installer for production.
+
+For Helm deployments, store the private images on a read-only PVC and set
+`loginBackgrounds.existingClaim` to its name. The chart mounts that claim at
+`/app/login-backgrounds` without copying the images into the application image.

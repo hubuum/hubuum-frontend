@@ -20,7 +20,6 @@ export default async function AdminConfigurationPage() {
 		<section className="stack">
 			<header className="stack action-card-header">
 				<div className="stack action-card-header">
-					<p className="eyebrow">Admin</p>
 					<h2>Runtime configuration</h2>
 				</div>
 				<p className="muted">

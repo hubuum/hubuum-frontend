@@ -143,12 +143,14 @@ expensive full-dataset scan.
 Column preferences are stored per user and per class id. The `Data columns`
 menu lets users reset to suggested fields or clear all promoted columns. The
 same menu can show or hide the raw data preview column, also remembered per
-class id. Portable preferences such as theme, primary and secondary colors,
+class id. Portable preferences such as light/dark mode, workspace atmosphere,
 pins, and selected data columns are saved in the user settings store, with
-`localStorage` used as an owner-scoped browser cache. The primary color drives
-actions and focus while the secondary color tints the canvas, navigation, and
-ambient artwork. Viewport and activity state such as table widths, sidebar
-state, recent items, and task last-seen timestamps stay device-local.
+`localStorage` used as an owner-scoped browser cache. The Appearance page offers
+four complete workspace atmospheres: Sunset, Golden Hour, Clouds, and Forest. Each
+atmosphere owns its action, typography, canvas, navigation, surface, and ambient
+palette in both light and dark mode. Viewport and activity state such as table
+widths, sidebar state, recent items, and task last-seen timestamps stay
+device-local.
 
 The `Custom data fields` menu lets users create personal fallback columns with a
 label and a `|`-separated list of data paths. The table shows the first
@@ -360,6 +362,15 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+The login page ships with Sunset, Mountains, Clouds, and Forest backgrounds. Sunset is
+the first-run default, and the browser remembers a person's
+selection on that device. Optional private login backgrounds belong in
+`login-backgrounds/`. That directory's image files are ignored by Git and the
+container build; the login page discovers them at runtime and adds both
+individual choices and a Random choice. Compose mounts that directory
+read-only. Helm deployments can provide the same runtime directory through
+`loginBackgrounds.existingClaim`.
 
 Stop the development dependency when finished:
 

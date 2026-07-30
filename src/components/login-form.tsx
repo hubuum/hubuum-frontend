@@ -139,12 +139,6 @@ export function LoginForm({
 				void submitLogin();
 			}}
 		>
-			<div className="login-heading">
-				<p className="eyebrow">Workspace access</p>
-				<h1>Welcome back</h1>
-				<p className="muted">Sign in to continue to your Hubuum workspace.</p>
-			</div>
-
 			{providerDiscovery.status === "available" ? (
 				<>
 					<label htmlFor="identity-scope">Authentication provider</label>

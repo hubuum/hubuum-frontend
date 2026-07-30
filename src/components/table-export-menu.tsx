@@ -18,7 +18,7 @@ import {
 import { useToast } from "@/lib/toast-context";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
-function IconExport() {
+function IconDownload() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
 			<path
@@ -101,7 +101,7 @@ export function TableExportMenu<Row>({
 		}
 	}
 
-	async function exportView(format: TableExportFormat) {
+	async function downloadView(format: TableExportFormat) {
 		setActiveFormat(format);
 		setOpen(false);
 		try {
@@ -110,12 +110,14 @@ export function TableExportMenu<Row>({
 			const file = await createTableExportFile(snapshot, format);
 			const fileName = downloadTableExportFile(snapshot, file);
 			showToast(
-				`Exported ${snapshot.rows.length} row${snapshot.rows.length === 1 ? "" : "s"} to ${fileName}.`,
+				`Downloaded ${snapshot.rows.length} row${snapshot.rows.length === 1 ? "" : "s"} to ${fileName}.`,
 				"success",
 			);
 		} catch (error) {
 			showToast(
-				error instanceof Error ? error.message : "Could not export this view.",
+				error instanceof Error
+					? error.message
+					: "Could not download this view.",
 				"error",
 			);
 		} finally {
@@ -125,7 +127,11 @@ export function TableExportMenu<Row>({
 	}
 
 	return (
-		<div className="table-export" ref={rootRef}>
+		<div
+			className="table-export"
+			data-compact={compact ? "true" : undefined}
+			ref={rootRef}
+		>
 			<button
 				ref={triggerRef}
 				type="button"
@@ -136,8 +142,8 @@ export function TableExportMenu<Row>({
 				aria-controls={isOpen ? menuId : undefined}
 				onClick={() => (isOpen ? setOpen(false) : openMenu())}
 			>
-				<IconExport />
-				<span>{activeFormat ? "Preparing…" : compact ? "Export" : "Export view"}</span>
+				<IconDownload />
+				<span>{activeFormat ? "Preparing…" : "Download"}</span>
 			</button>
 			{isOpen ? (
 				<div
@@ -163,7 +169,7 @@ export function TableExportMenu<Row>({
 								type="button"
 								className="ghost table-export-option"
 								role="menuitem"
-								onClick={() => exportView(item.format)}
+								onClick={() => downloadView(item.format)}
 							>
 								<span>{item.label}</span>
 								<small>{item.description}</small>

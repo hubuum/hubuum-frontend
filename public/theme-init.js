@@ -19,31 +19,34 @@
 	}
 
 	try {
-		const stored =
+		const atmosphereByAccent = {
+			rose: "sunset",
+			amber: "golden-hour",
+			blue: "clouds",
+			pine: "forest",
+		};
+		const accentByAtmosphere = {
+			sunset: "rose",
+			"golden-hour": "amber",
+			clouds: "blue",
+			forest: "pine",
+		};
+		const primaryAccent =
 			window.localStorage.getItem("hubuum.accent") ??
 			window.localStorage.getItem("hubuum.login.accent");
-		const accent = ["teal", "blue", "violet", "amber", "rose"].includes(stored)
-			? stored
-			: "teal";
-		document.documentElement.setAttribute("data-accent", accent);
-		const storedSecondary =
+		const secondaryAccent =
 			window.localStorage.getItem("hubuum.secondary-accent") ??
 			window.localStorage.getItem("hubuum.login.secondary-accent");
-		const secondaryAccent = [
-			"teal",
-			"blue",
-			"violet",
-			"amber",
-			"rose",
-		].includes(storedSecondary)
-			? storedSecondary
-			: accent;
-		document.documentElement.setAttribute(
-			"data-secondary-accent",
-			secondaryAccent,
-		);
+		const atmosphere =
+			atmosphereByAccent[secondaryAccent] ??
+			atmosphereByAccent[primaryAccent] ??
+			"sunset";
+		const accent = accentByAtmosphere[atmosphere];
+		document.documentElement.setAttribute("data-atmosphere", atmosphere);
+		document.documentElement.setAttribute("data-accent", accent);
+		document.documentElement.setAttribute("data-secondary-accent", accent);
 	} catch {
-		// Ignore accent init errors and keep CSS defaults.
+		// Ignore atmosphere init errors and keep CSS defaults.
 	}
 
 	try {
@@ -53,5 +56,41 @@
 		document.documentElement.setAttribute("data-density", density);
 	} catch {
 		// Ignore density init errors and keep CSS defaults.
+	}
+
+	try {
+		const stored = window.localStorage.getItem("hubuum.login.background");
+		if (["sea", "mountains", "clouds", "forest"].includes(stored)) {
+			document.documentElement.setAttribute("data-login-background", stored);
+			return;
+		}
+
+		if (stored?.startsWith("mounted:")) {
+			const encodedFilename = stored.slice("mounted:".length);
+			const filename = decodeURIComponent(encodedFilename);
+			const isSupported =
+				filename.length > 0 &&
+				filename.length <= 240 &&
+				!filename.startsWith(".") &&
+				!filename.includes("/") &&
+				!filename.includes("\\") &&
+				encodeURIComponent(filename) === encodedFilename &&
+				/\.(avif|jpe?g|png|webp)$/i.test(filename);
+			if (isSupported) {
+				document.documentElement.setAttribute(
+					"data-login-background",
+					"mounted",
+				);
+				document.documentElement.style.setProperty(
+					"--login-background-image",
+					`url("/login-backgrounds/custom/${encodedFilename}")`,
+				);
+				return;
+			}
+		}
+
+		document.documentElement.setAttribute("data-login-background", "sea");
+	} catch {
+		// Ignore login background errors and keep the sea default.
 	}
 })();

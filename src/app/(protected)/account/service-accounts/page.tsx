@@ -8,7 +8,6 @@ export default async function AccountServiceAccountsPage() {
 	return (
 		<section className="stack">
 			<header>
-				<p className="eyebrow">Account</p>
 				<h2>Service accounts</h2>
 				<p className="muted">
 					Manage service accounts owned by one of your groups and mint their

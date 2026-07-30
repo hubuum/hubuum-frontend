@@ -17,7 +17,6 @@ export interface RecentItem {
 }
 
 export type PinnedItemType = "collection" | "class" | "object";
-export type ClassPinAction = "view" | "create";
 
 export interface PinnedItem {
 	type: PinnedItemType;
@@ -30,5 +29,4 @@ export interface PinnedItem {
 	collectionName?: string; // for class and object pins (tooltip)
 	classId?: number; // for object pins
 	className?: string; // for object pins (tooltip)
-	action?: ClassPinAction; // only for class pins
 }

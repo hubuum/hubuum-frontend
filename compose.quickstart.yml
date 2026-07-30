@@ -42,6 +42,8 @@ services:
       SESSION_PREFIX: ${SESSION_PREFIX:-hubuum:sess:}
       SETTINGS_PREFIX: ${SETTINGS_PREFIX:-hubuum:settings:}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Hubuum Console}
+    volumes:
+      - ${LOGIN_BACKGROUNDS_HOST_DIR:-./login-backgrounds}:/app/login-backgrounds:ro
     ports:
       - "127.0.0.1:${HUBUUM_FRONTEND_PORT:-3000}:3000"
     depends_on:

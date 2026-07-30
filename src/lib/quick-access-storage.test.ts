@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getPinnedItems } from "@/lib/pinned-items";
+import { getPinnedItems, MAX_PINNED_ITEMS, pinItem } from "@/lib/pinned-items";
 import { getRecentItems } from "@/lib/recent-items";
 
 function createLocalStorage(initial: Record<string, string> = {}) {
@@ -43,12 +43,19 @@ describe("quick access storage", () => {
 		);
 	});
 
-	it("drops malformed pinned shortcuts and keeps valid class actions", () => {
+	it("normalizes legacy class shortcuts to one direct class pin", () => {
 		const localStorage = createLocalStorage({
 			"hubuum.pinned-items": JSON.stringify([
 				{ type: "namespace", id: 7, name: "old namespace", timestamp: 1 },
 				{ type: "object", id: 9, name: "broken object", timestamp: 2 },
-				{ type: "class", id: 10, name: "class", action: "create", timestamp: 3 },
+				{
+					type: "class",
+					id: 10,
+					name: "class",
+					action: "create",
+					timestamp: 4,
+				},
+				{ type: "class", id: 10, name: "class", action: "view", timestamp: 3 },
 			]),
 		});
 		vi.stubGlobal("window", { localStorage });
@@ -58,8 +65,7 @@ describe("quick access storage", () => {
 				type: "class",
 				id: 10,
 				name: "class",
-				action: "create",
-				timestamp: 3,
+				timestamp: 4,
 			},
 		]);
 		expect(localStorage.setItem).toHaveBeenCalledOnce();
@@ -70,9 +76,33 @@ describe("quick access storage", () => {
 				type: "class",
 				id: 10,
 				name: "class",
-				action: "create",
-				timestamp: 3,
+				timestamp: 4,
 			},
 		]);
+	});
+
+	it("keeps up to 30 pinned shortcuts", () => {
+		const storedItems = Array.from(
+			{ length: MAX_PINNED_ITEMS + 1 },
+			(_, index) => ({
+				type: "collection",
+				id: index + 1,
+				name: `Collection ${index + 1}`,
+				timestamp: index + 1,
+			}),
+		);
+		const localStorage = createLocalStorage({
+			"hubuum.pinned-items": JSON.stringify(storedItems),
+		});
+		vi.stubGlobal("window", { localStorage });
+
+		expect(getPinnedItems()).toHaveLength(30);
+		expect(
+			pinItem({
+				type: "collection",
+				id: MAX_PINNED_ITEMS + 2,
+				name: "One too many",
+			}),
+		).toBe(false);
 	});
 });

@@ -40,6 +40,9 @@ const csp = [
 const nextConfig: NextConfig = {
 	allowedDevOrigins: ["127.0.0.1"],
 	output: "standalone",
+	outputFileTracingExcludes: {
+		"/login-backgrounds/custom/*": ["./login-backgrounds/**/*"],
+	},
 	poweredByHeader: false,
 	env: {
 		NEXT_PUBLIC_APP_VERSION: applicationVersion,
