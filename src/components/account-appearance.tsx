@@ -7,8 +7,10 @@ import {
 	type AtmospherePreset,
 	DEFAULT_ATMOSPHERE,
 	type DensityPreference,
+	type FontSizePreference,
 	getAtmosphereAccent,
 	isDensityPreference,
+	isFontSizePreference,
 	isThemePreference,
 	resolveAtmospherePreset,
 	type ThemePreference,
@@ -33,9 +35,20 @@ const DENSITY_OPTIONS: Array<{ value: DensityPreference; label: string }> = [
 	{ value: "compact", label: "Compact" },
 ];
 
+const FONT_SIZE_OPTIONS: Array<{
+	value: FontSizePreference;
+	label: string;
+}> = [
+	{ value: "90", label: "90%" },
+	{ value: "100", label: "100%" },
+	{ value: "110", label: "110%" },
+	{ value: "120", label: "120%" },
+];
+
 export function AccountAppearance() {
 	const [theme, setTheme] = useState<ThemePreference>("system");
 	const [density, setDensity] = useState<DensityPreference>("comfortable");
+	const [fontSize, setFontSize] = useState<FontSizePreference>("100");
 	const [atmosphere, setAtmosphere] =
 		useState<AtmospherePreset>(DEFAULT_ATMOSPHERE);
 
@@ -46,6 +59,9 @@ export function AccountAppearance() {
 		const storedDensity = window.localStorage.getItem(
 			PORTABLE_USER_SETTING_KEYS.density,
 		);
+		const storedFontSize = window.localStorage.getItem(
+			PORTABLE_USER_SETTING_KEYS.fontSize,
+		);
 		const storedAccent = window.localStorage.getItem(
 			PORTABLE_USER_SETTING_KEYS.accent,
 		);
@@ -54,6 +70,7 @@ export function AccountAppearance() {
 		);
 		if (isThemePreference(storedTheme)) setTheme(storedTheme);
 		if (isDensityPreference(storedDensity)) setDensity(storedDensity);
+		if (isFontSizePreference(storedFontSize)) setFontSize(storedFontSize);
 		setAtmosphere(
 			resolveAtmospherePreset(storedSecondaryAccent, storedAccent),
 		);
@@ -67,6 +84,11 @@ export function AccountAppearance() {
 	function selectDensity(value: DensityPreference) {
 		setDensity(value);
 		writeUserSetting(PORTABLE_USER_SETTING_KEYS.density, value);
+	}
+
+	function selectFontSize(value: FontSizePreference) {
+		setFontSize(value);
+		writeUserSetting(PORTABLE_USER_SETTING_KEYS.fontSize, value);
 	}
 
 	function selectAtmosphere(value: AtmospherePreset) {
@@ -119,6 +141,29 @@ export function AccountAppearance() {
 							className={`ghost ${density === option.value ? "is-selected" : ""}`}
 							onClick={() => selectDensity(option.value)}
 							aria-pressed={density === option.value}
+						>
+							{option.label}
+						</button>
+					))}
+				</fieldset>
+			</section>
+
+			<section className="card stack appearance-card">
+				<div>
+					<h3>Text size</h3>
+					<p className="muted">
+						Scale text and proportional controls across the console.
+					</p>
+				</div>
+				<fieldset className="segmented-options">
+					<legend className="sr-only">Text size</legend>
+					{FONT_SIZE_OPTIONS.map((option) => (
+						<button
+							key={option.value}
+							type="button"
+							className={`ghost ${fontSize === option.value ? "is-selected" : ""}`}
+							onClick={() => selectFontSize(option.value)}
+							aria-pressed={fontSize === option.value}
 						>
 							{option.label}
 						</button>

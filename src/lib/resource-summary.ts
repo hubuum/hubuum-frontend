@@ -1,4 +1,5 @@
 export type ResourceSummaryOptions = {
+	compactLoadedTotal?: boolean;
 	loaded?: number | null;
 	loadedNoun?: string;
 	shown?: number | null;
@@ -11,6 +12,7 @@ export type ResourceSummaryOptions = {
 };
 
 export function buildResourceSummary({
+	compactLoadedTotal = false,
 	loaded,
 	loadedNoun,
 	shown,
@@ -26,12 +28,18 @@ export function buildResourceSummary({
 	if (shown !== null && shown !== undefined) {
 		segments.push(`${shown} ${shownLabel}`);
 	}
-	if (loaded !== null && loaded !== undefined) {
+	const hasLoaded = loaded !== null && loaded !== undefined;
+	const hasTotal = total !== null && total !== undefined;
+	if (compactLoadedTotal && hasLoaded && hasTotal && !loadedNoun) {
+		segments.push(
+			`${loaded}/${total}${totalLabel === "total" ? "" : ` ${totalLabel}`}`,
+		);
+	} else if (hasLoaded) {
 		segments.push(
 			`${loaded}${loadedNoun ? ` ${loadedNoun}` : ""} loaded`,
 		);
 	}
-	if (total !== null && total !== undefined) {
+	if (hasTotal && !(compactLoadedTotal && hasLoaded && !loadedNoun)) {
 		segments.push(`${total} ${totalLabel}`);
 	}
 	if (selected > 0) {

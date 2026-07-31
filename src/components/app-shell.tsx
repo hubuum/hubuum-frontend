@@ -30,8 +30,10 @@ import {
 	type AtmospherePreset,
 	DEFAULT_ATMOSPHERE,
 	type DensityPreference,
+	type FontSizePreference,
 	getAtmosphereAccent,
 	isDensityPreference,
+	isFontSizePreference,
 	isThemePreference,
 	resolveAtmospherePreset,
 	resolveTheme,
@@ -102,6 +104,7 @@ type NavItem = {
 const SIDEBAR_COLLAPSED_KEY = DEVICE_SETTING_KEYS.sidebarCollapsed;
 const THEME_PREFERENCE_KEY = PORTABLE_USER_SETTING_KEYS.theme;
 const DENSITY_PREFERENCE_KEY = PORTABLE_USER_SETTING_KEYS.density;
+const FONT_SIZE_PREFERENCE_KEY = PORTABLE_USER_SETTING_KEYS.fontSize;
 const ACCENT_PREFERENCE_KEY = PORTABLE_USER_SETTING_KEYS.accent;
 const SECONDARY_ACCENT_PREFERENCE_KEY =
 	PORTABLE_USER_SETTING_KEYS.secondaryAccent;
@@ -716,6 +719,8 @@ export function AppShell({
 		useState<ThemePreference>("system");
 	const [densityPreference, setDensityPreference] =
 		useState<DensityPreference>("comfortable");
+	const [fontSizePreference, setFontSizePreference] =
+		useState<FontSizePreference>("100");
 	const [atmospherePreference, setAtmospherePreference] =
 		useState<AtmospherePreset>(DEFAULT_ATMOSPHERE);
 	const [searchInput, setSearchInput] = useState("");
@@ -822,6 +827,11 @@ export function AppShell({
 			setDensityPreference(storedDensity);
 		}
 
+		const storedFontSize = window.localStorage.getItem(FONT_SIZE_PREFERENCE_KEY);
+		if (isFontSizePreference(storedFontSize)) {
+			setFontSizePreference(storedFontSize);
+		}
+
 		const storedAccent = window.localStorage.getItem(ACCENT_PREFERENCE_KEY);
 		const storedSecondaryAccent = window.localStorage.getItem(
 			SECONDARY_ACCENT_PREFERENCE_KEY,
@@ -843,6 +853,10 @@ export function AppShell({
 			if (key === DENSITY_PREFERENCE_KEY) {
 				const value = window.localStorage.getItem(DENSITY_PREFERENCE_KEY);
 				if (isDensityPreference(value)) setDensityPreference(value);
+			}
+			if (key === FONT_SIZE_PREFERENCE_KEY) {
+				const value = window.localStorage.getItem(FONT_SIZE_PREFERENCE_KEY);
+				if (isFontSizePreference(value)) setFontSizePreference(value);
 			}
 			if (
 				key === ACCENT_PREFERENCE_KEY ||
@@ -905,6 +919,12 @@ export function AppShell({
 		writeUserSetting(DENSITY_PREFERENCE_KEY, densityPreference);
 		document.documentElement.setAttribute("data-density", densityPreference);
 	}, [densityPreference, preferencesReady]);
+
+	useEffect(() => {
+		if (!preferencesReady) return;
+		writeUserSetting(FONT_SIZE_PREFERENCE_KEY, fontSizePreference);
+		document.documentElement.setAttribute("data-font-size", fontSizePreference);
+	}, [fontSizePreference, preferencesReady]);
 
 	useEffect(() => {
 		if (!preferencesReady) return;

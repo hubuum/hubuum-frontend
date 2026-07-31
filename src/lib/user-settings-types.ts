@@ -9,6 +9,7 @@ export const MAX_USER_SETTING_VALUE_LENGTH = 50_000;
 export const PORTABLE_USER_SETTING_KEYS = {
 	theme: "hubuum.theme",
 	density: "hubuum.density",
+	fontSize: "hubuum.font-size",
 	accent: "hubuum.accent",
 	secondaryAccent: "hubuum.secondary-accent",
 	pinnedItems: "hubuum.pinned-items",
@@ -35,6 +36,7 @@ export const DEVICE_SETTING_KEYS = {
 const EXACT_PORTABLE_KEYS = new Set<string>([
 	PORTABLE_USER_SETTING_KEYS.theme,
 	PORTABLE_USER_SETTING_KEYS.density,
+	PORTABLE_USER_SETTING_KEYS.fontSize,
 	PORTABLE_USER_SETTING_KEYS.accent,
 	PORTABLE_USER_SETTING_KEYS.secondaryAccent,
 	PORTABLE_USER_SETTING_KEYS.pinnedItems,

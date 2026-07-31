@@ -9,11 +9,21 @@ import {
 	getAtmosphereAccent,
 	getAtmospherePreset,
 	isAccentPreference,
+	isFontSizePreference,
 	normalizeAccentPreference,
 	resolveAtmospherePreset,
 } from "@/lib/appearance-preferences";
 
 describe("appearance preferences", () => {
+	it("accepts only the supported relative text sizes", () => {
+		expect(isFontSizePreference("90")).toBe(true);
+		expect(isFontSizePreference("100")).toBe(true);
+		expect(isFontSizePreference("110")).toBe(true);
+		expect(isFontSizePreference("120")).toBe(true);
+		expect(isFontSizePreference("125")).toBe(false);
+		expect(isFontSizePreference(null)).toBe(false);
+	});
+
 	it("accepts named and six-digit custom colors", () => {
 		expect(isAccentPreference("dusk")).toBe(true);
 		expect(isAccentPreference("#8A73E6")).toBe(true);

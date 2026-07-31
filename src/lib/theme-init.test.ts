@@ -38,6 +38,16 @@ function runThemeInit(storage: Record<string, string>): Record<string, string> {
 }
 
 describe("theme initialization", () => {
+	it("restores supported text sizes and defaults invalid values", () => {
+		expect(
+			runThemeInit({ "hubuum.font-size": "110" })["data-font-size"],
+		).toBe("110");
+		expect(
+			runThemeInit({ "hubuum.font-size": "huge" })["data-font-size"],
+		).toBe("100");
+		expect(runThemeInit({})["data-font-size"]).toBe("100");
+	});
+
 	it("migrates unsupported device colors to the Sunset theme", () => {
 		const attributes = runThemeInit({ "hubuum.login.accent": "violet" });
 		expect(attributes["data-atmosphere"]).toBe("sunset");

@@ -13,41 +13,57 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { JsonEditor } from "@/components/json-editor";
+import { CreateModal } from "@/components/create-modal";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
+import { JsonEditor } from "@/components/json-editor";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
 import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { classObjectSamplesQueryKey } from "@/lib/api/class-objects";
-import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
-import {
-	buildObjectDataPatchPlan,
-	buildObjectDataReplacePatch,
-	patchObjectData,
-} from "@/lib/api/object-data-patch";
 import { hubuumBffPath } from "@/lib/api/frontend";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
 	getApiV1Classes,
 	getApiV1ClassesByClassIdByObjectId,
-	getApiV1IamMeGroups,
 	getApiV1Collections,
 	getApiV1CollectionsByCollectionIdPermissions,
+	getApiV1IamMeGroups,
 	patchApiV1ClassesByClassIdByObjectId,
 } from "@/lib/api/generated/client";
 import type {
+	Collection,
 	GroupPermission,
 	HubuumClassExpanded,
 	HubuumObject,
 	HubuumObjectComputedResponse,
 	HubuumObjectWithPath,
-	Collection,
 	UpdateHubuumObject,
 } from "@/lib/api/generated/models";
+import {
+	buildObjectDataPatchPlan,
+	buildObjectDataReplacePatch,
+	patchObjectData,
+} from "@/lib/api/object-data-patch";
+import { useConfirm } from "@/lib/confirm-context";
 import { TITLE_STATE_EVENT } from "@/lib/create-events";
 import type { ConsoleGroup } from "@/lib/identity-scopes";
+import {
+	createObjectDataFieldValue,
+	getObjectDataFieldType,
+	getObjectDataValue,
+	type ObjectDataFieldType,
+	parseObjectDataPath,
+	setObjectDataValue,
+} from "@/lib/object-data-editing";
+import {
+	collectLargeObjectPropertyArrays,
+	flattenObjectPropertyEntries,
+	type ObjectPropertyArrayBranch,
+	type ObjectPropertyEntry,
+	type ObjectPropertyPathSegment,
+} from "@/lib/object-property-entries";
 import {
 	buildRelatedObjectPathContextSearchParams,
 	buildRelatedObjectSearchParams,
@@ -58,18 +74,6 @@ import {
 	RELATED_OBJECT_PATH_CONTEXT_BATCH_LIMIT,
 	takeUnrequestedRelatedObjectPathContextIds,
 } from "@/lib/object-relation-summary";
-import {
-	createObjectDataFieldValue,
-	getObjectDataFieldType,
-	getObjectDataValue,
-	parseObjectDataPath,
-	setObjectDataValue,
-	type ObjectDataFieldType,
-} from "@/lib/object-data-editing";
-import {
-	flattenObjectPropertyEntries,
-	type ObjectPropertyPathSegment,
-} from "@/lib/object-property-entries";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 type ObjectDetailProps = {
@@ -269,10 +273,7 @@ async function fetchRelatedObjectPathContexts(
 			const payload = await parseJsonPayload(response);
 			if (response.status !== 200) {
 				throw new Error(
-					getApiErrorMessage(
-						payload,
-						"Failed to load connection path labels.",
-					),
+					getApiErrorMessage(payload, "Failed to load connection path labels."),
 				);
 			}
 
@@ -579,6 +580,35 @@ function ObjectPropertyItem({
 	);
 }
 
+function ObjectArrayBranchRow({
+	branch,
+	onClick,
+}: {
+	branch: ObjectPropertyArrayBranch;
+	onClick: () => void;
+}) {
+	const valueCount = branch.entries.length;
+	const inspectorHint = `Open ${branch.label} in the array inspector (${branch.itemCount} items, ${valueCount} ${valueCount === 1 ? "value" : "values"}).`;
+
+	return (
+		<ObjectPropertyItem
+			label={branch.label}
+			className="object-property-item--data object-property-item--array-branch"
+		>
+			<button
+				type="button"
+				className="object-array-branch-trigger"
+				onClick={onClick}
+				aria-label={inspectorHint}
+				title={inspectorHint}
+			>
+				<span>{branch.itemCount} items</span>
+				<span aria-hidden="true">→</span>
+			</button>
+		</ObjectPropertyItem>
+	);
+}
+
 function formatComputedValue(value: unknown): string {
 	if (typeof value === "string") return value;
 	const formatted = JSON.stringify(value);
@@ -681,6 +711,7 @@ export function ObjectDetail({
 		null,
 	);
 	const [dataFieldFilter, setDataFieldFilter] = useState("");
+	const [inspectedArrayId, setInspectedArrayId] = useState<string | null>(null);
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [dataInput, setDataInput] = useState("{}");
@@ -795,13 +826,12 @@ export function ObjectDetail({
 			relatedObjectPathContextRequestsRef.current = requestState;
 		}
 
-		const unrequestedObjectIds =
-			takeUnrequestedRelatedObjectPathContextIds(
-				relatedObjectPathContextIds.filter(
-					(objectIdValue) => !contextCache.objects.has(objectIdValue),
-				),
-				requestState.objectIds,
-			);
+		const unrequestedObjectIds = takeUnrequestedRelatedObjectPathContextIds(
+			relatedObjectPathContextIds.filter(
+				(objectIdValue) => !contextCache.objects.has(objectIdValue),
+			),
+			requestState.objectIds,
+		);
 		if (unrequestedObjectIds.length === 0) {
 			return;
 		}
@@ -1608,6 +1638,18 @@ export function ObjectDetail({
 					entry.value.toLocaleLowerCase().includes(normalizedDataFilter),
 			)
 		: flattenedData.entries;
+	const displayedDataValue = isEditingData ? dataDraft : objectData.data;
+	const largeArrayBranches = collectLargeObjectPropertyArrays(
+		displayedDataValue,
+		flattenedData.entries,
+	);
+	const inspectedArrayBranch = inspectedArrayId
+		? (largeArrayBranches.find((branch) => branch.id === inspectedArrayId) ??
+			null)
+		: null;
+	const inspectedArrayValue = inspectedArrayBranch
+		? getObjectDataValue(displayedDataValue, inspectedArrayBranch.segments)
+		: null;
 	const directRelatedObjects = relatedObjects.filter(
 		(relatedObject) =>
 			getDisplayPath(relatedObject.path, relatedObject.id).length === 1,
@@ -1636,6 +1678,100 @@ export function ObjectDetail({
 		});
 	}
 
+	function openArrayInspector(arrayId: string) {
+		if (activeDataFieldId) {
+			cancelInlineDataField();
+		}
+		setInspectedArrayId(arrayId);
+	}
+
+	function closeArrayInspector() {
+		setInspectedArrayId(null);
+		if (activeDataFieldId) {
+			cancelInlineDataField();
+		}
+	}
+
+	function renderDataPropertyEntry(
+		entry: ObjectPropertyEntry,
+		keyPrefix: string,
+	) {
+		const canEditInline =
+			canEditObject &&
+			entry.kind !== "object-summary" &&
+			entry.kind !== "array-summary";
+		const isActive = activeDataFieldId === entry.id;
+		const currentValue = isActive
+			? getObjectDataValue(dataDraft, entry.segments)
+			: null;
+
+		return (
+			<ObjectPropertyItem
+				key={`${keyPrefix}:${entry.id}`}
+				label={entry.label}
+				className={`object-property-item--data${isActive ? " object-property-item--data-editing" : ""} object-property-item--${entry.kind}`}
+			>
+				{isActive ? (
+					<ObjectDataValueEditor
+						path={entry.label}
+						value={currentValue?.found ? currentValue.value : null}
+						disabled={isSavingOrDeleting}
+						onCommit={(value) => commitInlineDataField(entry.segments, value)}
+						onCancel={cancelInlineDataField}
+					/>
+				) : canEditInline ? (
+					<ObjectDataEditTrigger
+						path={entry.label}
+						value={entry.value}
+						disabled={isSavingOrDeleting}
+						onClick={() => beginInlineDataField(entry.id)}
+					/>
+				) : (
+					<span title={entry.value}>{entry.value}</span>
+				)}
+			</ObjectPropertyItem>
+		);
+	}
+
+	function renderDataPropertyRows() {
+		if (normalizedDataFilter || largeArrayBranches.length === 0) {
+			return visibleDataProperties.map((entry) =>
+				renderDataPropertyEntry(entry, "data"),
+			);
+		}
+
+		const branchByEntryId = new Map<string, ObjectPropertyArrayBranch>();
+		for (const branch of largeArrayBranches) {
+			for (const entry of branch.entries) {
+				branchByEntryId.set(entry.id, branch);
+			}
+		}
+		const renderedBranchIds = new Set<string>();
+		const rows: ReactNode[] = [];
+
+		for (const entry of flattenedData.entries) {
+			const branch = branchByEntryId.get(entry.id);
+			if (!branch) {
+				rows.push(renderDataPropertyEntry(entry, "data"));
+				continue;
+			}
+			if (renderedBranchIds.has(branch.id)) {
+				continue;
+			}
+			renderedBranchIds.add(branch.id);
+
+			rows.push(
+				<ObjectArrayBranchRow
+					key={`array:${branch.id}`}
+					branch={branch}
+					onClick={() => openArrayInspector(branch.id)}
+				/>,
+			);
+		}
+
+		return rows;
+	}
+
 	return (
 		<section className="stack">
 			<ObjectDetailTracker
@@ -1644,6 +1780,38 @@ export function ObjectDetail({
 				classId={classId}
 				collectionId={objectData.collection_id}
 			/>
+			<CreateModal
+				open={Boolean(inspectedArrayBranch)}
+				title={
+					inspectedArrayBranch
+						? `${inspectedArrayBranch.label} · ${inspectedArrayBranch.itemCount} items`
+						: "Array inspector"
+				}
+				onClose={closeArrayInspector}
+				panelClassName="object-array-inspector-panel"
+			>
+				{inspectedArrayBranch ? (
+					<div className="object-array-inspector-content">
+						<p className="muted">
+							This panel shows the complete visible branch. Filtering in the
+							main table still searches every flattened value.
+						</p>
+						<dl className="object-property-grid object-property-grid--data object-array-inspector-grid">
+							{inspectedArrayBranch.entries.map((entry) =>
+								renderDataPropertyEntry(entry, "array-inspector"),
+							)}
+						</dl>
+						<details className="object-array-inspector-raw">
+							<summary>Raw array JSON</summary>
+							<pre>
+								{inspectedArrayValue?.found
+									? stringifyJson(inspectedArrayValue.value)
+									: "Array value is unavailable."}
+							</pre>
+						</details>
+					</div>
+				) : null}
+			</CreateModal>
 			<form
 				ref={objectFormRef}
 				className="card stack resource-index object-properties-card"
@@ -1662,10 +1830,12 @@ export function ObjectDetail({
 									className="object-record-class-link"
 									href={`/classes/${objectData.hubuum_class_id}`}
 								>
-									{currentClass?.name ??
-										`Class #${objectData.hubuum_class_id}`}
+									{currentClass?.name ?? `Class #${objectData.hubuum_class_id}`}
 								</Link>
-								<span className="object-record-title-separator" aria-hidden="true">
+								<span
+									className="object-record-title-separator"
+									aria-hidden="true"
+								>
 									/
 								</span>
 								<span>{objectData.name}</span>
@@ -2064,46 +2234,7 @@ export function ObjectDetail({
 								) : null}
 								{visibleDataProperties.length ? (
 									<dl className="object-property-grid object-property-grid--data object-property-grid--data-editing">
-										{visibleDataProperties.map((entry) => {
-											const currentValue = getObjectDataValue(
-												dataDraft,
-												entry.segments,
-											);
-											const canEditInline =
-												entry.kind !== "object-summary" &&
-												entry.kind !== "array-summary";
-											const isActive = activeDataFieldId === entry.id;
-											return (
-												<ObjectPropertyItem
-													key={`data-edit:${entry.id}`}
-													label={entry.label}
-													className={`object-property-item--data${isActive ? " object-property-item--data-editing" : ""} object-property-item--${entry.kind}`}
-												>
-													{isActive ? (
-														<ObjectDataValueEditor
-															path={entry.label}
-															value={
-																currentValue.found ? currentValue.value : null
-															}
-															disabled={isSavingOrDeleting}
-															onCommit={(value) =>
-																commitInlineDataField(entry.segments, value)
-															}
-															onCancel={cancelInlineDataField}
-														/>
-													) : canEditInline ? (
-														<ObjectDataEditTrigger
-															path={entry.label}
-															value={entry.value}
-															disabled={isSavingOrDeleting}
-															onClick={() => beginInlineDataField(entry.id)}
-														/>
-													) : (
-														<span title={entry.value}>{entry.value}</span>
-													)}
-												</ObjectPropertyItem>
-											);
-										})}
+										{renderDataPropertyRows()}
 									</dl>
 								) : (
 									<div className="object-property-empty">
@@ -2225,30 +2356,7 @@ export function ObjectDetail({
 							<>
 								{visibleDataProperties.length ? (
 									<dl className="object-property-grid object-property-grid--data">
-										{visibleDataProperties.map((entry) => {
-											const canEditInline =
-												canEditObject &&
-												entry.kind !== "object-summary" &&
-												entry.kind !== "array-summary";
-											return (
-												<ObjectPropertyItem
-													key={`data:${entry.id}`}
-													label={entry.label}
-													className={`object-property-item--data object-property-item--${entry.kind}`}
-												>
-													{canEditInline ? (
-														<ObjectDataEditTrigger
-															path={entry.label}
-															value={entry.value}
-															disabled={isSavingOrDeleting}
-															onClick={() => beginInlineDataField(entry.id)}
-														/>
-													) : (
-														<span title={entry.value}>{entry.value}</span>
-													)}
-												</ObjectPropertyItem>
-											);
-										})}
+										{renderDataPropertyRows()}
 									</dl>
 								) : (
 									<div className="object-property-empty">

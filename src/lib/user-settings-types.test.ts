@@ -14,12 +14,14 @@ describe("user settings validation", () => {
 		expect(
 			normalizeUserSettingUpdates({
 				[PORTABLE_USER_SETTING_KEYS.theme]: "dark",
+				[PORTABLE_USER_SETTING_KEYS.fontSize]: "110",
 				[PORTABLE_USER_SETTING_KEYS.secondaryAccent]: "rose",
 				[PORTABLE_USER_SETTING_KEYS.objectDataColumns(4)]: null,
 				[PORTABLE_USER_SETTING_KEYS.objectHiddenComputedColumns(4)]: "[]",
 			}),
 		).toEqual({
 			[PORTABLE_USER_SETTING_KEYS.theme]: "dark",
+			[PORTABLE_USER_SETTING_KEYS.fontSize]: "110",
 			[PORTABLE_USER_SETTING_KEYS.secondaryAccent]: "rose",
 			[PORTABLE_USER_SETTING_KEYS.objectDataColumns(4)]: null,
 			[PORTABLE_USER_SETTING_KEYS.objectHiddenComputedColumns(4)]: "[]",
@@ -42,6 +44,9 @@ describe("user settings validation", () => {
 	});
 
 	it("classifies portable and device-local settings", () => {
+		expect(getUserSettingScope(PORTABLE_USER_SETTING_KEYS.fontSize)).toBe(
+			"portable",
+		);
 		expect(getUserSettingScope(PORTABLE_USER_SETTING_KEYS.pinnedItems)).toBe(
 			"portable",
 		);
