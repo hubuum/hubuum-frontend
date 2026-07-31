@@ -20,6 +20,7 @@ type ReportTemplateCardProps = {
 	latestResultError?: boolean;
 	latestResultLoading?: boolean;
 	latestResultStatus?: ReportResultStatus | null;
+	onEditDefaultQuery: (template: ReportTemplate) => void;
 	template: ReportTemplate;
 };
 
@@ -29,6 +30,7 @@ export function ReportTemplateCard({
 	latestResultError = false,
 	latestResultLoading = false,
 	latestResultStatus,
+	onEditDefaultQuery,
 	template,
 }: ReportTemplateCardProps) {
 	const needsObject = template.scope_kind === "related_objects";
@@ -133,6 +135,15 @@ export function ReportTemplateCard({
 						More
 					</summary>
 					<div className="report-card-more-menu">
+						<button
+							type="button"
+							onClick={(event) => {
+								event.currentTarget.closest("details")?.removeAttribute("open");
+								onEditDefaultQuery(template);
+							}}
+						>
+							Edit default query
+						</button>
 						<Link href={`/exports/templates/${template.id}`}>
 							Edit template
 						</Link>

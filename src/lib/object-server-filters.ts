@@ -26,6 +26,8 @@ export type ObjectServerFilterField =
 	| "description"
 	| "id"
 	| "collection_id"
+	| "created_at"
+	| "updated_at"
 	| "json_data"
 	| "computed";
 
@@ -93,6 +95,10 @@ const NUMBER_OPERATORS = new Set<ObjectServerFilterOperator>([
 	"lt",
 	"lte",
 ]);
+const DATE_OPERATORS = new Set<ObjectServerFilterOperator>([
+	...NUMBER_OPERATORS,
+	"between",
+]);
 const JSON_OPERATORS = new Set<ObjectServerFilterOperator>([
 	...STRING_OPERATORS,
 	...NUMBER_OPERATORS,
@@ -115,6 +121,8 @@ const BASE_FIELDS = new Set<ObjectServerFilterField>([
 	"description",
 	"id",
 	"collection_id",
+	"created_at",
+	"updated_at",
 	"json_data",
 	"computed",
 ]);
@@ -534,6 +542,16 @@ export function normalizeObjectServerFilter(
 	) {
 		return null;
 	}
+	if (field === "created_at" || field === "updated_at") {
+		if (!trimmedValue || !DATE_OPERATORS.has(baseOperator)) return null;
+		if (
+			baseOperator === "between" &&
+			(trimmedValue.split(",").length !== 2 ||
+				trimmedValue.split(",").some((item) => !item.trim()))
+		) {
+			return null;
+		}
+	}
 
 	if (field === "json_data") {
 		const path = Array.isArray(candidate.path)
@@ -609,14 +627,15 @@ export function parseObjectServerFilterQueryParameter(
 ): ObjectServerFilter | null {
 	const operatorIndex = key.lastIndexOf("__");
 	const fieldKey = operatorIndex > 0 ? key.slice(0, operatorIndex) : key;
-	const operator =
-		operatorIndex > 0 ? key.slice(operatorIndex + 2) : "equals";
+	const operator = operatorIndex > 0 ? key.slice(operatorIndex + 2) : "equals";
 
 	if (
 		fieldKey === "name" ||
 		fieldKey === "description" ||
 		fieldKey === "id" ||
-		fieldKey === "collection_id"
+		fieldKey === "collection_id" ||
+		fieldKey === "created_at" ||
+		fieldKey === "updated_at"
 	) {
 		return normalizeObjectServerFilter({
 			field: fieldKey,
@@ -745,5 +764,7 @@ export function getObjectServerFilterLabel(filter: ObjectServerFilter): string {
 		description: "Description",
 		id: "ID",
 		collection_id: "Collection ID",
+		created_at: "Created at",
+		updated_at: "Updated at",
 	}[filter.field];
 }

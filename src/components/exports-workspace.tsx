@@ -23,6 +23,7 @@ import {
 	type ServerFilterComputedField,
 	type ServerFilterDataField,
 } from "@/components/object-server-filter-menu";
+import { ReportDefaultQueryModal } from "@/components/report-default-query-modal";
 import { ReportTemplateCard } from "@/components/report-template-card";
 import { TableExportMenu } from "@/components/table-export-menu";
 import {
@@ -229,6 +230,8 @@ export function ExportsWorkspace({
 		useState<ExportWorkspaceView>(initialView);
 	const [templateSearch, setTemplateSearch] = useState("");
 	const [templateCollectionFilter, setTemplateCollectionFilter] = useState("");
+	const [defaultQueryTemplate, setDefaultQueryTemplate] =
+		useState<ReportTemplate | null>(null);
 	const [scopeKind, setScopeKind] = useState<ReportScopeKind>("collections");
 	const [classId, setClassId] = useState("");
 	const [objectId, setObjectId] = useState("");
@@ -788,6 +791,12 @@ export function ExportsWorkspace({
 	const activeReportProgress = getTaskProgressPercent(activeReportTask);
 	return (
 		<section className="stack export-workspace">
+			{defaultQueryTemplate ? (
+				<ReportDefaultQueryModal
+					template={defaultQueryTemplate}
+					onClose={() => setDefaultQueryTemplate(null)}
+				/>
+			) : null}
 			<header className="export-page-header">
 				<div className="stack action-card-header">
 					<h2>Open reports and retrieve exports</h2>
@@ -1607,6 +1616,7 @@ export function ExportsWorkspace({
 													latestResultStatus={reportResultStatuses.get(
 														template.id,
 													)}
+													onEditDefaultQuery={setDefaultQueryTemplate}
 													collectionLabel={collectionLabels.get(
 														template.collection_id,
 													)}
