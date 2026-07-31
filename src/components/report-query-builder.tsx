@@ -234,7 +234,7 @@ export function ReportQueryBuilder({
 
 	return (
 		<div className="query-builder-card export-template-query-builder">
-			<div className="panel-header">
+			<div className="panel-header query-builder-header">
 				<div className="stack action-card-header">
 					<h4>{heading}</h4>
 					<p className="muted">{description}</p>

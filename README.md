@@ -235,8 +235,9 @@ from the current saved-default export's generation time and stored-output
 expiry without generating a report during inspection. Saved-query hints
 translate filters and sorting into readable field, operator, and value
 descriptions, and class-scoped reports identify their class. These changes
-affect only the configured URL. Permanent layout, scope, include, and default
-changes remain in
+affect only the configured URL. The saved default query can be edited directly
+from each catalog card's More menu. Permanent layout, scope, include, and other
+template changes remain in
 `/exports/templates/{template_id}`, while new definitions start under
 `/exports/templates/new`. Adding `?from={template_id}` to the new-template URL
 copies an existing definition into a separately named, unsaved template.

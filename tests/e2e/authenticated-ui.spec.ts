@@ -1015,7 +1015,7 @@ test.describe("authenticated workspace", () => {
 		page,
 	}) => {
 		const timestamp = "2026-07-26T08:00:00Z";
-		const template = {
+		let template = {
 			id: 7,
 			collection_id: 1,
 			name: "Inventory",
@@ -1034,6 +1034,7 @@ test.describe("authenticated workspace", () => {
 			created_at: timestamp,
 			updated_at: timestamp,
 		};
+		const submittedDefaultQueryPatches: Array<{ default_query: string }> = [];
 		const task = {
 			id: 314,
 			kind: "export",
@@ -1079,12 +1080,56 @@ test.describe("authenticated workspace", () => {
 		});
 		await context.route("**/api/v1/export-templates**", async (route) => {
 			const pathname = new URL(route.request().url()).pathname;
+			if (route.request().method() === "PATCH") {
+				const submittedDefaultQueryPatch = route.request().postDataJSON() as {
+					default_query: string;
+				};
+				submittedDefaultQueryPatches.push(submittedDefaultQueryPatch);
+				template = {
+					...template,
+					...submittedDefaultQueryPatch,
+					updated_at: "2026-07-26T08:05:00Z",
+				};
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify(template),
+				});
+				return;
+			}
 			await route.fulfill({
 				status: 200,
 				contentType: "application/json",
 				body: JSON.stringify(
 					pathname.endsWith(`/${template.id}`) ? template : [template],
 				),
+			});
+		});
+		await context.route(
+			"**/_hubuum-bff/classes/10/objects?**",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: "[]",
+				});
+			},
+		);
+		await context.route(
+			"**/api/v1/classes/10/computed-fields**",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify({ definitions: [] }),
+				});
+			},
+		);
+		await context.route("**/api/v1/iam/me/computed-fields**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: "[]",
 			});
 		});
 		await context.route("**/reports/7**", async (route) => {
@@ -1163,6 +1208,74 @@ test.describe("authenticated workspace", () => {
 			/__|&|%3D/,
 		);
 		await expect(page.getByText(/Template:/)).toBeVisible();
+		const reportCard = page.locator(".report-card").filter({
+			has: page.getByRole("heading", { name: "Inventory" }),
+		});
+		await reportCard.getByText("More", { exact: true }).click();
+		await reportCard
+			.getByRole("button", { name: "Edit default query" })
+			.click();
+		const defaultQueryDialog = page.getByRole("dialog", {
+			name: "Edit default query · Inventory",
+		});
+		await expect(defaultQueryDialog).toBeVisible();
+		const serverFiltersButton = defaultQueryDialog.getByRole("button", {
+			name: /Server filters/,
+		});
+		await serverFiltersButton.click();
+		const serverFiltersDialog = defaultQueryDialog.getByRole("dialog", {
+			name: "Server filters",
+		});
+		await expect(serverFiltersDialog).toBeVisible();
+		const serverFilterField = serverFiltersDialog.getByLabel(
+			"Server filter field",
+		);
+		await expect(
+			serverFilterField.locator('option[value="created_at"]'),
+		).toHaveText("Created at");
+		await expect(
+			serverFilterField.locator('option[value="updated_at"]'),
+		).toHaveText("Updated at");
+		await serverFilterField.selectOption("created_at");
+		await expect(
+			serverFiltersDialog.getByLabel("Server filter operator"),
+		).toContainText("is on or after");
+		const [defaultQueryDialogBox, serverFiltersDialogBox] = await Promise.all([
+			defaultQueryDialog.boundingBox(),
+			serverFiltersDialog.boundingBox(),
+		]);
+		expect(defaultQueryDialogBox).not.toBeNull();
+		expect(serverFiltersDialogBox).not.toBeNull();
+		expect(serverFiltersDialogBox?.x).toBeGreaterThanOrEqual(
+			defaultQueryDialogBox?.x ?? 0,
+		);
+		expect(
+			(serverFiltersDialogBox?.x ?? 0) + (serverFiltersDialogBox?.width ?? 0),
+		).toBeLessThanOrEqual(
+			(defaultQueryDialogBox?.x ?? 0) + (defaultQueryDialogBox?.width ?? 0),
+		);
+		await serverFiltersButton.click();
+		await expect(serverFiltersDialog).toBeHidden();
+		await defaultQueryDialog
+			.getByText("Advanced query parameters", { exact: true })
+			.click();
+		await defaultQueryDialog
+			.getByRole("textbox", { name: "Parameters" })
+			.fill("visibility=internal");
+		await defaultQueryDialog
+			.getByRole("button", { name: "Save default query" })
+			.click();
+		await expect(defaultQueryDialog).toBeHidden();
+		expect(submittedDefaultQueryPatches).toHaveLength(1);
+		expect(Object.keys(submittedDefaultQueryPatches[0] ?? {})).toEqual([
+			"default_query",
+		]);
+		expect(submittedDefaultQueryPatches[0]?.default_query).toContain(
+			"visibility=internal",
+		);
+		await expect(
+			page.getByText("Default query for “Inventory” saved."),
+		).toBeVisible();
 
 		await configureReport.click();
 		await expect(page).toHaveURL(/\/exports\/reports\/7$/);

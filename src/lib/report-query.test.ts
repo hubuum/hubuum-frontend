@@ -73,6 +73,11 @@ describe("report query builder", () => {
 			[
 				{ field: "name", operator: "icontains", value: "edge" },
 				{
+					field: "updated_at",
+					operator: "gte",
+					value: "2026-01-01T00:00:00Z",
+				},
+				{
 					field: "json_data",
 					operator: "not_is_null",
 					path: ["network", "address"],
@@ -106,6 +111,11 @@ describe("report query builder", () => {
 		expect(parsed.filters).toEqual([
 			{ field: "name", operator: "icontains", value: "edge" },
 			{
+				field: "updated_at",
+				operator: "gte",
+				value: "2026-01-01T00:00:00Z",
+			},
+			{
 				field: "json_data",
 				operator: "not_is_null",
 				path: ["network", "address"],
@@ -120,9 +130,7 @@ describe("report query builder", () => {
 				computedResultType: "integer",
 			},
 		]);
-		expect(parsed.sorts).toEqual([
-			{ field: "updated_at", direction: "desc" },
-		]);
+		expect(parsed.sorts).toEqual([{ field: "updated_at", direction: "desc" }]);
 		expect(parsed.advancedQuery).toBe("include=computed");
 	});
 
@@ -133,11 +141,7 @@ describe("report query builder", () => {
 		);
 
 		expect(parsed.filters).toEqual([]);
-		expect(parsed.advancedQuery).toContain(
-			"computed.shared.missing__gte=1",
-		);
-		expect(parsed.advancedQuery).toContain(
-			"json_data__gte=missing-separator",
-		);
+		expect(parsed.advancedQuery).toContain("computed.shared.missing__gte=1");
+		expect(parsed.advancedQuery).toContain("json_data__gte=missing-separator");
 	});
 });

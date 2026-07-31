@@ -5893,16 +5893,54 @@ button.table-sort-button:hover {
 	box-shadow: var(--shadow-float);
 }
 
-.report-card-more-menu a {
+.report-card-more-menu a,
+.report-card-more-menu button {
+	display: block;
+	width: 100%;
 	padding: 0.6rem 0.7rem;
+	border: 0;
 	border-radius: 8px;
+	background: transparent;
 	color: var(--ink);
 	font-size: 0.86rem;
+	font-weight: 500;
+	text-align: left;
 	text-decoration: none;
 }
 
-.report-card-more-menu a:hover {
+.report-card-more-menu a:hover,
+.report-card-more-menu button:hover {
 	background: var(--bg-highlight);
+	filter: none;
+}
+
+.report-default-query-form .server-filter {
+	position: static;
+}
+
+.report-default-query-form .server-filter-menu {
+	right: 0;
+	left: 0;
+	width: auto;
+	max-height: min(32rem, calc(100dvh - 10rem));
+	overflow: auto;
+}
+
+.report-default-query-form .server-filter-form {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-default-query-form .server-filter-form .server-filter-data-types {
+	grid-column: 1 / -1;
+}
+
+.report-default-query-form .server-filter-form > button {
+	width: 100%;
+}
+
+.report-default-query-form .server-filter-form > button,
+.report-default-query-form .server-filter-form .server-filter-negate {
+	margin-top: 0;
 }
 
 .export-template-page {
@@ -7279,6 +7317,10 @@ button.token-revoke-button {
 	border: 1px solid var(--line);
 	border-radius: 14px;
 	background: var(--bg-highlight);
+}
+
+.query-builder-header {
+	position: relative;
 }
 
 .export-disclosure .query-builder-card,
@@ -10890,6 +10932,10 @@ button.atmosphere-option.is-selected {
 	}
 
 	.server-filter-form {
+		grid-template-columns: 1fr;
+	}
+
+	.report-default-query-form .server-filter-form {
 		grid-template-columns: 1fr;
 	}
 
