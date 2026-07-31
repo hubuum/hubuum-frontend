@@ -15,7 +15,7 @@ import {
 } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
-import { JsonEditor } from "@/components/json-editor";
+import { ObjectCreateDataEditor } from "@/components/object-create-data-editor";
 import {
 	ObjectGroupingMenu,
 	type ObjectAggregateMeasureField,
@@ -65,6 +65,12 @@ import {
 	SELECTION_STATE_EVENT,
 } from "@/lib/create-events";
 import { getDataColumnHeadings } from "@/lib/data-column-headings";
+import { buildObjectCreateDataModel } from "@/lib/object-create-data";
+import {
+	getObjectCreateLabel,
+	getObjectCreationLabel,
+	getSingularObjectClassName,
+} from "@/lib/object-create-label";
 import {
 	resolveObjectServerFilterComputedFields,
 	resolveObjectServerFilterDataFields,
@@ -937,6 +943,7 @@ export function ObjectsExplorer() {
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
 	const columnPickerRef = useRef<HTMLDivElement | null>(null);
+	const createModalInitializedClassRef = useRef<number | null>(null);
 	const classesQuery = useQuery({
 		queryKey: ["classes", "object-explorer"],
 		queryFn: fetchClasses,
@@ -947,7 +954,6 @@ export function ObjectsExplorer() {
 	});
 	const selectedClassId = searchParams.get("classId") ?? "";
 	const groupingClassIdRef = useRef(selectedClassId);
-	const [createClassId, setCreateClassId] = useState("");
 	const [collectionId, setCollectionId] = useState("");
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -1075,6 +1081,9 @@ export function ObjectsExplorer() {
 		() => classes.find((item) => item.id === parsedClassId),
 		[classes, parsedClassId],
 	);
+	const createObjectLabel = getObjectCreateLabel(selectedClass?.name);
+	const createObjectDialogLabel = getObjectCreationLabel(selectedClass?.name);
+	const createObjectNoun = getSingularObjectClassName(selectedClass?.name);
 	const dataColumnStorageKey =
 		parsedClassId === null
 			? null
@@ -1093,14 +1102,7 @@ export function ObjectsExplorer() {
 			: PORTABLE_USER_SETTING_KEYS.objectCustomDataFields(parsedClassId);
 	const customDataFieldsReady =
 		loadedCustomDataFieldsStorageKey === customDataFieldsStorageKey;
-	const parsedCreateClassId = useMemo(() => {
-		const value = Number.parseInt(createClassId, 10);
-		return Number.isFinite(value) ? value : null;
-	}, [createClassId]);
-	const createSelectedClass = useMemo(
-		() => classes.find((item) => item.id === parsedCreateClassId),
-		[classes, parsedCreateClassId],
-	);
+	const createSelectedClass = selectedClass;
 	const sharedComputedQuery = useQuery({
 		queryKey: ["computed-fields", "shared", parsedClassId],
 		queryFn: () => fetchSharedComputedFields(parsedClassId ?? 0),
@@ -1194,7 +1196,7 @@ export function ObjectsExplorer() {
 			setName("");
 			setDescription("");
 			setDataInput("{}");
-			showToast("Object created.", "success");
+			showToast(`${createObjectNoun ?? "Object"} created.`, "success");
 			setCreateModalOpen(false);
 		},
 		onError: (error) => {
@@ -1272,31 +1274,24 @@ export function ObjectsExplorer() {
 	}, [confirm, selectedObjectIds, parsedClassId, deleteMutation]);
 
 	useEffect(() => {
-		if (!classes.length) {
-			setCreateClassId((current) => (current === "" ? current : ""));
+		if (!isCreateModalOpen) {
+			createModalInitializedClassRef.current = null;
 			return;
 		}
-
-		const hasSelectedCreateClass = classes.some(
-			(classItem) => String(classItem.id) === createClassId,
-		);
-		if (hasSelectedCreateClass) {
+		if (
+			!createSelectedClass ||
+			createModalInitializedClassRef.current === createSelectedClass.id
+		) {
 			return;
 		}
-
-		if (selectedClass) {
-			const nextClassId = String(selectedClass.id);
-			setCreateClassId((current) =>
-				current === nextClassId ? current : nextClassId,
-			);
-			return;
-		}
-
-		const nextClassId = String(classes[0].id);
-		setCreateClassId((current) =>
-			current === nextClassId ? current : nextClassId,
-		);
-	}, [classes, createClassId, selectedClass]);
+		createModalInitializedClassRef.current = createSelectedClass.id;
+		setCollectionId(String(createSelectedClass.collection.id));
+		const initialData = buildObjectCreateDataModel(
+			createSelectedClass.json_schema,
+			[],
+		).initialData;
+		setDataInput(JSON.stringify(initialData, null, 2));
+	}, [createSelectedClass, isCreateModalOpen]);
 
 	useEffect(() => {
 		if (!collections.length) {
@@ -1599,7 +1594,7 @@ export function ObjectsExplorer() {
 			34,
 			Math.min(96, Math.max(standardLength, customLength) + 14),
 		);
-		return `${widthCh}ch`;
+		return `${Math.round(widthCh * 8.5)}px`;
 	}, [customDataFields, dataColumnCandidates]);
 	const searchTerm = normalizeSearchTerm(searchParams.get("search"));
 	const filteredObjects = useMemo(
@@ -2253,20 +2248,12 @@ export function ObjectsExplorer() {
 			if (customEvent.detail?.section !== "objects") {
 				return;
 			}
-
-			if (selectedClass) {
-				setCreateClassId(String(selectedClass.id));
-			} else if (classes.length) {
-				setCreateClassId(String(classes[0].id));
-			} else {
-				setCreateClassId("");
-			}
 			setCreateModalOpen(true);
 		};
 
 		window.addEventListener(OPEN_CREATE_EVENT, onOpenCreate);
 		return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
-	}, [classes, selectedClass]);
+	}, []);
 
 	useEffect(() => {
 		const onDeselectAll = () => {
@@ -2484,7 +2471,7 @@ export function ObjectsExplorer() {
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
-		if (!createSelectedClass || parsedCreateClassId === null) {
+		if (!createSelectedClass) {
 			showToast("Select a class before creating an object.", "error");
 			return;
 		}
@@ -2711,22 +2698,14 @@ export function ObjectsExplorer() {
 			>
 				<div className="form-grid">
 					<label className="control-field">
-						<span>Class</span>
-						<select
+						<span>Name</span>
+						<input
 							required
-							value={createClassId}
-							onChange={(event) => setCreateClassId(event.target.value)}
-							disabled={classes.length === 0}
-						>
-							{classes.length === 0 ? (
-								<option value="">No classes available</option>
-							) : null}
-							{classes.map((classItem) => (
-								<option key={classItem.id} value={classItem.id}>
-									{classItem.name} (#{classItem.id})
-								</option>
-							))}
-						</select>
+							value={name}
+							onChange={(event) => setName(event.target.value)}
+							placeholder="e.g. srv-web-01"
+							disabled={!createSelectedClass}
+						/>
 					</label>
 
 					<div className="control-field">
@@ -2761,17 +2740,6 @@ export function ObjectsExplorer() {
 						)}
 					</div>
 
-					<label className="control-field">
-						<span>Name</span>
-						<input
-							required
-							value={name}
-							onChange={(event) => setName(event.target.value)}
-							placeholder="e.g. srv-web-01"
-							disabled={!createSelectedClass}
-						/>
-					</label>
-
 					<label className="control-field control-field--wide">
 						<span>Description</span>
 						<input
@@ -2783,23 +2751,16 @@ export function ObjectsExplorer() {
 						/>
 					</label>
 
-					<div className="control-field control-field--wide">
-						<JsonEditor
-							id="object-create-data"
-							label="Data (JSON)"
+					<div className="control-field control-field--wide object-create-data-field">
+						<ObjectCreateDataEditor
 							value={dataInput}
 							onChange={setDataInput}
-							placeholder='{"hostname":"srv-web-01","env":"prod"}'
-							mode="data"
-							rows={9}
 							disabled={!createSelectedClass}
-							validationEnabled={createSelectedClass?.validate_schema ?? false}
-							validationSchema={createSelectedClass?.json_schema}
-							helperText={
-								createSelectedClass?.validate_schema
-									? "This class validates object data against its JSON schema."
-									: "This class does not currently enforce JSON schema validation."
+							validationEnabled={
+								createSelectedClass?.validate_schema ?? false
 							}
+							schema={createSelectedClass?.json_schema}
+							sampleData={serverFilterSampleData}
 						/>
 					</div>
 				</div>
@@ -2816,7 +2777,7 @@ export function ObjectsExplorer() {
 						type="submit"
 						disabled={createMutation.isPending || !createSelectedClass}
 					>
-						{createMutation.isPending ? "Creating..." : "Create object"}
+						{createMutation.isPending ? "Creating..." : createObjectDialogLabel}
 					</button>
 				</div>
 			</form>
@@ -2838,6 +2799,7 @@ export function ObjectsExplorer() {
 					: buildResourceSummary({ status: "No class selected" })
 			: objectsQuery.data
 				? buildResourceSummary({
+						compactLoadedTotal: true,
 						shown: searchTerm ? filteredObjects.length : null,
 						shownLabel: "shown on page",
 						loaded: objects.length,
@@ -2874,8 +2836,9 @@ export function ObjectsExplorer() {
 		<div className="stack">
 			<CreateModal
 				open={isCreateModalOpen}
-				title="Create object"
+				title={createObjectDialogLabel}
 				onClose={() => setCreateModalOpen(false)}
+				panelClassName="object-create-modal-panel"
 			>
 				{renderCreateObjectForm()}
 			</CreateModal>
@@ -2886,7 +2849,7 @@ export function ObjectsExplorer() {
 						title="Objects"
 						summary={resourceSummary}
 						createSection="objects"
-						createLabel="New object"
+						createLabel={createObjectLabel}
 						context={
 							<>
 								<span className="resource-index-context-label">of</span>
@@ -3387,7 +3350,7 @@ export function ObjectsExplorer() {
 									onClick={() => setCreateModalOpen(true)}
 									disabled={classes.length === 0}
 								>
-									New object
+									{createObjectLabel}
 								</button>
 							)
 						}

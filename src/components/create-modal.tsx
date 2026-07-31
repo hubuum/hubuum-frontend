@@ -12,6 +12,7 @@ type CreateModalProps = {
 	children: ReactNode;
 	navigation?: ModalRecordNavigation;
 	closeDisabled?: boolean;
+	panelClassName?: string;
 };
 
 export type ModalRecordNavigation = {
@@ -55,6 +56,7 @@ export function CreateModal({
 	children,
 	navigation,
 	closeDisabled = false,
+	panelClassName = "",
 }: CreateModalProps) {
 	const titleId = useId();
 	const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -126,7 +128,7 @@ export function CreateModal({
 			/>
 			<section
 				ref={panelRef}
-				className={`modal-panel card${navigation ? " modal-panel--navigable" : ""}`}
+				className={`modal-panel card${navigation ? " modal-panel--navigable" : ""}${panelClassName ? ` ${panelClassName}` : ""}`}
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby={titleId}

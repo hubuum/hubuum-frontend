@@ -1,5 +1,6 @@
 export const DEFAULT_OBJECT_PROPERTY_MAX_DEPTH = 8;
 export const DEFAULT_OBJECT_PROPERTY_MAX_ENTRIES = 200;
+export const DEFAULT_LARGE_ARRAY_MIN_ITEMS = 6;
 
 export type ObjectPropertyPathSegment = string | number;
 
@@ -27,6 +28,19 @@ export type FlattenObjectPropertyEntriesOptions = {
 export type ObjectPropertyEntriesResult = {
 	entries: ObjectPropertyEntry[];
 	truncated: boolean;
+};
+
+export type ObjectPropertyArrayBranch = {
+	readonly id: string;
+	readonly path: string;
+	readonly label: string;
+	readonly segments: readonly ObjectPropertyPathSegment[];
+	readonly itemCount: number;
+	readonly entries: readonly ObjectPropertyEntry[];
+};
+
+export type CollectLargeObjectPropertyArraysOptions = {
+	minItems?: number;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -90,6 +104,17 @@ function formatPath(segments: readonly ObjectPropertyPathSegment[]): string {
 		path += `${path.length > 0 ? "." : ""}${escapePathKey(segment)}`;
 	}
 	return path;
+}
+
+function hasPathPrefix(
+	segments: readonly ObjectPropertyPathSegment[],
+	prefix: readonly ObjectPropertyPathSegment[],
+): boolean {
+	if (segments.length < prefix.length) {
+		return false;
+	}
+
+	return prefix.every((segment, index) => segments[index] === segment);
 }
 
 function formatPrimitive(value: unknown): string {
@@ -221,4 +246,70 @@ export function flattenObjectPropertyEntries(
 
 	visit(value, [], 0);
 	return { entries, truncated };
+}
+
+/**
+ * Finds the outermost arrays large enough to benefit from a compact display.
+ *
+ * Entries stay sourced from the normal flattened result so display modes do
+ * not change filtering, editing paths, ordering, or truncation behavior.
+ */
+export function collectLargeObjectPropertyArrays(
+	value: unknown,
+	entries: readonly ObjectPropertyEntry[],
+	options: CollectLargeObjectPropertyArraysOptions = {},
+): ObjectPropertyArrayBranch[] {
+	const minItems = normalizeLimit(
+		options.minItems,
+		DEFAULT_LARGE_ARRAY_MIN_ITEMS,
+	);
+	const branches: ObjectPropertyArrayBranch[] = [];
+
+	function visit(
+		currentValue: unknown,
+		segments: readonly ObjectPropertyPathSegment[],
+	): void {
+		if (Array.isArray(currentValue)) {
+			if (currentValue.length >= minItems) {
+				const branchEntries = entries.filter((entry) =>
+					hasPathPrefix(entry.segments, segments),
+				);
+				const hasVisibleDescendants = branchEntries.some(
+					(entry) => entry.segments.length > segments.length,
+				);
+				if (hasVisibleDescendants) {
+					const entrySegments = [...segments];
+					const path = formatPath(entrySegments);
+					branches.push({
+						id: JSON.stringify(entrySegments),
+						path,
+						label: path,
+						segments: entrySegments,
+						itemCount: currentValue.length,
+						entries: branchEntries,
+					});
+				}
+
+				// An outer large array owns its inline presentation. Nested large
+				// arrays remain visible as leaves when that branch is expanded.
+				return;
+			}
+
+			currentValue.forEach((item, index) => {
+				visit(item, [...segments, index]);
+			});
+			return;
+		}
+
+		if (!isRecord(currentValue)) {
+			return;
+		}
+
+		for (const key of Object.keys(currentValue).sort(compareKeys)) {
+			visit(currentValue[key], [...segments, key]);
+		}
+	}
+
+	visit(value, []);
+	return branches;
 }

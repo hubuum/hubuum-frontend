@@ -31,6 +31,16 @@ describe("object server filters", () => {
 		appendObjectServerFilters(params, [
 			{ field: "description", operator: "icontains", value: "prod" },
 			{
+				field: "created_at",
+				operator: "gte",
+				value: "2026-01-01T00:00:00Z",
+			},
+			{
+				field: "updated_at",
+				operator: "between",
+				value: "2026-01-01T00:00:00Z,2026-02-01T00:00:00Z",
+			},
+			{
 				field: "json_data",
 				operator: "gte",
 				value: "4",
@@ -38,6 +48,10 @@ describe("object server filters", () => {
 			},
 		]);
 		expect(params.get("description__icontains")).toBe("prod");
+		expect(params.get("created_at__gte")).toBe("2026-01-01T00:00:00Z");
+		expect(params.get("updated_at__between")).toBe(
+			"2026-01-01T00:00:00Z,2026-02-01T00:00:00Z",
+		);
 		expect(params.get("json_data__gte")).toBe("metrics,cpu_count=4");
 	});
 

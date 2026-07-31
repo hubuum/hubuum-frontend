@@ -1709,6 +1709,13 @@ html[data-design-variant="v6"] .create-button.resource-index-create:focus-visibl
 		gap: 0.42rem;
 	}
 
+	html[data-design-variant="v6"][data-theme="dark"]
+		.topology-nav-menu
+		> button.topology-nav-trigger,
+	html[data-design-variant="v6"][data-theme="dark"] .sidebar-label {
+		color: color-mix(in srgb, var(--nav-ink) 84%, var(--nav-muted));
+	}
+
 	html[data-design-variant="v6"] .topology-home-link .sidebar-link:hover,
 	html[data-design-variant="v6"] .topology-home-link .sidebar-link.active,
 	html[data-design-variant="v6"]

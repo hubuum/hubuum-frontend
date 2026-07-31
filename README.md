@@ -140,17 +140,22 @@ schema when available, then augmented from the currently loaded object rows.
 Discovery is page-local and shallowly bounded, so it does not trigger an
 expensive full-dataset scan.
 
+Object creation stays scoped to the selected class. The default Data editor
+combines schema fields with fields observed in sampled class objects, preloads
+required schema fields, and offers raw JSON as an alternate synchronized tab.
+Closed schemas hide arbitrary-field creation; permissive schemas expose it.
+
 Column preferences are stored per user and per class id. The `Data columns`
 menu lets users reset to suggested fields or clear all promoted columns. The
 same menu can show or hide the raw data preview column, also remembered per
-class id. Portable preferences such as light/dark mode, workspace atmosphere,
-pins, and selected data columns are saved in the user settings store, with
-`localStorage` used as an owner-scoped browser cache. The Appearance page offers
-four complete workspace atmospheres: Sunset, Golden Hour, Clouds, and Forest. Each
-atmosphere owns its action, typography, canvas, navigation, surface, and ambient
-palette in both light and dark mode. Viewport and activity state such as table
-widths, sidebar state, recent items, and task last-seen timestamps stay
-device-local.
+class id. Portable preferences such as light/dark mode, relative text size,
+workspace atmosphere, pins, and selected data columns are saved in the user
+settings store, with `localStorage` used as an owner-scoped browser cache. The
+Appearance page offers four complete workspace atmospheres: Sunset, Golden
+Hour, Clouds, and Forest. Each atmosphere owns its action, typography, canvas,
+navigation, surface, and ambient palette in both light and dark mode. Viewport
+and activity state such as table widths, sidebar state, recent items, and task
+last-seen timestamps stay device-local.
 
 The `Custom data fields` menu lets users create personal fallback columns with a
 label and a `|`-separated list of data paths. The table shows the first
@@ -235,8 +240,9 @@ from the current saved-default export's generation time and stored-output
 expiry without generating a report during inspection. Saved-query hints
 translate filters and sorting into readable field, operator, and value
 descriptions, and class-scoped reports identify their class. These changes
-affect only the configured URL. Permanent layout, scope, include, and default
-changes remain in
+affect only the configured URL. The saved default query can be edited directly
+from each catalog card's More menu. Permanent layout, scope, include, and other
+template changes remain in
 `/exports/templates/{template_id}`, while new definitions start under
 `/exports/templates/new`. Adding `?from={template_id}` to the new-template URL
 copies an existing definition into a separately named, unsaved template.

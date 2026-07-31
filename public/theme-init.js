@@ -59,6 +59,16 @@
 	}
 
 	try {
+		const stored = window.localStorage.getItem("hubuum.font-size");
+		const fontSize = ["90", "100", "110", "120"].includes(stored)
+			? stored
+			: "100";
+		document.documentElement.setAttribute("data-font-size", fontSize);
+	} catch {
+		// Ignore text-size init errors and keep CSS defaults.
+	}
+
+	try {
 		const stored = window.localStorage.getItem("hubuum.login.background");
 		if (["sea", "mountains", "clouds", "forest"].includes(stored)) {
 			document.documentElement.setAttribute("data-login-background", stored);

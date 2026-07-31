@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { flattenObjectPropertyEntries } from "@/lib/object-property-entries";
+import {
+	collectLargeObjectPropertyArrays,
+	flattenObjectPropertyEntries,
+} from "@/lib/object-property-entries";
 
 describe("flattenObjectPropertyEntries", () => {
 	it("flattens nested records and arrays in deterministic key order", () => {
@@ -160,5 +163,78 @@ describe("flattenObjectPropertyEntries", () => {
 			z: [{ second: 2, first: 1 }],
 			a: { nested: "value" },
 		});
+	});
+});
+
+describe("collectLargeObjectPropertyArrays", () => {
+	it("finds large arrays without replacing the flattened entry source", () => {
+		const value = {
+			interfaces: Array.from({ length: 6 }, (_, index) => ({
+				name: `eth${index}`,
+				enabled: index % 2 === 0,
+			})),
+			tags: ["one", "two"],
+		};
+		const flattened = flattenObjectPropertyEntries(value);
+		const branches = collectLargeObjectPropertyArrays(value, flattened.entries);
+
+		expect(branches).toHaveLength(1);
+		expect(branches[0]).toMatchObject({
+			path: "interfaces",
+			itemCount: 6,
+		});
+		expect(branches[0].entries).toHaveLength(12);
+		expect(branches[0].entries[0]?.path).toBe("interfaces[0].enabled");
+		expect(branches[0].entries.at(-1)?.path).toBe("interfaces[5].name");
+	});
+
+	it("keeps separate nested arrays and lets an outer large array own its branch", () => {
+		const value = {
+			groups: {
+				left: Array.from({ length: 6 }, (_, index) => index),
+				right: Array.from({ length: 7 }, (_, index) => index),
+			},
+			outer: Array.from({ length: 6 }, () => ({
+				nested: Array.from({ length: 8 }, (_, index) => index),
+			})),
+		};
+		const flattened = flattenObjectPropertyEntries(value);
+		const branches = collectLargeObjectPropertyArrays(value, flattened.entries);
+
+		expect(branches.map((branch) => branch.path)).toEqual([
+			"groups.left",
+			"groups.right",
+			"outer",
+		]);
+	});
+
+	it("supports a root array and custom thresholds", () => {
+		const value = ["one", "two", "three", "four"];
+		const flattened = flattenObjectPropertyEntries(value);
+		const [branch] = collectLargeObjectPropertyArrays(
+			value,
+			flattened.entries,
+			{ minItems: 4 },
+		);
+
+		expect(branch).toMatchObject({
+			path: "$",
+			itemCount: 4,
+		});
+		expect(branch.entries.map((entry) => entry.value)).toEqual(value);
+	});
+
+	it("does not offer disclosure when the flattened data only has a depth summary", () => {
+		const value = {
+			deep: Array.from({ length: 6 }, (_, index) => index),
+		};
+		const flattened = flattenObjectPropertyEntries(value, { maxDepth: 1 });
+
+		expect(collectLargeObjectPropertyArrays(value, flattened.entries)).toEqual(
+			[],
+		);
+		expect(flattened.entries).toMatchObject([
+			{ path: "deep", value: "6 items", kind: "array-summary" },
+		]);
 	});
 });

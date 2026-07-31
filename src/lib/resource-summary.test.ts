@@ -12,6 +12,24 @@ describe("buildResourceSummary", () => {
 		).toEqual(["50 loaded", "273 total"]);
 	});
 
+	it("can combine loaded and total counts for narrow resource toolbars", () => {
+		expect(
+			buildResourceSummary({
+				compactLoadedTotal: true,
+				loaded: 100,
+				total: 271,
+			}),
+		).toEqual(["100/271"]);
+		expect(
+			buildResourceSummary({
+				compactLoadedTotal: true,
+				loaded: 100,
+				total: 271,
+				totalLabel: "matches",
+			}),
+		).toEqual(["100/271 matches"]);
+	});
+
 	it("includes local filtering and selection without hiding the server total", () => {
 		expect(
 			buildResourceSummary({

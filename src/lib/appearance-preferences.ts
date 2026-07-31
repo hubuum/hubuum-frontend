@@ -2,6 +2,8 @@ export type ThemePreference = "system" | "light" | "dark";
 
 export type DensityPreference = "comfortable" | "compact";
 
+export type FontSizePreference = "90" | "100" | "110" | "120";
+
 export type AccentPreset =
 	| "dusk"
 	| "blue"
@@ -83,6 +85,12 @@ export function isDensityPreference(
 	value: string | null,
 ): value is DensityPreference {
 	return value === "comfortable" || value === "compact";
+}
+
+export function isFontSizePreference(
+	value: string | null,
+): value is FontSizePreference {
+	return value === "90" || value === "100" || value === "110" || value === "120";
 }
 
 export function isAccentPreference(

@@ -99,6 +99,9 @@ const DATA_DATE_OPERATORS: OperatorOption[] = [
 	{ value: "in", label: "is one of (comma-separated)" },
 	{ value: "is_null", label: "is missing or null" },
 ];
+const OBJECT_DATE_OPERATORS = DATA_DATE_OPERATORS.filter(
+	(option) => option.value !== "in" && option.value !== "is_null",
+);
 const DATA_BOOLEAN_OPERATORS: OperatorOption[] = [
 	{ value: "equals", label: "equals" },
 	{ value: "is_null", label: "is missing or null" },
@@ -246,11 +249,16 @@ export function ObjectServerFilterMenu({
 		selectedDataType === "number" ||
 		selectedComputedField?.resultType === "number" ||
 		selectedComputedField?.resultType === "integer";
+	const isDateField =
+		field === "created_at" ||
+		field === "updated_at" ||
+		selectedDataType === "date";
 	const operatorOptions = useMemo(() => {
 		if (selectedDataType) {
 			return getDataOperatorOptions(selectedDataType);
 		}
 		if (!selectedComputedField) {
+			if (isDateField) return OBJECT_DATE_OPERATORS;
 			return isNumberField ? NUMBER_OPERATORS : STRING_OPERATORS;
 		}
 		if (
@@ -269,7 +277,7 @@ export function ObjectServerFilterMenu({
 			return COMPUTED_ARRAY_OPERATORS;
 		}
 		return COMPUTED_STRING_OPERATORS;
-	}, [isNumberField, selectedComputedField, selectedDataType]);
+	}, [isDateField, isNumberField, selectedComputedField, selectedDataType]);
 	const expectsNoValue = Boolean(selectedDataField) && operator === "is_null";
 	const expectsBooleanValue =
 		!expectsNoValue &&
@@ -348,7 +356,13 @@ export function ObjectServerFilterMenu({
 			return null;
 		}
 		return normalizeObjectServerFilter({
-			field: field as "name" | "description" | "id" | "collection_id",
+			field: field as
+				| "name"
+				| "description"
+				| "id"
+				| "collection_id"
+				| "created_at"
+				| "updated_at",
 			operator: effectiveOperator,
 			value,
 		});
@@ -361,8 +375,7 @@ export function ObjectServerFilterMenu({
 		if (
 			editingIdentity &&
 			!filters.some(
-				(filter) =>
-					getObjectServerFilterIdentity(filter) === editingIdentity,
+				(filter) => getObjectServerFilterIdentity(filter) === editingIdentity,
 			)
 		) {
 			setEditingIdentity(null);
@@ -420,8 +433,10 @@ export function ObjectServerFilterMenu({
 		setValue(draft.value);
 		setDatePickerValues(["", ""]);
 		setDateInputMode(
-			draft.field.startsWith("data:") &&
-				dataFieldById.get(draft.field.slice(5))?.dataType === "date"
+			draft.field === "created_at" ||
+				draft.field === "updated_at" ||
+				(draft.field.startsWith("data:") &&
+					dataFieldById.get(draft.field.slice(5))?.dataType === "date")
 				? "text"
 				: "picker",
 		);
@@ -440,13 +455,12 @@ export function ObjectServerFilterMenu({
 	function addFilter(event?: { preventDefault(): void }) {
 		event?.preventDefault();
 		if (!draftFilter || computedLimitReached) return;
-		const resolvedDraftFilter =
-			draftFilter.field === "json_data" && selectedDataType === "date"
-				? normalizeObjectServerFilter({
-						...draftFilter,
-						value: resolveObjectServerFilterRelativeDates(draftFilter.value),
-					})
-				: draftFilter;
+		const resolvedDraftFilter = isDateField
+			? normalizeObjectServerFilter({
+					...draftFilter,
+					value: resolveObjectServerFilterRelativeDates(draftFilter.value),
+				})
+			: draftFilter;
 		if (!resolvedDraftFilter) return;
 		if (editingIdentity) {
 			onChange(
@@ -491,7 +505,7 @@ export function ObjectServerFilterMenu({
 	}
 
 	function updateOperator(nextOperator: ObjectServerFilterBaseOperator) {
-		if (selectedDataType === "date") {
+		if (isDateField) {
 			if (nextOperator === "is_null") {
 				setDatePickerValues(["", ""]);
 			} else if (operator === "between" && nextOperator !== "between") {
@@ -601,9 +615,7 @@ export function ObjectServerFilterMenu({
 													cancelEditing();
 												}
 												onChange(
-													filters.filter(
-														(_, itemIndex) => itemIndex !== index,
-													),
+													filters.filter((_, itemIndex) => itemIndex !== index),
 												);
 											}}
 										>
@@ -654,6 +666,8 @@ export function ObjectServerFilterMenu({
 									<option value="description">Description</option>
 									<option value="id">ID</option>
 									<option value="collection_id">Collection ID</option>
+									<option value="created_at">Created at</option>
+									<option value="updated_at">Updated at</option>
 								</optgroup>
 								{dataFields.length > 0 ? (
 									<optgroup label="Data fields">
@@ -754,7 +768,7 @@ export function ObjectServerFilterMenu({
 									<option value="true">True</option>
 									<option value="false">False</option>
 								</select>
-							) : selectedDataType === "date" && dateInputMode === "picker" ? (
+							) : isDateField && dateInputMode === "picker" ? (
 								<div className="server-filter-date-pickers">
 									<input
 										id={valueInputId}
@@ -795,20 +809,20 @@ export function ObjectServerFilterMenu({
 									value={value}
 									onChange={(event) => {
 										setValue(event.target.value);
-										if (selectedDataType === "date") {
+										if (isDateField) {
 											setDatePickerValues(["", ""]);
 										}
 									}}
 									placeholder={
 										operator === "between"
-											? selectedDataType === "date"
+											? isDateField
 												? "-4y,now"
 												: "10,20"
 											: operator === "in"
-												? selectedDataType === "date"
+												? isDateField
 													? "-4y,now"
 													: "one,two,three"
-												: selectedDataType === "date"
+												: isDateField
 													? "-4y or 2021-07-24T00:00:00Z"
 													: selectedDataType === "ip"
 														? "10.0.0.0/24"
@@ -824,7 +838,7 @@ export function ObjectServerFilterMenu({
 									}
 								/>
 							)}
-							{selectedDataType === "date" && !expectsNoValue ? (
+							{isDateField && !expectsNoValue ? (
 								<fieldset className="server-filter-date-mode">
 									<legend className="sr-only">Date input mode</legend>
 									<button
@@ -873,9 +887,7 @@ export function ObjectServerFilterMenu({
 							filters per query.
 						</p>
 					) : null}
-					{selectedDataType === "date" &&
-					dateInputMode === "text" &&
-					!expectsNoValue ? (
+					{isDateField && dateInputMode === "text" && !expectsNoValue ? (
 						<p className="server-filter-footnote">
 							Relative dates are resolved when added: <code>-4y</code>,{" "}
 							<code>-6mo</code>, <code>-2w</code>, <code>-30d</code>,{" "}
@@ -883,9 +895,7 @@ export function ObjectServerFilterMenu({
 							<code>now</code>. RFC3339 timestamps and calendar dates also work.
 						</p>
 					) : null}
-					{selectedDataType === "date" &&
-					dateInputMode === "picker" &&
-					!expectsNoValue ? (
+					{isDateField && dateInputMode === "picker" && !expectsNoValue ? (
 						<p className="server-filter-footnote">
 							Calendar selections use your local timezone and are stored as
 							RFC3339.
