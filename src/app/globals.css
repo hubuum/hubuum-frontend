@@ -2798,10 +2798,10 @@ body.modal-open {
 .object-fact-grid,
 .object-property-grid {
 	display: grid;
-	gap: 1px;
+	gap: 0;
 	margin: 0;
 	padding: 0;
-	background: var(--line);
+	background: var(--card);
 }
 
 .object-fact-grid--core {
@@ -2823,6 +2823,9 @@ body.modal-open {
 	min-height: 2.85rem;
 	padding: 0.52rem 0.68rem;
 	background: var(--card);
+	box-shadow:
+		inset -1px 0 0 var(--line),
+		inset 0 -1px 0 var(--line);
 }
 
 .object-fact--wide {
