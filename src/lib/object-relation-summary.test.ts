@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	buildRelatedObjectPathContextSearchParams,
 	buildRelatedObjectSearchParams,
 	DEFAULT_INCLUDE_SELF_CLASS,
 	DEFAULT_RELATED_OBJECT_DEPTH_LIMIT,
+	getMissingRelatedObjectPathContextIds,
 	MAX_RELATED_OBJECT_DEPTH_LIMIT,
 	normalizeRelatedObjectPath,
 	normalizeRelatedObjectDepthLimit,
 	summarizeRelatedObjectData,
+	takeUnrequestedRelatedObjectPathContextIds,
 } from "@/lib/object-relation-summary";
 
 describe("object relation summaries", () => {
@@ -39,6 +42,15 @@ describe("object relation summaries", () => {
 		);
 	});
 
+	it("requests hidden path objects without applying display filters", () => {
+		const params = buildRelatedObjectPathContextSearchParams(3, [21, 34]);
+
+		expect(params.toString()).toBe(
+			"limit=2&sort=path.asc%2Cid.asc&depth__lte=3&ignore_self_class=false&id__in=21%2C34&include_total=false",
+		);
+		expect(params.has("ignore_classes")).toBe(false);
+	});
+
 	it("defaults and bounds the reachability depth", () => {
 		expect(DEFAULT_RELATED_OBJECT_DEPTH_LIMIT).toBe(2);
 		expect(MAX_RELATED_OBJECT_DEPTH_LIMIT).toBe(10);
@@ -54,6 +66,43 @@ describe("object relation summaries", () => {
 		expect(normalizeRelatedObjectPath(10, 30, [10, 20, 30])).toEqual([20, 30]);
 		expect(normalizeRelatedObjectPath(10, 30, [20])).toEqual([20, 30]);
 		expect(normalizeRelatedObjectPath(10, 30, [])).toEqual([30]);
+	});
+
+	it("finds hidden intermediate objects needed to label retained paths", () => {
+		expect(
+			getMissingRelatedObjectPathContextIds(10, [
+				{ id: 20, path: [10, 20] },
+				{ id: 40, path: [10, 20, 30, 40] },
+				{ id: 50, path: [10, 20, 30, 50] },
+			]),
+		).toEqual([30]);
+	});
+
+	it("does not request context for direct or already loaded path objects", () => {
+		expect(
+			getMissingRelatedObjectPathContextIds(10, [
+				{ id: 20, path: [10, 20] },
+				{ id: 30, path: [10, 20, 30] },
+			]),
+		).toEqual([]);
+	});
+
+	it("takes each path context ID only once per page view", () => {
+		const requestedObjectIds = new Set<number>();
+
+		expect(
+			takeUnrequestedRelatedObjectPathContextIds(
+				[20, 30],
+				requestedObjectIds,
+			),
+		).toEqual([20, 30]);
+		expect(
+			takeUnrequestedRelatedObjectPathContextIds(
+				[20, 30, 40],
+				requestedObjectIds,
+			),
+		).toEqual([40]);
+		expect([...requestedObjectIds]).toEqual([20, 30, 40]);
 	});
 
 	it("builds a stable compact preview of top-level data", () => {

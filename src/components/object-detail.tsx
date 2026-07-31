@@ -27,6 +27,7 @@ import {
 	buildObjectDataReplacePatch,
 	patchObjectData,
 } from "@/lib/api/object-data-patch";
+import { hubuumBffPath } from "@/lib/api/frontend";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
 	getApiV1Classes,
@@ -48,10 +49,14 @@ import type {
 import { TITLE_STATE_EVENT } from "@/lib/create-events";
 import type { ConsoleGroup } from "@/lib/identity-scopes";
 import {
+	buildRelatedObjectPathContextSearchParams,
 	buildRelatedObjectSearchParams,
 	DEFAULT_INCLUDE_SELF_CLASS,
 	DEFAULT_RELATED_OBJECT_DEPTH_LIMIT,
+	getMissingRelatedObjectPathContextIds,
 	normalizeRelatedObjectPath,
+	RELATED_OBJECT_PATH_CONTEXT_BATCH_LIMIT,
+	takeUnrequestedRelatedObjectPathContextIds,
 } from "@/lib/object-relation-summary";
 import {
 	createObjectDataFieldValue,
@@ -214,7 +219,7 @@ async function fetchRelatedObjects(
 		ignoredClassIds,
 	});
 	const response = await fetch(
-		`/_hubuum-bff/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/objects?${params.toString()}`,
+		`${hubuumBffPath(`/api/v1/classes/${classId}/objects/${objectId}/related/objects`)}?${params.toString()}`,
 		{
 			credentials: "include",
 		},
@@ -227,6 +232,58 @@ async function fetchRelatedObjects(
 	}
 
 	return expectArrayPayload<HubuumObjectWithPath>(payload, "related objects");
+}
+
+async function fetchRelatedObjectPathContexts(
+	classId: number,
+	objectId: number,
+	depthLimit: number,
+	pathObjectIds: number[],
+): Promise<HubuumObjectWithPath[]> {
+	const batches: number[][] = [];
+	for (
+		let index = 0;
+		index < pathObjectIds.length;
+		index += RELATED_OBJECT_PATH_CONTEXT_BATCH_LIMIT
+	) {
+		batches.push(
+			pathObjectIds.slice(
+				index,
+				index + RELATED_OBJECT_PATH_CONTEXT_BATCH_LIMIT,
+			),
+		);
+	}
+
+	const results = await Promise.all(
+		batches.map(async (batch) => {
+			const params = buildRelatedObjectPathContextSearchParams(
+				depthLimit,
+				batch,
+			);
+			const response = await fetch(
+				`${hubuumBffPath(`/api/v1/classes/${classId}/objects/${objectId}/related/objects`)}?${params.toString()}`,
+				{
+					credentials: "include",
+				},
+			);
+			const payload = await parseJsonPayload(response);
+			if (response.status !== 200) {
+				throw new Error(
+					getApiErrorMessage(
+						payload,
+						"Failed to load connection path labels.",
+					),
+				);
+			}
+
+			return expectArrayPayload<HubuumObjectWithPath>(
+				payload,
+				"connection path objects",
+			);
+		}),
+	);
+
+	return results.flat();
 }
 
 function stringifyJson(value: unknown): string {
@@ -580,6 +637,7 @@ export function ObjectDetail({
 	currentUsername,
 	canEditAnything,
 }: ObjectDetailProps) {
+	const relatedObjectPageKey = `${classId}:${objectId}`;
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
@@ -591,6 +649,20 @@ export function ObjectDetail({
 	const collectionSelectRef = useRef<HTMLSelectElement | null>(null);
 	const collectionInputRef = useRef<HTMLInputElement | null>(null);
 	const newDataFieldPathRef = useRef<HTMLInputElement | null>(null);
+	const relatedObjectPathContextRequestsRef = useRef<{
+		pageKey: string;
+		objectIds: Set<number>;
+	}>({
+		pageKey: relatedObjectPageKey,
+		objectIds: new Set(),
+	});
+	const relatedObjectPathContextsRef = useRef<{
+		pageKey: string;
+		objects: Map<number, { classId: number; name: string }>;
+	}>({
+		pageKey: relatedObjectPageKey,
+		objects: new Map(),
+	});
 
 	const [relationDepthLimit, setRelationDepthLimit] = useState(
 		DEFAULT_RELATED_OBJECT_DEPTH_LIMIT,
@@ -601,6 +673,7 @@ export function ObjectDetail({
 	);
 	const [ignoredClassIds, setIgnoredClassIds] = useState<number[]>([]);
 	const [isIgnoreClassesOpen, setIgnoreClassesOpen] = useState(false);
+	const [, setRelatedObjectPathContextRevision] = useState(0);
 	const [isRawDataViewOpen, setRawDataViewOpen] = useState(false);
 	const [isAdvancedDataEditorOpen, setAdvancedDataEditorOpen] = useState(false);
 	const [isAddDataFieldOpen, setAddDataFieldOpen] = useState(false);
@@ -689,6 +762,79 @@ export function ObjectDetail({
 				ignoredClassIds,
 			),
 	});
+	const relatedObjectPathContextIds = useMemo(
+		() =>
+			getMissingRelatedObjectPathContextIds(
+				objectId,
+				relatedObjectsQuery.data ?? [],
+			),
+		[objectId, relatedObjectsQuery.data],
+	);
+	useEffect(() => {
+		let contextCache = relatedObjectPathContextsRef.current;
+		if (contextCache.pageKey !== relatedObjectPageKey) {
+			contextCache = {
+				pageKey: relatedObjectPageKey,
+				objects: new Map(),
+			};
+			relatedObjectPathContextsRef.current = contextCache;
+		}
+		for (const relatedObject of relatedObjectsQuery.data ?? []) {
+			contextCache.objects.set(relatedObject.id, {
+				classId: relatedObject.hubuum_class_id,
+				name: relatedObject.name,
+			});
+		}
+
+		let requestState = relatedObjectPathContextRequestsRef.current;
+		if (requestState.pageKey !== relatedObjectPageKey) {
+			requestState = {
+				pageKey: relatedObjectPageKey,
+				objectIds: new Set(),
+			};
+			relatedObjectPathContextRequestsRef.current = requestState;
+		}
+
+		const unrequestedObjectIds =
+			takeUnrequestedRelatedObjectPathContextIds(
+				relatedObjectPathContextIds.filter(
+					(objectIdValue) => !contextCache.objects.has(objectIdValue),
+				),
+				requestState.objectIds,
+			);
+		if (unrequestedObjectIds.length === 0) {
+			return;
+		}
+
+		void fetchRelatedObjectPathContexts(
+			classId,
+			objectId,
+			relationDepthLimit,
+			unrequestedObjectIds,
+		).then(
+			(pathObjects) => {
+				const currentCache = relatedObjectPathContextsRef.current;
+				if (currentCache.pageKey !== relatedObjectPageKey) {
+					return;
+				}
+				for (const pathObject of pathObjects) {
+					currentCache.objects.set(pathObject.id, {
+						classId: pathObject.hubuum_class_id,
+						name: pathObject.name,
+					});
+				}
+				setRelatedObjectPathContextRevision((current) => current + 1);
+			},
+			() => undefined,
+		);
+	}, [
+		classId,
+		objectId,
+		relatedObjectPageKey,
+		relatedObjectPathContextIds,
+		relatedObjectsQuery.data,
+		relationDepthLimit,
+	]);
 	const flattenedObjectData = useMemo(
 		() => flattenObjectPropertyEntries(objectQuery.data?.data),
 		[objectQuery.data?.data],
@@ -1363,6 +1509,12 @@ export function ObjectDetail({
 		classId: objectData.hubuum_class_id,
 		name: objectData.name,
 	});
+	if (relatedObjectPathContextsRef.current.pageKey === relatedObjectPageKey) {
+		for (const [cachedObjectId, cachedObject] of relatedObjectPathContextsRef
+			.current.objects) {
+			objectContextById.set(cachedObjectId, cachedObject);
+		}
+	}
 	for (const relatedObject of relatedObjectsQuery.data ?? []) {
 		objectContextById.set(relatedObject.id, {
 			classId: relatedObject.hubuum_class_id,

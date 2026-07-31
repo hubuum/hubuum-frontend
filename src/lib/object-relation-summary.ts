@@ -14,6 +14,7 @@ export type RelatedObjectQueryOptions = {
 export const DEFAULT_INCLUDE_SELF_CLASS = false;
 export const DEFAULT_RELATED_OBJECT_DEPTH_LIMIT = 2;
 export const MAX_RELATED_OBJECT_DEPTH_LIMIT = 10;
+export const RELATED_OBJECT_PATH_CONTEXT_BATCH_LIMIT = 250;
 
 export function normalizeRelatedObjectDepthLimit(
 	value: string | null | undefined,
@@ -72,6 +73,24 @@ export function buildRelatedObjectSearchParams({
 	return params;
 }
 
+export function buildRelatedObjectPathContextSearchParams(
+	depthLimit: number,
+	objectIds: number[],
+): URLSearchParams {
+	const params = buildRelatedObjectSearchParams({
+		depthLimit,
+		includeSelfClass: true,
+		ignoredClassIds: [],
+		limit: Math.min(
+			objectIds.length,
+			RELATED_OBJECT_PATH_CONTEXT_BATCH_LIMIT,
+		),
+	});
+	params.set("id__in", objectIds.join(","));
+	params.set("include_total", "false");
+	return params;
+}
+
 export function normalizeRelatedObjectPath(
 	rootObjectId: number,
 	targetObjectId: number,
@@ -85,6 +104,46 @@ export function normalizeRelatedObjectPath(
 		normalized.push(targetObjectId);
 	}
 	return normalized;
+}
+
+export function getMissingRelatedObjectPathContextIds(
+	rootObjectId: number,
+	relatedObjects: Array<{ id: number; path: number[] }>,
+): number[] {
+	const loadedObjectIds = new Set([
+		rootObjectId,
+		...relatedObjects.map((object) => object.id),
+	]);
+	const missingObjectIds = new Set<number>();
+
+	for (const relatedObject of relatedObjects) {
+		const path = normalizeRelatedObjectPath(
+			rootObjectId,
+			relatedObject.id,
+			relatedObject.path,
+		);
+		for (const pathObjectId of path.slice(0, -1)) {
+			if (!loadedObjectIds.has(pathObjectId)) {
+				missingObjectIds.add(pathObjectId);
+			}
+		}
+	}
+
+	return [...missingObjectIds].sort((left, right) => left - right);
+}
+
+export function takeUnrequestedRelatedObjectPathContextIds(
+	pathObjectIds: number[],
+	requestedObjectIds: Set<number>,
+): number[] {
+	const unrequestedObjectIds: number[] = [];
+	for (const objectId of pathObjectIds) {
+		if (!requestedObjectIds.has(objectId)) {
+			requestedObjectIds.add(objectId);
+			unrequestedObjectIds.push(objectId);
+		}
+	}
+	return unrequestedObjectIds;
 }
 
 export function summarizeRelatedObjectData(
