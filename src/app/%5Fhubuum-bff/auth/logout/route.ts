@@ -48,7 +48,24 @@ async function performLogout(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-	return performLogout(request);
+	const correlationId =
+		normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER)) ?? "-";
+	console.warn(
+		`[hubuum-auth][cid=${correlationId}] rejected GET logout request`,
+	);
+	return NextResponse.json(
+		{
+			error: "MethodNotAllowed",
+			message: "Use POST to sign out.",
+		},
+		{
+			status: 405,
+			headers: {
+				Allow: "POST",
+				[CORRELATION_ID_HEADER]: correlationId,
+			},
+		},
+	);
 }
 
 export async function POST(request: NextRequest) {
