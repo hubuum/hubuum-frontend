@@ -18,6 +18,15 @@ function truncate(value: string, maximum: number): string {
 	return `${value.slice(0, Math.max(0, maximum - 1))}…`;
 }
 
+function stripControlCharacters(value: string): string {
+	return Array.from(value)
+		.filter((character) => {
+			const codePoint = character.codePointAt(0) ?? 0;
+			return codePoint >= 32 && codePoint !== 127;
+		})
+		.join("");
+}
+
 export function redactOperationalText(value: string): string {
 	return value
 		.replace(/\bBearer\s+[^\s,;?&]+/gi, "Bearer [redacted]")
@@ -39,9 +48,12 @@ export function sanitizeOperationalPath(value: string): string {
 		? withoutFragment
 		: withoutFragment.slice(0, separator);
 	const query = separator === -1 ? "" : withoutFragment.slice(separator + 1);
-	const safePath = rawPath
-		.replace(/(\/auth\/logout\/token\/)[^/]+/gi, "$1[redacted]")
-		.replace(/[\u0000-\u001f\u007f]/g, "");
+	const safePath = stripControlCharacters(
+		rawPath.replace(
+			/(\/auth\/logout\/token\/)[^/]+/gi,
+			"$1[redacted]",
+		),
+	);
 
 	if (!query) {
 		return truncate(safePath, MAX_PATH_LENGTH);
