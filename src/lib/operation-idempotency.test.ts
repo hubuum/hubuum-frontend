@@ -102,7 +102,7 @@ describe("operation idempotency manager", () => {
 		const second = await manager.acquire("export", { query: "name=b" });
 		const third = await manager.acquire("import", { query: "name=a" });
 
-		expect(new Set([first.key, second.key, third.key])).toHaveLength(3);
+		expect(new Set([first.key, second.key, third.key]).size).toBe(3);
 	});
 
 	it("uses a requested key as the retry lease seed", async () => {
