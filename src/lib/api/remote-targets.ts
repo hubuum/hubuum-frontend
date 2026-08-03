@@ -1,8 +1,6 @@
-import { getApiErrorMessage, expectArrayPayload } from "@/lib/api/errors";
+import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import { hubuumBffPath } from "@/lib/api/frontend";
-import {
-	postApiV1RemoteTargetsByTargetIdInvoke,
-} from "@/lib/api/generated/client";
+import { postApiV1RemoteTargetsByTargetIdInvoke } from "@/lib/api/generated/client";
 import type {
 	RemoteInvocationSubject,
 	RemoteTarget,
@@ -10,7 +8,7 @@ import type {
 	RemoteTargetSubjectType,
 	TaskResponse,
 } from "@/lib/api/generated/models";
-import { normalizeIdempotencyKey } from "@/lib/idempotency-key";
+import { acquireOperationIdempotencyKey } from "@/lib/operation-idempotency";
 
 export type RemoteTargetListPage = {
 	nextCursor: string | null;
@@ -130,23 +128,22 @@ export async function invokeRemoteTarget(
 	payload: RemoteInvocationPayload,
 	idempotencyKey?: string,
 ): Promise<TaskResponse> {
-	const headers = new Headers();
-	const normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
-	if (normalizedIdempotencyKey) {
-		headers.set("Idempotency-Key", normalizedIdempotencyKey);
-	}
-
 	const request: RemoteTargetInvokeRequest = {
 		subject: payload.subject,
 		parameters: payload.parameters ?? {},
 		body_override: payload.bodyOverride ?? {},
 	};
+	const idempotency = await acquireOperationIdempotencyKey(
+		`remote-target:${targetId}`,
+		request,
+		idempotencyKey,
+	);
 	const response = await postApiV1RemoteTargetsByTargetIdInvoke(
 		targetId,
 		request,
 		{
 			credentials: "include",
-			headers,
+			headers: { "Idempotency-Key": idempotency.key },
 		},
 	);
 
@@ -156,5 +153,6 @@ export async function invokeRemoteTarget(
 		);
 	}
 
+	idempotency.complete();
 	return response.data;
 }
