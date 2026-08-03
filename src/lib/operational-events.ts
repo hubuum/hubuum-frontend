@@ -9,7 +9,7 @@ const MAX_PATH_LENGTH = 1024;
 const MAX_QUERY_FIELDS = 24;
 const EVENT_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 const SENSITIVE_FIELD_PATTERN =
-	/(^|_)(authorization|body|capability|cookie|password|payload|secret|session_id|sid|token)(_|$)/i;
+	/(^|_)(api[_-]?key|authorization|body|capability|cookie|password|payload|secret|session_id|sid|token)(_|$)/i;
 
 function truncate(value: string, maximum: number): string {
 	if (value.length <= maximum) {
@@ -20,13 +20,13 @@ function truncate(value: string, maximum: number): string {
 
 export function redactOperationalText(value: string): string {
 	return value
-		.replace(/\bBearer\s+[^\s,;]+/gi, "Bearer [redacted]")
+		.replace(/\bBearer\s+[^\s,;?&]+/gi, "Bearer [redacted]")
 		.replace(
 			/([?&](?:api[_-]?key|capability|password|secret|token)=)[^&\s]+/gi,
 			"$1[redacted]",
 		)
 		.replace(
-			/\b(api[_-]?key|capability|password|secret|token)\s*[:=]\s*[^\s,;]+/gi,
+			/\b(api[_-]?key|capability|password|secret|token)\s*[:=]\s*[^\s,;&]+/gi,
 			"$1=[redacted]",
 		);
 }
