@@ -27,7 +27,10 @@ async function createFixture() {
 	temporaryDirectories.push(root);
 	const buildDir = join(root, ".next");
 	const chunksDir = join(buildDir, "static", "chunks");
-	await mkdir(chunksDir, { recursive: true });
+	const appChunksDir = join(chunksDir, "app");
+	const appServerDir = join(buildDir, "server", "app", "dashboard");
+	await mkdir(appChunksDir, { recursive: true });
+	await mkdir(appServerDir, { recursive: true });
 	await writeFile(
 		join(chunksDir, "shared.js"),
 		Array.from({ length: 256 }, (_, index) => `const s${index}=${index};`).join(
@@ -42,41 +45,46 @@ async function createFixture() {
 		).join("\n"),
 	);
 	await writeFile(
+		join(appChunksDir, "dashboard.js"),
+		Array.from(
+			{ length: 96 },
+			(_, index) => `export const d${index}="dashboard-${index}";`,
+		).join("\n"),
+	);
+	await writeFile(
 		join(buildDir, "build-manifest.json"),
 		JSON.stringify({
 			pages: {
-				"/_app": ["static/chunks/shared.js"],
-				"/login": ["static/chunks/route.js"],
+				"/_app": ["/_next/static/chunks/shared.js"],
+				"/login": ["/_next/static/chunks/route.js"],
 			},
-			rootMainFiles: ["static/chunks/shared.js"],
+			rootMainFiles: ["/_next/static/chunks/shared.js"],
 		}),
 	);
 	await writeFile(
-		join(buildDir, "app-build-manifest.json"),
-		JSON.stringify({
-			pages: {
-				"/app/page": ["static/chunks/route.js"],
-			},
-		}),
+		join(appServerDir, "page_client-reference-manifest.js"),
+		'globalThis.__RSC_MANIFEST["/dashboard/page"]={"clientModules":{"dashboard":{"chunks":["app/dashboard.js","static/chunks/app/dashboard.js"]}}};',
 	);
 	return { buildDir, root };
 }
 
 describe("performance budget reporting", () => {
-	it("collects static assets and de-duplicates shared route files", async () => {
+	it("collects pages and Turbopack App Router assets with shared de-duplication", async () => {
 		const { buildDir } = await createFixture();
 		const report = await buildPerformanceReport(buildDir);
 
-		assert.equal(report.assets.length, 2);
+		assert.equal(report.assets.length, 3);
 		assert.equal(report.routes.length, 3);
 		const login = report.routes.find((route) => route.route === "pages:/login");
-		const app = report.routes.find((route) => route.route === "app:/app/page");
+		const dashboard = report.routes.find(
+			(route) => route.route === "app:dashboard",
+		);
 		assert.deepEqual(login?.files, [
 			"static/chunks/route.js",
 			"static/chunks/shared.js",
 		]);
-		assert.deepEqual(app?.files, [
-			"static/chunks/route.js",
+		assert.deepEqual(dashboard?.files, [
+			"static/chunks/app/dashboard.js",
 			"static/chunks/shared.js",
 		]);
 		assert.equal(report.totalGzipBytes > 0, true);
