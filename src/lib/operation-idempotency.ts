@@ -192,8 +192,12 @@ export function createOperationIdempotencyManager(
 	const retentionMs =
 		options.retentionMs ?? OPERATION_IDEMPOTENCY_RETENTION_MS;
 	let memoryState: StoredState = {};
+	let storageUnavailable = false;
 
 	function resolveStorage(): StorageLike | null {
+		if (storageUnavailable) {
+			return null;
+		}
 		if (typeof options.storage === "function") {
 			return options.storage();
 		}
@@ -221,6 +225,7 @@ export function createOperationIdempotencyManager(
 					...parseState(storage.getItem(STORAGE_KEY)),
 				};
 			} catch {
+				storageUnavailable = true;
 				// Fall back to the process-local state when storage is unavailable.
 			}
 		}
@@ -237,6 +242,7 @@ export function createOperationIdempotencyManager(
 		try {
 			storage.setItem(STORAGE_KEY, JSON.stringify(memoryState));
 		} catch {
+			storageUnavailable = true;
 			// The in-memory state still protects retries in this page process.
 		}
 	}
@@ -267,6 +273,13 @@ export function createOperationIdempotencyManager(
 		}
 
 		if (!existing) {
+			if (Object.keys(state).length >= MAX_OPERATION_IDEMPOTENCY_ENTRIES) {
+				const oldestFingerprint = Object.entries(state).reduce(
+					(oldest, candidate) =>
+						candidate[1].createdAt < oldest[1].createdAt ? candidate : oldest,
+				)[0];
+				delete state[oldestFingerprint];
+			}
 			state[fingerprint] = { createdAt: now(), key };
 			saveState(state);
 		}

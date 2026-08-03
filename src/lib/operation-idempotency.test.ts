@@ -166,6 +166,50 @@ describe("operation idempotency manager", () => {
 		expect(retry.key).toBe(first.key);
 	});
 
+	it("does not resurrect completed leases after a storage write fails", async () => {
+		const storage = new MemoryStorage();
+		let failWrites = false;
+		const originalSetItem = storage.setItem.bind(storage);
+		storage.setItem = (key, value) => {
+			if (failWrites) throw new Error("blocked");
+			originalSetItem(key, value);
+		};
+		const uuids = ["first", "second"];
+		const manager = createOperationIdempotencyManager({
+			hash: deterministicHash,
+			randomUUID: () => uuids.shift() ?? "fallback",
+			storage,
+		});
+
+		const first = await manager.acquire("backup", { include_history: true });
+		failWrites = true;
+		first.complete();
+		const next = await manager.acquire("backup", { include_history: true });
+
+		expect(next.key).toBe("hubuum-backup-second");
+	});
+
+	it("retains the newest lease when the entry cap is reached at one timestamp", async () => {
+		const storage = new MemoryStorage();
+		let sequence = 0;
+		const manager = createOperationIdempotencyManager({
+			hash: deterministicHash,
+			now: () => 10_000,
+			randomUUID: () => `key-${++sequence}`,
+			storage,
+		});
+
+		let newestKey = "";
+		for (let index = 0; index <= 64; index += 1) {
+			newestKey = (await manager.acquire("export", { index })).key;
+		}
+		const newestRetry = await manager.acquire("export", { index: 64 });
+		const evictedRetry = await manager.acquire("export", { index: 0 });
+
+		expect(newestRetry.key).toBe(newestKey);
+		expect(evictedRetry.key).not.toBe("hubuum-export-key-1");
+	});
+
 	it("stores only fingerprints and generated keys, not request payloads", async () => {
 		const storage = new MemoryStorage();
 		const manager = createOperationIdempotencyManager({
