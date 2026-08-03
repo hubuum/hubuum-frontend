@@ -3,6 +3,10 @@ import "server-only";
 import Redis from "ioredis";
 
 import { getServerEnv } from "@/lib/env";
+import {
+	emitOperationalEvent,
+	operationalErrorFields,
+} from "@/lib/operational-events";
 
 let client: Redis | null = null;
 
@@ -18,8 +22,24 @@ export function getValkeyClient(): Redis {
 			lazyConnect: true,
 		});
 
+		client.on("ready", () => {
+			emitOperationalEvent("info", "valkey.connection.ready");
+		});
+		client.on("reconnecting", (delay: number) => {
+			emitOperationalEvent("warn", "valkey.connection.reconnecting", {
+				delay_ms: delay,
+			});
+		});
+		client.on("close", () => {
+			emitOperationalEvent("warn", "valkey.connection.closed");
+		});
+		client.on("end", () => {
+			emitOperationalEvent("error", "valkey.connection.ended");
+		});
 		client.on("error", (error) => {
-			console.error("Valkey connection error", error);
+			emitOperationalEvent("error", "valkey.connection.error", {
+				...operationalErrorFields(error),
+			});
 		});
 	}
 
@@ -27,8 +47,17 @@ export function getValkeyClient(): Redis {
 }
 
 export async function pingValkey(): Promise<void> {
-	const response = await getValkeyClient().ping();
-	if (response !== "PONG") {
-		throw new Error("Valkey readiness check returned an unexpected response.");
+	const startedAt = Date.now();
+	try {
+		const response = await getValkeyClient().ping();
+		if (response !== "PONG") {
+			throw new Error("Valkey readiness check returned an unexpected response.");
+		}
+	} catch (error) {
+		emitOperationalEvent("error", "valkey.ping.failed", {
+			duration_ms: Date.now() - startedAt,
+			...operationalErrorFields(error),
+		});
+		throw error;
 	}
 }
