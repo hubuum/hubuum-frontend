@@ -86,11 +86,24 @@ checks without backend credentials:
 npm run test:e2e:public
 ```
 
-Authenticated dashboard and create-flow checks run when `E2E_USERNAME` and
-`E2E_PASSWORD` are set. Point either suite at an already running frontend with
-`PLAYWRIGHT_BASE_URL`, for example `http://127.0.0.1:3000`. Refresh intentional
-local screenshot changes with `npm run test:e2e:update`; CI runs the portable
-accessibility, contrast, and responsive-layout checks.
+Run the critical login, authenticated session, logout, and protected-route
+smoke flow against disposable Hubuum Server and Valkey containers:
+
+```sh
+npm run test:e2e:authenticated
+```
+
+The command resets the disposable `admin` password immediately before the test,
+keeps it only in the child-process environment, and removes the containers and
+volumes afterward. Override the pinned compatibility image with
+`HUBUUM_AUTH_E2E_BACKEND_IMAGE` when testing another server build.
+
+The broader authenticated dashboard and create-flow checks run when
+`E2E_USERNAME` and `E2E_PASSWORD` are set. Point either Playwright suite at an
+already running frontend with `PLAYWRIGHT_BASE_URL`, for example
+`http://127.0.0.1:3000`. Refresh intentional local screenshot changes with
+`npm run test:e2e:update`; CI runs both the portable public checks and the
+disposable authenticated smoke flow.
 
 ## Use another Valkey port
 
