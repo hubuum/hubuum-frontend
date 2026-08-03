@@ -6,8 +6,10 @@ import { CreateModal } from "@/components/create-modal";
 import { RawTokenReveal } from "@/components/raw-token-reveal";
 import { TokenMintForm } from "@/components/token-mint-form";
 import type { LoginResponse } from "@/lib/api/generated/models";
+import type { TokenMintInitialValues } from "@/lib/token-clone";
 
 type TokenCreationModalProps = {
+	initialValues?: TokenMintInitialValues;
 	open: boolean;
 	principalId: number;
 	onClose: () => void;
@@ -15,6 +17,7 @@ type TokenCreationModalProps = {
 };
 
 export function TokenCreationModal({
+	initialValues,
 	open,
 	principalId,
 	onClose,
@@ -39,7 +42,11 @@ export function TokenCreationModal({
 	return (
 		<CreateModal
 			open={open}
-			title="Create token"
+			title={
+				initialValues
+					? `Clone token #${initialValues.sourceTokenId}`
+					: "Create token"
+			}
 			closeDisabled={formCloseLocked || rawToken !== null}
 			onClose={onClose}
 		>
@@ -48,6 +55,7 @@ export function TokenCreationModal({
 			) : (
 				<TokenMintForm
 					embedded
+					initialValues={initialValues}
 					principalId={principalId}
 					onCloseLockedChange={setFormCloseLocked}
 					onMinted={(token) => {

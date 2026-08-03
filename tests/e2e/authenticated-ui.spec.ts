@@ -903,6 +903,62 @@ test.describe("authenticated workspace", () => {
 		).toBeVisible();
 	});
 
+	test("token details can clone exact scopes with a fresh expiry", async ({
+		page,
+	}) => {
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/iam/me/tokens?**",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify([
+						{
+							id: 901,
+							principal_id: 1,
+							name: "expiring-token",
+							description: "Deployment credential",
+							issued: "2026-07-01T12:00:00Z",
+							expires_at: "2026-07-02T12:00:00Z",
+							scope: {
+								permissions: ["ReadObject"],
+								resources: null,
+							},
+						},
+					]),
+				});
+			},
+		);
+		await page.goto("/account/tokens");
+		await page
+			.getByRole("row", { name: /View details for token 901 expiring-token/ })
+			.click();
+
+		const details = page.getByRole("dialog", { name: "Token #901" });
+		await expect(details.getByText("Expired", { exact: true })).toBeVisible();
+		await details.getByRole("button", { name: "Clone token" }).click();
+
+		const clone = page.getByRole("dialog", { name: "Clone token #901" });
+		await expect(
+			clone.getByText(
+				"Permission and resource scopes were copied from token #901. Its expiry was not copied, so this token will receive a fresh lifetime.",
+			),
+		).toBeVisible();
+		await expect(clone.getByLabel("Name (optional)")).toHaveValue(
+			"expiring-token (clone)",
+		);
+		await expect(clone.getByLabel("Expires (optional)")).toHaveValue("");
+
+		await clone.getByRole("tab", { name: /Permission scope/ }).click();
+		await expect(
+			clone.getByRole("button", { name: /Custom permissions/ }),
+		).toHaveAttribute("aria-pressed", "true");
+		await expect(clone.getByRole("checkbox", { name: "ReadObject" })).toBeChecked();
+		await expect(
+			clone.getByRole("checkbox", { name: "UpdateObject" }),
+		).not.toBeChecked();
+	});
+
 	test("exports separates running, templates, and history into task views", async ({
 		page,
 	}) => {

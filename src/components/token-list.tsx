@@ -16,13 +16,22 @@ import type { PrincipalTokenMetadata } from "@/lib/api/generated/models";
 import {
 	resolveDirectTokenResourceNames,
 	resolveObjectTokenResourceNames,
+	type TokenResourceNameMap,
 } from "@/lib/api/token-resource-names";
 import type { TableExportView } from "@/lib/table-export";
+import {
+	formatTokenLifecycleStatus,
+	getTokenLifecycleStatus,
+} from "@/lib/token-lifecycle";
 import { tokenResourceScopeKey } from "@/lib/token-resource-scope-selection";
 import { formatTokenMetadataScope } from "@/lib/token-scope-details";
 
 type TokenListProps = {
 	createDisabled?: boolean;
+	onClone?: (
+		token: PrincipalTokenMetadata,
+		resourceNames: TokenResourceNameMap,
+	) => void;
 	onCreate?: () => void;
 	principalId: number | "me";
 };
@@ -60,6 +69,7 @@ function formatTimestamp(value: string | null | undefined): string {
 
 export function TokenList({
 	createDisabled = false,
+	onClone,
 	onCreate,
 	principalId,
 }: TokenListProps) {
@@ -171,7 +181,8 @@ export function TokenList({
 				{
 					key: "status",
 					label: "Status",
-					getValue: (token) => (token.revoked_at ? "Revoked" : "Active"),
+					getValue: (token) =>
+						formatTokenLifecycleStatus(getTokenLifecycleStatus(token)),
 				},
 			],
 			rows: tokens,
@@ -211,6 +222,14 @@ export function TokenList({
 		<>
 			<TokenDetailsModal
 				token={selectedToken}
+				onClone={
+					onClone && selectedToken
+						? () => {
+								onClone(selectedToken, resourceNames);
+								setSelectedTokenId(null);
+							}
+						: undefined
+				}
 				resourceNames={resourceNames}
 				resourceNamesLoading={resourceNamesLoading}
 				unresolvedResourceNames={unresolvedResourceNames}
@@ -265,7 +284,7 @@ export function TokenList({
 				) : null}
 
 				{tokens.length === 0 ? (
-					<div className="muted">No active tokens.</div>
+					<div className="muted">No tokens.</div>
 				) : (
 					<div className="table-wrap">
 						<table className="token-list-table">
@@ -283,7 +302,8 @@ export function TokenList({
 							</thead>
 							<tbody>
 								{tokens.map((token) => {
-									const revoked = Boolean(token.revoked_at);
+									const lifecycleStatus = getTokenLifecycleStatus(token);
+									const revoked = lifecycleStatus === "revoked";
 									return (
 										<tr
 											key={token.id}
@@ -317,7 +337,7 @@ export function TokenList({
 											<td>{formatTimestamp(token.issued)}</td>
 											<td>{formatTimestamp(token.expires_at)}</td>
 											<td>{formatTimestamp(token.last_used_at)}</td>
-											<td>{revoked ? "Revoked" : "Active"}</td>
+											<td>{formatTokenLifecycleStatus(lifecycleStatus)}</td>
 											<td>
 												<button
 													type="button"

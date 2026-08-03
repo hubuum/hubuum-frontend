@@ -6,6 +6,10 @@ import { useState } from "react";
 import { TokenCreationModal } from "@/components/token-creation-modal";
 import { TokenList } from "@/components/token-list";
 import {
+	toTokenMintInitialValues,
+	type TokenMintInitialValues,
+} from "@/lib/token-clone";
+import {
 	getTokenMintAccess,
 	type TokenMintAuthority,
 } from "@/lib/token-mint-access";
@@ -29,6 +33,8 @@ export function PrincipalTokenManager({
 	const queryClient = useQueryClient();
 	const currentPrincipalQuery = useCurrentPrincipal();
 	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+	const [cloneInitialValues, setCloneInitialValues] =
+		useState<TokenMintInitialValues>();
 	const actor = currentPrincipalQuery.data;
 	const targetPrincipalId =
 		principalId ??
@@ -51,9 +57,13 @@ export function PrincipalTokenManager({
 		<div className="stack">
 			{targetPrincipalId != null ? (
 				<TokenCreationModal
+					initialValues={cloneInitialValues}
 					open={isCreateModalOpen && canMint}
 					principalId={targetPrincipalId}
-					onClose={() => setCreateModalOpen(false)}
+					onClose={() => {
+						setCreateModalOpen(false);
+						setCloneInitialValues(undefined);
+					}}
 					onMinted={() => {
 						if (resolvedListPrincipalId != null) {
 							void queryClient.invalidateQueries({
@@ -66,7 +76,24 @@ export function PrincipalTokenManager({
 			{resolvedListPrincipalId != null ? (
 				<TokenList
 					principalId={resolvedListPrincipalId}
-					onCreate={canMint ? () => setCreateModalOpen(true) : undefined}
+					onClone={
+						canMint
+							? (token, resourceNames) => {
+									setCloneInitialValues(
+										toTokenMintInitialValues(token, resourceNames),
+									);
+									setCreateModalOpen(true);
+								}
+							: undefined
+					}
+					onCreate={
+						canMint
+							? () => {
+									setCloneInitialValues(undefined);
+									setCreateModalOpen(true);
+								}
+							: undefined
+					}
 				/>
 			) : (
 				<div className="card muted">Resolving the token owner…</div>

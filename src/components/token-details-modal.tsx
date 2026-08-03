@@ -7,6 +7,10 @@ import {
 import { JsonViewer } from "@/components/json-viewer";
 import type { PrincipalTokenMetadata } from "@/lib/api/generated/models";
 import type { TokenResourceNameMap } from "@/lib/api/token-resource-names";
+import {
+	formatTokenLifecycleStatus,
+	getTokenLifecycleStatus,
+} from "@/lib/token-lifecycle";
 import { tokenResourceScopeKey } from "@/lib/token-resource-scope-selection";
 import {
 	formatTokenMetadataScope,
@@ -15,6 +19,7 @@ import {
 
 type TokenDetailsModalProps = {
 	token: PrincipalTokenMetadata | null;
+	onClone?: () => void;
 	onClose: () => void;
 	navigation?: ModalRecordNavigation;
 	resourceNames?: TokenResourceNameMap;
@@ -46,12 +51,14 @@ function formatTimestamp(value: string | null | undefined): string {
 
 export function TokenDetailsModal({
 	token,
+	onClone,
 	onClose,
 	navigation,
 	resourceNames = {},
 	resourceNamesLoading = false,
 	unresolvedResourceNames = 0,
 }: TokenDetailsModalProps) {
+	const lifecycleStatus = token ? getTokenLifecycleStatus(token) : null;
 	const scope = token?.scope;
 	const permissions = scope?.permissions;
 	const resources = scope?.resources;
@@ -76,7 +83,9 @@ export function TokenDetailsModal({
 							</p>
 						</div>
 						<span className="status-pill">
-							{token.revoked_at ? "Revoked" : "Active"}
+							{lifecycleStatus
+								? formatTokenLifecycleStatus(lifecycleStatus)
+								: "Active"}
 						</span>
 					</div>
 
@@ -242,6 +251,14 @@ export function TokenDetailsModal({
 						The raw bearer token and its stored hash are never returned by the
 						token-list API.
 					</p>
+
+					{onClone ? (
+						<div className="form-actions">
+							<button type="button" onClick={onClone}>
+								Clone token
+							</button>
+						</div>
+					) : null}
 
 					<details className="event-detail-raw">
 						<summary>View complete token metadata</summary>
