@@ -5,17 +5,17 @@ import {
 	normalizeCorrelationId,
 } from "@/lib/correlation";
 import { getServerEnv } from "@/lib/env";
+import {
+	emitOperationalEvent,
+	operationalErrorFields,
+	operationalLevelForStatus,
+	sanitizeOperationalPath,
+} from "@/lib/operational-events";
 
 type BackendRequestInit = RequestInit & {
 	correlationId?: string;
 	token?: string;
 };
-
-function redactSensitivePath(path: string): string {
-	return path
-		.replace(/(\/auth\/logout\/token\/)[^/]+/gi, "$1[redacted]")
-		.replace(/([?&](?:password|token)=)[^&]+/gi, "$1[redacted]");
-}
 
 export class BackendError extends Error {
 	constructor(
@@ -34,8 +34,7 @@ export function buildBackendUrl(path: string): string {
 }
 
 export function getSafeBackendPathForLogs(path: string): string {
-	const withSlash = path.startsWith("/") ? path : `/${path}`;
-	return redactSensitivePath(withSlash);
+	return sanitizeOperationalPath(path);
 }
 
 async function parseResponse(response: Response): Promise<unknown> {
@@ -51,6 +50,15 @@ async function parseResponse(response: Response): Promise<unknown> {
 
 	const text = await response.text();
 	return text || null;
+}
+
+function responseContentLength(response: Response): number | undefined {
+	const raw = response.headers.get("content-length");
+	if (!raw || !/^\d+$/.test(raw)) {
+		return undefined;
+	}
+	const parsed = Number.parseInt(raw, 10);
+	return Number.isSafeInteger(parsed) ? parsed : undefined;
 }
 
 export async function backendFetchRaw(
@@ -73,9 +81,6 @@ export async function backendFetchRaw(
 		headers.set("Authorization", `Bearer ${init.token}`);
 	}
 	const correlationId = headers.get(CORRELATION_ID_HEADER) ?? "-";
-	console.info(
-		`[hubuum-backend][cid=${correlationId}] -> ${method} ${safePath}`,
-	);
 
 	try {
 		const response = await fetch(buildBackendUrl(path), {
@@ -83,16 +88,28 @@ export async function backendFetchRaw(
 			headers,
 			cache: "no-store",
 		});
-
-		console.info(
-			`[hubuum-backend][cid=${correlationId}] <- ${method} ${safePath} ${response.status} ${Date.now() - startedAt}ms`,
+		const duration = Date.now() - startedAt;
+		emitOperationalEvent(
+			operationalLevelForStatus(response.status),
+			"backend.request.completed",
+			{
+				correlation_id: correlationId,
+				duration_ms: duration,
+				method,
+				path: safePath,
+				response_bytes: responseContentLength(response),
+				status: response.status,
+			},
 		);
 		return response;
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		console.error(
-			`[hubuum-backend][cid=${correlationId}] !! ${method} ${safePath} ${Date.now() - startedAt}ms ${message}`,
-		);
+		emitOperationalEvent("error", "backend.request.failed", {
+			correlation_id: correlationId,
+			duration_ms: Date.now() - startedAt,
+			method,
+			path: safePath,
+			...operationalErrorFields(error),
+		});
 		throw error;
 	}
 }
