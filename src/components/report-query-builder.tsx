@@ -66,7 +66,6 @@ export function ReportQueryBuilder({
 		[fields],
 	);
 	const usesObjectServerFilters = scopeKind === "objects_in_class";
-	const objectFilterMenuRootRef = useRef<HTMLDivElement | null>(null);
 	const parsedInitialRef = useRef<{
 		filters: ReportQueryFilter[];
 		objectFilters: ObjectServerFilter[];
@@ -224,12 +223,6 @@ export function ReportQueryBuilder({
 		]);
 	}
 
-	function openObjectFilterMenu() {
-		objectFilterMenuRootRef.current
-			?.querySelector<HTMLButtonElement>(".server-filter-trigger")
-			?.click();
-	}
-
 	function addSort() {
 		const field = sortableFields[0];
 		if (!field) return;
@@ -248,24 +241,14 @@ export function ReportQueryBuilder({
 				</div>
 				<div className="action-row">
 					{usesObjectServerFilters ? (
-						<div className="action-row" ref={objectFilterMenuRootRef}>
-							<ObjectServerFilterMenu
-								filters={objectFilters}
-								dataFields={objectDataFields}
-								computedFields={objectComputedFields}
-								onChange={updateObjectFilters}
-								disabled={disabled || objectFiltersDisabled}
-								embeddedInForm
-							/>
-							<button
-								type="button"
-								className="ghost"
-								onClick={openObjectFilterMenu}
-								disabled={disabled || objectFiltersDisabled}
-							>
-								Add filter
-							</button>
-						</div>
+						<ObjectServerFilterMenu
+							filters={objectFilters}
+							dataFields={objectDataFields}
+							computedFields={objectComputedFields}
+							onChange={updateObjectFilters}
+							disabled={disabled || objectFiltersDisabled}
+							embeddedInForm
+						/>
 					) : (
 						<button
 							type="button"
@@ -288,29 +271,10 @@ export function ReportQueryBuilder({
 			</div>
 
 			{usesObjectServerFilters ? (
-				<>
-					<p className="muted">
-						{objectFilterHint ??
-							"Open Server filters to add or edit filters for the full selected class."}
-					</p>
-					{objectFilters.length ? (
-						<div className="stack query-builder-list">
-							{objectFilters.map((_, index) => (
-								<article
-									key={`object-filter-${index + 1}`}
-									className="query-builder-row-card"
-								>
-									<div className="query-builder-row-heading">
-										<strong>Filter {index + 1}</strong>
-										<span className="muted">Edit in Server filters</span>
-									</div>
-								</article>
-							))}
-						</div>
-					) : (
-						<div className="empty-state">{emptyMessage}</div>
-					)}
-				</>
+				<p className="muted">
+					{objectFilterHint ??
+						"Open Server filters to add or edit filters for the full selected class."}
+				</p>
 			) : filters.length ? (
 				<div className="stack query-builder-list">
 					{filters.map((filter, index) => {

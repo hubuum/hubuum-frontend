@@ -571,15 +571,14 @@ test.describe("authenticated workspace", () => {
 		const card = page.locator(".objects-resource-index");
 		const heading = card.locator(".resource-index-heading");
 		const summary = heading.locator(".resource-index-summary");
-		const create = heading.getByRole("button", { name: "New object" });
+		const create = heading.getByRole("button", { name: "New Math" });
 		await expect(
 			heading.getByRole("heading", { name: "Objects" }),
 		).toBeVisible();
 		await expect(
 			heading.getByRole("combobox", { name: "Objects class context" }),
 		).toHaveValue("1");
-		await expect(summary).toContainText("2 loaded");
-		await expect(summary).toContainText("9 total");
+		await expect(summary).toContainText("2/9");
 		await expect(create).toBeVisible();
 		await expect(page.locator(".fab--create")).toBeHidden();
 		await expect(page.locator(".topbar .topbar-left")).toHaveCount(0);
@@ -769,7 +768,7 @@ test.describe("authenticated workspace", () => {
 		await expect(
 			page
 				.locator(".topology-navigation--topbar")
-				.getByRole("button", { name: /Classes:/ }),
+				.getByRole("link", { name: /Classes:/ }),
 		).toBeVisible();
 
 		await workflowsMenu.click();
@@ -952,7 +951,9 @@ test.describe("authenticated workspace", () => {
 		await expect(targetTab).toBeDisabled();
 		await expect(appearanceTab).toBeDisabled();
 		await expect(templateHistoryTab).toBeDisabled();
-		await page.getByLabel("Name").fill("Weekly inventory");
+		await page
+			.getByRole("textbox", { name: "Name", exact: true })
+			.fill("Weekly inventory");
 		await page
 			.getByLabel("Description")
 			.fill("The current inventory for operations.");
@@ -1075,7 +1076,20 @@ test.describe("authenticated workspace", () => {
 			await route.fulfill({
 				status: 200,
 				contentType: "application/json",
-				body: JSON.stringify([{ id: 10, name: "Machines" }]),
+				body: JSON.stringify([
+					{
+						id: 10,
+						name: "Machines",
+						collection: {
+							id: 1,
+							name: "Root",
+							description: "",
+							parent_collection_id: null,
+							created_at: timestamp,
+							updated_at: timestamp,
+						},
+					},
+				]),
 			});
 		});
 		await context.route("**/api/v1/export-templates**", async (route) => {
@@ -1286,8 +1300,23 @@ test.describe("authenticated workspace", () => {
 			page.getByRole("link", { name: "View report" }),
 		).toHaveAttribute("href", "/reports/7");
 		await page.getByText("Change it for this view", { exact: true }).click();
-		await page.getByRole("button", { name: "Add filter" }).click();
-		await expect(page.getByText("Filter 1", { exact: true })).toBeVisible();
+		const customizedFilters = page.getByRole("button", {
+			name: "Server filters",
+			exact: true,
+		});
+		await customizedFilters.click();
+		const customizedFiltersDialog = page.getByRole("dialog", {
+			name: "Server filters",
+		});
+		await customizedFiltersDialog
+			.getByLabel("Server filter value")
+			.fill("server");
+		await customizedFiltersDialog
+			.getByRole("button", { name: "Add filter" })
+			.click();
+		await expect(customizedFilters).toContainText("1");
+		await customizedFilters.click();
+		await expect(customizedFiltersDialog).toBeHidden();
 		const viewWithChanges = page.getByRole("button", {
 			name: "View with changes",
 		});
@@ -1327,7 +1356,9 @@ test.describe("authenticated workspace", () => {
 		await expect(
 			page.getByRole("heading", { name: "Duplicate Inventory" }),
 		).toBeVisible();
-		await expect(page.getByLabel("Name")).toHaveValue("Inventory copy");
+		await expect(
+			page.getByRole("textbox", { name: "Name", exact: true }),
+		).toHaveValue("Inventory copy");
 	});
 
 	test("selecting a related class infers its minimum include depth", async ({

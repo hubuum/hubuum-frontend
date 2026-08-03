@@ -31,8 +31,9 @@ export function buildResourceSummary({
 	const hasLoaded = loaded !== null && loaded !== undefined;
 	const hasTotal = total !== null && total !== undefined;
 	if (compactLoadedTotal && hasLoaded && hasTotal && !loadedNoun) {
-		segments.push(`${loaded} loaded`);
-		segments.push(`${total} ${totalLabel}`);
+		segments.push(
+			`${loaded}/${total}${totalLabel === "total" ? "" : ` ${totalLabel}`}`,
+		);
 	} else if (hasLoaded) {
 		segments.push(
 			`${loaded}${loadedNoun ? ` ${loadedNoun}` : ""} loaded`,
