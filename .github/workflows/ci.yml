@@ -40,8 +40,12 @@ jobs:
         run: npm run typecheck
       - name: Test
         run: npm test
+      - name: Test performance budget tooling
+        run: npm run test:performance-budget
       - name: Build
         run: npm run build
+      - name: Enforce frontend performance budgets
+        run: npm run perf:budget
       - name: Audit runtime dependencies
         run: npm run audit:prod
       - name: Verify release metadata
