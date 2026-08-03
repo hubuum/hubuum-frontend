@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { invalidateProtectedLayoutBootstrap } from "@/lib/auth/protected-layout-bootstrap";
 import { getSessionStore, type SessionPayload } from "@/lib/auth/session-store";
+import { shouldTouchSession } from "@/lib/auth/session-touch";
 import { getServerEnv } from "@/lib/env";
 
 export const SESSION_COOKIE_NAME = "hubuum.sid";
@@ -11,6 +12,11 @@ const LEGACY_SESSION_TOKEN_COOKIE_NAME = "hubuum.token";
 const LEGACY_SESSION_USERNAME_COOKIE_NAME = "hubuum.username";
 
 export type ActiveSession = SessionPayload & { sid: string };
+
+const pendingSessionHydrations = new Map<
+	string,
+	Promise<ActiveSession | null>
+>();
 
 function shouldUseSecureCookies(request?: NextRequest): boolean {
 	const env = getServerEnv();
@@ -46,24 +52,52 @@ function cookieSettings(request?: NextRequest) {
 	};
 }
 
-async function hydrateSession(sid: string): Promise<ActiveSession | null> {
+async function loadSession(sid: string): Promise<ActiveSession | null> {
 	const store = getSessionStore();
 	const payload = await store.get(sid);
 	if (!payload) {
 		return null;
 	}
 
+	const now = Date.now();
+	const ttlSeconds = getServerEnv().SESSION_TTL_SECONDS;
+	if (!shouldTouchSession(payload.lastSeen, now, ttlSeconds)) {
+		return {
+			sid,
+			...payload,
+		};
+	}
+
 	const touched: SessionPayload = {
 		...payload,
-		lastSeen: Date.now(),
+		lastSeen: now,
 	};
-
-	await store.touch(sid, touched);
+	if (!(await store.touch(sid, touched))) {
+		return null;
+	}
 
 	return {
 		sid,
 		...touched,
 	};
+}
+
+async function hydrateSession(sid: string): Promise<ActiveSession | null> {
+	const pending = pendingSessionHydrations.get(sid);
+	if (pending) {
+		return pending;
+	}
+
+	const hydration = loadSession(sid);
+	pendingSessionHydrations.set(sid, hydration);
+
+	try {
+		return await hydration;
+	} finally {
+		if (pendingSessionHydrations.get(sid) === hydration) {
+			pendingSessionHydrations.delete(sid);
+		}
+	}
 }
 
 export async function createSession(
@@ -105,6 +139,7 @@ export async function getSessionFromServerCookies(): Promise<ActiveSession | nul
 }
 
 export async function destroySession(sid: string): Promise<void> {
+	pendingSessionHydrations.delete(sid);
 	invalidateProtectedLayoutBootstrap(sid);
 	await getSessionStore().destroy(sid);
 }
