@@ -133,6 +133,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 		headers: upstreamHeaders,
 		body,
 		cache: "no-store",
+		signal: request.signal,
 	};
 	if (body) {
 		upstreamRequest.duplex = "half";
