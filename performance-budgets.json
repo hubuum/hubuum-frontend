@@ -1,0 +1,6 @@
+{
+	"version": 1,
+	"maxChunkGzipBytes": 700000,
+	"maxRouteGzipBytes": 850000,
+	"maxTotalGzipBytes": 4000000
+}
