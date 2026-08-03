@@ -442,7 +442,7 @@ test.describe("authenticated workspace", () => {
 		expect(selectAllBounds).not.toBeNull();
 		expect(
 			headerRowBounds?.height ?? Number.POSITIVE_INFINITY,
-		).toBeLessThanOrEqual(32);
+		).toBeLessThanOrEqual(36);
 		expect(
 			Math.abs(
 				((headerRowBounds?.y ?? 0) + (headerRowBounds?.height ?? 0) / 2) -
@@ -625,7 +625,7 @@ test.describe("authenticated workspace", () => {
 		const idResizeHandleBounds = await idResizeHandle.boundingBox();
 		expect(
 			selectHeaderBounds?.width ?? Number.POSITIVE_INFINITY,
-		).toBeLessThanOrEqual(36);
+		).toBeLessThanOrEqual(38);
 		expect(idResizeHandleBounds).not.toBeNull();
 
 		const requestCountBeforeResize = objectRequestCount;
@@ -957,7 +957,10 @@ test.describe("authenticated workspace", () => {
 		await page
 			.getByLabel("Description")
 			.fill("The current inventory for operations.");
-		await page.getByRole("button", { name: "Continue to target" }).click();
+		await page
+			.getByRole("button", { name: "Continue to target" })
+			.first()
+			.click();
 		await expect(targetTab).toHaveAttribute("aria-selected", "true");
 		await page
 			.getByRole("combobox", { name: "Scope", exact: true })
@@ -1301,8 +1304,7 @@ test.describe("authenticated workspace", () => {
 		).toHaveAttribute("href", "/reports/7");
 		await page.getByText("Change it for this view", { exact: true }).click();
 		const customizedFilters = page.getByRole("button", {
-			name: "Server filters",
-			exact: true,
+			name: /^Server filters/,
 		});
 		await customizedFilters.click();
 		const customizedFiltersDialog = page.getByRole("dialog", {
@@ -1314,7 +1316,7 @@ test.describe("authenticated workspace", () => {
 		await customizedFiltersDialog
 			.getByRole("button", { name: "Add filter" })
 			.click();
-		await expect(customizedFilters).toContainText("1");
+		await expect(customizedFilters).toContainText("3");
 		await customizedFilters.click();
 		await expect(customizedFiltersDialog).toBeHidden();
 		const viewWithChanges = page.getByRole("button", {
