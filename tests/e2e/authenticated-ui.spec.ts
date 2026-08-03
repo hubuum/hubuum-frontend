@@ -485,7 +485,7 @@ test.describe("authenticated workspace", () => {
 
 		const lastHandleBounds = await lastResizeHandle.boundingBox();
 		expect(lastHandleBounds).not.toBeNull();
-		const lastDragDistance = 48;
+		const lastDragDistance = -48;
 		const lastDragStartX =
 			(lastHandleBounds?.x ?? 0) + (lastHandleBounds?.width ?? 0) / 2;
 		const lastDragY =
@@ -1310,6 +1310,9 @@ test.describe("authenticated workspace", () => {
 		const customizedFiltersDialog = page.getByRole("dialog", {
 			name: "Server filters",
 		});
+		await customizedFiltersDialog
+			.getByLabel("Server filter field")
+			.selectOption("description");
 		await customizedFiltersDialog
 			.getByLabel("Server filter value")
 			.fill("server");
