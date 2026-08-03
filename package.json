@@ -22,7 +22,7 @@
 		"test:live-backend": "scripts/live-backend-test.sh",
 		"lint": "biome lint .",
 		"typecheck": "next typegen && tsc --noEmit",
-		"gen:api": "npx --yes orval@8.21.0 --clean --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
+		"gen:api": "npx --yes orval@8.23.0 --clean --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
 		"audit:prod": "npm audit --omit=dev"
 	},
 	"dependencies": {
@@ -51,7 +51,7 @@
 		"zod": "^4.4.3"
 	},
 	"overrides": {
-		"postcss": "8.5.23",
+		"postcss": "8.5.25",
 		"sharp": "0.35.3"
 	},
 	"devDependencies": {
