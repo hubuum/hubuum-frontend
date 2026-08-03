@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { buildBackendUrl, getSafeBackendPathForLogs } from "@/lib/api/backend";
+import {
+	getProxyRequestBody,
+	getProxyResponseBody,
+} from "@/lib/api/proxy-bodies";
 import { copyPaginationHeaders } from "@/lib/api/proxy-pagination-headers";
 import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
 import {
@@ -23,6 +27,10 @@ type RouteContext = {
 	params: Promise<{
 		path: string[];
 	}>;
+};
+
+type StreamingRequestInit = RequestInit & {
+	duplex?: "half";
 };
 
 const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "PUT", "DELETE"]);
@@ -145,8 +153,17 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	upstreamHeaders.set("authorization", `Bearer ${session.token}`);
 	upstreamHeaders.set(CORRELATION_ID_HEADER, correlationId);
 
-	const bodyAllowed = method !== "GET" && method !== "HEAD";
-	const body = bodyAllowed ? await request.text() : undefined;
+	const body = getProxyRequestBody(method, request.body);
+	const upstreamRequest: StreamingRequestInit = {
+		method,
+		headers: upstreamHeaders,
+		body,
+		cache: "no-store",
+		signal: request.signal,
+	};
+	if (body) {
+		upstreamRequest.duplex = "half";
+	}
 
 	const targetUrl = new URL(buildBackendUrl(path));
 	targetUrl.search = request.nextUrl.search;
@@ -157,12 +174,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 
 	let upstreamResponse: Response;
 	try {
-		upstreamResponse = await fetch(targetUrl, {
-			method,
-			headers: upstreamHeaders,
-			body: bodyAllowed ? body : undefined,
-			cache: "no-store",
-		});
+		upstreamResponse = await fetch(targetUrl, upstreamRequest);
 		emitOperationalEvent(
 			operationalLevelForStatus(upstreamResponse.status),
 			"bff.proxy.completed",
@@ -203,7 +215,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 
 	const status = upstreamResponse.status;
 	const hasNoBody = status === 204 || status === 205 || status === 304;
-	const responseBody = hasNoBody ? null : await upstreamResponse.text();
+	const responseBody = getProxyResponseBody(status, upstreamResponse.body);
 	const response = new NextResponse(responseBody, {
 		status,
 	});

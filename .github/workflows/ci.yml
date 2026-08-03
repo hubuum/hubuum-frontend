@@ -85,6 +85,27 @@ jobs:
       - name: Run public accessibility and visual checks
         run: npm run test:e2e:public
 
+  authenticated-browser-smoke:
+    name: authenticated-browser-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run authenticated browser smoke test
+        env:
+          HUBUUM_AUTH_E2E_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
+        run: npm run test:e2e:authenticated
+
   package:
     name: package
     runs-on: ubuntu-latest
@@ -175,6 +196,7 @@ jobs:
       - validate
       - backend-contract
       - browser-quality
+      - authenticated-browser-smoke
       - package
     runs-on: ubuntu-latest
     timeout-minutes: 35

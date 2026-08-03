@@ -13,7 +13,7 @@ export type SessionPayload = {
 interface SessionStore {
 	create(sid: string, payload: SessionPayload): Promise<void>;
 	get(sid: string): Promise<SessionPayload | null>;
-	touch(sid: string, payload: SessionPayload): Promise<void>;
+	touch(sid: string, payload: SessionPayload): Promise<boolean>;
 	destroy(sid: string): Promise<void>;
 }
 
@@ -51,14 +51,16 @@ class ValkeySessionStore implements SessionStore {
 		}
 	}
 
-	async touch(sid: string, payload: SessionPayload): Promise<void> {
+	async touch(sid: string, payload: SessionPayload): Promise<boolean> {
 		const client = getValkeyClient();
-		await client.set(
+		const result = await client.set(
 			this.key(sid),
 			JSON.stringify(payload),
 			"EX",
 			this.ttlSeconds,
+			"XX",
 		);
+		return result === "OK";
 	}
 
 	async destroy(sid: string): Promise<void> {

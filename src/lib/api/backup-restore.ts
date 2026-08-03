@@ -12,6 +12,7 @@ import type {
 	RestoreStageResponse,
 	TaskResponse,
 } from "@/lib/api/generated/models";
+import { acquireOperationIdempotencyKey } from "@/lib/operation-idempotency";
 
 export const RESTORE_CONFIRMATION_PHRASE = "REPLACE ALL HUBUUM DATA";
 
@@ -54,15 +55,18 @@ export function backupFilenameFromHeader(
 export async function createBackupTask(
 	includeHistory: boolean,
 ): Promise<TaskResponse> {
-	const response = await postApiV1Backups(
-		{ include_history: includeHistory },
-		{ credentials: "include" },
-	);
+	const request = { include_history: includeHistory };
+	const idempotency = await acquireOperationIdempotencyKey("backup", request);
+	const response = await postApiV1Backups(request, {
+		credentials: "include",
+		headers: { "Idempotency-Key": idempotency.key },
+	});
 	if (response.status !== 202) {
 		throw new Error(
 			getApiErrorMessage(response.data, "Failed to create system backup."),
 		);
 	}
+	idempotency.complete();
 	return response.data;
 }
 
