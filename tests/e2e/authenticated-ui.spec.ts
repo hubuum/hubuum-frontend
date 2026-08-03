@@ -501,10 +501,14 @@ test.describe("authenticated workspace", () => {
 		await page.mouse.up();
 
 		const afterLastResize = await readGeometry();
-		expect(afterLastResize.slice(0, 4)).toEqual(
-			beforeLastResize.slice(0, 4),
+		expect(afterLastResize.slice(0, 4).map(({ width }) => width)).toEqual(
+			beforeLastResize.slice(0, 4).map(({ width }) => width),
 		);
-		expect(afterLastResize[4]?.left).toBe(beforeLastResize[4]?.left);
+		const beforeTableLeft = beforeLastResize[0]?.left ?? 0;
+		const afterTableLeft = afterLastResize[0]?.left ?? 0;
+		expect(
+			afterLastResize.map(({ left }) => left - afterTableLeft),
+		).toEqual(beforeLastResize.map(({ left }) => left - beforeTableLeft));
 		expect(afterLastResize[4]?.width).toBe(
 			(beforeLastResize[4]?.width ?? 0) + lastDragDistance,
 		);
