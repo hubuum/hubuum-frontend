@@ -32,7 +32,7 @@ import type {
 	UpdateExportTemplate,
 } from "@/lib/api/generated/models";
 import { frontendApiPath } from "@/lib/api/frontend";
-import { normalizeIdempotencyKey } from "@/lib/idempotency-key";
+import { acquireOperationIdempotencyKey } from "@/lib/operation-idempotency";
 import {
 	parseReportResultStatusResponse,
 	type ReportResultStatus,
@@ -255,15 +255,14 @@ export async function submitJsonReportTask(
 	request: ReportRequest,
 	idempotencyKey?: string,
 ): Promise<TaskResponse> {
-	const headers = new Headers();
-	const normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
-	if (normalizedIdempotencyKey) {
-		headers.set("Idempotency-Key", normalizedIdempotencyKey);
-	}
-
+	const idempotency = await acquireOperationIdempotencyKey(
+		"export:json",
+		request,
+		idempotencyKey,
+	);
 	const response = await postApiV1Exports(request, {
 		credentials: "include",
-		headers,
+		headers: { "Idempotency-Key": idempotency.key },
 	});
 
 	if ((response.status as number) === 429) {
@@ -276,6 +275,7 @@ export async function submitJsonReportTask(
 			getApiErrorMessage(response.data, "Failed to submit export."),
 		);
 	}
+	idempotency.complete();
 	return response.data;
 }
 
@@ -284,16 +284,18 @@ export async function runTemplateReport(
 	overrides: ReportTemplateRunRequest,
 	idempotencyKey?: string,
 ): Promise<TaskResponse> {
-	const headers = new Headers();
-	const normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
-	if (normalizedIdempotencyKey) {
-		headers.set("Idempotency-Key", normalizedIdempotencyKey);
-	}
-
+	const idempotency = await acquireOperationIdempotencyKey(
+		`export:template:${templateId}`,
+		overrides,
+		idempotencyKey,
+	);
 	const response = await postApiV1ExportTemplatesByTemplateIdExports(
 		templateId,
 		overrides,
-		{ credentials: "include", headers },
+		{
+			credentials: "include",
+			headers: { "Idempotency-Key": idempotency.key },
+		},
 	);
 
 	if ((response.status as number) === 429) {
@@ -306,6 +308,7 @@ export async function runTemplateReport(
 			getApiErrorMessage(response.data, "Failed to run template export."),
 		);
 	}
+	idempotency.complete();
 	return response.data;
 }
 
