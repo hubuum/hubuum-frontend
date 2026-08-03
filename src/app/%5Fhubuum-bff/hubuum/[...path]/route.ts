@@ -17,6 +17,11 @@ import {
 	generateCorrelationId,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
+import {
+	emitOperationalEvent,
+	operationalErrorFields,
+	operationalLevelForStatus,
+} from "@/lib/operational-events";
 
 type RouteContext = {
 	params: Promise<{
@@ -50,16 +55,30 @@ function toUpstreamPath(
 	return `/${joined}`;
 }
 
+function headerContentLength(headers: Headers): number | undefined {
+	const raw = headers.get("content-length");
+	if (!raw || !/^\d+$/.test(raw)) {
+		return undefined;
+	}
+	const parsed = Number.parseInt(raw, 10);
+	return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+
 async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	const method = request.method.toUpperCase();
 	const correlationId =
 		normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER)) ??
 		generateCorrelationId();
+	const sourcePath = getSafeBackendPathForLogs(request.nextUrl.pathname);
 
 	if (!ALLOWED_METHODS.has(method)) {
-		console.warn(
-			`[hubuum-proxy][cid=${correlationId}] !! ${method} ${request.nextUrl.pathname} 405 method-not-allowed`,
-		);
+		emitOperationalEvent("warn", "bff.proxy.rejected", {
+			correlation_id: correlationId,
+			method,
+			reason: "method_not_allowed",
+			source_path: sourcePath,
+			status: 405,
+		});
 		return NextResponse.json(
 			{ error: "MethodNotAllowed", message: `${method} is not supported.` },
 			{
@@ -77,9 +96,13 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 		request.nextUrl.pathname.endsWith("/");
 	const path = toUpstreamPath(resolvedParams.path, preserveTrailingSlash);
 	if (!path) {
-		console.warn(
-			`[hubuum-proxy][cid=${correlationId}] !! ${method} ${request.nextUrl.pathname} 400 bad-path`,
-		);
+		emitOperationalEvent("warn", "bff.proxy.rejected", {
+			correlation_id: correlationId,
+			method,
+			reason: "invalid_upstream_path",
+			source_path: sourcePath,
+			status: 400,
+		});
 		return NextResponse.json(
 			{ error: "BadRequest", message: "Path must begin with api/." },
 			{
@@ -93,9 +116,12 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 
 	const session = await getSessionFromRequest(request);
 	if (!session) {
-		console.warn(
-			`[hubuum-proxy][cid=${correlationId}] !! ${method} ${request.nextUrl.pathname} 401 no-session`,
-		);
+		emitOperationalEvent("warn", "bff.proxy.unauthenticated", {
+			correlation_id: correlationId,
+			method,
+			source_path: sourcePath,
+			status: 401,
+		});
 		return NextResponse.json(
 			{ error: "Unauthorized", message: "Sign in required." },
 			{
@@ -145,21 +171,34 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 		`${path}${request.nextUrl.search}`,
 	);
 	const startedAt = Date.now();
-	console.info(
-		`[hubuum-proxy][cid=${correlationId}] -> ${method} ${safePath} (source=${request.nextUrl.pathname})`,
-	);
 
 	let upstreamResponse: Response;
 	try {
 		upstreamResponse = await fetch(targetUrl, upstreamRequest);
-		console.info(
-			`[hubuum-proxy][cid=${correlationId}] <- ${method} ${safePath} ${upstreamResponse.status} ${Date.now() - startedAt}ms`,
+		emitOperationalEvent(
+			operationalLevelForStatus(upstreamResponse.status),
+			"bff.proxy.completed",
+			{
+				correlation_id: correlationId,
+				duration_ms: Date.now() - startedAt,
+				method,
+				path: safePath,
+				request_bytes: headerContentLength(request.headers),
+				response_bytes: headerContentLength(upstreamResponse.headers),
+				source_path: sourcePath,
+				status: upstreamResponse.status,
+			},
 		);
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		console.error(
-			`[hubuum-proxy][cid=${correlationId}] !! ${method} ${safePath} ${Date.now() - startedAt}ms ${message}`,
-		);
+		emitOperationalEvent("error", "bff.proxy.failed", {
+			correlation_id: correlationId,
+			duration_ms: Date.now() - startedAt,
+			method,
+			path: safePath,
+			request_bytes: headerContentLength(request.headers),
+			source_path: sourcePath,
+			...operationalErrorFields(error),
+		});
 		return NextResponse.json(
 			{
 				error: "UpstreamUnavailable",
