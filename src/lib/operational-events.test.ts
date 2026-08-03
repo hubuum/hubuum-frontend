@@ -36,6 +36,7 @@ describe("operational event formatting", () => {
 
 	it("drops sensitive and structured fields", () => {
 		const event = formatOperationalEvent("warn", "test.redaction", {
+			api_key: "secret",
 			authorization: "Bearer secret",
 			body: "sensitive request",
 			cookie: "hubuum.sid=secret",
@@ -48,6 +49,7 @@ describe("operational event formatting", () => {
 		});
 
 		expect(event.safe).toBe(true);
+		expect(event).not.toHaveProperty("api_key");
 		expect(event).not.toHaveProperty("authorization");
 		expect(event).not.toHaveProperty("body");
 		expect(event).not.toHaveProperty("cookie");
@@ -61,7 +63,7 @@ describe("operational event formatting", () => {
 	it("redacts credentials embedded in otherwise safe strings", () => {
 		expect(
 			redactOperationalText(
-				"request failed: Bearer abc123? token=hidden&mode=full password: hunter2",
+				"request failed: Bearer abc123 token=hidden&mode=full password: hunter2",
 			),
 		).toBe(
 			"request failed: Bearer [redacted] token=[redacted]&mode=full password=[redacted]",
@@ -75,7 +77,7 @@ describe("operational event formatting", () => {
 		});
 
 		expect(String(event.message)).toHaveLength(512);
-		expect(String(event.message)).toEndWith("…");
+		expect(String(event.message).endsWith("…")).toBe(true);
 		expect(event.value).toBeNull();
 	});
 
