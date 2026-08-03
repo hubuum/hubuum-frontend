@@ -135,8 +135,6 @@ export function ClassesTable() {
 		searchParams.get("search") ?? "",
 	);
 
-	useResizableTable({ tableId: "classes-table", storageKey: "classes" });
-
 	const pagination = useCursorPagination({ defaultLimit: 100 });
 	const { sortState, setSort, getSortParam } = useTableSort();
 
@@ -324,6 +322,11 @@ export function ClassesTable() {
 			),
 		[classes, searchTerm],
 	);
+	useResizableTable({
+		tableId: "classes-table",
+		storageKey: "classes",
+		columnSignature: filteredClasses.length > 0 ? "populated" : "empty",
+	});
 	const exportView = useMemo<TableExportView<HubuumClassExpanded>>(
 		() => ({
 			id: "classes",

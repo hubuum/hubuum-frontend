@@ -16,6 +16,7 @@
 		"test:performance-budget": "node --test scripts/check-performance-budgets.test.mjs",
 		"test:e2e": "playwright test",
 		"test:e2e:authenticated": "bash scripts/authenticated-e2e-test.sh",
+		"test:e2e:authenticated:full": "bash scripts/full-authenticated-e2e.sh",
 		"test:e2e:public": "playwright test tests/e2e/public-ui.spec.ts",
 		"test:e2e:update": "playwright test tests/e2e/public-ui.spec.ts --update-snapshots",
 		"test:live-backend": "scripts/live-backend-test.sh",

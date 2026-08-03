@@ -128,6 +128,15 @@ export function LoginForm({
 		}
 	}
 
+	const providerOptions =
+		providerDiscovery.status === "available"
+			? providerDiscovery.providers
+			: [LOCAL_IDENTITY_SCOPE];
+	const selectedProvider =
+		providerDiscovery.status === "available"
+			? identityScope
+			: LOCAL_IDENTITY_SCOPE;
+
 	return (
 		<form
 			action={loginEndpoint}
@@ -139,23 +148,25 @@ export function LoginForm({
 				void submitLogin();
 			}}
 		>
-			{providerDiscovery.status === "available" ? (
+			{providerDiscovery.status !== "fallback" ? (
 				<>
 					<label htmlFor="identity-scope">Authentication provider</label>
 					<select
 						id="identity-scope"
 						name="identity_scope"
-						value={identityScope}
+						value={selectedProvider}
 						onChange={(event) => setIdentityScope(event.target.value)}
 					>
-						{providerDiscovery.providers.map((provider) => (
+						{providerOptions.map((provider) => (
 							<option key={provider} value={provider}>
 								{provider === LOCAL_IDENTITY_SCOPE ? "Local account" : provider}
 							</option>
 						))}
 					</select>
 					<p className="muted login-field-hint">
-						Choose the identity provider for this account.
+						{providerDiscovery.status === "loading"
+							? "Looking for configured authentication providers."
+							: "Choose the identity provider for this account."}
 					</p>
 				</>
 			) : (
@@ -173,9 +184,7 @@ export function LoginForm({
 						spellCheck={false}
 					/>
 					<p className="muted login-field-hint">
-						{providerDiscovery.status === "loading"
-							? "Looking for configured providers. You can enter a scope manually."
-							: "Leave blank for local accounts, or enter the configured provider scope."}
+						Leave blank for local accounts, or enter the configured provider scope.
 					</p>
 				</>
 			)}
