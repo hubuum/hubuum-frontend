@@ -60,16 +60,16 @@ function canonicalizeJsonValue(
 		throw new TypeError("Operation payloads cannot contain circular references.");
 	}
 
-	const toJson = (value as { toJSON?: unknown }).toJSON;
-	if (typeof toJson === "function") {
-		return canonicalizeJsonValue(
-			(toJson as () => unknown).call(value),
-			seen,
-		);
-	}
-
 	seen.add(value);
 	try {
+		const toJson = (value as { toJSON?: unknown }).toJSON;
+		if (typeof toJson === "function") {
+			return canonicalizeJsonValue(
+				(toJson as () => unknown).call(value),
+				seen,
+			);
+		}
+
 		if (Array.isArray(value)) {
 			return value.map(
 				(item) => canonicalizeJsonValue(item, seen) ?? null,
@@ -291,12 +291,26 @@ export function createOperationIdempotencyManager(
 	return { acquire };
 }
 
-const operationIdempotencyManager = createOperationIdempotencyManager();
+let browserOperationIdempotencyManager: ReturnType<
+	typeof createOperationIdempotencyManager
+> | null = null;
+
+function getOperationIdempotencyManager() {
+	if (typeof window === "undefined") {
+		return createOperationIdempotencyManager({ storage: null });
+	}
+	browserOperationIdempotencyManager ??= createOperationIdempotencyManager();
+	return browserOperationIdempotencyManager;
+}
 
 export function acquireOperationIdempotencyKey(
 	scope: string,
 	payload: unknown,
 	requestedKey?: string | null,
 ): Promise<OperationIdempotencyLease> {
-	return operationIdempotencyManager.acquire(scope, payload, requestedKey);
+	return getOperationIdempotencyManager().acquire(
+		scope,
+		payload,
+		requestedKey,
+	);
 }
