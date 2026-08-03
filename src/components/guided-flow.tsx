@@ -72,6 +72,7 @@ export function GuidedFlowTabs<StepId extends string>({
 		>
 			{steps.map((step, index) => {
 				const enabled = step.enabled !== false;
+				const descriptionId = `${idPrefix}-tab-${step.id}-description`;
 				return (
 					<button
 						key={step.id}
@@ -80,6 +81,7 @@ export function GuidedFlowTabs<StepId extends string>({
 						role="tab"
 						aria-selected={activeStep === step.id}
 						aria-controls={`${idPrefix}-panel-${step.id}`}
+						aria-describedby={descriptionId}
 						tabIndex={activeStep === step.id ? 0 : -1}
 						className={activeStep === step.id ? "is-active" : ""}
 						disabled={!enabled}
@@ -90,7 +92,7 @@ export function GuidedFlowTabs<StepId extends string>({
 							{numbered ? `${index + 1}. ` : ""}
 							{step.label}
 						</span>
-						<small>
+						<small id={descriptionId}>
 							{enabled
 								? step.hint
 								: (step.disabledHint ?? "Complete the previous step")}
