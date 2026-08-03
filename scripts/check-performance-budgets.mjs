@@ -8,9 +8,24 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const DEFAULT_BUILD_DIR = ".next";
 const DEFAULT_CONFIG_PATH = "performance-budgets.json";
 const TOP_RESULT_COUNT = 12;
+const CLIENT_REFERENCE_MANIFEST_SUFFIX = "_client-reference-manifest.js";
 
 function normalizePath(value) {
 	return value.split(sep).join("/").replace(/^\.\//, "");
+}
+
+function canonicalAssetPath(value) {
+	let normalized = normalizePath(value).replace(/^\/+/, "");
+	if (normalized.startsWith("_next/")) {
+		normalized = normalized.slice("_next/".length);
+	}
+	if (normalized.startsWith("chunks/")) {
+		normalized = `static/${normalized}`;
+	}
+	if (normalized.startsWith("app/") || normalized.startsWith("pages/")) {
+		normalized = `static/chunks/${normalized}`;
+	}
+	return normalized;
 }
 
 async function pathExists(path) {
@@ -22,18 +37,26 @@ async function pathExists(path) {
 	}
 }
 
-async function walkJavaScriptFiles(directory) {
+async function walkFiles(directory, predicate) {
+	if (!(await pathExists(directory))) {
+		return [];
+	}
+
 	const entries = await readdir(directory, { withFileTypes: true });
 	const files = [];
 	for (const entry of entries) {
 		const path = join(directory, entry.name);
 		if (entry.isDirectory()) {
-			files.push(...(await walkJavaScriptFiles(path)));
-		} else if (entry.isFile() && entry.name.endsWith(".js")) {
+			files.push(...(await walkFiles(path, predicate)));
+		} else if (entry.isFile() && predicate(entry.name)) {
 			files.push(path);
 		}
 	}
 	return files;
+}
+
+async function walkJavaScriptFiles(directory) {
+	return walkFiles(directory, (name) => name.endsWith(".js"));
 }
 
 function positiveInteger(value, label) {
@@ -82,10 +105,62 @@ function addRouteFiles(routeFiles, route, files) {
 	const target = routeFiles.get(route) ?? new Set();
 	for (const file of files) {
 		if (typeof file === "string" && file.endsWith(".js")) {
-			target.add(normalizePath(file).replace(/^\//, ""));
+			target.add(canonicalAssetPath(file));
 		}
 	}
-	routeFiles.set(route, target);
+	if (target.size > 0) {
+		routeFiles.set(route, target);
+	}
+}
+
+function manifestPages(manifest) {
+	if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+		return null;
+	}
+	if (
+		manifest.pages &&
+		typeof manifest.pages === "object" &&
+		!Array.isArray(manifest.pages)
+	) {
+		return manifest.pages;
+	}
+	return null;
+}
+
+function routeFromClientReferenceManifest(appServerDir, manifestPath) {
+	const relativePath = normalizePath(relative(appServerDir, manifestPath));
+	const withoutSuffix = relativePath.slice(
+		0,
+		-CLIENT_REFERENCE_MANIFEST_SUFFIX.length,
+	);
+	const withoutTerminalPage = withoutSuffix.replace(/\/page$/, "");
+	return withoutTerminalPage ? `app:${withoutTerminalPage}` : "app:/";
+}
+
+function extractClientReferenceAssets(source) {
+	const matches = source.match(
+		/(?:\/?_next\/)?static\/chunks\/[^"'\\\s]+\.js|(?:app|pages)\/[^"'\\\s]+\.js/g,
+	);
+	return matches ? Array.from(new Set(matches.map(canonicalAssetPath))) : [];
+}
+
+async function collectClientReferenceRoutes(
+	buildDir,
+	sharedFiles,
+	routeFiles,
+) {
+	const appServerDir = join(buildDir, "server", "app");
+	const manifests = await walkFiles(appServerDir, (name) =>
+		name.endsWith(CLIENT_REFERENCE_MANIFEST_SUFFIX),
+	);
+	for (const manifestPath of manifests) {
+		const source = await readFile(manifestPath, "utf8");
+		addRouteFiles(
+			routeFiles,
+			routeFromClientReferenceManifest(appServerDir, manifestPath),
+			[...sharedFiles, ...extractClientReferenceAssets(source)],
+		);
+	}
 }
 
 async function collectRouteFiles(buildDir) {
@@ -97,12 +172,12 @@ async function collectRouteFiles(buildDir) {
 	if (buildManifest && typeof buildManifest === "object") {
 		for (const file of buildManifest.rootMainFiles ?? []) {
 			if (typeof file === "string" && file.endsWith(".js")) {
-				sharedFiles.add(normalizePath(file).replace(/^\//, ""));
+				sharedFiles.add(canonicalAssetPath(file));
 			}
 		}
 
-		const pages = buildManifest.pages;
-		if (pages && typeof pages === "object" && !Array.isArray(pages)) {
+		const pages = manifestPages(buildManifest);
+		if (pages) {
 			const appFiles = Array.isArray(pages["/_app"])
 				? pages["/_app"]
 				: [];
@@ -115,21 +190,24 @@ async function collectRouteFiles(buildDir) {
 		}
 	}
 
-	const appManifest = await readJsonIfPresent(
+	for (const manifestPath of [
 		join(buildDir, "app-build-manifest.json"),
-	);
-	if (appManifest && typeof appManifest === "object") {
-		const pages = appManifest.pages;
-		if (pages && typeof pages === "object" && !Array.isArray(pages)) {
-			for (const [route, files] of Object.entries(pages)) {
-				addRouteFiles(routeFiles, `app:${route}`, [
-					...sharedFiles,
-					...(Array.isArray(files) ? files : []),
-				]);
-			}
+		join(buildDir, "server", "app-build-manifest.json"),
+	]) {
+		const appManifest = await readJsonIfPresent(manifestPath);
+		const pages = manifestPages(appManifest);
+		if (!pages) {
+			continue;
+		}
+		for (const [route, files] of Object.entries(pages)) {
+			addRouteFiles(routeFiles, `app:${route}`, [
+				...sharedFiles,
+				...(Array.isArray(files) ? files : []),
+			]);
 		}
 	}
 
+	await collectClientReferenceRoutes(buildDir, sharedFiles, routeFiles);
 	return routeFiles;
 }
 
@@ -187,7 +265,7 @@ export async function buildPerformanceReport(buildDirectory) {
 
 	if (routes.length === 0) {
 		throw new Error(
-			"No route JavaScript could be resolved from the Next.js build manifests.",
+			"No route JavaScript could be resolved from Next.js manifests or App Router client-reference manifests.",
 		);
 	}
 
