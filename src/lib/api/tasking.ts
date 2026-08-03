@@ -1,5 +1,5 @@
-import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import { collectAllCursorPages } from "@/lib/api/cursor-pages";
+import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1ImportsByTaskId,
 	getApiV1ImportsByTaskIdResults,
@@ -15,7 +15,7 @@ import type {
 	TaskResponse,
 	TaskStatus,
 } from "@/lib/api/generated/models";
-import { normalizeIdempotencyKey } from "@/lib/idempotency-key";
+import { acquireOperationIdempotencyKey } from "@/lib/operation-idempotency";
 
 export type {
 	ImportRequest,
@@ -274,16 +274,14 @@ export async function createImportTask(
 	payload: ImportRequest,
 	idempotencyKey?: string,
 ): Promise<TaskResponse> {
-	const headers = new Headers();
-
-	const normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
-	if (normalizedIdempotencyKey) {
-		headers.set("Idempotency-Key", normalizedIdempotencyKey);
-	}
-
+	const idempotency = await acquireOperationIdempotencyKey(
+		"import",
+		payload,
+		idempotencyKey,
+	);
 	const response = await postApiV1Imports(payload, {
 		credentials: "include",
-		headers,
+		headers: { "Idempotency-Key": idempotency.key },
 	});
 
 	if (response.status !== 202) {
@@ -292,6 +290,7 @@ export async function createImportTask(
 		);
 	}
 
+	idempotency.complete();
 	return response.data;
 }
 
