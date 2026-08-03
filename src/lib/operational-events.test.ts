@@ -107,6 +107,13 @@ describe("operational path sanitization", () => {
 				"/api/v0/auth/logout/token/raw-secret#not-for-logs",
 			),
 		).toBe("/api/v0/auth/logout/token/[redacted]");
+		expect(
+			sanitizeOperationalPath(
+				"/_hubuum-bff/hubuum/api/v0/auth/logout/token/raw-secret",
+			),
+		).toBe(
+			"/_hubuum-bff/hubuum/api/v0/auth/logout/token/[redacted]",
+		);
 	});
 });
 

@@ -61,7 +61,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	const correlationId =
 		normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER)) ??
 		generateCorrelationId();
-	const sourcePath = request.nextUrl.pathname;
+	const sourcePath = getSafeBackendPathForLogs(request.nextUrl.pathname);
 
 	if (!ALLOWED_METHODS.has(method)) {
 		emitOperationalEvent("warn", "bff.proxy.rejected", {
