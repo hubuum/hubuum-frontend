@@ -483,6 +483,9 @@ test.describe("authenticated workspace", () => {
 		expect(after[4]?.left).toBe((before[4]?.left ?? 0) + dragDistance);
 		expect(after[4]?.width).toBe(before[4]?.width);
 
+		await lastResizeHandle.scrollIntoViewIfNeeded();
+		await expect(lastResizeHandle).toBeInViewport();
+		const beforeLastResize = await readGeometry();
 		const lastHandleBounds = await lastResizeHandle.boundingBox();
 		expect(lastHandleBounds).not.toBeNull();
 		const lastDragDistance = -48;
@@ -498,10 +501,12 @@ test.describe("authenticated workspace", () => {
 		await page.mouse.up();
 
 		const afterLastResize = await readGeometry();
-		expect(afterLastResize.slice(0, 4)).toEqual(after.slice(0, 4));
-		expect(afterLastResize[4]?.left).toBe(after[4]?.left);
+		expect(afterLastResize.slice(0, 4)).toEqual(
+			beforeLastResize.slice(0, 4),
+		);
+		expect(afterLastResize[4]?.left).toBe(beforeLastResize[4]?.left);
 		expect(afterLastResize[4]?.width).toBe(
-			(after[4]?.width ?? 0) + lastDragDistance,
+			(beforeLastResize[4]?.width ?? 0) + lastDragDistance,
 		);
 	});
 
