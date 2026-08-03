@@ -133,7 +133,11 @@ function routeFromClientReferenceManifest(appServerDir, manifestPath) {
 		0,
 		-CLIENT_REFERENCE_MANIFEST_SUFFIX.length,
 	);
-	const withoutTerminalPage = withoutSuffix.replace(/\/page$/, "");
+	if (withoutSuffix === "route" || withoutSuffix.endsWith("/route")) {
+		return null;
+	}
+	const withoutTerminalPage =
+		withoutSuffix === "page" ? "" : withoutSuffix.replace(/\/page$/, "");
 	return withoutTerminalPage ? `app:${withoutTerminalPage}` : "app:/";
 }
 
@@ -154,10 +158,17 @@ async function collectClientReferenceRoutes(
 		name.endsWith(CLIENT_REFERENCE_MANIFEST_SUFFIX),
 	);
 	for (const manifestPath of manifests) {
+		const route = routeFromClientReferenceManifest(
+			appServerDir,
+			manifestPath,
+		);
+		if (!route) {
+			continue;
+		}
 		const source = await readFile(manifestPath, "utf8");
 		addRouteFiles(
 			routeFiles,
-			routeFromClientReferenceManifest(appServerDir, manifestPath),
+			route,
 			[...sharedFiles, ...extractClientReferenceAssets(source)],
 		);
 	}
@@ -242,6 +253,16 @@ export async function buildPerformanceReport(buildDirectory) {
 	const routeFiles = await collectRouteFiles(buildDir);
 	const routes = [];
 	for (const [route, files] of routeFiles) {
+		const missingAssets = Array.from(files).filter(
+			(file) => !assetByPath.has(file),
+		);
+		if (missingAssets.length > 0) {
+			throw new Error(
+				`Route ${route} references JavaScript not found in the build output: ${missingAssets.join(
+					", ",
+				)}.`,
+			);
+		}
 		const resolvedAssets = Array.from(files)
 			.map((file) => assetByPath.get(file))
 			.filter(Boolean);

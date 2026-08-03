@@ -90,6 +90,46 @@ describe("performance budget reporting", () => {
 		assert.equal(report.totalGzipBytes > 0, true);
 	});
 
+	it("recognizes the root page and excludes route handlers", async () => {
+		const { buildDir } = await createFixture();
+		const appServerDir = join(buildDir, "server", "app");
+		const routeHandlerDir = join(appServerDir, "readyz");
+		await mkdir(routeHandlerDir, { recursive: true });
+		await writeFile(
+			join(appServerDir, "page_client-reference-manifest.js"),
+			'globalThis.__RSC_MANIFEST["/page"]={"clientModules":{"root":{"chunks":["app/dashboard.js"]}}};',
+		);
+		await writeFile(
+			join(routeHandlerDir, "route_client-reference-manifest.js"),
+			'globalThis.__RSC_MANIFEST["/readyz/route"]={"clientModules":{"handler":{"chunks":["route.js"]}}};',
+		);
+
+		const report = await buildPerformanceReport(buildDir);
+
+		assert.equal(report.routes.some((route) => route.route === "app:/"), true);
+		assert.equal(
+			report.routes.some((route) => route.route === "app:readyz/route"),
+			false,
+		);
+	});
+
+	it("rejects route manifests that reference missing JavaScript", async () => {
+		const { buildDir } = await createFixture();
+		await writeFile(
+			join(buildDir, "app-build-manifest.json"),
+			JSON.stringify({
+				pages: {
+					"/broken/page": ["static/chunks/missing.js"],
+				},
+			}),
+		);
+
+		await assert.rejects(
+			buildPerformanceReport(buildDir),
+			/missing\.js/,
+		);
+	});
+
 	it("reports chunk, route, and total budget failures", async () => {
 		const { buildDir } = await createFixture();
 		const report = await buildPerformanceReport(buildDir);
