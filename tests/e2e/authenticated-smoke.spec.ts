@@ -38,7 +38,7 @@ test("login, session validation, and logout work against a live backend", async 
 	expect(session.status).toBe(200);
 	expect(session.body).toMatchObject({
 		authenticated: true,
-		username: "local/admin",
+		username: "admin",
 	});
 
 	await page
