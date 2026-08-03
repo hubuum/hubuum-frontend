@@ -1,6 +1,16 @@
 name: Full authenticated browser suite
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/authenticated-e2e.yml"
+      - "compose.dev.yml"
+      - "docker-compose.live-backend.yml"
+      - "package-lock.json"
+      - "package.json"
+      - "playwright.config.ts"
+      - "scripts/full-authenticated-e2e.sh"
+      - "tests/e2e/**"
   schedule:
     - cron: "37 2 * * *"
   workflow_dispatch:
@@ -14,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: full-authenticated-browser-suite
+  group: full-authenticated-browser-suite-${{ github.ref }}
   cancel-in-progress: true
 
 env:
