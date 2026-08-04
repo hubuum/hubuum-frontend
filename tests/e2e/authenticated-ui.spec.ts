@@ -953,9 +953,11 @@ test.describe("authenticated workspace", () => {
 		await expect(
 			clone.getByRole("button", { name: /Custom permissions/ }),
 		).toHaveAttribute("aria-pressed", "true");
-		await expect(clone.getByRole("checkbox", { name: "ReadObject" })).toBeChecked();
 		await expect(
-			clone.getByRole("checkbox", { name: "UpdateObject" }),
+			clone.getByRole("checkbox", { name: "ReadObject", exact: true }),
+		).toBeChecked();
+		await expect(
+			clone.getByRole("checkbox", { name: "UpdateObject", exact: true }),
 		).not.toBeChecked();
 	});
 
