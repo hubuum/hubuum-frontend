@@ -6,6 +6,56 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.10] - 2026-08-05
+
+### Compatibility
+
+- Retained the Hubuum Server `v0.0.5` contract and immutable CI target.
+
+### Added
+
+- Added schema-aware, class-contextual object creation with guided data rows, a
+  synchronized JSON editor, compact structured-value previews, and focused
+  inspection of large arrays and objects.
+- Added stable retry leases and idempotency keys for imports, exports, backups,
+  and remote invocations so ambiguous failed responses can be retried without
+  creating duplicate tasks.
+- Added privacy-bounded structured operational events for backend requests, BFF
+  traffic, and Valkey health, including safe correlation, latency, status, and
+  content-length fields.
+- Added a required authenticated browser smoke gate, a scheduled full
+  authenticated Playwright suite, and production JavaScript performance budgets.
+
+### Changed
+
+- Streamed generic BFF request and response bodies without UTF-8 transcoding or
+  full buffering, while propagating browser cancellation and preserving the
+  existing authentication, correlation, header, and session boundaries.
+- Reduced Valkey write amplification by coalescing concurrent session hydration,
+  refreshing sliding sessions at bounded intervals, and using conditional
+  writes that cannot recreate deleted sessions.
+- Improved object and report workflows with readable compact counts, relative
+  font-size preferences, stronger dark navigation contrast, and saved-query
+  editing directly from report cards.
+- Updated ioredis to `6.0.0`, Next.js to `16.3.0`, CodeMirror View to `6.43.8`,
+  Biome to `2.5.7`, Orval to `8.23.0`, PostCSS to `8.5.25`, React type packages,
+  compatible transitive dependencies, and the pinned artifact attestation
+  action to `v4.2.2`.
+
+### Fixed
+
+- Preserved readable labels for hidden intermediate relation paths while
+  batching and de-duplicating related-object metadata requests.
+- Required `POST` for logout so cross-site navigation, link scanners, and
+  speculative GET requests cannot revoke a session.
+
+### Security
+
+- Kept binary and large BFF payloads byte-preserving while continuing to keep
+  bearer tokens server-side and suppress unsafe upstream response headers.
+- Redacted credentials, query values, fragments, and credential-bearing path
+  segments at the structured logging boundary.
+
 ## [0.0.9] - 2026-07-30
 
 ### Compatibility
@@ -362,7 +412,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.9...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.10...HEAD
+[0.0.10]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.9...v0.0.10
 [0.0.9]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.8...v0.0.9
 [0.0.8]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.6...v0.0.7

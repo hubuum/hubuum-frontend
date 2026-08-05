@@ -1,6 +1,6 @@
 {
 	"name": "hubuum-frontend",
-	"version": "0.0.9",
+	"version": "0.0.10",
 	"private": true,
 	"engines": {
 		"node": ">=24.0.0"
@@ -32,7 +32,7 @@
 		"@codemirror/language": "^6.12.4",
 		"@codemirror/lint": "^6.9.7",
 		"@codemirror/state": "^6.7.1",
-		"@codemirror/view": "^6.43.7",
+		"@codemirror/view": "^6.43.8",
 		"@fontsource-variable/fraunces": "^5.3.0",
 		"@fontsource-variable/jetbrains-mono": "^5.3.0",
 		"@fontsource-variable/space-grotesk": "^5.3.0",
@@ -42,7 +42,7 @@
 		"codemirror": "^6.0.2",
 		"fflate": "0.8.3",
 		"ioredis": "^6.0.0",
-		"next": "^16.2.12",
+		"next": "^16.3.0",
 		"prismjs": "^1.30.0",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
@@ -56,7 +56,7 @@
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.12.1",
-		"@biomejs/biome": "^2.5.6",
+		"@biomejs/biome": "^2.5.7",
 		"@playwright/test": "^1.62.1",
 		"@types/node": "^26.1.2",
 		"@types/react": "^19.2.18",

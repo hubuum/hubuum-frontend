@@ -39,6 +39,10 @@ const csp = [
 
 const nextConfig: NextConfig = {
 	allowedDevOrigins: ["127.0.0.1"],
+	experimental: {
+		// Next.js still needs the TypeScript 6 API; package scripts use native tsc 7.
+		useTypeScriptCli: false,
+	},
 	output: "standalone",
 	outputFileTracingExcludes: {
 		"/login-backgrounds/custom/*": ["./login-backgrounds/**/*"],
