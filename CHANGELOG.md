@@ -6,6 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Added matching password-confirmation fields before self-service or admin user
+  password changes are submitted.
+
 ## [0.0.10] - 2026-08-05
 
 ### Compatibility
