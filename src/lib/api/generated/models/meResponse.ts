@@ -3,12 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { CurrentTokenMetadata } from './currentTokenMetadata';
-import type { PrincipalMemberResponse } from './principalMemberResponse';
+import type { MembershipPrincipalResponse } from './membershipPrincipalResponse';
 
 export interface MeResponse {
-  principal: PrincipalMemberResponse;
+  principal: MembershipPrincipalResponse;
   token: CurrentTokenMetadata;
 }

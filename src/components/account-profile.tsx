@@ -38,7 +38,11 @@ async function fetchCurrentUser(): Promise<ConsoleUser> {
 		);
 	}
 
-	return userResponse.data;
+	return {
+		...userResponse.data,
+		identity_scope: meResponse.data.principal.identity_scope,
+		provider_kind: userResponse.data.provider_managed ? "external" : "local",
+	};
 }
 
 export function AccountProfile({ currentUsername }: AccountProfileProps) {

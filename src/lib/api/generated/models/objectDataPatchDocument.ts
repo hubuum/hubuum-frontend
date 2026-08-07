@@ -3,12 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { ObjectDataPatchDocumentItem } from './objectDataPatchDocumentItem';
 
 /**
- * RFC 6902 operations applied relative to the root of an object's raw data document. Supports add, remove, replace, move, copy, and test. The resulting document is limited to 2 MiB and 64 nested containers, with a bounded cumulative application-work budget.
+ * RFC 6902 operations applied relative to the root of an object's raw data document. Supports add, remove, replace, move, copy, and test; test compares JSON numbers by numeric value. The resulting document is limited to 2 MiB and 64 nested containers, with a bounded cumulative application-work budget.
  * @maxItems 1000
  */
 export type ObjectDataPatchDocument = ObjectDataPatchDocumentItem[];

@@ -3,10 +3,15 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
+import type { TokenListState } from './tokenListState';
 
 export type GetApiV1IamPrincipalsByPrincipalIdTokensParams = {
+/**
+ * Retained-token lifecycle subset. Defaults to active. Expired and revoked subsets may overlap.
+ */
+state?: TokenListState;
 /**
  * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
  * @minimum 1

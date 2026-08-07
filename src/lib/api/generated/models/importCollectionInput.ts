@@ -3,11 +3,14 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { CollectionKey } from './collectionKey';
+import type { ImportWriteCondition } from './importWriteCondition';
+import type { RestoreTimestamps } from './restoreTimestamps';
 
 export interface ImportCollectionInput {
+  condition?: null | ImportWriteCondition;
   description: string;
   name: string;
   parent_collection_key?: null | CollectionKey;
@@ -15,4 +18,5 @@ export interface ImportCollectionInput {
   parent_collection_ref?: string | null;
   /** @nullable */
   ref?: string | null;
+  timestamps?: null | RestoreTimestamps;
 }

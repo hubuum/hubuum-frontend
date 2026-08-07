@@ -3,12 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { BackupHistorySections } from './backupHistorySections';
 
 /**
- * Privileged, restore-only table snapshots. In backup version 3, each section
+ * Privileged, restore-only table snapshots. In backup version 4, each section
  * name and row shape corresponds to the PostgreSQL table restored from it.
  * These are versioned disaster-recovery internals, not portable import data.
  */

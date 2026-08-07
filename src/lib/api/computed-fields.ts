@@ -3,7 +3,9 @@ import {
 	deleteApiV1ClassesByClassIdComputedFieldsByFieldId,
 	deleteApiV1IamMeComputedFieldsByFieldId,
 	getApiV1ClassesByClassIdComputedFields,
+	getApiV1ClassesByClassIdComputedFieldsByFieldId,
 	getApiV1IamMeComputedFields,
+	getApiV1IamMeComputedFieldsByFieldId,
 	patchApiV1ClassesByClassIdComputedFieldsByFieldId,
 	patchApiV1IamMeComputedFieldsByFieldId,
 	postApiV1ClassesByClassIdComputedFields,
@@ -232,12 +234,17 @@ export async function updateComputedField(
 	definitionId: number,
 	patch: ComputedFieldDefinitionPatch,
 ): Promise<ComputedFieldDefinition> {
+	const etag = await fetchComputedFieldEtag(scope, classId, definitionId);
+	const options: RequestInit = {
+		credentials: "include",
+		...(etag ? { headers: { "If-Match": etag } } : {}),
+	};
 	if (scope === "shared") {
 		const response = await patchApiV1ClassesByClassIdComputedFieldsByFieldId(
 			classId,
 			definitionId,
 			patch,
-			{ credentials: "include" },
+			options,
 		);
 		assertStatus(
 			response.status,
@@ -252,7 +259,7 @@ export async function updateComputedField(
 	const response = await patchApiV1IamMeComputedFieldsByFieldId(
 		definitionId,
 		patch,
-		{ credentials: "include" },
+		options,
 	);
 	assertStatus(
 		response.status,
@@ -268,12 +275,16 @@ export async function deleteComputedField(
 	classId: number,
 	definition: Pick<ComputedFieldDefinition, "id" | "revision">,
 ): Promise<void> {
+	const etag = await fetchComputedFieldEtag(scope, classId, definition.id);
+	const options: RequestInit = {
+		credentials: "include",
+		...(etag ? { headers: { "If-Match": etag } } : {}),
+	};
 	if (scope === "shared") {
 		const response = await deleteApiV1ClassesByClassIdComputedFieldsByFieldId(
 			classId,
 			definition.id,
-			{ expected_revision: definition.revision },
-			{ credentials: "include" },
+			options,
 		);
 		assertStatus(
 			response.status,
@@ -286,8 +297,7 @@ export async function deleteComputedField(
 
 	const response = await deleteApiV1IamMeComputedFieldsByFieldId(
 		definition.id,
-		{ expected_revision: definition.revision },
-		{ credentials: "include" },
+		options,
 	);
 	assertStatus(
 		response.status,
@@ -295,6 +305,38 @@ export async function deleteComputedField(
 		204,
 		"Failed to delete personal computed field.",
 	);
+}
+
+async function fetchComputedFieldEtag(
+	scope: ComputedFieldScope,
+	classId: number,
+	definitionId: number,
+): Promise<string | null> {
+	if (scope === "shared") {
+		const response = await getApiV1ClassesByClassIdComputedFieldsByFieldId(
+			classId,
+			definitionId,
+			{ credentials: "include" },
+		);
+		assertStatus(
+			response.status,
+			response.data,
+			200,
+			"Failed to refresh shared computed field.",
+		);
+		return response.headers.get("ETag");
+	}
+
+	const response = await getApiV1IamMeComputedFieldsByFieldId(definitionId, {
+		credentials: "include",
+	});
+	assertStatus(
+		response.status,
+		response.data,
+		200,
+		"Failed to refresh personal computed field.",
+	);
+	return response.headers.get("ETag");
 }
 
 export async function previewComputedField(

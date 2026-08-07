@@ -435,10 +435,7 @@ function ComputedFieldEditor({
 			if (duplicateKey)
 				throw new Error("A field with this key already exists.");
 			if (!definition) return createComputedField(scope, classId, request);
-			return updateComputedField(scope, classId, definition.id, {
-				...request,
-				expected_revision: definition.revision,
-			});
+			return updateComputedField(scope, classId, definition.id, request);
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({

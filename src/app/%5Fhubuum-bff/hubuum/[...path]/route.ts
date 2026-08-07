@@ -5,6 +5,7 @@ import {
 	getProxyRequestBody,
 	getProxyResponseBody,
 } from "@/lib/api/proxy-bodies";
+import { copySafeIncomingRequestHeaders } from "@/lib/api/proxy-request-headers";
 import { copyPaginationHeaders } from "@/lib/api/proxy-pagination-headers";
 import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
 import {
@@ -134,22 +135,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	}
 
 	const upstreamHeaders = new Headers();
-	const incomingContentType = request.headers.get("content-type");
-	const incomingAccept = request.headers.get("accept");
-	const restoreCapability = request.headers.get("x-hubuum-restore-capability");
-
-	if (incomingContentType) {
-		upstreamHeaders.set("content-type", incomingContentType);
-	}
-
-	if (incomingAccept) {
-		upstreamHeaders.set("accept", incomingAccept);
-	}
-
-	if (restoreCapability) {
-		upstreamHeaders.set("x-hubuum-restore-capability", restoreCapability);
-	}
-
+	copySafeIncomingRequestHeaders(request.headers, upstreamHeaders);
 	upstreamHeaders.set("authorization", `Bearer ${session.token}`);
 	upstreamHeaders.set(CORRELATION_ID_HEADER, correlationId);
 

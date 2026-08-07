@@ -49,10 +49,19 @@ else
   exit 1
 fi
 
-compatibility_row="| \`$tag\` | \`$compat_server_tag\` | \`ghcr.io/hubuum/hubuum-server:$compat_server_tag\` |"
+if [[ $# -eq 0 ]]; then
+  compatibility_label="\`main\` (unreleased)"
+else
+  compatibility_label="\`$tag\`"
+fi
+compatibility_row="| $compatibility_label | \`$compat_server_tag\` | \`ghcr.io/hubuum/hubuum-server:$compat_server_tag\` |"
 grep -Fqx "$compatibility_row" docs/compatibility.md || {
-  echo "docs/compatibility.md has no $tag -> $compat_server_tag row matching CI." >&2
+  echo "docs/compatibility.md has no $compatibility_label -> $compat_server_tag row matching CI." >&2
   exit 1
 }
 
-echo "Release metadata is ready for $tag."
+if [[ $# -eq 0 ]]; then
+  echo "Repository metadata and the main compatibility target are ready."
+else
+  echo "Release metadata is ready for $tag."
+fi

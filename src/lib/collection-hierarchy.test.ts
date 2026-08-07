@@ -21,6 +21,7 @@ function collection(
 		id,
 		name,
 		parent_collection_id: parentCollectionId,
+		revision: 1,
 		updated_at: "2026-01-01T00:00:00Z",
 	};
 }

@@ -16,7 +16,7 @@ import {
 	updateEventSink,
 } from "@/lib/api/events";
 import type {
-	EventDelivery,
+	EventDeliveryResponse,
 	EventSink,
 	EventSinkKind,
 	NewEventSink,
@@ -102,7 +102,7 @@ const eventSinkExportColumns: TableExportColumn<EventSink>[] = [
 	},
 ];
 
-const eventDeliveryExportColumns: TableExportColumn<EventDelivery>[] = [
+const eventDeliveryExportColumns: TableExportColumn<EventDeliveryResponse>[] = [
 	{ key: "id", label: "ID", getValue: (delivery) => `#${delivery.id}` },
 	{
 		key: "event",
@@ -232,7 +232,7 @@ export function AdminEventsWorkspace() {
 		columns: eventSinkExportColumns,
 		rows: sinksQuery.data ?? [],
 	};
-	const deliveryExportView: TableExportView<EventDelivery> = {
+	const deliveryExportView: TableExportView<EventDeliveryResponse> = {
 		id: "admin.event-deliveries",
 		fileName: "event-deliveries-view",
 		sheetName: "Event deliveries",

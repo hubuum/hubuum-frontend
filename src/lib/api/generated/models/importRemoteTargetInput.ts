@@ -3,10 +3,11 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { ClassKey } from './classKey';
 import type { CollectionKey } from './collectionKey';
+import type { ImportWriteCondition } from './importWriteCondition';
 import type { RemoteAuthConfig } from './remoteAuthConfig';
 import type { RemoteHttpMethod } from './remoteHttpMethod';
 import type { RemoteTargetSubjectType } from './remoteTargetSubjectType';
@@ -23,6 +24,7 @@ export interface ImportRemoteTargetInput {
   collection_key?: null | CollectionKey;
   /** @nullable */
   collection_ref?: string | null;
+  condition?: null | ImportWriteCondition;
   description: string;
   enabled: boolean;
   headers_template?: unknown;

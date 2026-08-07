@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { TokenScopeDetails } from './tokenScopeDetails';
 
@@ -11,8 +11,9 @@ export interface NewTokenRequest {
   /** @nullable */
   description?: string | null;
   /**
-     * Requested expiry. When omitted, the server applies the public default
-     * token lifetime and returns the resulting timestamp in the response.
+     * Requested expiry. It must be in the future and no farther from issuance
+     * than the server's public maximum token lifetime. When omitted, the
+     * server applies the public default lifetime.
      * @nullable
      */
   expires_at?: string | null;

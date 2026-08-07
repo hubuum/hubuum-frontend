@@ -17,11 +17,11 @@ import { JsonEditor } from "@/components/json-editor";
 import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
+import { fetchExpandedClass } from "@/lib/api/classes";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
 	getApiV1Classes,
-	getApiV1ClassesByClassId,
 	getApiV1Collections,
 	patchApiV1ClassesByClassId,
 } from "@/lib/api/generated/client";
@@ -62,15 +62,7 @@ const ALL_EDITABLE_FIELDS: EditableField[] = [
 ];
 
 async function fetchClass(classId: number): Promise<HubuumClassExpanded> {
-	const response = await getApiV1ClassesByClassId(classId, {
-		credentials: "include",
-	});
-
-	if (response.status !== 200) {
-		throw new Error(getApiErrorMessage(response.data, "Failed to load class."));
-	}
-
-	return response.data;
+	return fetchExpandedClass(classId);
 }
 
 async function fetchCollections(): Promise<Collection[]> {

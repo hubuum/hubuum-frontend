@@ -3,13 +3,15 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { IdentityScopeKey } from './identityScopeKey';
 import type { ImportPrincipalSubtype } from './importPrincipalSubtype';
+import type { ImportWriteCondition } from './importWriteCondition';
 import type { RestoreTimestamps } from './restoreTimestamps';
 
 export type ImportPrincipalInput = ImportPrincipalSubtype & ({
+  condition?: null | ImportWriteCondition;
   /** @nullable */
   external_subject?: string | null;
   identity_scope_key?: null | IdentityScopeKey;

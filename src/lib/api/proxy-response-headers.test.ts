@@ -8,6 +8,7 @@ describe("copySafeUpstreamResponseHeaders", () => {
 			"cache-control": "private, no-store",
 			"content-disposition": 'attachment; filename="backup.json"',
 			digest: "sha-256=:abc:",
+			etag: '"resource:7"',
 			"x-hubuum-backup-sha256": "abc",
 		});
 		const downstream = new Headers();
@@ -19,6 +20,7 @@ describe("copySafeUpstreamResponseHeaders", () => {
 			'attachment; filename="backup.json"',
 		);
 		expect(downstream.get("digest")).toBe("sha-256=:abc:");
+		expect(downstream.get("etag")).toBe('"resource:7"');
 		expect(downstream.get("x-hubuum-backup-sha256")).toBe("abc");
 	});
 

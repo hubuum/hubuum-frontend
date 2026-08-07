@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useDeferredValue, useMemo, useState } from "react";
 
-import { getApiV1ClassesByClassId } from "@/lib/api/generated/client";
+import { fetchExpandedClass } from "@/lib/api/classes";
 import type {
 	HubuumObject,
 	TokenResourceScope,
@@ -31,19 +31,13 @@ async function fetchClassContextByIds(
 ): Promise<Record<number, ClassContext>> {
 	const settled = await Promise.allSettled(
 		classIds.map(async (classId) => {
-			const response = await getApiV1ClassesByClassId(classId, {
-				credentials: "include",
-			});
-
-			if (response.status !== 200) {
-				return null;
-			}
+			const hubuumClass = await fetchExpandedClass(classId);
 
 			return {
 				classId,
 				context: {
-					className: response.data.name,
-					collectionName: response.data.collection.name,
+					className: hubuumClass.name,
+					collectionName: hubuumClass.collection.name,
 				},
 			};
 		}),

@@ -109,7 +109,9 @@ async function fetchGroupMembers(
 		);
 	}
 
-	return response.data;
+	return response.data.flatMap((membership) =>
+		membership.principal ? [membership.principal] : [],
+	);
 }
 
 async function readResponsePayload(response: Response): Promise<unknown> {
@@ -333,7 +335,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 				},
 			);
 
-			if (response.status !== 204) {
+			if (response.status !== 201) {
 				throw new Error(
 					getApiErrorMessage(response.data, "Failed to add member to group."),
 				);

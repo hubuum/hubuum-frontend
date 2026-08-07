@@ -3,9 +3,10 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { ComputedFieldDefinitionOperation } from './computedFieldDefinitionOperation';
+import type { ResourceRevision } from './resourceRevision';
 
 export interface ComputedFieldDefinition {
   class_id: number;
@@ -21,7 +22,7 @@ export interface ComputedFieldDefinition {
   /** @nullable */
   owner_user_id?: number | null;
   result_type: string;
-  revision: number;
+  revision: ResourceRevision;
   semantics_version: number;
   updated_at: string;
   /** @nullable */

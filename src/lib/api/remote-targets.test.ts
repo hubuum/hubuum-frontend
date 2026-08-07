@@ -21,6 +21,7 @@ function makeTarget(overrides: Partial<RemoteTarget>): RemoteTarget {
 		updated_at: "2026-06-25T10:00:00.000Z",
 		url_template: "https://example.com/{{ object.id }}",
 		...overrides,
+		revision: overrides.revision ?? 1,
 	};
 }
 

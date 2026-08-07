@@ -3,9 +3,10 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { EventSinkKind } from './eventSinkKind';
+import type { ResourceRevision } from './resourceRevision';
 
 export interface EventSink {
   config: unknown;
@@ -14,6 +15,7 @@ export interface EventSink {
   id: number;
   kind: EventSinkKind;
   name: string;
+  revision: ResourceRevision;
   /** @nullable */
   secret_ref?: string | null;
   updated_at: string;

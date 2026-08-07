@@ -3,10 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 
 export interface ExportTaskDetails {
+  /** @nullable */
+  hydration_duration_ms?: number | null;
   output_available: boolean;
   /** @nullable */
   output_content_type?: string | null;
@@ -19,7 +21,13 @@ export interface ExportTaskDetails {
   output_expires_at?: string | null;
   output_url: string;
   /** @nullable */
+  query_duration_ms?: number | null;
+  /** @nullable */
+  render_duration_ms?: number | null;
+  /** @nullable */
   template_name?: string | null;
+  /** @nullable */
+  total_duration_ms?: number | null;
   /** @nullable */
   truncated?: boolean | null;
   /** @nullable */

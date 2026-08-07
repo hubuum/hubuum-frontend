@@ -3,14 +3,16 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { GroupKey } from './groupKey';
 import type { ImportMembershipSourceInput } from './importMembershipSourceInput';
+import type { ImportWriteCondition } from './importWriteCondition';
 import type { PrincipalKey } from './principalKey';
 import type { RestoreTimestamps } from './restoreTimestamps';
 
 export interface ImportGroupMembershipInput {
+  condition?: null | ImportWriteCondition;
   group_key?: null | GroupKey;
   /** @nullable */
   group_ref?: string | null;

@@ -101,7 +101,11 @@ function expectAuthoritativeExpiry(value, label) {
 }
 
 function includesPermission(permissionRows, groupId, flag) {
-  const rows = Array.isArray(permissionRows) ? permissionRows : [permissionRows];
+  const rows = Array.isArray(permissionRows)
+    ? permissionRows
+    : Array.isArray(permissionRows?.permissions)
+      ? permissionRows.permissions
+      : [permissionRows];
   return rows.some((row) => row?.group_id === groupId && row?.[flag] === true);
 }
 
@@ -179,10 +183,15 @@ async function main() {
     Number.isInteger(defaultTokenLifetimeHours) && defaultTokenLifetimeHours > 0,
     "Client config is missing the effective default token lifetime.",
   );
-  pass("discovered public v0.0.5 pagination and authentication configuration");
+  assert(
+    Number.isInteger(clientConfig.data.authentication?.max_token_lifetime_hours) &&
+      clientConfig.data.authentication.max_token_lifetime_hours >= defaultTokenLifetimeHours,
+    "Client config is missing the effective maximum token lifetime.",
+  );
+  pass("discovered public v0.0.9 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
-  assert(openapi.data.info?.version === "0.0.5", "Server OpenAPI is not version 0.0.5.");
+  assert(openapi.data.info?.version === "0.0.9", "Server OpenAPI is not version 0.0.9.");
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
     openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
@@ -232,7 +241,7 @@ async function main() {
   );
   assert(
     openapi.data.components?.schemas?.ClientAuthenticationConfig,
-    "OpenAPI is missing v0.0.5 client authentication configuration.",
+    "OpenAPI is missing client authentication configuration.",
   );
   assert(
     openapi.data.components?.schemas?.LoginResponse?.required?.includes(
@@ -240,7 +249,27 @@ async function main() {
     ),
     "OpenAPI does not require authoritative token expiry responses.",
   );
-  pass("server OpenAPI exposes the expected v0.0.5 contract");
+  assert(
+    openapi.data.paths?.["/api/v1/iam/principals/{principal_id}/tokens/{token_id}"],
+    "OpenAPI is missing token point lookups.",
+  );
+  assert(
+    openapi.data.paths?.["/api/v1/iam/principals/{principal_id}/tokens/{token_id}/renew"],
+    "OpenAPI is missing token renewal.",
+  );
+  assert(
+    openapi.data.components?.schemas?.ResourceRevision,
+    "OpenAPI is missing resource revisions.",
+  );
+  assert(
+    openapi.data.components?.schemas?.CollectionPermissionSet,
+    "OpenAPI is missing revisioned collection permission sets.",
+  );
+  assert(
+    openapi.data.components?.schemas?.PrincipalSettingsResponse,
+    "OpenAPI is missing revisioned principal settings responses.",
+  );
+  pass("server OpenAPI exposes the expected v0.0.9 contract");
 
   const token = await loginAs(adminName, adminPassword);
   pass("admin login returns a bearer token");
@@ -271,7 +300,7 @@ async function main() {
       ),
     "Admin config is missing token-retention settings.",
   );
-  pass("read redacted v0.0.5 admin runtime configuration");
+  pass("read redacted v0.0.9 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -301,7 +330,7 @@ async function main() {
     `/api/v1/iam/groups/${group.data.id}/members/${serviceAccount.data.id}`,
     {
       ...auth,
-      expected: 204,
+      expected: 201,
     },
   );
   const groupMembers = await request(
@@ -316,7 +345,7 @@ async function main() {
     groupMembers.data.some(
       (member) =>
         member.principal_id === serviceAccount.data.id &&
-        member.kind === "service_account",
+        member.principal?.kind === "service_account",
     ),
     "Group members should include the service-account principal.",
   );
@@ -851,7 +880,7 @@ async function main() {
   pass("created and completed a backup task");
 
   const backupOutput = await request("GET", `/api/v1/backups/${backup.data.id}/output`, auth);
-  assert(backupOutput.data.backup_version === 3, "Backup document should use format version 3.");
+  assert(backupOutput.data.backup_version === 4, "Backup document should use format version 4.");
   assert(hasHeader(backupOutput.headers, "digest"), "Backup output should include Digest.");
   assert(
     hasHeader(backupOutput.headers, "x-hubuum-backup-sha256"),
@@ -870,7 +899,7 @@ async function main() {
       stagedRestore.data.restore_capability.length > 0,
     "Staged restore should return a one-time capability.",
   );
-  assert(stagedRestore.data.validation?.backup_version === 3, "Restore validation should report backup version 3.");
+  assert(stagedRestore.data.validation?.backup_version === 4, "Restore validation should report backup version 4.");
   const restoreStatus = await request(
     "GET",
     `/api/v1/restores/${stagedRestore.data.id}/status`,
@@ -910,7 +939,7 @@ async function main() {
   await request(
     "POST",
     `/api/v1/iam/groups/${limitedGroup.data.id}/members/${limitedUser.data.id}`,
-    { ...auth, expected: 204 },
+    { ...auth, expected: 201 },
   );
   pass("added limited user to limited group");
 

@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
+import type { ObjectRelationLimit } from './objectRelationLimit';
 
 /**
  * To create new relations between classes from within a class
@@ -13,7 +14,9 @@
 export interface NewHubuumClassRelationFromClass {
   /** @nullable */
   forward_template_alias?: string | null;
+  from_max_relations?: null | ObjectRelationLimit;
   /** @nullable */
   reverse_template_alias?: string | null;
   to_hubuum_class_id: number;
+  to_max_relations?: null | ObjectRelationLimit;
 }

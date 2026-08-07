@@ -10,10 +10,10 @@ import { PrincipalTokenManager } from "@/components/principal-token-manager";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamUsersByUserId,
-	getApiV1IamUsersByUserId,
 	patchApiV1IamUsersByUserId,
 } from "@/lib/api/generated/client";
 import type { UpdateUser } from "@/lib/api/generated/models";
+import { fetchUserListEntry } from "@/lib/api/principal-details";
 import { useConfirm } from "@/lib/confirm-context";
 import {
 	type ConsoleUser,
@@ -29,15 +29,7 @@ type AdminUserDetailProps = {
 };
 
 async function fetchUser(userId: number): Promise<ConsoleUser> {
-	const response = await getApiV1IamUsersByUserId(userId, {
-		credentials: "include",
-	});
-
-	if (response.status !== 200) {
-		throw new Error(getApiErrorMessage(response.data, "Failed to load user."));
-	}
-
-	return response.data;
+	return fetchUserListEntry(userId);
 }
 
 export function AdminUserDetail({ userId }: AdminUserDetailProps) {

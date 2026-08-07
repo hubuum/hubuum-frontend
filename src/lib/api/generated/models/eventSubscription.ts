@@ -3,9 +3,10 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { EventSubscriptionFilter } from './eventSubscriptionFilter';
+import type { ResourceRevision } from './resourceRevision';
 
 export interface EventSubscription {
   actions: string[];
@@ -17,6 +18,7 @@ export interface EventSubscription {
   filter?: EventSubscriptionFilter;
   id: number;
   name: string;
+  revision: ResourceRevision;
   routing: unknown;
   sink_id: number;
   updated_at: string;

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 
 /**
@@ -15,5 +15,6 @@ export interface NewServiceAccount {
   /** @nullable */
   identity_scope?: string | null;
   name: string;
+  /** @minimum 1 */
   owner_group_id: number;
 }
