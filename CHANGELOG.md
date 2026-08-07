@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.11] - 2026-08-07
+
 ### Compatibility
 
 - Adopted the Hubuum Server `v0.0.9` contract and pinned CI to its immutable
@@ -13,6 +15,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added token cloning from token detail views, preserving exact permission and
+  resource boundaries while requiring a fresh expiry.
 - Added matching password-confirmation fields before self-service or admin user
   password changes are submitted.
 
@@ -24,6 +28,7 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Adapted class context, principal details and settings, collection permissions,
   group membership, event deliveries, and computed-field mutations to the new
   response and ETag contracts.
+- Updated Node.js 24 LTS to `24.19.0` and Node.js types to `26.2.0`.
 
 ## [0.0.10] - 2026-08-05
 
@@ -431,7 +436,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.10...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.11...HEAD
+[0.0.11]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.10...v0.0.11
 [0.0.10]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.9...v0.0.10
 [0.0.9]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.8...v0.0.9
 [0.0.8]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.7...v0.0.8
