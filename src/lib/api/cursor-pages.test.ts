@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { collectAllCursorPages } from "@/lib/api/cursor-pages";
+import {
+	collectAllCursorPages,
+	findCursorPageItem,
+} from "@/lib/api/cursor-pages";
 
 describe("collectAllCursorPages", () => {
 	it("collects every page and supplies each opaque cursor unchanged", async () => {
@@ -27,6 +30,29 @@ describe("collectAllCursorPages", () => {
 
 		await expect(collectAllCursorPages(loadPage)).rejects.toThrow(
 			"repeated next cursor",
+		);
+	});
+
+	it("stops once a matching item is found", async () => {
+		const loadPage = vi
+			.fn()
+			.mockResolvedValueOnce({ items: [1, 2], nextCursor: "next" })
+			.mockResolvedValueOnce({ items: [3, 4], nextCursor: "unused" });
+
+		await expect(findCursorPageItem(loadPage, (item) => item === 3)).resolves.toBe(
+			3,
+		);
+		expect(loadPage).toHaveBeenCalledTimes(2);
+	});
+
+	it("returns null after the final page", async () => {
+		const loadPage = vi.fn().mockResolvedValue({
+			items: [1, 2],
+			nextCursor: null,
+		});
+
+		await expect(findCursorPageItem(loadPage, (item) => item === 3)).resolves.toBe(
+			null,
 		);
 	});
 });

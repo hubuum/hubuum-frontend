@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
+import type { ResourceRevision } from './resourceRevision';
 
 /**
  * Public response shape, combining the service-account row with its principal
@@ -21,5 +22,6 @@ export interface ServiceAccountResponse {
   identity_scope: string;
   name: string;
   owner_group_id: number;
+  revision: ResourceRevision;
   updated_at: string;
 }

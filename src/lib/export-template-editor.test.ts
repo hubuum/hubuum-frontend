@@ -118,6 +118,7 @@ describe("validateExportTemplateDraft", () => {
 				},
 			},
 			relation_context: { depth: 2 },
+			revision: 1,
 			default_missing_data_policy: "omit",
 			default_limits: { max_items: 100, max_output_bytes: 262_144 },
 			created_at: "2026-07-26T00:00:00Z",

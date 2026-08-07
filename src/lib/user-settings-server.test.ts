@@ -26,10 +26,13 @@ const context = {
 
 function backendDocument(settings: Record<string, string>) {
 	return {
-		cli: { output: "json" },
-		[HUBUUM_FRONTEND_SETTINGS_NAMESPACE]: {
-			schema_version: USER_SETTINGS_SCHEMA_VERSION,
-			preferences: settings,
+		revision: 3,
+		settings: {
+			cli: { output: "json" },
+			[HUBUUM_FRONTEND_SETTINGS_NAMESPACE]: {
+				schema_version: USER_SETTINGS_SCHEMA_VERSION,
+				preferences: settings,
+			},
 		},
 	};
 }
@@ -90,9 +93,26 @@ describe("server settings transport selection", () => {
 		expect(store.getUserSettings).not.toHaveBeenCalled();
 	});
 
+	it("rejects a settings document without the v0.0.9 response wrapper", async () => {
+		vi.mocked(backendFetchRaw).mockResolvedValueOnce(
+			jsonResponse({
+				[HUBUUM_FRONTEND_SETTINGS_NAMESPACE]: {
+					schema_version: USER_SETTINGS_SCHEMA_VERSION,
+					preferences: {},
+				},
+			}),
+		);
+
+		await expect(
+			loadUserSettingsSnapshotForPrincipal(context),
+		).rejects.toMatchObject({ status: 502 });
+	});
+
 	it("migrates temporary settings when the backend namespace is empty", async () => {
 		vi.mocked(backendFetchRaw)
-			.mockResolvedValueOnce(jsonResponse({ cli: { output: "json" } }))
+			.mockResolvedValueOnce(
+				jsonResponse({ revision: 3, settings: { cli: { output: "json" } } }),
+			)
 			.mockResolvedValueOnce(
 				jsonResponse(
 					backendDocument({ [PORTABLE_USER_SETTING_KEYS.theme]: "dark" }),

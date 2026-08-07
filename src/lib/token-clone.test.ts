@@ -8,12 +8,15 @@ describe("toTokenMintInitialValues", () => {
 		expect(
 			toTokenMintInitialValues(
 				{
+					active: true,
+					expired: false,
 					id: 42,
 					principal_id: 7,
 					name: "deployment",
 					description: "Production deployer",
 					issued: "2026-08-01T09:00:00Z",
 					expires_at: "2026-08-05T09:00:00Z",
+					revision: 1,
 					scope: {
 						permissions: [Permissions.ReadObject, Permissions.UpdateObject],
 						resources: [
@@ -42,9 +45,12 @@ describe("toTokenMintInitialValues", () => {
 	it("preserves unrestricted dimensions for an unscoped token", () => {
 		expect(
 			toTokenMintInitialValues({
+				active: true,
+				expired: false,
 				id: 43,
 				principal_id: 7,
 				issued: "2026-08-01T09:00:00Z",
+				revision: 1,
 				scope: null,
 			}),
 		).toEqual({
@@ -59,9 +65,12 @@ describe("toTokenMintInitialValues", () => {
 	it("keeps resource IDs usable when their names cannot be resolved", () => {
 		expect(
 			toTokenMintInitialValues({
+				active: true,
+				expired: false,
 				id: 44,
 				principal_id: 7,
 				issued: "2026-08-01T09:00:00Z",
+				revision: 1,
 				scope: {
 					permissions: null,
 					resources: [{ kind: "class", id: 404 }],

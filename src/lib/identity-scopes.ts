@@ -1,9 +1,9 @@
 import type {
 	GroupResponse,
 	LoginUser,
+	MembershipPrincipalResponse,
 	NewGroup,
 	NewUser,
-	PrincipalMemberResponse,
 	ServiceAccountResponse,
 	UserResponse,
 } from "@/lib/api/generated/models";
@@ -16,7 +16,7 @@ export type ScopedNewUser = NewUser;
 export type ScopedNewGroup = NewGroup;
 export type ConsoleUser = UserResponse;
 export type ConsoleGroup = GroupResponse;
-export type ConsolePrincipalMember = PrincipalMemberResponse;
+export type ConsolePrincipalMember = MembershipPrincipalResponse;
 export type ConsoleServiceAccount = ServiceAccountResponse;
 
 export type AuthenticatedPrincipalIdentity = {

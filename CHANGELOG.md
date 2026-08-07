@@ -6,10 +6,24 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Compatibility
+
+- Adopted the Hubuum Server `v0.0.9` contract and pinned CI to its immutable
+  release image digest.
+
 ### Added
 
 - Added matching password-confirmation fields before self-service or admin user
   password changes are submitted.
+
+### Changed
+
+- Regenerated the API client for canonical point responses, revisioned
+  resources and permission sets, token lifecycle endpoints, nested membership
+  principals, and backup format version 4.
+- Adapted class context, principal details and settings, collection permissions,
+  group membership, event deliveries, and computed-field mutations to the new
+  response and ETag contracts.
 
 ## [0.0.10] - 2026-08-05
 

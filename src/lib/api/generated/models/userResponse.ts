@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
+import type { ResourceRevision } from './resourceRevision';
 
 /**
  * Public representation of a user, including the name resolved from the
@@ -25,5 +26,6 @@ export interface UserResponse {
   proper_name?: string | null;
   provider_kind: string;
   provider_managed: boolean;
+  revision: ResourceRevision;
   updated_at: string;
 }

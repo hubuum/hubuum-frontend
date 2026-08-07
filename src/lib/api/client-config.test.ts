@@ -16,6 +16,7 @@ import { getApiV1Config } from "@/lib/api/generated/client";
 const clientConfig = {
 	authentication: {
 		default_token_lifetime_hours: 24,
+		max_token_lifetime_hours: 8760,
 	},
 	pagination: {
 		default_page_limit: 50,

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { ComputedFieldDefinitionPatchOperation } from './computedFieldDefinitionPatchOperation';
 import type { ComputedResultType } from './computedResultType';
@@ -13,7 +13,6 @@ export interface ComputedFieldDefinitionPatch {
   description?: string | null;
   /** @nullable */
   enabled?: boolean | null;
-  expected_revision: number;
   /** @nullable */
   key?: string | null;
   /** @nullable */

@@ -34,11 +34,11 @@ import {
 } from "@/lib/api/generated/client";
 import type {
 	Collection,
-	GroupPermission,
 	HubuumClassExpanded,
 	HubuumObject,
 	HubuumObjectComputedResponse,
 	HubuumObjectWithPath,
+	Permission,
 	UpdateHubuumObject,
 } from "@/lib/api/generated/models";
 import {
@@ -157,7 +157,7 @@ async function fetchCollections(): Promise<Collection[]> {
 
 async function fetchCollectionPermissions(
 	collectionId: number,
-): Promise<GroupPermission[]> {
+): Promise<Permission[]> {
 	const response = await getApiV1CollectionsByCollectionIdPermissions(
 		collectionId,
 		undefined,
@@ -175,7 +175,7 @@ async function fetchCollectionPermissions(
 		);
 	}
 
-	return response.data;
+	return response.data.permissions;
 }
 
 async function fetchCurrentUserGroups(
@@ -310,7 +310,7 @@ function normalizePermissionFlag(value: unknown): boolean {
 }
 
 function canCurrentUserUpdateObject(
-	permissionEntries: GroupPermission[],
+	permissionEntries: Permission[],
 	currentUserGroups: ConsoleGroup[],
 ): boolean {
 	const currentUserGroupIds = new Set(
@@ -318,8 +318,8 @@ function canCurrentUserUpdateObject(
 	);
 	return permissionEntries.some(
 		(entry) =>
-			currentUserGroupIds.has(entry.group.id) &&
-			normalizePermissionFlag(entry.permission.has_update_object),
+			currentUserGroupIds.has(entry.group_id) &&
+			normalizePermissionFlag(entry.has_update_object),
 	);
 }
 

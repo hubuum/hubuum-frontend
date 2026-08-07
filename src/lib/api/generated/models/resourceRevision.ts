@@ -3,9 +3,11 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 
-export type DeleteApiV1ClassesByClassIdComputedFieldsByFieldIdParams = {
-expected_revision: number;
-};
+/**
+ * Database-owned positive resource revision.
+ * @minimum 1
+ */
+export type ResourceRevision = number;

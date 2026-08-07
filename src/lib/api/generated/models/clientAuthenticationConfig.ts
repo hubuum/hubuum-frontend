@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 
 export interface ClientAuthenticationConfig {
@@ -13,4 +13,9 @@ export interface ClientAuthenticationConfig {
      * @minimum 1
      */
   default_token_lifetime_hours: number;
+  /**
+     * Largest lifetime accepted for an explicitly requested token expiry.
+     * @minimum 1
+     */
+  max_token_lifetime_hours: number;
 }

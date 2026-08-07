@@ -2,6 +2,7 @@ const SAFE_UPSTREAM_RESPONSE_HEADERS = [
 	"cache-control",
 	"content-disposition",
 	"digest",
+	"etag",
 	"x-hubuum-backup-sha256",
 ] as const;
 

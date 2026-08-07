@@ -3,13 +3,11 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 
-export interface EventDelivery {
+export interface EventDeliveryResponse {
   attempts: number;
-  /** @nullable */
-  claim_token?: string | null;
   created_at: string;
   event_id: number;
   id: number;

@@ -3,14 +3,16 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
+import type { ResourceRevision } from './resourceRevision';
 
 export interface HubuumObjectRelation {
   class_relation_id: number;
   created_at: string;
   from_hubuum_object_id: number;
   id: number;
+  revision: ResourceRevision;
   to_hubuum_object_id: number;
   updated_at: string;
 }

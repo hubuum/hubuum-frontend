@@ -11,11 +11,11 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamServiceAccountsByServiceAccountId,
 	getApiV1IamGroups,
-	getApiV1IamServiceAccountsByServiceAccountId,
 	patchApiV1IamServiceAccountsByServiceAccountId,
 	postApiV1IamServiceAccountsByServiceAccountIdDisable,
 } from "@/lib/api/generated/client";
 import type { UpdateServiceAccount } from "@/lib/api/generated/models";
+import { fetchServiceAccountListEntry } from "@/lib/api/principal-details";
 import { useConfirm } from "@/lib/confirm-context";
 import {
 	type ConsoleGroup,
@@ -31,17 +31,7 @@ type ServiceAccountDetailProps = {
 };
 
 async function fetchServiceAccount(id: number): Promise<ConsoleServiceAccount> {
-	const response = await getApiV1IamServiceAccountsByServiceAccountId(id, {
-		credentials: "include",
-	});
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load service account."),
-		);
-	}
-
-	return response.data;
+	return fetchServiceAccountListEntry(id);
 }
 
 async function fetchGroups(): Promise<ConsoleGroup[]> {

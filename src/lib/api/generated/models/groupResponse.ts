@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
+import type { ResourceRevision } from './resourceRevision';
 
 export interface GroupResponse {
   created_at: string;
@@ -19,5 +20,6 @@ export interface GroupResponse {
   /** @nullable */
   last_sync_success_at?: string | null;
   managed_by: string;
+  revision: ResourceRevision;
   updated_at: string;
 }

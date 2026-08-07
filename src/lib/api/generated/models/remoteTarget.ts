@@ -3,11 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { RemoteAuthConfig } from './remoteAuthConfig';
 import type { RemoteHttpMethod } from './remoteHttpMethod';
 import type { RemoteTargetSubjectType } from './remoteTargetSubjectType';
+import type { ResourceRevision } from './resourceRevision';
 
 export interface RemoteTarget {
   allowed_subject_types: RemoteTargetSubjectType[];
@@ -24,6 +25,7 @@ export interface RemoteTarget {
   id: number;
   method: RemoteHttpMethod;
   name: string;
+  revision: ResourceRevision;
   timeout_ms: number;
   updated_at: string;
   url_template: string;

@@ -41,7 +41,6 @@ import {
 } from "@/lib/api/generated/client";
 import type {
 	EffectiveGroupPermission,
-	GroupPermission,
 	Collection,
 	Permission,
 	Permissions as PermissionName,
@@ -138,6 +137,12 @@ type EffectivePermissionExportRow = {
 	group: string;
 	type: string;
 	permissions: string;
+};
+
+type CollectionPermissionEntry = {
+	group: Pick<ConsoleGroup, "id" | "groupname"> &
+		Partial<Pick<ConsoleGroup, "identity_scope">>;
+	permission: Permission;
 };
 
 const ALL_EDITABLE_FIELDS: EditableField[] = ["name", "description"];
@@ -495,7 +500,7 @@ async function fetchGroupsWithPermission(
 
 async function fetchCollectionPermissions(
 	collectionId: number,
-): Promise<GroupPermission[]> {
+): Promise<Permission[]> {
 	const response = await getApiV1CollectionsByCollectionIdPermissions(
 		collectionId,
 		undefined,
@@ -513,7 +518,7 @@ async function fetchCollectionPermissions(
 		);
 	}
 
-	return response.data;
+	return response.data.permissions;
 }
 
 async function putCollectionPermissions(
@@ -945,9 +950,11 @@ export function CollectionDetail({
 				);
 			}
 
-			const persistedPermissions = getEnabledPermissions(
-				verificationResponse.data,
-			);
+			const persistedPermission = verificationResponse.data.permissions[0];
+			if (!persistedPermission) {
+				throw new Error("Permission update returned an empty permission set.");
+			}
+			const persistedPermissions = getEnabledPermissions(persistedPermission);
 			if (
 				!hasAllSubmittedPermissions(payload.permissions, persistedPermissions)
 			) {
@@ -1006,7 +1013,7 @@ export function CollectionDetail({
 					},
 				);
 
-			if (response.status !== 204) {
+			if (response.status !== 200) {
 				throw new Error(
 					getApiErrorMessage(
 						response.data,
@@ -1297,7 +1304,7 @@ export function CollectionDetail({
 	}
 
 	function toggleRowPermission(
-		entry: GroupPermission,
+		entry: CollectionPermissionEntry,
 		permission: PermissionName,
 		checked: boolean,
 	) {
@@ -1340,7 +1347,7 @@ export function CollectionDetail({
 
 		const groups = groupsQuery.data ?? [];
 		const assignedGroupIds = new Set(
-			(permissionsQuery.data ?? []).map((entry) => entry.group.id),
+			(permissionsQuery.data ?? []).map((permission) => permission.group_id),
 		);
 		const availableGroups = groups.filter(
 			(group) => !assignedGroupIds.has(group.id),
@@ -1350,7 +1357,7 @@ export function CollectionDetail({
 		);
 	}
 
-	function onSaveRowPermissions(entry: GroupPermission) {
+	function onSaveRowPermissions(entry: CollectionPermissionEntry) {
 		setPermissionsError(null);
 		setPermissionsSuccess(null);
 
@@ -1452,7 +1459,16 @@ export function CollectionDetail({
 	}
 
 	const groups = groupsQuery.data ?? [];
-	const permissionEntries = permissionsQuery.data ?? [];
+	const groupsById = new Map(groups.map((group) => [group.id, group]));
+	const permissionEntries: CollectionPermissionEntry[] = (
+		permissionsQuery.data ?? []
+	).map((permission) => ({
+		group: groupsById.get(permission.group_id) ?? {
+			id: permission.group_id,
+			groupname: `Group #${permission.group_id}`,
+		},
+		permission,
+	}));
 	const assignedGroupIds = new Set(
 		permissionEntries.map((entry) => entry.group.id),
 	);

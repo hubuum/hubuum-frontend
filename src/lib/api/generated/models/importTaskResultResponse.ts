@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
+import type { ResourceRevision } from './resourceRevision';
 
 export interface ImportTaskResultResponse {
   action: string;
@@ -18,6 +19,7 @@ export interface ImportTaskResultResponse {
   identifier?: string | null;
   /** @nullable */
   item_ref?: string | null;
+  observed_revision?: null | ResourceRevision;
   outcome: string;
   task_id: number;
 }

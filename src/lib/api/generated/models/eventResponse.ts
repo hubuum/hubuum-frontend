@@ -3,9 +3,10 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { Provenance } from './provenance';
+import type { ResourceRevision } from './resourceRevision';
 
 export interface EventResponse {
   action: string;
@@ -13,7 +14,9 @@ export interface EventResponse {
   /** @nullable */
   actor_user_id?: number | null;
   after?: unknown;
+  after_revision?: null | ResourceRevision;
   before?: unknown;
+  before_revision?: null | ResourceRevision;
   /** @nullable */
   collection_id?: number | null;
   /** @nullable */

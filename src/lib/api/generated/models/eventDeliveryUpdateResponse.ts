@@ -3,10 +3,10 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
-import type { EventDelivery } from './eventDelivery';
+import type { EventDeliveryResponse } from './eventDeliveryResponse';
 
 export interface EventDeliveryUpdateResponse {
-  delivery: EventDelivery;
+  delivery: EventDeliveryResponse;
 }

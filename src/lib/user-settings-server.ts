@@ -1,6 +1,7 @@
 import "server-only";
 
 import { backendFetchRaw } from "@/lib/api/backend";
+import type { PrincipalSettingsResponse } from "@/lib/api/generated/models";
 import {
 	buildFrontendSettingsMergePatch,
 	readFrontendSettingsDocument,
@@ -57,6 +58,34 @@ async function readBackendDocument(response: Response): Promise<unknown> {
 	});
 }
 
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+async function readBackendSettings(
+	response: Response,
+): Promise<UserSettings | null> {
+	const payload = await readBackendDocument(response);
+	if (
+		!isJsonObject(payload) ||
+		typeof payload.revision !== "number" ||
+		!Number.isInteger(payload.revision) ||
+		payload.revision < 1 ||
+		!isJsonObject(payload.settings)
+	) {
+		throw new UserSettingsServerError(
+			"The backend returned an invalid principal settings response.",
+			502,
+		);
+	}
+
+	const settingsResponse: PrincipalSettingsResponse = {
+		revision: payload.revision,
+		settings: payload.settings,
+	};
+	return readFrontendSettingsDocument(settingsResponse.settings);
+}
+
 async function loadFallbackSettings(
 	principalId: number,
 ): Promise<UserSettings> {
@@ -103,9 +132,7 @@ async function patchBackendSettings(
 			response.status,
 		);
 	}
-	const settings = readFrontendSettingsDocument(
-		await readBackendDocument(response),
-	);
+	const settings = await readBackendSettings(response);
 	if (!settings) {
 		throw new UserSettingsServerError(
 			"The backend omitted the Hubuum frontend settings namespace after an update.",
@@ -136,9 +163,7 @@ async function resolveSettingsTransport(
 		);
 	}
 
-	const backendSettings = readFrontendSettingsDocument(
-		await readBackendDocument(response),
-	);
+	const backendSettings = await readBackendSettings(response);
 	if (backendSettings) {
 		return { transport: "backend", settings: backendSettings };
 	}

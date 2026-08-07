@@ -125,7 +125,9 @@ fresh expiry, including for expired tokens once the server returns them. Server
 `v0.0.5` publishes its effective default token
 lifetime and returns the authoritative expiry for each newly issued token. The
 console shows that default beside optional expiry fields while leaving the
-server responsible for materializing omitted expiries. Human users with an
+server responsible for materializing omitted expiries. Server `v0.0.9` also
+publishes the maximum token lifetime and adds revisioned token metadata and
+renewal endpoints. Human users with an
 unscoped session token can mint tokens for themselves from their Account page.
 Human admins can mint for any principal, and human members of a service
 account's owner group can manage its tokens from their Account page.
@@ -416,8 +418,8 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Current `main` development and Hubuum Frontend `v0.0.10` are validated against
-Hubuum Server `v0.0.5`.
+Current `main` development is validated against Hubuum Server `v0.0.9`.
+Hubuum Frontend `v0.0.10` remains validated against Server `v0.0.5`.
 Releases provide:
 
 - `ghcr.io/hubuum/hubuum-frontend:v0.0.10` for Linux AMD64 and ARM64;
@@ -457,7 +459,7 @@ server image:
 npm run test:live-backend
 ```
 
-The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.5`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.9`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
@@ -471,7 +473,7 @@ replaces the live test database.
 
 Useful overrides:
 
-- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.5`
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.9`
 - `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
 - `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
 - `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`

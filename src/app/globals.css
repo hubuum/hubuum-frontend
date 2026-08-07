@@ -1220,6 +1220,7 @@ main {
 	padding: 0.55rem 0.85rem;
 	box-shadow: var(--shadow-float);
 	font-size: 0.85rem;
+	pointer-events: none;
 	text-align: center;
 }
 

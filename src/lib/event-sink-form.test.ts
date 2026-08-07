@@ -69,6 +69,7 @@ describe("eventSinkToFormState", () => {
 			id: 7,
 			kind: "valkey_stream",
 			name: "stream sink",
+			revision: 1,
 			secret_ref: null,
 			updated_at: "2026-07-14T00:00:00Z",
 		};

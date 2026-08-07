@@ -10,11 +10,14 @@ describe("TokenDetailsModal", () => {
 		const markup = renderToStaticMarkup(
 			createElement(TokenDetailsModal, {
 				token: {
+					active: true,
+					expired: false,
 					id: 14,
 					principal_id: 3,
 					name: "automation",
 					description: "Deployment token",
 					issued: "2026-07-25T10:00:00Z",
+					revision: 1,
 					scope: {
 						permissions: [
 							Permissions.ReadCollection,
@@ -57,9 +60,12 @@ describe("TokenDetailsModal", () => {
 		const markup = renderToStaticMarkup(
 			createElement(TokenDetailsModal, {
 				token: {
+					active: true,
+					expired: false,
 					id: 16,
 					principal_id: 3,
 					issued: "2026-07-25T10:00:00Z",
+					revision: 1,
 					scope: {
 						resources: [{ kind: "class", id: 404 }],
 					},
@@ -78,10 +84,13 @@ describe("TokenDetailsModal", () => {
 		const markup = renderToStaticMarkup(
 			createElement(TokenDetailsModal, {
 				token: {
+					active: false,
+					expired: true,
 					id: 17,
 					principal_id: 3,
 					issued: "2025-07-25T10:00:00Z",
 					expires_at: "2025-07-26T10:00:00Z",
+					revision: 1,
 					scope: null,
 				},
 				onClone: () => undefined,
@@ -97,9 +106,12 @@ describe("TokenDetailsModal", () => {
 		const markup = renderToStaticMarkup(
 			createElement(TokenDetailsModal, {
 				token: {
+					active: true,
+					expired: false,
 					id: 15,
 					principal_id: 3,
 					issued: "2026-07-25T10:00:00Z",
+					revision: 1,
 					scope: null,
 				},
 				onClose: () => undefined,

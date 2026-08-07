@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
+import type { ResourceRevision } from './resourceRevision';
 
 export interface HubuumClassWithPath {
   collection_id: number;
@@ -14,6 +15,7 @@ export interface HubuumClassWithPath {
   json_schema?: unknown;
   name: string;
   path: number[];
+  revision: ResourceRevision;
   updated_at: string;
   validate_schema: boolean;
 }

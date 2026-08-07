@@ -3,12 +3,13 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { ImportClassInput } from './importClassInput';
 import type { ImportClassRelationInput } from './importClassRelationInput';
 import type { ImportCollectionInput } from './importCollectionInput';
 import type { ImportCollectionPermissionInput } from './importCollectionPermissionInput';
+import type { ImportComputedFieldInput } from './importComputedFieldInput';
 import type { ImportEventSinkInput } from './importEventSinkInput';
 import type { ImportEventSubscriptionInput } from './importEventSubscriptionInput';
 import type { ImportExportTemplateInput } from './importExportTemplateInput';
@@ -25,6 +26,7 @@ export interface ImportGraph {
   classes?: ImportClassInput[];
   collection_permissions?: ImportCollectionPermissionInput[];
   collections?: ImportCollectionInput[];
+  computed_fields?: ImportComputedFieldInput[];
   event_sinks?: ImportEventSinkInput[];
   event_subscriptions?: ImportEventSubscriptionInput[];
   export_templates?: ImportExportTemplateInput[];

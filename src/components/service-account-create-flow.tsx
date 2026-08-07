@@ -31,6 +31,7 @@ import type {
 import {
 	type ConsoleGroup,
 	formatScopedGroupName,
+	LOCAL_IDENTITY_SCOPE,
 } from "@/lib/identity-scopes";
 import { toNaiveDateTimePayload } from "@/lib/naive-datetime";
 import {
@@ -263,7 +264,10 @@ export function ServiceAccountCreateFlow({
 						),
 					);
 				}
-				account = accountResponse.data;
+				account = {
+					...accountResponse.data,
+					identity_scope: LOCAL_IDENTITY_SCOPE,
+				};
 			}
 
 			let tokenResponse: Awaited<

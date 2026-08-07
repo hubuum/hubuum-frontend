@@ -3,9 +3,10 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { Provenance } from './provenance';
+import type { ResourceRevision } from './resourceRevision';
 
 /**
  * A serialized history row plus the resolved username of its actor (if any).
@@ -25,6 +26,7 @@ export type HistoryResponseHubuumClassHistory = ({
   json_schema?: unknown;
   name: string;
   op: string;
+  revision: ResourceRevision;
   /** @nullable */
   task_id?: number | null;
   updated_at: string;

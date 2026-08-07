@@ -3,17 +3,20 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
+import type { MembershipPrincipalResponse } from './membershipPrincipalResponse';
+import type { ResourceRevision } from './resourceRevision';
 
 /**
- * Public representation of a group member (a principal of either kind).
+ * Public representation of the revision-owned membership between a principal
+ * and a group.
  */
 export interface PrincipalMemberResponse {
   created_at: string;
-  identity_scope: string;
-  kind: string;
-  name: string;
+  group_id: number;
+  principal?: null | MembershipPrincipalResponse;
   principal_id: number;
+  revision: ResourceRevision;
   updated_at: string;
 }

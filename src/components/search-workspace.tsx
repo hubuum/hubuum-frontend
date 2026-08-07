@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { TableExportMenu } from "@/components/table-export-menu";
-import { getApiV1ClassesByClassId } from "@/lib/api/generated/client";
+import { fetchExpandedClass } from "@/lib/api/classes";
 import {
 	createEmptyUnifiedSearchNext,
 	createEmptyUnifiedSearchResults,
@@ -141,20 +141,14 @@ async function fetchClassContextByIds(
 ): Promise<Record<number, ClassContext>> {
 	const settled = await Promise.allSettled(
 		classIds.map(async (classId) => {
-			const response = await getApiV1ClassesByClassId(classId, {
-				credentials: "include",
-			});
-
-			if (response.status !== 200) {
-				return null;
-			}
+			const hubuumClass = await fetchExpandedClass(classId);
 
 			return {
 				classId,
 				context: {
-					className: response.data.name,
-					collectionId: response.data.collection.id,
-					collectionName: response.data.collection.name,
+					className: hubuumClass.name,
+					collectionId: hubuumClass.collection.id,
+					collectionName: hubuumClass.collection.name,
 				},
 			};
 		}),

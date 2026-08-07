@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 
 /**
@@ -12,8 +12,13 @@
  * The password is expected to be plaintext. `name` is the principal name.
  */
 export interface LoginUser {
-  /** @nullable */
+  /**
+     * @maxLength 255
+     * @nullable
+     */
   identity_scope?: string | null;
+  /** @maxLength 255 */
   name: string;
+  /** @maxLength 4096 */
   password: string;
 }

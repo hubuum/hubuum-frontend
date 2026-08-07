@@ -25,7 +25,7 @@ import {
 	postApiV1EventDeliveriesByDeliveryIdRetry,
 } from "@/lib/api/generated/client";
 import type {
-	EventDelivery,
+	EventDeliveryResponse,
 	EventDeliveryHealthResponse,
 	EventResponse,
 	EventSink,
@@ -287,7 +287,7 @@ export async function fetchEventDeliveryHealth(): Promise<EventDeliveryHealthRes
 
 export async function fetchEventDeliveriesPage(
 	cursor = "",
-): Promise<PageResult<EventDelivery>> {
+): Promise<PageResult<EventDeliveryResponse>> {
 	const params = {
 		limit: 50,
 		sort: "-updated_at,-id",
@@ -303,7 +303,10 @@ export async function fetchEventDeliveriesPage(
 		200,
 		"Failed to load event deliveries.",
 	);
-	return pageFromResponse(response.data as EventDelivery[], response.headers);
+	return pageFromResponse(
+		response.data as EventDeliveryResponse[],
+		response.headers,
+	);
 }
 
 export async function fetchEventSinks(): Promise<EventSink[]> {
@@ -457,7 +460,7 @@ export async function deleteCollectionEventSubscription(
 
 export async function retryEventDelivery(
 	deliveryId: number,
-): Promise<EventDelivery> {
+): Promise<EventDeliveryResponse> {
 	const response = await postApiV1EventDeliveriesByDeliveryIdRetry(deliveryId, {
 		credentials: "include",
 	});
@@ -468,12 +471,12 @@ export async function retryEventDelivery(
 		200,
 		"Failed to retry event delivery.",
 	);
-	return (response.data as { delivery: EventDelivery }).delivery;
+	return (response.data as { delivery: EventDeliveryResponse }).delivery;
 }
 
 export async function markEventDeliveryDead(
 	deliveryId: number,
-): Promise<EventDelivery> {
+): Promise<EventDeliveryResponse> {
 	const response = await postApiV1EventDeliveriesByDeliveryIdDead(deliveryId, {
 		credentials: "include",
 	});
@@ -484,5 +487,5 @@ export async function markEventDeliveryDead(
 		200,
 		"Failed to mark event delivery dead.",
 	);
-	return (response.data as { delivery: EventDelivery }).delivery;
+	return (response.data as { delivery: EventDeliveryResponse }).delivery;
 }

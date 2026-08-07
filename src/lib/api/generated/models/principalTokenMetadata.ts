@@ -3,9 +3,10 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type { PrincipalID } from './principalID';
+import type { ResourceRevision } from './resourceRevision';
 import type { TokenID } from './tokenID';
 import type { TokenScopeDetails } from './tokenScopeDetails';
 
@@ -14,8 +15,18 @@ import type { TokenScopeDetails } from './tokenScopeDetails';
  * permission and resource scope dimensions.
  */
 export interface PrincipalTokenMetadata {
+  /**
+     * Whether this token can currently authenticate. This uses the same
+     * expiry and revocation rules as bearer-token validation.
+     */
+  active: boolean;
   /** @nullable */
   description?: string | null;
+  /**
+     * Whether this token's effective expiry has elapsed. A revoked token may
+     * also be expired, so this is independent of `revoked_at`.
+     */
+  expired: boolean;
   /** @nullable */
   expires_at?: string | null;
   id: TokenID;
@@ -25,6 +36,7 @@ export interface PrincipalTokenMetadata {
   /** @nullable */
   name?: string | null;
   principal_id: PrincipalID;
+  revision: ResourceRevision;
   /** @nullable */
   revoked_at?: string | null;
   scope?: null | TokenScopeDetails;

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.5
+ * OpenAPI spec version: 0.0.9
  */
 import type {
   ApiErrorResponse,
@@ -14,6 +14,7 @@ import type {
   ClearRateLimitResponse,
   ClientConfig,
   Collection,
+  CollectionPermissionSet,
   ComputedFieldDefinition,
   ComputedFieldDefinitionPatch,
   ComputedFieldDefinitionRequest,
@@ -24,11 +25,9 @@ import type {
   ComputedFieldPreviewResponse,
   CountsResponse,
   DbStateResponse,
-  DeleteApiV1ClassesByClassIdComputedFieldsByFieldIdParams,
-  DeleteApiV1IamMeComputedFieldsByFieldIdParams,
   EffectiveGroupPermission,
-  EventDelivery,
   EventDeliveryHealthResponse,
+  EventDeliveryResponse,
   EventDeliveryUpdateResponse,
   EventResponse,
   EventSink,
@@ -99,12 +98,14 @@ import type {
   GetApiV1TasksByTaskIdEventsParams,
   GetApiV1TasksParams,
   GroupPermission,
+  GroupPointResponse,
   GroupResponse,
   HistoryResponseCollectionHistory,
   HistoryResponseExportTemplateHistory,
   HistoryResponseHubuumClassHistory,
   HistoryResponseHubuumObjectHistory,
   HistoryResponseRemoteTargetHistory,
+  HubuumClass,
   HubuumClassExpanded,
   HubuumClassRelation,
   HubuumClassWithPath,
@@ -136,22 +137,26 @@ import type {
   NewUser,
   ObjectAggregateRow,
   ObjectDataPatchDocument,
-  Permission,
   Permissions,
   PersonalComputedFieldDefinitionRequest,
   PrincipalCollectionPermissions,
   PrincipalMemberResponse,
   PrincipalSettings,
+  PrincipalSettingsPatchDocument,
+  PrincipalSettingsResponse,
   PrincipalTokenMetadata,
+  PrincipalTokenPointResponse,
   ProbeResponse,
   RelatedClassGraph,
   RelatedObjectGraph,
   ReleaseRateLimitResponse,
   RemoteTarget,
   RemoteTargetInvokeRequest,
+  RenewTokenRequest,
   RestoreConfirmRequest,
   RestoreStageResponse,
   RunningConfig,
+  ServiceAccountPointResponse,
   ServiceAccountResponse,
   TaskEventResponse,
   TaskQueueStateResponse,
@@ -168,6 +173,7 @@ import type {
   UpdateRemoteTarget,
   UpdateServiceAccount,
   UpdateUser,
+  UserPointResponse,
   UserResponse
 } from './models';
 import { HUBUUM_BFF_PREFIX } from '@/lib/api/frontend';
@@ -176,6 +182,11 @@ import { HUBUUM_BFF_PREFIX } from '@/lib/api/frontend';
 export type postApiV0AuthLoginResponse200 = {
   data: LoginResponse
   status: 200
+}
+
+export type postApiV0AuthLoginResponse400 = {
+  data: ApiErrorResponse
+  status: 400
 }
 
 export type postApiV0AuthLoginResponse401 = {
@@ -196,7 +207,7 @@ export type postApiV0AuthLoginResponse500 = {
 export type postApiV0AuthLoginResponseSuccess = (postApiV0AuthLoginResponse200) & {
   headers: Headers;
 };
-export type postApiV0AuthLoginResponseError = (postApiV0AuthLoginResponse401 | postApiV0AuthLoginResponse429 | postApiV0AuthLoginResponse500) & {
+export type postApiV0AuthLoginResponseError = (postApiV0AuthLoginResponse400 | postApiV0AuthLoginResponse401 | postApiV0AuthLoginResponse429 | postApiV0AuthLoginResponse500) & {
   headers: Headers;
 };
 
@@ -1307,7 +1318,7 @@ export const postApiV1Classes = async (newHubuumClass: NewHubuumClass, options?:
 
 
 export type getApiV1ClassesByNameByClassNameResponse200 = {
-  data: HubuumClassExpanded
+  data: HubuumClass
   status: 200
 }
 
@@ -1382,10 +1393,15 @@ export type deleteApiV1ClassesByNameByClassNameResponse404 = {
   status: 404
 }
 
+export type deleteApiV1ClassesByNameByClassNameResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1ClassesByNameByClassNameResponseSuccess = (deleteApiV1ClassesByNameByClassNameResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1ClassesByNameByClassNameResponseError = (deleteApiV1ClassesByNameByClassNameResponse401 | deleteApiV1ClassesByNameByClassNameResponse403 | deleteApiV1ClassesByNameByClassNameResponse404) & {
+export type deleteApiV1ClassesByNameByClassNameResponseError = (deleteApiV1ClassesByNameByClassNameResponse401 | deleteApiV1ClassesByNameByClassNameResponse403 | deleteApiV1ClassesByNameByClassNameResponse404 | deleteApiV1ClassesByNameByClassNameResponse412) & {
   headers: Headers;
 };
 
@@ -1448,10 +1464,15 @@ export type patchApiV1ClassesByNameByClassNameResponse404 = {
   status: 404
 }
 
+export type patchApiV1ClassesByNameByClassNameResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1ClassesByNameByClassNameResponseSuccess = (patchApiV1ClassesByNameByClassNameResponse200) & {
   headers: Headers;
 };
-export type patchApiV1ClassesByNameByClassNameResponseError = (patchApiV1ClassesByNameByClassNameResponse400 | patchApiV1ClassesByNameByClassNameResponse401 | patchApiV1ClassesByNameByClassNameResponse403 | patchApiV1ClassesByNameByClassNameResponse404) & {
+export type patchApiV1ClassesByNameByClassNameResponseError = (patchApiV1ClassesByNameByClassNameResponse400 | patchApiV1ClassesByNameByClassNameResponse401 | patchApiV1ClassesByNameByClassNameResponse403 | patchApiV1ClassesByNameByClassNameResponse404 | patchApiV1ClassesByNameByClassNameResponse412) & {
   headers: Headers;
 };
 
@@ -1807,10 +1828,15 @@ export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse
   status: 404
 }
 
+export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseSuccess = (deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseError = (deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse401 | deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse403 | deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse404) & {
+export type deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseError = (deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse401 | deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse403 | deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse404 | deleteApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse412) & {
   headers: Headers;
 };
 
@@ -1875,10 +1901,15 @@ export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse4
   status: 404
 }
 
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseSuccess = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse200) & {
   headers: Headers;
 };
-export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseError = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse400 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse401 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse403 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse404) & {
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponseError = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse400 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse401 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse403 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse404 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse412) & {
   headers: Headers;
 };
 
@@ -1954,6 +1985,11 @@ export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataRespo
   status: 409
 }
 
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse413 = {
   data: ApiErrorResponse
   status: 413
@@ -1972,7 +2008,7 @@ export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataRespo
 export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponseSuccess = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse200) & {
   headers: Headers;
 };
-export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponseError = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse400 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse401 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse403 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse404 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse406 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse409 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse413 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse415 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse500) & {
+export type patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponseError = (patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse400 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse401 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse403 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse404 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse406 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse409 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse412 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse413 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse415 | patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse500) & {
   headers: Headers;
 };
 
@@ -2487,7 +2523,7 @@ export const getApiV1ClassesByNameByClassNameRelatedRelations = async (className
 
 
 export type getApiV1ClassesByClassIdResponse200 = {
-  data: HubuumClassExpanded
+  data: HubuumClass
   status: 200
 }
 
@@ -2557,10 +2593,15 @@ export type deleteApiV1ClassesByClassIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1ClassesByClassIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1ClassesByClassIdResponseSuccess = (deleteApiV1ClassesByClassIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1ClassesByClassIdResponseError = (deleteApiV1ClassesByClassIdResponse401 | deleteApiV1ClassesByClassIdResponse404) & {
+export type deleteApiV1ClassesByClassIdResponseError = (deleteApiV1ClassesByClassIdResponse401 | deleteApiV1ClassesByClassIdResponse404 | deleteApiV1ClassesByClassIdResponse412) & {
   headers: Headers;
 };
 
@@ -2618,10 +2659,15 @@ export type patchApiV1ClassesByClassIdResponse404 = {
   status: 404
 }
 
+export type patchApiV1ClassesByClassIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1ClassesByClassIdResponseSuccess = (patchApiV1ClassesByClassIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1ClassesByClassIdResponseError = (patchApiV1ClassesByClassIdResponse400 | patchApiV1ClassesByClassIdResponse401 | patchApiV1ClassesByClassIdResponse404) & {
+export type patchApiV1ClassesByClassIdResponseError = (patchApiV1ClassesByClassIdResponse400 | patchApiV1ClassesByClassIdResponse401 | patchApiV1ClassesByClassIdResponse404 | patchApiV1ClassesByClassIdResponse412) & {
   headers: Headers;
 };
 
@@ -3018,6 +3064,64 @@ export const postApiV1ClassesByClassIdComputedFieldsRebuild = async (classId: nu
 
 
 
+export type getApiV1ClassesByClassIdComputedFieldsByFieldIdResponse200 = {
+  data: ComputedFieldDefinition
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdComputedFieldsByFieldIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdComputedFieldsByFieldIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdComputedFieldsByFieldIdResponseSuccess = (getApiV1ClassesByClassIdComputedFieldsByFieldIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError = (getApiV1ClassesByClassIdComputedFieldsByFieldIdResponse401 | getApiV1ClassesByClassIdComputedFieldsByFieldIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdComputedFieldsByFieldIdResponse = (getApiV1ClassesByClassIdComputedFieldsByFieldIdResponseSuccess | getApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError)
+
+export const getGetApiV1ClassesByClassIdComputedFieldsByFieldIdUrl = (classId: number,
+    fieldId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields/${fieldId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/computed-fields/{field_id}.
+ * @summary Get Api V1 Classes By Class Id Computed Fields By Field Id
+ */
+export const getApiV1ClassesByClassIdComputedFieldsByFieldId = async (classId: number,
+    fieldId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdComputedFieldsByFieldIdResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdComputedFieldsByFieldIdUrl(classId,fieldId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdComputedFieldsByFieldIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdComputedFieldsByFieldIdResponse
+}
+
+
+
 export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse202 = {
   data: ComputedFieldDeleteResponse
   status: 202
@@ -3028,30 +3132,27 @@ export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse409 = {
   status: 409
 }
 
+export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponseSuccess = (deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse202) & {
   headers: Headers;
 };
-export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError = (deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse409) & {
+export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError = (deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse409 | deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse412) & {
   headers: Headers;
 };
 
 export type deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse = (deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponseSuccess | deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError)
 
 export const getDeleteApiV1ClassesByClassIdComputedFieldsByFieldIdUrl = (classId: number,
-    fieldId: number,
-    params: DeleteApiV1ClassesByClassIdComputedFieldsByFieldIdParams,) => {
-  const normalizedParams = new URLSearchParams();
+    fieldId: number,) => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields/${fieldId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields/${fieldId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/computed-fields/${fieldId}`
 }
 
 /**
@@ -3059,10 +3160,9 @@ export const getDeleteApiV1ClassesByClassIdComputedFieldsByFieldIdUrl = (classId
  * @summary Delete Api V1 Classes By Class Id Computed Fields By Field Id
  */
 export const deleteApiV1ClassesByClassIdComputedFieldsByFieldId = async (classId: number,
-    fieldId: number,
-    params: DeleteApiV1ClassesByClassIdComputedFieldsByFieldIdParams, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse> => {
+    fieldId: number, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdComputedFieldsByFieldIdResponse> => {
 
-  const res = await fetch(getDeleteApiV1ClassesByClassIdComputedFieldsByFieldIdUrl(classId,fieldId,params),
+  const res = await fetch(getDeleteApiV1ClassesByClassIdComputedFieldsByFieldIdUrl(classId,fieldId),
   {
     ...options,
     method: 'DELETE'
@@ -3095,10 +3195,15 @@ export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse409 = {
   status: 409
 }
 
+export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponseSuccess = (patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError = (patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse400 | patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse409) & {
+export type patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponseError = (patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse400 | patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse409 | patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse412) & {
   headers: Headers;
 };
 
@@ -3967,6 +4072,64 @@ export const postApiV1ClassesByClassIdRelations = async (classId: number,
 
 
 
+export type getApiV1ClassesByClassIdRelationsByRelationIdResponse200 = {
+  data: HubuumClassRelation
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdRelationsByRelationIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdRelationsByRelationIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdRelationsByRelationIdResponseSuccess = (getApiV1ClassesByClassIdRelationsByRelationIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdRelationsByRelationIdResponseError = (getApiV1ClassesByClassIdRelationsByRelationIdResponse401 | getApiV1ClassesByClassIdRelationsByRelationIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdRelationsByRelationIdResponse = (getApiV1ClassesByClassIdRelationsByRelationIdResponseSuccess | getApiV1ClassesByClassIdRelationsByRelationIdResponseError)
+
+export const getGetApiV1ClassesByClassIdRelationsByRelationIdUrl = (classId: number,
+    relationId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/relations/${relationId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/relations/{relation_id}.
+ * @summary Get Api V1 Classes By Class Id Relations By Relation Id
+ */
+export const getApiV1ClassesByClassIdRelationsByRelationId = async (classId: number,
+    relationId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdRelationsByRelationIdResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdRelationsByRelationIdUrl(classId,relationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdRelationsByRelationIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdRelationsByRelationIdResponse
+}
+
+
+
 export type deleteApiV1ClassesByClassIdRelationsByRelationIdResponse204 = {
   data: void
   status: 204
@@ -3987,10 +4150,15 @@ export type deleteApiV1ClassesByClassIdRelationsByRelationIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1ClassesByClassIdRelationsByRelationIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1ClassesByClassIdRelationsByRelationIdResponseSuccess = (deleteApiV1ClassesByClassIdRelationsByRelationIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1ClassesByClassIdRelationsByRelationIdResponseError = (deleteApiV1ClassesByClassIdRelationsByRelationIdResponse400 | deleteApiV1ClassesByClassIdRelationsByRelationIdResponse401 | deleteApiV1ClassesByClassIdRelationsByRelationIdResponse404) & {
+export type deleteApiV1ClassesByClassIdRelationsByRelationIdResponseError = (deleteApiV1ClassesByClassIdRelationsByRelationIdResponse400 | deleteApiV1ClassesByClassIdRelationsByRelationIdResponse401 | deleteApiV1ClassesByClassIdRelationsByRelationIdResponse404 | deleteApiV1ClassesByClassIdRelationsByRelationIdResponse412) & {
   headers: Headers;
 };
 
@@ -4179,10 +4347,15 @@ export type deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObj
   status: 404
 }
 
+export type deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponseSuccess = (deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponseError = (deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse401 | deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse404) & {
+export type deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponseError = (deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse401 | deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse404 | deleteApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectIdResponse412) & {
   headers: Headers;
 };
 
@@ -4308,10 +4481,15 @@ export type deleteApiV1ClassesByClassIdByObjectIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1ClassesByClassIdByObjectIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1ClassesByClassIdByObjectIdResponseSuccess = (deleteApiV1ClassesByClassIdByObjectIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1ClassesByClassIdByObjectIdResponseError = (deleteApiV1ClassesByClassIdByObjectIdResponse401 | deleteApiV1ClassesByClassIdByObjectIdResponse404) & {
+export type deleteApiV1ClassesByClassIdByObjectIdResponseError = (deleteApiV1ClassesByClassIdByObjectIdResponse401 | deleteApiV1ClassesByClassIdByObjectIdResponse404 | deleteApiV1ClassesByClassIdByObjectIdResponse412) & {
   headers: Headers;
 };
 
@@ -4371,10 +4549,15 @@ export type patchApiV1ClassesByClassIdByObjectIdResponse404 = {
   status: 404
 }
 
+export type patchApiV1ClassesByClassIdByObjectIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1ClassesByClassIdByObjectIdResponseSuccess = (patchApiV1ClassesByClassIdByObjectIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1ClassesByClassIdByObjectIdResponseError = (patchApiV1ClassesByClassIdByObjectIdResponse400 | patchApiV1ClassesByClassIdByObjectIdResponse401 | patchApiV1ClassesByClassIdByObjectIdResponse404) & {
+export type patchApiV1ClassesByClassIdByObjectIdResponseError = (patchApiV1ClassesByClassIdByObjectIdResponse400 | patchApiV1ClassesByClassIdByObjectIdResponse401 | patchApiV1ClassesByClassIdByObjectIdResponse404 | patchApiV1ClassesByClassIdByObjectIdResponse412) & {
   headers: Headers;
 };
 
@@ -4450,6 +4633,11 @@ export type patchApiV1ClassesByClassIdByObjectIdDataResponse409 = {
   status: 409
 }
 
+export type patchApiV1ClassesByClassIdByObjectIdDataResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1ClassesByClassIdByObjectIdDataResponse413 = {
   data: ApiErrorResponse
   status: 413
@@ -4468,7 +4656,7 @@ export type patchApiV1ClassesByClassIdByObjectIdDataResponse500 = {
 export type patchApiV1ClassesByClassIdByObjectIdDataResponseSuccess = (patchApiV1ClassesByClassIdByObjectIdDataResponse200) & {
   headers: Headers;
 };
-export type patchApiV1ClassesByClassIdByObjectIdDataResponseError = (patchApiV1ClassesByClassIdByObjectIdDataResponse400 | patchApiV1ClassesByClassIdByObjectIdDataResponse401 | patchApiV1ClassesByClassIdByObjectIdDataResponse403 | patchApiV1ClassesByClassIdByObjectIdDataResponse404 | patchApiV1ClassesByClassIdByObjectIdDataResponse406 | patchApiV1ClassesByClassIdByObjectIdDataResponse409 | patchApiV1ClassesByClassIdByObjectIdDataResponse413 | patchApiV1ClassesByClassIdByObjectIdDataResponse415 | patchApiV1ClassesByClassIdByObjectIdDataResponse500) & {
+export type patchApiV1ClassesByClassIdByObjectIdDataResponseError = (patchApiV1ClassesByClassIdByObjectIdDataResponse400 | patchApiV1ClassesByClassIdByObjectIdDataResponse401 | patchApiV1ClassesByClassIdByObjectIdDataResponse403 | patchApiV1ClassesByClassIdByObjectIdDataResponse404 | patchApiV1ClassesByClassIdByObjectIdDataResponse406 | patchApiV1ClassesByClassIdByObjectIdDataResponse409 | patchApiV1ClassesByClassIdByObjectIdDataResponse412 | patchApiV1ClassesByClassIdByObjectIdDataResponse413 | patchApiV1ClassesByClassIdByObjectIdDataResponse415 | patchApiV1ClassesByClassIdByObjectIdDataResponse500) & {
   headers: Headers;
 };
 
@@ -4925,10 +5113,15 @@ export type deleteApiV1CollectionsByCollectionIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1CollectionsByCollectionIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1CollectionsByCollectionIdResponseSuccess = (deleteApiV1CollectionsByCollectionIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1CollectionsByCollectionIdResponseError = (deleteApiV1CollectionsByCollectionIdResponse401 | deleteApiV1CollectionsByCollectionIdResponse404) & {
+export type deleteApiV1CollectionsByCollectionIdResponseError = (deleteApiV1CollectionsByCollectionIdResponse401 | deleteApiV1CollectionsByCollectionIdResponse404 | deleteApiV1CollectionsByCollectionIdResponse412) & {
   headers: Headers;
 };
 
@@ -4986,10 +5179,15 @@ export type patchApiV1CollectionsByCollectionIdResponse404 = {
   status: 404
 }
 
+export type patchApiV1CollectionsByCollectionIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1CollectionsByCollectionIdResponseSuccess = (patchApiV1CollectionsByCollectionIdResponse202) & {
   headers: Headers;
 };
-export type patchApiV1CollectionsByCollectionIdResponseError = (patchApiV1CollectionsByCollectionIdResponse400 | patchApiV1CollectionsByCollectionIdResponse401 | patchApiV1CollectionsByCollectionIdResponse404) & {
+export type patchApiV1CollectionsByCollectionIdResponseError = (patchApiV1CollectionsByCollectionIdResponse400 | patchApiV1CollectionsByCollectionIdResponse401 | patchApiV1CollectionsByCollectionIdResponse404 | patchApiV1CollectionsByCollectionIdResponse412) & {
   headers: Headers;
 };
 
@@ -5365,10 +5563,15 @@ export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscription
   status: 404
 }
 
+export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseSuccess = (deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseError = (deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse401 | deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse403 | deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse404) & {
+export type deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseError = (deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse401 | deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse403 | deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse404 | deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse412) & {
   headers: Headers;
 };
 
@@ -5438,10 +5641,15 @@ export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionI
   status: 409
 }
 
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseSuccess = (patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseError = (patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse400 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse401 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse403 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse404 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse409) & {
+export type patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponseError = (patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse400 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse401 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse403 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse404 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse409 | patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse412) & {
   headers: Headers;
 };
 
@@ -5789,10 +5997,15 @@ export type putApiV1CollectionsByCollectionIdParentResponse409 = {
   status: 409
 }
 
+export type putApiV1CollectionsByCollectionIdParentResponse412 = {
+  data: void
+  status: 412
+}
+
 export type putApiV1CollectionsByCollectionIdParentResponseSuccess = (putApiV1CollectionsByCollectionIdParentResponse202) & {
   headers: Headers;
 };
-export type putApiV1CollectionsByCollectionIdParentResponseError = (putApiV1CollectionsByCollectionIdParentResponse400 | putApiV1CollectionsByCollectionIdParentResponse401 | putApiV1CollectionsByCollectionIdParentResponse403 | putApiV1CollectionsByCollectionIdParentResponse404 | putApiV1CollectionsByCollectionIdParentResponse409) & {
+export type putApiV1CollectionsByCollectionIdParentResponseError = (putApiV1CollectionsByCollectionIdParentResponse400 | putApiV1CollectionsByCollectionIdParentResponse401 | putApiV1CollectionsByCollectionIdParentResponse403 | putApiV1CollectionsByCollectionIdParentResponse404 | putApiV1CollectionsByCollectionIdParentResponse409 | putApiV1CollectionsByCollectionIdParentResponse412) & {
   headers: Headers;
 };
 
@@ -5832,7 +6045,7 @@ export const putApiV1CollectionsByCollectionIdParent = async (collectionId: numb
 
 
 export type getApiV1CollectionsByCollectionIdPermissionsResponse200 = {
-  data: GroupPermission[]
+  data: CollectionPermissionSet
   status: 200
 }
 
@@ -6013,7 +6226,7 @@ export const getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPri
 
 
 export type getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse200 = {
-  data: Permission
+  data: CollectionPermissionSet
   status: 200
 }
 
@@ -6071,7 +6284,7 @@ export const getApiV1CollectionsByCollectionIdPermissionsGroupByGroupId = async 
 
 
 export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse200 = {
-  data: void
+  data: CollectionPermissionSet
   status: 200
 }
 
@@ -6090,10 +6303,15 @@ export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse40
   status: 404
 }
 
+export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess = (putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse200) & {
   headers: Headers;
 };
-export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError = (putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse400 | putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 | putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404) & {
+export type putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError = (putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse400 | putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 | putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404 | putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse412) & {
   headers: Headers;
 };
 
@@ -6129,14 +6347,14 @@ export const putApiV1CollectionsByCollectionIdPermissionsGroupByGroupId = async 
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : undefined
+  const data: putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse
 }
 
 
 
 export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse201 = {
-  data: void
+  data: CollectionPermissionSet
   status: 201
 }
 
@@ -6155,10 +6373,15 @@ export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse4
   status: 404
 }
 
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse201) & {
   headers: Headers;
 };
-export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse400 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404) & {
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse400 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse412) & {
   headers: Headers;
 };
 
@@ -6202,15 +6425,15 @@ export const postApiV1CollectionsByCollectionIdPermissionsGroupByGroupId = async
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : undefined
+  const data: postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse
 }
 
 
 
-export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse204 = {
-  data: void
-  status: 204
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse200 = {
+  data: CollectionPermissionSet
+  status: 200
 }
 
 export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 = {
@@ -6223,10 +6446,15 @@ export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdRespons
   status: 404
 }
 
-export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse204) & {
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse412 = {
+  data: void
+  status: 412
+}
+
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseSuccess = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse200) & {
   headers: Headers;
 };
-export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 | deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404) & {
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponseError = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse401 | deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse404 | deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse412) & {
   headers: Headers;
 };
 
@@ -6260,7 +6488,7 @@ export const deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupId = asy
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : undefined
+  const data: deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse
 }
 
@@ -6322,7 +6550,7 @@ export const getApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermiss
 
 
 export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse201 = {
-  data: void
+  data: CollectionPermissionSet
   status: 201
 }
 
@@ -6336,10 +6564,15 @@ export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermiss
   status: 404
 }
 
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse412 = {
+  data: void
+  status: 412
+}
+
 export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseSuccess = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse201) & {
   headers: Headers;
 };
-export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseError = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse401 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse404) & {
+export type postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseError = (postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse401 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse404 | postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse412) & {
   headers: Headers;
 };
 
@@ -6376,15 +6609,15 @@ export const postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermis
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse['data'] = body ? JSON.parse(body) : undefined
+  const data: postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse
 }
 
 
 
-export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse204 = {
-  data: void
-  status: 204
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse200 = {
+  data: CollectionPermissionSet
+  status: 200
 }
 
 export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse401 = {
@@ -6397,10 +6630,15 @@ export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermi
   status: 404
 }
 
-export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseSuccess = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse204) & {
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse412 = {
+  data: void
+  status: 412
+}
+
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseSuccess = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse200) & {
   headers: Headers;
 };
-export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseError = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse401 | deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse404) & {
+export type deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponseError = (deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse401 | deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse404 | deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse412) & {
   headers: Headers;
 };
 
@@ -6436,7 +6674,7 @@ export const deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPerm
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse['data'] = body ? JSON.parse(body) : undefined
+  const data: deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdByPermissionResponse
 }
 
@@ -6561,7 +6799,7 @@ export const getApiV1Config = async ( options?: RequestInit): Promise<getApiV1Co
 
 
 export type getApiV1EventDeliveriesResponse200 = {
-  data: EventDelivery[]
+  data: EventDeliveryResponse[]
   status: 200
 }
 
@@ -6685,7 +6923,7 @@ export const getApiV1EventDeliveriesHealth = async ( options?: RequestInit): Pro
 
 
 export type getApiV1EventDeliveriesByDeliveryIdResponse200 = {
-  data: EventDelivery
+  data: EventDeliveryResponse
   status: 200
 }
 
@@ -7087,10 +7325,15 @@ export type deleteApiV1EventSinksBySinkIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1EventSinksBySinkIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1EventSinksBySinkIdResponseSuccess = (deleteApiV1EventSinksBySinkIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1EventSinksBySinkIdResponseError = (deleteApiV1EventSinksBySinkIdResponse401 | deleteApiV1EventSinksBySinkIdResponse403 | deleteApiV1EventSinksBySinkIdResponse404) & {
+export type deleteApiV1EventSinksBySinkIdResponseError = (deleteApiV1EventSinksBySinkIdResponse401 | deleteApiV1EventSinksBySinkIdResponse403 | deleteApiV1EventSinksBySinkIdResponse404 | deleteApiV1EventSinksBySinkIdResponse412) & {
   headers: Headers;
 };
 
@@ -7158,10 +7401,15 @@ export type patchApiV1EventSinksBySinkIdResponse409 = {
   status: 409
 }
 
+export type patchApiV1EventSinksBySinkIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1EventSinksBySinkIdResponseSuccess = (patchApiV1EventSinksBySinkIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1EventSinksBySinkIdResponseError = (patchApiV1EventSinksBySinkIdResponse400 | patchApiV1EventSinksBySinkIdResponse401 | patchApiV1EventSinksBySinkIdResponse403 | patchApiV1EventSinksBySinkIdResponse404 | patchApiV1EventSinksBySinkIdResponse409) & {
+export type patchApiV1EventSinksBySinkIdResponseError = (patchApiV1EventSinksBySinkIdResponse400 | patchApiV1EventSinksBySinkIdResponse401 | patchApiV1EventSinksBySinkIdResponse403 | patchApiV1EventSinksBySinkIdResponse404 | patchApiV1EventSinksBySinkIdResponse409 | patchApiV1EventSinksBySinkIdResponse412) & {
   headers: Headers;
 };
 
@@ -7473,10 +7721,15 @@ export type deleteApiV1ExportTemplatesByTemplateIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1ExportTemplatesByTemplateIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1ExportTemplatesByTemplateIdResponseSuccess = (deleteApiV1ExportTemplatesByTemplateIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1ExportTemplatesByTemplateIdResponseError = (deleteApiV1ExportTemplatesByTemplateIdResponse401 | deleteApiV1ExportTemplatesByTemplateIdResponse403 | deleteApiV1ExportTemplatesByTemplateIdResponse404) & {
+export type deleteApiV1ExportTemplatesByTemplateIdResponseError = (deleteApiV1ExportTemplatesByTemplateIdResponse401 | deleteApiV1ExportTemplatesByTemplateIdResponse403 | deleteApiV1ExportTemplatesByTemplateIdResponse404 | deleteApiV1ExportTemplatesByTemplateIdResponse412) & {
   headers: Headers;
 };
 
@@ -7544,10 +7797,15 @@ export type patchApiV1ExportTemplatesByTemplateIdResponse409 = {
   status: 409
 }
 
+export type patchApiV1ExportTemplatesByTemplateIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1ExportTemplatesByTemplateIdResponseSuccess = (patchApiV1ExportTemplatesByTemplateIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1ExportTemplatesByTemplateIdResponseError = (patchApiV1ExportTemplatesByTemplateIdResponse400 | patchApiV1ExportTemplatesByTemplateIdResponse401 | patchApiV1ExportTemplatesByTemplateIdResponse403 | patchApiV1ExportTemplatesByTemplateIdResponse404 | patchApiV1ExportTemplatesByTemplateIdResponse409) & {
+export type patchApiV1ExportTemplatesByTemplateIdResponseError = (patchApiV1ExportTemplatesByTemplateIdResponse400 | patchApiV1ExportTemplatesByTemplateIdResponse401 | patchApiV1ExportTemplatesByTemplateIdResponse403 | patchApiV1ExportTemplatesByTemplateIdResponse404 | patchApiV1ExportTemplatesByTemplateIdResponse409 | patchApiV1ExportTemplatesByTemplateIdResponse412) & {
   headers: Headers;
 };
 
@@ -8140,7 +8398,7 @@ export const getApiV1IamGroups = async (params?: GetApiV1IamGroupsParams, option
 
 
 export type postApiV1IamGroupsResponse201 = {
-  data: GroupResponse
+  data: GroupPointResponse
   status: 201
 }
 
@@ -8201,7 +8459,7 @@ export const postApiV1IamGroups = async (newGroup: NewGroup, options?: RequestIn
 
 
 export type getApiV1IamGroupsByGroupIdResponse200 = {
-  data: GroupResponse
+  data: GroupPointResponse
   status: 200
 }
 
@@ -8281,10 +8539,15 @@ export type deleteApiV1IamGroupsByGroupIdResponse409 = {
   status: 409
 }
 
+export type deleteApiV1IamGroupsByGroupIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1IamGroupsByGroupIdResponseSuccess = (deleteApiV1IamGroupsByGroupIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamGroupsByGroupIdResponseError = (deleteApiV1IamGroupsByGroupIdResponse401 | deleteApiV1IamGroupsByGroupIdResponse403 | deleteApiV1IamGroupsByGroupIdResponse404 | deleteApiV1IamGroupsByGroupIdResponse409) & {
+export type deleteApiV1IamGroupsByGroupIdResponseError = (deleteApiV1IamGroupsByGroupIdResponse401 | deleteApiV1IamGroupsByGroupIdResponse403 | deleteApiV1IamGroupsByGroupIdResponse404 | deleteApiV1IamGroupsByGroupIdResponse409 | deleteApiV1IamGroupsByGroupIdResponse412) & {
   headers: Headers;
 };
 
@@ -8323,7 +8586,7 @@ export const deleteApiV1IamGroupsByGroupId = async (groupId: number, options?: R
 
 
 export type patchApiV1IamGroupsByGroupIdResponse200 = {
-  data: GroupResponse
+  data: GroupPointResponse
   status: 200
 }
 
@@ -8347,10 +8610,15 @@ export type patchApiV1IamGroupsByGroupIdResponse404 = {
   status: 404
 }
 
+export type patchApiV1IamGroupsByGroupIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1IamGroupsByGroupIdResponseSuccess = (patchApiV1IamGroupsByGroupIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1IamGroupsByGroupIdResponseError = (patchApiV1IamGroupsByGroupIdResponse400 | patchApiV1IamGroupsByGroupIdResponse401 | patchApiV1IamGroupsByGroupIdResponse403 | patchApiV1IamGroupsByGroupIdResponse404) & {
+export type patchApiV1IamGroupsByGroupIdResponseError = (patchApiV1IamGroupsByGroupIdResponse400 | patchApiV1IamGroupsByGroupIdResponse401 | patchApiV1IamGroupsByGroupIdResponse403 | patchApiV1IamGroupsByGroupIdResponse404 | patchApiV1IamGroupsByGroupIdResponse412) & {
   headers: Headers;
 };
 
@@ -8519,9 +8787,67 @@ export const getApiV1IamGroupsByGroupIdMembers = async (groupId: number,
 
 
 
-export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse204 = {
-  data: void
-  status: 204
+export type getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse200 = {
+  data: PrincipalMemberResponse
+  status: 200
+}
+
+export type getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseSuccess = (getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseError = (getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 | getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse = (getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseSuccess | getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseError)
+
+export const getGetApiV1IamGroupsByGroupIdMembersByPrincipalIdUrl = (groupId: number,
+    principalId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/groups/${groupId}/members/${principalId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/groups/{group_id}/members/{principal_id}.
+ * @summary Get Api V1 Iam Groups By Group Id Members By Principal Id
+ */
+export const getApiV1IamGroupsByGroupIdMembersByPrincipalId = async (groupId: number,
+    principalId: number, options?: RequestInit): Promise<getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse> => {
+
+  const res = await fetch(getGetApiV1IamGroupsByGroupIdMembersByPrincipalIdUrl(groupId,principalId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse
+}
+
+
+
+export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse201 = {
+  data: PrincipalMemberResponse
+  status: 201
 }
 
 export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 = {
@@ -8534,10 +8860,15 @@ export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404 = {
   status: 404
 }
 
-export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseSuccess = (postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse204) & {
+export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse412 = {
+  data: void
+  status: 412
+}
+
+export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseSuccess = (postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse201) & {
   headers: Headers;
 };
-export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseError = (postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 | postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404) & {
+export type postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseError = (postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 | postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404 | postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse412) & {
   headers: Headers;
 };
 
@@ -8571,7 +8902,7 @@ export const postApiV1IamGroupsByGroupIdMembersByPrincipalId = async (groupId: n
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse['data'] = body ? JSON.parse(body) : undefined
+  const data: postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse
 }
 
@@ -8592,10 +8923,15 @@ export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseSuccess = (deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseError = (deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 | deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404) & {
+export type deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponseError = (deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse401 | deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse404 | deleteApiV1IamGroupsByGroupIdMembersByPrincipalIdResponse412) & {
   headers: Headers;
 };
 
@@ -8846,6 +9182,67 @@ export const postApiV1IamMeComputedFieldsPreview = async (computedFieldPreviewRe
 
 
 
+export type getApiV1IamMeComputedFieldsByFieldIdResponse200 = {
+  data: ComputedFieldDefinition
+  status: 200
+}
+
+export type getApiV1IamMeComputedFieldsByFieldIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamMeComputedFieldsByFieldIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1IamMeComputedFieldsByFieldIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1IamMeComputedFieldsByFieldIdResponseSuccess = (getApiV1IamMeComputedFieldsByFieldIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamMeComputedFieldsByFieldIdResponseError = (getApiV1IamMeComputedFieldsByFieldIdResponse401 | getApiV1IamMeComputedFieldsByFieldIdResponse403 | getApiV1IamMeComputedFieldsByFieldIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1IamMeComputedFieldsByFieldIdResponse = (getApiV1IamMeComputedFieldsByFieldIdResponseSuccess | getApiV1IamMeComputedFieldsByFieldIdResponseError)
+
+export const getGetApiV1IamMeComputedFieldsByFieldIdUrl = (fieldId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields/${fieldId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/me/computed-fields/{field_id}.
+ * @summary Get Api V1 Iam Me Computed Fields By Field Id
+ */
+export const getApiV1IamMeComputedFieldsByFieldId = async (fieldId: number, options?: RequestInit): Promise<getApiV1IamMeComputedFieldsByFieldIdResponse> => {
+
+  const res = await fetch(getGetApiV1IamMeComputedFieldsByFieldIdUrl(fieldId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1IamMeComputedFieldsByFieldIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamMeComputedFieldsByFieldIdResponse
+}
+
+
+
 export type deleteApiV1IamMeComputedFieldsByFieldIdResponse204 = {
   data: void
   status: 204
@@ -8856,39 +9253,35 @@ export type deleteApiV1IamMeComputedFieldsByFieldIdResponse409 = {
   status: 409
 }
 
+export type deleteApiV1IamMeComputedFieldsByFieldIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1IamMeComputedFieldsByFieldIdResponseSuccess = (deleteApiV1IamMeComputedFieldsByFieldIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamMeComputedFieldsByFieldIdResponseError = (deleteApiV1IamMeComputedFieldsByFieldIdResponse409) & {
+export type deleteApiV1IamMeComputedFieldsByFieldIdResponseError = (deleteApiV1IamMeComputedFieldsByFieldIdResponse409 | deleteApiV1IamMeComputedFieldsByFieldIdResponse412) & {
   headers: Headers;
 };
 
 export type deleteApiV1IamMeComputedFieldsByFieldIdResponse = (deleteApiV1IamMeComputedFieldsByFieldIdResponseSuccess | deleteApiV1IamMeComputedFieldsByFieldIdResponseError)
 
-export const getDeleteApiV1IamMeComputedFieldsByFieldIdUrl = (fieldId: number,
-    params: DeleteApiV1IamMeComputedFieldsByFieldIdParams,) => {
-  const normalizedParams = new URLSearchParams();
+export const getDeleteApiV1IamMeComputedFieldsByFieldIdUrl = (fieldId: number,) => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields/${fieldId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields/${fieldId}`
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/me/computed-fields/${fieldId}`
 }
 
 /**
  * Auto-generated documentation for DELETE /api/v1/iam/me/computed-fields/{field_id}.
  * @summary Delete Api V1 Iam Me Computed Fields By Field Id
  */
-export const deleteApiV1IamMeComputedFieldsByFieldId = async (fieldId: number,
-    params: DeleteApiV1IamMeComputedFieldsByFieldIdParams, options?: RequestInit): Promise<deleteApiV1IamMeComputedFieldsByFieldIdResponse> => {
+export const deleteApiV1IamMeComputedFieldsByFieldId = async (fieldId: number, options?: RequestInit): Promise<deleteApiV1IamMeComputedFieldsByFieldIdResponse> => {
 
-  const res = await fetch(getDeleteApiV1IamMeComputedFieldsByFieldIdUrl(fieldId,params),
+  const res = await fetch(getDeleteApiV1IamMeComputedFieldsByFieldIdUrl(fieldId),
   {
     ...options,
     method: 'DELETE'
@@ -8916,10 +9309,15 @@ export type patchApiV1IamMeComputedFieldsByFieldIdResponse409 = {
   status: 409
 }
 
+export type patchApiV1IamMeComputedFieldsByFieldIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1IamMeComputedFieldsByFieldIdResponseSuccess = (patchApiV1IamMeComputedFieldsByFieldIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1IamMeComputedFieldsByFieldIdResponseError = (patchApiV1IamMeComputedFieldsByFieldIdResponse409) & {
+export type patchApiV1IamMeComputedFieldsByFieldIdResponseError = (patchApiV1IamMeComputedFieldsByFieldIdResponse409 | patchApiV1IamMeComputedFieldsByFieldIdResponse412) & {
   headers: Headers;
 };
 
@@ -9068,7 +9466,7 @@ export const getApiV1IamMePermissions = async ( options?: RequestInit): Promise<
 
 
 export type getApiV1IamMeSettingsResponse200 = {
-  data: PrincipalSettings
+  data: PrincipalSettingsResponse
   status: 200
 }
 
@@ -9119,7 +9517,7 @@ export const getApiV1IamMeSettings = async ( options?: RequestInit): Promise<get
 
 
 export type putApiV1IamMeSettingsResponse200 = {
-  data: PrincipalSettings
+  data: PrincipalSettingsResponse
   status: 200
 }
 
@@ -9133,10 +9531,15 @@ export type putApiV1IamMeSettingsResponse401 = {
   status: 401
 }
 
+export type putApiV1IamMeSettingsResponse412 = {
+  data: void
+  status: 412
+}
+
 export type putApiV1IamMeSettingsResponseSuccess = (putApiV1IamMeSettingsResponse200) & {
   headers: Headers;
 };
-export type putApiV1IamMeSettingsResponseError = (putApiV1IamMeSettingsResponse400 | putApiV1IamMeSettingsResponse401) & {
+export type putApiV1IamMeSettingsResponseError = (putApiV1IamMeSettingsResponse400 | putApiV1IamMeSettingsResponse401 | putApiV1IamMeSettingsResponse412) & {
   headers: Headers;
 };
 
@@ -9184,10 +9587,15 @@ export type deleteApiV1IamMeSettingsResponse401 = {
   status: 401
 }
 
+export type deleteApiV1IamMeSettingsResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1IamMeSettingsResponseSuccess = (deleteApiV1IamMeSettingsResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamMeSettingsResponseError = (deleteApiV1IamMeSettingsResponse401) & {
+export type deleteApiV1IamMeSettingsResponseError = (deleteApiV1IamMeSettingsResponse401 | deleteApiV1IamMeSettingsResponse412) & {
   headers: Headers;
 };
 
@@ -9226,7 +9634,7 @@ export const deleteApiV1IamMeSettings = async ( options?: RequestInit): Promise<
 
 
 export type patchApiV1IamMeSettingsResponse200 = {
-  data: PrincipalSettings
+  data: PrincipalSettingsResponse
   status: 200
 }
 
@@ -9240,10 +9648,35 @@ export type patchApiV1IamMeSettingsResponse401 = {
   status: 401
 }
 
+export type patchApiV1IamMeSettingsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1IamMeSettingsResponse412 = {
+  data: void
+  status: 412
+}
+
+export type patchApiV1IamMeSettingsResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type patchApiV1IamMeSettingsResponse415 = {
+  data: ApiErrorResponse
+  status: 415
+}
+
+export type patchApiV1IamMeSettingsResponse500 = {
+  data: ApiErrorResponse
+  status: 500
+}
+
 export type patchApiV1IamMeSettingsResponseSuccess = (patchApiV1IamMeSettingsResponse200) & {
   headers: Headers;
 };
-export type patchApiV1IamMeSettingsResponseError = (patchApiV1IamMeSettingsResponse400 | patchApiV1IamMeSettingsResponse401) & {
+export type patchApiV1IamMeSettingsResponseError = (patchApiV1IamMeSettingsResponse400 | patchApiV1IamMeSettingsResponse401 | patchApiV1IamMeSettingsResponse409 | patchApiV1IamMeSettingsResponse412 | patchApiV1IamMeSettingsResponse413 | patchApiV1IamMeSettingsResponse415 | patchApiV1IamMeSettingsResponse500) & {
   headers: Headers;
 };
 
@@ -9258,17 +9691,17 @@ export const getPatchApiV1IamMeSettingsUrl = () => {
 }
 
 /**
- * Applies an object-only JSON Merge Patch to the current principal settings. Object values merge recursively; a `null` value removes its key; arrays, strings, numbers, and booleans replace the existing value. An object patch applied to a missing or non-object value starts from an empty object. The document root must be an object. Use PUT, rather than PATCH, when a setting itself must retain a null value.
- * @summary Patch Api V1 Iam Me Settings
+ * Selects patch semantics from Content-Type and applies the complete patch to the latest row-locked settings document. `application/json` and `application/merge-patch+json` use object-only JSON Merge Patch: object values merge recursively, `null` removes a key, and other values replace it. `application/json-patch+json` uses bounded RFC 6902 add, remove, replace, move, copy, and test operations. The final document root must remain an object. A no-op returns the unchanged settings without advancing the revision or emitting an event.
+ * @summary Patch current principal settings
  */
-export const patchApiV1IamMeSettings = async (principalSettings: PrincipalSettings, options?: RequestInit): Promise<patchApiV1IamMeSettingsResponse> => {
+export const patchApiV1IamMeSettings = async (patchApiV1IamMeSettingsBody: PrincipalSettings | PrincipalSettingsPatchDocument, options?: RequestInit): Promise<patchApiV1IamMeSettingsResponse> => {
 
   const res = await fetch(getPatchApiV1IamMeSettingsUrl(),
   {
     ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(principalSettings)
+    method: 'PATCH'
+    ,
+    body: JSON.stringify(patchApiV1IamMeSettingsBody)
   }
 )
 
@@ -9466,7 +9899,7 @@ export const getApiV1IamPrincipalsByPrincipalIdPermissions = async (principalId:
 
 
 export type getApiV1IamPrincipalsByPrincipalIdSettingsResponse200 = {
-  data: PrincipalSettings
+  data: PrincipalSettingsResponse
   status: 200
 }
 
@@ -9522,7 +9955,7 @@ export const getApiV1IamPrincipalsByPrincipalIdSettings = async (principalId: nu
 
 
 export type putApiV1IamPrincipalsByPrincipalIdSettingsResponse200 = {
-  data: PrincipalSettings
+  data: PrincipalSettingsResponse
   status: 200
 }
 
@@ -9541,10 +9974,15 @@ export type putApiV1IamPrincipalsByPrincipalIdSettingsResponse404 = {
   status: 404
 }
 
+export type putApiV1IamPrincipalsByPrincipalIdSettingsResponse412 = {
+  data: void
+  status: 412
+}
+
 export type putApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess = (putApiV1IamPrincipalsByPrincipalIdSettingsResponse200) & {
   headers: Headers;
 };
-export type putApiV1IamPrincipalsByPrincipalIdSettingsResponseError = (putApiV1IamPrincipalsByPrincipalIdSettingsResponse400 | putApiV1IamPrincipalsByPrincipalIdSettingsResponse401 | putApiV1IamPrincipalsByPrincipalIdSettingsResponse404) & {
+export type putApiV1IamPrincipalsByPrincipalIdSettingsResponseError = (putApiV1IamPrincipalsByPrincipalIdSettingsResponse400 | putApiV1IamPrincipalsByPrincipalIdSettingsResponse401 | putApiV1IamPrincipalsByPrincipalIdSettingsResponse404 | putApiV1IamPrincipalsByPrincipalIdSettingsResponse412) & {
   headers: Headers;
 };
 
@@ -9598,10 +10036,15 @@ export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse404 = {
   status: 404
 }
 
+export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess = (deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponseError = (deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse401 | deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse404) & {
+export type deleteApiV1IamPrincipalsByPrincipalIdSettingsResponseError = (deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse401 | deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse404 | deleteApiV1IamPrincipalsByPrincipalIdSettingsResponse412) & {
   headers: Headers;
 };
 
@@ -9640,7 +10083,7 @@ export const deleteApiV1IamPrincipalsByPrincipalIdSettings = async (principalId:
 
 
 export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse200 = {
-  data: PrincipalSettings
+  data: PrincipalSettingsResponse
   status: 200
 }
 
@@ -9659,10 +10102,35 @@ export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse404 = {
   status: 404
 }
 
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse412 = {
+  data: void
+  status: 412
+}
+
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse415 = {
+  data: ApiErrorResponse
+  status: 415
+}
+
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponse500 = {
+  data: ApiErrorResponse
+  status: 500
+}
+
 export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponseSuccess = (patchApiV1IamPrincipalsByPrincipalIdSettingsResponse200) & {
   headers: Headers;
 };
-export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponseError = (patchApiV1IamPrincipalsByPrincipalIdSettingsResponse400 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse401 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse404) & {
+export type patchApiV1IamPrincipalsByPrincipalIdSettingsResponseError = (patchApiV1IamPrincipalsByPrincipalIdSettingsResponse400 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse401 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse404 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse409 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse412 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse413 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse415 | patchApiV1IamPrincipalsByPrincipalIdSettingsResponse500) & {
   headers: Headers;
 };
 
@@ -9677,18 +10145,18 @@ export const getPatchApiV1IamPrincipalsByPrincipalIdSettingsUrl = (principalId: 
 }
 
 /**
- * Applies an object-only JSON Merge Patch to the target principal settings. Object values merge recursively; a `null` value removes its key; arrays, strings, numbers, and booleans replace the existing value. An object patch applied to a missing or non-object value starts from an empty object. The document root must be an object. Use PUT, rather than PATCH, when a setting itself must retain a null value.
- * @summary Patch Api V1 Iam Principals By Principal Id Settings
+ * Selects patch semantics from Content-Type and applies the complete patch to the latest row-locked settings document. `application/json` and `application/merge-patch+json` use object-only JSON Merge Patch: object values merge recursively, `null` removes a key, and other values replace it. `application/json-patch+json` uses bounded RFC 6902 add, remove, replace, move, copy, and test operations. The final document root must remain an object. A no-op returns the unchanged settings without advancing the revision or emitting an event.
+ * @summary Patch principal settings
  */
 export const patchApiV1IamPrincipalsByPrincipalIdSettings = async (principalId: number,
-    principalSettings: PrincipalSettings, options?: RequestInit): Promise<patchApiV1IamPrincipalsByPrincipalIdSettingsResponse> => {
+    patchApiV1IamPrincipalsByPrincipalIdSettingsBody: PrincipalSettings | PrincipalSettingsPatchDocument, options?: RequestInit): Promise<patchApiV1IamPrincipalsByPrincipalIdSettingsResponse> => {
 
   const res = await fetch(getPatchApiV1IamPrincipalsByPrincipalIdSettingsUrl(principalId),
   {
     ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(principalSettings)
+    method: 'PATCH'
+    ,
+    body: JSON.stringify(patchApiV1IamPrincipalsByPrincipalIdSettingsBody)
   }
 )
 
@@ -9833,6 +10301,143 @@ export const postApiV1IamPrincipalsByPrincipalIdTokens = async (principalId: num
 
 
 
+export type getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse200 = {
+  data: PrincipalTokenPointResponse
+  status: 200
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponseSuccess = (getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponseError = (getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse401 | getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse403 | getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse = (getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponseSuccess | getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponseError)
+
+export const getGetApiV1IamPrincipalsByPrincipalIdTokensByTokenIdUrl = (principalId: number,
+    tokenId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/tokens/${tokenId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/tokens/{token_id}.
+ * @summary Get Api V1 Iam Principals By Principal Id Tokens By Token Id
+ */
+export const getApiV1IamPrincipalsByPrincipalIdTokensByTokenId = async (principalId: number,
+    tokenId: number, options?: RequestInit): Promise<getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse> => {
+
+  const res = await fetch(getGetApiV1IamPrincipalsByPrincipalIdTokensByTokenIdUrl(principalId,tokenId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdResponse
+}
+
+
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse201 = {
+  data: LoginResponse
+  status: 201
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponseSuccess = (postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse201) & {
+  headers: Headers;
+};
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponseError = (postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse400 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse401 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse403 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse404 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse = (postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponseSuccess | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponseError)
+
+export const getPostApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewUrl = (principalId: number,
+    tokenId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/principals/${principalId}/tokens/${tokenId}/renew`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/iam/principals/{principal_id}/tokens/{token_id}/renew.
+ * @summary Post Api V1 Iam Principals By Principal Id Tokens By Token Id Renew
+ */
+export const postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenew = async (principalId: number,
+    tokenId: number,
+    renewTokenRequest: RenewTokenRequest, options?: RequestInit): Promise<postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse> => {
+
+  const res = await fetch(getPostApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewUrl(principalId,tokenId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(renewTokenRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse
+}
+
+
+
 export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse204 = {
   data: void
   status: 204
@@ -9853,10 +10458,15 @@ export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse404 
   status: 404
 }
 
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse412 = {
+  data: void
+  status: 412
+}
+
 export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponseSuccess = (postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse204) & {
   headers: Headers;
 };
-export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponseError = (postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse401 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse403 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse404) & {
+export type postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponseError = (postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse401 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse403 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse404 | postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRevokeResponse412) & {
   headers: Headers;
 };
 
@@ -9955,7 +10565,7 @@ export const getApiV1IamServiceAccounts = async (params?: GetApiV1IamServiceAcco
 
 
 export type postApiV1IamServiceAccountsResponse201 = {
-  data: ServiceAccountResponse
+  data: ServiceAccountPointResponse
   status: 201
 }
 
@@ -10021,7 +10631,7 @@ export const postApiV1IamServiceAccounts = async (newServiceAccount: NewServiceA
 
 
 export type getApiV1IamServiceAccountsByServiceAccountIdResponse200 = {
-  data: ServiceAccountResponse
+  data: ServiceAccountPointResponse
   status: 200
 }
 
@@ -10101,10 +10711,15 @@ export type deleteApiV1IamServiceAccountsByServiceAccountIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1IamServiceAccountsByServiceAccountIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1IamServiceAccountsByServiceAccountIdResponseSuccess = (deleteApiV1IamServiceAccountsByServiceAccountIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamServiceAccountsByServiceAccountIdResponseError = (deleteApiV1IamServiceAccountsByServiceAccountIdResponse401 | deleteApiV1IamServiceAccountsByServiceAccountIdResponse403 | deleteApiV1IamServiceAccountsByServiceAccountIdResponse404) & {
+export type deleteApiV1IamServiceAccountsByServiceAccountIdResponseError = (deleteApiV1IamServiceAccountsByServiceAccountIdResponse401 | deleteApiV1IamServiceAccountsByServiceAccountIdResponse403 | deleteApiV1IamServiceAccountsByServiceAccountIdResponse404 | deleteApiV1IamServiceAccountsByServiceAccountIdResponse412) & {
   headers: Headers;
 };
 
@@ -10143,7 +10758,7 @@ export const deleteApiV1IamServiceAccountsByServiceAccountId = async (serviceAcc
 
 
 export type patchApiV1IamServiceAccountsByServiceAccountIdResponse200 = {
-  data: ServiceAccountResponse
+  data: ServiceAccountPointResponse
   status: 200
 }
 
@@ -10162,10 +10777,15 @@ export type patchApiV1IamServiceAccountsByServiceAccountIdResponse404 = {
   status: 404
 }
 
+export type patchApiV1IamServiceAccountsByServiceAccountIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1IamServiceAccountsByServiceAccountIdResponseSuccess = (patchApiV1IamServiceAccountsByServiceAccountIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1IamServiceAccountsByServiceAccountIdResponseError = (patchApiV1IamServiceAccountsByServiceAccountIdResponse401 | patchApiV1IamServiceAccountsByServiceAccountIdResponse403 | patchApiV1IamServiceAccountsByServiceAccountIdResponse404) & {
+export type patchApiV1IamServiceAccountsByServiceAccountIdResponseError = (patchApiV1IamServiceAccountsByServiceAccountIdResponse401 | patchApiV1IamServiceAccountsByServiceAccountIdResponse403 | patchApiV1IamServiceAccountsByServiceAccountIdResponse404 | patchApiV1IamServiceAccountsByServiceAccountIdResponse412) & {
   headers: Headers;
 };
 
@@ -10205,7 +10825,7 @@ export const patchApiV1IamServiceAccountsByServiceAccountId = async (serviceAcco
 
 
 export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponse200 = {
-  data: ServiceAccountResponse
+  data: ServiceAccountPointResponse
   status: 200
 }
 
@@ -10224,10 +10844,15 @@ export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponse404 = {
   status: 404
 }
 
+export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponse412 = {
+  data: void
+  status: 412
+}
+
 export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponseSuccess = (postApiV1IamServiceAccountsByServiceAccountIdDisableResponse200) & {
   headers: Headers;
 };
-export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponseError = (postApiV1IamServiceAccountsByServiceAccountIdDisableResponse401 | postApiV1IamServiceAccountsByServiceAccountIdDisableResponse403 | postApiV1IamServiceAccountsByServiceAccountIdDisableResponse404) & {
+export type postApiV1IamServiceAccountsByServiceAccountIdDisableResponseError = (postApiV1IamServiceAccountsByServiceAccountIdDisableResponse401 | postApiV1IamServiceAccountsByServiceAccountIdDisableResponse403 | postApiV1IamServiceAccountsByServiceAccountIdDisableResponse404 | postApiV1IamServiceAccountsByServiceAccountIdDisableResponse412) & {
   headers: Headers;
 };
 
@@ -10334,7 +10959,7 @@ export const getApiV1IamUsers = async (params?: GetApiV1IamUsersParams, options?
 
 
 export type postApiV1IamUsersResponse201 = {
-  data: UserResponse
+  data: UserPointResponse
   status: 201
 }
 
@@ -10395,7 +11020,7 @@ export const postApiV1IamUsers = async (newUser: NewUser, options?: RequestInit)
 
 
 export type getApiV1IamUsersByUserIdResponse200 = {
-  data: UserResponse
+  data: UserPointResponse
   status: 200
 }
 
@@ -10475,10 +11100,15 @@ export type deleteApiV1IamUsersByUserIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1IamUsersByUserIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1IamUsersByUserIdResponseSuccess = (deleteApiV1IamUsersByUserIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1IamUsersByUserIdResponseError = (deleteApiV1IamUsersByUserIdResponse401 | deleteApiV1IamUsersByUserIdResponse403 | deleteApiV1IamUsersByUserIdResponse404) & {
+export type deleteApiV1IamUsersByUserIdResponseError = (deleteApiV1IamUsersByUserIdResponse401 | deleteApiV1IamUsersByUserIdResponse403 | deleteApiV1IamUsersByUserIdResponse404 | deleteApiV1IamUsersByUserIdResponse412) & {
   headers: Headers;
 };
 
@@ -10517,7 +11147,7 @@ export const deleteApiV1IamUsersByUserId = async (userId: number, options?: Requ
 
 
 export type patchApiV1IamUsersByUserIdResponse200 = {
-  data: UserResponse
+  data: UserPointResponse
   status: 200
 }
 
@@ -10541,10 +11171,15 @@ export type patchApiV1IamUsersByUserIdResponse404 = {
   status: 404
 }
 
+export type patchApiV1IamUsersByUserIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1IamUsersByUserIdResponseSuccess = (patchApiV1IamUsersByUserIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1IamUsersByUserIdResponseError = (patchApiV1IamUsersByUserIdResponse400 | patchApiV1IamUsersByUserIdResponse401 | patchApiV1IamUsersByUserIdResponse403 | patchApiV1IamUsersByUserIdResponse404) & {
+export type patchApiV1IamUsersByUserIdResponseError = (patchApiV1IamUsersByUserIdResponse400 | patchApiV1IamUsersByUserIdResponse401 | patchApiV1IamUsersByUserIdResponse403 | patchApiV1IamUsersByUserIdResponse404 | patchApiV1IamUsersByUserIdResponse412) & {
   headers: Headers;
 };
 
@@ -10603,10 +11238,15 @@ export type postApiV1IamUsersByUserIdAnonymizeResponse404 = {
   status: 404
 }
 
+export type postApiV1IamUsersByUserIdAnonymizeResponse412 = {
+  data: void
+  status: 412
+}
+
 export type postApiV1IamUsersByUserIdAnonymizeResponseSuccess = (postApiV1IamUsersByUserIdAnonymizeResponse204) & {
   headers: Headers;
 };
-export type postApiV1IamUsersByUserIdAnonymizeResponseError = (postApiV1IamUsersByUserIdAnonymizeResponse401 | postApiV1IamUsersByUserIdAnonymizeResponse403 | postApiV1IamUsersByUserIdAnonymizeResponse404) & {
+export type postApiV1IamUsersByUserIdAnonymizeResponseError = (postApiV1IamUsersByUserIdAnonymizeResponse401 | postApiV1IamUsersByUserIdAnonymizeResponse403 | postApiV1IamUsersByUserIdAnonymizeResponse404 | postApiV1IamUsersByUserIdAnonymizeResponse412) & {
   headers: Headers;
 };
 
@@ -11106,10 +11746,15 @@ export type deleteApiV1RelationsClassesByRelationIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1RelationsClassesByRelationIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1RelationsClassesByRelationIdResponseSuccess = (deleteApiV1RelationsClassesByRelationIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1RelationsClassesByRelationIdResponseError = (deleteApiV1RelationsClassesByRelationIdResponse401 | deleteApiV1RelationsClassesByRelationIdResponse404) & {
+export type deleteApiV1RelationsClassesByRelationIdResponseError = (deleteApiV1RelationsClassesByRelationIdResponse401 | deleteApiV1RelationsClassesByRelationIdResponse404 | deleteApiV1RelationsClassesByRelationIdResponse412) & {
   headers: Headers;
 };
 
@@ -11342,10 +11987,15 @@ export type deleteApiV1RelationsObjectsByRelationIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1RelationsObjectsByRelationIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1RelationsObjectsByRelationIdResponseSuccess = (deleteApiV1RelationsObjectsByRelationIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1RelationsObjectsByRelationIdResponseError = (deleteApiV1RelationsObjectsByRelationIdResponse401 | deleteApiV1RelationsObjectsByRelationIdResponse404) & {
+export type deleteApiV1RelationsObjectsByRelationIdResponseError = (deleteApiV1RelationsObjectsByRelationIdResponse401 | deleteApiV1RelationsObjectsByRelationIdResponse404 | deleteApiV1RelationsObjectsByRelationIdResponse412) & {
   headers: Headers;
 };
 
@@ -11738,10 +12388,15 @@ export type deleteApiV1RemoteTargetsByTargetIdResponse404 = {
   status: 404
 }
 
+export type deleteApiV1RemoteTargetsByTargetIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type deleteApiV1RemoteTargetsByTargetIdResponseSuccess = (deleteApiV1RemoteTargetsByTargetIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiV1RemoteTargetsByTargetIdResponseError = (deleteApiV1RemoteTargetsByTargetIdResponse401 | deleteApiV1RemoteTargetsByTargetIdResponse403 | deleteApiV1RemoteTargetsByTargetIdResponse404) & {
+export type deleteApiV1RemoteTargetsByTargetIdResponseError = (deleteApiV1RemoteTargetsByTargetIdResponse401 | deleteApiV1RemoteTargetsByTargetIdResponse403 | deleteApiV1RemoteTargetsByTargetIdResponse404 | deleteApiV1RemoteTargetsByTargetIdResponse412) & {
   headers: Headers;
 };
 
@@ -11809,10 +12464,15 @@ export type patchApiV1RemoteTargetsByTargetIdResponse409 = {
   status: 409
 }
 
+export type patchApiV1RemoteTargetsByTargetIdResponse412 = {
+  data: void
+  status: 412
+}
+
 export type patchApiV1RemoteTargetsByTargetIdResponseSuccess = (patchApiV1RemoteTargetsByTargetIdResponse200) & {
   headers: Headers;
 };
-export type patchApiV1RemoteTargetsByTargetIdResponseError = (patchApiV1RemoteTargetsByTargetIdResponse400 | patchApiV1RemoteTargetsByTargetIdResponse401 | patchApiV1RemoteTargetsByTargetIdResponse403 | patchApiV1RemoteTargetsByTargetIdResponse404 | patchApiV1RemoteTargetsByTargetIdResponse409) & {
+export type patchApiV1RemoteTargetsByTargetIdResponseError = (patchApiV1RemoteTargetsByTargetIdResponse400 | patchApiV1RemoteTargetsByTargetIdResponse401 | patchApiV1RemoteTargetsByTargetIdResponse403 | patchApiV1RemoteTargetsByTargetIdResponse404 | patchApiV1RemoteTargetsByTargetIdResponse409 | patchApiV1RemoteTargetsByTargetIdResponse412) & {
   headers: Headers;
 };
 
@@ -12141,15 +12801,10 @@ export type getApiV1RestoresByRestoreIdStatusResponse403 = {
   status: 403
 }
 
-export type getApiV1RestoresByRestoreIdStatusResponse404 = {
-  data: ApiErrorResponse
-  status: 404
-}
-
 export type getApiV1RestoresByRestoreIdStatusResponseSuccess = (getApiV1RestoresByRestoreIdStatusResponse200) & {
   headers: Headers;
 };
-export type getApiV1RestoresByRestoreIdStatusResponseError = (getApiV1RestoresByRestoreIdStatusResponse400 | getApiV1RestoresByRestoreIdStatusResponse403 | getApiV1RestoresByRestoreIdStatusResponse404) & {
+export type getApiV1RestoresByRestoreIdStatusResponseError = (getApiV1RestoresByRestoreIdStatusResponse400 | getApiV1RestoresByRestoreIdStatusResponse403) & {
   headers: Headers;
 };
 
