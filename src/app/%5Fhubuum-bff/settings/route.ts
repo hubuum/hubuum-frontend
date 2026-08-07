@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getCurrentPrincipalId } from "@/lib/auth/current-principal";
 import { invalidateProtectedLayoutBootstrap } from "@/lib/auth/protected-layout-bootstrap";
-import { getSessionFromRequest } from "@/lib/auth/session";
+import {
+	clearSessionCookie,
+	destroySession,
+	getSessionFromRequest,
+	type ActiveSession,
+} from "@/lib/auth/session";
 import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
@@ -15,12 +20,13 @@ import {
 import { UserSettingsLimitError } from "@/lib/user-settings-store";
 import { normalizeUserSettingUpdates } from "@/lib/user-settings-types";
 
-async function getRequestIdentity(request: NextRequest) {
+async function getRequestIdentity(
+	request: NextRequest,
+	session: ActiveSession,
+) {
 	const correlationId =
 		normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER)) ??
 		undefined;
-	const session = await getSessionFromRequest(request);
-	if (!session) return null;
 
 	const principalId = await getCurrentPrincipalId(session.token, correlationId);
 	return principalId
@@ -28,13 +34,40 @@ async function getRequestIdentity(request: NextRequest) {
 		: null;
 }
 
+async function unauthenticatedResponse(
+	request: NextRequest,
+	session: ActiveSession | null,
+): Promise<NextResponse> {
+	const response = NextResponse.json(
+		{ message: "Authentication required." },
+		{ status: 401 },
+	);
+	return invalidateSessionForUnauthorizedResponse(response, request, session);
+}
+
+async function invalidateSessionForUnauthorizedResponse(
+	response: NextResponse,
+	request: NextRequest,
+	session: ActiveSession | null,
+): Promise<NextResponse> {
+	if (response.status !== 401) {
+		return response;
+	}
+	if (session) {
+		await destroySession(session.sid);
+	}
+	clearSessionCookie(response, request);
+	return response;
+}
+
 export async function GET(request: NextRequest) {
-	const identity = await getRequestIdentity(request);
+	const session = await getSessionFromRequest(request);
+	if (!session) {
+		return unauthenticatedResponse(request, null);
+	}
+	const identity = await getRequestIdentity(request, session);
 	if (!identity) {
-		return NextResponse.json(
-			{ message: "Authentication required." },
-			{ status: 401 },
-		);
+		return unauthenticatedResponse(request, session);
 	}
 
 	try {
@@ -46,20 +79,26 @@ export async function GET(request: NextRequest) {
 			error instanceof UserSettingsServerError && error.status === 401
 				? 401
 				: 503;
-		return NextResponse.json(
+		const response = NextResponse.json(
 			{ message: "User settings are temporarily unavailable." },
 			{ status },
+		);
+		return invalidateSessionForUnauthorizedResponse(
+			response,
+			request,
+			session,
 		);
 	}
 }
 
 export async function PATCH(request: NextRequest) {
-	const identity = await getRequestIdentity(request);
+	const session = await getSessionFromRequest(request);
+	if (!session) {
+		return unauthenticatedResponse(request, null);
+	}
+	const identity = await getRequestIdentity(request, session);
 	if (!identity) {
-		return NextResponse.json(
-			{ message: "Authentication required." },
-			{ status: 401 },
-		);
+		return unauthenticatedResponse(request, session);
 	}
 
 	const payload = (await request.json().catch(() => null)) as {
@@ -89,13 +128,18 @@ export async function PATCH(request: NextRequest) {
 					backendStatus === 409
 				? backendStatus
 				: 503;
-		return NextResponse.json(
+		const response = NextResponse.json(
 			{
 				message: isLimitError
 					? error.message
 					: "User settings are temporarily unavailable.",
 			},
 			{ status },
+		);
+		return invalidateSessionForUnauthorizedResponse(
+			response,
+			request,
+			session,
 		);
 	}
 }

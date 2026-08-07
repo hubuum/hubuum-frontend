@@ -66,6 +66,25 @@ test.describe("authenticated workspace", () => {
 		await expect(trigger).toBeFocused();
 	});
 
+	test("an expired backend session returns to login", async ({ page }) => {
+		await page.goto("/audit");
+		await expect(
+			page.getByRole("heading", { name: "Event stream" }),
+		).toBeVisible();
+		await page.evaluate(async () => {
+			await fetch("/_hubuum-bff/hubuum/api/v0/auth/logout", {
+				method: "POST",
+				credentials: "include",
+			});
+			void fetch(
+				"/_hubuum-bff/hubuum/api/v1/events?limit=1&include_total=false",
+				{ credentials: "include" },
+			);
+		});
+
+		await expect(page).toHaveURL(/\/login\?next=%2Faudit$/);
+	});
+
 	test("account menu mirrors the account section tabs", async ({ page }) => {
 		await page.goto("/account");
 		const expected = [
