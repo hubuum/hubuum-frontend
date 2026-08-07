@@ -21,6 +21,7 @@ import {
 	isProviderManagedUser,
 	normalizeIdentityScope,
 } from "@/lib/identity-scopes";
+import { getPasswordConfirmationError } from "@/lib/password-confirmation";
 import { trackRecentItem } from "@/lib/recent-items";
 
 type AdminUserDetailProps = {
@@ -47,6 +48,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 	const [properName, setProperName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
+	const [passwordConfirmation, setPasswordConfirmation] = useState("");
 	const [initialized, setInitialized] = useState(false);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -102,6 +104,7 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 			setProperName(updatedUser.proper_name ?? "");
 			setEmail(updatedUser.email ?? "");
 			setPassword("");
+			setPasswordConfirmation("");
 			setFormError(null);
 			setFormSuccess("User updated.");
 		},
@@ -154,6 +157,14 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 		}
 		if (isProviderManagedUser(originalUser)) {
 			setFormError("Provider-managed users are read-only in Hubuum.");
+			return;
+		}
+		const passwordError = getPasswordConfirmationError(
+			password,
+			passwordConfirmation,
+		);
+		if (passwordError) {
+			setFormError(passwordError);
 			return;
 		}
 
@@ -282,13 +293,25 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 						/>
 					</label>
 
-					<label className="control-field control-field--wide">
+					<label className="control-field">
 						<span>Password</span>
 						<input
 							type="password"
 							value={password}
 							onChange={(event) => setPassword(event.target.value)}
 							placeholder="Leave blank to keep the current password"
+							autoComplete="new-password"
+							disabled={providerManaged}
+						/>
+					</label>
+
+					<label className="control-field">
+						<span>Confirm password</span>
+						<input
+							type="password"
+							value={passwordConfirmation}
+							onChange={(event) => setPasswordConfirmation(event.target.value)}
+							placeholder="Re-enter the new password"
 							autoComplete="new-password"
 							disabled={providerManaged}
 						/>
