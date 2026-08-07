@@ -13,7 +13,7 @@ a digest-pinned Compose quickstart, checksums, and a GitHub Release.
 4. Check out that clean commit and run:
 
    ```sh
-   bash scripts/check-release-readiness.sh v0.0.10
+   bash scripts/check-release-readiness.sh v0.0.11
    ```
 
 ## Publish
@@ -21,8 +21,8 @@ a digest-pinned Compose quickstart, checksums, and a GitHub Release.
 Create and push an annotated tag from the verified commit:
 
 ```sh
-git tag -a v0.0.10 -m "Hubuum Frontend v0.0.10"
-git push origin v0.0.10
+git tag -a v0.0.11 -m "Hubuum Frontend v0.0.11"
+git push origin v0.0.11
 ```
 
 The tag workflow verifies that the commit passed CI on `main`, builds and

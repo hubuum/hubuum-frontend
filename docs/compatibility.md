@@ -6,6 +6,7 @@ should pin both components to explicit versions.
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
 | `main` (unreleased) | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
+| `v0.0.11` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
 | `v0.0.10` | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
 | `v0.0.9` | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
 | `v0.0.8` | `v0.0.5` | `ghcr.io/hubuum/hubuum-server:v0.0.5` |
@@ -49,6 +50,6 @@ navigation and resource workflows.
 Frontend `v0.0.10` retains the Server `v0.0.5` contract while adding streaming
 BFF transport, retry-safe task submissions, structured operational events,
 refined object workflows, and stronger authenticated-browser quality gates.
-Unreleased `main` adopts Server `v0.0.9`'s canonical point responses,
+Frontend `v0.0.11` adopts Server `v0.0.9`'s canonical point responses,
 revisioned resources and permission sets, token lifecycle endpoints, nested
 group-member principals, and backup format version 4.
