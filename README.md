@@ -116,10 +116,13 @@ who can manage a service account but does not grant runtime access, so the
 account still needs live group membership before its token has effective
 authority. Server `v0.0.4` represents both boundaries under one nullable
 `scope` object, and token lists show the exact permission and resource
-dimensions returned by the server. Selecting an active token opens its complete
+dimensions returned by the server. Selecting a listed token opens its complete
 lifecycle metadata and every permission, collection, class, and object boundary.
 Resource names are resolved beside their exact IDs without exposing the bearer
-token or stored hash. Server `v0.0.5` publishes its effective default token
+token or stored hash. A listed token can be cloned from its detail view: the
+creation flow copies its exact permission and resource boundaries while using a
+fresh expiry, including for expired tokens once the server returns them. Server
+`v0.0.5` publishes its effective default token
 lifetime and returns the authoritative expiry for each newly issued token. The
 console shows that default beside optional expiry fields while leaving the
 server responsible for materializing omitted expiries. Human users with an

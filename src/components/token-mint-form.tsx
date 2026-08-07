@@ -23,6 +23,7 @@ import type {
 	Permissions,
 } from "@/lib/api/generated/models";
 import { toNaiveDateTimePayload } from "@/lib/naive-datetime";
+import type { TokenMintInitialValues } from "@/lib/token-clone";
 import {
 	canSubmitResourceScopes,
 	countResourceScopesByKind,
@@ -34,6 +35,7 @@ import { READ_ONLY_TOKEN_SCOPES } from "@/lib/token-scopes";
 
 type TokenMintFormProps = {
 	embedded?: boolean;
+	initialValues?: TokenMintInitialValues;
 	principalId: number;
 	onCloseLockedChange?: (locked: boolean) => void;
 	onMinted: (token: LoginResponse) => void;
@@ -77,24 +79,33 @@ function selectedResourceSummary(selected: NamedTokenResourceScope[]): string {
 
 export function TokenMintForm({
 	embedded = false,
+	initialValues,
 	principalId,
 	onCloseLockedChange,
 	onMinted,
 }: TokenMintFormProps) {
 	const queryClient = useQueryClient();
-	const [name, setName] = useState("");
-	const [description, setDescription] = useState("");
-	const [expiresAt, setExpiresAt] = useState("");
-	const [permissionMode, setPermissionMode] =
-		useState<TokenPermissionMode>("read_only");
-	const [selectedPermissions, setSelectedPermissions] = useState<Permissions[]>(
-		[],
+	const [name, setName] = useState(initialValues?.name ?? "");
+	const [description, setDescription] = useState(
+		initialValues?.description ?? "",
 	);
-	const [resourceMode, setResourceMode] =
-		useState<TokenResourceMode>("specific");
+	const [expiresAt, setExpiresAt] = useState("");
+	const [permissionMode, setPermissionMode] = useState<TokenPermissionMode>(
+		initialValues
+			? initialValues.permissions === null
+				? "all"
+				: "custom"
+			: "read_only",
+	);
+	const [selectedPermissions, setSelectedPermissions] = useState<Permissions[]>(
+		initialValues?.permissions ?? [],
+	);
+	const [resourceMode, setResourceMode] = useState<TokenResourceMode>(
+		initialValues?.resources === null ? "all" : "specific",
+	);
 	const [selectedResources, setSelectedResources] = useState<
 		NamedTokenResourceScope[]
-	>([]);
+	>(initialValues?.resources ?? []);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [activeStep, setActiveStep] = useState<TokenStep>("details");
 	const clientAuthenticationQuery = useQuery({
@@ -248,6 +259,13 @@ export function TokenMintForm({
 			onSubmit={onSubmit}
 		>
 			{embedded ? null : <h3>Create token</h3>}
+			{initialValues ? (
+				<div className="info-banner">
+					Permission and resource scopes were copied from token #
+					{initialValues.sourceTokenId}. Its expiry was not copied, so this
+					token will receive a fresh lifetime.
+				</div>
+			) : null}
 			<p className="muted">
 				Permission and resource scopes independently narrow the principal&apos;s
 				live group grants. Neither scope can add authority.

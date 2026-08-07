@@ -27,6 +27,7 @@ describe("TokenDetailsModal", () => {
 						],
 					},
 				},
+				onClone: () => undefined,
 				onClose: () => undefined,
 				resourceNames: {
 					"collection:17": "Infrastructure",
@@ -48,6 +49,7 @@ describe("TokenDetailsModal", () => {
 		expect(markup).toContain("Objects");
 		expect(markup).toContain("api-01");
 		expect(markup).toContain("#99");
+		expect(markup).toContain("Clone token");
 		expect(markup).toContain("View complete token metadata");
 	});
 
@@ -70,6 +72,25 @@ describe("TokenDetailsModal", () => {
 		expect(markup).toContain("Name unavailable");
 		expect(markup).toContain("#404");
 		expect(markup).toContain("Could not resolve 1 resource name");
+	});
+
+	it("offers cloning for expired tokens returned by the server", () => {
+		const markup = renderToStaticMarkup(
+			createElement(TokenDetailsModal, {
+				token: {
+					id: 17,
+					principal_id: 3,
+					issued: "2025-07-25T10:00:00Z",
+					expires_at: "2025-07-26T10:00:00Z",
+					scope: null,
+				},
+				onClone: () => undefined,
+				onClose: () => undefined,
+			}),
+		);
+
+		expect(markup).toContain("Expired");
+		expect(markup).toContain("Clone token");
 	});
 
 	it("explains the authority of an unscoped token", () => {
