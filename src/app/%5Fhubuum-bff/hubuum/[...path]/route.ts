@@ -9,6 +9,11 @@ import { copySafeIncomingRequestHeaders } from "@/lib/api/proxy-request-headers"
 import { copyPaginationHeaders } from "@/lib/api/proxy-pagination-headers";
 import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
 import {
+	discardAdminProbeResponse,
+	probeAdminAccess,
+} from "@/lib/auth/admin";
+import { validateBackendSession } from "@/lib/auth/backend-session-validation";
+import {
 	clearSessionCookie,
 	destroySession,
 	getSessionFromRequest,
@@ -64,6 +69,26 @@ function headerContentLength(headers: Headers): number | undefined {
 	}
 	const parsed = Number.parseInt(raw, 10);
 	return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+
+function isAdminOnlyMetaPath(path: string): boolean {
+	const normalizedPath = new URL(path, "http://hubuum.invalid").pathname;
+	return (
+		normalizedPath === "/api/v0/meta" ||
+		normalizedPath.startsWith("/api/v0/meta/")
+	);
+}
+
+function canReuseAdminProbeResponse(
+	method: string,
+	path: string,
+	search: string,
+): boolean {
+	return (
+		method === "GET" &&
+		new URL(path, "http://hubuum.invalid").pathname === "/api/v0/meta/db" &&
+		search.length === 0
+	);
 }
 
 async function proxyToBackend(request: NextRequest, context: RouteContext) {
@@ -136,6 +161,119 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 			},
 		);
 	}
+	const safePath = getSafeBackendPathForLogs(
+		`${path}${request.nextUrl.search}`,
+	);
+	const startedAt = Date.now();
+	const adminCheckUnavailableResponse = () => {
+		emitOperationalEvent("error", "bff.proxy.failed", {
+			correlation_id: correlationId,
+			duration_ms: Date.now() - startedAt,
+			method,
+			path: safePath,
+			reason: "admin_check_unavailable",
+			source_path: sourcePath,
+			status: 502,
+		});
+		return NextResponse.json(
+			{
+				error: "UpstreamUnavailable",
+				message: "Failed to verify administrator access.",
+			},
+			{
+				status: 502,
+				headers: {
+					[CORRELATION_ID_HEADER]: correlationId,
+				},
+			},
+		);
+	};
+	let reusableAdminResponse: Response | null = null;
+	if (isAdminOnlyMetaPath(path)) {
+		const probe = await probeAdminAccess(session.token, correlationId);
+		if (probe.status === "allowed") {
+			if (
+				canReuseAdminProbeResponse(method, path, request.nextUrl.search)
+			) {
+				reusableAdminResponse = probe.response;
+			} else {
+				discardAdminProbeResponse(probe.response);
+			}
+		} else if (probe.status === "forbidden") {
+			emitOperationalEvent("warn", "bff.proxy.rejected", {
+				correlation_id: correlationId,
+				method,
+				reason: "admin_required",
+				source_path: sourcePath,
+				status: 403,
+			});
+			return NextResponse.json(
+				{
+					error: "Forbidden",
+					message: "Administrator access required.",
+				},
+				{
+					status: 403,
+					headers: {
+						[CORRELATION_ID_HEADER]: correlationId,
+					},
+				},
+			);
+		} else if (probe.status === "unauthorized") {
+			const validation = await validateBackendSession({
+				correlationId,
+				sid: session.sid,
+				token: session.token,
+			});
+			if (validation === "expired") {
+				emitOperationalEvent("warn", "bff.proxy.unauthenticated", {
+					correlation_id: correlationId,
+					method,
+					reason: "expired_session",
+					source_path: sourcePath,
+					status: 401,
+				});
+				const response = NextResponse.json(
+					{ error: "Unauthorized", message: "Sign in required." },
+					{
+						status: 401,
+						headers: {
+							[CORRELATION_ID_HEADER]: correlationId,
+						},
+					},
+				);
+				await destroySession(session.sid);
+				clearSessionCookie(response, request);
+				return response;
+			}
+			if (validation === "valid") {
+				emitOperationalEvent("warn", "bff.proxy.rejected", {
+					correlation_id: correlationId,
+					method,
+					reason: "admin_required",
+					source_path: sourcePath,
+					status: 403,
+				});
+				return NextResponse.json(
+					{
+						error: "Forbidden",
+						message: "Administrator access required.",
+					},
+					{
+						status: 403,
+						headers: {
+							[CORRELATION_ID_HEADER]: correlationId,
+						},
+					},
+				);
+			}
+			return adminCheckUnavailableResponse();
+		}
+
+		if (probe.status === "unavailable") {
+			return adminCheckUnavailableResponse();
+		}
+	}
 
 	const upstreamHeaders = new Headers();
 	copySafeIncomingRequestHeaders(request.headers, upstreamHeaders);
@@ -156,14 +294,11 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 
 	const targetUrl = new URL(buildBackendUrl(path));
 	targetUrl.search = request.nextUrl.search;
-	const safePath = getSafeBackendPathForLogs(
-		`${path}${request.nextUrl.search}`,
-	);
-	const startedAt = Date.now();
 
 	let upstreamResponse: Response;
 	try {
-		upstreamResponse = await fetch(targetUrl, upstreamRequest);
+		upstreamResponse =
+			reusableAdminResponse ?? (await fetch(targetUrl, upstreamRequest));
 		emitOperationalEvent(
 			operationalLevelForStatus(upstreamResponse.status),
 			"bff.proxy.completed",
