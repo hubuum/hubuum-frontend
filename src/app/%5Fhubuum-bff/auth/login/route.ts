@@ -7,6 +7,7 @@ import type {
 	LoginResponse,
 } from "@/lib/api/generated/models";
 import { createSession, setSessionCookie } from "@/lib/auth/session";
+import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
@@ -108,6 +109,9 @@ async function revokeIssuedToken(
 }
 
 export async function POST(request: NextRequest) {
+	const originRejection = rejectCrossOriginBffMutation(request);
+	if (originRejection) return originRejection;
+
 	const correlationId =
 		normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER)) ?? "-";
 	const returnTo = normalizeReturnPath(request.nextUrl.searchParams.get("next"));

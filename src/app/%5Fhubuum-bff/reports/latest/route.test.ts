@@ -49,7 +49,10 @@ describe("latest report result status route", () => {
 						},
 					],
 				}),
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					Origin: "http://localhost",
+				},
 				method: "POST",
 			},
 		);
@@ -82,7 +85,10 @@ describe("latest report result status route", () => {
 		const invalidResponse = await POST(
 			new NextRequest("http://localhost/_hubuum-bff/reports/latest", {
 				body: JSON.stringify({ templates: [] }),
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					Origin: "http://localhost",
+				},
 				method: "POST",
 			}),
 		);
@@ -99,7 +105,10 @@ describe("latest report result status route", () => {
 						},
 					],
 				}),
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					Origin: "http://localhost",
+				},
 				method: "POST",
 			}),
 		);

@@ -7,6 +7,7 @@ import {
 	destroySession,
 	getSessionFromRequest,
 } from "@/lib/auth/session";
+import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
@@ -69,5 +70,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+	const originRejection = rejectCrossOriginBffMutation(request);
+	if (originRejection) return originRejection;
+
 	return performLogout(request);
 }

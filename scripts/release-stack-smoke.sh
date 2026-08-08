@@ -41,6 +41,7 @@ fi
 curl --fail --silent --show-error \
   --cookie-jar "$cookies" \
   --header 'Content-Type: application/json' \
+  --header "Origin: ${base_url}" \
   --data "{\"username\":\"admin\",\"password\":\"${password}\"}" \
   "${base_url}/_hubuum-bff/auth/login" >/dev/null
 
@@ -54,6 +55,7 @@ curl --fail --silent --show-error \
 
 curl --fail --silent --show-error \
   --cookie "$cookies" \
+  --header "Origin: ${base_url}" \
   --request POST \
   "${base_url}/_hubuum-bff/auth/logout" >/dev/null
 

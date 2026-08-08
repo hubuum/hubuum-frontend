@@ -45,7 +45,10 @@ describe("logout route", () => {
 	it("keeps POST logout idempotent when no session exists", async () => {
 		const request = new NextRequest(
 			"http://localhost/_hubuum-bff/auth/logout",
-			{ method: "POST" },
+			{
+				headers: { Origin: "http://localhost" },
+				method: "POST",
+			},
 		);
 		const response = await POST(request);
 

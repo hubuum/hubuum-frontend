@@ -13,6 +13,7 @@ import {
 	destroySession,
 	getSessionFromRequest,
 } from "@/lib/auth/session";
+import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
 	generateCorrelationId,
@@ -90,6 +91,8 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 			},
 		);
 	}
+	const originRejection = rejectCrossOriginBffMutation(request);
+	if (originRejection) return originRejection;
 
 	const resolvedParams = await context.params;
 	const preserveTrailingSlash =

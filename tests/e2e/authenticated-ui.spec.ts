@@ -105,9 +105,11 @@ test.describe("authenticated workspace", () => {
 		page,
 	}) => {
 		const context = page.context();
+		const origin = new URL(page.url()).origin;
 		await page.close();
 		const logoutResponse = await context.request.post(
 			"/_hubuum-bff/hubuum/api/v0/auth/logout",
+			{ headers: { Origin: origin } },
 		);
 		expect(logoutResponse.status()).toBe(200);
 

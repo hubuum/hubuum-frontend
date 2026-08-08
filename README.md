@@ -77,6 +77,14 @@ for this app:
 If a site needs a different public prefix, prefer an edge/proxy rewrite from the
 public prefix to the frontend's fixed `/_hubuum-bff/...` routes.
 
+Browser requests using `POST`, `PUT`, `PATCH`, or `DELETE` under the BFF prefix
+must carry same-origin request metadata. The frontend accepts an exact matching
+`Origin`, or `Sec-Fetch-Site: same-origin` when `Origin` is absent, and rejects
+cross-origin, same-site sibling, and fully missing metadata before reading a
+session or contacting Hubuum. TLS-terminating proxies must overwrite
+`X-Forwarded-Proto` and `X-Forwarded-Host` with the public request values so the
+frontend can compare the browser origin with the external console origin.
+
 ## Backend API access assumptions
 
 Hubuum `/api/v0/meta/...` endpoints are admin-only. The frontend must only call
