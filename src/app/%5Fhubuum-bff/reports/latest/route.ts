@@ -5,6 +5,7 @@ import {
 	destroySession,
 	getSessionFromRequest,
 } from "@/lib/auth/session";
+import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
 	generateCorrelationId,
@@ -31,6 +32,9 @@ function jsonResponse(
 }
 
 export async function POST(request: NextRequest) {
+	const originRejection = rejectCrossOriginBffMutation(request);
+	if (originRejection) return originRejection;
+
 	const correlationId =
 		normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER)) ??
 		generateCorrelationId();

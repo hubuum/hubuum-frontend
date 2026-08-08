@@ -164,6 +164,7 @@ test.describe("v0.0.3 server features", () => {
 					group_id: groups[0].id,
 					name: `e2e_computed_collection_${suffix}`,
 				},
+				headers: { Origin: new URL(page.url()).origin },
 			},
 		);
 		expect(collectionResponse.status()).toBe(201);
@@ -185,6 +186,7 @@ test.describe("v0.0.3 server features", () => {
 					name: `e2e_computed_class_${suffix}`,
 					validate_schema: false,
 				},
+				headers: { Origin: new URL(page.url()).origin },
 			},
 		);
 		expect(classResponse.status()).toBe(201);
@@ -208,6 +210,7 @@ test.describe("v0.0.3 server features", () => {
 						hubuum_class_id: hubuumClass.id,
 						name: previewObjectName,
 					},
+					headers: { Origin: new URL(page.url()).origin },
 				},
 			);
 			expect(previewObjectResponse.status()).toBe(201);
@@ -248,6 +251,7 @@ test.describe("v0.0.3 server features", () => {
 						hubuum_class_id: hubuumClass.id,
 						name: objectName,
 					},
+					headers: { Origin: new URL(page.url()).origin },
 				},
 			);
 			expect(objectResponse.status()).toBe(201);
@@ -600,18 +604,22 @@ test.describe("v0.0.3 server features", () => {
 			if (objectId !== null) {
 				await page.request.delete(
 					`${bffPrefix}/api/v1/classes/${hubuumClass.id}/${objectId}`,
+					{ headers: { Origin: new URL(page.url()).origin } },
 				);
 			}
 			if (previewObjectId !== null) {
 				await page.request.delete(
 					`${bffPrefix}/api/v1/classes/${hubuumClass.id}/${previewObjectId}`,
+					{ headers: { Origin: new URL(page.url()).origin } },
 				);
 			}
 			await page.request.delete(
 				`${bffPrefix}/api/v1/classes/${hubuumClass.id}`,
+				{ headers: { Origin: new URL(page.url()).origin } },
 			);
 			await page.request.delete(
 				`${bffPrefix}/api/v1/collections/${collection.id}`,
+				{ headers: { Origin: new URL(page.url()).origin } },
 			);
 		}
 	});

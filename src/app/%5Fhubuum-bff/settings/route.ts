@@ -8,6 +8,7 @@ import {
 	getSessionFromRequest,
 	type ActiveSession,
 } from "@/lib/auth/session";
+import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
@@ -92,6 +93,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+	const originRejection = rejectCrossOriginBffMutation(request);
+	if (originRejection) return originRejection;
+
 	const session = await getSessionFromRequest(request);
 	if (!session) {
 		return unauthenticatedResponse(request, null);
