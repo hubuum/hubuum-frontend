@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
 	buildSessionExpiryLoginPath,
 	isSessionExpiryResponse,
-} from "@/lib/client-session-expiry";
+} from "@/lib/session-expiry";
 
-describe("client session expiry", () => {
+describe("session expiry", () => {
 	it.each([
 		"/_hubuum-bff/hubuum/api/v1/events",
 		"/_hubuum-bff/classes/7/objects",
@@ -41,9 +41,9 @@ describe("client session expiry", () => {
 		).toBe(false);
 	});
 
-	it("preserves the protected return path in the login URL", () => {
+	it("preserves the protected return path and includes an expiry reason", () => {
 		expect(buildSessionExpiryLoginPath("/objects?classId=7#results")).toBe(
-			"/login?next=%2Fobjects%3FclassId%3D7%23results",
+			"/login?error=session_expired&next=%2Fobjects%3FclassId%3D7%23results",
 		);
 	});
 });

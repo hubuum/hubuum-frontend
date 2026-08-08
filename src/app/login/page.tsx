@@ -8,6 +8,7 @@ import { APPLICATION_VERSION } from "@/lib/application-version";
 import { getSessionFromServerCookies } from "@/lib/auth/session";
 import { listMountedLoginBackgrounds } from "@/lib/login-backgrounds";
 import { normalizeReturnPath } from "@/lib/return-path";
+import { SESSION_EXPIRED_ERROR_CODE } from "@/lib/session-expiry";
 
 type LoginPageProps = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -37,7 +38,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 		? params.error[0]
 		: params.error;
 	const initialError =
-		errorCode === "identity_scope_unavailable"
+		errorCode === SESSION_EXPIRED_ERROR_CODE
+			? "Your session has expired. Sign in again to continue."
+			: errorCode === "identity_scope_unavailable"
 			? "The requested identity scope is unavailable or unsupported by this server."
 			: errorCode === "session_store_unavailable"
 				? "The frontend session store is unavailable. Try again shortly."

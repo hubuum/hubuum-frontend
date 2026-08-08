@@ -1,6 +1,7 @@
 import { FRONTEND_API_PREFIX } from "@/lib/api/frontend";
 import { normalizeReturnPath } from "@/lib/return-path";
 
+export const SESSION_EXPIRED_ERROR_CODE = "session_expired";
 const AUTH_API_PREFIX = `${FRONTEND_API_PREFIX}/auth/`;
 
 export function isSessionExpiryResponse(
@@ -15,6 +16,9 @@ export function isSessionExpiryResponse(
 }
 
 export function buildSessionExpiryLoginPath(currentPath: string): string {
-	const returnTo = normalizeReturnPath(currentPath);
-	return `/login?next=${encodeURIComponent(returnTo)}`;
+	const searchParams = new URLSearchParams({
+		error: SESSION_EXPIRED_ERROR_CODE,
+		next: normalizeReturnPath(currentPath),
+	});
+	return `/login?${searchParams.toString()}`;
 }

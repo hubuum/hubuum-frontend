@@ -10,7 +10,7 @@ import {
 import {
 	buildSessionExpiryLoginPath,
 	isSessionExpiryResponse,
-} from "@/lib/client-session-expiry";
+} from "@/lib/session-expiry";
 import { clearUserSettingsForLogout } from "@/lib/user-settings-client";
 
 const INTERACTION_TTL_MS = 30_000;
