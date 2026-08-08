@@ -1,8 +1,8 @@
 import { headers } from "next/headers";
 
 import { QuickAccessPanel } from "@/components/quick-access-panel";
-import { hasAdminAccess } from "@/lib/auth/admin";
 import { requireServerSession } from "@/lib/auth/guards";
+import { loadProtectedLayoutBootstrap } from "@/lib/auth/protected-layout-bootstrap";
 import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
@@ -19,7 +19,11 @@ export default async function AppPage() {
 		normalizeCorrelationId(requestHeaders.get(CORRELATION_ID_HEADER)) ??
 		undefined;
 	const session = await requireServerSession();
-	const canViewAdmin = await hasAdminAccess(session.token, correlationId);
+	const { canViewAdmin } = await loadProtectedLayoutBootstrap({
+		correlationId,
+		sid: session.sid,
+		token: session.token,
+	});
 	const counts = canViewAdmin
 		? await tryFetchMetaCounts(session.token, correlationId)
 		: null;
