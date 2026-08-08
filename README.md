@@ -26,6 +26,13 @@ Browser clients never receive backend tokens directly.
 5. Browser data requests go via `/_hubuum-bff/hubuum/<path>`.
 6. Proxy reads session from Valkey and injects bearer token for upstream Hubuum request.
 
+When the backend rejects that bearer token with `401 Unauthorized`, the BFF
+deletes the Valkey session and clears the browser cookie. Protected navigations
+and client-side requests then return directly to `/login`, preserve the current
+path in the `next` query parameter, and explain that the session expired. A
+`403 Forbidden` response remains an in-place authorization error and does not
+sign the user out.
+
 This keeps pods stateless and horizontally scalable. Any pod can serve any authenticated request as long as it can read the same Valkey instance.
 
 ## BFF route layout

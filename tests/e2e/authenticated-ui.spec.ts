@@ -1,9 +1,23 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const username = process.env.E2E_USERNAME;
 const password = process.env.E2E_PASSWORD;
 const identityScope = process.env.E2E_IDENTITY_SCOPE ?? "local";
+const sessionExpiredMessage =
+	"Your session has expired. Sign in again to continue.";
+
+async function revokeCurrentBackendToken(page: Page) {
+	const status = await page.evaluate(async () => {
+		return (
+			await fetch("/_hubuum-bff/hubuum/api/v0/auth/logout", {
+				method: "POST",
+				credentials: "include",
+			})
+		).status;
+	});
+	expect(status).toBe(200);
+}
 
 test.describe("authenticated workspace", () => {
 	test.skip(
@@ -64,6 +78,56 @@ test.describe("authenticated workspace", () => {
 
 		await expect(page.getByLabel("User menu")).toBeHidden();
 		await expect(trigger).toBeFocused();
+	});
+
+	test("an expired backend session returns to login", async ({ page }) => {
+		await page.goto("/audit");
+		await expect(
+			page.getByRole("heading", { name: "Event stream" }),
+		).toBeVisible();
+		await revokeCurrentBackendToken(page);
+		await page.evaluate(() => {
+			void fetch(
+				"/_hubuum-bff/hubuum/api/v1/events?limit=1&include_total=false",
+				{ credentials: "include" },
+			);
+		});
+
+		await expect(page).toHaveURL(
+			/\/login\?error=session_expired&next=%2Faudit$/,
+		);
+		await expect(
+			page.getByRole("alert").filter({ hasText: sessionExpiredMessage }),
+		).toHaveText(sessionExpiredMessage);
+	});
+
+	test("an expired session on navigation skips the app fallback", async ({
+		page,
+	}) => {
+		const context = page.context();
+		await page.close();
+		const logoutResponse = await context.request.post(
+			"/_hubuum-bff/hubuum/api/v0/auth/logout",
+		);
+		expect(logoutResponse.status()).toBe(200);
+
+		const navigationPage = await context.newPage();
+		const requestedPaths: string[] = [];
+		navigationPage.on("request", (request) => {
+			requestedPaths.push(new URL(request.url()).pathname);
+		});
+
+		await navigationPage.goto("/admin/users");
+
+		await expect(navigationPage).toHaveURL(
+			/\/login\?error=session_expired&next=%2Fadmin%2Fusers$/,
+		);
+		expect(requestedPaths).not.toContain("/app");
+		await expect(
+			navigationPage
+				.getByRole("alert")
+				.filter({ hasText: sessionExpiredMessage }),
+		).toHaveText(sessionExpiredMessage);
 	});
 
 	test("account menu mirrors the account section tabs", async ({ page }) => {

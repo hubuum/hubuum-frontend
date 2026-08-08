@@ -6,6 +6,7 @@ import {
 	generateCorrelationId,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
+import { REQUEST_PATH_HEADER } from "@/lib/request-context";
 
 const LEGACY_DESIGN_COOKIE = "hubuum.design";
 
@@ -47,6 +48,10 @@ export function proxy(request: NextRequest) {
 
 	const forwardedHeaders = new Headers(request.headers);
 	forwardedHeaders.set(CORRELATION_ID_HEADER, correlationId);
+	forwardedHeaders.set(
+		REQUEST_PATH_HEADER,
+		`${request.nextUrl.pathname}${request.nextUrl.search}`,
+	);
 	const canonicalDesignPath = stripLegacyDesignPrefix(path);
 	const requestMethodCanRedirect =
 		request.method === "GET" || request.method === "HEAD";
