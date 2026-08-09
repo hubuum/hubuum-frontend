@@ -248,6 +248,21 @@ test.describe("authenticated workspace", () => {
 		).toBeVisible();
 	});
 
+	test("events uses the in-page title format", async ({ page }) => {
+		await page.goto("/admin/events");
+
+		await expect(page.locator(".topbar-heading")).toHaveCount(0);
+		await expect(
+			page.locator("#main-content .eyebrow", { hasText: "Admin" }),
+		).toHaveCount(0);
+		await expect(
+			page.locator("#main-content").getByRole("heading", {
+				name: "Events",
+				exact: true,
+			}),
+		).toBeVisible();
+	});
+
 	test("topology dropdowns share left-edge anchoring", async ({ page }) => {
 		for (const label of ["Administration", "Observe"]) {
 			const trigger = page.getByRole("button", { name: label, exact: true });

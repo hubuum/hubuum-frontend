@@ -11,6 +11,7 @@ describe("topbar visibility", () => {
 		"/exports/templates/2",
 		"/tasks",
 		"/tasks/42",
+		"/admin/events",
 		"/admin/configuration",
 		"/admin/backups",
 		"/audit",
