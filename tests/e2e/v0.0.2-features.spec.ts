@@ -145,6 +145,98 @@ test.describe("v0.0.3 server features", () => {
 		).toEqual([]);
 	});
 
+	test("audit explorer enriches collections and stacks drill-down filters", async ({
+		page,
+	}) => {
+		const suffix = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+		const collectionName = `e2e_audit_collection_${suffix}`;
+		let collectionId: number | null = null;
+
+		try {
+			const groupsResponse = await page.request.get(
+				`${bffPrefix}/api/v1/iam/groups?limit=1&include_total=false`,
+			);
+			expect(groupsResponse.ok()).toBe(true);
+			const groups = (await groupsResponse.json()) as Array<{ id: number }>;
+			expect(groups.length).toBeGreaterThan(0);
+
+			const collectionResponse = await page.request.post(
+				`${bffPrefix}/api/v1/collections`,
+				{
+					data: {
+						description: "Playwright audit drill-down coverage",
+						group_id: groups[0].id,
+						name: collectionName,
+					},
+					headers: { Origin: new URL(page.url()).origin },
+				},
+			);
+			expect(collectionResponse.status()).toBe(201);
+			const collection = (await collectionResponse.json()) as { id: number };
+			collectionId = collection.id;
+
+			await page.goto("/audit");
+			await expect(
+				page
+					.getByRole("combobox", { name: "Collection" })
+					.locator(`option[value="${collection.id}"]`),
+			).toContainText(collectionName);
+
+			let auditRow = page.locator("tbody tr").filter({
+				hasText: collectionName,
+			});
+			await expect(auditRow).toHaveCount(1);
+			const actionDrilldown = auditRow.getByRole("button", {
+				name: /Drill down to action/,
+			});
+			const action = (await actionDrilldown.textContent())?.trim();
+			if (!action) {
+				throw new Error("Audit event action was not visible for drill-down.");
+			}
+			await actionDrilldown.click();
+			await expect(
+				page.getByRole("button", {
+					name: `Remove Action · ${action} filter`,
+				}),
+			).toBeVisible();
+			await expect(page.getByText("1 active", { exact: true })).toBeVisible();
+
+			auditRow = page.locator("tbody tr").filter({ hasText: collectionName });
+			const collectionDrilldown = auditRow.getByRole("button", {
+				name: /Drill down to collection/,
+			});
+			await expect(collectionDrilldown).toContainText(collectionName);
+			await expect(collectionDrilldown).toHaveAttribute(
+				"title",
+				/Playwright audit drill-down coverage/,
+			);
+			await collectionDrilldown.click();
+			await expect(
+				page.getByRole("button", {
+					name: new RegExp(`Remove Collection · .*#${collection.id}.* filter`),
+				}),
+			).toBeVisible();
+			await expect(page.getByText("2 active", { exact: true })).toBeVisible();
+
+			auditRow = page.locator("tbody tr").filter({ hasText: collectionName });
+			await auditRow
+				.getByRole("button", { name: /Drill down to actor/ })
+				.click();
+			await expect(
+				page.getByRole("button", { name: /Remove Actor · .* filter/ }),
+			).toBeVisible();
+			await page.getByRole("button", { name: "Clear all" }).click();
+			await expect(page.getByText("0 active", { exact: true })).toBeVisible();
+		} finally {
+			if (collectionId !== null) {
+				await page.request.delete(
+					`${bffPrefix}/api/v1/collections/${collectionId}`,
+					{ headers: { Origin: new URL(page.url()).origin } },
+				);
+			}
+		}
+	});
+
 	test("shared and personal computed fields appear on object reads", async ({
 		page,
 	}) => {

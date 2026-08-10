@@ -24,6 +24,11 @@ import type {
 	NewEventSubscription,
 	UpdateEventSubscription,
 } from "@/lib/api/generated/models";
+import {
+	EVENT_ACTIONS,
+	EVENT_ACTOR_KINDS,
+	EVENT_ENTITY_TYPES,
+} from "@/lib/event-options";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 type CollectionEventSubscriptionsPanelProps = {
@@ -67,30 +72,6 @@ const SUBSCRIPTION_EDITOR_STEPS = [
 ] as const;
 
 type SubscriptionEditorStep = (typeof SUBSCRIPTION_EDITOR_STEPS)[number]["id"];
-
-const ENTITY_TYPE_OPTIONS = [
-	"collection",
-	"class",
-	"object",
-	"class_relation",
-	"object_relation",
-	"task",
-	"template",
-	"remote_target",
-	"user",
-	"group",
-];
-
-const ACTION_OPTIONS = [
-	"created",
-	"updated",
-	"deleted",
-	"failed",
-	"succeeded",
-	"cancelled",
-];
-
-const ACTOR_KIND_OPTIONS = ["user", "service_account", "system", "worker"];
 
 const EMPTY_FORM: SubscriptionFormState = {
 	actions: [],
@@ -943,7 +924,7 @@ export function CollectionEventSubscriptionsPanel({
 									Choose what kinds of resources can produce a matching event.
 								</p>
 								<div className="permission-chip-list permission-chip-list--editor">
-									{ENTITY_TYPE_OPTIONS.map((entityType) => {
+									{EVENT_ENTITY_TYPES.map((entityType) => {
 										const enabled = form.entityTypes.includes(entityType);
 										return (
 											<button
@@ -969,7 +950,7 @@ export function CollectionEventSubscriptionsPanel({
 							<section className="permission-section">
 								<h4 className="permission-section-title">Actions</h4>
 								<div className="permission-chip-list permission-chip-list--editor">
-									{ACTION_OPTIONS.map((action) => {
+									{EVENT_ACTIONS.map((action) => {
 										const enabled = form.actions.includes(action);
 										return (
 											<button
@@ -1105,7 +1086,7 @@ export function CollectionEventSubscriptionsPanel({
 							<section className="permission-section">
 								<h4 className="permission-section-title">Actor kinds</h4>
 								<div className="permission-chip-list permission-chip-list--editor">
-									{ACTOR_KIND_OPTIONS.map((actorKind) => {
+									{EVENT_ACTOR_KINDS.map((actorKind) => {
 										const enabled = form.actorKinds.includes(actorKind);
 										return (
 											<button
