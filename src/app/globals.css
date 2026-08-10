@@ -8571,19 +8571,19 @@ button.token-revoke-button {
 	max-width: none;
 }
 
-.audit-id-lookup-control {
+.directory-id-lookup-control {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: stretch;
 	gap: 0.4rem;
 }
 
-.audit-search-lookup {
+.directory-lookup {
 	position: relative;
 	min-width: 0;
 }
 
-button.audit-search-trigger {
+button.directory-lookup-trigger {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -8594,13 +8594,13 @@ button.audit-search-trigger {
 	white-space: nowrap;
 }
 
-button.audit-search-trigger svg {
+button.directory-lookup-trigger svg {
 	width: 1rem;
 	height: 1rem;
 	flex: 0 0 auto;
 }
 
-.audit-search-popover {
+.directory-lookup-popover {
 	position: absolute;
 	top: calc(100% + 0.4rem);
 	right: 0;
@@ -8613,37 +8613,37 @@ button.audit-search-trigger svg {
 	box-shadow: var(--shadow-float);
 }
 
-.audit-search-popover-header {
+.directory-lookup-popover-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 0.75rem;
 }
 
-.audit-search-popover-header button {
+.directory-lookup-popover-header button {
 	padding: 0.32rem 0.5rem;
 }
 
-.audit-search-popover > label {
+.directory-lookup-popover > label {
 	font-size: 0.78rem;
 }
 
-.audit-search-popover small {
+.directory-lookup-popover small {
 	font-size: 0.76rem;
 	line-height: 1.35;
 }
 
-.audit-search-combobox {
+.directory-lookup-combobox {
 	display: grid;
 	gap: 0.35rem;
 }
 
-.audit-search-combobox > input {
+.directory-lookup-combobox > input {
 	width: 100%;
 	min-width: 0;
 }
 
-.audit-search-options {
+.directory-lookup-options {
 	display: grid;
 	gap: 0.2rem;
 	width: 100%;
@@ -8658,7 +8658,7 @@ button.audit-search-trigger svg {
 	color: var(--ink);
 }
 
-button.audit-search-option {
+button.directory-lookup-option {
 	display: grid;
 	gap: 0.08rem;
 	width: 100%;
@@ -8670,26 +8670,26 @@ button.audit-search-option {
 	text-align: left;
 }
 
-button.audit-search-option:hover,
-button.audit-search-option[aria-selected="true"] {
+button.directory-lookup-option:hover,
+button.directory-lookup-option[aria-selected="true"] {
 	filter: none;
 	border-color: color-mix(in oklab, var(--accent) 36%, var(--line));
 	background: var(--accent-soft);
 	color: var(--ink);
 }
 
-.audit-search-option-name,
-.audit-search-option-detail {
+.directory-lookup-option-name,
+.directory-lookup-option-detail {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.audit-search-option-name {
+.directory-lookup-option-name {
 	font-weight: 700;
 }
 
-.audit-search-option-detail {
+.directory-lookup-option-detail {
 	color: var(--muted);
 	font-size: 0.78rem;
 	font-weight: 520;

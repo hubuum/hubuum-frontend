@@ -53,22 +53,12 @@ import {
 	getProvenanceTaskId,
 } from "@/lib/event-provenance";
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 type ActiveAuditFilter = {
 	field: AuditFilterField;
 	label: string;
 };
-
-function useDebouncedValue<T>(value: T, delayMs: number): T {
-	const [debouncedValue, setDebouncedValue] = useState(value);
-
-	useEffect(() => {
-		const timer = window.setTimeout(() => setDebouncedValue(value), delayMs);
-		return () => window.clearTimeout(timer);
-	}, [delayMs, value]);
-
-	return debouncedValue;
-}
 
 function formatTimestamp(value: string | null | undefined): string {
 	if (!value) {
@@ -624,7 +614,7 @@ export function AuditWorkspace() {
 							</label>
 							<div className="control-field">
 								<label htmlFor="audit-entity-id">Entity ID</label>
-								<div className="audit-id-lookup-control">
+								<div className="directory-id-lookup-control">
 									<input
 										id="audit-entity-id"
 										type="number"
@@ -708,7 +698,7 @@ export function AuditWorkspace() {
 							</label>
 							<div className="control-field">
 								<label htmlFor="audit-actor-id">Actor ID</label>
-								<div className="audit-id-lookup-control">
+								<div className="directory-id-lookup-control">
 									<input
 										id="audit-actor-id"
 										type="number"
@@ -757,7 +747,7 @@ export function AuditWorkspace() {
 							</div>
 							<div className="control-field">
 								<label htmlFor="audit-initiator-id">Initiator ID</label>
-								<div className="audit-id-lookup-control">
+								<div className="directory-id-lookup-control">
 									<input
 										id="audit-initiator-id"
 										type="number"

@@ -2,9 +2,9 @@
 
 import { type ReactNode, useMemo } from "react";
 import {
-	AuditSearchLookup,
-	type AuditSearchOption,
-} from "@/components/audit-search-lookup";
+	DirectoryLookupPopover,
+	type DirectoryLookupOption,
+} from "@/components/directory-lookup-popover";
 import {
 	auditActorCandidateInputValue,
 	type AuditActorCandidate,
@@ -40,7 +40,7 @@ export function AuditPrincipalLookup({
 	placeholder,
 	value,
 }: AuditPrincipalLookupProps) {
-	const options = useMemo<AuditSearchOption<AuditActorCandidate>[]>(
+	const options = useMemo<DirectoryLookupOption<AuditActorCandidate>[]>(
 		() =>
 			candidates.map((candidate) => ({
 				id: `${candidate.kind}-${candidate.id}`,
@@ -55,7 +55,7 @@ export function AuditPrincipalLookup({
 	);
 
 	return (
-		<AuditSearchLookup
+		<DirectoryLookupPopover
 			disabled={disabled}
 			disabledHint={disabledHint}
 			idPrefix={idPrefix}

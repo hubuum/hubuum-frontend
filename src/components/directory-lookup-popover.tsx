@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
-export type AuditSearchOption<T> = {
+export type DirectoryLookupOption<T> = {
 	id: string;
 	item: T;
 	primary: string;
@@ -17,7 +17,7 @@ export type AuditSearchOption<T> = {
 	title: string;
 };
 
-type AuditSearchLookupProps<T> = {
+type DirectoryLookupPopoverProps<T> = {
 	disabled?: boolean;
 	disabledHint?: string;
 	helperText: ReactNode;
@@ -26,7 +26,7 @@ type AuditSearchLookupProps<T> = {
 	label: string;
 	onChange: (value: string) => void;
 	onSelect: (item: T) => void;
-	options: readonly AuditSearchOption<T>[];
+	options: readonly DirectoryLookupOption<T>[];
 	placeholder: string;
 	value: string;
 };
@@ -42,7 +42,7 @@ function IconSearch() {
 	);
 }
 
-export function AuditSearchLookup<T>({
+export function DirectoryLookupPopover<T>({
 	disabled = false,
 	disabledHint,
 	helperText,
@@ -54,7 +54,7 @@ export function AuditSearchLookup<T>({
 	options,
 	placeholder,
 	value,
-}: AuditSearchLookupProps<T>) {
+}: DirectoryLookupPopoverProps<T>) {
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const triggerRef = useRef<HTMLButtonElement | null>(null);
 	const inputRef = useRef<HTMLInputElement | null>(null);
@@ -67,7 +67,7 @@ export function AuditSearchLookup<T>({
 	const helperId = `${idPrefix}-lookup-hint`;
 	const popoverId = `${idPrefix}-popover`;
 
-	function optionId(option: AuditSearchOption<T>): string {
+	function optionId(option: DirectoryLookupOption<T>): string {
 		return `${idPrefix}-option-${option.id}`;
 	}
 
@@ -79,7 +79,7 @@ export function AuditSearchLookup<T>({
 		}
 	}
 
-	function select(option: AuditSearchOption<T>) {
+	function select(option: DirectoryLookupOption<T>) {
 		onSelect(option.item);
 		close(true);
 	}
@@ -148,11 +148,11 @@ export function AuditSearchLookup<T>({
 	}, [activeOption, idPrefix, listboxOpen]);
 
 	return (
-		<div className="audit-search-lookup" ref={rootRef}>
+		<div className="directory-lookup" ref={rootRef}>
 			<button
 				ref={triggerRef}
 				type="button"
-				className="ghost audit-search-trigger"
+				className="ghost directory-lookup-trigger"
 				disabled={disabled}
 				aria-label={label}
 				aria-expanded={open}
@@ -170,15 +170,15 @@ export function AuditSearchLookup<T>({
 				<span>Find</span>
 			</button>
 			{open ? (
-				<div id={popoverId} className="card audit-search-popover">
-					<div className="audit-search-popover-header">
+				<div id={popoverId} className="card directory-lookup-popover">
+					<div className="directory-lookup-popover-header">
 						<strong>{label}</strong>
 						<button type="button" className="ghost" onClick={() => close(true)}>
 							Close
 						</button>
 					</div>
 					<label htmlFor={inputId}>{inputLabel}</label>
-					<div className="audit-search-combobox">
+					<div className="directory-lookup-combobox">
 						<input
 							ref={inputRef}
 							id={inputId}
@@ -204,7 +204,7 @@ export function AuditSearchLookup<T>({
 						{listboxOpen ? (
 							<div
 								id={listboxId}
-								className="audit-search-options"
+								className="directory-lookup-options"
 								role="listbox"
 								aria-label={`${label} search results`}
 							>
@@ -214,7 +214,7 @@ export function AuditSearchLookup<T>({
 										id={optionId(option)}
 										type="button"
 										role="option"
-										className="audit-search-option"
+										className="directory-lookup-option"
 										aria-selected={index === activeOptionIndex}
 										tabIndex={-1}
 										title={option.title}
@@ -222,10 +222,10 @@ export function AuditSearchLookup<T>({
 										onMouseDown={(event) => event.preventDefault()}
 										onClick={() => select(option)}
 									>
-										<span className="audit-search-option-name">
+										<span className="directory-lookup-option-name">
 											{option.primary}
 										</span>
-										<span className="audit-search-option-detail">
+										<span className="directory-lookup-option-detail">
 											{option.secondary}
 										</span>
 									</button>

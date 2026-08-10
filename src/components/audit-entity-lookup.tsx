@@ -2,9 +2,9 @@
 
 import { type ReactNode, useMemo } from "react";
 import {
-	AuditSearchLookup,
-	type AuditSearchOption,
-} from "@/components/audit-search-lookup";
+	DirectoryLookupPopover,
+	type DirectoryLookupOption,
+} from "@/components/directory-lookup-popover";
 import type { AuditEntityCandidate } from "@/lib/audit-entity-options";
 
 type AuditEntityLookupProps = {
@@ -32,7 +32,7 @@ export function AuditEntityLookup({
 	placeholder,
 	value,
 }: AuditEntityLookupProps) {
-	const options = useMemo<AuditSearchOption<AuditEntityCandidate>[]>(
+	const options = useMemo<DirectoryLookupOption<AuditEntityCandidate>[]>(
 		() =>
 			candidates.map((candidate) => ({
 				id: `${candidate.kind}-${candidate.id}`,
@@ -47,7 +47,7 @@ export function AuditEntityLookup({
 	);
 
 	return (
-		<AuditSearchLookup
+		<DirectoryLookupPopover
 			disabled={disabled}
 			disabledHint={disabledHint}
 			idPrefix="audit-entity"
