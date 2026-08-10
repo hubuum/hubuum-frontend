@@ -1,5 +1,8 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { ClassDirectoryLookup } from "@/components/class-directory-lookup";
+import { fetchClassDirectory } from "@/lib/api/resource-directory";
 import {
 	DEFAULT_INCLUDE_MAX_DEPTH,
 	INCLUDE_DIRECTIONS,
@@ -12,6 +15,11 @@ import type {
 	ReportIncludeRelatedDirection,
 	ReportIncludeRelatedSort,
 } from "@/lib/api/reporting";
+import type { HubuumClassExpanded } from "@/lib/api/generated/models";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 
 type IncludeRowsProps = {
 	rows: IncludeBuilderRow[];
@@ -23,6 +31,102 @@ type IncludeRowsProps = {
 	disabled?: boolean;
 	minimumDepthByClassId?: ReadonlyMap<number, number>;
 };
+
+type RelatedClassFieldProps = {
+	classOptions: { id: number; name: string }[];
+	disabled: boolean;
+	minimumDepthByClassId?: ReadonlyMap<number, number>;
+	onChange: (value: string) => void;
+	prefix: string;
+	value: string;
+};
+
+function RelatedClassField({
+	classOptions,
+	disabled,
+	minimumDepthByClassId,
+	onChange,
+	prefix,
+	value,
+}: RelatedClassFieldProps) {
+	const [selectedDirectoryClass, setSelectedDirectoryClass] =
+		useState<HubuumClassExpanded | null>(null);
+	const directory = useDirectorySearch({
+		queryKey: ["include-related-class-directory"],
+		queryFn: fetchClassDirectory,
+	});
+	const allowedClassIds = useMemo(
+		() =>
+			minimumDepthByClassId ? new Set(minimumDepthByClassId.keys()) : null,
+		[minimumDepthByClassId],
+	);
+	const directoryClasses = useMemo(
+		() =>
+			(directory.query.data?.items ?? []).filter(
+				(classItem) => !allowedClassIds || allowedClassIds.has(classItem.id),
+			),
+		[allowedClassIds, directory.query.data?.items],
+	);
+	const parsedClassId = Number.parseInt(value, 10);
+	const selectedClassName =
+		classOptions.find((classItem) => classItem.id === parsedClassId)?.name ??
+		directoryClasses.find((classItem) => classItem.id === parsedClassId)
+			?.name ??
+		(selectedDirectoryClass?.id === parsedClassId
+			? selectedDirectoryClass.name
+			: null);
+
+	return (
+		<div className="control-field">
+			<label htmlFor={`${prefix}-class`}>Related class</label>
+			<div className="directory-id-lookup-control">
+				<input
+					id={`${prefix}-class`}
+					type="number"
+					min={1}
+					value={value}
+					onChange={(event) => {
+						onChange(event.target.value);
+						directory.setSearch(event.target.value);
+						setSelectedDirectoryClass(null);
+					}}
+					placeholder="Class ID"
+					disabled={disabled}
+				/>
+				<ClassDirectoryLookup
+					classes={directoryClasses}
+					disabled={disabled}
+					helperText={directoryLookupStatus({
+						count: directoryClasses.length,
+						isError: directory.query.isError,
+						isLoading: directory.query.isLoading,
+						isPartial: Boolean(directory.query.data?.isPartial),
+						isReady: directory.isReady,
+						minimumLength: directory.minimumLength,
+						resourcePlural: "classes",
+						resourceSingular: "class",
+						scope: allowedClassIds
+							? "reachable from the selected class"
+							: undefined,
+						term: directory.term,
+					})}
+					idPrefix={`${prefix}-class-directory`}
+					onChange={directory.setSearch}
+					onSelect={(classItem) => {
+						onChange(String(classItem.id));
+						setSelectedDirectoryClass(classItem);
+					}}
+					value={directory.search}
+				/>
+			</div>
+			{selectedClassName ? (
+				<small className="field-note">
+					Selected: {selectedClassName} (#{parsedClassId})
+				</small>
+			) : null}
+		</div>
+	);
+}
 
 export function IncludeRows({
 	rows,
@@ -104,43 +208,14 @@ export function IncludeRows({
 											disabled={disabled}
 										/>
 									</label>
-									<div className="control-field">
-										<label htmlFor={`${prefix}-class`}>Related class</label>
-										{classOptions.length > 0 ? (
-											<select
-												id={`${prefix}-class`}
-												value={row.classId}
-												onChange={(event) =>
-													onUpdate(row.id, { classId: event.target.value })
-												}
-												disabled={disabled}
-											>
-												<option value="">Select class</option>
-												{classOptions.map((classItem) => (
-													<option key={classItem.id} value={classItem.id}>
-														{classItem.name} (#{classItem.id})
-														{(minimumDepthByClassId?.get(classItem.id) ??
-															DEFAULT_INCLUDE_MAX_DEPTH) >
-														DEFAULT_INCLUDE_MAX_DEPTH
-															? ` · minimum depth ${minimumDepthByClassId?.get(classItem.id)}`
-															: ""}
-													</option>
-												))}
-											</select>
-										) : (
-											<input
-												id={`${prefix}-class`}
-												type="number"
-												min={1}
-												value={row.classId}
-												onChange={(event) =>
-													onUpdate(row.id, { classId: event.target.value })
-												}
-												placeholder="Class ID"
-												disabled={disabled}
-											/>
-										)}
-									</div>
+									<RelatedClassField
+										classOptions={classOptions}
+										disabled={disabled}
+										minimumDepthByClassId={minimumDepthByClassId}
+										onChange={(classId) => onUpdate(row.id, { classId })}
+										prefix={prefix}
+										value={row.classId}
+									/>
 									<label
 										className="control-field"
 										htmlFor={`${prefix}-direction`}

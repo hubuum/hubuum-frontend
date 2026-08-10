@@ -11,6 +11,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { ComputedFieldsPanel } from "@/components/computed-fields-panel";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { JsonEditor } from "@/components/json-editor";
@@ -22,15 +23,14 @@ import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
 	getApiV1Classes,
-	getApiV1Collections,
 	patchApiV1ClassesByClassId,
 } from "@/lib/api/generated/client";
 import type {
-	Collection,
 	HubuumClassExpanded,
 	HubuumClassRelation,
 	UpdateHubuumClass,
 } from "@/lib/api/generated/models";
+import { fetchCollectionDirectory } from "@/lib/api/resource-directory";
 import { presentClassRelation } from "@/lib/class-relation-presentation";
 import { useConfirm } from "@/lib/confirm-context";
 import {
@@ -40,6 +40,10 @@ import {
 } from "@/lib/create-events";
 import { summarizeJsonDocument } from "@/lib/json-inspector";
 import { trackRecentItem } from "@/lib/recent-items";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 type ClassDetailProps = {
@@ -63,23 +67,6 @@ const ALL_EDITABLE_FIELDS: EditableField[] = [
 
 async function fetchClass(classId: number): Promise<HubuumClassExpanded> {
 	return fetchExpandedClass(classId);
-}
-
-async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
-		);
-	}
-
-	return response.data;
 }
 
 async function fetchClasses(): Promise<HubuumClassExpanded[]> {
@@ -168,7 +155,6 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
 	const nameInputRef = useRef<HTMLInputElement | null>(null);
 	const descriptionInputRef = useRef<HTMLInputElement | null>(null);
-	const collectionSelectRef = useRef<HTMLSelectElement | null>(null);
 	const collectionInputRef = useRef<HTMLInputElement | null>(null);
 	const validateSchemaInputRef = useRef<HTMLInputElement | null>(null);
 	const jsonSchemaEditorRef = useRef<HTMLDivElement | null>(null);
@@ -181,9 +167,9 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		queryKey: ["classes", "class-detail"],
 		queryFn: fetchClasses,
 	});
-	const collectionsQuery = useQuery({
-		queryKey: ["collections", "class-detail"],
-		queryFn: fetchCollections,
+	const collectionDirectory = useDirectorySearch({
+		queryKey: ["class-detail-collection-directory", classId],
+		queryFn: fetchCollectionDirectory,
 	});
 	const classRelationsQuery = useQuery({
 		queryKey: ["class-relations", "detail", classId],
@@ -212,7 +198,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		} else if (lastEditingField === "description") {
 			descriptionInputRef.current?.focus();
 		} else if (lastEditingField === "collection") {
-			(collectionSelectRef.current ?? collectionInputRef.current)?.focus();
+			collectionInputRef.current?.focus();
 		} else if (lastEditingField === "validate_schema") {
 			validateSchemaInputRef.current?.focus();
 		} else if (lastEditingField === "json_schema") {
@@ -518,12 +504,6 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		return <div className="card error-banner">Class data is unavailable.</div>;
 	}
 
-	const collectionOptions = collectionsQuery.data ?? [];
-	const hasCollectionOptions = collectionOptions.length > 0;
-	const collectionNameById = new Map<number, string>();
-	for (const collection of collectionOptions) {
-		collectionNameById.set(collection.id, collection.name);
-	}
 	const classNameById = new Map<number, string>();
 	for (const item of classesQuery.data ?? []) {
 		classNameById.set(item.id, item.name);
@@ -540,12 +520,13 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 			),
 		);
 	const visibleRelatedRelations = relatedRelations.slice(0, 6);
-	const collectionLabel =
-		collectionNameById.get(classData.collection.id) ??
-		classData.collection.name;
-	const hasCollectionSelection = collectionOptions.some(
-		(collection) => String(collection.id) === collectionId,
-	);
+	const collectionLabel = classData.collection.name;
+	const selectedCollection =
+		String(classData.collection.id) === collectionId
+			? classData.collection
+			: collectionDirectory.query.data?.items.find(
+					(collection) => String(collection.id) === collectionId,
+				);
 	const schemaPreview = stringifyJsonSchema(classData.json_schema);
 	const schemaSummary =
 		classData.json_schema === undefined
@@ -686,26 +667,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 											>
 												Collection
 											</label>
-											{hasCollectionOptions ? (
-												<select
-													ref={collectionSelectRef}
-													id="class-detail-collection"
-													required
-													value={hasCollectionSelection ? collectionId : ""}
-													onChange={(event) =>
-														setCollectionId(event.target.value)
-													}
-												>
-													{!hasCollectionSelection ? (
-														<option value="">Select a collection...</option>
-													) : null}
-													{collectionOptions.map((collection) => (
-														<option key={collection.id} value={collection.id}>
-															{collection.name}
-														</option>
-													))}
-												</select>
-											) : (
+											<div className="directory-id-lookup-control">
 												<input
 													ref={collectionInputRef}
 													id="class-detail-collection"
@@ -713,17 +675,44 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 													type="number"
 													min={1}
 													value={collectionId}
-													onChange={(event) =>
-														setCollectionId(event.target.value)
-													}
-													placeholder={
-														collectionsQuery.isLoading
-															? "Loading collections..."
-															: "Enter collection ID"
-													}
-													disabled={collectionsQuery.isLoading}
+													onChange={(event) => {
+														setCollectionId(event.target.value);
+														collectionDirectory.setSearch(event.target.value);
+													}}
+													placeholder="Collection ID"
 												/>
-											)}
+												<CollectionDirectoryLookup
+													collections={
+														collectionDirectory.query.data?.items ?? []
+													}
+													helperText={directoryLookupStatus({
+														count:
+															collectionDirectory.query.data?.items.length ?? 0,
+														isError: collectionDirectory.query.isError,
+														isLoading: collectionDirectory.query.isLoading,
+														isPartial: Boolean(
+															collectionDirectory.query.data?.isPartial,
+														),
+														isReady: collectionDirectory.isReady,
+														minimumLength: collectionDirectory.minimumLength,
+														resourcePlural: "collections",
+														resourceSingular: "collection",
+														term: collectionDirectory.term,
+													})}
+													idPrefix="class-detail-collection-directory"
+													onChange={collectionDirectory.setSearch}
+													onSelect={(collection) => {
+														setCollectionId(String(collection.id));
+													}}
+													value={collectionDirectory.search}
+												/>
+											</div>
+											{selectedCollection ? (
+												<small className="field-note">
+													Selected: {selectedCollection.name} (#
+													{selectedCollection.id})
+												</small>
+											) : null}
 										</div>
 									) : (
 										<InlineFieldEditTrigger
@@ -873,12 +862,6 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 						</div>
 
 						{formError ? <div className="error-banner">{formError}</div> : null}
-						{collectionsQuery.isError ? (
-							<div className="muted">
-								Could not load collections automatically. Manual collection ID
-								input is enabled.
-							</div>
-						) : null}
 						{formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
 						<footer className="class-detail-form-footer">

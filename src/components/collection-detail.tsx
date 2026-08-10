@@ -12,6 +12,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { EmptyState } from "@/components/empty-state";
 import { CollectionEventSubscriptionsPanel } from "@/components/collection-event-subscriptions-panel";
 import { CollectionDetailTracker } from "@/components/collection-detail-tracker";
@@ -47,9 +48,9 @@ import type {
 	UpdateCollection,
 } from "@/lib/api/generated/models";
 import { Permissions as PermissionValues } from "@/lib/api/generated/models/permissions";
+import { fetchCollectionDirectory } from "@/lib/api/resource-directory";
 import {
 	buildCollectionHierarchy,
-	formatCollectionOption,
 	formatCollectionPath,
 	getDescendantCollectionIds,
 	isRootCollection,
@@ -65,6 +66,10 @@ import {
 } from "@/lib/identity-scopes";
 import { canManageCollectionPermissions } from "@/lib/collection-permission-access";
 import { useCurrentUserId } from "@/lib/use-current-user-id";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 type CollectionDetailProps = {
@@ -728,6 +733,10 @@ export function CollectionDetail({
 		queryKey: ["collections", "collection-detail", collectionId],
 		queryFn: fetchCollections,
 	});
+	const moveParentDirectory = useDirectorySearch({
+		queryKey: ["collection-move-parent-directory", collectionId],
+		queryFn: fetchCollectionDirectory,
+	});
 	const childrenQuery = useQuery({
 		queryKey: ["collection", collectionId, "children"],
 		queryFn: async () => fetchCollectionChildren(collectionId),
@@ -1091,7 +1100,12 @@ export function CollectionDetail({
 				? String(collectionQuery.data.parent_collection_id)
 				: "",
 		);
-	}, [collectionQuery.data]);
+		moveParentDirectory.setSearch(
+			collectionQuery.data.parent_collection_id
+				? String(collectionQuery.data.parent_collection_id)
+				: "",
+		);
+	}, [collectionQuery.data, moveParentDirectory.setSearch]);
 
 	function resetFieldDraft(field: EditableField, collectionData: Collection) {
 		if (field === "name") {
@@ -1276,6 +1290,12 @@ export function CollectionDetail({
 		}
 		if (parsedParentId === collectionId) {
 			setMoveError("A collection cannot be its own parent.");
+			return;
+		}
+		if (descendants.has(parsedParentId)) {
+			setMoveError(
+				"A collection cannot be moved under one of its descendants.",
+			);
 			return;
 		}
 
@@ -1503,12 +1523,16 @@ export function CollectionDetail({
 			),
 		[collectionHierarchy.childrenByParentId, collectionId],
 	);
-	const moveParentOptions = collectionHierarchy.flatNodes
-		.map((node) => node.collection)
-		.filter(
-			(collection) =>
-				collection.id !== collectionId && !descendants.has(collection.id),
-		);
+	const moveParentOptions = (
+		moveParentDirectory.query.data?.items ?? []
+	).filter(
+		(collection) =>
+			collection.id !== collectionId && !descendants.has(collection.id),
+	);
+	const selectedMoveParent = [
+		...collections,
+		...(moveParentDirectory.query.data?.items ?? []),
+	].find((collection) => String(collection.id) === moveParentId);
 	const ancestorPath = [
 		...(ancestorsQuery.data ?? []).slice().reverse(),
 		...(collectionQuery.data ? [collectionQuery.data] : []),
@@ -1939,35 +1963,62 @@ export function CollectionDetail({
 					</div>
 
 					<form className="form-grid" onSubmit={onMoveCollection}>
-						<label className="control-field control-field--wide">
-							<span>Move under parent</span>
-							<select
-								value={moveParentId}
-								onChange={(event) => setMoveParentId(event.target.value)}
-								disabled={
-									!canMoveCollection ||
-									moveMutation.isPending ||
-									collectionsQuery.isLoading ||
-									moveParentOptions.length === 0
-								}
-							>
-								<option value="">
-									{isRoot
-										? "Root collection cannot be moved"
-										: collectionsQuery.isLoading
-											? "Loading collections..."
-											: "Select parent collection"}
-								</option>
-								{moveParentOptions.map((collection) => (
-									<option key={collection.id} value={collection.id}>
-										{formatCollectionOption(
-											collection,
-											collectionHierarchy.byId,
-										)}
-									</option>
-								))}
-							</select>
-						</label>
+						<div className="control-field control-field--wide">
+							<label htmlFor="collection-move-parent">
+								Move under parent ID
+							</label>
+							<div className="directory-id-lookup-control">
+								<input
+									id="collection-move-parent"
+									type="number"
+									min={1}
+									value={moveParentId}
+									onChange={(event) => {
+										setMoveParentId(event.target.value);
+										moveParentDirectory.setSearch(event.target.value);
+									}}
+									disabled={!canMoveCollection || moveMutation.isPending}
+									placeholder={
+										isRoot
+											? "Root collection cannot be moved"
+											: "Parent collection ID"
+									}
+								/>
+								<CollectionDirectoryLookup
+									collections={moveParentOptions}
+									disabled={!canMoveCollection || moveMutation.isPending}
+									disabledHint={
+										isRoot
+											? "Root collection cannot be moved"
+											: "You do not have permission to move this collection"
+									}
+									helperText={directoryLookupStatus({
+										count: moveParentOptions.length,
+										isError: moveParentDirectory.query.isError,
+										isLoading: moveParentDirectory.query.isLoading,
+										isPartial: Boolean(
+											moveParentDirectory.query.data?.isPartial,
+										),
+										isReady: moveParentDirectory.isReady,
+										minimumLength: moveParentDirectory.minimumLength,
+										resourcePlural: "eligible collections",
+										resourceSingular: "collection",
+										term: moveParentDirectory.term,
+									})}
+									idPrefix="collection-move-parent-directory"
+									onChange={moveParentDirectory.setSearch}
+									onSelect={(collection) => {
+										setMoveParentId(String(collection.id));
+									}}
+									value={moveParentDirectory.search}
+								/>
+							</div>
+							{selectedMoveParent ? (
+								<small className="field-note">
+									Selected: {selectedMoveParent.name} (#{selectedMoveParent.id})
+								</small>
+							) : null}
+						</div>
 
 						<div className="form-actions">
 							<button

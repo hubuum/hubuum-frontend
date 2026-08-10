@@ -4,26 +4,29 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { GroupDirectoryLookup } from "@/components/group-directory-lookup";
 import { PrincipalGroupMemberships } from "@/components/principal-group-memberships";
 import { PrincipalPermissions } from "@/components/principal-permissions";
 import { PrincipalTokenManager } from "@/components/principal-token-manager";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamServiceAccountsByServiceAccountId,
-	getApiV1IamGroups,
 	patchApiV1IamServiceAccountsByServiceAccountId,
 	postApiV1IamServiceAccountsByServiceAccountIdDisable,
 } from "@/lib/api/generated/client";
 import type { UpdateServiceAccount } from "@/lib/api/generated/models";
+import { fetchGroupDirectory } from "@/lib/api/group-directory";
 import { fetchServiceAccountListEntry } from "@/lib/api/principal-details";
 import { useConfirm } from "@/lib/confirm-context";
 import {
-	type ConsoleGroup,
 	type ConsoleServiceAccount,
-	formatScopedGroupName,
 	formatScopedServiceAccountName,
 } from "@/lib/identity-scopes";
 import { trackRecentItem } from "@/lib/recent-items";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 
 type ServiceAccountDetailProps = {
 	backHref?: string;
@@ -32,23 +35,6 @@ type ServiceAccountDetailProps = {
 
 async function fetchServiceAccount(id: number): Promise<ConsoleServiceAccount> {
 	return fetchServiceAccountListEntry(id);
-}
-
-async function fetchGroups(): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamGroups(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load groups."),
-		);
-	}
-
-	return response.data;
 }
 
 export function ServiceAccountDetail({
@@ -68,9 +54,9 @@ export function ServiceAccountDetail({
 		queryKey: ["service-account", serviceAccountId],
 		queryFn: async () => fetchServiceAccount(serviceAccountId),
 	});
-	const groupsQuery = useQuery({
-		queryKey: ["groups", "service-account-owner"],
-		queryFn: fetchGroups,
+	const groupDirectory = useDirectorySearch({
+		queryKey: ["service-account-owner-group-directory"],
+		queryFn: fetchGroupDirectory,
 	});
 
 	useEffect(() => {
@@ -79,8 +65,9 @@ export function ServiceAccountDetail({
 		}
 		setDescription(accountQuery.data.description ?? "");
 		setOwnerGroupId(String(accountQuery.data.owner_group_id));
+		groupDirectory.setSearch(String(accountQuery.data.owner_group_id));
 		setInitialized(true);
-	}, [initialized, accountQuery.data]);
+	}, [initialized, accountQuery.data, groupDirectory.setSearch]);
 
 	useEffect(() => {
 		const account = accountQuery.data;
@@ -218,10 +205,11 @@ export function ServiceAccountDetail({
 			payload.description = trimmedDescription || null;
 		}
 		const parsedOwner = Number.parseInt(ownerGroupId, 10);
-		if (
-			Number.isFinite(parsedOwner) &&
-			parsedOwner !== original.owner_group_id
-		) {
+		if (!Number.isFinite(parsedOwner) || parsedOwner < 1) {
+			setFormError("Owner group ID must be a positive integer.");
+			return;
+		}
+		if (parsedOwner !== original.owner_group_id) {
 			payload.owner_group_id = parsedOwner;
 		}
 
@@ -284,7 +272,9 @@ export function ServiceAccountDetail({
 		);
 	}
 
-	const groups = groupsQuery.data ?? [];
+	const selectedOwnerGroup = groupDirectory.query.data?.items.find(
+		(group) => String(group.id) === ownerGroupId,
+	);
 	const disabled = Boolean(account.disabled_at);
 	const busy =
 		updateMutation.isPending ||
@@ -332,20 +322,50 @@ export function ServiceAccountDetail({
 						/>
 					</label>
 
-					<label className="control-field">
-						<span>Owner group</span>
-						<select
-							value={ownerGroupId}
-							onChange={(event) => setOwnerGroupId(event.target.value)}
-							disabled={busy}
-						>
-							{groups.map((group) => (
-								<option key={group.id} value={group.id}>
-									{formatScopedGroupName(group)} (#{group.id})
-								</option>
-							))}
-						</select>
-					</label>
+					<div className="control-field">
+						<label htmlFor="service-account-owner-group">Owner group ID</label>
+						<div className="directory-id-lookup-control">
+							<input
+								id="service-account-owner-group"
+								required
+								type="number"
+								min={1}
+								value={ownerGroupId}
+								onChange={(event) => {
+									setOwnerGroupId(event.target.value);
+									groupDirectory.setSearch(event.target.value);
+								}}
+								disabled={busy}
+							/>
+							<GroupDirectoryLookup
+								disabled={busy}
+								groups={groupDirectory.query.data?.items ?? []}
+								helperText={directoryLookupStatus({
+									count: groupDirectory.query.data?.items.length ?? 0,
+									isError: groupDirectory.query.isError,
+									isLoading: groupDirectory.query.isLoading,
+									isPartial: Boolean(groupDirectory.query.data?.isPartial),
+									isReady: groupDirectory.isReady,
+									minimumLength: groupDirectory.minimumLength,
+									resourcePlural: "groups",
+									resourceSingular: "group",
+									term: groupDirectory.term,
+								})}
+								idPrefix="service-account-owner-group-directory"
+								onChange={groupDirectory.setSearch}
+								onSelect={(group) => {
+									setOwnerGroupId(String(group.id));
+								}}
+								value={groupDirectory.search}
+							/>
+						</div>
+						{selectedOwnerGroup ? (
+							<small className="field-note">
+								Selected: {selectedOwnerGroup.groupname} (#
+								{selectedOwnerGroup.id})
+							</small>
+						) : null}
+					</div>
 
 					<label className="control-field control-field--wide">
 						<span>Description</span>

@@ -1330,9 +1330,9 @@ test.describe("authenticated workspace", () => {
 			const classRequest = page.waitForRequest((request) => {
 				const url = new URL(request.url());
 				return (
-					url.pathname.endsWith("/api/v1/search") &&
-					url.searchParams.get("q") === className &&
-					url.searchParams.get("kinds") === "class"
+					url.pathname.endsWith("/api/v1/classes") &&
+					url.searchParams.get("name__icontains") === className &&
+					url.searchParams.get("include_total") === "false"
 				);
 			});
 			await classLookup.fill(className);

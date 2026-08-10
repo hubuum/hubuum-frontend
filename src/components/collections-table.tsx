@@ -4,8 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
+import { GroupDirectoryLookup } from "@/components/group-directory-lookup";
 import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
@@ -13,16 +15,16 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1CollectionsByCollectionId,
 	getApiV1Collections,
-	getApiV1IamGroups,
 	postApiV1Collections,
 } from "@/lib/api/generated/client";
 import type {
 	Collection,
 	NewCollectionWithAssignee,
 } from "@/lib/api/generated/models";
+import { fetchGroupDirectory } from "@/lib/api/group-directory";
+import { fetchCollectionDirectory } from "@/lib/api/resource-directory";
 import {
 	buildCollectionHierarchy,
-	formatCollectionOption,
 	formatCollectionPath,
 	getCollectionPath,
 	isRootCollection,
@@ -35,10 +37,7 @@ import {
 	SELECT_ALL_EVENT,
 	SELECTION_STATE_EVENT,
 } from "@/lib/create-events";
-import {
-	type ConsoleGroup,
-	formatScopedGroupName,
-} from "@/lib/identity-scopes";
+import { formatScopedGroupName } from "@/lib/identity-scopes";
 import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
@@ -46,6 +45,10 @@ import {
 import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
@@ -102,23 +105,6 @@ async function fetchCollections(
 	};
 }
 
-async function fetchGroups(): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamGroups(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load groups."),
-		);
-	}
-
-	return response.data;
-}
-
 export function CollectionsTable() {
 	const router = useRouter();
 	const pathname = usePathname();
@@ -159,9 +145,13 @@ export function CollectionsTable() {
 		queryFn: () =>
 			fetchCollections(pagination.limit, pagination.cursor, getSortParam()),
 	});
-	const groupsQuery = useQuery({
-		queryKey: ["groups", "collection-form"],
-		queryFn: fetchGroups,
+	const groupDirectory = useDirectorySearch({
+		queryKey: ["collection-assignee-group-directory"],
+		queryFn: fetchGroupDirectory,
+	});
+	const parentDirectory = useDirectorySearch({
+		queryKey: ["collection-create-parent-directory"],
+		queryFn: fetchCollectionDirectory,
 	});
 	const createMutation = useMutation({
 		mutationFn: async (payload: NewCollectionWithAssignee) => {
@@ -183,9 +173,6 @@ export function CollectionsTable() {
 				isRootCollection,
 			);
 			setParentCollectionId(rootCollection ? String(rootCollection.id) : "");
-			if (groupsQuery.data?.length) {
-				setGroupId(String(groupsQuery.data[0].id));
-			}
 			setFormError(null);
 			setFormSuccess("Collection created.");
 			setCreateModalOpen(false);
@@ -236,7 +223,6 @@ export function CollectionsTable() {
 		},
 	});
 
-	const groups = groupsQuery.data ?? [];
 	const pageData = query.data;
 	const collections = pageData?.collections ?? [];
 	const hierarchy = useMemo(
@@ -244,6 +230,13 @@ export function CollectionsTable() {
 		[collections],
 	);
 	const rootCollection = collections.find(isRootCollection);
+	const selectedGroup = groupDirectory.query.data?.items.find(
+		(group) => String(group.id) === groupId,
+	);
+	const selectedParentCollection = [
+		...collections,
+		...(parentDirectory.query.data?.items ?? []),
+	].find((collection) => String(collection.id) === parentCollectionId);
 	const treeRows = useMemo(
 		() => hierarchy.flatNodes.map((node) => node.collection),
 		[hierarchy.flatNodes],
@@ -439,20 +432,13 @@ export function CollectionsTable() {
 	}, [searchParams]);
 
 	useEffect(() => {
-		if (groupId || groups.length === 0) {
-			return;
-		}
-
-		setGroupId(String(groups[0].id));
-	}, [groupId, groups]);
-
-	useEffect(() => {
 		if (parentCollectionId || !rootCollection) {
 			return;
 		}
 
 		setParentCollectionId(String(rootCollection.id));
-	}, [parentCollectionId, rootCollection]);
+		parentDirectory.setSearch(String(rootCollection.id));
+	}, [parentCollectionId, parentDirectory.setSearch, rootCollection]);
 
 	useEffect(() => {
 		if (!selectedCollectionIds.length) {
@@ -605,68 +591,90 @@ export function CollectionsTable() {
 					</label>
 
 					<div className="control-field">
-						<span>Assignee group</span>
-						{groups.length > 0 ? (
-							<select
-								required
-								value={groupId}
-								onChange={(event) => setGroupId(event.target.value)}
-							>
-								{groups.map((group) => (
-									<option key={group.id} value={group.id}>
-										{formatScopedGroupName(group)} (#{group.id})
-									</option>
-								))}
-							</select>
-						) : (
+						<label htmlFor="collection-assignee-group">Assignee group ID</label>
+						<div className="directory-id-lookup-control">
 							<input
+								id="collection-assignee-group"
 								required
 								type="number"
 								min={1}
 								value={groupId}
-								onChange={(event) => setGroupId(event.target.value)}
-								placeholder={
-									groupsQuery.isLoading ? "Loading groups..." : "Enter group id"
-								}
-								disabled={groupsQuery.isLoading}
+								onChange={(event) => {
+									setGroupId(event.target.value);
+									groupDirectory.setSearch(event.target.value);
+								}}
+								placeholder="Group ID"
 							/>
-						)}
+							<GroupDirectoryLookup
+								groups={groupDirectory.query.data?.items ?? []}
+								helperText={directoryLookupStatus({
+									count: groupDirectory.query.data?.items.length ?? 0,
+									isError: groupDirectory.query.isError,
+									isLoading: groupDirectory.query.isLoading,
+									isPartial: Boolean(groupDirectory.query.data?.isPartial),
+									isReady: groupDirectory.isReady,
+									minimumLength: groupDirectory.minimumLength,
+									resourcePlural: "groups",
+									resourceSingular: "group",
+									term: groupDirectory.term,
+								})}
+								idPrefix="collection-assignee-group-directory"
+								onChange={groupDirectory.setSearch}
+								onSelect={(group) => {
+									setGroupId(String(group.id));
+								}}
+								value={groupDirectory.search}
+							/>
+						</div>
+						{selectedGroup ? (
+							<small className="field-note">
+								Selected: {formatScopedGroupName(selectedGroup)} (#
+								{selectedGroup.id})
+							</small>
+						) : null}
 					</div>
 
-					<label
-						className="control-field control-field--wide"
-						htmlFor="collection-parent"
-					>
-						<span>Parent collection</span>
-						{collections.length > 0 ? (
-							<select
-								id="collection-parent"
-								value={parentCollectionId}
-								onChange={(event) => setParentCollectionId(event.target.value)}
-							>
-								<option value="">Root collection</option>
-								{treeRows.map((collection) => (
-									<option key={collection.id} value={collection.id}>
-										{formatCollectionOption(collection, hierarchy.byId)}
-									</option>
-								))}
-							</select>
-						) : (
+					<div className="control-field control-field--wide">
+						<label htmlFor="collection-parent">Parent collection ID</label>
+						<div className="directory-id-lookup-control">
 							<input
 								id="collection-parent"
 								type="number"
 								min={1}
 								value={parentCollectionId}
-								onChange={(event) => setParentCollectionId(event.target.value)}
-								placeholder={
-									query.isLoading
-										? "Loading collections..."
-										: "Optional parent collection ID"
-								}
-								disabled={query.isLoading}
+								onChange={(event) => {
+									setParentCollectionId(event.target.value);
+									parentDirectory.setSearch(event.target.value);
+								}}
+								placeholder="Blank creates a root collection"
 							/>
-						)}
-					</label>
+							<CollectionDirectoryLookup
+								collections={parentDirectory.query.data?.items ?? []}
+								helperText={directoryLookupStatus({
+									count: parentDirectory.query.data?.items.length ?? 0,
+									isError: parentDirectory.query.isError,
+									isLoading: parentDirectory.query.isLoading,
+									isPartial: Boolean(parentDirectory.query.data?.isPartial),
+									isReady: parentDirectory.isReady,
+									minimumLength: parentDirectory.minimumLength,
+									resourcePlural: "collections",
+									resourceSingular: "collection",
+									term: parentDirectory.term,
+								})}
+								idPrefix="collection-create-parent-directory"
+								onChange={parentDirectory.setSearch}
+								onSelect={(collection) => {
+									setParentCollectionId(String(collection.id));
+								}}
+								value={parentDirectory.search}
+							/>
+						</div>
+						<small className="field-note">
+							{selectedParentCollection
+								? `Selected: ${selectedParentCollection.name} (#${selectedParentCollection.id})`
+								: "Leave blank to create a root collection."}
+						</small>
+					</div>
 
 					<label className="control-field control-field--wide">
 						<span>Description</span>
@@ -680,12 +688,6 @@ export function CollectionsTable() {
 				</div>
 
 				{formError ? <div className="error-banner">{formError}</div> : null}
-				{groupsQuery.isError ? (
-					<div className="muted">
-						Could not load groups automatically. Falling back to manual group ID
-						entry.
-					</div>
-				) : null}
 				{formSuccess ? <div className="muted">{formSuccess}</div> : null}
 
 				<div className="form-actions">

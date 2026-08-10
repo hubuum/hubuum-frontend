@@ -12,10 +12,8 @@ import { ServiceAccountCreateFlow } from "@/components/service-account-create-fl
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import {
-	getApiV1IamGroups,
-	getApiV1IamServiceAccounts,
-} from "@/lib/api/generated/client";
+import { getApiV1IamServiceAccounts } from "@/lib/api/generated/client";
+import { fetchGroupsByIds } from "@/lib/api/group-directory";
 import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
@@ -85,23 +83,6 @@ async function fetchServiceAccounts(
 	};
 }
 
-async function fetchGroups(): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamGroups(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load groups."),
-		);
-	}
-
-	return response.data;
-}
-
 export function ServiceAccountsTable({
 	allowCreate = true,
 	detailBasePath = "/admin/service-accounts",
@@ -121,12 +102,19 @@ export function ServiceAccountsTable({
 		queryKey: ["service-accounts", pagination.cursor, pagination.limit],
 		queryFn: () => fetchServiceAccounts(pagination.limit, pagination.cursor),
 	});
-	const groupsQuery = useQuery({
-		queryKey: ["groups", "service-account-owner"],
-		queryFn: fetchGroups,
-	});
-
 	const accounts = query.data?.accounts ?? [];
+	const referencedGroupIds = useMemo(
+		() =>
+			[...new Set(accounts.map((account) => account.owner_group_id))].sort(
+				(left, right) => left - right,
+			),
+		[accounts],
+	);
+	const groupsQuery = useQuery({
+		queryKey: ["groups", "service-account-owners", referencedGroupIds],
+		queryFn: () => fetchGroupsByIds(referencedGroupIds),
+		enabled: referencedGroupIds.length > 0,
+	});
 	const groups = groupsQuery.data ?? [];
 	const groupById = useMemo(() => {
 		const map = new Map<number, ConsoleGroup>();
@@ -290,9 +278,6 @@ export function ServiceAccountsTable({
 				>
 					<ServiceAccountCreateFlow
 						open={isCreateModalOpen}
-						groups={groups}
-						groupsLoading={groupsQuery.isLoading}
-						groupsError={groupsQuery.isError}
 						onCloseLockedChange={setCreateModalCloseLocked}
 						onFinished={(account) => {
 							setFormSuccess(

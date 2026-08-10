@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { GroupDirectoryLookup } from "@/components/group-directory-lookup";
 import {
 	GuidedFlowContinue,
 	GuidedFlowPanel,
@@ -28,8 +29,8 @@ import type {
 	Permissions,
 	ServiceAccountResponse,
 } from "@/lib/api/generated/models";
+import { fetchGroupDirectory } from "@/lib/api/group-directory";
 import {
-	type ConsoleGroup,
 	formatScopedGroupName,
 	LOCAL_IDENTITY_SCOPE,
 } from "@/lib/identity-scopes";
@@ -42,11 +43,12 @@ import {
 import { canSubmitScopes } from "@/lib/token-scope-selection";
 import { toTokenScopeRequest } from "@/lib/token-scope-request";
 import { READ_ONLY_TOKEN_SCOPES } from "@/lib/token-scopes";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 
 type ServiceAccountCreateFlowProps = {
-	groups: ConsoleGroup[];
-	groupsError: boolean;
-	groupsLoading: boolean;
 	onCloseLockedChange: (locked: boolean) => void;
 	onFinished: (account: ServiceAccountResponse) => void;
 	open: boolean;
@@ -98,9 +100,6 @@ function resourceSummary(selected: NamedTokenResourceScope[]): string {
 }
 
 export function ServiceAccountCreateFlow({
-	groups,
-	groupsError,
-	groupsLoading,
 	onCloseLockedChange,
 	onFinished,
 	open,
@@ -131,6 +130,10 @@ export function ServiceAccountCreateFlow({
 		staleTime: Number.POSITIVE_INFINITY,
 		retry: false,
 	});
+	const groupDirectory = useDirectorySearch({
+		queryKey: ["service-account-create-owner-group-directory"],
+		queryFn: fetchGroupDirectory,
+	});
 	const defaultLifetimeHours =
 		clientAuthenticationQuery.data?.default_token_lifetime_hours;
 	const defaultLifetime = formatDefaultTokenLifetime(defaultLifetimeHours);
@@ -144,6 +147,7 @@ export function ServiceAccountCreateFlow({
 		setName("");
 		setDescription("");
 		setOwnerGroupId("");
+		groupDirectory.setSearch("");
 		setTokenName("initial");
 		setExpiresAt("");
 		setPermissionMode("read_only");
@@ -154,20 +158,13 @@ export function ServiceAccountCreateFlow({
 		setFormError(null);
 		setCreatedAccount(null);
 		setRawToken(null);
-	}, []);
+	}, [groupDirectory.setSearch]);
 
 	useEffect(() => {
 		if (!open) {
 			reset();
 		}
 	}, [open, reset]);
-
-	useEffect(() => {
-		if (ownerGroupId || groups.length === 0) {
-			return;
-		}
-		setOwnerGroupId(String(groups[0].id));
-	}, [groups, ownerGroupId]);
 
 	const effectivePermissions =
 		permissionMode === "read_only"
@@ -177,8 +174,11 @@ export function ServiceAccountCreateFlow({
 				: [];
 	const restrictPermissions = permissionMode !== "all";
 	const restrictResources = resourceMode === "specific";
+	const parsedOwnerGroupId = Number.parseInt(ownerGroupId, 10);
 	const detailsReady =
-		Boolean(name.trim()) && Number.isFinite(Number.parseInt(ownerGroupId, 10));
+		Boolean(name.trim()) &&
+		Number.isFinite(parsedOwnerGroupId) &&
+		parsedOwnerGroupId > 0;
 	const permissionsReady = canSubmitScopes(
 		restrictPermissions,
 		effectivePermissions,
@@ -187,8 +187,8 @@ export function ServiceAccountCreateFlow({
 		restrictResources,
 		selectedResources,
 	);
-	const selectedOwner = groups.find(
-		(group) => group.id === Number.parseInt(ownerGroupId, 10),
+	const selectedOwner = groupDirectory.query.data?.items.find(
+		(group) => group.id === parsedOwnerGroupId,
 	);
 	const permissionSummary =
 		permissionMode === "all"
@@ -414,27 +414,51 @@ export function ServiceAccountCreateFlow({
 								placeholder="e.g. dns-sync"
 							/>
 						</label>
-						<label className="control-field">
-							<span>Owner group</span>
-							<select
-								required
-								value={ownerGroupId}
-								onChange={(event) => setOwnerGroupId(event.target.value)}
-								disabled={groupsLoading || groups.length === 0}
-							>
-								{groupsLoading ? (
-									<option value="">Loading groups...</option>
-								) : null}
-								{!groupsLoading && groups.length === 0 ? (
-									<option value="">No groups available</option>
-								) : null}
-								{groups.map((group) => (
-									<option key={group.id} value={group.id}>
-										{formatScopedGroupName(group)} (#{group.id})
-									</option>
-								))}
-							</select>
-						</label>
+						<div className="control-field">
+							<label htmlFor="service-account-create-owner-group">
+								Owner group ID
+							</label>
+							<div className="directory-id-lookup-control">
+								<input
+									id="service-account-create-owner-group"
+									required
+									type="number"
+									min={1}
+									value={ownerGroupId}
+									onChange={(event) => {
+										setOwnerGroupId(event.target.value);
+										groupDirectory.setSearch(event.target.value);
+									}}
+									placeholder="Group ID"
+								/>
+								<GroupDirectoryLookup
+									groups={groupDirectory.query.data?.items ?? []}
+									helperText={directoryLookupStatus({
+										count: groupDirectory.query.data?.items.length ?? 0,
+										isError: groupDirectory.query.isError,
+										isLoading: groupDirectory.query.isLoading,
+										isPartial: Boolean(groupDirectory.query.data?.isPartial),
+										isReady: groupDirectory.isReady,
+										minimumLength: groupDirectory.minimumLength,
+										resourcePlural: "groups",
+										resourceSingular: "group",
+										term: groupDirectory.term,
+									})}
+									idPrefix="service-account-create-owner-group-directory"
+									onChange={groupDirectory.setSearch}
+									onSelect={(group) => {
+										setOwnerGroupId(String(group.id));
+									}}
+									value={groupDirectory.search}
+								/>
+							</div>
+							{selectedOwner ? (
+								<small className="field-note">
+									Selected: {formatScopedGroupName(selectedOwner)} (#
+									{selectedOwner.id})
+								</small>
+							) : null}
+						</div>
 						<label className="control-field control-field--wide">
 							<span>Description (optional)</span>
 							<input
@@ -460,12 +484,6 @@ export function ServiceAccountCreateFlow({
 							<small className="muted">{defaultLifetimeNote}</small>
 						</label>
 					</div>
-					{groupsError ? (
-						<div className="error-banner">
-							Failed to load owner groups. Reload before creating a service
-							account.
-						</div>
-					) : null}
 					<GuidedFlowContinue
 						disabled={!detailsReady}
 						nextLabel="Permission scope"
