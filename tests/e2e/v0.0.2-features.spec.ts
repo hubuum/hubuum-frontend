@@ -148,7 +148,7 @@ test.describe("v0.0.3 server features", () => {
 	test("audit explorer enriches collections and stacks drill-down filters", async ({
 		page,
 	}) => {
-		const suffix = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+		const suffix = globalThis.crypto.randomUUID();
 		const collectionName = `e2e_audit_collection_${suffix}`;
 		const serviceAccountName = `e2e_audit_actor_${suffix}`;
 		let collectionId: number | null = null;
