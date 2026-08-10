@@ -150,7 +150,10 @@ test.describe("v0.0.3 server features", () => {
 	}) => {
 		const suffix = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 		const collectionName = `e2e_audit_collection_${suffix}`;
+		const serviceAccountName = `e2e_audit_actor_${suffix}`;
 		let collectionId: number | null = null;
+		let serviceAccountEtag: string | undefined;
+		let serviceAccountId: number | null = null;
 
 		try {
 			const groupsResponse = await page.request.get(
@@ -175,12 +178,64 @@ test.describe("v0.0.3 server features", () => {
 			const collection = (await collectionResponse.json()) as { id: number };
 			collectionId = collection.id;
 
+			const serviceAccountResponse = await page.request.post(
+				`${bffPrefix}/api/v1/iam/service-accounts`,
+				{
+					data: {
+						description: "Playwright audit actor lookup coverage",
+						name: serviceAccountName,
+						owner_group_id: groups[0].id,
+					},
+					headers: { Origin: new URL(page.url()).origin },
+				},
+			);
+			expect(serviceAccountResponse.status()).toBe(201);
+			const serviceAccount = (await serviceAccountResponse.json()) as {
+				id: number;
+			};
+			serviceAccountId = serviceAccount.id;
+			serviceAccountEtag = serviceAccountResponse.headers().etag;
+
 			await page.goto("/audit");
 			await expect(
 				page
 					.getByRole("combobox", { name: "Collection" })
 					.locator(`option[value="${collection.id}"]`),
 			).toContainText(collectionName);
+
+			await page
+				.getByRole("combobox", { name: "Actor kind" })
+				.selectOption("user");
+			const actorLookup = page.getByLabel("Find actor", { exact: true });
+			await expect(actorLookup).toBeVisible();
+			const userLookupRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/iam/users") &&
+					url.searchParams.get("name__icontains") === (username ?? "admin")
+				);
+			});
+			await actorLookup.fill(username ?? "admin");
+			await userLookupRequest;
+			await expect(page.getByRole("spinbutton", { name: "Actor ID" })).toHaveValue(
+				/\d+/,
+			);
+
+			await page
+				.getByRole("combobox", { name: "Actor kind" })
+				.selectOption("service_account");
+			const serviceAccountLookupRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/iam/service-accounts") &&
+					url.searchParams.get("name__icontains") === serviceAccountName
+				);
+			});
+			await actorLookup.fill(serviceAccountName);
+			await serviceAccountLookupRequest;
+			await expect(page.getByRole("spinbutton", { name: "Actor ID" })).toHaveValue(
+				String(serviceAccount.id),
+			);
 
 			let auditRow = page.locator("tbody tr").filter({
 				hasText: collectionName,
@@ -228,6 +283,19 @@ test.describe("v0.0.3 server features", () => {
 			await page.getByRole("button", { name: "Clear all" }).click();
 			await expect(page.getByText("0 active", { exact: true })).toBeVisible();
 		} finally {
+			if (serviceAccountId !== null) {
+				await page.request.delete(
+					`${bffPrefix}/api/v1/iam/service-accounts/${serviceAccountId}`,
+					{
+						headers: {
+							Origin: new URL(page.url()).origin,
+							...(serviceAccountEtag
+								? { "If-Match": serviceAccountEtag }
+								: {}),
+						},
+					},
+				);
+			}
 			if (collectionId !== null) {
 				await page.request.delete(
 					`${bffPrefix}/api/v1/collections/${collectionId}`,

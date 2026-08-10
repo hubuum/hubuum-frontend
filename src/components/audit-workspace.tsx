@@ -1,15 +1,30 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { FormEvent, type ReactNode, useMemo, useState } from "react";
+import {
+	FormEvent,
+	type ReactNode,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { EventDetailsModal } from "@/components/event-details-modal";
 import { TableExportMenu } from "@/components/table-export-menu";
+import { fetchAuditActorDirectory } from "@/lib/api/audit-actors";
 import {
 	fetchAuditCollections,
 	fetchEventsPage,
 	type EventRecord,
 } from "@/lib/api/events";
 import type { Collection } from "@/lib/api/generated/models";
+import {
+	auditActorCandidateInputValue,
+	auditActorCandidateMatches,
+	formatAuditActorCandidate,
+	getAuditActorSearchTerm,
+	isAuditActorDirectoryKind,
+	resolveAuditActorCandidate,
+} from "@/lib/audit-actor-options";
 import {
 	type AuditDrilldownDimension,
 	type AuditFilterDraft,
@@ -39,6 +54,17 @@ type ActiveAuditFilter = {
 	field: AuditFilterField;
 	label: string;
 };
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+	const [debouncedValue, setDebouncedValue] = useState(value);
+
+	useEffect(() => {
+		const timer = window.setTimeout(() => setDebouncedValue(value), delayMs);
+		return () => window.clearTimeout(timer);
+	}, [delayMs, value]);
+
+	return debouncedValue;
+}
 
 function formatTimestamp(value: string | null | undefined): string {
 	if (!value) {
@@ -236,6 +262,7 @@ function DrilldownButton({
 
 export function AuditWorkspace() {
 	const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
+	const [actorSearch, setActorSearch] = useState("");
 	const [cursor, setCursor] = useState("");
 	const [draft, setDraft] = useState<AuditFilterDraft>(
 		EMPTY_AUDIT_FILTER_DRAFT,
@@ -260,6 +287,47 @@ export function AuditWorkspace() {
 		queryKey: ["collections", "audit-workspace"],
 		queryFn: fetchAuditCollections,
 	});
+	const actorDirectoryKind = isAuditActorDirectoryKind(draft.actorKind)
+		? draft.actorKind
+		: null;
+	const actorSearchTerm = getAuditActorSearchTerm(actorSearch);
+	const debouncedActorSearchTerm = useDebouncedValue(actorSearchTerm, 300);
+	const actorSearchIsReady =
+		actorSearchTerm.length >= 2 &&
+		debouncedActorSearchTerm === actorSearchTerm;
+	const actorDirectoryQuery = useQuery({
+		queryKey: [
+			"audit-actor-directory",
+			actorDirectoryKind,
+			debouncedActorSearchTerm,
+		],
+		queryFn: () => {
+			if (!actorDirectoryKind) {
+				throw new Error("Choose a searchable actor kind first.");
+			}
+			return fetchAuditActorDirectory(
+				actorDirectoryKind,
+				debouncedActorSearchTerm,
+			);
+		},
+		enabled: actorDirectoryKind !== null && actorSearchIsReady,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
+	useEffect(() => {
+		const candidate = resolveAuditActorCandidate(
+			actorSearch,
+			actorDirectoryQuery.data?.candidates ?? [],
+		);
+		if (!candidate) return;
+
+		setDraft((current) => {
+			const actorUserId = String(candidate.id);
+			return current.actorUserId === actorUserId
+				? current
+				: { ...current, actorUserId };
+		});
+	}, [actorDirectoryQuery.data?.candidates, actorSearch]);
 	const collectionHierarchy = useMemo(
 		() => buildCollectionHierarchy(collectionsQuery.data ?? []),
 		[collectionsQuery.data],
@@ -295,6 +363,15 @@ export function AuditWorkspace() {
 			),
 		[appliedDraft.actorKind, draft.actorKind, events],
 	);
+	const actorCandidateOptions = useMemo(
+		() =>
+			(actorDirectoryQuery.data?.candidates ?? [])
+				.filter((candidate) =>
+					auditActorCandidateMatches(candidate, actorSearch),
+				)
+				.slice(0, 50),
+		[actorDirectoryQuery.data?.candidates, actorSearch],
+	);
 	const activeFilters = useMemo(
 		() => getActiveAuditFilters(appliedDraft, collectionsById),
 		[appliedDraft, collectionsById],
@@ -314,22 +391,36 @@ export function AuditWorkspace() {
 		setAppliedDraft(nextDraft);
 	}
 
+	function updateActorSearch(value: string) {
+		setActorSearch(value);
+		const candidate = resolveAuditActorCandidate(
+			value,
+			actorDirectoryQuery.data?.candidates ?? [],
+		);
+		patchDraft("actorUserId", candidate ? String(candidate.id) : "");
+	}
+
 	function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		applyDraft(draft);
 	}
 
 	function clearFilters() {
+		setActorSearch("");
 		applyDraft(EMPTY_AUDIT_FILTER_DRAFT);
 	}
 
 	function removeFilter(field: AuditFilterField) {
+		if (field === "actorKind" || field === "actorUserId") {
+			setActorSearch("");
+		}
 		applyDraft(clearAuditFilter(appliedDraft, field));
 	}
 
 	function drillInto(event: EventRecord, dimension: AuditDrilldownDimension) {
 		const nextDraft = getAuditDrilldownDraft(appliedDraft, event, dimension);
 		if (nextDraft) {
+			setActorSearch("");
 			setSelectedEvent(null);
 			applyDraft(nextDraft);
 		}
@@ -448,9 +539,10 @@ export function AuditWorkspace() {
 								<span>Actor kind</span>
 								<select
 									value={draft.actorKind}
-									onChange={(event) =>
-										patchDraft("actorKind", event.target.value)
-									}
+									onChange={(event) => {
+										setActorSearch("");
+										patchDraft("actorKind", event.target.value);
+									}}
 								>
 									<option value="">Any actor kind</option>
 									{actorKindOptions.map((actorKind) => (
@@ -486,6 +578,47 @@ export function AuditWorkspace() {
 									placeholder="Any initiator"
 								/>
 							</label>
+							{actorDirectoryKind ? (
+								<label className="control-field audit-actor-lookup">
+									<span>Find actor</span>
+									<input
+										type="search"
+										list="audit-actor-options"
+										value={actorSearch}
+										onChange={(event) => updateActorSearch(event.target.value)}
+										placeholder={
+											actorDirectoryKind === "user"
+												? "User name"
+												: "Service-account name"
+										}
+										autoComplete="off"
+										aria-label="Find actor"
+										aria-describedby="audit-actor-lookup-hint"
+									/>
+									<datalist id="audit-actor-options">
+										{actorCandidateOptions.map((candidate) => (
+											<option
+												key={`${candidate.kind}-${candidate.id}`}
+												value={auditActorCandidateInputValue(candidate)}
+												label={formatAuditActorCandidate(candidate)}
+											/>
+										))}
+									</datalist>
+									<small id="audit-actor-lookup-hint" className="muted">
+										{actorSearchTerm.length < 2
+											? "Type at least two characters; exact Actor ID always works."
+											: actorDirectoryQuery.isLoading || !actorSearchIsReady
+												? "Searching identities visible to your account…"
+											: actorDirectoryQuery.isError
+												? "Name lookup is unavailable for your account; enter an exact Actor ID."
+												: actorDirectoryQuery.data?.isPartial
+													? "More than 50 identities match; type more to narrow the results."
+													: actorDirectoryQuery.data?.candidates.length === 0
+														? "No matching identities are visible to your account."
+														: "Choose a unique identity to fill Actor ID."}
+									</small>
+								</label>
+							) : null}
 						</div>
 					</fieldset>
 

@@ -8571,6 +8571,15 @@ button.token-revoke-button {
 	max-width: none;
 }
 
+.audit-actor-lookup {
+	grid-column: 1 / -1;
+}
+
+.audit-actor-lookup small {
+	font-size: 0.76rem;
+	line-height: 1.35;
+}
+
 .audit-filter-fields input,
 .audit-filter-fields select {
 	width: 100%;
