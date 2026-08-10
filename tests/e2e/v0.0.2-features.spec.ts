@@ -203,10 +203,38 @@ test.describe("v0.0.3 server features", () => {
 					.locator(`option[value="${collection.id}"]`),
 			).toContainText(collectionName);
 
+			const filterCard = page.locator(".audit-filter-card");
+			const resultsCard = page.locator(".audit-results-card");
+			const filterHeightBeforeLookup = await filterCard.evaluate(
+				(element) => element.getBoundingClientRect().height,
+			);
+			const resultsTopBeforeLookup = await resultsCard.evaluate(
+				(element) => element.getBoundingClientRect().top,
+			);
 			await page
 				.getByRole("combobox", { name: "Entity type" })
 				.selectOption("collection");
-			const entityLookup = page.getByLabel("Find entity", { exact: true });
+			const entityLookupTrigger = page.getByRole("button", {
+				name: "Find entity",
+			});
+			await expect(entityLookupTrigger).toBeEnabled();
+			await entityLookupTrigger.click();
+			const entityPopover = page.locator("#audit-entity-popover");
+			await expect(entityPopover).toBeVisible();
+			const entityLookup = entityPopover.getByRole("combobox", {
+				name: "Name",
+			});
+			await expect(entityLookup).toBeFocused();
+			expect(
+				await filterCard.evaluate(
+					(element) => element.getBoundingClientRect().height,
+				),
+			).toBeCloseTo(filterHeightBeforeLookup, 1);
+			expect(
+				await resultsCard.evaluate(
+					(element) => element.getBoundingClientRect().top,
+				),
+			).toBeCloseTo(resultsTopBeforeLookup, 1);
 			const entityLookupRequest = page.waitForRequest((request) => {
 				const url = new URL(request.url());
 				return (
@@ -231,8 +259,14 @@ test.describe("v0.0.3 server features", () => {
 			await page
 				.getByRole("combobox", { name: "Actor kind" })
 				.selectOption("user");
-			const actorLookup = page.getByLabel("Find actor", { exact: true });
-			await expect(actorLookup).toBeVisible();
+			const actorLookupTrigger = page.getByRole("button", {
+				name: "Find actor",
+			});
+			await expect(actorLookupTrigger).toBeEnabled();
+			await actorLookupTrigger.click();
+			const actorPopover = page.locator("#audit-actor-popover");
+			const actorLookup = actorPopover.getByRole("combobox", { name: "Name" });
+			await expect(actorLookup).toBeFocused();
 			const userLookupRequest = page.waitForRequest((request) => {
 				const url = new URL(request.url());
 				return (
@@ -273,6 +307,7 @@ test.describe("v0.0.3 server features", () => {
 			).toEqual([]);
 			await actorLookup.press("Enter");
 			await expect(actorResults).toBeHidden();
+			await expect(actorLookupTrigger).toBeFocused();
 			await expect(
 				page.getByRole("spinbutton", { name: "Actor ID" }),
 			).toHaveValue(/\d+/);
@@ -280,6 +315,7 @@ test.describe("v0.0.3 server features", () => {
 			await page
 				.getByRole("combobox", { name: "Actor kind" })
 				.selectOption("service_account");
+			await actorLookupTrigger.click();
 			const serviceAccountLookupRequest = page.waitForRequest((request) => {
 				const url = new URL(request.url());
 				return (
@@ -289,13 +325,22 @@ test.describe("v0.0.3 server features", () => {
 			});
 			await actorLookup.fill(serviceAccountName);
 			await serviceAccountLookupRequest;
+			await actorResults
+				.getByRole("option")
+				.filter({ hasText: serviceAccountName })
+				.first()
+				.click();
 			await expect(
 				page.getByRole("spinbutton", { name: "Actor ID" }),
 			).toHaveValue(String(serviceAccount.id));
 
-			const initiatorLookup = page.getByLabel("Find initiator", {
-				exact: true,
+			const initiatorLookupTrigger = page.getByRole("button", {
+				name: "Find initiator",
 			});
+			await initiatorLookupTrigger.click();
+			const initiatorLookup = page
+				.locator("#audit-initiator-popover")
+				.getByRole("combobox", { name: "Name" });
 			const initiatorUserRequest = page.waitForRequest((request) => {
 				const url = new URL(request.url());
 				return (

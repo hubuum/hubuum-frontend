@@ -13,6 +13,8 @@ import {
 
 type AuditPrincipalLookupProps = {
 	candidates: readonly AuditActorCandidate[];
+	disabled?: boolean;
+	disabledHint?: string;
 	helperText: ReactNode;
 	idPrefix: string;
 	label: string;
@@ -28,6 +30,8 @@ function candidateKindLabel(candidate: AuditActorCandidate): string {
 
 export function AuditPrincipalLookup({
 	candidates,
+	disabled,
+	disabledHint,
 	helperText,
 	idPrefix,
 	label,
@@ -52,7 +56,10 @@ export function AuditPrincipalLookup({
 
 	return (
 		<AuditSearchLookup
+			disabled={disabled}
+			disabledHint={disabledHint}
 			idPrefix={idPrefix}
+			inputLabel="Name"
 			label={label}
 			value={value}
 			options={options}

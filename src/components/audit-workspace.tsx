@@ -622,19 +622,53 @@ export function AuditWorkspace() {
 									))}
 								</select>
 							</label>
-							<label className="control-field">
-								<span>Entity ID</span>
-								<input
-									type="number"
-									min="1"
-									step="1"
-									value={draft.entityId}
-									onChange={(event) =>
-										patchDraft("entityId", event.target.value)
-									}
-									placeholder="Any ID"
-								/>
-							</label>
+							<div className="control-field">
+								<label htmlFor="audit-entity-id">Entity ID</label>
+								<div className="audit-id-lookup-control">
+									<input
+										id="audit-entity-id"
+										type="number"
+										min="1"
+										step="1"
+										value={draft.entityId}
+										onChange={(event) => {
+											setEntitySearch("");
+											patchDraft("entityId", event.target.value);
+										}}
+										placeholder="Any ID"
+									/>
+									<AuditEntityLookup
+										disabled={!entityDirectoryKind}
+										disabledHint="Choose a searchable entity type first"
+										value={entitySearch}
+										candidates={entityCandidateOptions}
+										onChange={updateEntitySearch}
+										onSelect={(candidate) => {
+											setEntitySearch(candidate.inputValue);
+											patchDraft("entityId", String(candidate.id));
+										}}
+										placeholder={
+											entityDirectoryKind
+												? `Search ${entityDirectoryKind.replaceAll("_", " ")} names`
+												: "Search entity names"
+										}
+										helperText={
+											entitySearchTerm.length < 2
+												? "Type at least two characters, or enter an exact Entity ID."
+												: entityDirectoryQuery.isLoading || !entitySearchIsReady
+													? "Searching entities visible to your account…"
+													: entityDirectoryQuery.isError
+														? "Entity lookup is unavailable for your account; enter an exact Entity ID."
+														: entityDirectoryQuery.data?.isPartial
+															? "More than 50 entities match; type more to narrow the results."
+															: entityDirectoryQuery.data?.candidates.length ===
+																	0
+																? "No matching entities are visible to your account."
+																: "Choose a unique entity to fill Entity ID."
+										}
+									/>
+								</div>
+							</div>
 							<label className="control-field">
 								<span>Action</span>
 								<select
@@ -649,31 +683,6 @@ export function AuditWorkspace() {
 									))}
 								</select>
 							</label>
-							{entityDirectoryKind ? (
-								<AuditEntityLookup
-									value={entitySearch}
-									candidates={entityCandidateOptions}
-									onChange={updateEntitySearch}
-									onSelect={(candidate) => {
-										setEntitySearch(candidate.inputValue);
-										patchDraft("entityId", String(candidate.id));
-									}}
-									placeholder={`Search ${entityDirectoryKind.replaceAll("_", " ")} names`}
-									helperText={
-										entitySearchTerm.length < 2
-											? "Type at least two characters, or enter an exact Entity ID."
-											: entityDirectoryQuery.isLoading || !entitySearchIsReady
-												? "Searching entities visible to your account…"
-												: entityDirectoryQuery.isError
-													? "Entity lookup is unavailable for your account; enter an exact Entity ID."
-													: entityDirectoryQuery.data?.isPartial
-														? "More than 50 entities match; type more to narrow the results."
-														: entityDirectoryQuery.data?.candidates.length === 0
-															? "No matching entities are visible to your account."
-															: "Choose a unique entity to fill Entity ID."
-									}
-								/>
-							) : null}
 						</div>
 					</fieldset>
 
@@ -697,93 +706,104 @@ export function AuditWorkspace() {
 									))}
 								</select>
 							</label>
-							<label className="control-field">
-								<span>Actor ID</span>
-								<input
-									type="number"
-									min="1"
-									step="1"
-									value={draft.actorUserId}
-									onChange={(event) =>
-										patchDraft("actorUserId", event.target.value)
-									}
-									placeholder="Any actor"
-								/>
-							</label>
-							<label className="control-field">
-								<span>Initiator ID</span>
-								<input
-									type="number"
-									min="1"
-									step="1"
-									value={draft.initiatorUserId}
-									onChange={(event) =>
-										patchDraft("initiatorUserId", event.target.value)
-									}
-									placeholder="Any initiator"
-								/>
-							</label>
-							{actorDirectoryKind ? (
-								<AuditPrincipalLookup
-									idPrefix="audit-actor"
-									label="Find actor"
-									value={actorSearch}
-									candidates={actorCandidateOptions}
-									onChange={updateActorSearch}
-									onSelect={(candidate) => {
-										setActorSearch(auditActorCandidateInputValue(candidate));
-										patchDraft("actorUserId", String(candidate.id));
-									}}
-									placeholder={
-										actorDirectoryKind === "user"
-											? "User name"
-											: "Service-account name"
-									}
-									helperText={
-										actorSearchTerm.length < 2
-											? "Type at least two characters; exact Actor ID always works."
-											: actorDirectoryQuery.isLoading || !actorSearchIsReady
-												? "Searching identities visible to your account…"
-												: actorDirectoryQuery.isError
-													? "Name lookup is unavailable for your account; enter an exact Actor ID."
-													: actorDirectoryQuery.data?.isPartial
-														? "More than 50 identities match; type more to narrow the results."
-														: actorDirectoryQuery.data?.candidates.length === 0
-															? "No matching identities are visible to your account."
-															: "Choose a unique identity to fill Actor ID."
-									}
-								/>
-							) : null}
-							<AuditPrincipalLookup
-								idPrefix="audit-initiator"
-								label="Find initiator"
-								value={initiatorSearch}
-								candidates={initiatorCandidateOptions}
-								onChange={updateInitiatorSearch}
-								onSelect={(candidate) => {
-									setInitiatorSearch(auditActorCandidateInputValue(candidate));
-									patchDraft("initiatorUserId", String(candidate.id));
-								}}
-								placeholder="User or service-account name"
-								helperText={
-									initiatorSearchTerm.length < 2
-										? "Search users and service accounts, or enter an exact Initiator ID."
-										: initiatorDirectoryQuery.isLoading ||
-												!initiatorSearchIsReady
-											? "Searching identities visible to your account…"
-											: initiatorDirectoryQuery.isError
-												? "Initiator lookup is unavailable; enter an exact Initiator ID."
-												: initiatorDirectoryQuery.data?.isPartial
-													? "More than 50 identities match; type more to narrow the results."
-													: initiatorDirectoryQuery.data?.unavailableKinds
-																.length
-														? "Some identity types are unavailable for your account; exact Initiator ID always works."
-														: initiatorDirectoryQuery.data?.candidates
-																	.length === 0
-															? "No matching identities are visible to your account."
-															: "Choose a unique identity to fill Initiator ID."
-								}
-							/>
+							<div className="control-field">
+								<label htmlFor="audit-actor-id">Actor ID</label>
+								<div className="audit-id-lookup-control">
+									<input
+										id="audit-actor-id"
+										type="number"
+										min="1"
+										step="1"
+										value={draft.actorUserId}
+										onChange={(event) => {
+											setActorSearch("");
+											patchDraft("actorUserId", event.target.value);
+										}}
+										placeholder="Any actor"
+									/>
+									<AuditPrincipalLookup
+										disabled={!actorDirectoryKind}
+										disabledHint="Choose User or Service account as the actor kind first"
+										idPrefix="audit-actor"
+										label="Find actor"
+										value={actorSearch}
+										candidates={actorCandidateOptions}
+										onChange={updateActorSearch}
+										onSelect={(candidate) => {
+											setActorSearch(auditActorCandidateInputValue(candidate));
+											patchDraft("actorUserId", String(candidate.id));
+										}}
+										placeholder={
+											actorDirectoryKind === "user"
+												? "User name"
+												: "Service-account name"
+										}
+										helperText={
+											actorSearchTerm.length < 2
+												? "Type at least two characters; exact Actor ID always works."
+												: actorDirectoryQuery.isLoading || !actorSearchIsReady
+													? "Searching identities visible to your account…"
+													: actorDirectoryQuery.isError
+														? "Name lookup is unavailable for your account; enter an exact Actor ID."
+														: actorDirectoryQuery.data?.isPartial
+															? "More than 50 identities match; type more to narrow the results."
+															: actorDirectoryQuery.data?.candidates.length ===
+																	0
+																? "No matching identities are visible to your account."
+																: "Choose a unique identity to fill Actor ID."
+										}
+									/>
+								</div>
+							</div>
+							<div className="control-field">
+								<label htmlFor="audit-initiator-id">Initiator ID</label>
+								<div className="audit-id-lookup-control">
+									<input
+										id="audit-initiator-id"
+										type="number"
+										min="1"
+										step="1"
+										value={draft.initiatorUserId}
+										onChange={(event) => {
+											setInitiatorSearch("");
+											patchDraft("initiatorUserId", event.target.value);
+										}}
+										placeholder="Any initiator"
+									/>
+									<AuditPrincipalLookup
+										idPrefix="audit-initiator"
+										label="Find initiator"
+										value={initiatorSearch}
+										candidates={initiatorCandidateOptions}
+										onChange={updateInitiatorSearch}
+										onSelect={(candidate) => {
+											setInitiatorSearch(
+												auditActorCandidateInputValue(candidate),
+											);
+											patchDraft("initiatorUserId", String(candidate.id));
+										}}
+										placeholder="User or service-account name"
+										helperText={
+											initiatorSearchTerm.length < 2
+												? "Search users and service accounts, or enter an exact Initiator ID."
+												: initiatorDirectoryQuery.isLoading ||
+														!initiatorSearchIsReady
+													? "Searching identities visible to your account…"
+													: initiatorDirectoryQuery.isError
+														? "Initiator lookup is unavailable; enter an exact Initiator ID."
+														: initiatorDirectoryQuery.data?.isPartial
+															? "More than 50 identities match; type more to narrow the results."
+															: initiatorDirectoryQuery.data?.unavailableKinds
+																		.length
+																? "Some identity types are unavailable for your account; exact Initiator ID always works."
+																: initiatorDirectoryQuery.data?.candidates
+																			.length === 0
+																	? "No matching identities are visible to your account."
+																	: "Choose a unique identity to fill Initiator ID."
+										}
+									/>
+								</div>
+							</div>
 						</div>
 					</fieldset>
 

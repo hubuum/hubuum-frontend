@@ -8571,28 +8571,83 @@ button.token-revoke-button {
 	max-width: none;
 }
 
-.audit-search-lookup {
-	grid-column: 1 / -1;
+.audit-id-lookup-control {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: stretch;
+	gap: 0.4rem;
 }
 
-.audit-search-lookup small {
+.audit-search-lookup {
+	position: relative;
+	min-width: 0;
+}
+
+button.audit-search-trigger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.38rem;
+	height: 100%;
+	min-height: var(--single-line-control-height);
+	padding: 0.65rem 0.7rem;
+	white-space: nowrap;
+}
+
+button.audit-search-trigger svg {
+	width: 1rem;
+	height: 1rem;
+	flex: 0 0 auto;
+}
+
+.audit-search-popover {
+	position: absolute;
+	top: calc(100% + 0.4rem);
+	right: 0;
+	z-index: 70;
+	display: grid;
+	gap: 0.55rem;
+	width: min(28rem, calc(100vw - 34px));
+	padding: 0.75rem;
+	color: var(--ink);
+	box-shadow: var(--shadow-float);
+}
+
+.audit-search-popover-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.audit-search-popover-header button {
+	padding: 0.32rem 0.5rem;
+}
+
+.audit-search-popover > label {
+	font-size: 0.78rem;
+}
+
+.audit-search-popover small {
 	font-size: 0.76rem;
 	line-height: 1.35;
 }
 
 .audit-search-combobox {
-	position: relative;
+	display: grid;
+	gap: 0.35rem;
+}
+
+.audit-search-combobox > input {
+	width: 100%;
+	min-width: 0;
 }
 
 .audit-search-options {
-	position: absolute;
-	top: calc(100% + 0.35rem);
-	left: 0;
-	z-index: 30;
 	display: grid;
 	gap: 0.2rem;
 	width: 100%;
-	max-height: 18rem;
+	max-height: 15rem;
 	margin: 0;
 	padding: 0.35rem;
 	overflow-y: auto;

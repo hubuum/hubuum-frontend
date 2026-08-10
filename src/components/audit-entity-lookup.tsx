@@ -9,6 +9,8 @@ import type { AuditEntityCandidate } from "@/lib/audit-entity-options";
 
 type AuditEntityLookupProps = {
 	candidates: readonly AuditEntityCandidate[];
+	disabled?: boolean;
+	disabledHint?: string;
 	helperText: ReactNode;
 	onChange: (value: string) => void;
 	onSelect: (candidate: AuditEntityCandidate) => void;
@@ -22,6 +24,8 @@ function entityKindLabel(candidate: AuditEntityCandidate): string {
 
 export function AuditEntityLookup({
 	candidates,
+	disabled,
+	disabledHint,
 	helperText,
 	onChange,
 	onSelect,
@@ -44,7 +48,10 @@ export function AuditEntityLookup({
 
 	return (
 		<AuditSearchLookup
+			disabled={disabled}
+			disabledHint={disabledHint}
 			idPrefix="audit-entity"
+			inputLabel="Name"
 			label="Find entity"
 			value={value}
 			options={options}

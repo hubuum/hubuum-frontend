@@ -1,6 +1,13 @@
 "use client";
 
-import { type KeyboardEvent, type ReactNode, useEffect, useState } from "react";
+import {
+	type KeyboardEvent,
+	type ReactNode,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
+import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 export type AuditSearchOption<T> = {
 	id: string;
@@ -11,8 +18,11 @@ export type AuditSearchOption<T> = {
 };
 
 type AuditSearchLookupProps<T> = {
+	disabled?: boolean;
+	disabledHint?: string;
 	helperText: ReactNode;
 	idPrefix: string;
+	inputLabel: string;
 	label: string;
 	onChange: (value: string) => void;
 	onSelect: (item: T) => void;
@@ -21,9 +31,23 @@ type AuditSearchLookupProps<T> = {
 	value: string;
 };
 
+function IconSearch() {
+	return (
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.42-1.42-4.44-4.43A6.5 6.5 0 0 0 10.5 4m0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
 export function AuditSearchLookup<T>({
+	disabled = false,
+	disabledHint,
 	helperText,
 	idPrefix,
+	inputLabel,
 	label,
 	onChange,
 	onSelect,
@@ -31,6 +55,9 @@ export function AuditSearchLookup<T>({
 	placeholder,
 	value,
 }: AuditSearchLookupProps<T>) {
+	const rootRef = useRef<HTMLDivElement | null>(null);
+	const triggerRef = useRef<HTMLButtonElement | null>(null);
+	const inputRef = useRef<HTMLInputElement | null>(null);
 	const [open, setOpen] = useState(false);
 	const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
 	const activeOption = options[activeOptionIndex];
@@ -38,28 +65,26 @@ export function AuditSearchLookup<T>({
 	const inputId = `${idPrefix}-search`;
 	const listboxId = `${idPrefix}-options`;
 	const helperId = `${idPrefix}-lookup-hint`;
+	const popoverId = `${idPrefix}-popover`;
 
 	function optionId(option: AuditSearchOption<T>): string {
 		return `${idPrefix}-option-${option.id}`;
 	}
 
-	function close() {
+	function close(restoreFocus = false) {
 		setOpen(false);
 		setActiveOptionIndex(-1);
+		if (restoreFocus) {
+			window.setTimeout(() => triggerRef.current?.focus(), 0);
+		}
 	}
 
 	function select(option: AuditSearchOption<T>) {
 		onSelect(option.item);
-		close();
+		close(true);
 	}
 
 	function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-		if (event.key === "Escape" && open) {
-			event.preventDefault();
-			close();
-			return;
-		}
-
 		if (!options.length) return;
 
 		if (event.key === "ArrowDown") {
@@ -80,18 +105,40 @@ export function AuditSearchLookup<T>({
 			return;
 		}
 
-		if (event.key === "Enter" && listboxOpen && activeOption) {
+		if (event.key === "Enter") {
 			event.preventDefault();
-			select(activeOption);
+			if (listboxOpen && activeOption) select(activeOption);
 		}
 	}
 
+	useEscapeToCancel({
+		enabled: open,
+		onCancel: () => close(true),
+	});
+
 	useEffect(() => {
-		if (!value) {
+		if (!open) return;
+		const onPointerDown = (event: PointerEvent) => {
+			if (!rootRef.current?.contains(event.target as Node)) {
+				setOpen(false);
+				setActiveOptionIndex(-1);
+			}
+		};
+		window.addEventListener("pointerdown", onPointerDown);
+		return () => window.removeEventListener("pointerdown", onPointerDown);
+	}, [open]);
+
+	useEffect(() => {
+		if (!open) return;
+		window.setTimeout(() => inputRef.current?.focus(), 0);
+	}, [open]);
+
+	useEffect(() => {
+		if (disabled && open) {
 			setOpen(false);
 			setActiveOptionIndex(-1);
 		}
-	}, [value]);
+	}, [disabled, open]);
 
 	useEffect(() => {
 		if (!listboxOpen || !activeOption) return;
@@ -101,67 +148,96 @@ export function AuditSearchLookup<T>({
 	}, [activeOption, idPrefix, listboxOpen]);
 
 	return (
-		<div className="control-field audit-search-lookup">
-			<label htmlFor={inputId}>{label}</label>
-			<div className="audit-search-combobox">
-				<input
-					id={inputId}
-					type="search"
-					role="combobox"
-					value={value}
-					onChange={(event) => {
+		<div className="audit-search-lookup" ref={rootRef}>
+			<button
+				ref={triggerRef}
+				type="button"
+				className="ghost audit-search-trigger"
+				disabled={disabled}
+				aria-label={label}
+				aria-expanded={open}
+				aria-controls={open ? popoverId : undefined}
+				title={disabled ? disabledHint : label}
+				onClick={() => {
+					if (open) {
+						close();
+					} else {
 						setOpen(true);
-						setActiveOptionIndex(-1);
-						onChange(event.target.value);
-					}}
-					onFocus={() => setOpen(true)}
-					onBlur={close}
-					onKeyDown={onKeyDown}
-					placeholder={placeholder}
-					autoComplete="off"
-					aria-autocomplete="list"
-					aria-controls={listboxOpen ? listboxId : undefined}
-					aria-describedby={helperId}
-					aria-expanded={listboxOpen}
-					aria-activedescendant={
-						listboxOpen && activeOption ? optionId(activeOption) : undefined
 					}
-				/>
-				{listboxOpen ? (
-					<div
-						id={listboxId}
-						className="audit-search-options"
-						role="listbox"
-						aria-label={`${label} search results`}
-					>
-						{options.map((option, index) => (
-							<button
-								key={option.id}
-								id={optionId(option)}
-								type="button"
-								role="option"
-								className="audit-search-option"
-								aria-selected={index === activeOptionIndex}
-								tabIndex={-1}
-								title={option.title}
-								onMouseEnter={() => setActiveOptionIndex(index)}
-								onMouseDown={(event) => event.preventDefault()}
-								onClick={() => select(option)}
-							>
-								<span className="audit-search-option-name">
-									{option.primary}
-								</span>
-								<span className="audit-search-option-detail">
-									{option.secondary}
-								</span>
-							</button>
-						))}
+				}}
+			>
+				<IconSearch />
+				<span>Find</span>
+			</button>
+			{open ? (
+				<div id={popoverId} className="card audit-search-popover">
+					<div className="audit-search-popover-header">
+						<strong>{label}</strong>
+						<button type="button" className="ghost" onClick={() => close(true)}>
+							Close
+						</button>
 					</div>
-				) : null}
-			</div>
-			<small id={helperId} className="muted" aria-live="polite">
-				{helperText}
-			</small>
+					<label htmlFor={inputId}>{inputLabel}</label>
+					<div className="audit-search-combobox">
+						<input
+							ref={inputRef}
+							id={inputId}
+							type="search"
+							role="combobox"
+							value={value}
+							onChange={(event) => {
+								setOpen(true);
+								setActiveOptionIndex(-1);
+								onChange(event.target.value);
+							}}
+							onKeyDown={onKeyDown}
+							placeholder={placeholder}
+							autoComplete="off"
+							aria-autocomplete="list"
+							aria-controls={listboxOpen ? listboxId : undefined}
+							aria-describedby={helperId}
+							aria-expanded={listboxOpen}
+							aria-activedescendant={
+								listboxOpen && activeOption ? optionId(activeOption) : undefined
+							}
+						/>
+						{listboxOpen ? (
+							<div
+								id={listboxId}
+								className="audit-search-options"
+								role="listbox"
+								aria-label={`${label} search results`}
+							>
+								{options.map((option, index) => (
+									<button
+										key={option.id}
+										id={optionId(option)}
+										type="button"
+										role="option"
+										className="audit-search-option"
+										aria-selected={index === activeOptionIndex}
+										tabIndex={-1}
+										title={option.title}
+										onMouseEnter={() => setActiveOptionIndex(index)}
+										onMouseDown={(event) => event.preventDefault()}
+										onClick={() => select(option)}
+									>
+										<span className="audit-search-option-name">
+											{option.primary}
+										</span>
+										<span className="audit-search-option-detail">
+											{option.secondary}
+										</span>
+									</button>
+								))}
+							</div>
+						) : null}
+					</div>
+					<small id={helperId} className="muted" aria-live="polite">
+						{helperText}
+					</small>
+				</div>
+			) : null}
 		</div>
 	);
 }
