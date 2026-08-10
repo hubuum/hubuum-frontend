@@ -4,6 +4,7 @@ const COMPACT_TOPBAR_ROUTE_PREFIXES = [
 	"/imports",
 	"/exports",
 	"/tasks",
+	"/admin/events",
 	"/admin/configuration",
 	"/admin/backups",
 	"/audit",
