@@ -42,6 +42,7 @@ import {
 	fetchExportClasses,
 	fetchExportCollections,
 } from "@/lib/api/export-options";
+import type { HubuumClassExpanded } from "@/lib/api/generated/models";
 import {
 	fetchClassDirectory,
 	fetchClassObjectDirectory,
@@ -242,6 +243,8 @@ export function ExportsWorkspace({
 	const [scopeKind, setScopeKind] = useState<ReportScopeKind>("collections");
 	const [classId, setClassId] = useState("");
 	const [classSearch, setClassSearch] = useState("");
+	const [selectedDirectoryClass, setSelectedDirectoryClass] =
+		useState<HubuumClassExpanded | null>(null);
 	const [objectId, setObjectId] = useState("");
 	const [objectSearch, setObjectSearch] = useState("");
 	const [advancedQueryText, setAdvancedQueryText] = useState("");
@@ -327,8 +330,10 @@ export function ExportsWorkspace({
 	const selectedClass = useMemo(
 		() =>
 			classesQuery.data?.find((classItem) => classItem.id === parsedClassId) ??
-			null,
-		[classesQuery.data, parsedClassId],
+			(selectedDirectoryClass?.id === parsedClassId
+				? selectedDirectoryClass
+				: null),
+		[classesQuery.data, parsedClassId, selectedDirectoryClass],
 	);
 	const objectsQuery = useQuery({
 		queryKey: classObjectSamplesQueryKey(parsedClassId),
@@ -821,7 +826,16 @@ export function ExportsWorkspace({
 			),
 		[collectionHierarchy.byId, collectionOptions],
 	);
-	const classOptions = classesQuery.data ?? [];
+	const classOptions = useMemo(() => {
+		const loaded = classesQuery.data ?? [];
+		if (
+			selectedDirectoryClass == null ||
+			loaded.some((classItem) => classItem.id === selectedDirectoryClass.id)
+		) {
+			return loaded;
+		}
+		return [...loaded, selectedDirectoryClass];
+	}, [classesQuery.data, selectedDirectoryClass]);
 	const classLabels = useMemo(
 		() =>
 			new Map(
@@ -1160,6 +1174,7 @@ export function ExportsWorkspace({
 															onChange={(event) => {
 																setClassId(event.target.value);
 																setClassSearch("");
+																setSelectedDirectoryClass(null);
 																setObjectId("");
 																setObjectSearch("");
 															}}
@@ -1187,6 +1202,7 @@ export function ExportsWorkspace({
 															onSelect={(classItem) => {
 																setClassId(String(classItem.id));
 																setClassSearch(classItem.name);
+																setSelectedDirectoryClass(classItem);
 																setObjectId("");
 																setObjectSearch("");
 															}}
