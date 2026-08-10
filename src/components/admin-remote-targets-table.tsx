@@ -22,16 +22,12 @@ import type {
 	Collection,
 	HubuumClassExpanded,
 	NewRemoteTarget,
-	RemoteAuthConfig,
 	RemoteHttpMethod,
 	RemoteTarget,
 	RemoteTargetSubjectType,
 	UpdateRemoteTarget,
 } from "@/lib/api/generated/models";
-import {
-	fetchRemoteTargetsPage,
-	parseJsonObjectInput,
-} from "@/lib/api/remote-targets";
+import { fetchRemoteTargetsPage } from "@/lib/api/remote-targets";
 import {
 	buildCollectionHierarchy,
 	formatCollectionOption,
@@ -41,20 +37,21 @@ import {
 	type OpenCreateEventDetail,
 } from "@/lib/create-events";
 import {
-	assertRemoteTargetHeaderAllowed,
-	validateRemoteTargetHeaders,
-} from "@/lib/remote-target-headers";
+	buildRemoteTargetAuthConfig,
+	buildRemoteTargetPayload,
+	defaultRemoteTargetFormState,
+	formatRemoteTargetSubjectTypes,
+	REMOTE_TARGET_SUBJECT_TYPES,
+	remoteTargetFormStateFromTarget,
+	type RemoteTargetFormState,
+	validateRemoteTargetRequest,
+	validateRemoteTargetScope,
+	validateRemoteTargetTemplates,
+} from "@/lib/remote-target-form";
 import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
 
 const METHODS: RemoteHttpMethod[] = ["get", "post", "patch", "delete"];
-const SUBJECT_TYPES: RemoteTargetSubjectType[] = [
-	"collection",
-	"class",
-	"object",
-	"class_relation",
-	"object_relation",
-];
 
 type FormMode = "create" | "edit";
 
@@ -67,43 +64,6 @@ const REMOTE_TARGET_STEPS = [
 ] as const;
 
 type RemoteTargetStep = (typeof REMOTE_TARGET_STEPS)[number]["id"];
-type RemoteAuthType = RemoteAuthConfig["type"];
-
-type FormState = {
-	allowedSubjectTypes: RemoteTargetSubjectType[];
-	authHeader: string;
-	authSecret: string;
-	authType: RemoteAuthType;
-	authUsername: string;
-	bodyTemplate: string;
-	classId: string;
-	description: string;
-	enabled: boolean;
-	headersTemplateInput: string;
-	method: RemoteHttpMethod;
-	name: string;
-	collectionId: string;
-	timeoutMs: string;
-	urlTemplate: string;
-};
-
-const defaultFormState: FormState = {
-	allowedSubjectTypes: ["object"],
-	authHeader: "X-API-Key",
-	authSecret: "",
-	authType: "none",
-	authUsername: "",
-	bodyTemplate: "",
-	classId: "",
-	description: "",
-	enabled: true,
-	headersTemplateInput: "{}",
-	method: "post",
-	name: "",
-	collectionId: "",
-	timeoutMs: "5000",
-	urlTemplate: "https://example.com/{{ object.id }}",
-};
 
 async function fetchCollections(): Promise<Collection[]> {
 	const response = await getApiV1Collections(
@@ -146,142 +106,6 @@ function formatTimestamp(value: string): string {
 	return parsed.toLocaleString();
 }
 
-function stringifyJson(value: unknown): string {
-	return JSON.stringify(value ?? {}, null, 2) ?? "{}";
-}
-
-function formStateFromTarget(target: RemoteTarget): FormState {
-	const authConfig = target.auth_config;
-	return {
-		allowedSubjectTypes: [target.allowed_subject_types[0] ?? "object"],
-		authHeader: "header" in authConfig ? authConfig.header : "X-API-Key",
-		authSecret: "secret" in authConfig ? authConfig.secret : "",
-		authType: authConfig.type,
-		authUsername: "username" in authConfig ? authConfig.username : "",
-		bodyTemplate: target.body_template ?? "",
-		classId: target.class_id == null ? "" : String(target.class_id),
-		description: target.description,
-		enabled: target.enabled,
-		headersTemplateInput: stringifyJson(target.headers_template),
-		method: target.method,
-		name: target.name,
-		collectionId: String(target.collection_id),
-		timeoutMs: String(target.timeout_ms),
-		urlTemplate: target.url_template,
-	};
-}
-
-function buildAuthConfig(state: FormState): RemoteAuthConfig {
-	if (state.authType === "none") return { type: "none" };
-
-	const secret = state.authSecret.trim();
-	if (!secret) throw new Error("Secret reference is required.");
-	if (state.authType === "bearer_secret") {
-		return { type: "bearer_secret", secret };
-	}
-	if (state.authType === "basic_secret") {
-		const username = state.authUsername.trim();
-		if (!username)
-			throw new Error("Basic authentication username is required.");
-		return { type: "basic_secret", secret, username };
-	}
-
-	const header = state.authHeader.trim();
-	if (!header) throw new Error("API key header is required.");
-	assertRemoteTargetHeaderAllowed(header, "API key authentication");
-	return { type: "api_key_secret", header, secret };
-}
-
-function validateScope(state: FormState): void {
-	const collectionId = Number.parseInt(state.collectionId, 10);
-	if (!Number.isFinite(collectionId) || collectionId < 1) {
-		throw new Error("Collection is required.");
-	}
-	if (state.allowedSubjectTypes.length !== 1) {
-		throw new Error("Select one subject type.");
-	}
-	const classIdText = state.classId.trim();
-	if (state.allowedSubjectTypes[0] === "object") {
-		const classId = Number.parseInt(classIdText, 10);
-		if (!Number.isFinite(classId) || classId < 1) {
-			throw new Error("Class scope is required for object targets.");
-		}
-	} else if (classIdText) {
-		throw new Error("Class scope is only valid for object targets.");
-	}
-}
-
-function validateRequest(state: FormState): void {
-	if (!state.name.trim()) throw new Error("Name is required.");
-	if (!state.description.trim()) throw new Error("Description is required.");
-	if (!state.urlTemplate.trim()) throw new Error("URL template is required.");
-	if (state.timeoutMs.trim()) {
-		const timeoutMs = Number.parseInt(state.timeoutMs, 10);
-		if (!Number.isFinite(timeoutMs) || timeoutMs < 1) {
-			throw new Error("Timeout must be a positive integer.");
-		}
-	}
-}
-
-function validateTemplates(state: FormState): void {
-	const headers = parseJsonObjectInput(
-		state.headersTemplateInput,
-		"Headers template",
-	);
-	validateRemoteTargetHeaders(headers);
-}
-
-function buildPayload(state: FormState): NewRemoteTarget {
-	validateScope(state);
-	validateRequest(state);
-	validateTemplates(state);
-	const collectionId = Number.parseInt(state.collectionId, 10);
-	const name = state.name.trim();
-	const description = state.description.trim();
-	const urlTemplate = state.urlTemplate.trim();
-	const subjectType = state.allowedSubjectTypes[0];
-	const classIdText = state.classId.trim();
-	let classId: number | null = null;
-	if (subjectType === "object") {
-		classId = Number.parseInt(classIdText, 10);
-	}
-
-	const headersTemplate = parseJsonObjectInput(
-		state.headersTemplateInput,
-		"Headers template",
-	);
-	validateRemoteTargetHeaders(headersTemplate);
-	const authConfig = buildAuthConfig(state);
-
-	const payload: NewRemoteTarget = {
-		allowed_subject_types: state.allowedSubjectTypes,
-		auth_config: authConfig,
-		description,
-		enabled: state.enabled,
-		headers_template: headersTemplate,
-		method: state.method,
-		name,
-		collection_id: collectionId,
-		url_template: urlTemplate,
-	};
-	payload.class_id = classId;
-
-	const bodyTemplate = state.bodyTemplate.trim();
-	if (bodyTemplate) {
-		payload.body_template = bodyTemplate;
-	} else {
-		payload.body_template = null;
-	}
-
-	const timeoutText = state.timeoutMs.trim();
-	if (timeoutText) {
-		const timeoutMs = Number.parseInt(timeoutText, 10);
-		payload.timeout_ms = timeoutMs;
-	}
-
-	return payload;
-}
-
 export function AdminRemoteTargetsTable() {
 	const queryClient = useQueryClient();
 	const [targets, setTargets] = useState<RemoteTarget[]>([]);
@@ -293,7 +117,9 @@ export function AdminRemoteTargetsTable() {
 	const [isModalOpen, setModalOpen] = useState(false);
 	const [formMode, setFormMode] = useState<FormMode>("create");
 	const [editingTarget, setEditingTarget] = useState<RemoteTarget | null>(null);
-	const [formState, setFormState] = useState<FormState>(defaultFormState);
+	const [formState, setFormState] = useState<RemoteTargetFormState>(
+		defaultRemoteTargetFormState,
+	);
 	const [activeStep, setActiveStep] = useState<RemoteTargetStep>("scope");
 
 	const collectionsQuery = useQuery({
@@ -559,17 +385,20 @@ export function AdminRemoteTargetsTable() {
 	);
 
 	const resourceSummary = buildResourceSummary({
-			shown: search.trim() ? visibleTargets.length : null,
-			loaded: targets.length,
-			details: nextCursor ? ["more available"] : [],
-		});
+		shown: search.trim() ? visibleTargets.length : null,
+		loaded: targets.length,
+		details: nextCursor ? ["more available"] : [],
+	});
 
 	function openCreateModal() {
 		setFormMode("create");
 		setEditingTarget(null);
 		setFormError(null);
 		setFormState({
-			...defaultFormState,
+			...defaultRemoteTargetFormState,
+			allowedSubjectTypes: [
+				...defaultRemoteTargetFormState.allowedSubjectTypes,
+			],
 			collectionId:
 				collectionsQuery.data?.length === 1
 					? String(collectionsQuery.data[0].id)
@@ -583,23 +412,32 @@ export function AdminRemoteTargetsTable() {
 		setFormMode("edit");
 		setEditingTarget(target);
 		setFormError(null);
-		setFormState(formStateFromTarget(target));
+		setFormState(remoteTargetFormStateFromTarget(target));
 		setActiveStep("scope");
 		setModalOpen(true);
 	}
 
-	function selectSubjectType(subjectType: RemoteTargetSubjectType) {
+	function toggleSubjectType(
+		subjectType: RemoteTargetSubjectType,
+		checked: boolean,
+	) {
 		setFormError(null);
 		setFormState((current) => {
+			const allowedSubjectTypes = checked
+				? current.allowedSubjectTypes.includes(subjectType)
+					? current.allowedSubjectTypes
+					: [...current.allowedSubjectTypes, subjectType]
+				: current.allowedSubjectTypes.filter((item) => item !== subjectType);
+
 			return {
 				...current,
-				allowedSubjectTypes: [subjectType],
-				classId: subjectType === "object" ? current.classId : "",
+				allowedSubjectTypes,
+				classId: subjectType === "object" && !checked ? "" : current.classId,
 			};
 		});
 	}
 
-	function patchFormState(patch: Partial<FormState>) {
+	function patchFormState(patch: Partial<RemoteTargetFormState>) {
 		setFormState((current) => ({ ...current, ...patch }));
 		setFormError(null);
 	}
@@ -607,8 +445,8 @@ export function AdminRemoteTargetsTable() {
 	function getStepError(step: RemoteTargetStep): string | null {
 		try {
 			if (step === "scope") {
-				validateScope(formState);
-				if (formState.allowedSubjectTypes[0] === "object") {
+				validateRemoteTargetScope(formState);
+				if (formState.allowedSubjectTypes.includes("object")) {
 					const classId = Number.parseInt(formState.classId, 10);
 					const collectionId = Number.parseInt(formState.collectionId, 10);
 					const selectedClass = classesById.get(classId);
@@ -621,18 +459,18 @@ export function AdminRemoteTargetsTable() {
 				return null;
 			}
 			if (step === "request") {
-				validateRequest(formState);
+				validateRemoteTargetRequest(formState);
 				return null;
 			}
 			if (step === "templates") {
-				validateTemplates(formState);
+				validateRemoteTargetTemplates(formState);
 				return null;
 			}
 			if (step === "authentication") {
-				buildAuthConfig(formState);
+				buildRemoteTargetAuthConfig(formState);
 				return null;
 			}
-			buildPayload(formState);
+			buildRemoteTargetPayload(formState);
 			return null;
 		} catch (error) {
 			return error instanceof Error ? error.message : "Invalid remote target.";
@@ -652,7 +490,7 @@ export function AdminRemoteTargetsTable() {
 
 		let payload: NewRemoteTarget;
 		try {
-			payload = buildPayload(formState);
+			payload = buildRemoteTargetPayload(formState);
 			if (payload.class_id != null) {
 				const selectedClass = classesById.get(payload.class_id);
 				if (
@@ -706,7 +544,10 @@ export function AdminRemoteTargetsTable() {
 			(step.id === "authentication" && templatesReady) ||
 			(step.id === "review" && authenticationReady),
 	}));
-	const selectedSubjectType = formState.allowedSubjectTypes[0];
+	const allowsObjects = formState.allowedSubjectTypes.includes("object");
+	const selectedSubjectTypes = formatRemoteTargetSubjectTypes(
+		formState.allowedSubjectTypes,
+	);
 	const selectedCollection = collectionsById.get(
 		Number.parseInt(formState.collectionId, 10),
 	);
@@ -789,24 +630,29 @@ export function AdminRemoteTargetsTable() {
 								</label>
 							</div>
 							<fieldset className="remote-subject-section">
-								<legend>Subject type</legend>
+								<legend>Subject types</legend>
 								<div className="remote-subject-options">
-									{SUBJECT_TYPES.map((subjectType) => (
+									{REMOTE_TARGET_SUBJECT_TYPES.map((subjectType) => (
 										<label key={subjectType} className="remote-subject-option">
 											<input
-												type="radio"
+												type="checkbox"
 												name="remote-target-subject-type"
 												checked={formState.allowedSubjectTypes.includes(
 													subjectType,
 												)}
-												onChange={() => selectSubjectType(subjectType)}
+												onChange={(event) =>
+													toggleSubjectType(subjectType, event.target.checked)
+												}
 											/>
 											<span>{subjectType.replaceAll("_", " ")}</span>
 										</label>
 									))}
 								</div>
+								<span className="field-note">
+									Select every subject that can invoke this target.
+								</span>
 							</fieldset>
-							{selectedSubjectType === "object" ? (
+							{allowsObjects ? (
 								<label
 									className="control-field control-field--wide"
 									htmlFor="remote-target-class"
@@ -854,11 +700,11 @@ export function AdminRemoteTargetsTable() {
 								disabled={!scopeReady}
 								nextLabel="Request"
 								onContinue={() => continueFrom("scope", "request")}
-								summary={`${selectedCollection?.name ?? "Choose a collection"} · ${selectedSubjectType?.replaceAll("_", " ") ?? "choose a subject"}${selectedClass ? ` · ${selectedClass.name}` : ""}`}
+								summary={`${selectedCollection?.name ?? "Choose a collection"} · ${selectedSubjectTypes || "choose at least one subject"}${selectedClass ? ` · ${selectedClass.name}` : ""}`}
 								title={
 									scopeReady
 										? "Scope ready"
-										: "Choose where and for which subject this target is available"
+										: "Choose where and for which subjects this target is available"
 								}
 							/>
 						</GuidedFlowPanel>
@@ -1086,9 +932,9 @@ export function AdminRemoteTargetsTable() {
 									</dd>
 								</div>
 								<div>
-									<dt>Subject</dt>
+									<dt>Subjects</dt>
 									<dd>
-										{selectedSubjectType?.replaceAll("_", " ")}
+										{selectedSubjectTypes || "None selected"}
 										{selectedClass ? ` · ${selectedClass.name}` : ""}
 									</dd>
 								</div>
