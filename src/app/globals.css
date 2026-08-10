@@ -8571,13 +8571,73 @@ button.token-revoke-button {
 	max-width: none;
 }
 
-.audit-actor-lookup {
+.audit-search-lookup {
 	grid-column: 1 / -1;
 }
 
-.audit-actor-lookup small {
+.audit-search-lookup small {
 	font-size: 0.76rem;
 	line-height: 1.35;
+}
+
+.audit-search-combobox {
+	position: relative;
+}
+
+.audit-search-options {
+	position: absolute;
+	top: calc(100% + 0.35rem);
+	left: 0;
+	z-index: 30;
+	display: grid;
+	gap: 0.2rem;
+	width: 100%;
+	max-height: 18rem;
+	margin: 0;
+	padding: 0.35rem;
+	overflow-y: auto;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--card);
+	box-shadow: var(--shadow-float);
+	color: var(--ink);
+}
+
+button.audit-search-option {
+	display: grid;
+	gap: 0.08rem;
+	width: 100%;
+	padding: 0.55rem 0.65rem;
+	border: 1px solid transparent;
+	border-radius: 9px;
+	background: var(--card);
+	color: var(--ink);
+	text-align: left;
+}
+
+button.audit-search-option:hover,
+button.audit-search-option[aria-selected="true"] {
+	filter: none;
+	border-color: color-mix(in oklab, var(--accent) 36%, var(--line));
+	background: var(--accent-soft);
+	color: var(--ink);
+}
+
+.audit-search-option-name,
+.audit-search-option-detail {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.audit-search-option-name {
+	font-weight: 700;
+}
+
+.audit-search-option-detail {
+	color: var(--muted);
+	font-size: 0.78rem;
+	font-weight: 520;
 }
 
 .audit-filter-fields input,
@@ -8693,9 +8753,9 @@ button.audit-drilldown-button {
 	width: 100%;
 	min-width: 0;
 	max-width: 20rem;
-	margin: -0.3rem;
-	padding: 0.3rem;
-	border: 1px solid transparent;
+	margin: -0.3rem 0;
+	padding: 0.3rem 0;
+	border: 0;
 	border-radius: 9px;
 	background: transparent;
 	color: inherit;
@@ -8710,9 +8770,14 @@ button.audit-drilldown-button {
 button.audit-drilldown-button:hover,
 button.audit-drilldown-button:focus-visible {
 	filter: none;
-	border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
 	background: var(--accent-soft);
 	color: var(--accent-strong);
+}
+
+button.audit-drilldown-button:focus-visible {
+	box-shadow: inset 0 0 0 2px
+		color-mix(in oklab, var(--accent) 55%, var(--line));
+	outline: none;
 }
 
 .audit-cell-primary {

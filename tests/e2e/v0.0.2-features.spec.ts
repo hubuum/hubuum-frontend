@@ -204,6 +204,31 @@ test.describe("v0.0.3 server features", () => {
 			).toContainText(collectionName);
 
 			await page
+				.getByRole("combobox", { name: "Entity type" })
+				.selectOption("collection");
+			const entityLookup = page.getByLabel("Find entity", { exact: true });
+			const entityLookupRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/search") &&
+					url.searchParams.get("q") === collectionName &&
+					url.searchParams.get("kinds") === "collection"
+				);
+			});
+			await entityLookup.fill(collectionName);
+			await entityLookupRequest;
+			const entityResults = page.getByRole("listbox", {
+				name: "Find entity search results",
+			});
+			await expect(entityResults).toBeVisible();
+			await entityLookup.press("ArrowDown");
+			await entityLookup.press("Enter");
+			await expect(entityResults).toBeHidden();
+			await expect(
+				page.getByRole("spinbutton", { name: "Entity ID" }),
+			).toHaveValue(String(collection.id));
+
+			await page
 				.getByRole("combobox", { name: "Actor kind" })
 				.selectOption("user");
 			const actorLookup = page.getByLabel("Find actor", { exact: true });
@@ -217,9 +242,40 @@ test.describe("v0.0.3 server features", () => {
 			});
 			await actorLookup.fill(username ?? "admin");
 			await userLookupRequest;
-			await expect(page.getByRole("spinbutton", { name: "Actor ID" })).toHaveValue(
-				/\d+/,
+			const actorResults = page.getByRole("listbox", {
+				name: "Actor search results",
+			});
+			await expect(actorResults).toBeVisible();
+			await actorLookup.press("ArrowDown");
+			const activeActorOption = actorResults
+				.getByRole("option")
+				.filter({ hasText: username ?? "admin" })
+				.first();
+			await expect(activeActorOption).toHaveAttribute("aria-selected", "true");
+			const activeActorColors = await activeActorOption.evaluate((element) => {
+				const style = getComputedStyle(element);
+				return {
+					background: style.backgroundColor,
+					foreground: style.color,
+				};
+			});
+			expect(activeActorColors.background).not.toBe("rgba(0, 0, 0, 0)");
+			expect(activeActorColors.background).not.toBe(
+				activeActorColors.foreground,
 			);
+			const lookupAccessibility = await new AxeBuilder({ page })
+				.include(".audit-filter-card")
+				.analyze();
+			expect(
+				lookupAccessibility.violations.filter((violation) =>
+					["serious", "critical"].includes(violation.impact ?? ""),
+				),
+			).toEqual([]);
+			await actorLookup.press("Enter");
+			await expect(actorResults).toBeHidden();
+			await expect(
+				page.getByRole("spinbutton", { name: "Actor ID" }),
+			).toHaveValue(/\d+/);
 
 			await page
 				.getByRole("combobox", { name: "Actor kind" })
@@ -233,9 +289,42 @@ test.describe("v0.0.3 server features", () => {
 			});
 			await actorLookup.fill(serviceAccountName);
 			await serviceAccountLookupRequest;
-			await expect(page.getByRole("spinbutton", { name: "Actor ID" })).toHaveValue(
-				String(serviceAccount.id),
-			);
+			await expect(
+				page.getByRole("spinbutton", { name: "Actor ID" }),
+			).toHaveValue(String(serviceAccount.id));
+
+			const initiatorLookup = page.getByLabel("Find initiator", {
+				exact: true,
+			});
+			const initiatorUserRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/iam/users") &&
+					url.searchParams.get("name__icontains") === (username ?? "admin")
+				);
+			});
+			const initiatorServiceAccountRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/iam/service-accounts") &&
+					url.searchParams.get("name__icontains") === (username ?? "admin")
+				);
+			});
+			await initiatorLookup.fill(username ?? "admin");
+			await Promise.all([initiatorUserRequest, initiatorServiceAccountRequest]);
+			const initiatorResults = page.getByRole("listbox", {
+				name: "Find initiator search results",
+			});
+			await expect(initiatorResults).toBeVisible();
+			await initiatorResults
+				.getByRole("option")
+				.filter({ hasText: username ?? "admin" })
+				.first()
+				.click();
+			await expect(initiatorResults).toBeHidden();
+			await expect(
+				page.getByRole("spinbutton", { name: "Initiator ID" }),
+			).toHaveValue(/\d+/);
 
 			let auditRow = page.locator("tbody tr").filter({
 				hasText: collectionName,
@@ -247,6 +336,28 @@ test.describe("v0.0.3 server features", () => {
 			const action = (await actionDrilldown.textContent())?.trim();
 			if (!action) {
 				throw new Error("Audit event action was not visible for drill-down.");
+			}
+			const actionDrilldownStyle = await actionDrilldown.evaluate((element) => {
+				const style = getComputedStyle(element);
+				return {
+					marginLeft: style.marginLeft,
+					paddingLeft: style.paddingLeft,
+				};
+			});
+			expect(actionDrilldownStyle).toEqual({
+				marginLeft: "0px",
+				paddingLeft: "0px",
+			});
+			const actionDrilldownBox = await actionDrilldown.boundingBox();
+			const actionCellBox = await actionDrilldown
+				.locator("xpath=..")
+				.boundingBox();
+			expect(actionDrilldownBox).not.toBeNull();
+			expect(actionCellBox).not.toBeNull();
+			if (actionDrilldownBox && actionCellBox) {
+				expect(
+					actionDrilldownBox.x + actionDrilldownBox.width,
+				).toBeLessThanOrEqual(actionCellBox.x + actionCellBox.width);
 			}
 			await actionDrilldown.click();
 			await expect(
@@ -289,9 +400,7 @@ test.describe("v0.0.3 server features", () => {
 					{
 						headers: {
 							Origin: new URL(page.url()).origin,
-							...(serviceAccountEtag
-								? { "If-Match": serviceAccountEtag }
-								: {}),
+							...(serviceAccountEtag ? { "If-Match": serviceAccountEtag } : {}),
 						},
 					},
 				);

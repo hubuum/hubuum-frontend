@@ -1,16 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-	FormEvent,
-	type ReactNode,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { AuditEntityLookup } from "@/components/audit-entity-lookup";
+import { AuditPrincipalLookup } from "@/components/audit-principal-lookup";
 import { EventDetailsModal } from "@/components/event-details-modal";
 import { TableExportMenu } from "@/components/table-export-menu";
-import { fetchAuditActorDirectory } from "@/lib/api/audit-actors";
+import {
+	fetchAuditActorDirectory,
+	fetchAuditInitiatorDirectory,
+} from "@/lib/api/audit-actors";
+import { fetchAuditEntityDirectory } from "@/lib/api/audit-entities";
 import {
 	fetchAuditCollections,
 	fetchEventsPage,
@@ -20,11 +20,15 @@ import type { Collection } from "@/lib/api/generated/models";
 import {
 	auditActorCandidateInputValue,
 	auditActorCandidateMatches,
-	formatAuditActorCandidate,
 	getAuditActorSearchTerm,
 	isAuditActorDirectoryKind,
 	resolveAuditActorCandidate,
 } from "@/lib/audit-actor-options";
+import {
+	auditEntityCandidateMatches,
+	isAuditEntityDirectoryKind,
+	resolveAuditEntityCandidate,
+} from "@/lib/audit-entity-options";
 import {
 	type AuditDrilldownDimension,
 	type AuditFilterDraft,
@@ -262,7 +266,9 @@ function DrilldownButton({
 
 export function AuditWorkspace() {
 	const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
+	const [entitySearch, setEntitySearch] = useState("");
 	const [actorSearch, setActorSearch] = useState("");
+	const [initiatorSearch, setInitiatorSearch] = useState("");
 	const [cursor, setCursor] = useState("");
 	const [draft, setDraft] = useState<AuditFilterDraft>(
 		EMPTY_AUDIT_FILTER_DRAFT,
@@ -287,14 +293,52 @@ export function AuditWorkspace() {
 		queryKey: ["collections", "audit-workspace"],
 		queryFn: fetchAuditCollections,
 	});
+	const entityDirectoryKind = isAuditEntityDirectoryKind(draft.entityType)
+		? draft.entityType
+		: null;
+	const entitySearchTerm = entitySearch.trim();
+	const debouncedEntitySearchTerm = useDebouncedValue(entitySearchTerm, 300);
+	const entitySearchIsReady =
+		entitySearchTerm.length >= 2 &&
+		debouncedEntitySearchTerm === entitySearchTerm;
+	const entityDirectoryQuery = useQuery({
+		queryKey: [
+			"audit-entity-directory",
+			entityDirectoryKind,
+			debouncedEntitySearchTerm,
+		],
+		queryFn: () => {
+			if (!entityDirectoryKind) {
+				throw new Error("Choose a searchable entity type first.");
+			}
+			return fetchAuditEntityDirectory(
+				entityDirectoryKind,
+				debouncedEntitySearchTerm,
+			);
+		},
+		enabled: entityDirectoryKind !== null && entitySearchIsReady,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
+	useEffect(() => {
+		const candidate = resolveAuditEntityCandidate(
+			entitySearch,
+			entityDirectoryQuery.data?.candidates ?? [],
+		);
+		if (!candidate) return;
+
+		setDraft((current) => {
+			const entityId = String(candidate.id);
+			return current.entityId === entityId ? current : { ...current, entityId };
+		});
+	}, [entityDirectoryQuery.data?.candidates, entitySearch]);
 	const actorDirectoryKind = isAuditActorDirectoryKind(draft.actorKind)
 		? draft.actorKind
 		: null;
 	const actorSearchTerm = getAuditActorSearchTerm(actorSearch);
 	const debouncedActorSearchTerm = useDebouncedValue(actorSearchTerm, 300);
 	const actorSearchIsReady =
-		actorSearchTerm.length >= 2 &&
-		debouncedActorSearchTerm === actorSearchTerm;
+		actorSearchTerm.length >= 2 && debouncedActorSearchTerm === actorSearchTerm;
 	const actorDirectoryQuery = useQuery({
 		queryKey: [
 			"audit-actor-directory",
@@ -328,6 +372,35 @@ export function AuditWorkspace() {
 				: { ...current, actorUserId };
 		});
 	}, [actorDirectoryQuery.data?.candidates, actorSearch]);
+	const initiatorSearchTerm = getAuditActorSearchTerm(initiatorSearch);
+	const debouncedInitiatorSearchTerm = useDebouncedValue(
+		initiatorSearchTerm,
+		300,
+	);
+	const initiatorSearchIsReady =
+		initiatorSearchTerm.length >= 2 &&
+		debouncedInitiatorSearchTerm === initiatorSearchTerm;
+	const initiatorDirectoryQuery = useQuery({
+		queryKey: ["audit-initiator-directory", debouncedInitiatorSearchTerm],
+		queryFn: () => fetchAuditInitiatorDirectory(debouncedInitiatorSearchTerm),
+		enabled: initiatorSearchIsReady,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
+	useEffect(() => {
+		const candidate = resolveAuditActorCandidate(
+			initiatorSearch,
+			initiatorDirectoryQuery.data?.candidates ?? [],
+		);
+		if (!candidate) return;
+
+		setDraft((current) => {
+			const initiatorUserId = String(candidate.id);
+			return current.initiatorUserId === initiatorUserId
+				? current
+				: { ...current, initiatorUserId };
+		});
+	}, [initiatorDirectoryQuery.data?.candidates, initiatorSearch]);
 	const collectionHierarchy = useMemo(
 		() => buildCollectionHierarchy(collectionsQuery.data ?? []),
 		[collectionsQuery.data],
@@ -372,6 +445,24 @@ export function AuditWorkspace() {
 				.slice(0, 50),
 		[actorDirectoryQuery.data?.candidates, actorSearch],
 	);
+	const entityCandidateOptions = useMemo(
+		() =>
+			(entityDirectoryQuery.data?.candidates ?? [])
+				.filter((candidate) =>
+					auditEntityCandidateMatches(candidate, entitySearch),
+				)
+				.slice(0, 50),
+		[entityDirectoryQuery.data?.candidates, entitySearch],
+	);
+	const initiatorCandidateOptions = useMemo(
+		() =>
+			(initiatorDirectoryQuery.data?.candidates ?? [])
+				.filter((candidate) =>
+					auditActorCandidateMatches(candidate, initiatorSearch),
+				)
+				.slice(0, 50),
+		[initiatorDirectoryQuery.data?.candidates, initiatorSearch],
+	);
 	const activeFilters = useMemo(
 		() => getActiveAuditFilters(appliedDraft, collectionsById),
 		[appliedDraft, collectionsById],
@@ -400,19 +491,45 @@ export function AuditWorkspace() {
 		patchDraft("actorUserId", candidate ? String(candidate.id) : "");
 	}
 
+	function updateEntitySearch(value: string) {
+		setEntitySearch(value);
+		const candidate = resolveAuditEntityCandidate(
+			value,
+			entityDirectoryQuery.data?.candidates ?? [],
+		);
+		patchDraft("entityId", candidate ? String(candidate.id) : "");
+	}
+
+	function updateInitiatorSearch(value: string) {
+		setInitiatorSearch(value);
+		const candidate = resolveAuditActorCandidate(
+			value,
+			initiatorDirectoryQuery.data?.candidates ?? [],
+		);
+		patchDraft("initiatorUserId", candidate ? String(candidate.id) : "");
+	}
+
 	function onFilterSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		applyDraft(draft);
 	}
 
 	function clearFilters() {
+		setEntitySearch("");
 		setActorSearch("");
+		setInitiatorSearch("");
 		applyDraft(EMPTY_AUDIT_FILTER_DRAFT);
 	}
 
 	function removeFilter(field: AuditFilterField) {
+		if (field === "entityType" || field === "entityId") {
+			setEntitySearch("");
+		}
 		if (field === "actorKind" || field === "actorUserId") {
 			setActorSearch("");
+		}
+		if (field === "initiatorUserId") {
+			setInitiatorSearch("");
 		}
 		applyDraft(clearAuditFilter(appliedDraft, field));
 	}
@@ -420,7 +537,9 @@ export function AuditWorkspace() {
 	function drillInto(event: EventRecord, dimension: AuditDrilldownDimension) {
 		const nextDraft = getAuditDrilldownDraft(appliedDraft, event, dimension);
 		if (nextDraft) {
+			setEntitySearch("");
 			setActorSearch("");
+			setInitiatorSearch("");
 			setSelectedEvent(null);
 			applyDraft(nextDraft);
 		}
@@ -490,9 +609,10 @@ export function AuditWorkspace() {
 								<span>Entity type</span>
 								<select
 									value={draft.entityType}
-									onChange={(event) =>
-										patchDraft("entityType", event.target.value)
-									}
+									onChange={(event) => {
+										setEntitySearch("");
+										patchDraft("entityType", event.target.value);
+									}}
 								>
 									<option value="">Any entity type</option>
 									{entityTypeOptions.map((entityType) => (
@@ -529,6 +649,31 @@ export function AuditWorkspace() {
 									))}
 								</select>
 							</label>
+							{entityDirectoryKind ? (
+								<AuditEntityLookup
+									value={entitySearch}
+									candidates={entityCandidateOptions}
+									onChange={updateEntitySearch}
+									onSelect={(candidate) => {
+										setEntitySearch(candidate.inputValue);
+										patchDraft("entityId", String(candidate.id));
+									}}
+									placeholder={`Search ${entityDirectoryKind.replaceAll("_", " ")} names`}
+									helperText={
+										entitySearchTerm.length < 2
+											? "Type at least two characters, or enter an exact Entity ID."
+											: entityDirectoryQuery.isLoading || !entitySearchIsReady
+												? "Searching entities visible to your account…"
+												: entityDirectoryQuery.isError
+													? "Entity lookup is unavailable for your account; enter an exact Entity ID."
+													: entityDirectoryQuery.data?.isPartial
+														? "More than 50 entities match; type more to narrow the results."
+														: entityDirectoryQuery.data?.candidates.length === 0
+															? "No matching entities are visible to your account."
+															: "Choose a unique entity to fill Entity ID."
+									}
+								/>
+							) : null}
 						</div>
 					</fieldset>
 
@@ -579,46 +724,66 @@ export function AuditWorkspace() {
 								/>
 							</label>
 							{actorDirectoryKind ? (
-								<label className="control-field audit-actor-lookup">
-									<span>Find actor</span>
-									<input
-										type="search"
-										list="audit-actor-options"
-										value={actorSearch}
-										onChange={(event) => updateActorSearch(event.target.value)}
-										placeholder={
-											actorDirectoryKind === "user"
-												? "User name"
-												: "Service-account name"
-										}
-										autoComplete="off"
-										aria-label="Find actor"
-										aria-describedby="audit-actor-lookup-hint"
-									/>
-									<datalist id="audit-actor-options">
-										{actorCandidateOptions.map((candidate) => (
-											<option
-												key={`${candidate.kind}-${candidate.id}`}
-												value={auditActorCandidateInputValue(candidate)}
-												label={formatAuditActorCandidate(candidate)}
-											/>
-										))}
-									</datalist>
-									<small id="audit-actor-lookup-hint" className="muted">
-										{actorSearchTerm.length < 2
+								<AuditPrincipalLookup
+									idPrefix="audit-actor"
+									label="Find actor"
+									value={actorSearch}
+									candidates={actorCandidateOptions}
+									onChange={updateActorSearch}
+									onSelect={(candidate) => {
+										setActorSearch(auditActorCandidateInputValue(candidate));
+										patchDraft("actorUserId", String(candidate.id));
+									}}
+									placeholder={
+										actorDirectoryKind === "user"
+											? "User name"
+											: "Service-account name"
+									}
+									helperText={
+										actorSearchTerm.length < 2
 											? "Type at least two characters; exact Actor ID always works."
 											: actorDirectoryQuery.isLoading || !actorSearchIsReady
 												? "Searching identities visible to your account…"
-											: actorDirectoryQuery.isError
-												? "Name lookup is unavailable for your account; enter an exact Actor ID."
-												: actorDirectoryQuery.data?.isPartial
-													? "More than 50 identities match; type more to narrow the results."
-													: actorDirectoryQuery.data?.candidates.length === 0
-														? "No matching identities are visible to your account."
-														: "Choose a unique identity to fill Actor ID."}
-									</small>
-								</label>
+												: actorDirectoryQuery.isError
+													? "Name lookup is unavailable for your account; enter an exact Actor ID."
+													: actorDirectoryQuery.data?.isPartial
+														? "More than 50 identities match; type more to narrow the results."
+														: actorDirectoryQuery.data?.candidates.length === 0
+															? "No matching identities are visible to your account."
+															: "Choose a unique identity to fill Actor ID."
+									}
+								/>
 							) : null}
+							<AuditPrincipalLookup
+								idPrefix="audit-initiator"
+								label="Find initiator"
+								value={initiatorSearch}
+								candidates={initiatorCandidateOptions}
+								onChange={updateInitiatorSearch}
+								onSelect={(candidate) => {
+									setInitiatorSearch(auditActorCandidateInputValue(candidate));
+									patchDraft("initiatorUserId", String(candidate.id));
+								}}
+								placeholder="User or service-account name"
+								helperText={
+									initiatorSearchTerm.length < 2
+										? "Search users and service accounts, or enter an exact Initiator ID."
+										: initiatorDirectoryQuery.isLoading ||
+												!initiatorSearchIsReady
+											? "Searching identities visible to your account…"
+											: initiatorDirectoryQuery.isError
+												? "Initiator lookup is unavailable; enter an exact Initiator ID."
+												: initiatorDirectoryQuery.data?.isPartial
+													? "More than 50 identities match; type more to narrow the results."
+													: initiatorDirectoryQuery.data?.unavailableKinds
+																.length
+														? "Some identity types are unavailable for your account; exact Initiator ID always works."
+														: initiatorDirectoryQuery.data?.candidates
+																	.length === 0
+															? "No matching identities are visible to your account."
+															: "Choose a unique identity to fill Initiator ID."
+								}
+							/>
 						</div>
 					</fieldset>
 
