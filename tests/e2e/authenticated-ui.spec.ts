@@ -88,10 +88,12 @@ test.describe("authenticated workspace", () => {
 		).toBeVisible();
 		await revokeCurrentBackendToken(page);
 		await page.evaluate(() => {
-			void fetch(
-				"/_hubuum-bff/hubuum/api/v1/events?limit=1&include_total=false",
-				{ credentials: "include" },
-			);
+			window.setTimeout(() => {
+				void fetch(
+					"/_hubuum-bff/hubuum/api/v1/events?limit=1&include_total=false",
+					{ credentials: "include" },
+				);
+			}, 0);
 		});
 
 		await expect(page).toHaveURL(
@@ -1919,9 +1921,21 @@ test.describe("authenticated workspace", () => {
 		await page.getByRole("tab", { name: /4\. Related/ }).click();
 		await page.getByRole("button", { name: "Add include" }).click();
 
+		const selectRelatedClass = async (name: string) => {
+			await page.getByRole("button", { name: "Find class" }).click();
+			await page
+				.getByRole("combobox", { name: "Class name" })
+				.fill(name);
+			await page
+				.getByRole("listbox", { name: "Find class search results" })
+				.getByRole("option")
+				.filter({ hasText: name })
+				.click();
+		};
 		const relatedClass = page.getByLabel("Related class");
 		const maximumDepth = page.getByLabel("Maximum path depth");
-		await relatedClass.selectOption("30");
+		await selectRelatedClass("Rooms");
+		await expect(relatedClass).toHaveValue("30");
 
 		await expect(maximumDepth).toHaveValue("2");
 		await expect(maximumDepth).toHaveAttribute("min", "2");
@@ -1930,8 +1944,8 @@ test.describe("authenticated workspace", () => {
 		).toBeVisible();
 
 		await maximumDepth.fill("3");
-		await relatedClass.selectOption("20");
-		await relatedClass.selectOption("30");
+		await selectRelatedClass("Jacks");
+		await selectRelatedClass("Rooms");
 		await expect(maximumDepth).toHaveValue("3");
 
 		await maximumDepth.fill("");
