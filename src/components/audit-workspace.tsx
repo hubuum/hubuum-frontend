@@ -995,7 +995,7 @@ export function AuditWorkspace() {
 											<td className="audit-time-cell">
 												{formatTimestamp(event.occurred_at)}
 											</td>
-											<td>
+											<td className="audit-value-cell">
 												<DrilldownButton
 													ariaLabel={`Drill down to entity ${formatEntity(event)}`}
 													onDrilldown={() => drillInto(event, "entity")}
@@ -1006,7 +1006,7 @@ export function AuditWorkspace() {
 													</span>
 												</DrilldownButton>
 											</td>
-											<td>
+											<td className="audit-value-cell">
 												<DrilldownButton
 													ariaLabel={`Drill down to action ${event.action}`}
 													onDrilldown={() => drillInto(event, "action")}
@@ -1016,7 +1016,7 @@ export function AuditWorkspace() {
 													</span>
 												</DrilldownButton>
 											</td>
-											<td>
+											<td className="audit-value-cell">
 												<DrilldownButton
 													ariaLabel={`Drill down to actor ${actor}`}
 													onDrilldown={() => drillInto(event, "actor")}
@@ -1024,7 +1024,7 @@ export function AuditWorkspace() {
 													{actor}
 												</DrilldownButton>
 											</td>
-											<td>
+											<td className="audit-value-cell">
 												{event.provenance.initiator ? (
 													<DrilldownButton
 														ariaLabel={`Drill down to initiator ${initiator}`}
@@ -1036,7 +1036,7 @@ export function AuditWorkspace() {
 													initiator
 												)}
 											</td>
-											<td>
+											<td className="audit-value-cell">
 												{event.collection_id == null ? (
 													"n/a"
 												) : (

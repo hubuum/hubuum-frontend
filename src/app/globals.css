@@ -8768,7 +8768,7 @@ button.audit-filter-chip:hover {
 
 .audit-table-wrap table {
 	width: 100%;
-	min-width: 82rem;
+	min-width: 84rem;
 	table-layout: fixed;
 }
 
@@ -8781,7 +8781,7 @@ button.audit-filter-chip:hover {
 }
 
 .audit-table-wrap th:nth-child(3) {
-	width: 7rem;
+	width: 9rem;
 }
 
 .audit-table-wrap th:nth-child(4),
@@ -8796,6 +8796,10 @@ button.audit-filter-chip:hover {
 .audit-table-wrap th,
 .audit-table-wrap td {
 	vertical-align: top;
+}
+
+.audit-table-wrap td.audit-value-cell {
+	vertical-align: middle;
 }
 
 .audit-time-cell {

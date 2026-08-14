@@ -382,6 +382,23 @@ test.describe("v0.0.3 server features", () => {
 			if (!action) {
 				throw new Error("Audit event action was not visible for drill-down.");
 			}
+			const actionColumnWidth = await page
+				.locator(".audit-table-wrap")
+				.getByRole("columnheader", { name: "Action" })
+				.evaluate((element) => element.getBoundingClientRect().width);
+			expect(actionColumnWidth).toBeGreaterThanOrEqual(144);
+			const valueCellAlignments = await auditRow
+				.locator("td.audit-value-cell")
+				.evaluateAll((elements) =>
+					elements.map((element) => getComputedStyle(element).verticalAlign),
+				);
+			expect(valueCellAlignments).toEqual([
+				"middle",
+				"middle",
+				"middle",
+				"middle",
+				"middle",
+			]);
 			const actionDrilldownStyle = await actionDrilldown.evaluate((element) => {
 				const style = getComputedStyle(element);
 				return {
