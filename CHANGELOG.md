@@ -6,6 +6,45 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.12] - 2026-08-14
+
+### Compatibility
+
+- Retained the Hubuum Server `v0.0.9` contract and immutable CI target.
+
+### Added
+
+- Added grouped audit filters, removable active filters, cumulative table
+  drill-downs, readable collection context, and permission-aware actor and
+  entity lookups.
+- Added reusable keyboard-accessible directory search for collections,
+  classes, objects, groups, service-account owners, report includes, and
+  remote-target scopes without eagerly preloading large resource sets.
+
+### Changed
+
+- Redirected expired or revoked protected sessions directly to sign-in with a
+  resumable destination and an accessible expiry explanation.
+- Aligned the Events workspace heading and audit table values, filters, and
+  density behavior with neighboring administration surfaces.
+- Updated Next.js to `16.3.1`, Biome to `2.5.8`, and Axe Playwright to
+  `4.13.0`.
+
+### Fixed
+
+- Preserved every configured remote-target subject type when editing and
+  enforced object class-scope requirements for multi-subject targets.
+
+### Security
+
+- Rejected cross-origin, same-site sibling, contradictory, and metadata-free
+  browser mutations at the shared BFF boundary before reading sessions or
+  forwarding requests.
+- Enforced server-side administrator authorization for generic
+  `/api/v0/meta/*` proxy requests.
+- Updated the transitive `nanoid` dependency to `3.3.18` to resolve
+  `GHSA-2v37-7h3g-55p8`.
+
 ## [0.0.11] - 2026-08-07
 
 ### Compatibility
@@ -436,7 +475,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.11...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.12...HEAD
+[0.0.12]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.11...v0.0.12
 [0.0.11]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.10...v0.0.11
 [0.0.10]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.9...v0.0.10
 [0.0.9]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.8...v0.0.9
