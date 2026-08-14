@@ -8806,6 +8806,17 @@ button.audit-filter-chip:hover {
 	white-space: nowrap;
 }
 
+.audit-static-value {
+	display: block;
+	width: 100%;
+	min-width: 0;
+	max-width: 20rem;
+	margin: -0.3rem 0;
+	padding: 0.3rem 0;
+	line-height: inherit;
+	white-space: nowrap;
+}
+
 button.audit-drilldown-button {
 	display: grid;
 	gap: 0.08rem;
@@ -9616,6 +9627,10 @@ html[data-density="compact"] select,
 html[data-density="compact"] textarea {
 	padding: 0.5rem 0.65rem;
 	border-radius: 10px;
+}
+
+html[data-density="compact"] .audit-static-value {
+	padding: 0.55rem 0.8rem;
 }
 
 /* Normal content/menu/form buttons only — exclude fixed-size icon buttons. */

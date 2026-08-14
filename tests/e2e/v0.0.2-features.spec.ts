@@ -421,6 +421,42 @@ test.describe("v0.0.3 server features", () => {
 					actionDrilldownBox.x + actionDrilldownBox.width,
 				).toBeLessThanOrEqual(actionCellBox.x + actionCellBox.width);
 			}
+			await page.evaluate(() => {
+				document.documentElement.dataset.density = "compact";
+			});
+			const valueTextInsets = await auditRow.evaluate((row) => {
+				function textInset(selector: string) {
+					const element = row.querySelector(selector);
+					const cell = element?.closest("td");
+					const textNode = element
+						? Array.from(element.childNodes).find(
+								(node) =>
+									node.nodeType === Node.TEXT_NODE &&
+									Boolean(node.textContent?.trim()),
+							)
+						: undefined;
+					if (!element || !cell || !textNode) {
+						throw new Error(`Could not measure audit value ${selector}.`);
+					}
+					const range = document.createRange();
+					range.selectNodeContents(textNode);
+					return (
+						range.getBoundingClientRect().left -
+						cell.getBoundingClientRect().left
+					);
+				}
+
+				return {
+					filterable: textInset(
+						"td:nth-child(4) .audit-drilldown-button",
+					),
+					plain: textInset("td:nth-child(5) .audit-static-value"),
+				};
+			});
+			expect(valueTextInsets.plain).toBeCloseTo(
+				valueTextInsets.filterable,
+				1,
+			);
 			await actionDrilldown.click();
 			await expect(
 				page.getByRole("button", {

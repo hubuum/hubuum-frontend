@@ -1033,12 +1033,12 @@ export function AuditWorkspace() {
 														{initiator}
 													</DrilldownButton>
 												) : (
-													initiator
+													<span className="audit-static-value">{initiator}</span>
 												)}
 											</td>
 											<td className="audit-value-cell">
 												{event.collection_id == null ? (
-													"n/a"
+													<span className="audit-static-value">n/a</span>
 												) : (
 													<DrilldownButton
 														ariaLabel={`Drill down to collection ${formatCollection(
