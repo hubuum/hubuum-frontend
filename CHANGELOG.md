@@ -27,6 +27,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   resumable destination and an accessible expiry explanation.
 - Aligned the Events workspace heading and audit table values, filters, and
   density behavior with neighboring administration surfaces.
+- Distributed AMD64 and ARM64 image builds across native GitHub-hosted runners
+  before assembling and attesting the multi-architecture manifest.
 - Updated Next.js to `16.3.1`, Biome to `2.5.8`, and Axe Playwright to
   `4.13.0`.
 
