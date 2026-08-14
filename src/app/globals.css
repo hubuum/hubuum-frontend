@@ -8793,6 +8793,10 @@ button.audit-filter-chip:hover {
 	width: 16rem;
 }
 
+.audit-table-wrap th.audit-action-header {
+	padding-inline-start: 1rem;
+}
+
 .audit-table-wrap th,
 .audit-table-wrap td {
 	vertical-align: top;
@@ -9659,6 +9663,10 @@ html[data-density="compact"] td {
 
 html[data-density="compact"] .audit-table-wrap th.audit-value-header {
 	padding-inline-start: 1.3rem;
+}
+
+html[data-density="compact"] .audit-table-wrap th.audit-action-header {
+	padding-inline-start: 1.8rem;
 }
 
 html[data-density="compact"] #objects-table {

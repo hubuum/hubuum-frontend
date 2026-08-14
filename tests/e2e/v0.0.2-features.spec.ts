@@ -447,6 +447,7 @@ test.describe("v0.0.3 server features", () => {
 				}
 
 				return {
+					action: textInset("td:nth-child(3) .audit-action-value"),
 					filterable: textInset(
 						"td:nth-child(4) .audit-drilldown-button",
 					),
@@ -480,9 +481,16 @@ test.describe("v0.0.3 server features", () => {
 					}),
 				);
 			expect(headerTextInsets).toHaveLength(5);
-			for (const headerTextInset of headerTextInsets) {
+			const expectedHeaderTextInsets = [
+				valueTextInsets.filterable,
+				valueTextInsets.action,
+				valueTextInsets.filterable,
+				valueTextInsets.filterable,
+				valueTextInsets.filterable,
+			];
+			for (const [index, headerTextInset] of headerTextInsets.entries()) {
 				expect(headerTextInset).toBeCloseTo(
-					valueTextInsets.filterable,
+					expectedHeaderTextInsets[index],
 					1,
 				);
 			}

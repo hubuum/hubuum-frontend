@@ -958,7 +958,9 @@ export function AuditWorkspace() {
 								<tr>
 									<th>Time</th>
 									<th className="audit-value-header">Entity</th>
-									<th className="audit-value-header">Action</th>
+									<th className="audit-value-header audit-action-header">
+										Action
+									</th>
 									<th className="audit-value-header">Actor</th>
 									<th className="audit-value-header">Initiator</th>
 									<th className="audit-value-header">Collection</th>
