@@ -2,6 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ClassDirectoryLookup } from "@/components/class-directory-lookup";
+import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { CreateModal } from "@/components/create-modal";
 import {
 	GuidedFlowContinue,
@@ -13,8 +15,6 @@ import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1RemoteTargetsByTargetId,
-	getApiV1Classes,
-	getApiV1Collections,
 	patchApiV1RemoteTargetsByTargetId,
 	postApiV1RemoteTargets,
 } from "@/lib/api/generated/client";
@@ -29,9 +29,11 @@ import type {
 } from "@/lib/api/generated/models";
 import { fetchRemoteTargetsPage } from "@/lib/api/remote-targets";
 import {
-	buildCollectionHierarchy,
-	formatCollectionOption,
-} from "@/lib/collection-hierarchy";
+	fetchClassesByIds,
+	fetchCollectionClassDirectory,
+	fetchCollectionDirectory,
+	fetchCollectionsByIds,
+} from "@/lib/api/resource-directory";
 import {
 	OPEN_CREATE_EVENT,
 	type OpenCreateEventDetail,
@@ -50,6 +52,10 @@ import {
 } from "@/lib/remote-target-form";
 import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 
 const METHODS: RemoteHttpMethod[] = ["get", "post", "patch", "delete"];
 
@@ -64,38 +70,6 @@ const REMOTE_TARGET_STEPS = [
 ] as const;
 
 type RemoteTargetStep = (typeof REMOTE_TARGET_STEPS)[number]["id"];
-
-async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
-		);
-	}
-
-	return response.data;
-}
-
-async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(
-		{ limit: 250, sort: "name.asc,id.asc", include_total: false },
-		{ credentials: "include" },
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load classes."),
-		);
-	}
-
-	return response.data;
-}
 
 function formatTimestamp(value: string): string {
 	const parsed = new Date(value);
@@ -122,13 +96,47 @@ export function AdminRemoteTargetsTable() {
 	);
 	const [activeStep, setActiveStep] = useState<RemoteTargetStep>("scope");
 
+	const referencedCollectionIds = useMemo(
+		() =>
+			[...new Set(targets.map((target) => target.collection_id))].sort(
+				(left, right) => left - right,
+			),
+		[targets],
+	);
+	const referencedClassIds = useMemo(
+		() =>
+			[
+				...new Set(
+					targets.flatMap((target) =>
+						target.class_id == null ? [] : [target.class_id],
+					),
+				),
+			].sort((left, right) => left - right),
+		[targets],
+	);
 	const collectionsQuery = useQuery({
-		queryKey: ["collections", "admin-remote-targets"],
-		queryFn: fetchCollections,
+		queryKey: ["collections", "admin-remote-targets", referencedCollectionIds],
+		queryFn: () => fetchCollectionsByIds(referencedCollectionIds),
+		enabled: referencedCollectionIds.length > 0,
 	});
 	const classesQuery = useQuery({
-		queryKey: ["classes", "admin-remote-targets"],
-		queryFn: fetchClasses,
+		queryKey: ["classes", "admin-remote-targets", referencedClassIds],
+		queryFn: () => fetchClassesByIds(referencedClassIds),
+		enabled: referencedClassIds.length > 0,
+	});
+	const parsedCollectionId = Number.parseInt(formState.collectionId, 10);
+	const collectionDirectory = useDirectorySearch({
+		queryKey: ["remote-target-collection-directory"],
+		queryFn: fetchCollectionDirectory,
+	});
+	const classDirectory = useDirectorySearch({
+		enabled: Number.isFinite(parsedCollectionId) && parsedCollectionId > 0,
+		queryKey: [
+			"remote-target-class-directory",
+			Number.isFinite(parsedCollectionId) ? parsedCollectionId : null,
+		],
+		queryFn: (query) =>
+			fetchCollectionClassDirectory(parsedCollectionId, query),
 	});
 
 	const loadTargetsMutation = useMutation({
@@ -262,48 +270,26 @@ export function AdminRemoteTargetsTable() {
 		return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
 	});
 
-	useEffect(() => {
-		const collections = collectionsQuery.data ?? [];
-		if (formState.collectionId || collections.length !== 1) {
-			return;
-		}
-
-		setFormState((current) => ({
-			...current,
-			collectionId: String(collections[0].id),
-		}));
-	}, [formState.collectionId, collectionsQuery.data]);
-
 	const collectionsById = useMemo(() => {
-		return new Map(
-			(collectionsQuery.data ?? []).map((collection) => [
-				collection.id,
-				collection,
-			]),
-		);
-	}, [collectionsQuery.data]);
-	const collectionHierarchy = useMemo(
-		() => buildCollectionHierarchy(collectionsQuery.data ?? []),
-		[collectionsQuery.data],
-	);
-	const classesById = useMemo(() => {
-		return new Map(
-			(classesQuery.data ?? []).map((hubuumClass) => [
-				hubuumClass.id,
-				hubuumClass,
-			]),
-		);
-	}, [classesQuery.data]);
-	const classOptions = useMemo(() => {
-		const collectionId = Number.parseInt(formState.collectionId, 10);
-		if (!Number.isFinite(collectionId)) {
-			return [];
+		const map = new Map<number, Collection>();
+		for (const collection of collectionsQuery.data ?? []) {
+			map.set(collection.id, collection);
 		}
-
-		return (classesQuery.data ?? []).filter(
-			(hubuumClass) => hubuumClass.collection.id === collectionId,
-		);
-	}, [classesQuery.data, formState.collectionId]);
+		for (const collection of collectionDirectory.query.data?.items ?? []) {
+			map.set(collection.id, collection);
+		}
+		return map;
+	}, [collectionDirectory.query.data?.items, collectionsQuery.data]);
+	const classesById = useMemo(() => {
+		const map = new Map<number, HubuumClassExpanded>();
+		for (const hubuumClass of classesQuery.data ?? []) {
+			map.set(hubuumClass.id, hubuumClass);
+		}
+		for (const hubuumClass of classDirectory.query.data?.items ?? []) {
+			map.set(hubuumClass.id, hubuumClass);
+		}
+		return map;
+	}, [classDirectory.query.data?.items, classesQuery.data]);
 	const visibleTargets = useMemo(() => {
 		const needle = search.trim().toLowerCase();
 		if (!needle) {
@@ -399,11 +385,10 @@ export function AdminRemoteTargetsTable() {
 			allowedSubjectTypes: [
 				...defaultRemoteTargetFormState.allowedSubjectTypes,
 			],
-			collectionId:
-				collectionsQuery.data?.length === 1
-					? String(collectionsQuery.data[0].id)
-					: "",
+			collectionId: "",
 		});
+		collectionDirectory.setSearch("");
+		classDirectory.setSearch("");
 		setActiveStep("scope");
 		setModalOpen(true);
 	}
@@ -413,6 +398,10 @@ export function AdminRemoteTargetsTable() {
 		setEditingTarget(target);
 		setFormError(null);
 		setFormState(remoteTargetFormStateFromTarget(target));
+		collectionDirectory.setSearch(String(target.collection_id));
+		classDirectory.setSearch(
+			target.class_id == null ? "" : String(target.class_id),
+		);
 		setActiveStep("scope");
 		setModalOpen(true);
 	}
@@ -584,50 +573,62 @@ export function AdminRemoteTargetsTable() {
 					{activeStep === "scope" ? (
 						<GuidedFlowPanel stepId="scope">
 							<div className="form-grid">
-								<label
-									className="control-field"
-									htmlFor="remote-target-collection"
-								>
-									<span>Collection</span>
-									{collectionsQuery.data?.length ? (
-										<select
-											id="remote-target-collection"
-											required
-											value={formState.collectionId}
-											onChange={(event) =>
-												patchFormState({
-													collectionId: event.target.value,
-													classId: "",
-												})
-											}
-										>
-											<option value="">Select a collection</option>
-											{collectionsQuery.data.map((collection) => (
-												<option key={collection.id} value={collection.id}>
-													{formatCollectionOption(
-														collection,
-														collectionHierarchy.byId,
-													)}
-												</option>
-											))}
-										</select>
-									) : (
+								<div className="control-field">
+									<label htmlFor="remote-target-collection">
+										Collection ID
+									</label>
+									<div className="directory-id-lookup-control">
 										<input
 											id="remote-target-collection"
 											required
 											type="number"
 											min={1}
 											value={formState.collectionId}
-											onChange={(event) =>
+											onChange={(event) => {
 												patchFormState({
 													collectionId: event.target.value,
 													classId: "",
-												})
-											}
+												});
+												collectionDirectory.setSearch(event.target.value);
+												classDirectory.setSearch("");
+											}}
 											placeholder="Collection ID"
 										/>
-									)}
-								</label>
+										<CollectionDirectoryLookup
+											collections={collectionDirectory.query.data?.items ?? []}
+											helperText={directoryLookupStatus({
+												count:
+													collectionDirectory.query.data?.items.length ?? 0,
+												isError: collectionDirectory.query.isError,
+												isLoading: collectionDirectory.query.isLoading,
+												isPartial: Boolean(
+													collectionDirectory.query.data?.isPartial,
+												),
+												isReady: collectionDirectory.isReady,
+												minimumLength: collectionDirectory.minimumLength,
+												resourcePlural: "collections",
+												resourceSingular: "collection",
+												term: collectionDirectory.term,
+											})}
+											idPrefix="remote-target-collection-directory"
+											onChange={collectionDirectory.setSearch}
+											onSelect={(collection) => {
+												patchFormState({
+													collectionId: String(collection.id),
+													classId: "",
+												});
+												classDirectory.setSearch("");
+											}}
+											value={collectionDirectory.search}
+										/>
+									</div>
+									{selectedCollection ? (
+										<small className="field-note">
+											Selected: {selectedCollection.name} (#
+											{selectedCollection.id})
+										</small>
+									) : null}
+								</div>
 							</div>
 							<fieldset className="remote-subject-section">
 								<legend>Subject types</legend>
@@ -653,48 +654,59 @@ export function AdminRemoteTargetsTable() {
 								</span>
 							</fieldset>
 							{allowsObjects ? (
-								<label
-									className="control-field control-field--wide"
-									htmlFor="remote-target-class"
-								>
-									<span>Object class scope</span>
-									{classOptions.length > 0 ? (
-										<select
-											id="remote-target-class"
-											required
-											value={formState.classId}
-											onChange={(event) =>
-												patchFormState({ classId: event.target.value })
-											}
-										>
-											<option value="">Select a class</option>
-											{classOptions.map((hubuumClass) => (
-												<option key={hubuumClass.id} value={hubuumClass.id}>
-													{hubuumClass.name}
-												</option>
-											))}
-										</select>
-									) : (
+								<div className="control-field control-field--wide">
+									<label htmlFor="remote-target-class">
+										Object class scope
+									</label>
+									<div className="directory-id-lookup-control">
 										<input
 											id="remote-target-class"
 											required
 											type="number"
 											min={1}
 											value={formState.classId}
-											onChange={(event) =>
-												patchFormState({ classId: event.target.value })
-											}
-											placeholder={
-												classesQuery.isLoading
-													? "Loading classes..."
-													: "Class ID"
-											}
+												onChange={(event) => {
+													patchFormState({ classId: event.target.value });
+													classDirectory.setSearch(event.target.value);
+											}}
+											placeholder="Class ID"
 										/>
-									)}
+										<ClassDirectoryLookup
+											classes={classDirectory.query.data?.items ?? []}
+											disabled={
+												!Number.isFinite(parsedCollectionId) ||
+												parsedCollectionId < 1
+											}
+											disabledHint="Choose a collection first"
+											helperText={directoryLookupStatus({
+												count: classDirectory.query.data?.items.length ?? 0,
+												isError: classDirectory.query.isError,
+												isLoading: classDirectory.query.isLoading,
+												isPartial: Boolean(
+													classDirectory.query.data?.isPartial,
+												),
+												isReady: classDirectory.isReady,
+												minimumLength: classDirectory.minimumLength,
+												resourcePlural: "classes",
+												resourceSingular: "class",
+												scope: "in the selected collection",
+												term: classDirectory.term,
+											})}
+											idPrefix="remote-target-class-directory"
+											onChange={classDirectory.setSearch}
+												onSelect={(hubuumClass) => {
+													patchFormState({ classId: String(hubuumClass.id) });
+												}}
+											value={classDirectory.search}
+										/>
+									</div>
 									<span className="field-note">
+										{selectedClass
+											? `Selected: ${selectedClass.name} (#${selectedClass.id}). `
+											: ""}
 										Object targets apply only to objects in this class.
 									</span>
-								</label>
+								</div>
 							) : null}
 							<GuidedFlowContinue
 								disabled={!scopeReady}

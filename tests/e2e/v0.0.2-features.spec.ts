@@ -145,6 +145,410 @@ test.describe("v0.0.3 server features", () => {
 		).toEqual([]);
 	});
 
+	test("audit explorer enriches collections and stacks drill-down filters", async ({
+		page,
+	}) => {
+		const suffix = globalThis.crypto.randomUUID();
+		const collectionName = `e2e_audit_collection_${suffix}`;
+		const serviceAccountName = `e2e_audit_actor_${suffix}`;
+		let collectionId: number | null = null;
+		let serviceAccountEtag: string | undefined;
+		let serviceAccountId: number | null = null;
+
+		try {
+			const groupsResponse = await page.request.get(
+				`${bffPrefix}/api/v1/iam/groups?limit=1&include_total=false`,
+			);
+			expect(groupsResponse.ok()).toBe(true);
+			const groups = (await groupsResponse.json()) as Array<{ id: number }>;
+			expect(groups.length).toBeGreaterThan(0);
+
+			const collectionResponse = await page.request.post(
+				`${bffPrefix}/api/v1/collections`,
+				{
+					data: {
+						description: "Playwright audit drill-down coverage",
+						group_id: groups[0].id,
+						name: collectionName,
+					},
+					headers: { Origin: new URL(page.url()).origin },
+				},
+			);
+			expect(collectionResponse.status()).toBe(201);
+			const collection = (await collectionResponse.json()) as { id: number };
+			collectionId = collection.id;
+
+			const serviceAccountResponse = await page.request.post(
+				`${bffPrefix}/api/v1/iam/service-accounts`,
+				{
+					data: {
+						description: "Playwright audit actor lookup coverage",
+						name: serviceAccountName,
+						owner_group_id: groups[0].id,
+					},
+					headers: { Origin: new URL(page.url()).origin },
+				},
+			);
+			expect(serviceAccountResponse.status()).toBe(201);
+			const serviceAccount = (await serviceAccountResponse.json()) as {
+				id: number;
+			};
+			serviceAccountId = serviceAccount.id;
+			serviceAccountEtag = serviceAccountResponse.headers().etag;
+
+			await page.goto("/audit");
+			await expect(
+				page
+					.getByRole("combobox", { name: "Collection" })
+					.locator(`option[value="${collection.id}"]`),
+			).toContainText(collectionName);
+
+			const filterCard = page.locator(".audit-filter-card");
+			const resultsCard = page.locator(".audit-results-card");
+			const filterHeightBeforeLookup = await filterCard.evaluate(
+				(element) => element.getBoundingClientRect().height,
+			);
+			const resultsTopBeforeLookup = await resultsCard.evaluate(
+				(element) => element.getBoundingClientRect().top,
+			);
+			await page
+				.getByRole("combobox", { name: "Entity type" })
+				.selectOption("collection");
+			const entityLookupTrigger = page.getByRole("button", {
+				name: "Find entity",
+			});
+			await expect(entityLookupTrigger).toBeEnabled();
+			await entityLookupTrigger.click();
+			const entityPopover = page.locator("#audit-entity-popover");
+			await expect(entityPopover).toBeVisible();
+			const entityLookup = entityPopover.getByRole("combobox", {
+				name: "Name",
+			});
+			await expect(entityLookup).toBeFocused();
+			expect(
+				await filterCard.evaluate(
+					(element) => element.getBoundingClientRect().height,
+				),
+			).toBeCloseTo(filterHeightBeforeLookup, 1);
+			expect(
+				await resultsCard.evaluate(
+					(element) => element.getBoundingClientRect().top,
+				),
+			).toBeCloseTo(resultsTopBeforeLookup, 1);
+			const entityLookupRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/search") &&
+					url.searchParams.get("q") === collectionName &&
+					url.searchParams.get("kinds") === "collection"
+				);
+			});
+			await entityLookup.fill(collectionName);
+			await entityLookupRequest;
+			const entityResults = page.getByRole("listbox", {
+				name: "Find entity search results",
+			});
+			await expect(entityResults).toBeVisible();
+			await entityLookup.press("ArrowDown");
+			await entityLookup.press("Enter");
+			await expect(entityResults).toBeHidden();
+			await expect(
+				page.getByRole("spinbutton", { name: "Entity ID" }),
+			).toHaveValue(String(collection.id));
+
+			await page
+				.getByRole("combobox", { name: "Actor kind" })
+				.selectOption("user");
+			const actorLookupTrigger = page.getByRole("button", {
+				name: "Find actor",
+			});
+			await expect(actorLookupTrigger).toBeEnabled();
+			await actorLookupTrigger.click();
+			const actorPopover = page.locator("#audit-actor-popover");
+			const actorLookup = actorPopover.getByRole("combobox", { name: "Name" });
+			await expect(actorLookup).toBeFocused();
+			const userLookupRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/iam/users") &&
+					url.searchParams.get("name__icontains") === (username ?? "admin")
+				);
+			});
+			await actorLookup.fill(username ?? "admin");
+			await userLookupRequest;
+			const actorResults = page.getByRole("listbox", {
+				name: "Actor search results",
+			});
+			await expect(actorResults).toBeVisible();
+			await actorLookup.press("ArrowDown");
+			const activeActorOption = actorResults
+				.getByRole("option")
+				.filter({ hasText: username ?? "admin" })
+				.first();
+			await expect(activeActorOption).toHaveAttribute("aria-selected", "true");
+			const activeActorColors = await activeActorOption.evaluate((element) => {
+				const style = getComputedStyle(element);
+				return {
+					background: style.backgroundColor,
+					foreground: style.color,
+				};
+			});
+			expect(activeActorColors.background).not.toBe("rgba(0, 0, 0, 0)");
+			expect(activeActorColors.background).not.toBe(
+				activeActorColors.foreground,
+			);
+			const lookupAccessibility = await new AxeBuilder({ page })
+				.include(".audit-filter-card")
+				.analyze();
+			expect(
+				lookupAccessibility.violations.filter((violation) =>
+					["serious", "critical"].includes(violation.impact ?? ""),
+				),
+			).toEqual([]);
+			await actorLookup.press("Enter");
+			await expect(actorResults).toBeHidden();
+			await expect(actorLookupTrigger).toBeFocused();
+			await expect(
+				page.getByRole("spinbutton", { name: "Actor ID" }),
+			).toHaveValue(/\d+/);
+
+			await page
+				.getByRole("combobox", { name: "Actor kind" })
+				.selectOption("service_account");
+			await actorLookupTrigger.click();
+			const serviceAccountLookupRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/iam/service-accounts") &&
+					url.searchParams.get("name__icontains") === serviceAccountName
+				);
+			});
+			await actorLookup.fill(serviceAccountName);
+			await serviceAccountLookupRequest;
+			await actorResults
+				.getByRole("option")
+				.filter({ hasText: serviceAccountName })
+				.first()
+				.click();
+			await expect(
+				page.getByRole("spinbutton", { name: "Actor ID" }),
+			).toHaveValue(String(serviceAccount.id));
+
+			const initiatorLookupTrigger = page.getByRole("button", {
+				name: "Find initiator",
+			});
+			await initiatorLookupTrigger.click();
+			const initiatorLookup = page
+				.locator("#audit-initiator-popover")
+				.getByRole("combobox", { name: "Name" });
+			const initiatorUserRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/iam/users") &&
+					url.searchParams.get("name__icontains") === (username ?? "admin")
+				);
+			});
+			const initiatorServiceAccountRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/iam/service-accounts") &&
+					url.searchParams.get("name__icontains") === (username ?? "admin")
+				);
+			});
+			await initiatorLookup.fill(username ?? "admin");
+			await Promise.all([initiatorUserRequest, initiatorServiceAccountRequest]);
+			const initiatorResults = page.getByRole("listbox", {
+				name: "Find initiator search results",
+			});
+			await expect(initiatorResults).toBeVisible();
+			await initiatorResults
+				.getByRole("option")
+				.filter({ hasText: username ?? "admin" })
+				.first()
+				.click();
+			await expect(initiatorResults).toBeHidden();
+			await expect(
+				page.getByRole("spinbutton", { name: "Initiator ID" }),
+			).toHaveValue(/\d+/);
+
+			let auditRow = page.locator("tbody tr").filter({
+				hasText: collectionName,
+			});
+			await expect(auditRow).toHaveCount(1);
+			const actionDrilldown = auditRow.getByRole("button", {
+				name: /Drill down to action/,
+			});
+			const action = (await actionDrilldown.textContent())?.trim();
+			if (!action) {
+				throw new Error("Audit event action was not visible for drill-down.");
+			}
+			const actionColumnWidth = await page
+				.locator(".audit-table-wrap")
+				.getByRole("columnheader", { name: "Action" })
+				.evaluate((element) => element.getBoundingClientRect().width);
+			expect(actionColumnWidth).toBeGreaterThanOrEqual(144);
+			const valueCellAlignments = await auditRow
+				.locator("td.audit-value-cell")
+				.evaluateAll((elements) =>
+					elements.map((element) => getComputedStyle(element).verticalAlign),
+				);
+			expect(valueCellAlignments).toEqual([
+				"middle",
+				"middle",
+				"middle",
+				"middle",
+				"middle",
+			]);
+			const actionDrilldownStyle = await actionDrilldown.evaluate((element) => {
+				const style = getComputedStyle(element);
+				return {
+					marginLeft: style.marginLeft,
+					paddingLeft: style.paddingLeft,
+				};
+			});
+			expect(actionDrilldownStyle).toEqual({
+				marginLeft: "0px",
+				paddingLeft: "0px",
+			});
+			const actionDrilldownBox = await actionDrilldown.boundingBox();
+			const actionCellBox = await actionDrilldown
+				.locator("xpath=..")
+				.boundingBox();
+			expect(actionDrilldownBox).not.toBeNull();
+			expect(actionCellBox).not.toBeNull();
+			if (actionDrilldownBox && actionCellBox) {
+				expect(
+					actionDrilldownBox.x + actionDrilldownBox.width,
+				).toBeLessThanOrEqual(actionCellBox.x + actionCellBox.width);
+			}
+			await page.evaluate(() => {
+				document.documentElement.dataset.density = "compact";
+			});
+			const valueTextInsets = await auditRow.evaluate((row) => {
+				function textInset(selector: string) {
+					const element = row.querySelector(selector);
+					const cell = element?.closest("td");
+					const textNode = element
+						? Array.from(element.childNodes).find(
+								(node) =>
+									node.nodeType === Node.TEXT_NODE &&
+									Boolean(node.textContent?.trim()),
+							)
+						: undefined;
+					if (!element || !cell || !textNode) {
+						throw new Error(`Could not measure audit value ${selector}.`);
+					}
+					const range = document.createRange();
+					range.selectNodeContents(textNode);
+					return (
+						range.getBoundingClientRect().left -
+						cell.getBoundingClientRect().left
+					);
+				}
+
+				return {
+					action: textInset("td:nth-child(3) .audit-action-value"),
+					filterable: textInset(
+						"td:nth-child(4) .audit-drilldown-button",
+					),
+					plain: textInset("td:nth-child(5) .audit-static-value"),
+				};
+			});
+			expect(valueTextInsets.plain).toBeCloseTo(
+				valueTextInsets.filterable,
+				1,
+			);
+			const headerTextInsets = await page
+				.locator(".audit-table-wrap")
+				.evaluate((table) =>
+					Array.from(
+						table.querySelectorAll("th.audit-value-header"),
+					).map((header) => {
+						const textNode = Array.from(header.childNodes).find(
+							(node) =>
+								node.nodeType === Node.TEXT_NODE &&
+								Boolean(node.textContent?.trim()),
+						);
+						if (!textNode) {
+							throw new Error("Could not measure audit header text.");
+						}
+						const range = document.createRange();
+						range.selectNodeContents(textNode);
+						return (
+							range.getBoundingClientRect().left -
+							header.getBoundingClientRect().left
+						);
+					}),
+				);
+			expect(headerTextInsets).toHaveLength(5);
+			const expectedHeaderTextInsets = [
+				valueTextInsets.filterable,
+				valueTextInsets.action,
+				valueTextInsets.filterable,
+				valueTextInsets.filterable,
+				valueTextInsets.filterable,
+			];
+			for (const [index, headerTextInset] of headerTextInsets.entries()) {
+				expect(headerTextInset).toBeCloseTo(
+					expectedHeaderTextInsets[index],
+					1,
+				);
+			}
+			await actionDrilldown.click();
+			await expect(
+				page.getByRole("button", {
+					name: `Remove Action · ${action} filter`,
+				}),
+			).toBeVisible();
+			await expect(page.getByText("1 active", { exact: true })).toBeVisible();
+
+			auditRow = page.locator("tbody tr").filter({ hasText: collectionName });
+			const collectionDrilldown = auditRow.getByRole("button", {
+				name: /Drill down to collection/,
+			});
+			await expect(collectionDrilldown).toContainText(collectionName);
+			await expect(collectionDrilldown).toHaveAttribute(
+				"title",
+				/Playwright audit drill-down coverage/,
+			);
+			await collectionDrilldown.click();
+			await expect(
+				page.getByRole("button", {
+					name: new RegExp(`Remove Collection · .*#${collection.id}.* filter`),
+				}),
+			).toBeVisible();
+			await expect(page.getByText("2 active", { exact: true })).toBeVisible();
+
+			auditRow = page.locator("tbody tr").filter({ hasText: collectionName });
+			await auditRow
+				.getByRole("button", { name: /Drill down to actor/ })
+				.click();
+			await expect(
+				page.getByRole("button", { name: /Remove Actor · .* filter/ }),
+			).toBeVisible();
+			await page.getByRole("button", { name: "Clear all" }).click();
+			await expect(page.getByText("0 active", { exact: true })).toBeVisible();
+		} finally {
+			if (serviceAccountId !== null) {
+				await page.request.delete(
+					`${bffPrefix}/api/v1/iam/service-accounts/${serviceAccountId}`,
+					{
+						headers: {
+							Origin: new URL(page.url()).origin,
+							...(serviceAccountEtag ? { "If-Match": serviceAccountEtag } : {}),
+						},
+					},
+				);
+			}
+			if (collectionId !== null) {
+				await page.request.delete(
+					`${bffPrefix}/api/v1/collections/${collectionId}`,
+					{ headers: { Origin: new URL(page.url()).origin } },
+				);
+			}
+		}
+	});
+
 	test("shared and personal computed fields appear on object reads", async ({
 		page,
 	}) => {

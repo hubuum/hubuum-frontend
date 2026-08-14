@@ -11,6 +11,7 @@ import {
 	GuidedFlowTabs,
 } from "@/components/guided-flow";
 import { IncludeRows } from "@/components/include-rows";
+import { ObjectDirectoryLookup } from "@/components/object-directory-lookup";
 import { ReportQueryBuilder } from "@/components/report-query-builder";
 import { TemplateCodeEditor } from "@/components/template-code-editor";
 import {
@@ -31,6 +32,7 @@ import {
 	fetchExportClasses,
 	fetchExportCollections,
 } from "@/lib/api/export-options";
+import { fetchClassObjectDirectory } from "@/lib/api/resource-directory";
 import {
 	createReportTemplate,
 	fetchReportOutput,
@@ -102,6 +104,7 @@ import {
 	includeAliasesOf,
 	newIncludeRow,
 } from "@/lib/report-include";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 type TemplateEditorTab = ExportTemplateEditorSection;
 type SaveIntent = "save" | "test";
@@ -395,6 +398,7 @@ export function ExportTemplateEditor({
 	const [editorError, setEditorError] = useState<string | null>(null);
 	const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
 	const [testObjectId, setTestObjectId] = useState("");
+	const [testObjectSearch, setTestObjectSearch] = useState("");
 	const [testObjectError, setTestObjectError] = useState<string | null>(null);
 	const [groupingExampleField, setGroupingExampleField] =
 		useState("data.environment");
@@ -536,13 +540,39 @@ export function ExportTemplateEditor({
 	const selectedClass = targetClassOptions.find(
 		(classItem) => String(classItem.id) === editorState.classId,
 	);
+	const testObjectSearchTerm = testObjectSearch.trim();
+	const testObjectSearchMinimum = /^\d+$/.test(testObjectSearchTerm) ? 1 : 2;
+	const debouncedTestObjectSearchTerm = useDebouncedValue(
+		testObjectSearchTerm,
+		300,
+	);
+	const testObjectSearchIsReady =
+		testObjectSearchTerm.length >= testObjectSearchMinimum &&
+		debouncedTestObjectSearchTerm === testObjectSearchTerm;
+	const testObjectDirectoryQuery = useQuery({
+		queryKey: [
+			"export-template-test-object-directory",
+			selectedClass?.id ?? null,
+			debouncedTestObjectSearchTerm,
+		],
+		queryFn: () =>
+			fetchClassObjectDirectory(
+				selectedClass?.id ?? 0,
+				debouncedTestObjectSearchTerm,
+			),
+		enabled:
+			editorState.kind === "export" &&
+			editorState.scopeKind === "related_objects" &&
+			selectedClass != null &&
+			testObjectSearchIsReady,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
 	const relatedClassPathsQuery = useQuery({
 		queryKey: relatedClassPathsQueryKey(selectedClass?.id ?? null),
 		queryFn: () => fetchRelatedClassPaths(selectedClass?.id ?? 0),
 		enabled:
-			editorState.kind === "export" &&
-			scopeNeedsClass &&
-			selectedClass != null,
+			editorState.kind === "export" && scopeNeedsClass && selectedClass != null,
 		staleTime: 5 * 60_000,
 	});
 	const relatedClassMinimumDepthById = useMemo(
@@ -633,9 +663,7 @@ export function ExportTemplateEditor({
 			),
 		[objectSampleData, selectedClass?.json_schema],
 	);
-	const objectServerFilterComputedFields = useMemo<
-		ServerFilterComputedField[]
-	>(
+	const objectServerFilterComputedFields = useMemo<ServerFilterComputedField[]>(
 		() =>
 			resolveObjectServerFilterComputedFields(
 				sharedComputedQuery.data?.definitions ?? [],
@@ -884,14 +912,7 @@ export function ExportTemplateEditor({
 	): TemplateEditorTab | null {
 		const workflow: TemplateEditorTab[] =
 			editorState.kind === "export"
-				? [
-						"identity",
-						"target",
-						"filters",
-						"related",
-						"rules",
-						"appearance",
-					]
+				? ["identity", "target", "filters", "related", "rules", "appearance"]
 				: ["identity", "target", "appearance"];
 		const index = workflow.indexOf(tab);
 		return index >= 0 ? (workflow[index + 1] ?? null) : null;
@@ -958,12 +979,12 @@ export function ExportTemplateEditor({
 			activeTab === "identity"
 				? validateExportTemplateIdentity(editorState)
 				: activeTab === "target"
-				? validateExportTemplateTarget(editorState, validationContext)
-				: activeTab === "related"
-					? validateExportTemplateRelated(editorState, validationContext)
-					: activeTab === "rules"
-						? validateExportTemplateRules(editorState)
-						: {};
+					? validateExportTemplateTarget(editorState, validationContext)
+					: activeTab === "related"
+						? validateExportTemplateRelated(editorState, validationContext)
+						: activeTab === "rules"
+							? validateExportTemplateRules(editorState)
+							: {};
 		if (
 			activeTab === "identity" ||
 			activeTab === "target" ||
@@ -1183,9 +1204,9 @@ export function ExportTemplateEditor({
 							? "Available after saving"
 							: tab.id !== "identity" && !identityReady
 								? "Complete the template details first"
-							: editorState.kind === "fragment" && tab.id !== "appearance"
-								? "Executable exports only"
-								: "Complete the target first",
+								: editorState.kind === "fragment" && tab.id !== "appearance"
+									? "Executable exports only"
+									: "Complete the target first",
 					enabled: !isEditorTabDisabled(tab.id),
 				}))}
 			/>
@@ -1353,8 +1374,8 @@ export function ExportTemplateEditor({
 									<span>
 										<strong>Full document</strong>
 										<small>
-											Own the doctype, head, styles, and body without a
-											standard wrapper.
+											Own the doctype, head, styles, and body without a standard
+											wrapper.
 										</small>
 									</span>
 								</label>
@@ -1547,27 +1568,57 @@ export function ExportTemplateEditor({
 
 						{editorState.scopeKind === "related_objects" &&
 						editorState.kind === "export" ? (
-							<label
-								className="control-field"
-								htmlFor="export-template-test-object"
-							>
-								<span>Test object ID</span>
-								<input
-									id="export-template-test-object"
-									type="number"
-									min={1}
-									value={testObjectId}
-									onChange={(event) => {
-										setTestObjectId(event.target.value);
-										setTestObjectError(null);
-									}}
-									aria-invalid={Boolean(testObjectError)}
-									placeholder="Required for this scope"
-								/>
+							<div className="control-field">
+								<label htmlFor="export-template-test-object">
+									Test object ID
+								</label>
+								<div className="directory-id-lookup-control">
+									<input
+										id="export-template-test-object"
+										type="number"
+										min={1}
+										value={testObjectId}
+										onChange={(event) => {
+											setTestObjectId(event.target.value);
+											setTestObjectSearch("");
+											setTestObjectError(null);
+										}}
+										aria-invalid={Boolean(testObjectError)}
+										placeholder="Required for this scope"
+									/>
+									<ObjectDirectoryLookup
+										disabled={selectedClass == null}
+										disabledHint="Choose a class first"
+										helperText={
+											testObjectSearchTerm.length < testObjectSearchMinimum
+												? "Type at least two characters, or enter an exact object ID."
+												: testObjectDirectoryQuery.isLoading ||
+														!testObjectSearchIsReady
+													? "Searching objects visible to your account…"
+													: testObjectDirectoryQuery.isError
+														? "Object lookup is unavailable; enter an exact object ID."
+														: testObjectDirectoryQuery.data?.isPartial
+															? "More than 50 objects match; type more to narrow the results."
+															: testObjectDirectoryQuery.data?.items.length ===
+																	0
+																? "No matching objects are visible in this class."
+																: "Choose an object to fill Test object ID."
+										}
+										idPrefix="export-template-test-object"
+										objects={testObjectDirectoryQuery.data?.items ?? []}
+										onChange={setTestObjectSearch}
+										onSelect={(objectItem) => {
+											setTestObjectId(String(objectItem.id));
+											setTestObjectSearch(objectItem.name);
+											setTestObjectError(null);
+										}}
+										value={testObjectSearch}
+									/>
+								</div>
 								{testObjectError ? (
 									<small className="field-error">{testObjectError}</small>
 								) : null}
-							</label>
+							</div>
 						) : null}
 
 						{!testTaskId ? (
@@ -1701,8 +1752,8 @@ export function ExportTemplateEditor({
 						<div className="stack action-card-header">
 							<h3>Export target</h3>
 							<p className="muted">
-								Choose what {editorState.name || "this template"} reads.
-								Query, related data, rules, and design follow.
+								Choose what {editorState.name || "this template"} reads. Query,
+								related data, rules, and design follow.
 							</p>
 						</div>
 						<div className="form-grid">
@@ -1830,9 +1881,11 @@ export function ExportTemplateEditor({
 									<select
 										id="export-template-class"
 										value={editorState.classId}
-										onChange={(event) =>
-											updateDraft({ classId: event.target.value }, ["classId"])
-										}
+										onChange={(event) => {
+											setTestObjectId("");
+											setTestObjectSearch("");
+											updateDraft({ classId: event.target.value }, ["classId"]);
+										}}
 										aria-invalid={Boolean(fieldErrors.classId)}
 										disabled={
 											classesQuery.isLoading || !targetClassOptions.length

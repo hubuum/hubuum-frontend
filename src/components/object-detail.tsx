@@ -13,6 +13,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { CreateModal } from "@/components/create-modal";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { JsonEditor } from "@/components/json-editor";
@@ -27,13 +28,11 @@ import {
 	deleteApiV1ClassesByClassIdByObjectId,
 	getApiV1Classes,
 	getApiV1ClassesByClassIdByObjectId,
-	getApiV1Collections,
 	getApiV1CollectionsByCollectionIdPermissions,
 	getApiV1IamMeGroups,
 	patchApiV1ClassesByClassIdByObjectId,
 } from "@/lib/api/generated/client";
 import type {
-	Collection,
 	HubuumClassExpanded,
 	HubuumObject,
 	HubuumObjectComputedResponse,
@@ -41,6 +40,7 @@ import type {
 	Permission,
 	UpdateHubuumObject,
 } from "@/lib/api/generated/models";
+import { fetchCollectionDirectory } from "@/lib/api/resource-directory";
 import {
 	buildObjectDataPatchPlan,
 	buildObjectDataReplacePatch,
@@ -75,6 +75,10 @@ import {
 	takeUnrequestedRelatedObjectPathContextIds,
 } from "@/lib/object-relation-summary";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 
 type ObjectDetailProps = {
 	classId: number;
@@ -132,23 +136,6 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	if (response.status !== 200) {
 		throw new Error(
 			getApiErrorMessage(response.data, "Failed to load classes."),
-		);
-	}
-
-	return response.data;
-}
-
-async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
 		);
 	}
 
@@ -676,7 +663,6 @@ export function ObjectDetail({
 	const objectHeadingRef = useRef<HTMLHeadingElement | null>(null);
 	const nameInputRef = useRef<HTMLInputElement | null>(null);
 	const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
-	const collectionSelectRef = useRef<HTMLSelectElement | null>(null);
 	const collectionInputRef = useRef<HTMLInputElement | null>(null);
 	const newDataFieldPathRef = useRef<HTMLInputElement | null>(null);
 	const relatedObjectPathContextRequestsRef = useRef<{
@@ -738,9 +724,9 @@ export function ObjectDetail({
 		queryKey: ["classes", "object-detail"],
 		queryFn: fetchClasses,
 	});
-	const collectionsQuery = useQuery({
-		queryKey: ["collections", "object-detail"],
-		queryFn: fetchCollections,
+	const collectionDirectory = useDirectorySearch({
+		queryKey: ["object-detail-collection-directory", classId, objectId],
+		queryFn: fetchCollectionDirectory,
 	});
 	const collectionPermissionsQuery = useQuery({
 		queryKey: [
@@ -896,9 +882,15 @@ export function ObjectDetail({
 			setDataInput(stringifyJson(objectQuery.data.data));
 			setDataDraft(objectQuery.data.data);
 			setCollectionId(String(objectQuery.data.collection_id));
+			collectionDirectory.setSearch(String(objectQuery.data.collection_id));
 			setInitialized(true);
 		}
-	}, [editingFields.length, initialized, objectQuery.data]);
+	}, [
+		collectionDirectory.setSearch,
+		editingFields.length,
+		initialized,
+		objectQuery.data,
+	]);
 
 	useEffect(() => {
 		if (!isIgnoreClassesOpen) {
@@ -928,7 +920,7 @@ export function ObjectDetail({
 		} else if (lastEditingField === "description") {
 			descriptionInputRef.current?.focus();
 		} else if (lastEditingField === "collection") {
-			(collectionSelectRef.current ?? collectionInputRef.current)?.focus();
+			collectionInputRef.current?.focus();
 		}
 	}, [editingFields]);
 
@@ -937,8 +929,6 @@ export function ObjectDetail({
 			newDataFieldPathRef.current?.focus();
 		}
 	}, [isAddDataFieldOpen]);
-
-	const collections = collectionsQuery.data ?? [];
 
 	async function applyUpdatedObject(updatedObject: HubuumObject) {
 		const targetClassId = updatedObject.hubuum_class_id;
@@ -970,6 +960,7 @@ export function ObjectDetail({
 		setActiveDataFieldId(null);
 		setNewDataFieldError(null);
 		setCollectionId(String(updatedObject.collection_id));
+		collectionDirectory.setSearch(String(updatedObject.collection_id));
 		setEditingFields([]);
 		setDirtyFields([]);
 		setFormError(null);
@@ -1116,6 +1107,7 @@ export function ObjectDetail({
 
 		if (field === "collection") {
 			setCollectionId(String(objectData.collection_id));
+			collectionDirectory.setSearch(String(objectData.collection_id));
 			return;
 		}
 
@@ -1139,6 +1131,7 @@ export function ObjectDetail({
 		setName(objectData.name);
 		setDescription(objectData.description ?? "");
 		setCollectionId(String(objectData.collection_id));
+		collectionDirectory.setSearch(String(objectData.collection_id));
 		setDataInput(stringifyJson(objectData.data));
 		setDataDraft(objectData.data);
 		setAddDataFieldOpen(false);
@@ -1153,7 +1146,7 @@ export function ObjectDetail({
 		setFormError(null);
 		setFormSuccess(null);
 		window.requestAnimationFrame(() => objectHeadingRef.current?.focus());
-	}, [editingFields.length, objectQuery.data]);
+	}, [collectionDirectory.setSearch, editingFields.length, objectQuery.data]);
 
 	useEscapeToCancel({
 		enabled: hasActiveEdits && !isSavingOrDeleting,
@@ -1519,17 +1512,12 @@ export function ObjectDetail({
 		(classesQuery.data ?? []).find(
 			(item) => item.id === objectData.hubuum_class_id,
 		) ?? null;
-	const hasCollectionOptions = collections.length > 0;
-	const hasCollectionSelection = collections.some(
+	const selectedCollection = collectionDirectory.query.data?.items.find(
 		(collection) => String(collection.id) === collectionId,
 	);
 	const classNameById = new Map<number, string>();
 	for (const item of classesQuery.data ?? []) {
 		classNameById.set(item.id, item.name);
-	}
-	const collectionNameById = new Map<number, string>();
-	for (const collection of collections) {
-		collectionNameById.set(collection.id, collection.name);
 	}
 	const objectContextById = new Map<
 		number,
@@ -1566,7 +1554,7 @@ export function ObjectDetail({
 		.filter((item) => item.id !== objectData.hubuum_class_id)
 		.sort((left, right) => left.name.localeCompare(right.name));
 	const collectionLabel =
-		collectionNameById.get(objectData.collection_id) ?? "Collection";
+		selectedCollection?.name ?? `Collection #${objectData.collection_id}`;
 	const editAccessMessage = canEditAnything
 		? null
 		: permissionCheckPending
@@ -1982,27 +1970,7 @@ export function ObjectDetail({
 											>
 												Collection
 											</label>
-											{hasCollectionOptions ? (
-												<select
-													ref={collectionSelectRef}
-													id="object-detail-collection"
-													required
-													value={hasCollectionSelection ? collectionId : ""}
-													onChange={(event) => {
-														setCollectionId(event.target.value);
-														markFieldDirty("collection");
-													}}
-												>
-													{!hasCollectionSelection ? (
-														<option value="">Select a collection...</option>
-													) : null}
-													{collections.map((collection) => (
-														<option key={collection.id} value={collection.id}>
-															{collection.name}
-														</option>
-													))}
-												</select>
-											) : (
+											<div className="directory-id-lookup-control">
 												<input
 													ref={collectionInputRef}
 													id="object-detail-collection"
@@ -2012,16 +1980,44 @@ export function ObjectDetail({
 													value={collectionId}
 													onChange={(event) => {
 														setCollectionId(event.target.value);
+														collectionDirectory.setSearch(event.target.value);
 														markFieldDirty("collection");
 													}}
-													placeholder={
-														collectionsQuery.isLoading
-															? "Loading collections..."
-															: "Enter collection ID"
-													}
-													disabled={collectionsQuery.isLoading}
+													placeholder="Collection ID"
 												/>
-											)}
+												<CollectionDirectoryLookup
+													collections={
+														collectionDirectory.query.data?.items ?? []
+													}
+													helperText={directoryLookupStatus({
+														count:
+															collectionDirectory.query.data?.items.length ?? 0,
+														isError: collectionDirectory.query.isError,
+														isLoading: collectionDirectory.query.isLoading,
+														isPartial: Boolean(
+															collectionDirectory.query.data?.isPartial,
+														),
+														isReady: collectionDirectory.isReady,
+														minimumLength: collectionDirectory.minimumLength,
+														resourcePlural: "collections",
+														resourceSingular: "collection",
+														term: collectionDirectory.term,
+													})}
+													idPrefix="object-detail-collection-directory"
+													onChange={collectionDirectory.setSearch}
+													onSelect={(collection) => {
+														setCollectionId(String(collection.id));
+														markFieldDirty("collection");
+													}}
+													value={collectionDirectory.search}
+												/>
+											</div>
+											{selectedCollection ? (
+												<small className="field-note">
+													Selected: {selectedCollection.name} (#
+													{selectedCollection.id})
+												</small>
+											) : null}
 										</div>
 									) : canEditObject ? (
 										<InlineFieldEditTrigger
@@ -2660,10 +2656,10 @@ export function ObjectDetail({
 						Could not load class names. Showing class ID only.
 					</div>
 				) : null}
-				{collectionsQuery.isError ? (
+				{collectionDirectory.query.isError ? (
 					<div className="muted">
-						Could not load collections automatically. Manual collection ID entry
-						is enabled.
+						Could not enrich the collection name. The collection ID remains
+						available.
 					</div>
 				) : null}
 				{collectionPermissionsQuery.isError ? (

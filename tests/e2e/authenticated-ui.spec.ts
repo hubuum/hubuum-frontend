@@ -4,6 +4,7 @@ import { expect, type Page, test } from "@playwright/test";
 const username = process.env.E2E_USERNAME;
 const password = process.env.E2E_PASSWORD;
 const identityScope = process.env.E2E_IDENTITY_SCOPE ?? "local";
+const bffPrefix = "/_hubuum-bff/hubuum";
 const sessionExpiredMessage =
 	"Your session has expired. Sign in again to continue.";
 
@@ -87,10 +88,12 @@ test.describe("authenticated workspace", () => {
 		).toBeVisible();
 		await revokeCurrentBackendToken(page);
 		await page.evaluate(() => {
-			void fetch(
-				"/_hubuum-bff/hubuum/api/v1/events?limit=1&include_total=false",
-				{ credentials: "include" },
-			);
+			window.setTimeout(() => {
+				void fetch(
+					"/_hubuum-bff/hubuum/api/v1/events?limit=1&include_total=false",
+					{ credentials: "include" },
+				);
+			}, 0);
 		});
 
 		await expect(page).toHaveURL(
@@ -1162,6 +1165,299 @@ test.describe("authenticated workspace", () => {
 		).toBeVisible();
 	});
 
+	test("directory popovers find group members and class-scoped export objects", async ({
+		page,
+	}) => {
+		const suffix = globalThis.crypto.randomUUID();
+		const collectionName = `e2e_directory_collection_${suffix}`;
+		const className = `e2e_directory_class_${suffix}`;
+		const objectName = `e2e_directory_object_${suffix}`;
+		const serviceAccountName = `e2e_directory_actor_${suffix}`;
+		const templateName = `e2e_directory_template_${suffix}`;
+		const origin = new URL(page.url()).origin;
+		let collectionId: number | null = null;
+		let classId: number | null = null;
+		let objectId: number | null = null;
+		let serviceAccountId: number | null = null;
+		let serviceAccountEtag: string | undefined;
+		let templateId: number | null = null;
+
+		try {
+			const groupsResponse = await page.request.get(
+				`${bffPrefix}/api/v1/iam/groups?limit=1&include_total=false`,
+			);
+			expect(groupsResponse.ok()).toBe(true);
+			const groups = (await groupsResponse.json()) as Array<{ id: number }>;
+			expect(groups.length).toBeGreaterThan(0);
+			const groupId = groups[0].id;
+
+			const collectionResponse = await page.request.post(
+				`${bffPrefix}/api/v1/collections`,
+				{
+					data: {
+						description: "Playwright directory-popover coverage",
+						group_id: groupId,
+						name: collectionName,
+					},
+					headers: { Origin: origin },
+				},
+			);
+			expect(collectionResponse.status()).toBe(201);
+			collectionId = ((await collectionResponse.json()) as { id: number }).id;
+
+			const classResponse = await page.request.post(
+				`${bffPrefix}/api/v1/classes`,
+				{
+					data: {
+						collection_id: collectionId,
+						description: "Playwright directory class",
+						json_schema: { type: "object" },
+						name: className,
+						validate_schema: false,
+					},
+					headers: { Origin: origin },
+				},
+			);
+			expect(classResponse.status()).toBe(201);
+			classId = ((await classResponse.json()) as { id: number }).id;
+
+			const objectResponse = await page.request.post(
+				`/_hubuum-bff/classes/${classId}/objects`,
+				{
+					data: {
+						collection_id: collectionId,
+						data: { environment: "e2e" },
+						description: "Playwright directory object",
+						hubuum_class_id: classId,
+						name: objectName,
+					},
+					headers: { Origin: origin },
+				},
+			);
+			expect(objectResponse.status()).toBe(201);
+			objectId = ((await objectResponse.json()) as { id: number }).id;
+
+			const serviceAccountResponse = await page.request.post(
+				`${bffPrefix}/api/v1/iam/service-accounts`,
+				{
+					data: {
+						description: "Playwright directory principal",
+						name: serviceAccountName,
+						owner_group_id: groupId,
+					},
+					headers: { Origin: origin },
+				},
+			);
+			expect(serviceAccountResponse.status()).toBe(201);
+			serviceAccountId = (
+				(await serviceAccountResponse.json()) as { id: number }
+			).id;
+			serviceAccountEtag = serviceAccountResponse.headers().etag;
+
+			const templateResponse = await page.request.post(
+				`${bffPrefix}/api/v1/export-templates`,
+				{
+					data: {
+						class_id: classId,
+						collection_id: collectionId,
+						content_type: "text/plain",
+						description: "Playwright directory report",
+						kind: "export",
+						name: templateName,
+						scope_kind: "related_objects",
+						template: "{{ source.name }}",
+					},
+					headers: { Origin: origin },
+				},
+			);
+			expect(templateResponse.status()).toBe(201);
+			templateId = ((await templateResponse.json()) as { id: number }).id;
+
+			await page.goto(`/admin/groups/${groupId}`);
+			const membersCard = page.locator("section.card").filter({
+				has: page.getByRole("heading", { name: /Members/ }),
+			});
+			const membersHeight = await membersCard.evaluate(
+				(element) => element.getBoundingClientRect().height,
+			);
+			await page.getByRole("button", { name: "Find member" }).click();
+			const memberLookup = page
+				.locator(`#admin-group-${groupId}-member-popover`)
+				.getByRole("combobox", { name: "Name or principal ID" });
+			await expect(memberLookup).toBeFocused();
+			const principalRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/iam/service-accounts") &&
+					url.searchParams.get("name__icontains") === serviceAccountName &&
+					url.searchParams.get("include_total") === "false"
+				);
+			});
+			await memberLookup.fill(serviceAccountName);
+			await principalRequest;
+			const memberResults = page.getByRole("listbox", {
+				name: "Find member search results",
+			});
+			await expect(memberResults).toBeVisible();
+			expect(
+				await membersCard.evaluate(
+					(element) => element.getBoundingClientRect().height,
+				),
+			).toBeCloseTo(membersHeight, 1);
+			await memberResults
+				.getByRole("option")
+				.filter({ hasText: serviceAccountName })
+				.click();
+			await expect(page.getByLabel("Add member")).toHaveValue(
+				new RegExp(serviceAccountName),
+			);
+			await expect(
+				page.getByRole("button", { name: "Add member" }),
+			).toBeEnabled();
+
+			await page.goto("/exports?view=one-off");
+			await page
+				.getByRole("combobox", { name: "Scope", exact: true })
+				.selectOption("related_objects");
+			const oneOffForm = page.locator("form").filter({
+				has: page.getByRole("button", { name: "Run export" }),
+			});
+			const oneOffHeight = await oneOffForm.evaluate(
+				(element) => element.getBoundingClientRect().height,
+			);
+			await page.getByRole("button", { name: "Find class" }).click();
+			const classLookup = page
+				.locator("#one-off-export-class-popover")
+				.getByRole("combobox", { name: "Class name" });
+			const classRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith("/api/v1/classes") &&
+					url.searchParams.get("name__icontains") === className &&
+					url.searchParams.get("include_total") === "false"
+				);
+			});
+			await classLookup.fill(className);
+			await classRequest;
+			const classResults = page.getByRole("listbox", {
+				name: "Find class search results",
+			});
+			await expect(classResults).toBeVisible();
+			expect(
+				await oneOffForm.evaluate(
+					(element) => element.getBoundingClientRect().height,
+				),
+			).toBeCloseTo(oneOffHeight, 1);
+			await classResults
+				.getByRole("option")
+				.filter({ hasText: className })
+				.click();
+			await expect(
+				page.getByRole("spinbutton", { name: "Class ID" }),
+			).toHaveValue(String(classId));
+
+			await page.getByRole("button", { name: "Find object" }).click();
+			const objectLookup = page
+				.locator("#one-off-export-object-popover")
+				.getByRole("combobox", { name: "Object name or ID" });
+			const objectRequest = page.waitForRequest((request) => {
+				const url = new URL(request.url());
+				return (
+					url.pathname.endsWith(`/classes/${classId}/objects`) &&
+					url.searchParams.get("name__icontains") === objectName &&
+					url.searchParams.get("include_total") === "false"
+				);
+			});
+			await objectLookup.fill(objectName);
+			await objectRequest;
+			const objectResults = page.getByRole("listbox", {
+				name: "Find object search results",
+			});
+			await expect(objectResults).toBeVisible();
+			const accessibility = await new AxeBuilder({ page })
+				.include("form")
+				.analyze();
+			expect(
+				accessibility.violations.filter((violation) =>
+					["serious", "critical"].includes(violation.impact ?? ""),
+				),
+			).toEqual([]);
+			await objectResults
+				.getByRole("option")
+				.filter({ hasText: objectName })
+				.click();
+			await expect(
+				page.getByRole("spinbutton", { name: "Object ID" }),
+			).toHaveValue(String(objectId));
+
+			await page.goto(`/exports/reports/${templateId}`);
+			await page.getByRole("button", { name: "Find object" }).click();
+			const reportLookup = page
+				.locator("#report-root-object-popover")
+				.getByRole("combobox", { name: "Object name or ID" });
+			await reportLookup.fill(objectName);
+			await page
+				.getByRole("listbox", { name: "Find object search results" })
+				.getByRole("option")
+				.filter({ hasText: objectName })
+				.click();
+			await expect(
+				page.getByRole("spinbutton", { name: "Root object ID" }),
+			).toHaveValue(String(objectId));
+
+			await page.goto(`/exports/templates/${templateId}`);
+			await page.getByRole("tab", { name: /6\. Design/ }).click();
+			await page.getByRole("button", { name: "Find object" }).click();
+			const testLookup = page
+				.locator("#export-template-test-object-popover")
+				.getByRole("combobox", { name: "Object name or ID" });
+			await testLookup.fill(objectName);
+			await page
+				.getByRole("listbox", { name: "Find object search results" })
+				.getByRole("option")
+				.filter({ hasText: objectName })
+				.click();
+			await expect(
+				page.getByRole("spinbutton", { name: "Test object ID" }),
+			).toHaveValue(String(objectId));
+		} finally {
+			if (templateId !== null) {
+				await page.request.delete(
+					`${bffPrefix}/api/v1/export-templates/${templateId}`,
+					{ headers: { Origin: origin } },
+				);
+			}
+			if (serviceAccountId !== null) {
+				await page.request.delete(
+					`${bffPrefix}/api/v1/iam/service-accounts/${serviceAccountId}`,
+					{
+						headers: {
+							Origin: origin,
+							...(serviceAccountEtag ? { "If-Match": serviceAccountEtag } : {}),
+						},
+					},
+				);
+			}
+			if (objectId !== null && classId !== null) {
+				await page.request.delete(
+					`${bffPrefix}/api/v1/classes/${classId}/${objectId}`,
+					{ headers: { Origin: origin } },
+				);
+			}
+			if (classId !== null) {
+				await page.request.delete(`${bffPrefix}/api/v1/classes/${classId}`, {
+					headers: { Origin: origin },
+				});
+			}
+			if (collectionId !== null) {
+				await page.request.delete(
+					`${bffPrefix}/api/v1/collections/${collectionId}`,
+					{ headers: { Origin: origin } },
+				);
+			}
+		}
+	});
+
 	test("exposes raw task and bookmarkable template report links", async ({
 		context,
 		page,
@@ -1625,9 +1921,21 @@ test.describe("authenticated workspace", () => {
 		await page.getByRole("tab", { name: /4\. Related/ }).click();
 		await page.getByRole("button", { name: "Add include" }).click();
 
+		const selectRelatedClass = async (name: string) => {
+			await page.getByRole("button", { name: "Find class" }).click();
+			await page
+				.getByRole("combobox", { name: "Class name" })
+				.fill(name);
+			await page
+				.getByRole("listbox", { name: "Find class search results" })
+				.getByRole("option")
+				.filter({ hasText: name })
+				.click();
+		};
 		const relatedClass = page.getByLabel("Related class");
 		const maximumDepth = page.getByLabel("Maximum path depth");
-		await relatedClass.selectOption("30");
+		await selectRelatedClass("Rooms");
+		await expect(relatedClass).toHaveValue("30");
 
 		await expect(maximumDepth).toHaveValue("2");
 		await expect(maximumDepth).toHaveAttribute("min", "2");
@@ -1636,8 +1944,8 @@ test.describe("authenticated workspace", () => {
 		).toBeVisible();
 
 		await maximumDepth.fill("3");
-		await relatedClass.selectOption("20");
-		await relatedClass.selectOption("30");
+		await selectRelatedClass("Jacks");
+		await selectRelatedClass("Rooms");
 		await expect(maximumDepth).toHaveValue("3");
 
 		await maximumDepth.fill("");

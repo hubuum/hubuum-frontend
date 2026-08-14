@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
 
+import { ObjectDirectoryLookup } from "@/components/object-directory-lookup";
 import { ReportQueryBuilder } from "@/components/report-query-builder";
 import {
 	CLASS_OBJECT_SAMPLES_GC_TIME,
@@ -17,6 +18,7 @@ import {
 	fetchSharedComputedFields,
 } from "@/lib/api/computed-fields";
 import { fetchExportClasses } from "@/lib/api/export-options";
+import { fetchClassObjectDirectory } from "@/lib/api/resource-directory";
 import type { ReportMissingDataPolicy } from "@/lib/api/reporting";
 import { getReportTemplate } from "@/lib/api/reporting";
 import {
@@ -36,6 +38,7 @@ import {
 	buildBookmarkableReportOverrides,
 	type ReportConfiguratorValues,
 } from "@/lib/report-configuration";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 type PreparedReport = {
 	href: string;
@@ -68,19 +71,43 @@ export function ReportConfigurator({
 }) {
 	const router = useRouter();
 	const [values, setValues] = useState<ReportConfiguratorValues>(initialValues);
-	const [queryOverrideEnabled, setQueryOverrideEnabled] = useState(
-		initialQueryOverride,
-	);
+	const [queryOverrideEnabled, setQueryOverrideEnabled] =
+		useState(initialQueryOverride);
 	const [preparedReport, setPreparedReport] = useState<PreparedReport | null>(
 		null,
 	);
 	const [error, setError] = useState<string | null>(null);
 	const [feedback, setFeedback] = useState<string | null>(null);
+	const [objectSearch, setObjectSearch] = useState("");
 	const templateQuery = useQuery({
 		queryKey: ["export-template", templateId],
 		queryFn: () => getReportTemplate(templateId),
 	});
 	const template = templateQuery.data ?? null;
+	const objectSearchTerm = objectSearch.trim();
+	const objectSearchMinimum = /^\d+$/.test(objectSearchTerm) ? 1 : 2;
+	const debouncedObjectSearchTerm = useDebouncedValue(objectSearchTerm, 300);
+	const objectSearchIsReady =
+		objectSearchTerm.length >= objectSearchMinimum &&
+		debouncedObjectSearchTerm === objectSearchTerm;
+	const objectDirectoryQuery = useQuery({
+		queryKey: [
+			"report-object-directory",
+			template?.class_id ?? null,
+			debouncedObjectSearchTerm,
+		],
+		queryFn: () =>
+			fetchClassObjectDirectory(
+				template?.class_id ?? 0,
+				debouncedObjectSearchTerm,
+			),
+		enabled:
+			template?.scope_kind === "related_objects" &&
+			template.class_id != null &&
+			objectSearchIsReady,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
 	const usesObjectServerFilters =
 		template?.scope_kind === "objects_in_class" && template.class_id != null;
 	const classesQuery = useQuery({
@@ -114,9 +141,7 @@ export function ReportConfigurator({
 	});
 	const objectSampleData = useMemo(
 		() =>
-			(classObjectSamplesQuery.data ?? []).map(
-				(objectItem) => objectItem.data,
-			),
+			(classObjectSamplesQuery.data ?? []).map((objectItem) => objectItem.data),
 		[classObjectSamplesQuery.data],
 	);
 	const objectServerFilterDataFields = useMemo(
@@ -157,24 +182,19 @@ export function ReportConfigurator({
 		return parsePositiveInteger(initialValues.objectId);
 	}, [initialValues.objectId]);
 	const canUseSavedDefaults =
-		template?.scope_kind !== "related_objects" ||
-		initialObjectId !== null;
+		template?.scope_kind !== "related_objects" || initialObjectId !== null;
 	const savedReportHref =
 		template && canUseSavedDefaults
 			? getBookmarkableReportHref(template.id, {
 					object_id:
-						template.scope_kind === "related_objects"
-							? initialObjectId
-							: null,
+						template.scope_kind === "related_objects" ? initialObjectId : null,
 				})
 			: null;
 	const savedRefreshHref =
 		template && canUseSavedDefaults
 			? getReportRefreshHref(template.id, {
 					object_id:
-						template.scope_kind === "related_objects"
-							? initialObjectId
-							: null,
+						template.scope_kind === "related_objects" ? initialObjectId : null,
 				})
 			: null;
 
@@ -265,6 +285,7 @@ export function ReportConfigurator({
 		};
 		setValues(emptyValues);
 		setQueryOverrideEnabled(false);
+		setObjectSearch("");
 		setPreparedReport(null);
 		setError(null);
 		setFeedback("Restored the saved template defaults.");
@@ -328,8 +349,7 @@ export function ReportConfigurator({
 						<span>{formatExportContentType(template.content_type)}</span>
 						<span>{formatExportScope(template.scope_kind)}</span>
 						<span>
-							Template updated{" "}
-							{new Date(template.updated_at).toLocaleString()}
+							Template updated {new Date(template.updated_at).toLocaleString()}
 						</span>
 					</div>
 				</div>
@@ -415,18 +435,47 @@ export function ReportConfigurator({
 				</div>
 
 				{template.scope_kind === "related_objects" ? (
-					<label className="control-field report-root-object-field">
-						<span>Root object ID</span>
-						<input
-							type="number"
-							min={1}
-							value={values.objectId}
-							onChange={(event) =>
-								updateValue("objectId", event.target.value)
-							}
-							placeholder="Required"
-						/>
-					</label>
+					<div className="control-field report-root-object-field">
+						<label htmlFor="report-root-object">Root object ID</label>
+						<div className="directory-id-lookup-control">
+							<input
+								id="report-root-object"
+								type="number"
+								min={1}
+								value={values.objectId}
+								onChange={(event) => {
+									setObjectSearch("");
+									updateValue("objectId", event.target.value);
+								}}
+								placeholder="Required"
+							/>
+							<ObjectDirectoryLookup
+								disabled={template.class_id == null}
+								disabledHint="This template does not specify a class"
+								helperText={
+									objectSearchTerm.length < objectSearchMinimum
+										? "Type at least two characters, or enter an exact object ID."
+										: objectDirectoryQuery.isLoading || !objectSearchIsReady
+											? "Searching objects visible to your account…"
+											: objectDirectoryQuery.isError
+												? "Object lookup is unavailable; enter an exact object ID."
+												: objectDirectoryQuery.data?.isPartial
+													? "More than 50 objects match; type more to narrow the results."
+													: objectDirectoryQuery.data?.items.length === 0
+														? "No matching objects are visible in this class."
+														: "Choose an object to fill Root object ID."
+								}
+								idPrefix="report-root-object"
+								objects={objectDirectoryQuery.data?.items ?? []}
+								onChange={setObjectSearch}
+								onSelect={(objectItem) => {
+									setObjectSearch(objectItem.name);
+									updateValue("objectId", String(objectItem.id));
+								}}
+								value={objectSearch}
+							/>
+						</div>
+					</div>
 				) : null}
 
 				<fieldset className="report-query-choice">

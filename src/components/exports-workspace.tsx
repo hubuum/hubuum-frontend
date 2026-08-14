@@ -16,8 +16,10 @@ import {
 	useState,
 } from "react";
 
+import { ClassDirectoryLookup } from "@/components/class-directory-lookup";
 import { EmptyState } from "@/components/empty-state";
 import { IncludeRows } from "@/components/include-rows";
+import { ObjectDirectoryLookup } from "@/components/object-directory-lookup";
 import {
 	ObjectServerFilterMenu,
 	type ServerFilterComputedField,
@@ -40,6 +42,11 @@ import {
 	fetchExportClasses,
 	fetchExportCollections,
 } from "@/lib/api/export-options";
+import type { HubuumClassExpanded } from "@/lib/api/generated/models";
+import {
+	fetchClassDirectory,
+	fetchClassObjectDirectory,
+} from "@/lib/api/resource-directory";
 import {
 	buildCollectionHierarchy,
 	formatCollectionOption,
@@ -96,6 +103,7 @@ import {
 } from "@/lib/object-server-filter-fields";
 import { type ObjectServerFilter } from "@/lib/object-server-filters";
 import { parsePositiveInteger } from "@/lib/number-input";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 type QueryBuilderFilter = {
 	id: string;
@@ -234,7 +242,11 @@ export function ExportsWorkspace({
 		useState<ReportTemplate | null>(null);
 	const [scopeKind, setScopeKind] = useState<ReportScopeKind>("collections");
 	const [classId, setClassId] = useState("");
+	const [classSearch, setClassSearch] = useState("");
+	const [selectedDirectoryClass, setSelectedDirectoryClass] =
+		useState<HubuumClassExpanded | null>(null);
 	const [objectId, setObjectId] = useState("");
+	const [objectSearch, setObjectSearch] = useState("");
 	const [advancedQueryText, setAdvancedQueryText] = useState("");
 	const [missingDataPolicy, setMissingDataPolicy] =
 		useState<ReportMissingDataPolicy>("strict");
@@ -279,11 +291,49 @@ export function ExportsWorkspace({
 		queryFn: fetchExportClasses,
 	});
 	const parsedClassId = useMemo(() => parsePositiveInteger(classId), [classId]);
+	const classSearchTerm = classSearch.trim();
+	const debouncedClassSearchTerm = useDebouncedValue(classSearchTerm, 300);
+	const classSearchIsReady =
+		classSearchTerm.length >= 2 && debouncedClassSearchTerm === classSearchTerm;
+	const classDirectoryQuery = useQuery({
+		queryKey: ["one-off-class-directory", debouncedClassSearchTerm],
+		queryFn: () => fetchClassDirectory(debouncedClassSearchTerm),
+		enabled:
+			activeView === "one-off" &&
+			(scopeKind === "objects_in_class" || scopeKind === "related_objects") &&
+			classSearchIsReady,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
+	const objectSearchTerm = objectSearch.trim();
+	const objectSearchMinimum = /^\d+$/.test(objectSearchTerm) ? 1 : 2;
+	const debouncedObjectSearchTerm = useDebouncedValue(objectSearchTerm, 300);
+	const objectSearchIsReady =
+		objectSearchTerm.length >= objectSearchMinimum &&
+		debouncedObjectSearchTerm === objectSearchTerm;
+	const objectDirectoryQuery = useQuery({
+		queryKey: [
+			"one-off-object-directory",
+			parsedClassId,
+			debouncedObjectSearchTerm,
+		],
+		queryFn: () =>
+			fetchClassObjectDirectory(parsedClassId ?? 0, debouncedObjectSearchTerm),
+		enabled:
+			activeView === "one-off" &&
+			scopeKind === "related_objects" &&
+			parsedClassId !== null &&
+			objectSearchIsReady,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
 	const selectedClass = useMemo(
 		() =>
 			classesQuery.data?.find((classItem) => classItem.id === parsedClassId) ??
-			null,
-		[classesQuery.data, parsedClassId],
+			(selectedDirectoryClass?.id === parsedClassId
+				? selectedDirectoryClass
+				: null),
+		[classesQuery.data, parsedClassId, selectedDirectoryClass],
 	);
 	const objectsQuery = useQuery({
 		queryKey: classObjectSamplesQueryKey(parsedClassId),
@@ -776,7 +826,16 @@ export function ExportsWorkspace({
 			),
 		[collectionHierarchy.byId, collectionOptions],
 	);
-	const classOptions = classesQuery.data ?? [];
+	const classOptions = useMemo(() => {
+		const loaded = classesQuery.data ?? [];
+		if (
+			selectedDirectoryClass == null ||
+			loaded.some((classItem) => classItem.id === selectedDirectoryClass.id)
+		) {
+			return loaded;
+		}
+		return [...loaded, selectedDirectoryClass];
+	}, [classesQuery.data, selectedDirectoryClass]);
 	const classLabels = useMemo(
 		() =>
 			new Map(
@@ -787,7 +846,6 @@ export function ExportsWorkspace({
 			),
 		[classesQuery.data],
 	);
-	const objectOptions = objectsQuery.data ?? [];
 	const activeReportProgress = getTaskProgressPercent(activeReportTask);
 	return (
 		<section className="stack export-workspace">
@@ -1106,70 +1164,97 @@ export function ExportsWorkspace({
 											{scopeKind === "objects_in_class" ||
 											scopeKind === "related_objects" ? (
 												<div className="control-field">
-													<label htmlFor="export-class">Class</label>
-													{classOptions.length > 0 ? (
-														<select
-															id="export-class"
-															value={classId}
-															onChange={(event) =>
-																setClassId(event.target.value)
-															}
-														>
-															<option value="">Select class</option>
-															{classOptions.map((classItem) => (
-																<option key={classItem.id} value={classItem.id}>
-																	{classItem.name} (#{classItem.id})
-																</option>
-															))}
-														</select>
-													) : (
+													<label htmlFor="export-class">Class ID</label>
+													<div className="directory-id-lookup-control">
 														<input
 															id="export-class"
 															type="number"
 															min={1}
 															value={classId}
-															onChange={(event) =>
-																setClassId(event.target.value)
-															}
+															onChange={(event) => {
+																setClassId(event.target.value);
+																setClassSearch("");
+																setSelectedDirectoryClass(null);
+																setObjectId("");
+																setObjectSearch("");
+															}}
 															placeholder="Enter class ID"
 														/>
-													)}
+														<ClassDirectoryLookup
+															classes={classDirectoryQuery.data?.items ?? []}
+															helperText={
+																classSearchTerm.length < 2
+																	? "Type at least two characters; exact Class ID always works."
+																	: classDirectoryQuery.isLoading ||
+																			!classSearchIsReady
+																		? "Searching classes visible to your account…"
+																		: classDirectoryQuery.isError
+																			? "Class lookup is unavailable; enter an exact Class ID."
+																			: classDirectoryQuery.data?.isPartial
+																				? "More than 50 classes match; type more to narrow the results."
+																				: classDirectoryQuery.data?.items
+																							.length === 0
+																					? "No matching classes are visible to your account."
+																					: "Choose a class to fill Class ID."
+															}
+															idPrefix="one-off-export-class"
+															onChange={setClassSearch}
+															onSelect={(classItem) => {
+																setClassId(String(classItem.id));
+																setClassSearch(classItem.name);
+																setSelectedDirectoryClass(classItem);
+																setObjectId("");
+																setObjectSearch("");
+															}}
+															value={classSearch}
+														/>
+													</div>
 												</div>
 											) : null}
 
 											{scopeKind === "related_objects" ? (
 												<div className="control-field">
-													<label htmlFor="export-object">Object</label>
-													{objectOptions.length > 0 ? (
-														<select
-															id="export-object"
-															value={objectId}
-															onChange={(event) =>
-																setObjectId(event.target.value)
-															}
-														>
-															<option value="">Select object</option>
-															{objectOptions.map((objectItem) => (
-																<option
-																	key={objectItem.id}
-																	value={objectItem.id}
-																>
-																	{objectItem.name} (#{objectItem.id})
-																</option>
-															))}
-														</select>
-													) : (
+													<label htmlFor="export-object">Object ID</label>
+													<div className="directory-id-lookup-control">
 														<input
 															id="export-object"
 															type="number"
 															min={1}
 															value={objectId}
-															onChange={(event) =>
-																setObjectId(event.target.value)
-															}
+															onChange={(event) => {
+																setObjectId(event.target.value);
+																setObjectSearch("");
+															}}
 															placeholder="Enter object ID"
 														/>
-													)}
+														<ObjectDirectoryLookup
+															disabled={parsedClassId === null}
+															disabledHint="Choose a class first"
+															helperText={
+																objectSearchTerm.length < objectSearchMinimum
+																	? "Type at least two characters, or enter an exact object ID."
+																	: objectDirectoryQuery.isLoading ||
+																			!objectSearchIsReady
+																		? "Searching objects visible to your account…"
+																		: objectDirectoryQuery.isError
+																			? "Object lookup is unavailable; enter an exact Object ID."
+																			: objectDirectoryQuery.data?.isPartial
+																				? "More than 50 objects match; type more to narrow the results."
+																				: objectDirectoryQuery.data?.items
+																							.length === 0
+																					? "No matching objects are visible in this class."
+																					: "Choose an object to fill Object ID."
+															}
+															idPrefix="one-off-export-object"
+															objects={objectDirectoryQuery.data?.items ?? []}
+															onChange={setObjectSearch}
+															onSelect={(objectItem) => {
+																setObjectId(String(objectItem.id));
+																setObjectSearch(objectItem.name);
+															}}
+															value={objectSearch}
+														/>
+													</div>
 												</div>
 											) : null}
 

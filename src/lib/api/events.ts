@@ -8,6 +8,7 @@ import {
 	getApiV1ClassesByClassIdEvents,
 	getApiV1ClassesByClassIdHistory,
 	getApiV1ClassesByClassIdHistoryAsOf,
+	getApiV1Collections,
 	getApiV1EventDeliveries,
 	getApiV1EventDeliveriesHealth,
 	getApiV1EventSinks,
@@ -25,6 +26,7 @@ import {
 	postApiV1EventDeliveriesByDeliveryIdRetry,
 } from "@/lib/api/generated/client";
 import type {
+	Collection,
 	EventDeliveryResponse,
 	EventDeliveryHealthResponse,
 	EventResponse,
@@ -107,6 +109,31 @@ export async function fetchEventsPage(
 
 	assertStatus(response.status, response.data, 200, "Failed to load events.");
 	return pageFromResponse(response.data as EventRecord[], response.headers);
+}
+
+export async function fetchAuditCollections(): Promise<Collection[]> {
+	return collectAllCursorPages(async (cursor) => {
+		const response = await getApiV1Collections(
+			{
+				cursor,
+				include_total: false,
+				limit: 250,
+				sort: "name.asc,id.asc",
+			},
+			{ credentials: "include" },
+		);
+
+		assertStatus(
+			response.status,
+			response.data,
+			200,
+			"Failed to load collections for audit events.",
+		);
+		return {
+			items: response.data as Collection[],
+			nextCursor: response.headers.get("x-next-cursor"),
+		};
+	});
 }
 
 export async function fetchResourceEventsPage(

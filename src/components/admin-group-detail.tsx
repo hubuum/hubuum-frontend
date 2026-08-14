@@ -3,37 +3,33 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { GroupMemberLookup } from "@/components/group-member-lookup";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamGroupsByGroupIdMembersByPrincipalId,
 	getApiV1IamGroupsByGroupId,
 	getApiV1IamGroupsByGroupIdMembers,
-	getApiV1IamServiceAccounts,
-	getApiV1IamUsers,
 	postApiV1IamGroupsByGroupIdMembersByPrincipalId,
 } from "@/lib/api/generated/client";
+import { fetchGroupMemberDirectory } from "@/lib/api/group-member-directory";
 import { useConfirm } from "@/lib/confirm-context";
 import {
 	formatGroupMembershipCandidateOption,
 	type GroupMembershipCandidate,
 	groupMembershipCandidateKindLabel,
-	groupMembershipCandidateMatches,
-	humanMembershipCandidate,
 	resolveGroupMembershipCandidate,
-	serviceAccountMembershipCandidate,
 } from "@/lib/group-membership-candidates";
 import {
 	type ConsoleGroup,
 	type ConsolePrincipalMember,
-	type ConsoleServiceAccount,
-	type ConsoleUser,
 	formatScopedIdentityName,
 	isProviderManagedGroup,
 	normalizeIdentityScope,
 } from "@/lib/identity-scopes";
 import { trackRecentItem } from "@/lib/recent-items";
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 type AdminGroupDetailProps = {
 	groupId: number;
@@ -57,36 +53,6 @@ async function fetchGroup(groupId: number): Promise<ConsoleGroup> {
 
 	if (response.status !== 200) {
 		throw new Error(getApiErrorMessage(response.data, "Failed to load group."));
-	}
-
-	return response.data;
-}
-
-async function fetchUsers(): Promise<ConsoleUser[]> {
-	const response = await getApiV1IamUsers(
-		{ include_total: false, limit: 250 },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(getApiErrorMessage(response.data, "Failed to load users."));
-	}
-
-	return response.data;
-}
-
-async function fetchServiceAccounts(): Promise<ConsoleServiceAccount[]> {
-	const response = await getApiV1IamServiceAccounts(
-		{ include_total: false, limit: 250 },
-		{ credentials: "include" },
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load service accounts."),
-		);
 	}
 
 	return response.data;
@@ -213,28 +179,37 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	const [formError, setFormError] = useState<string | null>(null);
 	const [formSuccess, setFormSuccess] = useState<string | null>(null);
 	const [memberInput, setMemberInput] = useState("");
+	const [memberSearch, setMemberSearch] = useState("");
+	const [selectedMemberCandidate, setSelectedMemberCandidate] =
+		useState<GroupMembershipCandidate | null>(null);
 	const [membershipError, setMembershipError] = useState<string | null>(null);
 	const [membershipSuccess, setMembershipSuccess] = useState<string | null>(
 		null,
 	);
 	const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
-	const datalistId = `admin-group-member-options-${groupId}`;
 
 	const groupQuery = useQuery({
 		queryKey: ["admin-group", groupId],
 		queryFn: async () => fetchGroup(groupId),
 	});
-	const usersQuery = useQuery({
-		queryKey: ["admin-users", "group-detail"],
-		queryFn: fetchUsers,
-	});
-	const serviceAccountsQuery = useQuery({
-		queryKey: ["service-accounts", "group-detail"],
-		queryFn: fetchServiceAccounts,
-	});
 	const membersQuery = useQuery({
 		queryKey: ["admin-group-members", groupId],
 		queryFn: async () => fetchGroupMembers(groupId),
+	});
+	const memberSearchTerm = memberSearch.trim();
+	const memberSearchMinimum = /^\d+$/.test(memberSearchTerm) ? 1 : 2;
+	const debouncedMemberSearchTerm = useDebouncedValue(memberSearchTerm, 300);
+	const memberSearchIsReady =
+		memberSearchTerm.length >= memberSearchMinimum &&
+		debouncedMemberSearchTerm === memberSearchTerm;
+	const memberDirectoryQuery = useQuery({
+		queryKey: ["group-member-directory", debouncedMemberSearchTerm],
+		queryFn: () => fetchGroupMemberDirectory(debouncedMemberSearchTerm),
+		enabled:
+			memberSearchIsReady &&
+			!(groupQuery.data && isProviderManagedGroup(groupQuery.data)),
+		retry: false,
+		staleTime: 5 * 60 * 1000,
 	});
 
 	useEffect(() => {
@@ -261,43 +236,26 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	}, [groupQuery.data]);
 
 	const members = membersQuery.data ?? [];
-	const users = usersQuery.data ?? [];
-	const serviceAccounts = serviceAccountsQuery.data ?? [];
 	const memberIdSet = useMemo(
 		() => new Set(members.map((member) => member.principal_id)),
 		[members],
 	);
 	const allMembersSelected =
 		members.length > 0 && selectedMemberIds.length === members.length;
-	const membershipCandidates = useMemo(
-		() =>
-			[
-				...users.map(humanMembershipCandidate),
-				...serviceAccounts.map(serviceAccountMembershipCandidate),
-			].sort((left, right) =>
-				formatGroupMembershipCandidateOption(left).localeCompare(
-					formatGroupMembershipCandidateOption(right),
-				),
-			),
-		[serviceAccounts, users],
-	);
 	const candidatesNotInGroup = useMemo(
 		() =>
-			membershipCandidates.filter(
+			(memberDirectoryQuery.data?.candidates ?? []).filter(
 				(candidate) => !memberIdSet.has(candidate.id),
 			),
-		[memberIdSet, membershipCandidates],
+		[memberDirectoryQuery.data?.candidates, memberIdSet],
 	);
-	const memberInputTerm = memberInput.trim().toLowerCase();
-	const memberSuggestions = useMemo(() => {
-		const filteredCandidates = memberInputTerm
-			? candidatesNotInGroup.filter((candidate) =>
-					groupMembershipCandidateMatches(candidate, memberInputTerm),
-				)
-			: candidatesNotInGroup;
-
-		return filteredCandidates.slice(0, 50);
-	}, [candidatesNotInGroup, memberInputTerm]);
+	useEffect(() => {
+		const candidate = resolveGroupMembershipCandidate(
+			memberInput,
+			candidatesNotInGroup,
+		);
+		setSelectedMemberCandidate(candidate);
+	}, [candidatesNotInGroup, memberInput]);
 
 	const updateMutation = useMutation({
 		mutationFn: async (payload: UpdateGroupPayload) =>
@@ -358,6 +316,8 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 				`${groupMembershipCandidateKindLabel(candidate)} ${candidate.name} added to group.`,
 			);
 			setMemberInput("");
+			setMemberSearch("");
+			setSelectedMemberCandidate(null);
 		},
 		onError: (error) => {
 			setMembershipSuccess(null);
@@ -471,14 +431,13 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 			return;
 		}
 
-		const targetCandidate = resolveGroupMembershipCandidate(
-			memberInput,
-			candidatesNotInGroup,
-		);
+		const targetCandidate =
+			selectedMemberCandidate ??
+			resolveGroupMembershipCandidate(memberInput, candidatesNotInGroup);
 		if (!targetCandidate) {
 			setMembershipSuccess(null);
 			setMembershipError(
-				"Select a human or service account from the suggestions, or enter an exact scoped name, email, or principal ID.",
+				"Find and select a human or service account before adding it.",
 			);
 			return;
 		}
@@ -566,10 +525,6 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 
 	const isMembershipUpdating =
 		addMemberMutation.isPending || removeMemberMutation.isPending;
-	const candidateSourcesLoading =
-		usersQuery.isLoading || serviceAccountsQuery.isLoading;
-	const candidateSourcesUnavailable =
-		usersQuery.isError && serviceAccountsQuery.isError;
 	const memberExportView: TableExportView<ConsolePrincipalMember> = {
 		id: `admin.group.${group.id}.members`,
 		fileName: `${group.groupname}-members-view`,
@@ -650,30 +605,57 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 				<h3>Members ({members.length})</h3>
 
 				<div className="form-grid">
-					<label className="control-field control-field--wide">
-						<span>Add member</span>
-						<input
-							list={datalistId}
-							value={memberInput}
-							onChange={(event) => setMemberInput(event.target.value)}
-							placeholder="Type a human or service account name, email, or principal ID"
-							disabled={
-								providerManaged ||
-								candidateSourcesLoading ||
-								candidateSourcesUnavailable ||
-								isMembershipUpdating ||
-								candidatesNotInGroup.length === 0
-							}
-						/>
-						<datalist id={datalistId}>
-							{memberSuggestions.map((candidate) => (
-								<option
-									key={candidate.id}
-									value={formatGroupMembershipCandidateOption(candidate)}
-								/>
-							))}
-						</datalist>
-					</label>
+					<div className="control-field control-field--wide">
+						<label htmlFor="admin-group-member">Add member</label>
+						<div className="directory-id-lookup-control">
+							<input
+								id="admin-group-member"
+								value={memberInput}
+								onChange={(event) => {
+									setMemberInput(event.target.value);
+									setMemberSearch(event.target.value);
+									setSelectedMemberCandidate(null);
+								}}
+								placeholder="Select a principal or enter its ID"
+								disabled={providerManaged || isMembershipUpdating}
+							/>
+							<GroupMemberLookup
+								candidates={candidatesNotInGroup}
+								disabled={providerManaged || isMembershipUpdating}
+								disabledHint={
+									providerManaged
+										? "Membership is synchronized from the identity provider"
+										: "Wait for the membership update to finish"
+								}
+								helperText={
+									memberSearchTerm.length < memberSearchMinimum
+										? "Type at least two characters, or enter an exact principal ID."
+										: memberDirectoryQuery.isLoading || !memberSearchIsReady
+											? "Searching principals visible to your account…"
+											: memberDirectoryQuery.isError
+												? "Member lookup is unavailable for your account."
+												: memberDirectoryQuery.data?.isPartial
+													? "More principals match; type more to narrow the results."
+													: memberDirectoryQuery.data?.unavailableKinds.length
+														? "Some principal types could not be searched with your permissions."
+														: candidatesNotInGroup.length === 0
+															? "No matching principals are available to add."
+															: "Choose a principal to fill this field."
+								}
+								idPrefix={`admin-group-${groupId}-member`}
+								onChange={setMemberSearch}
+								onSelect={(candidate) => {
+									setMemberInput(
+										formatGroupMembershipCandidateOption(candidate),
+									);
+									setMemberSearch(candidate.name);
+									setSelectedMemberCandidate(candidate);
+									setMembershipError(null);
+								}}
+								value={memberSearch}
+							/>
+						</div>
+					</div>
 				</div>
 
 				<div className="form-actions">
@@ -682,10 +664,8 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 						onClick={addMember}
 						disabled={
 							providerManaged ||
-							candidateSourcesLoading ||
-							candidateSourcesUnavailable ||
 							isMembershipUpdating ||
-							candidatesNotInGroup.length === 0
+							selectedMemberCandidate === null
 						}
 					>
 						{addMemberMutation.isPending ? "Adding..." : "Add member"}
@@ -693,32 +673,11 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 					<span className="muted">
 						{providerManaged
 							? "Membership is synchronized from the identity provider."
-							: candidateSourcesLoading
-								? "Loading member candidates..."
-								: candidateSourcesUnavailable
-									? "Member candidates are unavailable."
-									: candidatesNotInGroup.length === 0
-										? "No additional principals are available."
-										: `${candidatesNotInGroup.length} principal${candidatesNotInGroup.length === 1 ? "" : "s"} available to add.`}
+							: selectedMemberCandidate
+								? `${groupMembershipCandidateKindLabel(selectedMemberCandidate)} #${selectedMemberCandidate.id} selected.`
+								: "Search by name or exact principal ID; results respect your permissions."}
 					</span>
 				</div>
-
-				{usersQuery.isError ? (
-					<div className="error-banner">
-						Failed to load users.{" "}
-						{usersQuery.error instanceof Error
-							? usersQuery.error.message
-							: "Unknown error"}
-					</div>
-				) : null}
-				{serviceAccountsQuery.isError ? (
-					<div className="error-banner">
-						Failed to load service accounts.{" "}
-						{serviceAccountsQuery.error instanceof Error
-							? serviceAccountsQuery.error.message
-							: "Unknown error"}
-					</div>
-				) : null}
 				{membersQuery.isError ? (
 					<div className="error-banner">
 						Failed to load group members.{" "}
