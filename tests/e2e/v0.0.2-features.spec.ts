@@ -457,6 +457,35 @@ test.describe("v0.0.3 server features", () => {
 				valueTextInsets.filterable,
 				1,
 			);
+			const headerTextInsets = await page
+				.locator(".audit-table-wrap")
+				.evaluate((table) =>
+					Array.from(
+						table.querySelectorAll("th.audit-value-header"),
+					).map((header) => {
+						const textNode = Array.from(header.childNodes).find(
+							(node) =>
+								node.nodeType === Node.TEXT_NODE &&
+								Boolean(node.textContent?.trim()),
+						);
+						if (!textNode) {
+							throw new Error("Could not measure audit header text.");
+						}
+						const range = document.createRange();
+						range.selectNodeContents(textNode);
+						return (
+							range.getBoundingClientRect().left -
+							header.getBoundingClientRect().left
+						);
+					}),
+				);
+			expect(headerTextInsets).toHaveLength(5);
+			for (const headerTextInset of headerTextInsets) {
+				expect(headerTextInset).toBeCloseTo(
+					valueTextInsets.filterable,
+					1,
+				);
+			}
 			await actionDrilldown.click();
 			await expect(
 				page.getByRole("button", {

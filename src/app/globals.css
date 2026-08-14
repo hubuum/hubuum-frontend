@@ -9657,6 +9657,10 @@ html[data-density="compact"] td {
 	padding: 0.3rem 0.5rem;
 }
 
+html[data-density="compact"] .audit-table-wrap th.audit-value-header {
+	padding-inline-start: 1.3rem;
+}
+
 html[data-density="compact"] #objects-table {
 	min-width: 1040px;
 }
