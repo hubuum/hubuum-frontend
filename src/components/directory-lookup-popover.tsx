@@ -29,6 +29,7 @@ type DirectoryLookupPopoverProps<T> = {
 	options: readonly DirectoryLookupOption<T>[];
 	placeholder: string;
 	value: string;
+	variant?: "inline" | "popover";
 };
 
 function IconSearch() {
@@ -54,12 +55,14 @@ export function DirectoryLookupPopover<T>({
 	options,
 	placeholder,
 	value,
+	variant = "popover",
 }: DirectoryLookupPopoverProps<T>) {
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const triggerRef = useRef<HTMLButtonElement | null>(null);
 	const inputRef = useRef<HTMLInputElement | null>(null);
 	const [open, setOpen] = useState(false);
 	const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
+	const inline = variant === "inline";
 	const activeOption = options[activeOptionIndex];
 	const listboxOpen = open && options.length > 0;
 	const inputId = `${idPrefix}-search`;
@@ -81,7 +84,7 @@ export function DirectoryLookupPopover<T>({
 
 	function select(option: DirectoryLookupOption<T>) {
 		onSelect(option.item);
-		close(true);
+		close(!inline);
 	}
 
 	function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -147,6 +150,83 @@ export function DirectoryLookupPopover<T>({
 			?.scrollIntoView({ block: "nearest" });
 	}, [activeOption, idPrefix, listboxOpen]);
 
+	const combobox = (
+		<div className="directory-lookup-combobox">
+			<input
+				ref={inputRef}
+				id={inputId}
+				type="search"
+				role="combobox"
+				value={value}
+				disabled={disabled}
+				title={disabled ? disabledHint : undefined}
+				onFocus={() => {
+					if (inline) setOpen(true);
+				}}
+				onChange={(event) => {
+					setOpen(true);
+					setActiveOptionIndex(-1);
+					onChange(event.target.value);
+				}}
+				onKeyDown={onKeyDown}
+				placeholder={placeholder}
+				autoComplete="off"
+				aria-autocomplete="list"
+				aria-controls={listboxOpen ? listboxId : undefined}
+				aria-describedby={helperId}
+				aria-expanded={listboxOpen}
+				aria-activedescendant={
+					listboxOpen && activeOption ? optionId(activeOption) : undefined
+				}
+			/>
+			{listboxOpen ? (
+				<div
+					id={listboxId}
+					className="directory-lookup-options"
+					role="listbox"
+					aria-label={`${label} search results`}
+				>
+					{options.map((option, index) => (
+						<button
+							key={option.id}
+							id={optionId(option)}
+							type="button"
+							role="option"
+							className="directory-lookup-option"
+							aria-selected={index === activeOptionIndex}
+							tabIndex={-1}
+							title={option.title}
+							onMouseEnter={() => setActiveOptionIndex(index)}
+							onMouseDown={(event) => event.preventDefault()}
+							onClick={() => select(option)}
+						>
+							<span className="directory-lookup-option-name">
+								{option.primary}
+							</span>
+							<span className="directory-lookup-option-detail">
+								{option.secondary}
+							</span>
+						</button>
+					))}
+				</div>
+			) : null}
+		</div>
+	);
+
+	if (inline) {
+		return (
+			<div className="directory-lookup directory-lookup--inline" ref={rootRef}>
+				<label className="sr-only" htmlFor={inputId}>
+					{inputLabel}
+				</label>
+				{combobox}
+				<small id={helperId} className="muted" aria-live="polite">
+					{helperText}
+				</small>
+			</div>
+		);
+	}
+
 	return (
 		<div className="directory-lookup" ref={rootRef}>
 			<button
@@ -178,61 +258,7 @@ export function DirectoryLookupPopover<T>({
 						</button>
 					</div>
 					<label htmlFor={inputId}>{inputLabel}</label>
-					<div className="directory-lookup-combobox">
-						<input
-							ref={inputRef}
-							id={inputId}
-							type="search"
-							role="combobox"
-							value={value}
-							onChange={(event) => {
-								setOpen(true);
-								setActiveOptionIndex(-1);
-								onChange(event.target.value);
-							}}
-							onKeyDown={onKeyDown}
-							placeholder={placeholder}
-							autoComplete="off"
-							aria-autocomplete="list"
-							aria-controls={listboxOpen ? listboxId : undefined}
-							aria-describedby={helperId}
-							aria-expanded={listboxOpen}
-							aria-activedescendant={
-								listboxOpen && activeOption ? optionId(activeOption) : undefined
-							}
-						/>
-						{listboxOpen ? (
-							<div
-								id={listboxId}
-								className="directory-lookup-options"
-								role="listbox"
-								aria-label={`${label} search results`}
-							>
-								{options.map((option, index) => (
-									<button
-										key={option.id}
-										id={optionId(option)}
-										type="button"
-										role="option"
-										className="directory-lookup-option"
-										aria-selected={index === activeOptionIndex}
-										tabIndex={-1}
-										title={option.title}
-										onMouseEnter={() => setActiveOptionIndex(index)}
-										onMouseDown={(event) => event.preventDefault()}
-										onClick={() => select(option)}
-									>
-										<span className="directory-lookup-option-name">
-											{option.primary}
-										</span>
-										<span className="directory-lookup-option-detail">
-											{option.secondary}
-										</span>
-									</button>
-								))}
-							</div>
-						) : null}
-					</div>
+					{combobox}
 					<small id={helperId} className="muted" aria-live="polite">
 						{helperText}
 					</small>

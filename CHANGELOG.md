@@ -6,6 +6,25 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.13] - 2026-08-29
+
+### Compatibility
+
+- Retained the Hubuum Server `v0.0.9` contract and immutable CI target.
+
+### Added
+
+- Added keyboard-accessible, on-demand target-object search to object relation
+  creation, with debounced queries, bounded results, and no eager class preload.
+
+### Changed
+
+- Updated all application, development, generation, container, and GitHub
+  Actions dependencies, including Node.js `24.20.0`, Next.js `16.3.3`, Orval
+  `8.27.0`, Biome `2.5.11`, and Vitest `4.1.11`.
+- Regenerated the API client with safe normalization for mutable and tuple-based
+  request headers before content-type defaults are merged.
+
 ## [0.0.12] - 2026-08-14
 
 ### Compatibility
@@ -477,7 +496,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.12...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.13...HEAD
+[0.0.13]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.12...v0.0.13
 [0.0.12]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.11...v0.0.12
 [0.0.11]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.10...v0.0.11
 [0.0.10]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.9...v0.0.10

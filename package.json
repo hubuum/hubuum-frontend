@@ -1,6 +1,6 @@
 {
 	"name": "hubuum-frontend",
-	"version": "0.0.12",
+	"version": "0.0.13",
 	"private": true,
 	"engines": {
 		"node": ">=24.0.0"
@@ -22,7 +22,7 @@
 		"test:live-backend": "scripts/live-backend-test.sh",
 		"lint": "biome lint .",
 		"typecheck": "next typegen && tsc --noEmit",
-		"gen:api": "npx --yes orval@8.23.0 --clean --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
+		"gen:api": "npx --yes orval@8.27.0 --clean --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
 		"audit:prod": "npm audit --omit=dev"
 	},
 	"dependencies": {
@@ -37,30 +37,30 @@
 		"@fontsource-variable/jetbrains-mono": "^5.3.0",
 		"@fontsource-variable/space-grotesk": "^5.3.0",
 		"@lezer/highlight": "^1.2.3",
-		"@tanstack/react-query": "^5.101.4",
+		"@tanstack/react-query": "^5.102.8",
 		"@types/prismjs": "^1.26.6",
 		"codemirror": "^6.0.2",
 		"fflate": "0.8.3",
 		"ioredis": "^6.0.0",
-		"next": "^16.3.2",
+		"next": "^16.3.3",
 		"prismjs": "^1.30.0",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
 		"react-simple-code-editor": "^0.14.1",
 		"xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-		"zod": "^4.4.3"
+		"zod": "^4.5.4"
 	},
 	"overrides": {
-		"postcss": "8.5.25",
-		"sharp": "0.35.3"
+		"postcss": "8.5.26",
+		"sharp": "0.35.4"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
-		"@biomejs/biome": "^2.5.9",
+		"@biomejs/biome": "^2.5.11",
 		"@playwright/test": "^1.62.1",
-		"@types/node": "^26.2.0",
+		"@types/node": "^26.4.0",
 		"@types/react": "^19.2.18",
-		"@types/react-dom": "^19.2.4",
+		"@types/react-dom": "^19.2.5",
 		"@typescript/native": "npm:typescript@^7.0.2",
 		"typescript": "npm:@typescript/typescript6@^6.0.2",
 		"vitest": "^4.1.11"

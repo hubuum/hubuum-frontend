@@ -8583,6 +8583,17 @@ button.token-revoke-button {
 	min-width: 0;
 }
 
+.directory-lookup--inline {
+	display: grid;
+	gap: 0.35rem;
+	width: 100%;
+}
+
+.directory-lookup--inline small {
+	font-size: 0.76rem;
+	line-height: 1.35;
+}
+
 button.directory-lookup-trigger {
 	display: inline-flex;
 	align-items: center;
@@ -8656,6 +8667,18 @@ button.directory-lookup-trigger svg {
 	background: var(--card);
 	box-shadow: var(--shadow-float);
 	color: var(--ink);
+}
+
+.directory-lookup--inline .directory-lookup-combobox {
+	position: relative;
+}
+
+.directory-lookup--inline .directory-lookup-options {
+	position: absolute;
+	top: calc(100% + 0.35rem);
+	right: 0;
+	left: 0;
+	z-index: 70;
 }
 
 button.directory-lookup-option {
