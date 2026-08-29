@@ -12,6 +12,7 @@ import {
 	useState,
 } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { ObjectDirectoryLookup } from "@/components/object-directory-lookup";
 import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { useConfirm } from "@/lib/confirm-context";
@@ -32,6 +33,7 @@ import type {
 	HubuumObjectWithPath,
 	Collection,
 } from "@/lib/api/generated/models";
+import { fetchClassObjectDirectory } from "@/lib/api/resource-directory";
 import { filterClassRelations } from "@/lib/class-relation-filters";
 import {
 	DESELECT_ALL_EVENT,
@@ -47,6 +49,7 @@ import {
 	normalizeRelatedObjectDepthLimit,
 } from "@/lib/object-relation-summary";
 import { buildResourceSummary } from "@/lib/resource-summary";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 
@@ -325,6 +328,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		useState("");
 	const [objectRelationTargetObjectId, setObjectRelationTargetObjectId] =
 		useState("");
+	const [objectRelationTargetObjectSearch, setObjectRelationTargetObjectSearch] =
+		useState("");
 	const [fromClassFilterId, setFromClassFilterId] = useState(
 		initialFromClassFilterId,
 	);
@@ -543,15 +548,36 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		[classes, relatedTargetClassIds],
 	);
 
+	const objectRelationTargetObjectSearchTerm =
+		objectRelationTargetObjectSearch.trim();
+	const objectRelationTargetObjectSearchMinimum = 3;
+	const debouncedObjectRelationTargetObjectSearchTerm = useDebouncedValue(
+		objectRelationTargetObjectSearchTerm,
+		300,
+	);
+	const objectRelationTargetObjectSearchIsReady =
+		objectRelationTargetObjectSearchTerm.length >=
+			objectRelationTargetObjectSearchMinimum &&
+		debouncedObjectRelationTargetObjectSearchTerm ===
+			objectRelationTargetObjectSearchTerm;
 	const targetObjectsQuery = useQuery({
 		queryKey: [
-			"objects",
-			"relations-target",
+			"relation-target-object-directory",
 			parsedObjectRelationTargetClassId,
+			debouncedObjectRelationTargetObjectSearchTerm,
 		],
-		queryFn: async () =>
-			fetchObjectsByClass(parsedObjectRelationTargetClassId ?? 0),
-		enabled: isObjectMode && parsedObjectRelationTargetClassId !== null,
+		queryFn: () =>
+			fetchClassObjectDirectory(
+				parsedObjectRelationTargetClassId ?? 0,
+				debouncedObjectRelationTargetObjectSearchTerm,
+			),
+		enabled:
+			isObjectMode &&
+			isCreateModalOpen &&
+			parsedObjectRelationTargetClassId !== null &&
+			objectRelationTargetObjectSearchIsReady,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
 	});
 	const relatedObjectsQuery = useQuery({
 		queryKey: [
@@ -589,7 +615,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			parsedResolvedSourceObjectId !== null,
 	});
 
-	const targetObjects = targetObjectsQuery.data ?? [];
+	const targetObjects = objectRelationTargetObjectSearchIsReady
+		? (targetObjectsQuery.data?.items ?? [])
+		: [];
 	const scopedClassRelations = Array.isArray(classRelationsQuery.data)
 		? classRelationsQuery.data
 		: [];
@@ -763,24 +791,6 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	}, [classes, parsedFromClassFilterId, parsedToClassFilterId]);
 
 	useEffect(() => {
-		if (!isObjectMode) {
-			return;
-		}
-
-		if (!targetObjects.length) {
-			setObjectRelationTargetObjectId("");
-			return;
-		}
-
-		const exists = targetObjects.some(
-			(item) => String(item.id) === objectRelationTargetObjectId,
-		);
-		if (!exists) {
-			setObjectRelationTargetObjectId(String(targetObjects[0].id));
-		}
-	}, [isObjectMode, objectRelationTargetObjectId, targetObjects]);
-
-	useEffect(() => {
 		if (!isClassMode) {
 			return;
 		}
@@ -805,6 +815,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 
 		if (!objectRelationTargetClassOptions.length) {
 			setObjectRelationTargetClassId("");
+			setObjectRelationTargetObjectId("");
+			setObjectRelationTargetObjectSearch("");
 			return;
 		}
 
@@ -815,6 +827,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			setObjectRelationTargetClassId(
 				String(objectRelationTargetClassOptions[0].id),
 			);
+			setObjectRelationTargetObjectId("");
+			setObjectRelationTargetObjectSearch("");
 		}
 	}, [
 		isObjectMode,
@@ -1747,9 +1761,11 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 								<span className="sr-only">Connected class</span>
 								<select
 									value={objectRelationTargetClassId}
-									onChange={(event) =>
-										setObjectRelationTargetClassId(event.target.value)
-									}
+									onChange={(event) => {
+										setObjectRelationTargetClassId(event.target.value);
+										setObjectRelationTargetObjectId("");
+										setObjectRelationTargetObjectSearch("");
+									}}
 									disabled={!objectRelationTargetClassOptions.length}
 								>
 									{!objectRelationTargetClassOptions.length ? (
@@ -1769,25 +1785,40 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 					<section className="object-detail-row">
 						<div className="object-detail-label">Connected object</div>
 						<div className="object-detail-body">
-							<label className="control-field">
-								<span className="sr-only">Connected object</span>
-								<select
-									value={objectRelationTargetObjectId}
-									onChange={(event) =>
-										setObjectRelationTargetObjectId(event.target.value)
-									}
-									disabled={!targetObjects.length}
-								>
-									{!targetObjects.length ? (
-										<option value="">No objects available</option>
-									) : null}
-									{targetObjects.map((objectItem) => (
-										<option key={objectItem.id} value={objectItem.id}>
-											{objectItem.name} (#{objectItem.id})
-										</option>
-									))}
-								</select>
-							</label>
+							<ObjectDirectoryLookup
+								disabled={parsedObjectRelationTargetClassId === null}
+								disabledHint="Choose a connected class first"
+								helperText={
+									parsedObjectRelationTargetObjectId !== null
+										? `Selected ${objectRelationTargetObjectSearch} (#${parsedObjectRelationTargetObjectId}).`
+										: objectRelationTargetObjectSearchTerm.length <
+												objectRelationTargetObjectSearchMinimum
+											? "Type at least three characters to search by object name or ID."
+											: targetObjectsQuery.isLoading ||
+													!objectRelationTargetObjectSearchIsReady
+												? "Searching objects visible to your account…"
+												: targetObjectsQuery.isError
+													? "Object lookup is unavailable. Try again."
+													: targetObjectsQuery.data?.isPartial
+														? "More than 50 objects match; type more to narrow the results."
+														: targetObjects.length === 0
+															? "No matching objects are visible in this class."
+															: "Choose an object from the results."
+								}
+								idPrefix="relation-target-object"
+								inputLabel="Connected object name or ID"
+								objects={targetObjects}
+								onChange={(value) => {
+									setObjectRelationTargetObjectSearch(value);
+									setObjectRelationTargetObjectId("");
+								}}
+								onSelect={(objectItem) => {
+									setObjectRelationTargetObjectId(String(objectItem.id));
+									setObjectRelationTargetObjectSearch(objectItem.name);
+								}}
+								value={objectRelationTargetObjectSearch}
+								variant="inline"
+							/>
 						</div>
 						<div className="object-detail-row-actions" />
 					</section>

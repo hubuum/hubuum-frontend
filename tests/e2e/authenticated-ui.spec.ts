@@ -405,6 +405,168 @@ test.describe("authenticated workspace", () => {
 		}
 	});
 
+	test("object relation creation searches target objects inline on demand", async ({
+		page,
+	}) => {
+		const timestamp = "2026-08-18T12:00:00Z";
+		const collection = {
+			id: 1,
+			name: "Infrastructure",
+			description: "",
+			parent_collection_id: null,
+			revision: 1,
+			created_at: timestamp,
+			updated_at: timestamp,
+		};
+		const classes = [
+			{
+				id: 1,
+				name: "Hosts",
+				description: "",
+				collection,
+				json_schema: {},
+				validate_schema: false,
+				revision: 1,
+				created_at: timestamp,
+				updated_at: timestamp,
+			},
+			{
+				id: 2,
+				name: "Switches",
+				description: "",
+				collection,
+				json_schema: {},
+				validate_schema: false,
+				revision: 1,
+				created_at: timestamp,
+				updated_at: timestamp,
+			},
+		];
+		const sourceObject = {
+			id: 35,
+			name: "adlet.uio.no",
+			description: "",
+			collection_id: collection.id,
+			hubuum_class_id: classes[0].id,
+			data: {},
+			revision: 1,
+			created_at: timestamp,
+			updated_at: timestamp,
+		};
+		const targetObject = {
+			...sourceObject,
+			id: 72,
+			name: "switch-core-01",
+			hubuum_class_id: classes[1].id,
+		};
+		const targetObjectRequests: URL[] = [];
+
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/classes?**",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify(classes),
+				});
+			},
+		);
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/collections?**",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify([collection]),
+				});
+			},
+		);
+		await page.route(
+			"**/_hubuum-bff/classes/1/relations",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify([
+						{
+							id: 9,
+							from_hubuum_class_id: 1,
+							to_hubuum_class_id: 2,
+							from_max_relations: null,
+							to_max_relations: null,
+							forward_template_alias: null,
+							reverse_template_alias: null,
+							revision: 1,
+							created_at: timestamp,
+							updated_at: timestamp,
+						},
+					]),
+				});
+			},
+		);
+		await page.route("**/_hubuum-bff/classes/1/objects", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify([sourceObject]),
+			});
+		});
+		await page.route("**/_hubuum-bff/classes/2/objects**", async (route) => {
+			targetObjectRequests.push(new URL(route.request().url()));
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify([targetObject]),
+			});
+		});
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/classes/1/objects/35/related/objects?**",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: "[]",
+				});
+			},
+		);
+
+		await page.goto("/relations/objects?classId=1&objectId=35&create=1");
+		const dialog = page.getByRole("dialog", {
+			name: "Create object relation",
+		});
+		await expect(dialog).toBeVisible();
+		await expect(dialog.getByLabel("Connected class")).toHaveValue("2");
+		await page.waitForTimeout(350);
+		expect(targetObjectRequests).toHaveLength(0);
+
+		await expect(
+			dialog.getByRole("button", { name: "Find object" }),
+		).toHaveCount(0);
+		const objectLookup = dialog.getByRole("combobox", {
+			name: "Connected object name or ID",
+		});
+		await objectLookup.fill("sw");
+		await page.waitForTimeout(350);
+		expect(targetObjectRequests).toHaveLength(0);
+
+		const targetRequest = page.waitForRequest((request) =>
+			new URL(request.url()).pathname.endsWith("/classes/2/objects"),
+		);
+		await objectLookup.fill("switch-core");
+		const requestUrl = new URL((await targetRequest).url());
+		expect(requestUrl.searchParams.get("name__icontains")).toBe("switch-core");
+		expect(requestUrl.searchParams.get("limit")).toBe("50");
+		expect(requestUrl.searchParams.get("include_total")).toBe("false");
+		await dialog
+			.getByRole("listbox", { name: "Find object search results" })
+			.getByRole("option", { name: /switch-core-01/ })
+			.click();
+		await expect(objectLookup).toHaveValue("switch-core-01");
+		await expect(
+			dialog.getByRole("button", { name: "Create object relation" }),
+		).toBeEnabled();
+	});
+
 	test("table resizing preserves columns to the left", async ({ page }) => {
 		const timestamp = "2026-07-29T12:00:00Z";
 		const collection = {

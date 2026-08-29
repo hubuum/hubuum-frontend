@@ -12,10 +12,12 @@ type ObjectDirectoryLookupProps = {
 	disabledHint?: string;
 	helperText: ReactNode;
 	idPrefix: string;
+	inputLabel?: string;
 	objects: readonly HubuumObject[];
 	onChange: (value: string) => void;
 	onSelect: (objectItem: HubuumObject) => void;
 	value: string;
+	variant?: "inline" | "popover";
 };
 
 export function ObjectDirectoryLookup({
@@ -23,10 +25,12 @@ export function ObjectDirectoryLookup({
 	disabledHint,
 	helperText,
 	idPrefix,
+	inputLabel = "Object name or ID",
 	objects,
 	onChange,
 	onSelect,
 	value,
+	variant,
 }: ObjectDirectoryLookupProps) {
 	const options = useMemo<DirectoryLookupOption<HubuumObject>[]>(
 		() =>
@@ -48,13 +52,14 @@ export function ObjectDirectoryLookup({
 			disabledHint={disabledHint}
 			helperText={helperText}
 			idPrefix={idPrefix}
-			inputLabel="Object name or ID"
+			inputLabel={inputLabel}
 			label="Find object"
 			onChange={onChange}
 			onSelect={onSelect}
 			options={options}
 			placeholder="Search objects in this class"
 			value={value}
+			variant={variant}
 		/>
 	);
 }
