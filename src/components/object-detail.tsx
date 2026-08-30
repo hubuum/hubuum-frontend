@@ -29,7 +29,6 @@ import {
 	getApiV1Classes,
 	getApiV1ClassesByClassIdByObjectId,
 	getApiV1CollectionsByCollectionIdPermissions,
-	getApiV1IamMeGroups,
 	patchApiV1ClassesByClassIdByObjectId,
 } from "@/lib/api/generated/client";
 import type {
@@ -46,6 +45,7 @@ import {
 	buildObjectDataReplacePatch,
 	patchObjectData,
 } from "@/lib/api/object-data-patch";
+import { fetchCurrentPrincipalGroups } from "@/lib/api/principal-groups";
 import { useConfirm } from "@/lib/confirm-context";
 import { TITLE_STATE_EVENT } from "@/lib/create-events";
 import type { ConsoleGroup } from "@/lib/identity-scopes";
@@ -169,16 +169,7 @@ async function fetchCurrentUserGroups(
 	_username: string,
 ): Promise<ConsoleGroup[]> {
 	try {
-		const response = await getApiV1IamMeGroups(
-			{ include_total: false },
-			{
-				credentials: "include",
-			},
-		);
-		if (response.status !== 200) {
-			return [];
-		}
-		return response.data;
+		return await fetchCurrentPrincipalGroups();
 	} catch {
 		return [];
 	}
