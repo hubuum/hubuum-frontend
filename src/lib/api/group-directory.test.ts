@@ -55,14 +55,17 @@ describe("fetchGroupDirectory", () => {
 	});
 
 	it("batches group enrichment by ID", async () => {
-		getGroups.mockResolvedValue({
-			data: [],
-			headers: new Headers(),
-			status: 200,
+		getGroups.mockImplementation((params: { id__in?: string }) => {
+			return Promise.resolve({
+				data:
+					params.id__in === "251" ? [{ id: 251, groupname: "group-251" }] : [],
+				headers: new Headers(),
+				status: 200,
+			});
 		});
 		const ids = Array.from({ length: 251 }, (_, index) => index + 1);
 
-		await fetchGroupsByIds(ids);
+		const groups = await fetchGroupsByIds(ids);
 
 		expect(getGroups).toHaveBeenCalledTimes(2);
 		expect(getGroups).toHaveBeenNthCalledWith(
@@ -78,5 +81,6 @@ describe("fetchGroupDirectory", () => {
 			expect.objectContaining({ id__in: "251", limit: 1 }),
 			{ credentials: "include" },
 		);
+		expect(groups).toContainEqual({ id: 251, groupname: "group-251" });
 	});
 });
