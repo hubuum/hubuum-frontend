@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { TableExportMenu } from "@/components/table-export-menu";
-import { getApiErrorMessage } from "@/lib/api/errors";
-import { getApiV1IamPrincipalsByPrincipalIdGroups } from "@/lib/api/generated/client";
+import { fetchPrincipalGroups } from "@/lib/api/principal-groups";
 import {
 	type ConsoleGroup,
 	normalizeIdentityScope,
@@ -19,24 +18,6 @@ type PrincipalGroupMembershipsProps = {
 	fileName: string;
 	principalId: number;
 };
-
-async function fetchPrincipalGroups(
-	principalId: number,
-): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamPrincipalsByPrincipalIdGroups(
-		principalId,
-		{ include_total: false, limit: 250 },
-		{ credentials: "include" },
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load principal groups."),
-		);
-	}
-
-	return response.data;
-}
 
 const groupMembershipExportColumns: TableExportColumn<ConsoleGroup>[] = [
 	{ key: "id", label: "ID", getValue: (group) => group.id },

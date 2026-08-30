@@ -4,8 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { TableExportMenu } from "@/components/table-export-menu";
-import { getApiErrorMessage } from "@/lib/api/errors";
-import { getApiV1IamMeGroups } from "@/lib/api/generated/client";
+import { fetchCurrentPrincipalGroups } from "@/lib/api/principal-groups";
 import {
 	type ConsoleGroup,
 	formatScopedIdentityName,
@@ -13,27 +12,10 @@ import {
 } from "@/lib/identity-scopes";
 import type { TableExportView } from "@/lib/table-export";
 
-async function fetchGroups(): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamMeGroups(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load groups."),
-		);
-	}
-
-	return response.data;
-}
-
 export function AccountGroups() {
 	const groupsQuery = useQuery({
 		queryKey: ["me-groups"],
-		queryFn: fetchGroups,
+		queryFn: fetchCurrentPrincipalGroups,
 	});
 
 	if (groupsQuery.isLoading) {

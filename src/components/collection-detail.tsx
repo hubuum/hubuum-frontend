@@ -27,7 +27,6 @@ import {
 	deleteApiV1CollectionsByCollectionId,
 	deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupId,
 	getApiV1IamGroups,
-	getApiV1IamMeGroups,
 	getApiV1Collections,
 	getApiV1CollectionsByCollectionId,
 	getApiV1CollectionsByCollectionIdAncestors,
@@ -48,6 +47,10 @@ import type {
 	UpdateCollection,
 } from "@/lib/api/generated/models";
 import { Permissions as PermissionValues } from "@/lib/api/generated/models/permissions";
+import {
+	fetchCurrentPrincipalGroups,
+	hasAnyGroupMembership,
+} from "@/lib/api/principal-groups";
 import { fetchCollectionDirectory } from "@/lib/api/resource-directory";
 import {
 	buildCollectionHierarchy,
@@ -557,16 +560,7 @@ async function fetchCurrentUserGroups(
 	_username: string,
 ): Promise<ConsoleGroup[]> {
 	try {
-		const response = await getApiV1IamMeGroups(
-			{ include_total: false },
-			{
-				credentials: "include",
-			},
-		);
-		if (response.status !== 200) {
-			return [];
-		}
-		return response.data;
+		return await fetchCurrentPrincipalGroups();
 	} catch {
 		return [];
 	}
@@ -1496,11 +1490,8 @@ export function CollectionDetail({
 		(group) => !assignedGroupIds.has(group.id),
 	);
 	const usingGroupSelect = groups.length > 0 && !groupsQuery.isError;
-	const currentUserGroupIds = new Set(
-		(currentUserGroupsQuery.data ?? []).map((group) => group.id),
-	);
 	const userHasAnyGroup = (accessGroups: readonly ConsoleGroup[] | undefined) =>
-		(accessGroups ?? []).some((group) => currentUserGroupIds.has(group.id));
+		hasAnyGroupMembership(currentUserGroupsQuery.data ?? [], accessGroups);
 	const canManagePermissions = canManageCollectionPermissions(
 		canAdminister,
 		userHasAnyGroup(delegateGroupsQuery.data),

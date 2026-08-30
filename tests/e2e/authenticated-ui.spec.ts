@@ -162,6 +162,63 @@ test.describe("authenticated workspace", () => {
 		).toEqual(expected);
 	});
 
+	test("account groups loads memberships beyond the first 250", async ({
+		page,
+	}) => {
+		const timestamp = "2026-08-30T12:00:00Z";
+		const groupRequests: URL[] = [];
+		const buildGroup = (id: number, identityScope = "local") => ({
+			id,
+			groupname: `group-${id}`,
+			description: "",
+			identity_scope: identityScope,
+			managed_by: identityScope,
+			revision: 1,
+			created_at: timestamp,
+			updated_at: timestamp,
+		});
+
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/iam/me/groups?**",
+			async (route) => {
+				const requestUrl = new URL(route.request().url());
+				groupRequests.push(requestUrl);
+				const cursor = requestUrl.searchParams.get("cursor");
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					headers:
+						cursor === null
+							? { "X-Next-Cursor": "membership-page-2" }
+							: undefined,
+					body: JSON.stringify(
+						cursor === "membership-page-2"
+							? [buildGroup(251, "university")]
+							: Array.from({ length: 250 }, (_, index) =>
+									buildGroup(index + 1),
+								),
+					),
+				});
+			},
+		);
+
+		await page.goto("/account/groups");
+		await expect(page.getByText("251 loaded", { exact: true })).toBeVisible();
+		await expect(
+			page.getByRole("link", { name: "group-251", exact: true }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("cell", { name: "university", exact: true }).first(),
+		).toBeVisible();
+		expect(groupRequests).toHaveLength(2);
+		expect(groupRequests[0]?.searchParams.get("limit")).toBe("250");
+		expect(groupRequests[0]?.searchParams.get("sort")).toBe("id.asc");
+		expect(groupRequests[0]?.searchParams.get("include_total")).toBe("false");
+		expect(groupRequests[1]?.searchParams.get("cursor")).toBe(
+			"membership-page-2",
+		);
+	});
+
 	test("Data navigation opens scalable class-aware pull-outs", async ({
 		page,
 	}) => {
