@@ -221,6 +221,92 @@ test.describe("authenticated workspace", () => {
 			).toContainText("Devices");
 	});
 
+	test("cursor pagination follows browser Back and Forward history", async ({
+		page,
+	}) => {
+		const timestamp = "2026-08-30T12:00:00Z";
+		const collection = {
+			id: 1,
+			name: "Infrastructure",
+			description: "",
+			parent_collection_id: null,
+			revision: 1,
+			created_at: timestamp,
+			updated_at: timestamp,
+		};
+		const classRequests: URL[] = [];
+
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/classes?**",
+			async (route) => {
+				const requestUrl = new URL(route.request().url());
+				classRequests.push(requestUrl);
+				const cursor = requestUrl.searchParams.get("cursor");
+				const pageNumber =
+					cursor === "class-page-3" ? 3 : cursor === "class-page-2" ? 2 : 1;
+				const nextCursor =
+					pageNumber === 1
+						? "class-page-2"
+						: pageNumber === 2
+							? "class-page-3"
+							: null;
+
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					headers: nextCursor ? { "X-Next-Cursor": nextCursor } : undefined,
+					body: JSON.stringify([
+						{
+							id: pageNumber,
+							name: `Class page ${pageNumber}`,
+							description: "",
+							collection,
+							json_schema: {},
+							validate_schema: false,
+							revision: 1,
+							created_at: timestamp,
+							updated_at: timestamp,
+						},
+					]),
+				});
+			},
+		);
+
+		await page.goto("/classes?limit=not-a-number");
+		await expect(
+			page.getByRole("link", { name: "Class page 1", exact: true }),
+		).toBeVisible();
+		expect(classRequests.at(-1)?.searchParams.get("limit")).toBe("100");
+
+		await page.getByRole("button", { name: "Next page" }).click();
+		await expect(
+			page.getByRole("link", { name: "Class page 2", exact: true }),
+		).toBeVisible();
+		await page.getByRole("button", { name: "Next page" }).click();
+		await expect(
+			page.getByRole("link", { name: "Class page 3", exact: true }),
+		).toBeVisible();
+
+		await page.goBack();
+		await expect(
+			page.getByRole("link", { name: "Class page 2", exact: true }),
+		).toBeVisible();
+		await page.goForward();
+		await expect(
+			page.getByRole("link", { name: "Class page 3", exact: true }),
+		).toBeVisible();
+		await page.goBack();
+		await expect(
+			page.getByRole("link", { name: "Class page 2", exact: true }),
+		).toBeVisible();
+
+		await page.getByRole("button", { name: "Previous page" }).click();
+		await expect(
+			page.getByRole("link", { name: "Class page 1", exact: true }),
+		).toBeVisible();
+		expect(new URL(page.url()).searchParams.has("cursor")).toBe(false);
+	});
+
 	test("Administration navigation groups identity and operations", async ({
 		page,
 	}) => {

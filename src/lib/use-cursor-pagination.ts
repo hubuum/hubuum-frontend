@@ -1,11 +1,18 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+	extendCursorTrail,
+	hasPreviousCursorInTrail,
+	normalizeCursorPageLimit,
+	parseCursorTrail,
+	previousCursorFromTrail,
+	type CursorTrail,
+} from "@/lib/cursor-pagination";
+
 type UseCursorPaginationOptions = {
 	defaultLimit?: number;
 };
-
-const FIRST_PAGE_CURSOR = "__first_page__";
 
 export function useCursorPagination({
 	defaultLimit = 100,
@@ -15,16 +22,19 @@ export function useCursorPagination({
 	const searchParams = useSearchParams();
 
 	const cursor = searchParams.get("cursor") ?? undefined;
-	const limit = Number.parseInt(
-		searchParams.get("limit") ?? String(defaultLimit),
-		10,
+	const limit = normalizeCursorPageLimit(
+		searchParams.get("limit"),
+		defaultLimit,
 	);
 	const historyStorageKey = useMemo(() => {
 		const params = new URLSearchParams(searchParams.toString());
 		params.delete("cursor");
-		return `hubuum.cursor-history:${pathname}?${params.toString()}`;
+		return `hubuum.cursor-trail:v1:${pathname}?${params.toString()}`;
 	}, [pathname, searchParams]);
-	const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+	const [cursorTrail, setCursorTrail] = useState<CursorTrail>([]);
+	const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(
+		null,
+	);
 
 	useEffect(() => {
 		if (typeof window === "undefined") {
@@ -32,42 +42,38 @@ export function useCursorPagination({
 		}
 
 		const storedValue = window.sessionStorage.getItem(historyStorageKey);
-		if (!storedValue) {
-			setCursorHistory([]);
-			return;
-		}
-
-		try {
-			const parsed = JSON.parse(storedValue) as unknown;
-			setCursorHistory(
-				Array.isArray(parsed)
-					? parsed.filter((item): item is string => typeof item === "string")
-					: [],
-			);
-		} catch {
-			setCursorHistory([]);
-		}
+		setCursorTrail(parseCursorTrail(storedValue));
+		setHydratedStorageKey(historyStorageKey);
 	}, [historyStorageKey]);
 
 	useEffect(() => {
-		if (typeof window === "undefined") {
+		if (
+			typeof window === "undefined" ||
+			hydratedStorageKey !== historyStorageKey
+		) {
 			return;
 		}
 
-		if (!cursorHistory.length) {
+		if (!cursorTrail.length) {
 			window.sessionStorage.removeItem(historyStorageKey);
 			return;
 		}
 
 		window.sessionStorage.setItem(
 			historyStorageKey,
-			JSON.stringify(cursorHistory),
+			JSON.stringify(cursorTrail),
 		);
-	}, [cursorHistory, historyStorageKey]);
+	}, [cursorTrail, historyStorageKey, hydratedStorageKey]);
+
+	const activeCursorTrail =
+		hydratedStorageKey === historyStorageKey ? cursorTrail : [];
+	const hasPrevPage = hasPreviousCursorInTrail(activeCursorTrail, cursor);
 
 	const goToNextPage = useCallback(
 		(nextCursor: string) => {
-			setCursorHistory((current) => [...current, cursor ?? FIRST_PAGE_CURSOR]);
+			setCursorTrail((current) =>
+				extendCursorTrail(current, cursor, nextCursor),
+			);
 			const params = new URLSearchParams(searchParams.toString());
 			params.set("cursor", nextCursor);
 			router.push(`${pathname}?${params.toString()}`);
@@ -77,29 +83,15 @@ export function useCursorPagination({
 
 	const goToPrevPage = useCallback(
 		(prevCursor?: string) => {
-			const previousEntry =
-				cursorHistory.length > 0
-					? cursorHistory[cursorHistory.length - 1]
-					: undefined;
-			const targetCursor =
-				previousEntry === undefined
-					? prevCursor
-					: previousEntry === FIRST_PAGE_CURSOR
-						? undefined
-						: previousEntry;
-
-			if (
-				targetCursor === undefined &&
-				!prevCursor &&
-				cursorHistory.length === 0
-			) {
+			if (!hasPrevPage && !prevCursor) {
 				return;
 			}
 
-			if (previousEntry !== undefined) {
-				setCursorHistory((current) => current.slice(0, -1));
-			}
-
+			const targetCursor = previousCursorFromTrail(
+				activeCursorTrail,
+				cursor,
+				prevCursor,
+			);
 			const params = new URLSearchParams(searchParams.toString());
 			if (targetCursor) {
 				params.set("cursor", targetCursor);
@@ -108,11 +100,17 @@ export function useCursorPagination({
 			}
 			router.push(`${pathname}?${params.toString()}`);
 		},
-		[cursorHistory, pathname, router, searchParams],
+		[
+			activeCursorTrail,
+			cursor,
+			hasPrevPage,
+			pathname,
+			router,
+			searchParams,
+		],
 	);
 
 	const goToFirstPage = useCallback(() => {
-		setCursorHistory([]);
 		const params = new URLSearchParams(searchParams.toString());
 		params.delete("cursor");
 		router.push(`${pathname}?${params.toString()}`);
@@ -120,19 +118,21 @@ export function useCursorPagination({
 
 	const setLimit = useCallback(
 		(newLimit: number) => {
-			setCursorHistory([]);
 			const params = new URLSearchParams(searchParams.toString());
-			params.set("limit", String(newLimit));
+			params.set(
+				"limit",
+				String(normalizeCursorPageLimit(String(newLimit), defaultLimit)),
+			);
 			params.delete("cursor"); // Reset to first page when changing limit
 			router.push(`${pathname}?${params.toString()}`);
 		},
-		[pathname, router, searchParams],
+		[defaultLimit, pathname, router, searchParams],
 	);
 
 	return {
 		cursor,
 		limit,
-		hasPrevPage: cursorHistory.length > 0,
+		hasPrevPage,
 		goToNextPage,
 		goToPrevPage,
 		goToFirstPage,
