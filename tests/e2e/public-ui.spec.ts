@@ -487,12 +487,16 @@ test.describe("public visual regression", () => {
 			test(`login ${viewport.name} ${theme}`, async ({ page }) => {
 				await page.setViewportSize(viewport);
 				await prepareLogin(page, theme);
+				// Runner CPU text antialiasing affects about 1.35% of tablet pixels;
+				// the stale UI baselines this suite caught differed by at least 3%.
+				const maxDiffPixelRatio =
+					viewport.name === "tablet" ? 0.015 : 0.01;
 				await expect(page).toHaveScreenshot(
 					`login-${viewport.name}-${theme}.png`,
 					{
 						animations: "disabled",
 						fullPage: true,
-						maxDiffPixelRatio: 0.01,
+						maxDiffPixelRatio,
 					},
 				);
 			});

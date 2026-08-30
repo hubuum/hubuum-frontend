@@ -101,7 +101,9 @@ npm run test:e2e:update
 
 Review every changed PNG under `tests/e2e/__screenshots__/` before committing
 it. Do not update baselines with host-installed browsers because their font and
-graphics stacks are not the supported baseline environment.
+graphics stacks are not the supported baseline environment. The tablet
+assertions allow a narrow 1.5% pixel tolerance for stable runner-CPU text
+antialiasing; the other viewports retain the stricter 1% tolerance.
 
 Run the critical login, authenticated session, logout, and protected-route
 smoke flow against disposable Hubuum Server and Valkey containers:
