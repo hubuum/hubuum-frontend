@@ -13,6 +13,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { ClassDirectoryLookup } from "@/components/class-directory-lookup";
 import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { CreateModal } from "@/components/create-modal";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
@@ -26,7 +27,6 @@ import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import { hubuumBffPath } from "@/lib/api/frontend";
 import {
 	deleteApiV1ClassesByClassIdByObjectId,
-	getApiV1Classes,
 	getApiV1ClassesByClassIdByObjectId,
 	getApiV1CollectionsByCollectionIdPermissions,
 	patchApiV1ClassesByClassIdByObjectId,
@@ -39,7 +39,11 @@ import type {
 	Permission,
 	UpdateHubuumObject,
 } from "@/lib/api/generated/models";
-import { fetchCollectionDirectory } from "@/lib/api/resource-directory";
+import {
+	fetchClassDirectory,
+	fetchClassesByIds,
+	fetchCollectionDirectory,
+} from "@/lib/api/resource-directory";
 import {
 	buildObjectDataPatchPlan,
 	buildObjectDataReplacePatch,
@@ -123,23 +127,6 @@ async function fetchObject(
 	}
 
 	return response.data as HubuumObjectComputedResponse;
-}
-
-async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load classes."),
-		);
-	}
-
-	return response.data;
 }
 
 async function fetchCollectionPermissions(
@@ -711,9 +698,10 @@ export function ObjectDetail({
 		queryKey: ["object", classId, objectId],
 		queryFn: async () => fetchObject(classId, objectId),
 	});
-	const classesQuery = useQuery({
-		queryKey: ["classes", "object-detail"],
-		queryFn: fetchClasses,
+	const ignoreClassDirectory = useDirectorySearch({
+		queryKey: ["class-directory", "object-detail", classId, objectId],
+		queryFn: fetchClassDirectory,
+		enabled: isIgnoreClassesOpen,
 	});
 	const collectionDirectory = useDirectorySearch({
 		queryKey: ["object-detail-collection-directory", classId, objectId],
@@ -769,6 +757,24 @@ export function ObjectDetail({
 				includeSelfClass,
 				ignoredClassIds,
 			),
+	});
+	const referencedClassIds = (() => {
+		const ids = new Set<number>([classId, ...ignoredClassIds]);
+		for (const relatedObject of relatedObjectsQuery.data ?? []) {
+			ids.add(relatedObject.hubuum_class_id);
+		}
+		const cachedContexts = relatedObjectPathContextsRef.current;
+		if (cachedContexts.pageKey === relatedObjectPageKey) {
+			for (const cachedObject of cachedContexts.objects.values()) {
+				ids.add(cachedObject.classId);
+			}
+		}
+		return Array.from(ids).sort((left, right) => left - right);
+	})();
+	const referencedClassesQuery = useQuery({
+		queryKey: ["classes", "object-detail", referencedClassIds],
+		queryFn: async () => fetchClassesByIds(referencedClassIds),
+		enabled: referencedClassIds.length > 0,
 	});
 	const relatedObjectPathContextIds = useMemo(
 		() =>
@@ -1063,7 +1069,7 @@ export function ObjectDetail({
 			return;
 		}
 
-		const currentClass = (classesQuery.data ?? []).find(
+		const currentClass = (referencedClassesQuery.data ?? []).find(
 			(item) => item.id === objectData.hubuum_class_id,
 		);
 		const title = currentClass
@@ -1083,7 +1089,7 @@ export function ObjectDetail({
 				}),
 			);
 		};
-	}, [classesQuery.data, objectQuery.data]);
+	}, [objectQuery.data, referencedClassesQuery.data]);
 
 	function resetFieldDraft(field: EditableField, objectData: HubuumObject) {
 		if (field === "name") {
@@ -1500,15 +1506,21 @@ export function ObjectDetail({
 	}
 
 	const currentClass =
-		(classesQuery.data ?? []).find(
+		(referencedClassesQuery.data ?? []).find(
 			(item) => item.id === objectData.hubuum_class_id,
 		) ?? null;
 	const selectedCollection = collectionDirectory.query.data?.items.find(
 		(collection) => String(collection.id) === collectionId,
 	);
 	const classNameById = new Map<number, string>();
-	for (const item of classesQuery.data ?? []) {
+	const classOptionsById = new Map<number, HubuumClassExpanded>();
+	for (const item of referencedClassesQuery.data ?? []) {
 		classNameById.set(item.id, item.name);
+		classOptionsById.set(item.id, item);
+	}
+	for (const item of ignoreClassDirectory.query.data?.items ?? []) {
+		classNameById.set(item.id, item.name);
+		classOptionsById.set(item.id, item);
 	}
 	const objectContextById = new Map<
 		number,
@@ -1541,7 +1553,7 @@ export function ObjectDetail({
 		},
 	);
 	const ignoredClassSet = new Set(ignoredClassIds);
-	const ignoredClassOptions = (classesQuery.data ?? [])
+	const ignoredClassOptions = Array.from(classOptionsById.values())
 		.filter((item) => item.id !== objectData.hubuum_class_id)
 		.sort((left, right) => left.name.localeCompare(right.name));
 	const collectionLabel =
@@ -2471,6 +2483,32 @@ export function ObjectDetail({
 											<span className="muted">
 												Exclude noisy classes from this view.
 											</span>
+											<ClassDirectoryLookup
+												classes={
+													ignoreClassDirectory.query.data?.items ?? []
+												}
+												helperText={directoryLookupStatus({
+													count:
+														ignoreClassDirectory.query.data?.items.length ?? 0,
+													isError: ignoreClassDirectory.query.isError,
+													isLoading: ignoreClassDirectory.query.isLoading,
+													isPartial: Boolean(
+														ignoreClassDirectory.query.data?.isPartial,
+													),
+													isReady: ignoreClassDirectory.isReady,
+													minimumLength: ignoreClassDirectory.minimumLength,
+													resourcePlural: "classes",
+													resourceSingular: "class",
+													term: ignoreClassDirectory.term,
+												})}
+												idPrefix="object-related-ignore-class-directory"
+												onChange={ignoreClassDirectory.setSearch}
+												onSelect={(hubuumClass) => {
+													toggleIgnoredClass(hubuumClass.id, true);
+													ignoreClassDirectory.setSearch("");
+												}}
+												value={ignoreClassDirectory.search}
+											/>
 											{ignoredClassOptions.length ? (
 												ignoredClassOptions.map((hubuumClass) => (
 													<label
@@ -2491,7 +2529,9 @@ export function ObjectDetail({
 													</label>
 												))
 											) : (
-												<div className="muted">No other classes available.</div>
+												<div className="muted">
+													Search for a class to hide from this view.
+												</div>
 											)}
 										</div>
 									) : null}
@@ -2642,7 +2682,7 @@ export function ObjectDetail({
 						{formError}
 					</div>
 				) : null}
-				{classesQuery.isError ? (
+				{referencedClassesQuery.isError ? (
 					<div className="muted">
 						Could not load class names. Showing class ID only.
 					</div>

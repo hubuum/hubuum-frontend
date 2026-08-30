@@ -8,6 +8,7 @@ import {
 	type KeyboardEvent as ReactKeyboardEvent,
 	useCallback,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -23,14 +24,16 @@ import { fetchExpandedClass } from "@/lib/api/classes";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
-	getApiV1Classes,
 	patchApiV1ClassesByClassId,
 } from "@/lib/api/generated/client";
 import type {
 	HubuumClassExpanded,
 	UpdateHubuumClass,
 } from "@/lib/api/generated/models";
-import { fetchCollectionDirectory } from "@/lib/api/resource-directory";
+import {
+	fetchClassesByIds,
+	fetchCollectionDirectory,
+} from "@/lib/api/resource-directory";
 import { presentClassRelation } from "@/lib/class-relation-presentation";
 import { useConfirm } from "@/lib/confirm-context";
 import {
@@ -67,23 +70,6 @@ const ALL_EDITABLE_FIELDS: EditableField[] = [
 
 async function fetchClass(classId: number): Promise<HubuumClassExpanded> {
 	return fetchExpandedClass(classId);
-}
-
-async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(
-		{ limit: 250, include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load classes."),
-		);
-	}
-
-	return response.data;
 }
 
 function formatTimestamp(value: string): string {
@@ -133,10 +119,6 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		queryKey: ["class", classId],
 		queryFn: async () => fetchClass(classId),
 	});
-	const classesQuery = useQuery({
-		queryKey: ["classes", "class-detail"],
-		queryFn: fetchClasses,
-	});
 	const collectionDirectory = useDirectorySearch({
 		queryKey: ["class-detail-collection-directory", classId],
 		queryFn: fetchCollectionDirectory,
@@ -144,6 +126,20 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 	const classRelationsQuery = useQuery({
 		queryKey: ["class-relations", "detail", classId],
 		queryFn: async () => fetchClassRelations(classId),
+	});
+	const relatedClassIds = useMemo(() => {
+		const ids = new Set<number>();
+		for (const relation of classRelationsQuery.data ?? []) {
+			ids.add(relation.from_hubuum_class_id);
+			ids.add(relation.to_hubuum_class_id);
+		}
+		ids.delete(classId);
+		return Array.from(ids).sort((left, right) => left - right);
+	}, [classId, classRelationsQuery.data]);
+	const relatedClassesQuery = useQuery({
+		queryKey: ["classes", "class-detail", classId, relatedClassIds],
+		queryFn: async () => fetchClassesByIds(relatedClassIds),
+		enabled: relatedClassIds.length > 0,
 	});
 
 	useEffect(() => {
@@ -475,7 +471,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 	}
 
 	const classNameById = new Map<number, string>();
-	for (const item of classesQuery.data ?? []) {
+	for (const item of relatedClassesQuery.data ?? []) {
 		classNameById.set(item.id, item.name);
 	}
 	const directRelations = classRelationsQuery.data ?? [];
@@ -952,7 +948,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 								</div>
 							)
 						) : null}
-						{classesQuery.isError ? (
+						{relatedClassesQuery.isError ? (
 							<div className="muted">
 								Could not load class names automatically. Showing IDs instead.
 							</div>

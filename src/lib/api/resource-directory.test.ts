@@ -76,7 +76,7 @@ describe("fetchClassObjectDirectory", () => {
 		);
 	});
 
-	it("uses exact ID filters for collection lookups", async () => {
+	it("uses exact ID filters for class and collection lookups", async () => {
 		getCollections.mockResolvedValue({
 			data: [],
 			headers: new Headers(),
@@ -84,6 +84,12 @@ describe("fetchClassObjectDirectory", () => {
 		});
 
 		await fetchCollectionDirectory(" 44 ");
+		getClasses.mockResolvedValue({
+			data: [],
+			headers: new Headers(),
+			status: 200,
+		});
+		await fetchClassDirectory("251");
 
 		expect(getCollections).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -91,6 +97,14 @@ describe("fetchClassObjectDirectory", () => {
 				include_total: false,
 				limit: 50,
 				sort: "name.asc,id.asc",
+			}),
+			{ credentials: "include" },
+		);
+		expect(getClasses).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id__in: "251",
+				include_total: false,
+				limit: 50,
 			}),
 			{ credentials: "include" },
 		);
@@ -128,15 +142,20 @@ describe("fetchClassObjectDirectory", () => {
 			headers: new Headers(),
 			status: 200,
 		});
-		getClasses.mockResolvedValue({
-			data: [],
-			headers: new Headers(),
-			status: 200,
+		getClasses.mockImplementation((params: { id__in?: string }) => {
+			return Promise.resolve({
+				data:
+					params.id__in === "251"
+						? [{ id: 251, name: "class-251" }]
+						: [],
+				headers: new Headers(),
+				status: 200,
+			});
 		});
 		const ids = Array.from({ length: 251 }, (_, index) => index + 1);
 
 		await fetchCollectionsByIds(ids);
-		await fetchClassesByIds([8, 13]);
+		const classes = await fetchClassesByIds(ids);
 
 		expect(getCollections).toHaveBeenCalledTimes(2);
 		expect(getCollections).toHaveBeenNthCalledWith(
@@ -152,9 +171,20 @@ describe("fetchClassObjectDirectory", () => {
 			expect.objectContaining({ id__in: "251", limit: 1 }),
 			{ credentials: "include" },
 		);
-		expect(getClasses).toHaveBeenCalledWith(
-			expect.objectContaining({ id__in: "8,13", limit: 2 }),
+		expect(getClasses).toHaveBeenCalledTimes(2);
+		expect(getClasses).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				id__in: ids.slice(0, 250).join(","),
+				limit: 250,
+			}),
 			{ credentials: "include" },
 		);
+		expect(getClasses).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ id__in: "251", limit: 1 }),
+			{ credentials: "include" },
+		);
+		expect(classes).toContainEqual({ id: 251, name: "class-251" });
 	});
 });
