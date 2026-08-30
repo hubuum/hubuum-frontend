@@ -18,6 +18,8 @@ TypeScript 6 programmatic API during its build, so `package.json` installs the
 two official side-by-side aliases: `@typescript/native` provides the `tsc`
 binary, while `typescript` points to the TypeScript 6 compatibility package.
 Keep both aliases until Next.js supports the TypeScript 7 API directly.
+Vitest's configuration stays in `vitest.config.mjs` so Vite's native config
+loader treats it as ESM without changing either TypeScript alias.
 
 Edit `.env.local` and set `BACKEND_BASE_URL` to the Hubuum Server URL that the
 host-side Next.js process can reach:
