@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
+import { TablePagination } from "@/components/table-pagination";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -26,10 +27,21 @@ import {
 } from "@/lib/identity-scopes";
 import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
+import { useCursorPagination } from "@/lib/use-cursor-pagination";
 
-async function fetchGroups(): Promise<ConsoleGroup[]> {
+type GroupsPageData = {
+	groups: ConsoleGroup[];
+	nextCursor: string | null;
+	prevCursor: string | null;
+	totalCount: number | null;
+};
+
+async function fetchGroups(
+	limit: number,
+	cursor?: string,
+): Promise<GroupsPageData> {
 	const response = await getApiV1IamGroups(
-		{ include_total: false },
+		{ cursor, include_total: true, limit, sort: "id.asc" },
 		{
 			credentials: "include",
 		},
@@ -41,13 +53,23 @@ async function fetchGroups(): Promise<ConsoleGroup[]> {
 		);
 	}
 
-	return response.data;
+	const totalCountHeader = response.headers.get("X-Total-Count");
+	const totalCount = totalCountHeader
+		? Number.parseInt(totalCountHeader, 10)
+		: null;
+
+	return {
+		groups: response.data,
+		nextCursor: response.headers.get("X-Next-Cursor"),
+		prevCursor: response.headers.get("X-Prev-Cursor"),
+		totalCount: Number.isFinite(totalCount) ? totalCount : null,
+	};
 }
 
 async function fetchGroupMemberCount(groupId: number): Promise<number> {
 	const response = await getApiV1IamGroupsByGroupIdMembers(
 		groupId,
-		{ include_total: false },
+		{ include_total: true, limit: 1 },
 		{
 			credentials: "include",
 		},
@@ -62,12 +84,21 @@ async function fetchGroupMemberCount(groupId: number): Promise<number> {
 		);
 	}
 
-	return response.data.length;
+	const totalCount = Number.parseInt(
+		response.headers.get("X-Total-Count") ?? "",
+		10,
+	);
+	if (!Number.isFinite(totalCount)) {
+		throw new Error(`Group #${groupId} did not return an exact member count.`);
+	}
+
+	return totalCount;
 }
 
 export function AdminGroupsTable() {
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
+	const pagination = useCursorPagination({ defaultLimit: 100 });
 	const [groupname, setGroupname] = useState("");
 	const [description, setDescription] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
@@ -77,10 +108,10 @@ export function AdminGroupsTable() {
 	const [tableSuccess, setTableSuccess] = useState<string | null>(null);
 	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 	const query = useQuery({
-		queryKey: ["admin-groups"],
-		queryFn: fetchGroups,
+		queryKey: ["admin-groups", pagination.cursor, pagination.limit],
+		queryFn: () => fetchGroups(pagination.limit, pagination.cursor),
 	});
-	const groups = query.data ?? [];
+	const groups = query.data?.groups ?? [];
 	const groupIdsKey = groups.map((group) => group.id).join(",");
 	const memberCountsQuery = useQuery({
 		queryKey: ["admin-group-member-counts", groupIdsKey],
@@ -190,7 +221,7 @@ export function AdminGroupsTable() {
 	const exportView = useMemo<TableExportView<ConsoleGroup>>(
 		() => ({
 			id: "admin-groups",
-			fileName: "group-directory-view",
+			fileName: "group-directory-current-page",
 			sheetName: "Groups",
 			columns: [
 				{ key: "id", label: "ID", getValue: (group) => group.id },
@@ -254,6 +285,7 @@ export function AdminGroupsTable() {
 			? buildResourceSummary({
 					loaded: groups.length,
 					selected: selectedGroupIds.length,
+					total: query.data.totalCount,
 				})
 			: query.isLoading
 				? buildResourceSummary({ status: "Loading…" })
@@ -485,6 +517,25 @@ export function AdminGroupsTable() {
 						</tbody>
 					</table>
 				</div>
+				{query.data &&
+				(query.data.nextCursor ||
+					query.data.prevCursor ||
+					pagination.hasPrevPage) ? (
+					<TablePagination
+						hasNextPage={!!query.data.nextCursor}
+						hasPrevPage={pagination.hasPrevPage || !!query.data.prevCursor}
+						onNextPage={() =>
+							query.data?.nextCursor &&
+							pagination.goToNextPage(query.data.nextCursor)
+						}
+						onPrevPage={() =>
+							pagination.goToPrevPage(query.data?.prevCursor ?? undefined)
+						}
+						onFirstPage={pagination.goToFirstPage}
+						currentCount={groups.length}
+						totalCount={query.data.totalCount}
+					/>
+				) : null}
 			</div>
 		</div>
 	);

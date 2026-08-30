@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
+import { TablePagination } from "@/components/table-pagination";
 import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -25,10 +26,21 @@ import {
 } from "@/lib/identity-scopes";
 import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
+import { useCursorPagination } from "@/lib/use-cursor-pagination";
 
-async function fetchUsers(): Promise<ConsoleUser[]> {
+type UsersPageData = {
+	users: ConsoleUser[];
+	nextCursor: string | null;
+	prevCursor: string | null;
+	totalCount: number | null;
+};
+
+async function fetchUsers(
+	limit: number,
+	cursor?: string,
+): Promise<UsersPageData> {
 	const response = await getApiV1IamUsers(
-		{ include_total: false },
+		{ cursor, include_total: true, limit, sort: "id.asc" },
 		{
 			credentials: "include",
 		},
@@ -38,12 +50,23 @@ async function fetchUsers(): Promise<ConsoleUser[]> {
 		throw new Error(getApiErrorMessage(response.data, "Failed to load users."));
 	}
 
-	return response.data;
+	const totalCountHeader = response.headers.get("X-Total-Count");
+	const totalCount = totalCountHeader
+		? Number.parseInt(totalCountHeader, 10)
+		: null;
+
+	return {
+		users: response.data,
+		nextCursor: response.headers.get("X-Next-Cursor"),
+		prevCursor: response.headers.get("X-Prev-Cursor"),
+		totalCount: Number.isFinite(totalCount) ? totalCount : null,
+	};
 }
 
 export function AdminUsersTable() {
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
+	const pagination = useCursorPagination({ defaultLimit: 100 });
 	const [username, setUsername] = useState("");
 	const [properName, setProperName] = useState("");
 	const [password, setPassword] = useState("");
@@ -55,8 +78,8 @@ export function AdminUsersTable() {
 	const [tableSuccess, setTableSuccess] = useState<string | null>(null);
 	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 	const query = useQuery({
-		queryKey: ["admin-users"],
-		queryFn: fetchUsers,
+		queryKey: ["admin-users", pagination.cursor, pagination.limit],
+		queryFn: () => fetchUsers(pagination.limit, pagination.cursor),
 	});
 	const createMutation = useMutation({
 		mutationFn: async (payload: ScopedNewUser) => {
@@ -139,7 +162,7 @@ export function AdminUsersTable() {
 		return () => window.removeEventListener(OPEN_CREATE_EVENT, onOpenCreate);
 	}, []);
 
-	const users = query.data ?? [];
+	const users = query.data?.users ?? [];
 	const selectableUsers = useMemo(
 		() => users.filter((user) => !isProviderManagedUser(user)),
 		[users],
@@ -158,7 +181,7 @@ export function AdminUsersTable() {
 	const exportView = useMemo<TableExportView<ConsoleUser>>(
 		() => ({
 			id: "admin-users",
-			fileName: "user-directory-view",
+			fileName: "user-directory-current-page",
 			sheetName: "Users",
 			columns: [
 				{ key: "id", label: "ID", getValue: (user) => user.id },
@@ -210,6 +233,7 @@ export function AdminUsersTable() {
 			? buildResourceSummary({
 					loaded: users.length,
 					selected: selectedUserIds.length,
+					total: query.data.totalCount,
 				})
 			: query.isLoading
 				? buildResourceSummary({ status: "Loading…" })
@@ -460,6 +484,25 @@ export function AdminUsersTable() {
 						</tbody>
 					</table>
 				</div>
+				{query.data &&
+				(query.data.nextCursor ||
+					query.data.prevCursor ||
+					pagination.hasPrevPage) ? (
+					<TablePagination
+						hasNextPage={!!query.data.nextCursor}
+						hasPrevPage={pagination.hasPrevPage || !!query.data.prevCursor}
+						onNextPage={() =>
+							query.data?.nextCursor &&
+							pagination.goToNextPage(query.data.nextCursor)
+						}
+						onPrevPage={() =>
+							pagination.goToPrevPage(query.data?.prevCursor ?? undefined)
+						}
+						onFirstPage={pagination.goToFirstPage}
+						currentCount={users.length}
+						totalCount={query.data.totalCount}
+					/>
+				) : null}
 			</div>
 		</div>
 	);

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { GroupMemberLookup } from "@/components/group-member-lookup";
 import { TableExportMenu } from "@/components/table-export-menu";
+import { TablePagination } from "@/components/table-pagination";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1IamGroupsByGroupIdMembersByPrincipalId,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/identity-scopes";
 import { trackRecentItem } from "@/lib/recent-items";
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
+import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 type AdminGroupDetailProps = {
@@ -46,6 +48,13 @@ type UpdateGroupResult = {
 	group: ConsoleGroup;
 };
 
+type GroupMembersPageData = {
+	members: ConsolePrincipalMember[];
+	nextCursor: string | null;
+	prevCursor: string | null;
+	totalCount: number | null;
+};
+
 async function fetchGroup(groupId: number): Promise<ConsoleGroup> {
 	const response = await getApiV1IamGroupsByGroupId(groupId, {
 		credentials: "include",
@@ -60,10 +69,16 @@ async function fetchGroup(groupId: number): Promise<ConsoleGroup> {
 
 async function fetchGroupMembers(
 	groupId: number,
-): Promise<ConsolePrincipalMember[]> {
+	limit: number,
+	cursor?: string,
+): Promise<GroupMembersPageData> {
 	const response = await getApiV1IamGroupsByGroupIdMembers(
 		groupId,
-		{ include_total: false, limit: 250 },
+		{
+			cursor,
+			include_total: true,
+			limit,
+		},
 		{
 			credentials: "include",
 		},
@@ -75,9 +90,19 @@ async function fetchGroupMembers(
 		);
 	}
 
-	return response.data.flatMap((membership) =>
-		membership.principal ? [membership.principal] : [],
-	);
+	const totalCountHeader = response.headers.get("X-Total-Count");
+	const totalCount = totalCountHeader
+		? Number.parseInt(totalCountHeader, 10)
+		: null;
+
+	return {
+		members: response.data.flatMap((membership) =>
+			membership.principal ? [membership.principal] : [],
+		),
+		nextCursor: response.headers.get("X-Next-Cursor"),
+		prevCursor: response.headers.get("X-Prev-Cursor"),
+		totalCount: Number.isFinite(totalCount) ? totalCount : null,
+	};
 }
 
 async function readResponsePayload(response: Response): Promise<unknown> {
@@ -173,6 +198,7 @@ const memberExportColumns: TableExportColumn<ConsolePrincipalMember>[] = [
 export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
+	const pagination = useCursorPagination({ defaultLimit: 100 });
 	const [groupname, setGroupname] = useState("");
 	const [description, setDescription] = useState("");
 	const [initialized, setInitialized] = useState(false);
@@ -193,8 +219,14 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		queryFn: async () => fetchGroup(groupId),
 	});
 	const membersQuery = useQuery({
-		queryKey: ["admin-group-members", groupId],
-		queryFn: async () => fetchGroupMembers(groupId),
+		queryKey: [
+			"admin-group-members",
+			groupId,
+			pagination.cursor,
+			pagination.limit,
+		],
+		queryFn: async () =>
+			fetchGroupMembers(groupId, pagination.limit, pagination.cursor),
 	});
 	const memberSearchTerm = memberSearch.trim();
 	const memberSearchMinimum = /^\d+$/.test(memberSearchTerm) ? 1 : 2;
@@ -235,13 +267,14 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		});
 	}, [groupQuery.data]);
 
-	const members = membersQuery.data ?? [];
+	const members = membersQuery.data?.members ?? [];
 	const memberIdSet = useMemo(
 		() => new Set(members.map((member) => member.principal_id)),
 		[members],
 	);
 	const allMembersSelected =
-		members.length > 0 && selectedMemberIds.length === members.length;
+		members.length > 0 &&
+		members.every((member) => selectedMemberIds.includes(member.principal_id));
 	const candidatesNotInGroup = useMemo(
 		() =>
 			(memberDirectoryQuery.data?.candidates ?? []).filter(
@@ -381,17 +414,6 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		},
 	});
 
-	useEffect(() => {
-		if (!selectedMemberIds.length) {
-			return;
-		}
-
-		const existingIds = new Set(members.map((member) => member.principal_id));
-		setSelectedMemberIds((current) =>
-			current.filter((memberId) => existingIds.has(memberId)),
-		);
-	}, [members, selectedMemberIds.length]);
-
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setFormError(null);
@@ -449,12 +471,19 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 
 	function toggleAllMembers(checked: boolean) {
 		if (groupQuery.data && isProviderManagedGroup(groupQuery.data)) return;
+		const visibleMemberIds = new Set(
+			members.map((member) => member.principal_id),
+		);
 		if (checked) {
-			setSelectedMemberIds(members.map((member) => member.principal_id));
+			setSelectedMemberIds((current) => [
+				...new Set([...current, ...visibleMemberIds]),
+			]);
 			return;
 		}
 
-		setSelectedMemberIds([]);
+		setSelectedMemberIds((current) =>
+			current.filter((memberId) => !visibleMemberIds.has(memberId)),
+		);
 	}
 
 	function toggleMember(principalId: number, checked: boolean) {
@@ -527,7 +556,7 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 		addMemberMutation.isPending || removeMemberMutation.isPending;
 	const memberExportView: TableExportView<ConsolePrincipalMember> = {
 		id: `admin.group.${group.id}.members`,
-		fileName: `${group.groupname}-members-view`,
+		fileName: `${group.groupname}-members-current-page`,
 		sheetName: "Group members",
 		columns: memberExportColumns,
 		rows: members,
@@ -602,7 +631,13 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 			</form>
 
 			<section className="card stack">
-				<h3>Members ({members.length})</h3>
+				<h3>
+					Members
+					{membersQuery.data?.totalCount !== null &&
+					membersQuery.data?.totalCount !== undefined
+						? ` (${membersQuery.data.totalCount})`
+						: ""}
+				</h3>
 
 				<div className="form-grid">
 					<div className="control-field control-field--wide">
@@ -697,7 +732,11 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 					<div className="muted">Loading members...</div>
 				) : null}
 				{!membersQuery.isLoading && members.length === 0 ? (
-					<div className="muted">No members in this group.</div>
+					<div className="muted">
+						{membersQuery.data?.totalCount
+							? "No members on this page."
+							: "No members in this group."}
+					</div>
 				) : null}
 
 				{!membersQuery.isLoading && members.length > 0 ? (
@@ -787,6 +826,29 @@ export function AdminGroupDetail({ groupId }: AdminGroupDetailProps) {
 							</table>
 						</div>
 					</>
+				) : null}
+				{membersQuery.data &&
+				(membersQuery.data.nextCursor ||
+					membersQuery.data.prevCursor ||
+					pagination.hasPrevPage) ? (
+					<TablePagination
+						hasNextPage={!!membersQuery.data.nextCursor}
+						hasPrevPage={
+							pagination.hasPrevPage || !!membersQuery.data.prevCursor
+						}
+						onNextPage={() =>
+							membersQuery.data?.nextCursor &&
+							pagination.goToNextPage(membersQuery.data.nextCursor)
+						}
+						onPrevPage={() =>
+							pagination.goToPrevPage(
+								membersQuery.data?.prevCursor ?? undefined,
+							)
+						}
+						onFirstPage={pagination.goToFirstPage}
+						currentCount={members.length}
+						totalCount={membersQuery.data.totalCount}
+					/>
 				) : null}
 			</section>
 		</section>
