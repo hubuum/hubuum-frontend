@@ -364,6 +364,137 @@ test.describe("authenticated workspace", () => {
 		expect(new URL(page.url()).searchParams.has("cursor")).toBe(false);
 	});
 
+	test("core resource selectors resolve IDs beyond the first 250", async ({
+		page,
+	}) => {
+		const timestamp = "2026-08-30T12:00:00Z";
+		const classRequests: URL[] = [];
+		const collectionRequests: URL[] = [];
+		const buildCollection = (id: number) => ({
+			id,
+			name: `collection-${id}`,
+			description: "",
+			parent_collection_id: null,
+			revision: 1,
+			created_at: timestamp,
+			updated_at: timestamp,
+		});
+		const buildClass = (id: number) => ({
+			id,
+			name: id === 251 ? "Catalog entries" : `class-${id}`,
+			description: "",
+			collection: buildCollection(id === 251 ? 351 : id),
+			json_schema: {},
+			validate_schema: false,
+			revision: 1,
+			created_at: timestamp,
+			updated_at: timestamp,
+		});
+
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/classes?**",
+			async (route) => {
+				const requestUrl = new URL(route.request().url());
+				classRequests.push(requestUrl);
+				const exactId = requestUrl.searchParams.get("id__in");
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					headers: exactId ? undefined : { "X-Next-Cursor": "class-page-2" },
+					body: JSON.stringify(
+						exactId === "251"
+							? [buildClass(251)]
+							: Array.from({ length: 250 }, (_, index) =>
+									buildClass(index + 1),
+								),
+					),
+				});
+			},
+		);
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/collections?**",
+			async (route) => {
+				const requestUrl = new URL(route.request().url());
+				collectionRequests.push(requestUrl);
+				const exactId = requestUrl.searchParams.get("id__in");
+				const nameSearch = requestUrl.searchParams.get("name__icontains");
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify(
+						exactId === "351" || nameSearch === "collection-351"
+							? [buildCollection(351)]
+							: [],
+					),
+				});
+			},
+		);
+		await page.route(
+			"**/_hubuum-bff/classes/251/objects?**",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: "[]",
+				});
+			},
+		);
+
+		await page.goto("/objects?classId=251");
+		await expect(page).toHaveURL(/\/objects\?classId=251$/);
+		await expect(
+			page.locator(".resource-index-context-select"),
+		).toHaveText("Catalog entries (#251)");
+		const exactClassRequest = classRequests.find(
+			(requestUrl) => requestUrl.searchParams.get("id__in") === "251",
+		);
+		expect(exactClassRequest?.searchParams.get("include_total")).toBe("false");
+		expect(exactClassRequest?.searchParams.get("limit")).toBe("1");
+
+		await page
+			.locator(".objects-resource-index .resource-index-heading")
+			.getByRole("button", { name: "New Catalog entry" })
+			.click();
+		const objectDialog = page.getByRole("dialog", {
+			name: "Create Catalog entry",
+		});
+		await expect(
+			objectDialog.getByLabel("Collection", { exact: true }),
+		).toHaveValue("351");
+		await expect(
+			objectDialog.getByText("Selected: collection-351 (#351)"),
+		).toBeVisible();
+		expect(
+			collectionRequests.some(
+				(requestUrl) =>
+					requestUrl.searchParams.get("id__in") === "351" &&
+					requestUrl.searchParams.get("include_total") === "false",
+			),
+		).toBe(true);
+
+		await page.goto("/classes?create=1");
+		const classDialog = page.getByRole("dialog", { name: "Create class" });
+		await classDialog.getByRole("button", { name: "Find collection" }).click();
+		await classDialog
+			.getByRole("combobox", { name: "Collection name or ID" })
+			.fill("collection-351");
+		await classDialog
+			.getByRole("listbox", { name: "Find collection search results" })
+			.getByRole("option", { name: /collection-351/ })
+			.click();
+		await expect(
+			classDialog.getByLabel("Collection", { exact: true }),
+		).toHaveValue("351");
+		expect(
+			collectionRequests.some(
+				(requestUrl) =>
+					requestUrl.searchParams.get("name__icontains") ===
+						"collection-351" &&
+					requestUrl.searchParams.get("include_total") === "false",
+			),
+		).toBe(true);
+	});
+
 	test("Administration navigation groups identity and operations", async ({
 		page,
 	}) => {
@@ -996,16 +1127,14 @@ test.describe("authenticated workspace", () => {
 			heading.getByRole("heading", { name: "Objects" }),
 		).toBeVisible();
 		await expect(
-			heading.getByRole("combobox", { name: "Objects class context" }),
-		).toHaveValue("1");
+			heading.locator(".resource-index-context-select"),
+		).toHaveText("Math (#1)");
 		await expect(summary).toContainText("2/9");
 		await expect(create).toBeVisible();
 		await expect(page.locator(".fab--create")).toBeHidden();
 		await expect(page.locator(".topbar .topbar-left")).toHaveCount(0);
 		await expect(
-			page
-				.locator(".topbar")
-				.getByRole("combobox", { name: "Objects class context" }),
+			page.locator(".topbar .resource-index-context-select"),
 		).toHaveCount(0);
 
 		const exportSearchTools = card.locator(".object-export-search-tools");
@@ -1113,16 +1242,16 @@ test.describe("authenticated workspace", () => {
 			const topbar = page.locator(".topbar");
 			const navigation = topbar.locator(".topology-navigation--topbar");
 			const resourceCard = page.locator(".objects-resource-index");
-			const classSelect = resourceCard.getByRole("combobox", {
-				name: "Objects class context",
-			});
+			const classSelect = resourceCard.locator(
+				".resource-index-context-select",
+			);
 			await expect(navigation).toBeVisible();
 			await expect(page.locator(".sidebar.card")).toBeHidden();
 			await expect(resourceCard).toBeVisible();
 			await expect(classSelect).toBeVisible();
 			await expect(topbar.locator(".topbar-left")).toHaveCount(0);
 			await expect(
-				topbar.getByRole("combobox", { name: "Objects class context" }),
+				topbar.locator(".resource-index-context-select"),
 			).toHaveCount(0);
 
 			const layout = await page.evaluate(() => {
@@ -1137,7 +1266,7 @@ test.describe("authenticated workspace", () => {
 					".objects-resource-index",
 				);
 				const selectElement = document.querySelector<HTMLElement>(
-					'[aria-label="Objects class context"]',
+					".objects-resource-index .resource-index-context-select",
 				);
 				const utilitiesElement =
 					document.querySelector<HTMLElement>(".topbar-right");
