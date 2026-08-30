@@ -1,3 +1,4 @@
+import { collectAllCursorPages } from "@/lib/api/cursor-pages";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import { frontendApiPath } from "@/lib/api/frontend";
 import {
@@ -48,6 +49,42 @@ export async function fetchCollectionDirectory(
 		items: response.data,
 		isPartial: Boolean(response.headers.get("x-next-cursor")),
 	};
+}
+
+export async function fetchCollectionsByExactName(
+	name: string,
+): Promise<Collection[]> {
+	const normalizedName = name.trim().toLocaleLowerCase();
+	if (!normalizedName) return [];
+
+	const collections = await collectAllCursorPages(async (cursor) => {
+		// Collection list handlers accept shared dynamic filters beyond the
+		// generated pagination-only parameter type.
+		const params = {
+			name__icontains: name.trim(),
+			include_total: false,
+			limit: 250,
+			sort: "name.asc,id.asc",
+			cursor,
+		};
+		const response = await getApiV1Collections(params, {
+			credentials: "include",
+		});
+		if (response.status !== 200) {
+			throw new Error(
+				getApiErrorMessage(response.data, "Collection lookup is unavailable."),
+			);
+		}
+		return {
+			items: response.data,
+			nextCursor: response.headers.get("x-next-cursor"),
+		};
+	});
+
+	return collections.filter(
+		(collection) =>
+			collection.name.trim().toLocaleLowerCase() === normalizedName,
+	);
 }
 
 export async function fetchCollectionsByIds(

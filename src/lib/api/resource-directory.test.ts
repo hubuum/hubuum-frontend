@@ -17,6 +17,7 @@ import {
 	fetchCollectionClassDirectory,
 	fetchCollectionDirectory,
 	fetchCollectionsByIds,
+	fetchCollectionsByExactName,
 } from "@/lib/api/resource-directory";
 
 const objectPayload = [
@@ -108,6 +109,44 @@ describe("fetchClassObjectDirectory", () => {
 			}),
 			{ credentials: "include" },
 		);
+	});
+
+	it("finds duplicate exact collection names across cursor pages", async () => {
+		const firstPage = Array.from({ length: 250 }, (_, index) => ({
+			id: index + 1,
+			name: index === 249 ? "Shared" : `Collection ${index + 1}`,
+		}));
+		getCollections.mockImplementation((params: { cursor?: string }) =>
+			Promise.resolve({
+				data:
+					params.cursor === "page-2"
+						? [{ id: 251, name: "shared" }]
+						: firstPage,
+				headers: new Headers(
+					params.cursor ? undefined : { "x-next-cursor": "page-2" },
+				),
+				status: 200,
+			}),
+		);
+
+		const matches = await fetchCollectionsByExactName(" Shared ");
+
+		expect(getCollections).toHaveBeenCalledTimes(2);
+		expect(getCollections).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				include_total: false,
+				limit: 250,
+				name__icontains: "Shared",
+			}),
+			{ credentials: "include" },
+		);
+		expect(getCollections).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ cursor: "page-2" }),
+			{ credentials: "include" },
+		);
+		expect(matches.map((collection) => collection.id)).toEqual([250, 251]);
 	});
 
 	it("searches classes by name and scopes dependent class lookups", async () => {
