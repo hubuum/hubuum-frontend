@@ -475,6 +475,154 @@ test.describe("authenticated workspace", () => {
 		);
 	});
 
+	test("export template targets resolve beyond the first resource page", async ({
+		page,
+	}) => {
+		const templateId = 93093;
+		const targetId = 251;
+		const timestamp = "2026-08-30T12:00:00Z";
+		const collectionRequests: URL[] = [];
+		const classRequests: URL[] = [];
+		const buildCollection = (id: number) => ({
+			created_at: timestamp,
+			description: "",
+			id,
+			name: `collection-${id}`,
+			parent_collection_id: null,
+			revision: 1,
+			updated_at: timestamp,
+		});
+		const buildClass = (id: number) => ({
+			collection: buildCollection(id),
+			created_at: timestamp,
+			description: "",
+			id,
+			json_schema: { type: "object" },
+			name: `class-${id}`,
+			revision: 1,
+			updated_at: timestamp,
+			validate_schema: true,
+		});
+		const template = {
+			class_id: targetId,
+			collection_id: targetId,
+			content_type: "text/plain",
+			created_at: timestamp,
+			default_limits: null,
+			default_missing_data_policy: "strict",
+			default_query: null,
+			description: "References resources on page two",
+			id: templateId,
+			include: null,
+			kind: "export",
+			name: "Late catalog template",
+			relation_context: null,
+			revision: 1,
+			scope_kind: "objects_in_class",
+			template: "{{ items | tojson }}",
+			updated_at: timestamp,
+		};
+
+		await page.route("**/api/v1/export-templates**", async (route) => {
+			const pathname = new URL(route.request().url()).pathname;
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify(
+					pathname.endsWith(`/api/v1/export-templates/${templateId}`)
+						? template
+						: [template],
+				),
+			});
+		});
+		await page.route("**/api/v1/collections?**", async (route) => {
+			const requestUrl = new URL(route.request().url());
+			collectionRequests.push(requestUrl);
+			const cursor = requestUrl.searchParams.get("cursor");
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				headers:
+					cursor === null
+						? { "X-Next-Cursor": "collections-page-2" }
+						: undefined,
+				body: JSON.stringify(
+					cursor === "collections-page-2"
+						? [buildCollection(targetId)]
+						: Array.from({ length: 250 }, (_, index) =>
+								buildCollection(index + 1),
+							),
+				),
+			});
+		});
+		await page.route("**/api/v1/classes?**", async (route) => {
+			const requestUrl = new URL(route.request().url());
+			classRequests.push(requestUrl);
+			const cursor = requestUrl.searchParams.get("cursor");
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				headers:
+					cursor === null
+						? { "X-Next-Cursor": "classes-page-2" }
+						: undefined,
+				body: JSON.stringify(
+					cursor === "classes-page-2"
+						? [buildClass(targetId)]
+						: Array.from({ length: 250 }, (_, index) =>
+								buildClass(index + 1),
+							),
+				),
+			});
+		});
+		await page.route(
+			`**/_hubuum-bff/classes/${targetId}/objects?**`,
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: "[]",
+				});
+			},
+		);
+		await page.route(
+			`**/api/v1/classes/${targetId}/related/classes?**`,
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: "[]",
+				});
+			},
+		);
+
+		await page.goto(`/exports/templates/${templateId}`);
+		await expect(
+			page.getByRole("heading", { name: template.name, exact: true }),
+		).toBeVisible();
+		await page.getByRole("tab", { name: /2\. Target/ }).click();
+
+		const collectionSelect = page.getByLabel("Collection", { exact: true });
+		const classSelect = page.getByLabel("Class", { exact: true });
+		await expect(collectionSelect).toHaveValue(String(targetId));
+		await expect(collectionSelect.locator("option:checked")).toContainText(
+			`collection-${targetId}`,
+		);
+		await expect(classSelect).toHaveValue(String(targetId));
+		await expect(classSelect.locator("option:checked")).toHaveText(
+			`class-${targetId} (#${targetId})`,
+		);
+		expect(collectionRequests).toHaveLength(2);
+		expect(classRequests).toHaveLength(2);
+		expect(collectionRequests[0]?.searchParams.get("include_total")).toBe(
+			"false",
+		);
+		expect(collectionRequests[1]?.searchParams.get("cursor")).toBe(
+			"collections-page-2",
+		);
+		expect(classRequests[1]?.searchParams.get("cursor")).toBe("classes-page-2");
+	});
+
 	test("core resource selectors resolve IDs beyond the first 250", async ({
 		page,
 	}) => {
