@@ -15,6 +15,7 @@ import { CreateModal } from "@/components/create-modal";
 import { ObjectDirectoryLookup } from "@/components/object-directory-lookup";
 import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
+import { fetchClassRelations } from "@/lib/api/class-relations";
 import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -110,23 +111,6 @@ async function parseJsonPayload(response: Response): Promise<unknown> {
 	} catch {
 		return null;
 	}
-}
-
-async function fetchClassRelations(
-	classId: number,
-): Promise<HubuumClassRelation[]> {
-	const response = await fetch(`/_hubuum-bff/classes/${classId}/relations`, {
-		credentials: "include",
-	});
-	const payload = await parseJsonPayload(response);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(payload, "Failed to load class relations."),
-		);
-	}
-
-	return expectArrayPayload<HubuumClassRelation>(payload, "class relations");
 }
 
 async function fetchAllClassRelations(): Promise<HubuumClassRelation[]> {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetchRaw } from "@/lib/api/backend";
+import { copyPaginationHeaders } from "@/lib/api/proxy-pagination-headers";
+import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
 import {
 	clearSessionCookie,
 	destroySession,
@@ -84,7 +86,7 @@ async function proxyClassRelations(
 	const body = method === "POST" ? await request.text() : undefined;
 	const upstreamPath =
 		method === "GET"
-			? `/api/v1/classes/${classId}/related/relations/`
+			? `/api/v1/classes/${classId}/related/relations/${request.nextUrl.search}`
 			: `/api/v1/classes/${classId}/relations/`;
 	const upstream = await backendFetchRaw(upstreamPath, {
 		correlationId,
@@ -102,6 +104,8 @@ async function proxyClassRelations(
 	if (contentType) {
 		response.headers.set("content-type", contentType);
 	}
+	copySafeUpstreamResponseHeaders(upstream.headers, response.headers);
+	copyPaginationHeaders(upstream.headers, response.headers);
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
 
 	if (upstream.status === 401) {

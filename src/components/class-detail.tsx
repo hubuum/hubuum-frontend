@@ -18,8 +18,9 @@ import { JsonEditor } from "@/components/json-editor";
 import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
+import { fetchClassRelations } from "@/lib/api/class-relations";
 import { fetchExpandedClass } from "@/lib/api/classes";
-import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
 	getApiV1Classes,
@@ -27,7 +28,6 @@ import {
 } from "@/lib/api/generated/client";
 import type {
 	HubuumClassExpanded,
-	HubuumClassRelation,
 	UpdateHubuumClass,
 } from "@/lib/api/generated/models";
 import { fetchCollectionDirectory } from "@/lib/api/resource-directory";
@@ -84,36 +84,6 @@ async function fetchClasses(): Promise<HubuumClassExpanded[]> {
 	}
 
 	return response.data;
-}
-
-async function parseJsonPayload(response: Response): Promise<unknown> {
-	const text = await response.text();
-	if (!text) {
-		return null;
-	}
-
-	try {
-		return JSON.parse(text);
-	} catch {
-		return null;
-	}
-}
-
-async function fetchClassRelations(
-	classId: number,
-): Promise<HubuumClassRelation[]> {
-	const response = await fetch(`/_hubuum-bff/classes/${classId}/relations`, {
-		credentials: "include",
-	});
-	const payload = await parseJsonPayload(response);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(payload, "Failed to load class relations."),
-		);
-	}
-
-	return expectArrayPayload<HubuumClassRelation>(payload, "class relations");
 }
 
 function formatTimestamp(value: string): string {
