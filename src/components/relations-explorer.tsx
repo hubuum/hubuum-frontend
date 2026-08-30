@@ -20,7 +20,7 @@ import {
 	fetchRelatedClassPaths,
 } from "@/lib/api/class-relations";
 import { useConfirm } from "@/lib/confirm-context";
-import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1RelationsClassesByRelationId,
 	deleteApiV1RelationsObjectsByRelationId,
@@ -32,7 +32,6 @@ import type {
 	HubuumClassExpanded,
 	HubuumClassRelation,
 	HubuumClassWithPath,
-	HubuumObject,
 	HubuumObjectRelation,
 	HubuumObjectWithPath,
 } from "@/lib/api/generated/models";
@@ -156,19 +155,6 @@ async function fetchAllClassRelations(): Promise<HubuumClassRelation[]> {
 	return relations;
 }
 
-async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
-	const response = await fetch(`/_hubuum-bff/classes/${classId}/objects`, {
-		credentials: "include",
-	});
-	const payload = await parseJsonPayload(response);
-
-	if (response.status !== 200) {
-		throw new Error(getApiErrorMessage(payload, "Failed to load objects."));
-	}
-
-	return expectArrayPayload<HubuumObject>(payload, "class objects");
-}
-
 function parseId(value: string): number | null {
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -226,6 +212,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		useState("");
 	const [objectRelationTargetObjectSearch, setObjectRelationTargetObjectSearch] =
 		useState("");
+	const [sourceObjectSearch, setSourceObjectSearch] = useState("");
 	const [fromClassFilterId, setFromClassFilterId] = useState(
 		initialFromClassFilterId,
 	);
@@ -365,31 +352,73 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			classRelationsView === "connected" &&
 			parsedSourceClassId !== null,
 	});
-	const sourceObjectsQuery = useQuery({
-		queryKey: ["objects", "relations-source", parsedSourceClassId],
-		queryFn: async () => fetchObjectsByClass(parsedSourceClassId ?? 0),
-		enabled: isObjectMode && parsedSourceClassId !== null,
-	});
-	const sourceObjects = sourceObjectsQuery.data ?? [];
 	const resolvedSourceObjectId = useMemo(() => {
 		if (!isObjectMode) {
 			return sourceObjectId;
 		}
 
 		const parsed = parseId(sourceObjectId);
-		if (parsed !== null && sourceObjects.some((item) => item.id === parsed)) {
-			return String(parsed);
-		}
-
-		return "";
-	}, [isObjectMode, sourceObjectId, sourceObjects]);
+		return parsed === null ? "" : String(parsed);
+	}, [isObjectMode, sourceObjectId]);
 	const parsedResolvedSourceObjectId = useMemo(
 		() => parseId(resolvedSourceObjectId),
 		[resolvedSourceObjectId],
 	);
-	const selectedSourceObject = sourceObjects.find(
-		(item) => item.id === parsedResolvedSourceObjectId,
+	const selectedSourceObjectQuery = useQuery({
+		queryKey: [
+			"object",
+			"relations-source-selected",
+			parsedSourceClassId,
+			parsedResolvedSourceObjectId,
+		],
+		queryFn: async () => {
+			const directory = await fetchClassObjectDirectory(
+				parsedSourceClassId ?? 0,
+				String(parsedResolvedSourceObjectId ?? ""),
+			);
+			return (
+				directory.items.find(
+					(item) => item.id === parsedResolvedSourceObjectId,
+				) ?? null
+			);
+		},
+		enabled:
+			isObjectMode &&
+			parsedSourceClassId !== null &&
+			parsedResolvedSourceObjectId !== null,
+		retry: false,
+	});
+	const selectedSourceObject = selectedSourceObjectQuery.data ?? null;
+	const sourceObjectSearchTerm = sourceObjectSearch.trim();
+	const sourceObjectSearchMinimum = 3;
+	const debouncedSourceObjectSearchTerm = useDebouncedValue(
+		sourceObjectSearchTerm,
+		300,
 	);
+	const sourceObjectSearchIsReady =
+		sourceObjectSearchTerm.length >= sourceObjectSearchMinimum &&
+		debouncedSourceObjectSearchTerm === sourceObjectSearchTerm;
+	const sourceObjectDirectoryQuery = useQuery({
+		queryKey: [
+			"relation-source-object-directory",
+			parsedSourceClassId,
+			debouncedSourceObjectSearchTerm,
+		],
+		queryFn: () =>
+			fetchClassObjectDirectory(
+				parsedSourceClassId ?? 0,
+				debouncedSourceObjectSearchTerm,
+			),
+		enabled:
+			isObjectMode &&
+			parsedSourceClassId !== null &&
+			sourceObjectSearchIsReady,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
+	const sourceObjectOptions = sourceObjectSearchIsReady
+		? (sourceObjectDirectoryQuery.data?.items ?? [])
+		: [];
 
 	const classRelationTargetOptions = useMemo(
 		() =>
@@ -531,15 +560,14 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		for (const connectedClass of connectedClasses) {
 			ids.add(connectedClass.collection_id);
 		}
-		for (const objectItem of [
-			...sourceObjects,
-			...targetObjects,
-			...relatedObjects,
-		]) {
+		for (const objectItem of [...targetObjects, ...relatedObjects]) {
 			ids.add(objectItem.collection_id);
 		}
+		if (selectedSourceObject) {
+			ids.add(selectedSourceObject.collection_id);
+		}
 		return Array.from(ids).sort((left, right) => left - right);
-	}, [connectedClasses, relatedObjects, sourceObjects, targetObjects]);
+	}, [connectedClasses, relatedObjects, selectedSourceObject, targetObjects]);
 	const referencedCollectionsQuery = useQuery({
 		queryKey: [
 			"collections",
@@ -598,9 +626,6 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			});
 		};
 
-		for (const objectItem of sourceObjects) {
-			store(objectItem);
-		}
 		for (const objectItem of targetObjects) {
 			store(objectItem);
 		}
@@ -612,7 +637,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		}
 
 		return map;
-	}, [relatedObjects, selectedSourceObject, sourceObjects, targetObjects]);
+	}, [relatedObjects, selectedSourceObject, targetObjects]);
 
 	const classRelationExists =
 		parsedClassRelationSourceClassId !== null &&
@@ -1506,6 +1531,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	function onContextClassChange(event: ChangeEvent<HTMLSelectElement>) {
 		const params = new URLSearchParams(searchParams.toString());
 		const nextClassId = event.target.value;
+		setSourceObjectSearch("");
 
 		if (nextClassId) {
 			params.set("classId", nextClassId);
@@ -1518,9 +1544,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		router.push(query ? `${pathname}?${query}` : pathname);
 	}
 
-	function onContextObjectChange(event: ChangeEvent<HTMLSelectElement>) {
+	function navigateToContextObject(nextObjectId: string) {
 		const params = new URLSearchParams(searchParams.toString());
-		const nextObjectId = event.target.value;
 
 		if (resolvedSourceClassId) {
 			params.set("classId", resolvedSourceClassId);
@@ -1664,7 +1689,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 							<div className="object-detail-value">
 								{selectedSourceObject
 									? `${selectedSourceObject.name} (#${selectedSourceObject.id})`
-									: "Select current object in the top bar"}
+									: parsedResolvedSourceObjectId !== null
+										? `Object #${parsedResolvedSourceObjectId}`
+										: "Select current object in the top bar"}
 							</div>
 						</div>
 						<div className="object-detail-row-actions" />
@@ -2129,24 +2156,41 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 									>
 										/
 									</span>
-									<select
-										aria-label="Relations object context"
-										className="resource-index-context-select"
-										value={resolvedSourceObjectId}
-										onChange={onContextObjectChange}
-										disabled={
-											!resolvedSourceClassId ||
-											sourceObjectsQuery.isLoading ||
-											sourceObjectsQuery.isError
+									<span className="resource-index-context-label">
+										{selectedSourceObject
+											? selectedSourceObject.name
+											: parsedResolvedSourceObjectId !== null
+												? `Object #${parsedResolvedSourceObjectId}`
+												: "Select an object"}
+									</span>
+									<ObjectDirectoryLookup
+										disabled={!resolvedSourceClassId}
+										disabledHint="Choose a class first"
+										helperText={
+											sourceObjectSearchTerm.length <
+											sourceObjectSearchMinimum
+												? "Type at least three characters to search by object name or ID."
+												: sourceObjectDirectoryQuery.isLoading ||
+													!sourceObjectSearchIsReady
+													? "Searching objects visible to your account…"
+													: sourceObjectDirectoryQuery.isError
+														? "Object lookup is unavailable. Try again."
+														: sourceObjectDirectoryQuery.data?.isPartial
+															? "More than 50 objects match; type more to narrow the results."
+															: sourceObjectOptions.length === 0
+																? "No matching objects are visible in this class."
+																: "Choose an object from the results."
 										}
-									>
-										<option value="">Select an object</option>
-										{sourceObjects.map((objectItem) => (
-											<option key={objectItem.id} value={objectItem.id}>
-												{objectItem.name}
-											</option>
-										))}
-									</select>
+										idPrefix="relation-source-object"
+										inputLabel="Relations source object name or ID"
+										objects={sourceObjectOptions}
+										onChange={setSourceObjectSearch}
+										onSelect={(objectItem) => {
+											setSourceObjectSearch(objectItem.name);
+											navigateToContextObject(String(objectItem.id));
+										}}
+										value={sourceObjectSearch}
+									/>
 								</>
 							}
 						/>

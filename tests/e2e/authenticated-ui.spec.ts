@@ -1049,7 +1049,7 @@ test.describe("authenticated workspace", () => {
 				});
 			},
 		);
-		await page.route("**/_hubuum-bff/classes/1/objects", async (route) => {
+		await page.route("**/_hubuum-bff/classes/1/objects?**", async (route) => {
 			await route.fulfill({
 				status: 200,
 				contentType: "application/json",
@@ -1210,6 +1210,151 @@ test.describe("authenticated workspace", () => {
 		expect(relatedClassRequests[1]?.searchParams.get("cursor")).toBe(
 			"connected-class-page-2",
 		);
+	});
+
+	test("relations source objects preserve bookmarks and search on demand", async ({
+		page,
+	}) => {
+		const timestamp = "2026-08-30T12:00:00Z";
+		const collection = {
+			created_at: timestamp,
+			description: "",
+			id: 1,
+			name: "Infrastructure",
+			parent_collection_id: null,
+			revision: 1,
+			updated_at: timestamp,
+		};
+		const sourceClass = {
+			collection,
+			created_at: timestamp,
+			description: "",
+			id: 1,
+			json_schema: {},
+			name: "Hosts",
+			revision: 1,
+			updated_at: timestamp,
+			validate_schema: false,
+		};
+		const buildObject = (id: number, name: string) => ({
+			collection_id: collection.id,
+			created_at: timestamp,
+			data: {},
+			description: "",
+			hubuum_class_id: sourceClass.id,
+			id,
+			name,
+			revision: 1,
+			updated_at: timestamp,
+		});
+		const bookmarkedObject = buildObject(351, "Bookmarked source object");
+		const replacementObject = buildObject(352, "Replacement source object");
+		const objectDirectoryRequests: URL[] = [];
+
+		await page.route("**/api/v1/classes?**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify([sourceClass]),
+			});
+		});
+		await page.route("**/api/v1/collections?**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify([collection]),
+			});
+		});
+		await page.route(
+			"**/api/v1/classes/1/related/relations?**",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: "[]",
+				});
+			},
+		);
+		await page.route(
+			"**/_hubuum-bff/classes/1/objects?**",
+			async (route) => {
+				const requestUrl = new URL(route.request().url());
+				objectDirectoryRequests.push(requestUrl);
+				const exactIds = requestUrl.searchParams.get("id__in");
+				const nameSearch = requestUrl.searchParams.get("name__icontains");
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify(
+						exactIds === String(bookmarkedObject.id)
+							? [bookmarkedObject]
+							: exactIds === String(replacementObject.id) ||
+									nameSearch === "Replacement source object"
+								? [replacementObject]
+								: [],
+					),
+				});
+			},
+		);
+		await page.route(
+			"**/api/v1/classes/1/objects/*/related/objects?**",
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: "[]",
+				});
+			},
+		);
+
+		await page.goto(
+			`/relations/objects?classId=1&objectId=${bookmarkedObject.id}`,
+		);
+		await expect(
+			page.getByText(bookmarkedObject.name, { exact: true }),
+		).toBeVisible();
+		await expect(page).toHaveURL(
+			new RegExp(`objectId=${bookmarkedObject.id}`),
+		);
+		const bookmarkedRequest = objectDirectoryRequests.find(
+			(requestUrl) =>
+				requestUrl.searchParams.get("id__in") ===
+				String(bookmarkedObject.id),
+		);
+		expect(bookmarkedRequest?.searchParams.get("limit")).toBe("50");
+		expect(bookmarkedRequest?.searchParams.get("include_total")).toBe(
+			"false",
+		);
+
+		await page.getByRole("button", { name: "Find object" }).click();
+		await page
+			.getByRole("combobox", {
+				name: "Relations source object name or ID",
+			})
+			.fill(replacementObject.name);
+		await page
+			.getByRole("option", { name: new RegExp(replacementObject.name) })
+			.click();
+		await expect(page).toHaveURL(
+			new RegExp(`objectId=${replacementObject.id}`),
+		);
+		await expect(
+			page.getByText(replacementObject.name, { exact: true }),
+		).toBeVisible();
+		expect(
+			objectDirectoryRequests.some(
+				(requestUrl) =>
+					requestUrl.searchParams.get("name__icontains") ===
+					replacementObject.name,
+			),
+		).toBe(true);
+		expect(
+			objectDirectoryRequests.some(
+				(requestUrl) =>
+					requestUrl.searchParams.get("id__in") ===
+					String(replacementObject.id),
+			),
+		).toBe(true);
 	});
 
 	test("table resizing preserves columns to the left", async ({ page }) => {
