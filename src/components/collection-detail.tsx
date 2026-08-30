@@ -16,6 +16,7 @@ import { CollectionDirectoryLookup } from "@/components/collection-directory-loo
 import { EmptyState } from "@/components/empty-state";
 import { CollectionEventSubscriptionsPanel } from "@/components/collection-event-subscriptions-panel";
 import { CollectionDetailTracker } from "@/components/collection-detail-tracker";
+import { GroupDirectoryLookup } from "@/components/group-directory-lookup";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
@@ -26,8 +27,6 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1CollectionsByCollectionId,
 	deleteApiV1CollectionsByCollectionIdPermissionsGroupByGroupId,
-	getApiV1IamGroups,
-	getApiV1Collections,
 	getApiV1CollectionsByCollectionId,
 	getApiV1CollectionsByCollectionIdAncestors,
 	getApiV1CollectionsByCollectionIdChildren,
@@ -36,7 +35,6 @@ import {
 	getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalId,
 	getApiV1CollectionsByCollectionIdPermissionsGroupByGroupId,
 	patchApiV1CollectionsByCollectionId,
-	putApiV1CollectionsByCollectionIdParent,
 	putApiV1CollectionsByCollectionIdPermissionsGroupByGroupId,
 } from "@/lib/api/generated/client";
 import type {
@@ -47,15 +45,18 @@ import type {
 	UpdateCollection,
 } from "@/lib/api/generated/models";
 import { Permissions as PermissionValues } from "@/lib/api/generated/models/permissions";
+import { moveCollectionToParent } from "@/lib/api/collection-moves";
+import {
+	fetchGroupDirectory,
+	fetchGroupsByIds,
+} from "@/lib/api/group-directory";
 import {
 	fetchCurrentPrincipalGroups,
 	hasAnyGroupMembership,
 } from "@/lib/api/principal-groups";
 import { fetchCollectionDirectory } from "@/lib/api/resource-directory";
 import {
-	buildCollectionHierarchy,
 	formatCollectionPath,
-	getDescendantCollectionIds,
 	isRootCollection,
 } from "@/lib/collection-hierarchy";
 import {
@@ -386,23 +387,6 @@ async function fetchCollection(collectionId: number): Promise<Collection> {
 	return response.data;
 }
 
-async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ limit: 250, include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
-		);
-	}
-
-	return response.data;
-}
-
 async function fetchCollectionChildren(
 	collectionId: number,
 ): Promise<Collection[]> {
@@ -435,23 +419,6 @@ async function fetchCollectionAncestors(
 	if (response.status !== 200) {
 		throw new Error(
 			getApiErrorMessage(response.data, "Failed to load collection path."),
-		);
-	}
-
-	return response.data;
-}
-
-async function fetchGroups(): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamGroups(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load groups."),
 		);
 	}
 
@@ -696,6 +663,8 @@ export function CollectionDetail({
 	const [editingFields, setEditingFields] = useState<EditableField[]>([]);
 	const [addingGroupPermissions, setAddingGroupPermissions] = useState(false);
 	const [newPermissionGroupId, setNewPermissionGroupId] = useState("");
+	const [newPermissionGroupSelection, setNewPermissionGroupSelection] =
+		useState<ConsoleGroup | null>(null);
 	const [newSelectedPermissions, setNewSelectedPermissions] = useState<
 		PermissionName[]
 	>([]);
@@ -723,10 +692,6 @@ export function CollectionDetail({
 		queryKey: ["collection", collectionId],
 		queryFn: async () => fetchCollection(collectionId),
 	});
-	const collectionsQuery = useQuery({
-		queryKey: ["collections", "collection-detail", collectionId],
-		queryFn: fetchCollections,
-	});
 	const moveParentDirectory = useDirectorySearch({
 		queryKey: ["collection-move-parent-directory", collectionId],
 		queryFn: fetchCollectionDirectory,
@@ -739,13 +704,36 @@ export function CollectionDetail({
 		queryKey: ["collection", collectionId, "ancestors"],
 		queryFn: async () => fetchCollectionAncestors(collectionId),
 	});
-	const groupsQuery = useQuery({
-		queryKey: ["groups", "collection-permissions", collectionId],
-		queryFn: fetchGroups,
-	});
 	const permissionsQuery = useQuery({
 		queryKey: ["collection", collectionId, "permissions"],
 		queryFn: async () => fetchCollectionPermissions(collectionId),
+	});
+	const assignedPermissionGroupIds = useMemo(
+		() =>
+			Array.from(
+				new Set(
+					(permissionsQuery.data ?? []).map(
+						(permission) => permission.group_id,
+					),
+				),
+			).sort((left, right) => left - right),
+		[permissionsQuery.data],
+	);
+	const permissionGroupsQuery = useQuery({
+		queryKey: [
+			"groups",
+			"collection-permissions",
+			collectionId,
+			assignedPermissionGroupIds,
+		],
+		queryFn: async () => fetchGroupsByIds(assignedPermissionGroupIds),
+		enabled:
+			permissionsQuery.isSuccess && assignedPermissionGroupIds.length > 0,
+	});
+	const permissionGroupDirectory = useDirectorySearch({
+		queryKey: ["collection-permission-group-directory", collectionId],
+		queryFn: fetchGroupDirectory,
+		enabled: addingGroupPermissions,
 	});
 	const effectivePermissionsQuery = useQuery({
 		queryKey: [
@@ -885,21 +873,8 @@ export function CollectionDetail({
 		},
 	});
 	const moveMutation = useMutation({
-		mutationFn: async (parentCollectionId: number) => {
-			const response = await putApiV1CollectionsByCollectionIdParent(
-				collectionId,
-				{ parent_collection_id: parentCollectionId },
-				{
-					credentials: "include",
-				},
-			);
-
-			if (response.status !== 202) {
-				throw new Error(
-					getApiErrorMessage(response.data, "Failed to move collection."),
-				);
-			}
-		},
+		mutationFn: async (parentCollectionId: number) =>
+			moveCollectionToParent(collectionId, parentCollectionId),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["collections"] });
 			await queryClient.invalidateQueries({
@@ -987,6 +962,8 @@ export function CollectionDetail({
 			if (payload.mode === "create") {
 				setAddingGroupPermissions(false);
 				setNewPermissionGroupId("");
+				setNewPermissionGroupSelection(null);
+				permissionGroupDirectory.setSearch("");
 				setNewSelectedPermissions([]);
 			} else {
 				setPermissionDrafts((current) => {
@@ -1286,13 +1263,6 @@ export function CollectionDetail({
 			setMoveError("A collection cannot be its own parent.");
 			return;
 		}
-		if (descendants.has(parsedParentId)) {
-			setMoveError(
-				"A collection cannot be moved under one of its descendants.",
-			);
-			return;
-		}
-
 		moveMutation.mutate(parsedParentId);
 	}
 
@@ -1347,6 +1317,8 @@ export function CollectionDetail({
 	function onResetPermissionEditor() {
 		setAddingGroupPermissions(false);
 		setNewPermissionGroupId("");
+		setNewPermissionGroupSelection(null);
+		permissionGroupDirectory.setSearch("");
 		setNewSelectedPermissions([]);
 		setPermissionDrafts({});
 		setPermissionsError(null);
@@ -1357,18 +1329,10 @@ export function CollectionDetail({
 		setPermissionsError(null);
 		setPermissionsSuccess(null);
 		setNewSelectedPermissions([]);
+		setNewPermissionGroupId("");
+		setNewPermissionGroupSelection(null);
+		permissionGroupDirectory.setSearch("");
 		setAddingGroupPermissions(true);
-
-		const groups = groupsQuery.data ?? [];
-		const assignedGroupIds = new Set(
-			(permissionsQuery.data ?? []).map((permission) => permission.group_id),
-		);
-		const availableGroups = groups.filter(
-			(group) => !assignedGroupIds.has(group.id),
-		);
-		setNewPermissionGroupId(
-			availableGroups.length > 0 ? String(availableGroups[0].id) : "",
-		);
 	}
 
 	function onSaveRowPermissions(entry: CollectionPermissionEntry) {
@@ -1397,6 +1361,10 @@ export function CollectionDetail({
 		const parsedGroupId = Number.parseInt(newPermissionGroupId, 10);
 		if (!Number.isFinite(parsedGroupId) || parsedGroupId < 1) {
 			setPermissionsError("Group is required.");
+			return;
+		}
+		if (assignedPermissionGroupIds.includes(parsedGroupId)) {
+			setPermissionsError("That group already has permissions.");
 			return;
 		}
 
@@ -1472,7 +1440,7 @@ export function CollectionDetail({
 		revokePermissionsMutation.mutate(groupId);
 	}
 
-	const groups = groupsQuery.data ?? [];
+	const groups = permissionGroupsQuery.data ?? [];
 	const groupsById = new Map(groups.map((group) => [group.id, group]));
 	const permissionEntries: CollectionPermissionEntry[] = (
 		permissionsQuery.data ?? []
@@ -1486,10 +1454,9 @@ export function CollectionDetail({
 	const assignedGroupIds = new Set(
 		permissionEntries.map((entry) => entry.group.id),
 	);
-	const availableGroups = groups.filter(
-		(group) => !assignedGroupIds.has(group.id),
-	);
-	const usingGroupSelect = groups.length > 0 && !groupsQuery.isError;
+	const availablePermissionGroups = (
+		permissionGroupDirectory.query.data?.items ?? []
+	).filter((group) => !assignedGroupIds.has(group.id));
 	const userHasAnyGroup = (accessGroups: readonly ConsoleGroup[] | undefined) =>
 		hasAnyGroupMembership(currentUserGroupsQuery.data ?? [], accessGroups);
 	const canManagePermissions = canManageCollectionPermissions(
@@ -1501,29 +1468,12 @@ export function CollectionDetail({
 	const canManageEventSubscriptions = userHasAnyGroup(
 		manageEventSubscriptionGroupsQuery.data,
 	);
-	const collections = collectionsQuery.data ?? [];
-	const collectionHierarchy = useMemo(
-		() => buildCollectionHierarchy(collections),
-		[collections],
-	);
-	const descendants = useMemo(
-		() =>
-			getDescendantCollectionIds(
-				collectionId,
-				collectionHierarchy.childrenByParentId,
-			),
-		[collectionHierarchy.childrenByParentId, collectionId],
-	);
 	const moveParentOptions = (
 		moveParentDirectory.query.data?.items ?? []
-	).filter(
-		(collection) =>
-			collection.id !== collectionId && !descendants.has(collection.id),
+	).filter((collection) => collection.id !== collectionId);
+	const selectedMoveParent = moveParentDirectory.query.data?.items.find(
+		(collection) => String(collection.id) === moveParentId,
 	);
-	const selectedMoveParent = [
-		...collections,
-		...(moveParentDirectory.query.data?.items ?? []),
-	].find((collection) => String(collection.id) === moveParentId);
 	const ancestorPath = [
 		...(ancestorsQuery.data ?? []).slice().reverse(),
 		...(collectionQuery.data ? [collectionQuery.data] : []),
@@ -1563,29 +1513,6 @@ export function CollectionDetail({
 		onCancel: onResetPermissionEditor,
 	});
 
-	useEffect(() => {
-		if (!addingGroupPermissions || !usingGroupSelect) {
-			return;
-		}
-
-		if (availableGroups.length === 0) {
-			setNewPermissionGroupId("");
-			return;
-		}
-
-		const currentGroupStillAvailable = availableGroups.some(
-			(group) => String(group.id) === newPermissionGroupId,
-		);
-		if (!currentGroupStillAvailable) {
-			setNewPermissionGroupId(String(availableGroups[0].id));
-		}
-	}, [
-		addingGroupPermissions,
-		availableGroups,
-		newPermissionGroupId,
-		usingGroupSelect,
-	]);
-
 	if (collectionQuery.isLoading) {
 		return <div className="card">Loading collection...</div>;
 	}
@@ -1608,17 +1535,17 @@ export function CollectionDetail({
 		);
 	}
 
-	const selectedNewPermissionGroup = availableGroups.find(
-		(group) => String(group.id) === newPermissionGroupId,
-	);
+	const selectedNewPermissionGroup =
+		newPermissionGroupSelection ??
+		availablePermissionGroups.find(
+			(group) => String(group.id) === newPermissionGroupId,
+		);
 	const directPermissionExportRows: PermissionExportRow[] = [
 		...(canManagePermissions && addingGroupPermissions
 			? [
 					{
-						group: usingGroupSelect
-							? selectedNewPermissionGroup
-								? `${formatScopedGroupName(selectedNewPermissionGroup)} (#${selectedNewPermissionGroup.id})`
-								: "All groups already have permissions."
+						group: selectedNewPermissionGroup
+							? `${formatScopedGroupName(selectedNewPermissionGroup)} (#${selectedNewPermissionGroup.id})`
 							: newPermissionGroupId,
 						permissions: summarizePermissions(newSelectedPermissionSet),
 						updated: "-",
@@ -2078,20 +2005,17 @@ export function CollectionDetail({
 								disabled={
 									addingGroupPermissions ||
 									hasDirtyRowDrafts ||
-									upsertPermissionsMutation.isPending ||
-									(usingGroupSelect && availableGroups.length === 0)
+									upsertPermissionsMutation.isPending
 								}
 							>
-								{usingGroupSelect && availableGroups.length === 0
-									? "All groups assigned"
-									: "Add group permissions"}
+								Add group permissions
 							</button>
-							{groupsQuery.isError ? (
-								<span className="muted">
-									Could not load groups automatically. You can enter a group ID
-									manually.
-								</span>
-							) : null}
+						</div>
+					) : null}
+					{permissionGroupsQuery.isError ? (
+						<div className="muted">
+							Could not resolve some assigned group names. Their exact IDs
+							remain available.
 						</div>
 					) : null}
 
@@ -2151,43 +2075,59 @@ export function CollectionDetail({
 									{canManagePermissions && addingGroupPermissions ? (
 										<tr>
 											<td>
-												{usingGroupSelect ? (
-													availableGroups.length > 0 ? (
-														<select
-															value={newPermissionGroupId}
-															onChange={(event) =>
-																setNewPermissionGroupId(event.target.value)
-															}
-															aria-label="Select group to grant permissions"
-														>
-															{availableGroups.map((group) => (
-																<option key={group.id} value={group.id}>
-																	{formatScopedGroupName(group)} (#{group.id})
-																</option>
-															))}
-														</select>
-													) : (
-														<span className="muted">
-															All groups already have permissions.
-														</span>
-													)
-												) : (
+												<div className="directory-id-lookup-control">
 													<input
 														type="number"
 														min={1}
 														value={newPermissionGroupId}
-														onChange={(event) =>
-															setNewPermissionGroupId(event.target.value)
-														}
-														placeholder={
-															groupsQuery.isLoading
-																? "Loading groups..."
-																: "Enter group ID"
-														}
-														disabled={groupsQuery.isLoading}
+														onChange={(event) => {
+															setNewPermissionGroupId(event.target.value);
+															setNewPermissionGroupSelection(null);
+															permissionGroupDirectory.setSearch(
+																event.target.value,
+															);
+														}}
+														placeholder="Enter group ID"
+														aria-label="Group ID to grant permissions"
 														required
 													/>
-												)}
+													<GroupDirectoryLookup
+														groups={availablePermissionGroups}
+														helperText={directoryLookupStatus({
+															count: availablePermissionGroups.length,
+															isError: permissionGroupDirectory.query.isError,
+															isLoading:
+																permissionGroupDirectory.query.isLoading,
+															isPartial: Boolean(
+																permissionGroupDirectory.query.data?.isPartial,
+															),
+															isReady: permissionGroupDirectory.isReady,
+															minimumLength:
+																permissionGroupDirectory.minimumLength,
+															resourcePlural: "unassigned groups",
+															resourceSingular: "group",
+															term: permissionGroupDirectory.term,
+														})}
+														idPrefix="collection-permission-group-directory"
+														onChange={(value) => {
+															permissionGroupDirectory.setSearch(value);
+															setNewPermissionGroupId("");
+															setNewPermissionGroupSelection(null);
+														}}
+														onSelect={(group) => {
+															setNewPermissionGroupId(String(group.id));
+															setNewPermissionGroupSelection(group);
+														}}
+														value={permissionGroupDirectory.search}
+													/>
+												</div>
+												{selectedNewPermissionGroup ? (
+													<small className="field-note">
+														Selected:{" "}
+														{formatScopedGroupName(selectedNewPermissionGroup)}{" "}
+														(#{selectedNewPermissionGroup.id})
+													</small>
+												) : null}
 											</td>
 											<td>
 												<div className="permission-summary">
@@ -2208,8 +2148,7 @@ export function CollectionDetail({
 															disabled={
 																upsertPermissionsMutation.isPending ||
 																newSelectedPermissions.length === 0 ||
-																(usingGroupSelect &&
-																	availableGroups.length === 0)
+																!newPermissionGroupId
 															}
 														>
 															{upsertPermissionsMutation.isPending
@@ -2222,8 +2161,7 @@ export function CollectionDetail({
 															onClick={onGrantAllNewPermissions}
 															disabled={
 																upsertPermissionsMutation.isPending ||
-																(usingGroupSelect &&
-																	availableGroups.length === 0)
+																!newPermissionGroupId
 															}
 														>
 															Grant all
