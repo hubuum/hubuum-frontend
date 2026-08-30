@@ -42,6 +42,8 @@ jobs:
         run: npm test
       - name: Test performance budget tooling
         run: npm run test:performance-budget
+      - name: Test release dependency gate
+        run: npm run test:release-dependencies
       - name: Build
         run: npm run build
       - name: Enforce frontend performance budgets
@@ -108,7 +110,7 @@ jobs:
         run: npm run test:e2e:visual
       - name: Upload visual failure diagnostics
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: visual-regression-${{ github.run_id }}
           path: |

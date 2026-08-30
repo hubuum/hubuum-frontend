@@ -22,15 +22,27 @@ jobs:
     permissions:
       actions: read
       contents: read
+      pull-requests: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.20.0
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
       - name: Require an annotated tag
         run: test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
       - name: Validate release metadata
         run: bash scripts/check-release-readiness.sh "$GITHUB_REF_NAME"
+      - name: Recheck release dependency gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run release:dependencies
       - name: Verify the tagged commit passed CI on main
         env:
           GH_TOKEN: ${{ github.token }}
@@ -44,6 +56,22 @@ jobs:
             --jq '.total_count')"
           if [[ "$successful_runs" -lt 1 ]]; then
             echo "No successful main CI run found for $GITHUB_SHA." >&2
+            exit 1
+          fi
+      - name: Verify pre-tag release readiness
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          successful_runs="$(gh api -X GET \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/release-readiness.yml/runs" \
+            -f branch=main \
+            -f event=workflow_dispatch \
+            -f head_sha="$GITHUB_SHA" \
+            -f status=success \
+            --jq '.total_count')"
+          if [[ "$successful_runs" -lt 1 ]]; then
+            echo "No successful pre-tag release-readiness run found for $GITHUB_SHA." >&2
             exit 1
           fi
 

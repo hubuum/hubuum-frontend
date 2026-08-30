@@ -1,0 +1,99 @@
+name: Release readiness
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: release-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.9@sha256:1f12baf882b6d3df5b4b2dbdf26aad0793274e57f86a2c186b8e1e68632db5db
+
+jobs:
+  dependency-gate:
+    name: release-dependency-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require main
+        run: test "$GITHUB_REF" = refs/heads/main
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.20.0
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate release metadata
+        run: bash scripts/check-release-readiness.sh
+      - name: Test release dependency gate
+        run: npm run test:release-dependencies
+      - name: Check dependency and action freshness
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run release:dependencies
+
+  authenticated-browser:
+    name: release-authenticated-browser
+    needs: dependency-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.20.0
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run complete authenticated suite
+        env:
+          HUBUUM_FULL_E2E_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
+        run: npm run test:e2e:authenticated:full
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-authenticated-browser-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/playwright/
+            test-results/full-authenticated/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  ready:
+    name: release-readiness
+    needs:
+      - dependency-gate
+      - authenticated-browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify the exact commit passed main CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          successful_runs="$(gh api -X GET \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+            -f branch=main \
+            -f head_sha="$GITHUB_SHA" \
+            -f status=success \
+            --jq '.total_count')"
+          if [[ "$successful_runs" -lt 1 ]]; then
+            echo "No successful main CI run found for $GITHUB_SHA." >&2
+            exit 1
+          fi
