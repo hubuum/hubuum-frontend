@@ -364,6 +364,117 @@ test.describe("authenticated workspace", () => {
 		expect(new URL(page.url()).searchParams.has("cursor")).toBe(false);
 	});
 
+	test("group member pagination preserves selection across browser history", async ({
+		page,
+	}) => {
+		const groupId = 92092;
+		const timestamp = "2026-08-30T12:00:00Z";
+		const memberRequests: URL[] = [];
+		const buildMembership = (principalId: number) => ({
+			created_at: timestamp,
+			group_id: groupId,
+			principal: {
+				created_at: timestamp,
+				identity_scope: "local",
+				kind: "user",
+				name: `member-${principalId}`,
+				principal_id: principalId,
+				revision: 1,
+				updated_at: timestamp,
+			},
+			principal_id: principalId,
+			revision: 1,
+			updated_at: timestamp,
+		});
+
+		await page.route(
+			`**/_hubuum-bff/hubuum/api/v1/iam/groups/${groupId}`,
+			async (route) => {
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					body: JSON.stringify({
+						created_at: timestamp,
+						description: "Pagination test group",
+						groupname: "pagination-test",
+						id: groupId,
+						identity_scope: "local",
+						managed_by: "local",
+						revision: 1,
+						updated_at: timestamp,
+					}),
+				});
+			},
+		);
+		await page.route(
+			`**/_hubuum-bff/hubuum/api/v1/iam/groups/${groupId}/members?**`,
+			async (route) => {
+				const requestUrl = new URL(route.request().url());
+				memberRequests.push(requestUrl);
+				const cursor = requestUrl.searchParams.get("cursor");
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					headers: {
+						"X-Total-Count": "251",
+						...(cursor === null
+							? { "X-Next-Cursor": "membership-page-2" }
+							: { "X-Prev-Cursor": "membership-page-1" }),
+					},
+					body: JSON.stringify(
+						cursor === "membership-page-2"
+							? [buildMembership(251)]
+							: Array.from({ length: 250 }, (_, index) =>
+									buildMembership(index + 1),
+								),
+					),
+				});
+			},
+		);
+
+		await page.goto(`/admin/groups/${groupId}?limit=250`);
+		await expect(
+			page.getByRole("heading", { name: "Members (251)", exact: true }),
+		).toBeVisible();
+		await expect(page.getByText("Showing 250 of 251")).toBeVisible();
+		await page
+			.getByRole("checkbox", { name: "Select member member-1", exact: true })
+			.check();
+		await expect(page.getByText("1 selected", { exact: true })).toBeVisible();
+
+		await page.getByRole("button", { name: "Next page" }).click();
+		await expect(page.getByText("Showing 1 of 251")).toBeVisible();
+		await page
+			.getByRole("checkbox", { name: "Select member member-251", exact: true })
+			.check();
+		await expect(page.getByText("2 selected", { exact: true })).toBeVisible();
+
+		await page.goBack();
+		await expect(
+			page.getByRole("checkbox", {
+				name: "Select member member-1",
+				exact: true,
+			}),
+		).toBeChecked();
+		await expect(page.getByText("2 selected", { exact: true })).toBeVisible();
+		await page.goForward();
+		await expect(
+			page.getByRole("checkbox", {
+				name: "Select member member-251",
+				exact: true,
+			}),
+		).toBeChecked();
+		await expect(page.getByText("2 selected", { exact: true })).toBeVisible();
+
+		expect(memberRequests.length).toBeGreaterThanOrEqual(2);
+		expect(memberRequests[0]?.searchParams.get("limit")).toBe("250");
+		expect(memberRequests[0]?.searchParams.has("sort")).toBe(false);
+		expect(memberRequests[0]?.searchParams.get("include_total")).toBe("true");
+		expect(memberRequests[1]?.searchParams.get("cursor")).toBe(
+			"membership-page-2",
+		);
+	});
+
 	test("core resource selectors resolve IDs beyond the first 250", async ({
 		page,
 	}) => {
