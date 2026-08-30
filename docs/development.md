@@ -90,9 +90,10 @@ npm run test:e2e:public
 
 Pixel comparisons run separately in CI so an intentional or accidental visual
 change does not hide the functional results. Both CI and baseline updates use
-the same digest-pinned Playwright 1.62.1 Noble image, bundled Chromium, and the
-fixed `v0.0.0+visual` display version. Docker is required to refresh intentional
-baselines:
+the same digest-pinned Playwright 1.62.1 Noble `linux/amd64` image, bundled
+Chromium, and the fixed `v0.0.0+visual` display version. Docker is required to
+refresh intentional baselines (Apple-silicon hosts run the image through Docker
+emulation):
 
 ```sh
 npm run test:e2e:update
