@@ -15,7 +15,10 @@ import { CreateModal } from "@/components/create-modal";
 import { ObjectDirectoryLookup } from "@/components/object-directory-lookup";
 import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
-import { fetchClassRelations } from "@/lib/api/class-relations";
+import {
+	fetchClassRelations,
+	fetchRelatedClassPaths,
+} from "@/lib/api/class-relations";
 import { useConfirm } from "@/lib/confirm-context";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
@@ -28,10 +31,15 @@ import {
 import type {
 	HubuumClassExpanded,
 	HubuumClassRelation,
+	HubuumClassWithPath,
 	HubuumObject,
 	HubuumObjectRelation,
 	HubuumObjectWithPath,
 } from "@/lib/api/generated/models";
+import {
+	fetchObjectRelations,
+	fetchRelatedObjects,
+} from "@/lib/api/object-relations";
 import {
 	fetchClassObjectDirectory,
 	fetchCollectionsByIds,
@@ -45,7 +53,6 @@ import {
 	SELECTION_STATE_EVENT,
 } from "@/lib/create-events";
 import {
-	buildRelatedObjectSearchParams,
 	DEFAULT_INCLUDE_SELF_CLASS,
 	MAX_RELATED_OBJECT_DEPTH_LIMIT,
 	normalizeRelatedObjectDepthLimit,
@@ -149,38 +156,6 @@ async function fetchAllClassRelations(): Promise<HubuumClassRelation[]> {
 	return relations;
 }
 
-type HubuumClassWithPath = {
-	created_at: string;
-	description: string;
-	id: number;
-	json_schema?: unknown;
-	name: string;
-	collection_id: number;
-	path: number[];
-	updated_at: string;
-	validate_schema: boolean;
-};
-
-async function fetchConnectedClasses(
-	classId: number,
-): Promise<HubuumClassWithPath[]> {
-	const response = await fetch(
-		`/_hubuum-bff/hubuum/api/v1/classes/${classId}/related/classes?limit=250&sort=path.asc,id.asc`,
-		{
-			credentials: "include",
-		},
-	);
-	const payload = await parseJsonPayload(response);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(payload, "Failed to load connected classes."),
-		);
-	}
-
-	return expectArrayPayload<HubuumClassWithPath>(payload, "connected classes");
-}
-
 async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
 	const response = await fetch(`/_hubuum-bff/classes/${classId}/objects`, {
 		credentials: "include",
@@ -192,53 +167,6 @@ async function fetchObjectsByClass(classId: number): Promise<HubuumObject[]> {
 	}
 
 	return expectArrayPayload<HubuumObject>(payload, "class objects");
-}
-
-async function fetchRelatedObjects(
-	classId: number,
-	objectId: number,
-	depthLimit: number,
-): Promise<HubuumObjectWithPath[]> {
-	const params = buildRelatedObjectSearchParams({
-		depthLimit,
-		includeSelfClass: DEFAULT_INCLUDE_SELF_CLASS,
-		ignoredClassIds: [],
-	});
-	params.set("include_total", "false");
-	const response = await fetch(
-		`/_hubuum-bff/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/objects?${params.toString()}`,
-		{
-			credentials: "include",
-		},
-	);
-	const payload = await parseJsonPayload(response);
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(payload, "Failed to load related objects."),
-		);
-	}
-
-	return expectArrayPayload<HubuumObjectWithPath>(payload, "related objects");
-}
-
-async function fetchDirectObjectRelations(
-	classId: number,
-	objectId: number,
-): Promise<HubuumObjectRelation[]> {
-	const response = await fetch(
-		`/_hubuum-bff/hubuum/api/v1/classes/${classId}/objects/${objectId}/related/relations?limit=250`,
-		{
-			credentials: "include",
-		},
-	);
-	const payload = await parseJsonPayload(response);
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(payload, "Failed to load object relations."),
-		);
-	}
-
-	return expectArrayPayload<HubuumObjectRelation>(payload, "object relations");
 }
 
 function parseId(value: string): number | null {
@@ -431,7 +359,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	});
 	const classConnectedClassesQuery = useQuery({
 		queryKey: ["class-related-classes", parsedSourceClassId],
-		queryFn: async () => fetchConnectedClasses(parsedSourceClassId ?? 0),
+		queryFn: async () => fetchRelatedClassPaths(parsedSourceClassId ?? 0),
 		enabled:
 			isClassMode &&
 			classRelationsView === "connected" &&
@@ -540,7 +468,12 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			fetchRelatedObjects(
 				parsedSourceClassId ?? 0,
 				parsedResolvedSourceObjectId ?? 0,
-				objectRelationsView === "reachable" ? reachabilityDepth : 1,
+				{
+					depthLimit:
+						objectRelationsView === "reachable" ? reachabilityDepth : 1,
+					ignoredClassIds: [],
+					includeSelfClass: DEFAULT_INCLUDE_SELF_CLASS,
+				},
 			),
 		enabled:
 			isObjectMode &&
@@ -554,7 +487,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			parsedResolvedSourceObjectId,
 		],
 		queryFn: async () =>
-			fetchDirectObjectRelations(
+			fetchObjectRelations(
 				parsedSourceClassId ?? 0,
 				parsedResolvedSourceObjectId ?? 0,
 			),

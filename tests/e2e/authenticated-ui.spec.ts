@@ -1122,6 +1122,96 @@ test.describe("authenticated workspace", () => {
 		).toBeEnabled();
 	});
 
+	test("relation result views load beyond the first backend page", async ({
+		page,
+	}) => {
+		const timestamp = "2026-08-30T12:00:00Z";
+		const collection = {
+			created_at: timestamp,
+			description: "",
+			id: 1,
+			name: "Infrastructure",
+			parent_collection_id: null,
+			revision: 1,
+			updated_at: timestamp,
+		};
+		const buildClass = (id: number, name: string) => ({
+			collection,
+			created_at: timestamp,
+			description: "",
+			id,
+			json_schema: {},
+			name,
+			revision: 1,
+			updated_at: timestamp,
+			validate_schema: false,
+		});
+		const sourceClass = buildClass(1, "Hosts");
+		const lateClass = buildClass(251, "Late connected class");
+		const relatedClassRequests: URL[] = [];
+
+		await page.route("**/api/v1/classes?**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify([sourceClass, lateClass]),
+			});
+		});
+		await page.route("**/api/v1/collections?**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify([collection]),
+			});
+		});
+		await page.route(
+			"**/api/v1/classes/1/related/classes?**",
+			async (route) => {
+				const requestUrl = new URL(route.request().url());
+				relatedClassRequests.push(requestUrl);
+				const cursor = requestUrl.searchParams.get("cursor");
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					headers:
+						cursor === null
+							? { "X-Next-Cursor": "connected-class-page-2" }
+							: undefined,
+					body: JSON.stringify(
+						cursor === "connected-class-page-2"
+							? [
+									{
+										...lateClass,
+										collection: undefined,
+										collection_id: collection.id,
+										path: [sourceClass.id, lateClass.id],
+									},
+								]
+							: [],
+					),
+				});
+			},
+		);
+
+		await page.goto(
+			"/relations/classes?classId=1&classView=connected",
+		);
+		await expect(
+			page.getByRole("row").filter({ hasText: lateClass.name }),
+		).toBeVisible();
+		expect(relatedClassRequests).toHaveLength(2);
+		expect(relatedClassRequests[0]?.searchParams.get("limit")).toBe("250");
+		expect(relatedClassRequests[0]?.searchParams.get("sort")).toBe(
+			"path.asc,id.asc",
+		);
+		expect(
+			relatedClassRequests[0]?.searchParams.get("include_total"),
+		).toBe("false");
+		expect(relatedClassRequests[1]?.searchParams.get("cursor")).toBe(
+			"connected-class-page-2",
+		);
+	});
+
 	test("table resizing preserves columns to the left", async ({ page }) => {
 		const timestamp = "2026-07-29T12:00:00Z";
 		const collection = {
