@@ -22,7 +22,6 @@ import {
 	deleteApiV1RelationsClassesByRelationId,
 	deleteApiV1RelationsObjectsByRelationId,
 	getApiV1Classes,
-	getApiV1Collections,
 	getApiV1RelationsClasses,
 	postApiV1ClassesByClassIdByFromObjectIdRelationsByToClassIdByToObjectId,
 } from "@/lib/api/generated/client";
@@ -32,9 +31,11 @@ import type {
 	HubuumObject,
 	HubuumObjectRelation,
 	HubuumObjectWithPath,
-	Collection,
 } from "@/lib/api/generated/models";
-import { fetchClassObjectDirectory } from "@/lib/api/resource-directory";
+import {
+	fetchClassObjectDirectory,
+	fetchCollectionsByIds,
+} from "@/lib/api/resource-directory";
 import { filterClassRelations } from "@/lib/class-relation-filters";
 import {
 	DESELECT_ALL_EVENT,
@@ -240,23 +241,6 @@ async function fetchDirectObjectRelations(
 	return expectArrayPayload<HubuumObjectRelation>(payload, "object relations");
 }
 
-async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
-		);
-	}
-
-	return response.data;
-}
-
 function parseId(value: string): number | null {
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -379,14 +363,8 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		queryKey: ["classes", "relations-explorer"],
 		queryFn: fetchClasses,
 	});
-	const collectionsQuery = useQuery({
-		queryKey: ["collections", "relations-explorer"],
-		queryFn: fetchCollections,
-		enabled: isObjectMode,
-	});
 
 	const classes = classesQuery.data ?? [];
-	const collections = collectionsQuery.data ?? [];
 	const classNameById = useMemo(() => {
 		const map = new Map<number, string>();
 		for (const classItem of classes) {
@@ -394,18 +372,6 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		}
 		return map;
 	}, [classes]);
-	const collectionNameById = useMemo(() => {
-		const map = new Map<number, string>();
-		for (const collection of collections) {
-			map.set(collection.id, collection.name);
-		}
-		for (const classItem of classes) {
-			if (!map.has(classItem.collection.id)) {
-				map.set(classItem.collection.id, classItem.collection.name);
-			}
-		}
-		return map;
-	}, [classes, collections]);
 
 	const resolvedSourceClassId = useMemo(() => {
 		const parsed = parseId(sourceClassId);
@@ -627,6 +593,39 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	const objectDirectRelations = Array.isArray(objectDirectRelationsQuery.data)
 		? objectDirectRelationsQuery.data
 		: [];
+	const referencedCollectionIds = useMemo(() => {
+		const ids = new Set<number>();
+		for (const connectedClass of connectedClasses) {
+			ids.add(connectedClass.collection_id);
+		}
+		for (const objectItem of [
+			...sourceObjects,
+			...targetObjects,
+			...relatedObjects,
+		]) {
+			ids.add(objectItem.collection_id);
+		}
+		return Array.from(ids).sort((left, right) => left - right);
+	}, [connectedClasses, relatedObjects, sourceObjects, targetObjects]);
+	const referencedCollectionsQuery = useQuery({
+		queryKey: [
+			"collections",
+			"relations-explorer",
+			referencedCollectionIds,
+		],
+		queryFn: async () => fetchCollectionsByIds(referencedCollectionIds),
+		enabled: referencedCollectionIds.length > 0,
+	});
+	const collectionNameById = useMemo(() => {
+		const map = new Map<number, string>();
+		for (const classItem of classes) {
+			map.set(classItem.collection.id, classItem.collection.name);
+		}
+		for (const collection of referencedCollectionsQuery.data ?? []) {
+			map.set(collection.id, collection.name);
+		}
+		return map;
+	}, [classes, referencedCollectionsQuery.data]);
 
 	const classRelationsShiftSelect = useShiftSelect({
 		items: classDirectRelations,
@@ -1906,6 +1905,12 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 						: renderCreateObjectRelationForm()}
 				</div>
 			</CreateModal>
+			{referencedCollectionsQuery.isError ? (
+				<div className="muted">
+					Could not resolve some collection names. Referenced collection IDs
+					remain visible.
+				</div>
+			) : null}
 
 			{isClassMode ? (
 				<div className="card table-wrap resource-index">
