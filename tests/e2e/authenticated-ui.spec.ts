@@ -1414,6 +1414,181 @@ test.describe("authenticated workspace", () => {
 		).toBeDisabled();
 	});
 
+	test("imports resolves large collection and group directories", async ({
+		page,
+	}) => {
+		const timestamp = "2026-08-30T12:00:00Z";
+		const collectionRequests: URL[] = [];
+		const groupRequests: URL[] = [];
+		const buildCollection = (id: number, name: string) => ({
+			id,
+			name,
+			description: "",
+			parent_collection_id: null,
+			revision: 1,
+			created_at: timestamp,
+			updated_at: timestamp,
+		});
+		const buildGroup = (
+			id: number,
+			groupname: string,
+			identityScope = "local",
+		) => ({
+			id,
+			groupname,
+			identity_scope: identityScope,
+			description: "",
+		});
+		const lateGroup = buildGroup(251, "late-group", "directory");
+
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/iam/groups?**",
+			async (route) => {
+				const requestUrl = new URL(route.request().url());
+				groupRequests.push(requestUrl);
+				const cursor = requestUrl.searchParams.get("cursor");
+				const exactId = requestUrl.searchParams.get("id__in");
+				const nameSearch = requestUrl.searchParams.get("name__icontains");
+				const isCompleteLookup = requestUrl.searchParams.get("limit") === "250";
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					headers:
+						isCompleteLookup && !cursor && !exactId
+							? { "X-Next-Cursor": "group-page-2" }
+							: undefined,
+					body: JSON.stringify(
+						exactId === "251" || nameSearch
+							? [lateGroup]
+							: cursor === "group-page-2"
+								? [lateGroup]
+								: Array.from({ length: 250 }, (_, index) =>
+										buildGroup(index + 1, `group-${index + 1}`),
+									),
+					),
+				});
+			},
+		);
+		await page.route(
+			"**/_hubuum-bff/hubuum/api/v1/collections?**",
+			async (route) => {
+				const requestUrl = new URL(route.request().url());
+				collectionRequests.push(requestUrl);
+				const cursor = requestUrl.searchParams.get("cursor");
+				const nameSearch = requestUrl.searchParams.get("name__icontains") ?? "";
+				const isExactLookup = requestUrl.searchParams.get("limit") === "250";
+				const normalizedSearch = nameSearch.toLocaleLowerCase();
+				let collections = [];
+				if (normalizedSearch === "unique") {
+					collections = [buildCollection(252, "Unique")];
+				} else if (isExactLookup && cursor === "collection-page-2") {
+					collections = [buildCollection(251, "Shared")];
+				} else if (isExactLookup) {
+					collections = Array.from({ length: 250 }, (_, index) =>
+						buildCollection(
+							index + 1,
+							index === 249 ? "Shared" : `Collection ${index + 1}`,
+						),
+					);
+				} else {
+					collections = [
+						buildCollection(250, "Shared"),
+						buildCollection(251, "Shared"),
+					];
+				}
+				await route.fulfill({
+					status: 200,
+					contentType: "application/json",
+					headers:
+						isExactLookup &&
+						!cursor &&
+						normalizedSearch === "shared"
+							? { "X-Next-Cursor": "collection-page-2" }
+							: undefined,
+					body: JSON.stringify(collections),
+				});
+			},
+		);
+
+		await page.goto("/imports");
+		await page.locator('input[type="file"]').setInputFiles({
+			name: "large-directory-import.json",
+			mimeType: "application/json",
+			buffer: Buffer.from(
+				JSON.stringify({
+					version: 1,
+					graph: {
+						collections: [
+							{ name: "Shared", description: "Import destination" },
+						],
+						collection_permissions: [
+							{
+								collection_key: { name: "Shared" },
+								group_key: {
+									groupname: "late-group",
+									identity_scope: "directory",
+								},
+								permissions: ["read"],
+							},
+						],
+					},
+				}),
+			),
+		});
+		await page
+			.getByRole("button", { name: "Continue to destination" })
+			.click();
+
+		await expect(
+			page.getByText("File groups verified: directory/late-group"),
+		).toBeVisible();
+		await page.getByRole("button", { name: "Find group" }).click();
+		await page.getByLabel("Group name or ID").fill("late-group");
+		await page
+			.getByRole("option", { name: /directory\/late-group.*#251/ })
+			.click();
+		await expect(
+			page.getByText("Selected: directory/late-group (#251)"),
+		).toBeVisible();
+
+		await page
+			.getByRole("spinbutton", { name: "Delegate group override" })
+			.fill("");
+		await page
+			.getByRole("combobox")
+			.selectOption("existing_override");
+		await expect(
+			page.getByText(/Multiple visible collections are named Shared/),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Continue to policies" }),
+		).toBeDisabled();
+
+		await page.getByRole("button", { name: "Find collection" }).click();
+		await page.getByLabel("Collection name or ID").fill("Unique");
+		await page.getByRole("option", { name: /Unique.*#252/ }).click();
+		await expect(page.getByText("Selected: Unique (#252)"))
+			.toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Continue to policies" }),
+		).toBeEnabled();
+
+		expect(
+			groupRequests.some(
+				(requestUrl) =>
+					requestUrl.searchParams.get("cursor") === "group-page-2" &&
+					requestUrl.searchParams.get("include_total") === "false",
+			),
+		).toBe(true);
+		expect(
+			collectionRequests.some(
+				(requestUrl) =>
+					requestUrl.searchParams.get("cursor") === "collection-page-2" &&
+					requestUrl.searchParams.get("include_total") === "false",
+			),
+		).toBe(true);
+	});
+
 	test("token expiry shows the effective server default lifetime", async ({
 		page,
 	}) => {

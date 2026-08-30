@@ -11,17 +11,22 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
+import { GroupDirectoryLookup } from "@/components/group-directory-lookup";
 import {
 	GuidedFlowContinue,
 	GuidedFlowPanel,
 	GuidedFlowTabs,
 } from "@/components/guided-flow";
-import { getApiErrorMessage } from "@/lib/api/errors";
 import {
-	getApiV1IamGroups,
-	getApiV1Collections,
-} from "@/lib/api/generated/client";
-import type { Collection } from "@/lib/api/generated/models";
+	fetchAllGroups,
+	fetchGroupDirectory,
+	fetchGroupsByIds,
+} from "@/lib/api/group-directory";
+import {
+	fetchCollectionDirectory,
+	fetchCollectionsByExactName,
+} from "@/lib/api/resource-directory";
 import {
 	createImportTask,
 	fetchTasks,
@@ -32,23 +37,25 @@ import {
 	type TaskRecord,
 } from "@/lib/api/tasking";
 import {
-	buildCollectionHierarchy,
-	formatCollectionOption,
-	getDuplicateCollectionNames,
-} from "@/lib/collection-hierarchy";
-import {
 	buildImportSubmissionPayload,
 	getImportCollectionSuggestion,
 	type CollectionMode,
 } from "@/lib/import-payload";
 import {
-	type ConsoleGroup,
+	findMissingImportPermissionGroups,
+	getImportPermissionGroups,
+} from "@/lib/import-permission-groups";
+import {
 	formatScopedGroupName,
 	normalizeIdentityScope,
 } from "@/lib/identity-scopes";
 import { MAX_IDEMPOTENCY_KEY_BYTES } from "@/lib/idempotency-key";
 import { filterMine } from "@/lib/task-notifications";
 import { useCurrentUserId } from "@/lib/use-current-user-id";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 
 type ImportSummary = {
 	totalItems: number;
@@ -201,79 +208,6 @@ function normalizeImportPayload(payload: unknown): ImportFilePayload {
 	return candidate as ImportFilePayload;
 }
 
-type ScopedGroupReference = {
-	key: string;
-	label: string;
-};
-
-function buildScopedGroupKey(
-	identityScope: string | null | undefined,
-	groupname: string,
-): string {
-	return `${normalizeIdentityScope(identityScope)}\u0000${groupname}`;
-}
-
-function getFilePermissionGroups(
-	payload: ImportRequest,
-): ScopedGroupReference[] {
-	const groups = new Map<string, ScopedGroupReference>();
-
-	for (const permission of payload.graph.collection_permissions ?? []) {
-		const groupname = permission.group_key.groupname?.trim();
-		if (groupname) {
-			const identityScope = normalizeIdentityScope(
-				(permission.group_key as { identity_scope?: unknown }).identity_scope,
-			);
-			const key = buildScopedGroupKey(identityScope, groupname);
-			groups.set(key, {
-				key,
-				label:
-					identityScope === "local"
-						? groupname
-						: `${identityScope}/${groupname}`,
-			});
-		}
-	}
-
-	return Array.from(groups.values()).sort((left, right) =>
-		left.label.localeCompare(right.label),
-	);
-}
-
-async function fetchGroups(): Promise<ConsoleGroup[]> {
-	const response = await getApiV1IamGroups(
-		{ include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load groups."),
-		);
-	}
-
-	return response.data;
-}
-
-async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ limit: 250, include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
-		);
-	}
-
-	return response.data;
-}
-
 export function ImportsWorkspace({
 	canCreateCollections,
 	currentUsername,
@@ -303,7 +237,7 @@ export function ImportsWorkspace({
 	const [targetCollectionName, setTargetCollectionName] = useState("");
 	const [targetCollectionDescription, setTargetCollectionDescription] =
 		useState("");
-	const [delegateGroupName, setDelegateGroupName] = useState("");
+	const [delegateGroupId, setDelegateGroupId] = useState("");
 	const [idempotencyKey, setIdempotencyKey] = useState("");
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [activeHint, setActiveHint] = useState<HintKey | null>(null);
@@ -340,67 +274,95 @@ export function ImportsWorkspace({
 	const previousImports = importTasks
 		.filter((task) => isTerminalTaskStatus(task.status))
 		.slice(0, 10);
-	const groupsQuery = useQuery({
-		queryKey: ["groups", "imports-form"],
-		queryFn: fetchGroups,
-		enabled: canCreateCollections && collectionMode !== "existing_override",
-	});
-	const collectionsQuery = useQuery({
-		queryKey: ["collections", "imports-form"],
-		queryFn: fetchCollections,
-	});
-	const collectionOptions = collectionsQuery.data ?? [];
-	const collectionHierarchy = useMemo(
-		() => buildCollectionHierarchy(collectionOptions),
-		[collectionOptions],
-	);
-	const duplicateCollectionNames = useMemo(
-		() => getDuplicateCollectionNames(collectionOptions),
-		[collectionOptions],
-	);
 	const isExistingCollectionMode = collectionMode === "existing_override";
 	const requiresTargetCollection = collectionMode !== "file";
 	const requiresCollectionDescription = collectionMode === "create_override";
 	const canUsePermissionControls =
 		canCreateCollections && !isExistingCollectionMode;
-	const targetCollectionNameKey = targetCollectionName
-		.trim()
-		.toLocaleLowerCase();
+	const collectionDirectory = useDirectorySearch({
+		queryKey: ["collection-directory", "imports-form"],
+		queryFn: fetchCollectionDirectory,
+		enabled: isExistingCollectionMode,
+	});
+	const delegateGroupDirectory = useDirectorySearch({
+		queryKey: ["group-directory", "imports-form"],
+		queryFn: fetchGroupDirectory,
+		enabled: canUsePermissionControls,
+	});
+	const filePermissionGroups = useMemo(
+		() => (parsedImport ? getImportPermissionGroups(parsedImport) : []),
+		[parsedImport],
+	);
+	const exactTargetCollectionsQuery = useQuery({
+		queryKey: [
+			"collections",
+			"imports-form",
+			"exact-name",
+			targetCollectionName.trim().toLocaleLowerCase(),
+		],
+		queryFn: async () => fetchCollectionsByExactName(targetCollectionName),
+		enabled:
+			isExistingCollectionMode && targetCollectionName.trim().length > 0,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
+	const parsedDelegateGroupId = parsePositiveInteger(delegateGroupId);
+	const selectedDelegateGroupQuery = useQuery({
+		queryKey: ["groups", "imports-form", "selected", parsedDelegateGroupId],
+		queryFn: async () =>
+			fetchGroupsByIds(
+				parsedDelegateGroupId === null ? [] : [parsedDelegateGroupId],
+			),
+		enabled: canUsePermissionControls && parsedDelegateGroupId !== null,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
+	const allGroupsQuery = useQuery({
+		queryKey: ["groups", "imports-form", "complete"],
+		queryFn: fetchAllGroups,
+		enabled:
+			canUsePermissionControls &&
+			delegateGroupId.trim() === "" &&
+			filePermissionGroups.length > 0,
+		retry: false,
+		staleTime: 5 * 60 * 1000,
+	});
+	const exactTargetCollections = exactTargetCollectionsQuery.data ?? [];
 	const hasAmbiguousTargetCollection =
 		isExistingCollectionMode &&
-		targetCollectionNameKey !== "" &&
-		duplicateCollectionNames.has(targetCollectionNameKey);
-	const hasVisibleTargetCollection =
-		collectionMode !== "existing_override" ||
-		collectionOptions.some(
-			(collection) => collection.name === targetCollectionName,
-		);
+		exactTargetCollections.length > 1;
+	const resolvedTargetCollection =
+		exactTargetCollections.length === 1 ? exactTargetCollections[0] : null;
+	const hasResolvedTargetCollection =
+		!isExistingCollectionMode ||
+		(exactTargetCollectionsQuery.isSuccess &&
+			!exactTargetCollectionsQuery.isFetching &&
+			resolvedTargetCollection !== null);
 	const canSubmitCollectionOptions =
 		!requiresTargetCollection ||
 		(targetCollectionName.trim() !== "" &&
-			hasVisibleTargetCollection &&
+			hasResolvedTargetCollection &&
 			!hasAmbiguousTargetCollection &&
 			(!requiresCollectionDescription ||
 				targetCollectionDescription.trim() !== ""));
-	const selectedDelegateGroup = groupsQuery.data?.find(
-		(group) => String(group.id) === delegateGroupName,
+	const selectedDelegateGroup = selectedDelegateGroupQuery.data?.find(
+		(group) => group.id === parsedDelegateGroupId,
 	);
 	const filePermissionGroupValidation =
 		useMemo((): FilePermissionGroupValidation | null => {
 			if (
 				!parsedImport ||
 				!canUsePermissionControls ||
-				delegateGroupName.trim()
+				delegateGroupId.trim()
 			) {
 				return null;
 			}
 
-			const fileGroups = getFilePermissionGroups(parsedImport);
-			if (fileGroups.length === 0) {
+			if (filePermissionGroups.length === 0) {
 				return null;
 			}
 
-			if (groupsQuery.isError) {
+			if (allGroupsQuery.isError) {
 				return {
 					kind: "unchecked",
 					reason:
@@ -408,21 +370,17 @@ export function ImportsWorkspace({
 				};
 			}
 
-			if (groupsQuery.isLoading || !groupsQuery.data) {
+			if (allGroupsQuery.isLoading || !allGroupsQuery.data) {
 				return {
 					kind: "unchecked",
 					reason: "Verifying file permission groups...",
 				};
 			}
 
-			const existingGroupKeys = new Set(
-				groupsQuery.data.map((group) =>
-					buildScopedGroupKey(group.identity_scope, group.groupname),
-				),
+			const missingGroupNames = findMissingImportPermissionGroups(
+				filePermissionGroups,
+				allGroupsQuery.data,
 			);
-			const missingGroupNames = fileGroups
-				.filter((group) => !existingGroupKeys.has(group.key))
-				.map((group) => group.label);
 
 			if (missingGroupNames.length > 0) {
 				return { kind: "missing", groupNames: missingGroupNames };
@@ -430,16 +388,29 @@ export function ImportsWorkspace({
 
 			return {
 				kind: "valid",
-				groupNames: fileGroups.map((group) => group.label),
+				groupNames: filePermissionGroups.map((group) => group.label),
 			};
 		}, [
+			allGroupsQuery.data,
+			allGroupsQuery.isError,
+			allGroupsQuery.isLoading,
 			canUsePermissionControls,
-			delegateGroupName,
-			groupsQuery,
+			delegateGroupId,
+			filePermissionGroups,
 			parsedImport,
 		]);
+	const hasValidDelegateGroup =
+		delegateGroupId.trim() === "" ||
+		(parsedDelegateGroupId !== null &&
+			selectedDelegateGroupQuery.isSuccess &&
+			!selectedDelegateGroupQuery.isFetching &&
+			selectedDelegateGroup !== undefined);
 	const canSubmitFilePermissionGroups =
-		filePermissionGroupValidation?.kind !== "missing";
+		!canUsePermissionControls ||
+		(hasValidDelegateGroup &&
+			(delegateGroupId.trim() !== "" ||
+				filePermissionGroups.length === 0 ||
+				filePermissionGroupValidation?.kind === "valid"));
 
 	useEffect(() => {
 		const legacyTaskId = parsePositiveInteger(searchParams.get("taskId") ?? "");
@@ -447,32 +418,6 @@ export function ImportsWorkspace({
 			router.replace(`/tasks/${legacyTaskId}`);
 		}
 	}, [router, searchParams]);
-
-	useEffect(() => {
-		if (!parsedImport || collectionOptions.length === 0) {
-			return;
-		}
-
-		const hasSelectedOption = collectionOptions.some(
-			(collection) => collection.name === targetCollectionName,
-		);
-		if (hasSelectedOption) {
-			return;
-		}
-
-		const collectionSuggestion = getImportCollectionSuggestion(
-			parsedImport,
-			collectionOptions.map((collection) => collection.name),
-		);
-		if (
-			collectionSuggestion.collectionName &&
-			collectionOptions.some(
-				(collection) => collection.name === collectionSuggestion.collectionName,
-			)
-		) {
-			setTargetCollectionName(collectionSuggestion.collectionName);
-		}
-	}, [collectionOptions, parsedImport, targetCollectionName]);
 
 	const submitMutation = useMutation({
 		mutationFn: async () => {
@@ -484,7 +429,7 @@ export function ImportsWorkspace({
 				atomicity,
 				collisionPolicy,
 				delegateGroupName: canUsePermissionControls
-					? (selectedDelegateGroup?.groupname ?? delegateGroupName)
+					? selectedDelegateGroup?.groupname
 					: undefined,
 				delegateGroupIdentityScope:
 					selectedDelegateGroup === undefined
@@ -526,19 +471,22 @@ export function ImportsWorkspace({
 			setAtomicity(payload.mode?.atomicity ?? "strict");
 			setCollisionPolicy(payload.mode?.collision_policy ?? "abort");
 			setPermissionPolicy(payload.mode?.permission_policy ?? "abort");
-			const collectionSuggestion = getImportCollectionSuggestion(
-				payload,
-				collectionOptions.map((collection) => collection.name),
-			);
-			setCollectionMode(
+			const collectionSuggestion = getImportCollectionSuggestion(payload);
+			const nextCollectionMode =
 				canCreateCollections &&
 					!collectionSuggestion.isExistingCollectionPayload
 					? "file"
-					: "existing_override",
-			);
+					: "existing_override";
+			setCollectionMode(nextCollectionMode);
 			setTargetCollectionName(collectionSuggestion.collectionName);
+			collectionDirectory.setSearch(
+				nextCollectionMode === "existing_override"
+					? collectionSuggestion.collectionName
+					: "",
+			);
 			setTargetCollectionDescription(collectionSuggestion.description);
-			setDelegateGroupName("");
+			setDelegateGroupId("");
+			delegateGroupDirectory.setSearch("");
 			setParseError(null);
 			setSubmitError(null);
 			setActiveStep("file");
@@ -609,41 +557,49 @@ export function ImportsWorkspace({
 			);
 		}
 
-		const hasSelectedOption = collectionOptions.some(
-			(collection) => collection.name === targetCollectionName,
-		);
-
 		return (
-			<label className="control-field">
+			<div className="control-field">
 				{renderFieldLabel(
 					"Target collection",
 					"target-collection",
 					"All collection references in the submitted import will be rewritten to this existing collection.",
 				)}
-				<select
-					required
-					value={targetCollectionName}
-					onChange={(event) => setTargetCollectionName(event.target.value)}
-					disabled={
-						collectionsQuery.isLoading ||
-						collectionsQuery.isError ||
-						collectionOptions.length === 0
-					}
-				>
-					<option value="">
-						{collectionsQuery.isLoading
-							? "Loading collections..."
-							: collectionsQuery.isError
-								? "Failed to load collections"
-								: "Select collection"}
-					</option>
-					{collectionOptions.map((collection) => (
-						<option key={collection.id} value={collection.name}>
-							{formatCollectionOption(collection, collectionHierarchy.byId)}
-						</option>
-					))}
-				</select>
-				{targetCollectionName && !hasSelectedOption ? (
+				<CollectionDirectoryLookup
+					collections={collectionDirectory.query.data?.items ?? []}
+					helperText={directoryLookupStatus({
+						count: collectionDirectory.query.data?.items.length ?? 0,
+						isError: collectionDirectory.query.isError,
+						isLoading: collectionDirectory.query.isLoading,
+						isPartial: Boolean(collectionDirectory.query.data?.isPartial),
+						isReady: collectionDirectory.isReady,
+						minimumLength: collectionDirectory.minimumLength,
+						resourcePlural: "collections",
+						resourceSingular: "collection",
+						term: collectionDirectory.term,
+					})}
+					idPrefix="import-target-collection-directory"
+					onChange={collectionDirectory.setSearch}
+					onSelect={(collection) => {
+						setTargetCollectionName(collection.name);
+						collectionDirectory.setSearch("");
+						setSubmitError(null);
+					}}
+					value={collectionDirectory.search}
+				/>
+				{exactTargetCollectionsQuery.isFetching ? (
+					<span className="field-note">
+						Resolving the exact collection name…
+					</span>
+				) : null}
+				{resolvedTargetCollection && !hasAmbiguousTargetCollection ? (
+					<span className="field-note">
+						Selected: {resolvedTargetCollection.name} (#
+						{resolvedTargetCollection.id})
+					</span>
+				) : null}
+				{targetCollectionName &&
+				exactTargetCollectionsQuery.isSuccess &&
+				exactTargetCollections.length === 0 ? (
 					<span className="field-note field-note--warning">
 						The import references {targetCollectionName}, but that collection is
 						not visible to your account.
@@ -654,8 +610,12 @@ export function ImportsWorkspace({
 						import API matches existing collections by name, so choose a unique
 						collection name before submitting.
 					</span>
+				) : exactTargetCollectionsQuery.isError ? (
+					<span className="field-note field-note--warning">
+						Could not resolve the exact collection name. Try the lookup again.
+					</span>
 				) : null}
-			</label>
+			</div>
 		);
 	}
 
@@ -671,26 +631,57 @@ export function ImportsWorkspace({
 					"delegate-group",
 					"Use file values keeps permission groups declared in the JSON. Choosing a group replaces those grants with full permissions for that group.",
 				)}
-				{groupsQuery.isError ? (
+				<div className="directory-id-lookup-control">
 					<input
 						aria-label="Delegate group override"
-						value={delegateGroupName}
-						onChange={(event) => setDelegateGroupName(event.target.value)}
-						placeholder="Use file values unless you enter a group name"
+						type="number"
+						min={1}
+						value={delegateGroupId}
+						onChange={(event) => {
+							setDelegateGroupId(event.target.value);
+							delegateGroupDirectory.setSearch(event.target.value);
+							setSubmitError(null);
+						}}
+						placeholder="Blank uses file values"
 					/>
+					<GroupDirectoryLookup
+						groups={delegateGroupDirectory.query.data?.items ?? []}
+						helperText={directoryLookupStatus({
+							count: delegateGroupDirectory.query.data?.items.length ?? 0,
+							isError: delegateGroupDirectory.query.isError,
+							isLoading: delegateGroupDirectory.query.isLoading,
+							isPartial: Boolean(
+								delegateGroupDirectory.query.data?.isPartial,
+							),
+							isReady: delegateGroupDirectory.isReady,
+							minimumLength: delegateGroupDirectory.minimumLength,
+							resourcePlural: "groups",
+							resourceSingular: "group",
+							term: delegateGroupDirectory.term,
+						})}
+						idPrefix="import-delegate-group-directory"
+						onChange={delegateGroupDirectory.setSearch}
+						onSelect={(group) => {
+							setDelegateGroupId(String(group.id));
+							delegateGroupDirectory.setSearch("");
+							setSubmitError(null);
+						}}
+						value={delegateGroupDirectory.search}
+					/>
+				</div>
+				{selectedDelegateGroup ? (
+					<span className="field-note">
+						Selected: {formatScopedGroupName(selectedDelegateGroup)} (#
+						{selectedDelegateGroup.id})
+					</span>
+				) : delegateGroupId.trim() ? (
+					<span className="field-note field-note--warning">
+						{selectedDelegateGroupQuery.isFetching
+							? "Resolving the exact group ID…"
+							: "Choose an existing group by name or exact ID."}
+					</span>
 				) : (
-					<select
-						aria-label="Delegate group override"
-						value={delegateGroupName}
-						onChange={(event) => setDelegateGroupName(event.target.value)}
-					>
-						<option value="">Use file values</option>
-						{(groupsQuery.data ?? []).map((group) => (
-							<option key={group.id} value={group.id}>
-								{formatScopedGroupName(group)} (#{group.id})
-							</option>
-						))}
-					</select>
+					<span className="field-note">Using permission groups from the file.</span>
 				)}
 				{filePermissionGroupValidation?.kind === "valid" ? (
 					<span className="field-note">
@@ -883,10 +874,16 @@ export function ImportsWorkspace({
 											<select
 												value={collectionMode}
 												onChange={(event) => {
-													setCollectionMode(
-														event.target.value as CollectionMode,
+													const nextMode =
+														event.target.value as CollectionMode;
+													setCollectionMode(nextMode);
+													setDelegateGroupId("");
+													delegateGroupDirectory.setSearch("");
+													collectionDirectory.setSearch(
+														nextMode === "existing_override"
+															? targetCollectionName
+															: "",
 													);
-													setDelegateGroupName("");
 													setSubmitError(null);
 												}}
 												disabled={!canCreateCollections}
@@ -929,18 +926,6 @@ export function ImportsWorkspace({
 											? renderDelegateGroupOverrideControl()
 											: null}
 									</div>
-									{collectionsQuery.isError && isExistingCollectionMode ? (
-										<div className="muted">
-											Could not load collections. Reload the page before
-											submitting an import into an existing collection.
-										</div>
-									) : null}
-									{canUsePermissionControls && groupsQuery.isError ? (
-										<div className="muted">
-											Could not load groups automatically. You can still
-											override delegation by entering a group name manually.
-										</div>
-									) : null}
 									<GuidedFlowContinue
 										disabled={!destinationReady}
 										nextLabel="Policies"

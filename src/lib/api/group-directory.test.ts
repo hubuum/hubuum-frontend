@@ -9,6 +9,7 @@ vi.mock("@/lib/api/generated/client", () => ({
 }));
 
 import {
+	fetchAllGroups,
 	fetchGroupDirectory,
 	fetchGroupsByIds,
 } from "@/lib/api/group-directory";
@@ -82,5 +83,39 @@ describe("fetchGroupDirectory", () => {
 			{ credentials: "include" },
 		);
 		expect(groups).toContainEqual({ id: 251, groupname: "group-251" });
+	});
+
+	it("loads groups beyond the first 250 without exact totals", async () => {
+		const firstPage = Array.from({ length: 250 }, (_, index) => ({
+			groupname: `group-${index + 1}`,
+			id: index + 1,
+		}));
+		getGroups.mockImplementation((params: { cursor?: string }) =>
+			Promise.resolve({
+				data:
+					params.cursor === "page-2"
+						? [{ groupname: "late-group", id: 251 }]
+						: firstPage,
+				headers: new Headers(
+					params.cursor ? undefined : { "x-next-cursor": "page-2" },
+				),
+				status: 200,
+			}),
+		);
+
+		const groups = await fetchAllGroups();
+
+		expect(getGroups).toHaveBeenCalledTimes(2);
+		expect(getGroups).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ include_total: false, limit: 250 }),
+			{ credentials: "include" },
+		);
+		expect(getGroups).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ cursor: "page-2" }),
+			{ credentials: "include" },
+		);
+		expect(groups.at(-1)).toEqual({ groupname: "late-group", id: 251 });
 	});
 });
