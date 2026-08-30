@@ -478,8 +478,8 @@ test.describe("Stillwater design language", () => {
 
 test.describe("public visual regression", () => {
 	test.skip(
-		Boolean(process.env.CI),
-		"Pixel snapshots are recorded locally to avoid platform font-rendering noise.",
+		process.env.VISUAL_REGRESSION !== "1",
+		"Pixel snapshots run only in the pinned visual-regression container.",
 	);
 
 	for (const viewport of viewports) {
