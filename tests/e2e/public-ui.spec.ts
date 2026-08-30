@@ -478,8 +478,8 @@ test.describe("Stillwater design language", () => {
 
 test.describe("public visual regression", () => {
 	test.skip(
-		Boolean(process.env.CI),
-		"Pixel snapshots are recorded locally to avoid platform font-rendering noise.",
+		process.env.VISUAL_REGRESSION !== "1",
+		"Pixel snapshots run only in the pinned visual-regression container.",
 	);
 
 	for (const viewport of viewports) {
@@ -487,12 +487,16 @@ test.describe("public visual regression", () => {
 			test(`login ${viewport.name} ${theme}`, async ({ page }) => {
 				await page.setViewportSize(viewport);
 				await prepareLogin(page, theme);
+				// Runner CPU text antialiasing affects about 1.35% of tablet pixels;
+				// the stale UI baselines this suite caught differed by at least 3%.
+				const maxDiffPixelRatio =
+					viewport.name === "tablet" ? 0.015 : 0.01;
 				await expect(page).toHaveScreenshot(
 					`login-${viewport.name}-${theme}.png`,
 					{
 						animations: "disabled",
 						fullPage: true,
-						maxDiffPixelRatio: 0.01,
+						maxDiffPixelRatio,
 					},
 				);
 			});

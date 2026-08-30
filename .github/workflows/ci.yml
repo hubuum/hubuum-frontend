@@ -86,8 +86,36 @@ jobs:
         run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Run public accessibility and visual checks
+      - name: Run public accessibility and responsive checks
         run: npm run test:e2e:public
+
+  visual-regression:
+    name: visual-regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac
+      options: --ipc=host
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Compare portable visual baselines
+        env:
+          NEXT_PUBLIC_APP_VERSION: v0.0.0+visual
+          VISUAL_REGRESSION: "1"
+        run: npm run test:e2e:visual
+      - name: Upload visual failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: visual-regression-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/playwright/
+          if-no-files-found: ignore
+          retention-days: 14
 
   authenticated-browser-smoke:
     name: authenticated-browser-smoke
@@ -200,6 +228,7 @@ jobs:
       - validate
       - backend-contract
       - browser-quality
+      - visual-regression
       - authenticated-browser-smoke
       - package
     runs-on: ubuntu-latest

@@ -81,12 +81,29 @@ Install the browser used by the end-to-end suite once:
 npx playwright install chromium
 ```
 
-Run the public accessibility, contrast, responsive-layout, and screenshot
-checks without backend credentials:
+Run the public accessibility, contrast, and responsive-layout checks without
+backend credentials:
 
 ```sh
 npm run test:e2e:public
 ```
+
+Pixel comparisons run separately in CI so an intentional or accidental visual
+change does not hide the functional results. Both CI and baseline updates use
+the same digest-pinned Playwright 1.62.1 Noble `linux/amd64` image, bundled
+Chromium, and the fixed `v0.0.0+visual` display version. Docker is required to
+refresh intentional baselines (Apple-silicon hosts run the image through Docker
+emulation):
+
+```sh
+npm run test:e2e:update
+```
+
+Review every changed PNG under `tests/e2e/__screenshots__/` before committing
+it. Do not update baselines with host-installed browsers because their font and
+graphics stacks are not the supported baseline environment. The tablet
+assertions allow a narrow 1.5% pixel tolerance for stable runner-CPU text
+antialiasing; the other viewports retain the stricter 1% tolerance.
 
 Run the critical login, authenticated session, logout, and protected-route
 smoke flow against disposable Hubuum Server and Valkey containers:
@@ -103,9 +120,8 @@ volumes afterward. Override the pinned compatibility image with
 The broader authenticated dashboard and create-flow checks run when
 `E2E_USERNAME` and `E2E_PASSWORD` are set. Point either Playwright suite at an
 already running frontend with `PLAYWRIGHT_BASE_URL`, for example
-`http://127.0.0.1:3000`. Refresh intentional local screenshot changes with
-`npm run test:e2e:update`; CI runs both the portable public checks and the
-disposable authenticated smoke flow.
+`http://127.0.0.1:3000`. CI runs the public functional checks, portable visual
+comparisons, and disposable authenticated smoke flow as independent jobs.
 
 ## Use another Valkey port
 
