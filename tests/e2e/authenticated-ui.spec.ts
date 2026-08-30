@@ -1769,7 +1769,20 @@ test.describe("authenticated workspace", () => {
 			},
 		);
 
+		const importsReady = page.waitForResponse((response) => {
+			const url = new URL(response.url());
+			return (
+				response.request().method() === "GET" &&
+				url.pathname === `${bffPrefix}/api/v1/tasks` &&
+				url.searchParams.get("kind") === "import"
+			);
+		});
 		await page.goto("/imports");
+		await importsReady;
+		await expect(
+			page.getByText("Loading previous imports..."),
+		).toBeHidden();
+
 		await page.locator('input[type="file"]').setInputFiles({
 			name: "large-directory-import.json",
 			mimeType: "application/json",
@@ -1794,9 +1807,11 @@ test.describe("authenticated workspace", () => {
 				}),
 			),
 		});
-		await page
-			.getByRole("button", { name: "Continue to destination" })
-			.click();
+		const continueToDestination = page.getByRole("button", {
+			name: "Continue to destination",
+		});
+		await expect(continueToDestination).toBeEnabled();
+		await continueToDestination.click();
 
 		await expect(
 			page.getByText("File groups verified: directory/late-group"),
