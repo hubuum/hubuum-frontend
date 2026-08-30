@@ -1,3 +1,4 @@
+import { collectAllCursorPages } from "@/lib/api/cursor-pages";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1Classes,
@@ -11,29 +12,51 @@ import type {
 const EXPORT_OPTION_LIMIT = 250;
 
 export async function fetchExportCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ include_total: false, limit: EXPORT_OPTION_LIMIT },
-		{ credentials: "include" },
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
+	return collectAllCursorPages(async (cursor) => {
+		const response = await getApiV1Collections(
+			{
+				cursor,
+				include_total: false,
+				limit: EXPORT_OPTION_LIMIT,
+				sort: "id.asc",
+			},
+			{ credentials: "include" },
 		);
-	}
 
-	return response.data;
+		if (response.status !== 200) {
+			throw new Error(
+				getApiErrorMessage(response.data, "Failed to load collections."),
+			);
+		}
+
+		return {
+			items: response.data,
+			nextCursor: response.headers.get("X-Next-Cursor"),
+		};
+	});
 }
 
 export async function fetchExportClasses(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(
-		{ include_total: false, limit: EXPORT_OPTION_LIMIT },
-		{ credentials: "include" },
-	);
+	return collectAllCursorPages(async (cursor) => {
+		const response = await getApiV1Classes(
+			{
+				cursor,
+				include_total: false,
+				limit: EXPORT_OPTION_LIMIT,
+				sort: "id.asc",
+			},
+			{ credentials: "include" },
+		);
 
-	if (response.status !== 200) {
-		throw new Error(getApiErrorMessage(response.data, "Failed to load classes."));
-	}
+		if (response.status !== 200) {
+			throw new Error(
+				getApiErrorMessage(response.data, "Failed to load classes."),
+			);
+		}
 
-	return response.data;
+		return {
+			items: response.data,
+			nextCursor: response.headers.get("X-Next-Cursor"),
+		};
+	});
 }
