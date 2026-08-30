@@ -10,7 +10,10 @@ vi.mock("@/lib/api/generated/client", () => ({
 	getApiV1ClassesByClassIdRelatedRelations: getRelatedRelations,
 }));
 
-import { fetchClassRelations } from "@/lib/api/class-relations";
+import {
+	fetchClassRelations,
+	fetchRelatedClassPaths,
+} from "@/lib/api/class-relations";
 
 function relation(id: number) {
 	return {
@@ -20,6 +23,20 @@ function relation(id: number) {
 		revision: 1,
 		to_hubuum_class_id: id + 100,
 		updated_at: "2026-08-30T08:00:00Z",
+	};
+}
+
+function relatedClass(id: number) {
+	return {
+		collection_id: 3,
+		created_at: "2026-08-30T08:00:00Z",
+		description: "",
+		id,
+		json_schema: {},
+		name: `class-${id}`,
+		path: [7, id],
+		updated_at: "2026-08-30T08:00:00Z",
+		validate_schema: false,
 	};
 }
 
@@ -81,6 +98,42 @@ describe("fetchClassRelations", () => {
 
 		await expect(fetchClassRelations(7)).rejects.toThrow(
 			"repeated next cursor",
+		);
+	});
+
+	it("collects every related-class path page", async () => {
+		getRelatedClasses
+			.mockResolvedValueOnce({
+				data: [relatedClass(8)],
+				headers: new Headers({ "X-Next-Cursor": "classes-page-2" }),
+				status: 200,
+			})
+			.mockResolvedValueOnce({
+				data: [relatedClass(9)],
+				headers: new Headers(),
+				status: 200,
+			});
+
+		await expect(fetchRelatedClassPaths(7)).resolves.toEqual([
+			relatedClass(8),
+			relatedClass(9),
+		]);
+		expect(getRelatedClasses).toHaveBeenNthCalledWith(
+			1,
+			7,
+			{
+				cursor: undefined,
+				include_total: false,
+				limit: 250,
+				sort: "path.asc,id.asc",
+			},
+			{ credentials: "include" },
+		);
+		expect(getRelatedClasses).toHaveBeenNthCalledWith(
+			2,
+			7,
+			expect.objectContaining({ cursor: "classes-page-2" }),
+			{ credentials: "include" },
 		);
 	});
 });

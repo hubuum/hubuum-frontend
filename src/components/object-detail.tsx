@@ -39,6 +39,7 @@ import type {
 	Permission,
 	UpdateHubuumObject,
 } from "@/lib/api/generated/models";
+import { fetchRelatedObjects } from "@/lib/api/object-relations";
 import {
 	fetchClassDirectory,
 	fetchClassesByIds,
@@ -70,7 +71,6 @@ import {
 } from "@/lib/object-property-entries";
 import {
 	buildRelatedObjectPathContextSearchParams,
-	buildRelatedObjectSearchParams,
 	DEFAULT_INCLUDE_SELF_CLASS,
 	DEFAULT_RELATED_OBJECT_DEPTH_LIMIT,
 	getMissingRelatedObjectPathContextIds,
@@ -173,34 +173,6 @@ async function parseJsonPayload(response: Response): Promise<unknown> {
 	} catch {
 		return null;
 	}
-}
-
-async function fetchRelatedObjects(
-	classId: number,
-	objectId: number,
-	depthLimit: number,
-	includeSelfClass: boolean,
-	ignoredClassIds: number[],
-): Promise<HubuumObjectWithPath[]> {
-	const params = buildRelatedObjectSearchParams({
-		depthLimit,
-		includeSelfClass,
-		ignoredClassIds,
-	});
-	const response = await fetch(
-		`${hubuumBffPath(`/api/v1/classes/${classId}/objects/${objectId}/related/objects`)}?${params.toString()}`,
-		{
-			credentials: "include",
-		},
-	);
-	const payload = await parseJsonPayload(response);
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(payload, "Failed to load related objects."),
-		);
-	}
-
-	return expectArrayPayload<HubuumObjectWithPath>(payload, "related objects");
 }
 
 async function fetchRelatedObjectPathContexts(
@@ -750,13 +722,11 @@ export function ObjectDetail({
 			ignoredClassIds,
 		],
 		queryFn: async () =>
-			fetchRelatedObjects(
-				classId,
-				objectId,
-				relationDepthLimit,
-				includeSelfClass,
+			fetchRelatedObjects(classId, objectId, {
+				depthLimit: relationDepthLimit,
 				ignoredClassIds,
-			),
+				includeSelfClass,
+			}),
 	});
 	const referencedClassIds = (() => {
 		const ids = new Set<number>([classId, ...ignoredClassIds]);
