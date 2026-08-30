@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-	type ChangeEvent,
 	FormEvent,
 	type KeyboardEvent as ReactKeyboardEvent,
 	useCallback,
@@ -13,6 +12,8 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { ClassDirectoryLookup } from "@/components/class-directory-lookup";
+import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { ObjectCreateDataEditor } from "@/components/object-create-data-editor";
@@ -44,18 +45,19 @@ import {
 	fetchObjectAggregates,
 	type ObjectAggregateSort,
 } from "@/lib/api/object-aggregates";
-import {
-	deleteApiV1ClassesByClassIdByObjectId,
-	getApiV1Classes,
-	getApiV1Collections,
-} from "@/lib/api/generated/client";
+import { deleteApiV1ClassesByClassIdByObjectId } from "@/lib/api/generated/client";
 import type {
 	Collection,
 	ComputedFieldErrorResponse,
-	HubuumClassExpanded,
 	HubuumObjectComputedResponse,
 	NewHubuumObject,
 } from "@/lib/api/generated/models";
+import {
+	fetchClassDirectory,
+	fetchClassesByIds,
+	fetchCollectionDirectory,
+	fetchCollectionsByIds,
+} from "@/lib/api/resource-directory";
 import { useConfirm } from "@/lib/confirm-context";
 import {
 	DESELECT_ALL_EVENT,
@@ -103,6 +105,10 @@ import {
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 import { useToast } from "@/lib/toast-context";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
@@ -186,8 +192,6 @@ const OBJECT_FETCH_LIMIT_OPTIONS = [
 	{ label: "250", value: 250 },
 	{ label: "MAX", value: MAX_PAGE_LIMIT_SENTINEL },
 ] as const;
-const EMPTY_CLASSES: HubuumClassExpanded[] = [];
-const EMPTY_NAMESPACES: Collection[] = [];
 const EMPTY_OBJECTS: HubuumObjectComputedResponse[] = [];
 
 type DataPathCandidate = {
@@ -260,23 +264,6 @@ function toObjectAggregateSort(sort: ObjectGroupSort): ObjectAggregateSort {
 	return "dimensions.asc";
 }
 
-async function fetchClasses(): Promise<HubuumClassExpanded[]> {
-	const response = await getApiV1Classes(
-		{ limit: 250, include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load classes."),
-		);
-	}
-
-	return response.data;
-}
-
 async function parseJsonPayload(response: Response): Promise<unknown> {
 	const text = await response.text();
 	if (!text) {
@@ -339,23 +326,6 @@ async function fetchObjectsByClass(
 		prevCursor,
 		totalCount: Number.isFinite(totalCount) ? totalCount : null,
 	};
-}
-
-async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ limit: 250, include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
-		);
-	}
-
-	return response.data;
 }
 
 function getDataSearchText(data: unknown): string {
@@ -944,17 +914,11 @@ export function ObjectsExplorer() {
 	const confirm = useConfirm();
 	const columnPickerRef = useRef<HTMLDivElement | null>(null);
 	const createModalInitializedClassRef = useRef<number | null>(null);
-	const classesQuery = useQuery({
-		queryKey: ["classes", "object-explorer"],
-		queryFn: fetchClasses,
-	});
-	const collectionsQuery = useQuery({
-		queryKey: ["collections", "object-form"],
-		queryFn: fetchCollections,
-	});
 	const selectedClassId = searchParams.get("classId") ?? "";
 	const groupingClassIdRef = useRef(selectedClassId);
 	const [collectionId, setCollectionId] = useState("");
+	const [collectionSelection, setCollectionSelection] =
+		useState<Collection | null>(null);
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [dataInput, setDataInput] = useState("{}");
@@ -998,6 +962,27 @@ export function ObjectsExplorer() {
 	const [searchInput, setSearchInput] = useState(
 		searchParams.get("search") ?? "",
 	);
+	const parsedClassId = useMemo(() => {
+		const value = Number.parseInt(selectedClassId, 10);
+		return Number.isFinite(value) && value > 0 ? value : null;
+	}, [selectedClassId]);
+	const selectedClassQuery = useQuery({
+		queryKey: ["classes", "object-explorer", "selected", parsedClassId],
+		queryFn: async () => {
+			const selectedClasses = await fetchClassesByIds([parsedClassId ?? 0]);
+			return selectedClasses[0] ?? null;
+		},
+		enabled: parsedClassId !== null,
+	});
+	const classDirectory = useDirectorySearch({
+		queryKey: ["class-directory", "object-explorer"],
+		queryFn: fetchClassDirectory,
+	});
+	const collectionDirectory = useDirectorySearch({
+		queryKey: ["collection-directory", "object-form"],
+		queryFn: fetchCollectionDirectory,
+		enabled: isCreateModalOpen,
+	});
 	const serverFilters = useMemo(
 		() =>
 			parseObjectServerFilters(
@@ -1043,44 +1028,12 @@ export function ObjectsExplorer() {
 	}, [searchParams]);
 
 	useEffect(() => {
-		if (selectedClassId || !classesQuery.data?.length) {
-			return;
-		}
-
-		const params = new URLSearchParams(searchParams.toString());
-		params.set("classId", String(classesQuery.data[0].id));
-		const query = params.toString();
-		router.replace(query ? `${pathname}?${query}` : pathname);
-	}, [selectedClassId, classesQuery.data, pathname, router, searchParams]);
-
-	const parsedClassId = useMemo(() => {
-		const value = Number.parseInt(selectedClassId, 10);
-		return Number.isFinite(value) ? value : null;
-	}, [selectedClassId]);
-	useEffect(() => {
 		if (groupingClassIdRef.current === selectedClassId) return;
 		groupingClassIdRef.current = selectedClassId;
 		setGroupFieldId(null);
 		setAggregateMeasures([]);
 	}, [selectedClassId]);
-	const classes = classesQuery.data ?? EMPTY_CLASSES;
-	const collections = collectionsQuery.data ?? EMPTY_NAMESPACES;
-	const collectionNameById = useMemo(() => {
-		const map = new Map<number, string>();
-		for (const collection of collections) {
-			map.set(collection.id, collection.name);
-		}
-		for (const classItem of classes) {
-			if (!map.has(classItem.collection.id)) {
-				map.set(classItem.collection.id, classItem.collection.name);
-			}
-		}
-		return map;
-	}, [classes, collections]);
-	const selectedClass = useMemo(
-		() => classes.find((item) => item.id === parsedClassId),
-		[classes, parsedClassId],
-	);
+	const selectedClass = selectedClassQuery.data ?? undefined;
 	const createObjectLabel = getObjectCreateLabel(selectedClass?.name);
 	const createObjectDialogLabel = getObjectCreationLabel(selectedClass?.name);
 	const createObjectNoun = getSingularObjectClassName(selectedClass?.name);
@@ -1145,9 +1098,46 @@ export function ObjectsExplorer() {
 				pagination.cursor,
 				getSortParam(),
 				serverFilters,
-			),
+		),
 		enabled: parsedClassId !== null,
 	});
+	const visibleCollectionIds = useMemo(
+		() =>
+			Array.from(
+				new Set(
+					[
+						selectedClass?.collection.id,
+						collectionSelection?.id,
+						...(objectsQuery.data?.objects.map(
+							(objectItem) => objectItem.collection_id,
+						) ?? []),
+					].filter((id): id is number => id !== undefined),
+				),
+			).sort((left, right) => left - right),
+		[
+			collectionSelection?.id,
+			objectsQuery.data?.objects,
+			selectedClass?.collection.id,
+		],
+	);
+	const visibleCollectionsQuery = useQuery({
+		queryKey: ["collections", "object-explorer", visibleCollectionIds],
+		queryFn: async () => fetchCollectionsByIds(visibleCollectionIds),
+		enabled: visibleCollectionIds.length > 0,
+	});
+	const collectionNameById = useMemo(() => {
+		const map = new Map<number, string>();
+		for (const collection of visibleCollectionsQuery.data ?? []) {
+			map.set(collection.id, collection.name);
+		}
+		if (selectedClass) {
+			map.set(selectedClass.collection.id, selectedClass.collection.name);
+		}
+		if (collectionSelection) {
+			map.set(collectionSelection.id, collectionSelection.name);
+		}
+		return map;
+	}, [collectionSelection, selectedClass, visibleCollectionsQuery.data]);
 	const activePageCanSeedObjectSamples =
 		pagination.cursor === undefined && serverFilters.length === 0;
 	const objectSamplesQuery = useQuery({
@@ -1286,44 +1276,18 @@ export function ObjectsExplorer() {
 		}
 		createModalInitializedClassRef.current = createSelectedClass.id;
 		setCollectionId(String(createSelectedClass.collection.id));
+		setCollectionSelection(createSelectedClass.collection);
+		collectionDirectory.setSearch(String(createSelectedClass.collection.id));
 		const initialData = buildObjectCreateDataModel(
 			createSelectedClass.json_schema,
 			[],
 		).initialData;
 		setDataInput(JSON.stringify(initialData, null, 2));
-	}, [createSelectedClass, isCreateModalOpen]);
-
-	useEffect(() => {
-		if (!collections.length) {
-			setCollectionId((current) => (current === "" ? current : ""));
-			return;
-		}
-
-		const hasSelectedCollection = collections.some(
-			(collection) => String(collection.id) === collectionId,
-		);
-		if (hasSelectedCollection) {
-			return;
-		}
-
-		if (createSelectedClass) {
-			const classCollection = collections.find(
-				(collection) => collection.id === createSelectedClass.collection.id,
-			);
-			if (classCollection) {
-				const nextCollectionId = String(classCollection.id);
-				setCollectionId((current) =>
-					current === nextCollectionId ? current : nextCollectionId,
-				);
-				return;
-			}
-		}
-
-		const nextCollectionId = String(collections[0].id);
-		setCollectionId((current) =>
-			current === nextCollectionId ? current : nextCollectionId,
-		);
-	}, [createSelectedClass, collectionId, collections]);
+	}, [
+		collectionDirectory.setSearch,
+		createSelectedClass,
+		isCreateModalOpen,
+	]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: selected object ids must reset when the server result scope changes.
 	useEffect(() => {
@@ -2537,9 +2501,8 @@ export function ObjectsExplorer() {
 		router.push(query ? `${pathname}?${query}` : pathname);
 	}
 
-	function onClassContextChange(event: ChangeEvent<HTMLSelectElement>) {
+	function onClassContextChange(nextClassId: string) {
 		const params = new URLSearchParams(searchParams.toString());
-		const nextClassId = event.target.value;
 
 		if (nextClassId) {
 			params.set("classId", nextClassId);
@@ -2688,6 +2651,11 @@ export function ObjectsExplorer() {
 		const collectionName = collectionNameById.get(value);
 		return collectionName ? `${collectionName} (#${value})` : `#${value}`;
 	}
+	const selectedCreateCollection =
+		collectionSelection ??
+		collectionDirectory.query.data?.items.find(
+			(collection) => String(collection.id) === collectionId,
+		);
 
 	function renderCreateObjectForm() {
 		return (
@@ -2709,35 +2677,57 @@ export function ObjectsExplorer() {
 					</label>
 
 					<div className="control-field">
-						<span>Collection</span>
-						{collections.length > 0 ? (
-							<select
-								required
-								value={collectionId}
-								onChange={(event) => setCollectionId(event.target.value)}
-								disabled={!createSelectedClass}
-							>
-								{collections.map((collection) => (
-									<option key={collection.id} value={collection.id}>
-										{collection.name} (#{collection.id})
-									</option>
-								))}
-							</select>
-						) : (
+						<label htmlFor="object-create-collection-id">Collection</label>
+						<div className="directory-id-lookup-control">
 							<input
+								id="object-create-collection-id"
 								required
 								type="number"
 								min={1}
 								value={collectionId}
-								onChange={(event) => setCollectionId(event.target.value)}
-								placeholder={
-									collectionsQuery.isLoading
-										? "Loading collections..."
-										: "Enter collection id"
-								}
-								disabled={!createSelectedClass || collectionsQuery.isLoading}
+								onChange={(event) => {
+									setCollectionId(event.target.value);
+									setCollectionSelection(null);
+									collectionDirectory.setSearch(event.target.value);
+								}}
+								placeholder="Collection ID"
+								disabled={!createSelectedClass}
 							/>
-						)}
+							<CollectionDirectoryLookup
+								collections={collectionDirectory.query.data?.items ?? []}
+								disabled={!createSelectedClass}
+								disabledHint="Select a class before choosing a collection"
+								helperText={directoryLookupStatus({
+									count: collectionDirectory.query.data?.items.length ?? 0,
+									isError: collectionDirectory.query.isError,
+									isLoading: collectionDirectory.query.isLoading,
+									isPartial: Boolean(
+										collectionDirectory.query.data?.isPartial,
+									),
+									isReady: collectionDirectory.isReady,
+									minimumLength: collectionDirectory.minimumLength,
+									resourcePlural: "collections",
+									resourceSingular: "collection",
+									term: collectionDirectory.term,
+								})}
+								idPrefix="object-create-collection-directory"
+								onChange={(value) => {
+									collectionDirectory.setSearch(value);
+									setCollectionId("");
+									setCollectionSelection(null);
+								}}
+								onSelect={(collection) => {
+									setCollectionId(String(collection.id));
+									setCollectionSelection(collection);
+								}}
+								value={collectionDirectory.search}
+							/>
+						</div>
+						{selectedCreateCollection ? (
+							<small className="field-note">
+								Selected: {selectedCreateCollection.name} (#{selectedCreateCollection.id})
+							</small>
+						) : null}
 					</div>
 
 					<label className="control-field control-field--wide">
@@ -2764,13 +2754,6 @@ export function ObjectsExplorer() {
 						/>
 					</div>
 				</div>
-
-				{collectionsQuery.isError ? (
-					<div className="muted">
-						Could not load collections automatically. Falling back to manual
-						collection ID entry.
-					</div>
-				) : null}
 
 				<div className="form-actions">
 					<button
@@ -2817,21 +2800,6 @@ export function ObjectsExplorer() {
 					? buildResourceSummary({ status: "Loading…" })
 					: buildResourceSummary({ status: "No class selected" });
 
-	if (classesQuery.isLoading) {
-		return <div className="card">Loading class options...</div>;
-	}
-
-	if (classesQuery.isError) {
-		return (
-			<div className="card error-banner">
-				Failed to load class options.{" "}
-				{classesQuery.error instanceof Error
-					? classesQuery.error.message
-					: "Unknown error"}
-			</div>
-		);
-	}
-
 	return (
 		<div className="stack">
 			<CreateModal
@@ -2842,6 +2810,12 @@ export function ObjectsExplorer() {
 			>
 				{renderCreateObjectForm()}
 			</CreateModal>
+			{selectedClassQuery.isError ? (
+				<div className="error-banner">
+					Could not resolve class #{parsedClassId}. The URL context was
+					preserved; retry or choose another class.
+				</div>
+			) : null}
 
 			<div className="card table-wrap resource-index objects-resource-index">
 				<div className="table-header">
@@ -2853,25 +2827,39 @@ export function ObjectsExplorer() {
 						context={
 							<>
 								<span className="resource-index-context-label">of</span>
-								<select
-									aria-label="Objects class context"
+								<span
 									className="resource-index-context-select"
-									value={selectedClass ? String(selectedClass.id) : ""}
-									onChange={onClassContextChange}
-									disabled={classes.length === 0}
+									aria-live="polite"
 								>
-									{!selectedClass && classes.length > 0 ? (
-										<option value="">Select a class</option>
-									) : null}
-									{classes.length === 0 ? (
-										<option value="">No classes available</option>
-									) : null}
-									{classes.map((classItem) => (
-										<option key={classItem.id} value={classItem.id}>
-											{classItem.name}
-										</option>
-									))}
-								</select>
+									{selectedClass
+										? `${selectedClass.name} (#${selectedClass.id})`
+										: parsedClassId !== null
+											? selectedClassQuery.isLoading
+												? `Loading class #${parsedClassId}…`
+												: `Class #${parsedClassId} (unresolved)`
+											: "No class selected"}
+								</span>
+								<ClassDirectoryLookup
+									classes={classDirectory.query.data?.items ?? []}
+									helperText={directoryLookupStatus({
+										count: classDirectory.query.data?.items.length ?? 0,
+										isError: classDirectory.query.isError,
+										isLoading: classDirectory.query.isLoading,
+										isPartial: Boolean(classDirectory.query.data?.isPartial),
+										isReady: classDirectory.isReady,
+										minimumLength: classDirectory.minimumLength,
+										resourcePlural: "classes",
+										resourceSingular: "class",
+										term: classDirectory.term,
+									})}
+									idPrefix="objects-class-context-directory"
+									onChange={classDirectory.setSearch}
+									onSelect={(classItem) => {
+										classDirectory.setSearch("");
+										onClassContextChange(String(classItem.id));
+									}}
+									value={classDirectory.search}
+								/>
 							</>
 						}
 					/>
@@ -3348,7 +3336,7 @@ export function ObjectsExplorer() {
 								<button
 									type="button"
 									onClick={() => setCreateModalOpen(true)}
-									disabled={classes.length === 0}
+									disabled={!selectedClass}
 								>
 									{createObjectLabel}
 								</button>

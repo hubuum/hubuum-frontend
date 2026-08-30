@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
 import { JsonEditor } from "@/components/json-editor";
@@ -14,7 +15,6 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
 	getApiV1Classes,
-	getApiV1Collections,
 	postApiV1Classes,
 } from "@/lib/api/generated/client";
 import type {
@@ -22,10 +22,7 @@ import type {
 	HubuumClassExpanded,
 	NewHubuumClass,
 } from "@/lib/api/generated/models";
-import {
-	buildCollectionHierarchy,
-	formatCollectionOption,
-} from "@/lib/collection-hierarchy";
+import { fetchCollectionDirectory } from "@/lib/api/resource-directory";
 import { useConfirm } from "@/lib/confirm-context";
 import {
 	DESELECT_ALL_EVENT,
@@ -41,6 +38,10 @@ import {
 import { buildResourceSummary } from "@/lib/resource-summary";
 import type { TableExportView } from "@/lib/table-export";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
+import {
+	directoryLookupStatus,
+	useDirectorySearch,
+} from "@/lib/use-directory-search";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
@@ -97,23 +98,6 @@ async function fetchClasses(
 	};
 }
 
-async function fetchCollections(): Promise<Collection[]> {
-	const response = await getApiV1Collections(
-		{ limit: 250, include_total: false },
-		{
-			credentials: "include",
-		},
-	);
-
-	if (response.status !== 200) {
-		throw new Error(
-			getApiErrorMessage(response.data, "Failed to load collections."),
-		);
-	}
-
-	return response.data;
-}
-
 export function ClassesTable() {
 	const router = useRouter();
 	const pathname = usePathname();
@@ -123,6 +107,8 @@ export function ClassesTable() {
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [collectionId, setCollectionId] = useState("");
+	const [collectionSelection, setCollectionSelection] =
+		useState<Collection | null>(null);
 	const [validateSchema, setValidateSchema] = useState(false);
 	const [jsonSchemaInput, setJsonSchemaInput] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
@@ -143,16 +129,19 @@ export function ClassesTable() {
 		queryFn: () =>
 			fetchClasses(pagination.limit, pagination.cursor, getSortParam()),
 	});
-	const collectionsQuery = useQuery({
-		queryKey: ["collections", "class-form"],
-		queryFn: fetchCollections,
+	const collectionDirectory = useDirectorySearch({
+		queryKey: ["collection-directory", "class-form"],
+		queryFn: fetchCollectionDirectory,
+		enabled: isCreateModalOpen,
 	});
-	const collections = collectionsQuery.data ?? [];
-	const collectionHierarchy = useMemo(
-		() => buildCollectionHierarchy(collections),
-		[collections],
-	);
-	const canCreateClass = collections.length > 0;
+	const selectedCollection =
+		collectionSelection ??
+		collectionDirectory.query.data?.items.find(
+			(collection) => String(collection.id) === collectionId,
+		);
+	const parsedCollectionId = Number.parseInt(collectionId, 10);
+	const canCreateClass =
+		Number.isFinite(parsedCollectionId) && parsedCollectionId > 0;
 
 	useEffect(() => {
 		if (searchParams.get("create") !== "1") {
@@ -171,14 +160,6 @@ export function ClassesTable() {
 		setSearchInput(searchParams.get("search") ?? "");
 	}, [searchParams]);
 
-	useEffect(() => {
-		if (collectionId || !collections.length) {
-			return;
-		}
-
-		setCollectionId(String(collections[0].id));
-	}, [collectionId, collections]);
-
 	const createMutation = useMutation({
 		mutationFn: async (payload: NewHubuumClass) => {
 			const response = await postApiV1Classes(payload, {
@@ -195,6 +176,9 @@ export function ClassesTable() {
 			await queryClient.invalidateQueries({ queryKey: ["classes"] });
 			setName("");
 			setDescription("");
+			setCollectionId("");
+			setCollectionSelection(null);
+			collectionDirectory.setSearch("");
 			setJsonSchemaInput("");
 			setValidateSchema(false);
 			setFormError(null);
@@ -275,14 +259,6 @@ export function ClassesTable() {
 		setFormError(null);
 		setFormSuccess(null);
 
-		if (!canCreateClass) {
-			setFormError(
-				"No collections available. You need collection permissions before creating a class.",
-			);
-			return;
-		}
-
-		const parsedCollectionId = Number.parseInt(collectionId, 10);
 		if (!Number.isFinite(parsedCollectionId) || parsedCollectionId < 1) {
 			setFormError("Collection is required.");
 			return;
@@ -514,24 +490,56 @@ export function ClassesTable() {
 						/>
 					</label>
 
-					<label className="control-field">
-						<span>Collection</span>
-						<select
-							required
-							value={collectionId}
-							onChange={(event) => setCollectionId(event.target.value)}
-							disabled={!canCreateClass}
-						>
-							{!canCreateClass ? (
-								<option value="">No collections available</option>
-							) : null}
-							{collections.map((collection) => (
-								<option key={collection.id} value={collection.id}>
-									{formatCollectionOption(collection, collectionHierarchy.byId)}
-								</option>
-							))}
-						</select>
-					</label>
+					<div className="control-field">
+						<label htmlFor="class-create-collection-id">Collection</label>
+						<div className="directory-id-lookup-control">
+							<input
+								id="class-create-collection-id"
+								required
+								type="number"
+								min={1}
+								value={collectionId}
+								onChange={(event) => {
+									setCollectionId(event.target.value);
+									setCollectionSelection(null);
+									collectionDirectory.setSearch(event.target.value);
+								}}
+								placeholder="Collection ID"
+							/>
+							<CollectionDirectoryLookup
+								collections={collectionDirectory.query.data?.items ?? []}
+								helperText={directoryLookupStatus({
+									count: collectionDirectory.query.data?.items.length ?? 0,
+									isError: collectionDirectory.query.isError,
+									isLoading: collectionDirectory.query.isLoading,
+									isPartial: Boolean(
+										collectionDirectory.query.data?.isPartial,
+									),
+									isReady: collectionDirectory.isReady,
+									minimumLength: collectionDirectory.minimumLength,
+									resourcePlural: "collections",
+									resourceSingular: "collection",
+									term: collectionDirectory.term,
+								})}
+								idPrefix="class-create-collection-directory"
+								onChange={(value) => {
+									collectionDirectory.setSearch(value);
+									setCollectionId("");
+									setCollectionSelection(null);
+								}}
+								onSelect={(collection) => {
+									setCollectionId(String(collection.id));
+									setCollectionSelection(collection);
+								}}
+								value={collectionDirectory.search}
+							/>
+						</div>
+						{selectedCollection ? (
+							<small className="field-note">
+								Selected: {selectedCollection.name} (#{selectedCollection.id})
+							</small>
+						) : null}
+					</div>
 
 					<label className="control-field control-field--wide">
 						<span>Description</span>
@@ -645,13 +653,12 @@ export function ClassesTable() {
 								? "Clear the filter to return to the full class list."
 								: "Create a class in a collection before adding objects."
 						}
-						action={
-							searchTerm ? null : (
-								<button
-									type="button"
-									onClick={() => setCreateModalOpen(true)}
-									disabled={collections.length === 0}
-								>
+							action={
+								searchTerm ? null : (
+									<button
+										type="button"
+										onClick={() => setCreateModalOpen(true)}
+									>
 									New class
 								</button>
 							)
