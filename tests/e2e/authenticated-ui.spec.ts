@@ -459,6 +459,7 @@ test.describe("authenticated workspace", () => {
 			name: "switch-core-01",
 			hubuum_class_id: classes[1].id,
 		};
+		const classRelationRequests: URL[] = [];
 		const targetObjectRequests: URL[] = [];
 
 		await page.route(
@@ -482,25 +483,36 @@ test.describe("authenticated workspace", () => {
 			},
 		);
 		await page.route(
-			"**/_hubuum-bff/classes/1/relations",
+			"**/_hubuum-bff/hubuum/api/v1/classes/1/related/relations?**",
 			async (route) => {
+				const requestUrl = new URL(route.request().url());
+				classRelationRequests.push(requestUrl);
+				const cursor = requestUrl.searchParams.get("cursor");
 				await route.fulfill({
 					status: 200,
 					contentType: "application/json",
-					body: JSON.stringify([
-						{
-							id: 9,
-							from_hubuum_class_id: 1,
-							to_hubuum_class_id: 2,
-							from_max_relations: null,
-							to_max_relations: null,
-							forward_template_alias: null,
-							reverse_template_alias: null,
-							revision: 1,
-							created_at: timestamp,
-							updated_at: timestamp,
-						},
-					]),
+					headers:
+						cursor === null
+							? { "X-Next-Cursor": "relation-page-2" }
+							: undefined,
+					body: JSON.stringify(
+						cursor === "relation-page-2"
+							? [
+									{
+										id: 9,
+										from_hubuum_class_id: 1,
+										to_hubuum_class_id: 2,
+										from_max_relations: null,
+										to_max_relations: null,
+										forward_template_alias: null,
+										reverse_template_alias: null,
+										revision: 1,
+										created_at: timestamp,
+										updated_at: timestamp,
+									},
+								]
+							: [],
+					),
 				});
 			},
 		);
@@ -536,6 +548,16 @@ test.describe("authenticated workspace", () => {
 		});
 		await expect(dialog).toBeVisible();
 		await expect(dialog.getByLabel("Connected class")).toHaveValue("2");
+		expect(classRelationRequests).toHaveLength(2);
+		expect(classRelationRequests[0]?.searchParams.get("limit")).toBe("250");
+		expect(classRelationRequests[0]?.searchParams.get("sort")).toBe("id.asc");
+		expect(
+			classRelationRequests[0]?.searchParams.get("include_total"),
+		).toBe("false");
+		expect(classRelationRequests[0]?.searchParams.has("cursor")).toBe(false);
+		expect(classRelationRequests[1]?.searchParams.get("cursor")).toBe(
+			"relation-page-2",
+		);
 		await page.waitForTimeout(350);
 		expect(targetObjectRequests).toHaveLength(0);
 
