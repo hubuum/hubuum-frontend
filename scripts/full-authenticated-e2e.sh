@@ -6,7 +6,7 @@ BACKEND_COMPOSE_FILE="${ROOT_DIR}/docker-compose.live-backend.yml"
 VALKEY_COMPOSE_FILE="${ROOT_DIR}/compose.dev.yml"
 BACKEND_PROJECT="${HUBUUM_FULL_E2E_BACKEND_PROJECT:-hubuum-frontend-full-e2e-backend}"
 VALKEY_PROJECT="${HUBUUM_FULL_E2E_VALKEY_PROJECT:-hubuum-frontend-full-e2e-valkey}"
-BACKEND_IMAGE="${HUBUUM_FULL_E2E_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.9@sha256:1f12baf882b6d3df5b4b2dbdf26aad0793274e57f86a2c186b8e1e68632db5db}"
+BACKEND_IMAGE="${HUBUUM_FULL_E2E_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.11@sha256:c475cfa422dd075ae7827ed835bff323c2bf911158e4424fa3b2ff12363fe511}"
 BACKEND_PORT="${HUBUUM_FULL_E2E_BACKEND_PORT:-19999}"
 VALKEY_PORT="${HUBUUM_FULL_E2E_VALKEY_PORT:-16379}"
 BASE_URL="http://127.0.0.1:${BACKEND_PORT}"
@@ -57,8 +57,8 @@ docker compose -f "${BACKEND_COMPOSE_FILE}" -p "${BACKEND_PROJECT}" \
 
 echo "Starting disposable Valkey session store."
 VALKEY_DEV_PORT="${VALKEY_PORT}" \
-  docker compose -f "${VALKEY_COMPOSE_FILE}" -p "${VALKEY_PROJECT}" \
-  up -d --wait --force-recreate
+HUBUUM_VALKEY_PROJECT="${VALKEY_PROJECT}" \
+  bash scripts/dev-deps.sh up --force-recreate
 
 echo "Waiting for Hubuum Server readiness."
 ready=0

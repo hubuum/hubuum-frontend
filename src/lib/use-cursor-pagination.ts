@@ -76,7 +76,7 @@ export function useCursorPagination({
 			);
 			const params = new URLSearchParams(searchParams.toString());
 			params.set("cursor", nextCursor);
-			router.push(`${pathname}?${params.toString()}`);
+			router.push(`${pathname}?${params.toString()}`, { scroll: false });
 		},
 		[cursor, pathname, router, searchParams],
 	);
@@ -98,7 +98,7 @@ export function useCursorPagination({
 			} else {
 				params.delete("cursor");
 			}
-			router.push(`${pathname}?${params.toString()}`);
+			router.push(`${pathname}?${params.toString()}`, { scroll: false });
 		},
 		[
 			activeCursorTrail,
@@ -113,7 +113,7 @@ export function useCursorPagination({
 	const goToFirstPage = useCallback(() => {
 		const params = new URLSearchParams(searchParams.toString());
 		params.delete("cursor");
-		router.push(`${pathname}?${params.toString()}`);
+		router.push(`${pathname}?${params.toString()}`, { scroll: false });
 	}, [pathname, router, searchParams]);
 
 	const setLimit = useCallback(
@@ -124,7 +124,7 @@ export function useCursorPagination({
 				String(normalizeCursorPageLimit(String(newLimit), defaultLimit)),
 			);
 			params.delete("cursor"); // Reset to first page when changing limit
-			router.push(`${pathname}?${params.toString()}`);
+			router.push(`${pathname}?${params.toString()}`, { scroll: false });
 		},
 		[defaultLimit, pathname, router, searchParams],
 	);

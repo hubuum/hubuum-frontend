@@ -71,6 +71,41 @@ describe("generic BFF proxy admin gate", () => {
 		mocks.validateBackendSession.mockResolvedValue("valid");
 	});
 
+	it.each([
+		"text/html; charset=utf-8",
+		"application/xhtml+xml",
+		"image/svg+xml",
+	])(
+		"isolates active report output served as %s and preserves export diagnostics",
+		async (contentType) => {
+			mocks.fetch.mockResolvedValue(
+				new Response("<script>fetch('/_hubuum-bff/auth/session')</script>", {
+					headers: {
+						"Content-Type": contentType,
+						"Cache-Control": "public, max-age=3600",
+						"X-Hubuum-Export-Warnings": "3",
+						"X-Hubuum-Export-Truncated": "true",
+					},
+				}),
+			);
+			const response = await GET(
+				request("api/v1/exports/42/output"),
+				routeContext(["api", "v1", "exports", "42", "output"]),
+			);
+			expect(response.status).toBe(200);
+			expect(response.headers.get("Content-Security-Policy")).toContain(
+				"sandbox;",
+			);
+			expect(response.headers.get("Content-Security-Policy")).not.toContain(
+				"allow-same-origin",
+			);
+			expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+			expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+			expect(response.headers.get("X-Hubuum-Export-Warnings")).toBe("3");
+			expect(response.headers.get("X-Hubuum-Export-Truncated")).toBe("true");
+		},
+	);
+
 	it("rejects meta requests from an ordinary authenticated session", async () => {
 		const response = await GET(
 			request("api/v0/meta/counts"),
@@ -140,7 +175,11 @@ describe("generic BFF proxy admin gate", () => {
 
 	it.each([
 		["failed admin probe", { status: "unavailable" }, "valid"],
-		["unavailable session validation", { status: "unauthorized" }, "unavailable"],
+		[
+			"unavailable session validation",
+			{ status: "unauthorized" },
+			"unavailable",
+		],
 	] as const)("returns 502 for %s", async (_label, probe, validation) => {
 		mocks.probeAdminAccess.mockResolvedValue(probe);
 		mocks.validateBackendSession.mockResolvedValue(validation);
@@ -177,9 +216,7 @@ describe("generic BFF proxy admin gate", () => {
 		await expect(response.json()).resolves.toEqual({ counts: { users: 4 } });
 		expect(mocks.probeAdminAccess).toHaveBeenCalledOnce();
 		expect(mocks.validateBackendSession).not.toHaveBeenCalled();
-		expect(mocks.discardAdminProbeResponse).toHaveBeenCalledWith(
-			probeResponse,
-		);
+		expect(mocks.discardAdminProbeResponse).toHaveBeenCalledWith(probeResponse);
 		expect(mocks.fetch).toHaveBeenCalledOnce();
 	});
 

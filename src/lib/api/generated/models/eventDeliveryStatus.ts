@@ -3,9 +3,16 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 
+/**
+ * Durable lifecycle state for one event delivery.
+ *
+ * The textual representation is shared by storage adapters, API models, and
+ * operational reporting so each layer cannot silently invent different
+ * persisted status values.
+ */
 export type EventDeliveryStatus = typeof EventDeliveryStatus[keyof typeof EventDeliveryStatus];
 
 

@@ -24,16 +24,24 @@ export function useTableKeyboardNav<T>({
 		if (!enabled) {
 			return;
 		}
+		const table = tableRef.current;
+		if (!table) return;
+		const originalTabIndex = table.getAttribute("tabindex");
+		table.tabIndex = 0;
 
 		const onKeyDown = (event: KeyboardEvent) => {
-			// Ignore controls and editable regions.
 			const target = event.target as HTMLElement;
 			if (
-				target.tagName === "INPUT" ||
-				target.tagName === "SELECT" ||
-				target.tagName === "TEXTAREA" ||
-				target.tagName === "BUTTON" ||
-				target.contentEditable === "true"
+				event.defaultPrevented ||
+				event.altKey ||
+				event.ctrlKey ||
+				event.metaKey ||
+				event.shiftKey ||
+				!table.contains(target) ||
+				target.closest(
+					"input, select, textarea, button, th, [contenteditable]:not([contenteditable='false']), [role='dialog'], [role='alertdialog']",
+				) ||
+				(event.key === "Enter" && target.closest("a[href]"))
 			) {
 				return;
 			}
@@ -45,7 +53,7 @@ export function useTableKeyboardNav<T>({
 					if (current === null) {
 						return items.length > 0 ? 0 : null;
 					}
-					return Math.min(current + 1, items.length - 1);
+					return items.length ? Math.min(current + 1, items.length - 1) : null;
 				});
 			}
 
@@ -71,8 +79,12 @@ export function useTableKeyboardNav<T>({
 			}
 		};
 
-		document.addEventListener("keydown", onKeyDown);
-		return () => document.removeEventListener("keydown", onKeyDown);
+		table.addEventListener("keydown", onKeyDown);
+		return () => {
+			table.removeEventListener("keydown", onKeyDown);
+			if (originalTabIndex === null) table.removeAttribute("tabindex");
+			else table.setAttribute("tabindex", originalTabIndex);
+		};
 	}, [enabled, items, focusedIndex, onOpen]);
 
 	// Scroll focused row into view
@@ -81,12 +93,15 @@ export function useTableKeyboardNav<T>({
 			return;
 		}
 
-		const container = tableRef.current ?? document;
+		const container = tableRef.current;
+		if (!container) return;
 		const row = container.querySelector(
 			`[data-table-row-index="${focusedIndex}"]`,
 		) as HTMLElement | null;
 		if (row) {
-			row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+			row.tabIndex = -1;
+			row.focus({ preventScroll: true });
+			row.scrollIntoView({ block: "nearest", behavior: "instant" });
 		}
 	}, [focusedIndex]);
 

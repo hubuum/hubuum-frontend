@@ -3,10 +3,11 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 import type { ProvenanceActor } from './provenanceActor';
 import type { ProvenancePrincipal } from './provenancePrincipal';
+import type { TaskID } from './taskID';
 
 /**
  * Shared provenance returned by audit/history APIs and serialized to sinks.
@@ -14,6 +15,5 @@ import type { ProvenancePrincipal } from './provenancePrincipal';
 export interface Provenance {
   actor: ProvenanceActor;
   initiator?: null | ProvenancePrincipal;
-  /** @nullable */
-  task_id?: number | null;
+  task_id?: null | TaskID;
 }

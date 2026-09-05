@@ -6,7 +6,8 @@ already be running somewhere reachable from the host.
 
 ## First-time setup
 
-Install Node.js 24 LTS and Docker Compose, then install the project dependencies:
+Install Node.js 24 LTS and Docker Compose or Podman with a Compose provider,
+then install the project dependencies:
 
 ```sh
 npm ci
@@ -45,6 +46,14 @@ Start the Valkey session store and wait for it to become healthy:
 npm run dev:deps
 ```
 
+The launcher waits for Valkey to answer `PING`; it does not require Compose's
+Docker-specific `--wait` option. It uses `docker` when available (including the
+Podman Docker interface), otherwise `podman`. Set
+`HUBUUM_CONTAINER_RUNTIME=podman` to select Podman explicitly, and use the same
+setting for `npm run dev:deps:down`. `HUBUUM_VALKEY_PROJECT` optionally selects an
+isolated Compose project. Writable Valkey directories remain temporary memory
+mounts with persistence disabled.
+
 Then start Next.js:
 
 ```sh
@@ -58,7 +67,7 @@ Sunset, Mountains, Clouds, and Forest are bundled login backgrounds, with Sunset
 on a device that has not selected one yet. Private login
 artwork can be placed in the repository's `login-backgrounds/` directory.
 AVIF, JPEG, PNG, and WebP files are discovered on each login-page request,
-remain ignored by Git, and appear in the background selector with a Random
+remain ignored by Git, and appear under Appearance in the background selector with a Random
 choice.
 
 ## Stop
@@ -105,8 +114,9 @@ graphics stacks are not the supported baseline environment. The tablet
 assertions allow a narrow 1.5% pixel tolerance for stable runner-CPU text
 antialiasing; the other viewports retain the stricter 1% tolerance.
 
-Run the critical login, authenticated session, logout, and protected-route
-smoke flow against disposable Hubuum Server and Valkey containers:
+Run login, session, logout, keyboard interaction, resource-picker, accessibility,
+and authenticated screenshot checks against disposable Hubuum Server and Valkey
+containers:
 
 ```sh
 npm run test:e2e:authenticated

@@ -1,5 +1,6 @@
 const COMPACT_TOPBAR_ROUTE_PREFIXES = [
 	"/app",
+	"/search",
 	"/account",
 	"/imports",
 	"/exports",

@@ -17,6 +17,14 @@ import { CreateModal } from "@/components/create-modal";
 import { KeyboardHelp } from "@/components/keyboard-help";
 import { LogoutButton } from "@/components/logout-button";
 import { ToastContainer } from "@/components/toast-container";
+import {
+	PinnedNavigation,
+	WorkspaceCommands,
+} from "@/components/workspace-commands";
+import {
+	ACCOUNT_SECTIONS,
+	isAccountSectionActive,
+} from "@/lib/account-sections";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV1Classes } from "@/lib/api/generated/client";
 import type { HubuumClassExpanded } from "@/lib/api/generated/models";
@@ -26,8 +34,8 @@ import {
 	type TaskRecord,
 } from "@/lib/api/tasking";
 import {
-	applyAtmospherePreference,
 	type AtmospherePreset,
+	applyAtmospherePreference,
 	DEFAULT_ATMOSPHERE,
 	type DensityPreference,
 	type FontSizePreference,
@@ -41,10 +49,6 @@ import {
 } from "@/lib/appearance-preferences";
 import { APPLICATION_VERSION } from "@/lib/application-version";
 import {
-	ACCOUNT_SECTIONS,
-	isAccountSectionActive,
-} from "@/lib/account-sections";
-import {
 	type CreateSection,
 	DESELECT_ALL_EVENT,
 	EDIT_STATE_EVENT,
@@ -56,14 +60,14 @@ import {
 	TITLE_STATE_EVENT,
 	type TitleStateEventDetail,
 } from "@/lib/create-events";
+import { buildNavigationClassShortcuts } from "@/lib/navigation-class-shortcuts";
+import { buildDocumentTitle, getRouteTitle } from "@/lib/page-title";
 import {
 	triggerActivePaginationNextPage,
 	triggerActivePaginationPrevPage,
 } from "@/lib/pagination-shortcuts";
-import { buildDocumentTitle, getRouteTitle } from "@/lib/page-title";
 import { getPinnedItems } from "@/lib/pinned-items";
 import { getRecentItems } from "@/lib/recent-items";
-import { buildNavigationClassShortcuts } from "@/lib/navigation-class-shortcuts";
 import { normalizeSearchTerm } from "@/lib/resource-search";
 import {
 	countUnread,
@@ -71,8 +75,13 @@ import {
 	filterMine,
 	toastForTransition,
 } from "@/lib/task-notifications";
-import { usesCompactTopbar } from "@/lib/topbar-visibility";
 import { useToast } from "@/lib/toast-context";
+import { usesCompactTopbar } from "@/lib/topbar-visibility";
+import { useDialogAccessibility } from "@/lib/use-dialog-accessibility";
+import {
+	hasActiveEscapeCancel,
+	useEscapeToCancel,
+} from "@/lib/use-escape-to-cancel";
 import {
 	USER_SETTINGS_CHANGED_EVENT,
 	writeDeviceSetting,
@@ -82,10 +91,6 @@ import {
 	DEVICE_SETTING_KEYS,
 	PORTABLE_USER_SETTING_KEYS,
 } from "@/lib/user-settings-types";
-import {
-	hasActiveEscapeCancel,
-	useEscapeToCancel,
-} from "@/lib/use-escape-to-cancel";
 
 type AppShellProps = {
 	canViewAdmin: boolean;
@@ -687,10 +692,7 @@ export function AppShell({
 		},
 	});
 
-	const sectionLabel = useMemo(
-		() => getRouteTitle(appPathname),
-		[appPathname],
-	);
+	const sectionLabel = useMemo(() => getRouteTitle(appPathname), [appPathname]);
 	const createSection = useMemo(
 		() => getCreateSection(appPathname),
 		[appPathname],
@@ -703,6 +705,22 @@ export function AppShell({
 	const hasCompactTopbar = usesCompactTopbar(appPathname);
 	const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+	const sidebarRef = useRef<HTMLElement | null>(null);
+	const sidebarOverlayRef = useRef<HTMLDivElement | null>(null);
+	useDialogAccessibility({
+		open: isMobileSidebarOpen,
+		onClose: () => setMobileSidebarOpen(false),
+		dialogRef: sidebarRef,
+		overlayRef: sidebarOverlayRef,
+	});
+	useEffect(() => {
+		const desktop = window.matchMedia("(min-width: 901px)");
+		const closeOnDesktop = () => {
+			if (desktop.matches) setMobileSidebarOpen(false);
+		};
+		desktop.addEventListener("change", closeOnDesktop);
+		return () => desktop.removeEventListener("change", closeOnDesktop);
+	}, []);
 	const [isMobileSearchOpen, setMobileSearchOpen] = useState(false);
 	const [isUserMenuOpen, setUserMenuOpen] = useState(false);
 	const [isTaskMenuOpen, setTaskMenuOpen] = useState(false);
@@ -730,6 +748,24 @@ export function AppShell({
 	const [editHandler, setEditHandler] = useState<(() => void) | null>(null);
 	const [detailTitle, setDetailTitle] = useState<string | null>(null);
 	const [isKeyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
+	const [isCommandsOpen, setCommandsOpen] = useState(false);
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (
+				(event.ctrlKey || event.metaKey) &&
+				!event.altKey &&
+				event.key.toLowerCase() === "k" &&
+				!event.defaultPrevented
+			) {
+				if (document.querySelector('[aria-modal="true"]') && !isCommandsOpen)
+					return;
+				event.preventDefault();
+				setCommandsOpen((current) => !current);
+			}
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [isCommandsOpen]);
 	const goToShortcutTimerRef = useRef<number | null>(null);
 	const userMenuRef = useRef<HTMLDivElement | null>(null);
 	const taskMenuRef = useRef<HTMLDivElement | null>(null);
@@ -827,7 +863,9 @@ export function AppShell({
 			setDensityPreference(storedDensity);
 		}
 
-		const storedFontSize = window.localStorage.getItem(FONT_SIZE_PREFERENCE_KEY);
+		const storedFontSize = window.localStorage.getItem(
+			FONT_SIZE_PREFERENCE_KEY,
+		);
 		if (isFontSizePreference(storedFontSize)) {
 			setFontSizePreference(storedFontSize);
 		}
@@ -933,10 +971,7 @@ export function AppShell({
 		writeUserSetting(SECONDARY_ACCENT_PREFERENCE_KEY, accent);
 		writeDeviceSetting(LOGIN_ACCENT_PREFERENCE_KEY, accent);
 		writeDeviceSetting(LOGIN_SECONDARY_ACCENT_PREFERENCE_KEY, accent);
-		applyAtmospherePreference(
-			document.documentElement,
-			atmospherePreference,
-		);
+		applyAtmospherePreference(document.documentElement, atmospherePreference);
 	}, [atmospherePreference, preferencesReady]);
 
 	useEffect(() => {
@@ -956,10 +991,6 @@ export function AppShell({
 		setSearchInput(isSearchRoute ? (searchParams.get("q") ?? "") : "");
 	}, [isSearchRoute, searchParams]);
 
-	useEscapeToCancel({
-		enabled: isMobileSidebarOpen,
-		onCancel: () => setMobileSidebarOpen(false),
-	});
 	useEscapeToCancel({
 		enabled: isUserMenuOpen,
 		onCancel: () => {
@@ -1061,8 +1092,14 @@ export function AppShell({
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement;
+			if (
+				event.defaultPrevented ||
+				document.querySelector('[aria-modal="true"]')
+			)
+				return;
 			const isTyping =
 				target.tagName === "INPUT" ||
+				target.tagName === "SELECT" ||
 				target.tagName === "TEXTAREA" ||
 				target.contentEditable === "true" ||
 				target.closest(".cm-editor") !== null;
@@ -1448,26 +1485,31 @@ export function AppShell({
 		);
 
 		return (
-			<div
-				className="topology-flyout"
-				data-open={isOpen ? "true" : undefined}
-				onPointerEnter={() => setOpenTopologyFlyout(id)}
-			>
+			<div className="topology-flyout" data-open={isOpen ? "true" : undefined}>
 				{href ? (
-					<Link
-						href={href}
-						prefetch={false}
-						className={`topology-flyout-trigger${isActive ? " active" : ""}`}
-						aria-controls={panelId}
-						aria-expanded={isOpen}
-						aria-haspopup="true"
-						aria-label={hint}
-						data-tooltip={hint}
-						onClick={closeTopologyNavigation}
-						onFocus={() => setOpenTopologyFlyout(id)}
-					>
-						{triggerContent}
-					</Link>
+					<div className="topology-flyout-link-row">
+						<Link
+							href={href}
+							prefetch={false}
+							className={`topology-flyout-trigger${isActive ? " active" : ""}`}
+							aria-label={hint}
+							data-tooltip={hint}
+							onClick={closeTopologyNavigation}
+						>
+							<span className="sidebar-icon">{icon}</span>
+							<span>{label}</span>
+						</Link>
+						<button
+							type="button"
+							className="ghost topology-flyout-toggle"
+							aria-label={`Show ${label} shortcuts`}
+							aria-expanded={isOpen}
+							aria-controls={panelId}
+							onClick={() => setOpenTopologyFlyout(isOpen ? null : id)}
+						>
+							<IconChevron />
+						</button>
+					</div>
 				) : (
 					<button
 						type="button"
@@ -1594,10 +1636,7 @@ export function AppShell({
 										hint: classesNavItem.hint,
 										icon: classesNavItem.icon,
 										id: `${menuId}-classes`,
-										isActive: isLinkActive(
-											appPathname,
-											classesNavItem.href,
-										),
+										isActive: isLinkActive(appPathname, classesNavItem.href),
 										label: classesNavItem.label,
 										href: classesNavItem.href,
 									})}
@@ -1606,10 +1645,7 @@ export function AppShell({
 										hint: objectsNavItem.hint,
 										icon: objectsNavItem.icon,
 										id: `${menuId}-objects`,
-										isActive: isLinkActive(
-											appPathname,
-											objectsNavItem.href,
-										),
+										isActive: isLinkActive(appPathname, objectsNavItem.href),
 										label: objectsNavItem.label,
 										href: objectsNavItem.href,
 									})}
@@ -1625,8 +1661,7 @@ export function AppShell({
 											adminIdentityLinks,
 											closeTopologyNavigation,
 										),
-										hint:
-											"IAM: manage users, groups, and service accounts",
+										hint: "IAM: manage users, groups, and service accounts",
 										icon: <IconUsers />,
 										id: `${menuId}-iam`,
 										isActive: adminIdentityLinks.some((item) =>
@@ -1639,8 +1674,7 @@ export function AppShell({
 											adminOperationsLinks,
 											closeTopologyNavigation,
 										),
-										hint:
-											"Operations: manage remote targets and event delivery",
+										hint: "Operations: manage remote targets and event delivery",
 										icon: <IconRemoteTarget />,
 										id: `${menuId}-operations`,
 										isActive: adminOperationsLinks.some((item) =>
@@ -1653,8 +1687,7 @@ export function AppShell({
 											adminSystemLinks,
 											closeTopologyNavigation,
 										),
-										hint:
-											"System: inspect configuration and manage backups",
+										hint: "System: inspect configuration and manage backups",
 										icon: <IconOverview />,
 										id: `${menuId}-system`,
 										isActive: adminSystemLinks.some((item) =>
@@ -1709,13 +1742,30 @@ export function AppShell({
 				Skip to content
 			</a>
 			<div className="app-layout">
-				<aside className="sidebar card" aria-label="Primary navigation">
-					<div className="sidebar-main">
-						<div className="sidebar-header">
-							<BrandMark href="/app" />
-						</div>
+				<div className="sidebar-layer" ref={sidebarOverlayRef}>
+					<aside
+						ref={sidebarRef}
+						className="sidebar card"
+						id="mobile-navigation"
+						aria-label="Primary navigation"
+						role="dialog"
+						aria-modal={isMobileSidebarOpen ? true : undefined}
+						inert={!isMobileSidebarOpen}
+						tabIndex={-1}
+					>
+						<div className="sidebar-main">
+							<div className="sidebar-header">
+								<button
+									type="button"
+									className="ghost mobile-only"
+									onClick={() => setMobileSidebarOpen(false)}
+								>
+									Close navigation
+								</button>
+								<BrandMark href="/app" />
+							</div>
 
-						<nav className="sidebar-navigation">
+							<nav className="sidebar-navigation">
 								<div className="sidebar-group">
 									<p className="sidebar-label">Overview</p>
 									{isSidebarCollapsed ? (
@@ -1775,15 +1825,24 @@ export function AppShell({
 										</button>
 									</div>
 								) : null}
-						</nav>
-					</div>
-					<p
-						className="sidebar-footer"
-						title={`Hubuum Frontend ${APPLICATION_VERSION}`}
-					>
-						{APPLICATION_VERSION}
-					</p>
-				</aside>
+							</nav>
+						</div>
+						<p
+							className="sidebar-footer"
+							title={`Hubuum Frontend ${APPLICATION_VERSION}`}
+						>
+							{APPLICATION_VERSION}
+						</p>
+					</aside>
+					{isMobileSidebarOpen ? (
+						<button
+							type="button"
+							aria-label="Dismiss navigation"
+							className="sidebar-backdrop"
+							onClick={() => setMobileSidebarOpen(false)}
+						/>
+					) : null}
+				</div>
 
 				<div className="app-main">
 					<header
@@ -1799,6 +1858,8 @@ export function AppShell({
 								className="ghost icon-button mobile-only"
 								onClick={() => setMobileSidebarOpen(true)}
 								aria-label="Open navigation"
+								aria-controls="mobile-navigation"
+								aria-expanded={isMobileSidebarOpen}
 							>
 								<IconMenu />
 							</button>
@@ -1809,6 +1870,8 @@ export function AppShell({
 									className="ghost icon-button mobile-only"
 									onClick={() => setMobileSidebarOpen(true)}
 									aria-label="Open navigation"
+									aria-controls="mobile-navigation"
+									aria-expanded={isMobileSidebarOpen}
 								>
 									<IconMenu />
 								</button>
@@ -1821,12 +1884,18 @@ export function AppShell({
 							</div>
 						)}
 
-						{renderTopologyNavigation(
-							"topbar",
-							"topology-navigation--topbar",
-						)}
+						{renderTopologyNavigation("topbar", "topology-navigation--topbar")}
 
 						<div className="topbar-right" ref={userMenuRef}>
+							<button
+								type="button"
+								className="ghost command-trigger"
+								onClick={() => setCommandsOpen(true)}
+								aria-label="Go to or create"
+								title="Go to or create (Ctrl/Cmd+K)"
+							>
+								Go to…
+							</button>
 							<form
 								className="topbar-search-form desktop-search-form"
 								onSubmit={onSearchSubmit}
@@ -2060,20 +2129,12 @@ export function AppShell({
 						</div>
 					</header>
 
+					<PinnedNavigation />
 					<main className="content" id="main-content">
 						{children}
 					</main>
 				</div>
 			</div>
-
-			{isMobileSidebarOpen ? (
-				<button
-					type="button"
-					aria-label="Close navigation"
-					className="sidebar-backdrop"
-					onClick={() => setMobileSidebarOpen(false)}
-				/>
-			) : null}
 
 			{selectionCount > 0 && deleteHandler ? (
 				<button
@@ -2115,6 +2176,17 @@ export function AppShell({
 				</button>
 			) : null}
 
+			<WorkspaceCommands
+				open={isCommandsOpen}
+				onClose={() => setCommandsOpen(false)}
+				canViewAdmin={canViewAdmin}
+				createLabel={
+					createSection
+						? getCreateLabel(createSection, relationsView)
+						: undefined
+				}
+				onCreate={createSection ? openCreateModal : undefined}
+			/>
 			<CreateModal
 				open={isMobileSearchOpen}
 				title="Search workspace"

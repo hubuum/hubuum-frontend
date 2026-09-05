@@ -4,6 +4,7 @@ import { usesCompactTopbar } from "@/lib/topbar-visibility";
 describe("topbar visibility", () => {
 	it.each([
 		"/app",
+		"/search",
 		"/account",
 		"/account/appearance",
 		"/imports",

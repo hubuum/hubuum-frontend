@@ -150,6 +150,7 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 				<RuntimeStatCard
 					title="Database & pagination"
 					rows={[
+						{ label: "Storage backend", value: database.backend ?? "n/a" },
 						{
 							label: "Database URL",
 							value: configured(database.url.configured),
@@ -357,9 +358,10 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 							value: formatMilliseconds(exportsConfig.stage_timeout_ms),
 						},
 						{
-							label: "Database timeout",
+							label: "Storage query budget",
 							value: formatMilliseconds(
-								exportsConfig.database_statement_timeout_ms,
+								exportsConfig.storage_query_budget_ms ??
+									exportsConfig.database_statement_timeout_ms,
 							),
 						},
 						{

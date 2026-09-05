@@ -6,7 +6,7 @@ BACKEND_COMPOSE_FILE="${ROOT_DIR}/docker-compose.live-backend.yml"
 VALKEY_COMPOSE_FILE="${ROOT_DIR}/compose.dev.yml"
 BACKEND_PROJECT="${HUBUUM_AUTH_E2E_BACKEND_PROJECT:-hubuum-frontend-auth-e2e}"
 VALKEY_PROJECT="${HUBUUM_AUTH_E2E_VALKEY_PROJECT:-hubuum-frontend-auth-e2e-valkey}"
-IMAGE="${HUBUUM_AUTH_E2E_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.9}"
+IMAGE="${HUBUUM_AUTH_E2E_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.11}"
 BACKEND_PORT="${HUBUUM_AUTH_E2E_BACKEND_PORT:-9998}"
 POSTGRES_PORT="${HUBUUM_AUTH_E2E_POSTGRES_PORT:-15433}"
 VALKEY_PORT="${HUBUUM_AUTH_E2E_VALKEY_PORT:-16379}"
@@ -44,7 +44,8 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Starting disposable Valkey service on 127.0.0.1:${VALKEY_PORT}"
-docker compose -f "${VALKEY_COMPOSE_FILE}" -p "${VALKEY_PROJECT}" up -d --wait --force-recreate --renew-anon-volumes
+HUBUUM_VALKEY_PROJECT="${VALKEY_PROJECT}" \
+  bash scripts/dev-deps.sh up --force-recreate --renew-anon-volumes
 
 echo "Pulling authenticated-test backend image: ${IMAGE}"
 docker pull "${IMAGE}"
@@ -80,4 +81,4 @@ BACKEND_BASE_URL="${BASE_URL}" \
   E2E_IDENTITY_SCOPE="local" \
   E2E_USERNAME="admin" \
   E2E_PASSWORD="${admin_password}" \
-  npx playwright test tests/e2e/authenticated-smoke.spec.ts
+  npx playwright test tests/e2e/authenticated-smoke.spec.ts tests/e2e/workspace-quality.spec.ts --workers=1 "$@"

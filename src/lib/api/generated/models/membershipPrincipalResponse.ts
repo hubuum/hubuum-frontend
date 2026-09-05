@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
+import type { PrincipalKind } from './principalKind';
 import type { ResourceRevision } from './resourceRevision';
 
 /**
@@ -14,7 +15,7 @@ import type { ResourceRevision } from './resourceRevision';
 export interface MembershipPrincipalResponse {
   created_at: string;
   identity_scope: string;
-  kind: string;
+  kind: PrincipalKind;
   name: string;
   principal_id: number;
   revision: ResourceRevision;

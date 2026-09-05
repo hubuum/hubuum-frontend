@@ -7,7 +7,7 @@
       "name": "MIT",
       "identifier": "MIT"
     },
-    "version": "0.0.9"
+    "version": "0.0.11"
   },
   "servers": [
     {
@@ -435,6 +435,16 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Database diagnostics are not available for the configured storage backend",
             "content": {
               "application/json": {
                 "schema": {
@@ -1584,7 +1594,7 @@
           "classes"
         ],
         "summary": "List objects in a class by class name",
-        "description": "Name-addressed alias for listing the current objects in a class. Numeric-looking class names remain names. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Name-addressed alias for listing the current objects in a class. Numeric-looking class names remain names. Named related.<alias> groups filter objects by bounded, permission-visible paths to independent target objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ClassesByNameByClassNameObjects",
         "parameters": [
           {
@@ -1612,6 +1622,36 @@
             "required": false,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "related.<alias>.class.name",
+            "in": "query",
+            "description": "Required exact target-class selector for a named related group; use class.id instead for an integer ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "related.<alias>.object.<field>__<operator>",
+            "in": "query",
+            "description": "Target-object predicate correlated within the named group; supports id, name, description, collection_id, created_at, updated_at, revision, and json_data",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "related.<alias>.depth__lte",
+            "in": "query",
+            "description": "Maximum bidirectional relationship depth for the named group; defaults to 1 and is capped at 10",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 10,
+              "minimum": 1
             }
           },
           {
@@ -3339,7 +3379,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id Trailing",
-        "description": "Lists objects in the path class. Enabled computed fields can be filtered with computed.shared.<key> or computed.personal.<key> using the normal __operator suffix, and sorted with the same names. Computed querying supports at most two computed filter parameters and two explicit sort fields per request. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "description": "Lists objects in the path class. Enabled computed fields can be filtered with computed.shared.<key> or computed.personal.<key> using the normal __operator suffix, and sorted with the same names. Named related.<alias> groups filter objects by bounded, permission-visible paths to independent target objects. Computed querying supports at most two computed filter parameters and two explicit sort fields per request. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
         "operationId": "getApiV1ClassesByClassIdTrailing",
         "parameters": [
           {
@@ -3368,6 +3408,36 @@
             "required": false,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "related.<alias>.class.name",
+            "in": "query",
+            "description": "Required exact target-class selector for a named related group; use class.id instead for an integer ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "related.<alias>.object.<field>__<operator>",
+            "in": "query",
+            "description": "Target-object predicate correlated within the named group; supports id, name, description, collection_id, created_at, updated_at, revision, and json_data",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "related.<alias>.depth__lte",
+            "in": "query",
+            "description": "Maximum bidirectional relationship depth for the named group; defaults to 1 and is capped at 10",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 10,
+              "minimum": 1
             }
           },
           {
@@ -18614,6 +18684,101 @@
             "bearer_auth": []
           }
         ]
+      },
+      "post": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Post Api V1 Search",
+        "description": "Runs the versioned, typed Hubuum resource-search DSL. Version 1 targets collections, classes, objects, audit events, users, groups, or service accounts. Boolean and/or/not expressions compose target-specific field predicates; object queries may additionally use permission-aware existential related-object predicates and an optional exact class selector. See docs/search_api.md for the complete grammar and field/operator matrix.",
+        "operationId": "postApiV1Search",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StructuredSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Tagged, cursor-paginated structured resource search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StructuredSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid DSL, predicate, or cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Explicit object target class not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body exceeds the structured-search size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content type is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
       }
     },
     "/api/v1/search/stream": {
@@ -18711,6 +18876,9 @@
                 },
                 "description": "Effective page size used by the server after applying the configured default and maximum."
               }
+            },
+            "content": {
+              "text/event-stream": {}
             }
           },
           "400": {
@@ -18725,6 +18893,77 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Post Api V1 Search Stream",
+        "description": "Runs the same versioned structured resource-search DSL as POST /api/v1/search and returns server-sent events. The stream emits started, zero or more tagged result events, and one terminal done event carrying cursor metadata; execution failures after streaming starts produce a terminal error event.",
+        "operationId": "postApiV1SearchStream",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StructuredSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Structured search server-sent event stream",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "400": {
+            "description": "Invalid DSL or request envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body exceeds the structured-search size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content type is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -19284,7 +19523,8 @@
           },
           "created_at": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "RFC 3339 creation instant in UTC."
           },
           "history": {
             "oneOf": [
@@ -19310,7 +19550,7 @@
       },
       "BackupHistory": {
         "type": "object",
-        "description": "Privileged, restore-only table snapshots. In backup version 4, each section\nname and row shape corresponds to the PostgreSQL table restored from it.\nThese are versioned disaster-recovery internals, not portable import data.",
+        "description": "Privileged, restore-only logical snapshots. Backup version 5 identifies\nsections by stable Hubuum resources rather than PostgreSQL tables. Each\nstorage adapter explicitly maps its persistence layout to these versioned\nsections. These are disaster-recovery internals, not portable import data.",
         "required": [
           "sections"
         ],
@@ -19318,7 +19558,8 @@
           "sections": {
             "type": "object"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "BackupManifest": {
         "type": "object",
@@ -19350,7 +19591,7 @@
       },
       "BackupState": {
         "type": "object",
-        "description": "Exact logical rows used by the destructive full-system restore path.",
+        "description": "Canonical logical rows used by the destructive full-system restore path.",
         "required": [
           "sections"
         ],
@@ -19358,7 +19599,8 @@
           "sections": {
             "type": "object"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "BackupTaskDetails": {
         "type": "object",
@@ -19687,7 +19929,8 @@
       "CollectionID": {
         "type": "integer",
         "format": "int32",
-        "description": "Identifier wrapper for a [`Collection`]."
+        "description": "Validated positive collection id.",
+        "minimum": 1
       },
       "CollectionKey": {
         "type": "object",
@@ -19711,7 +19954,7 @@
       },
       "CollectionPermissionSet": {
         "type": "object",
-        "description": "The revisioned, SQL-owned authorization state for a collection.\n\nIndividual permission rows are implementation details of this aggregate;\ncallers condition mutations on the revision of the complete set.",
+        "description": "The revisioned authorization grant set for a collection.\n\nIndividual grants are implementation details of this aggregate;\ncallers condition mutations on the revision of the complete set.",
         "required": [
           "collection_id",
           "revision",
@@ -19727,7 +19970,7 @@
             "items": {
               "$ref": "#/components/schemas/Permission"
             },
-            "description": "ACL rows contain stable group identifiers without embedding mutable\ngroup representations that are outside this aggregate's revision."
+            "description": "ACL entries contain stable group identifiers without embedding mutable\ngroup representations that are outside this aggregate's revision."
           },
           "revision": {
             "$ref": "#/components/schemas/ResourceRevision"
@@ -20193,12 +20436,17 @@
       "DatabaseConfig": {
         "type": "object",
         "required": [
+          "backend",
           "url",
           "pool_size",
           "pool_acquire_timeout_ms",
           "statement_timeout_ms"
         ],
         "properties": {
+          "backend": {
+            "type": "string",
+            "description": "Complete storage backend selected by the application composition root."
+          },
           "pool_acquire_timeout_ms": {
             "type": "integer",
             "format": "int64",
@@ -20310,7 +20558,7 @@
           "connections_created": {
             "type": "integer",
             "format": "int64",
-            "description": "Cumulative connections established by the pool.",
+            "description": "Cumulative connections established by the context.",
             "minimum": 0
           },
           "db_size": {
@@ -20321,13 +20569,13 @@
           "idle_connections": {
             "type": "integer",
             "format": "int32",
-            "description": "Established connections currently waiting in the pool.",
+            "description": "Established connections currently waiting in the context.",
             "minimum": 0
           },
           "in_use_connections": {
             "type": "integer",
             "format": "int32",
-            "description": "Established connections currently checked out of the pool.",
+            "description": "Established connections currently checked out of the context.",
             "minimum": 0
           },
           "last_vacuum_time": {
@@ -20340,7 +20588,7 @@
           "max_connections": {
             "type": "integer",
             "format": "int32",
-            "description": "Configured maximum number of connections in this process-local pool.",
+            "description": "Configured maximum number of connections in this process-local context.",
             "minimum": 0
           },
           "pending_acquisitions": {
@@ -20352,7 +20600,7 @@
           "total_connections": {
             "type": "integer",
             "format": "int32",
-            "description": "Connections currently managed by this process-local pool.",
+            "description": "Connections currently managed by this process-local context.",
             "minimum": 0
           }
         }
@@ -20613,6 +20861,7 @@
       },
       "EventDeliveryStatus": {
         "type": "string",
+        "description": "Durable lifecycle state for one event delivery.\n\nThe textual representation is shared by storage adapters, API models, and\noperational reporting so each layer cannot silently invent different\npersisted status values.",
         "enum": [
           "pending",
           "in_flight",
@@ -20673,6 +20922,12 @@
             "$ref": "#/components/schemas/EventDeliveryResponse"
           }
         }
+      },
+      "EventEntityId": {
+        "type": "integer",
+        "format": "int32",
+        "description": "Validated positive event entity id.",
+        "minimum": 1
       },
       "EventFanoutHealth": {
         "type": "object",
@@ -20912,7 +21167,8 @@
       "EventSinkID": {
         "type": "integer",
         "format": "int32",
-        "description": "Identifier wrapper for an event sink."
+        "description": "Validated positive event sink id.",
+        "minimum": 1
       },
       "EventSinkKey": {
         "type": "object",
@@ -21072,15 +21328,13 @@
           "actor_user_ids": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int32"
+              "$ref": "#/components/schemas/PrincipalID"
             }
           },
           "collection_ids": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int32"
+              "$ref": "#/components/schemas/CollectionID"
             }
           },
           "correlation_ids": {
@@ -21092,8 +21346,7 @@
           "entity_ids": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int32"
+              "$ref": "#/components/schemas/EventEntityId"
             }
           },
           "entity_names": {
@@ -21105,15 +21358,13 @@
           "initiator_user_ids": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int32"
+              "$ref": "#/components/schemas/PrincipalID"
             }
           },
           "related_collection_ids": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int32"
+              "$ref": "#/components/schemas/CollectionID"
             }
           },
           "request_ids": {
@@ -21193,12 +21444,14 @@
           "template_max_objects",
           "max_output_bytes",
           "stage_timeout_ms",
+          "storage_query_budget_ms",
           "database_statement_timeout_ms"
         ],
         "properties": {
           "database_statement_timeout_ms": {
             "type": "integer",
             "format": "int64",
+            "description": "Deprecated compatibility alias for `storage_query_budget_ms`.\n\nThe value is identical and remains present so administrator clients do\nnot break while migrating away from the PostgreSQL-shaped field name.",
             "minimum": 0
           },
           "max_output_bytes": {
@@ -21217,6 +21470,12 @@
           "stage_timeout_ms": {
             "type": "integer",
             "format": "int64",
+            "minimum": 0
+          },
+          "storage_query_budget_ms": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Backend-neutral budget applied to each export storage read stage.",
             "minimum": 0
           },
           "template_fuel": {
@@ -21917,7 +22176,8 @@
       "ExportTemplateID": {
         "type": "integer",
         "format": "int32",
-        "description": "Identifier wrapper for a [`ExportTemplate`]."
+        "description": "Validated positive export template id.",
+        "minimum": 1
       },
       "ExportTemplateKind": {
         "type": "string",
@@ -23047,7 +23307,8 @@
       "HubuumClassID": {
         "type": "integer",
         "format": "int32",
-        "description": "Identifier wrapper for a [`HubuumClass`]."
+        "description": "Validated positive class id.",
+        "minimum": 1
       },
       "HubuumClassRelation": {
         "type": "object",
@@ -23122,7 +23383,8 @@
       "HubuumClassRelationID": {
         "type": "integer",
         "format": "int32",
-        "description": "Identifier wrapper for a [`HubuumClassRelation`]."
+        "description": "Validated positive class relation id.",
+        "minimum": 1
       },
       "HubuumClassWithPath": {
         "type": "object",
@@ -23337,7 +23599,8 @@
       "HubuumObjectID": {
         "type": "integer",
         "format": "int32",
-        "description": "Identifier wrapper for a [`HubuumObject`]."
+        "description": "Validated positive object id.",
+        "minimum": 1
       },
       "HubuumObjectReadResponse": {
         "oneOf": [
@@ -23394,7 +23657,8 @@
       "HubuumObjectRelationID": {
         "type": "integer",
         "format": "int32",
-        "description": "Identifier wrapper for a [`HubuumObjectRelation`]."
+        "description": "Validated positive object relation id.",
+        "minimum": 1
       },
       "HubuumObjectWithPath": {
         "type": "object",
@@ -25399,7 +25663,7 @@
             "type": "string"
           },
           "kind": {
-            "type": "string"
+            "$ref": "#/components/schemas/PrincipalKind"
           },
           "name": {
             "type": "string"
@@ -26877,7 +27141,8 @@
       "PrincipalID": {
         "type": "integer",
         "format": "int32",
-        "description": "Identifier wrapper for a [`Principal`]."
+        "description": "Validated positive principal id.",
+        "minimum": 1
       },
       "PrincipalKey": {
         "type": "object",
@@ -26895,6 +27160,14 @@
             "type": "string"
           }
         }
+      },
+      "PrincipalKind": {
+        "type": "string",
+        "description": "Closed set of principal kinds understood by every Hubuum layer.\n\nAdapters must parse persisted values into this type before returning a\nprincipal so database corruption cannot cross the storage boundary as an\narbitrary string.",
+        "enum": [
+          "human",
+          "service_account"
+        ]
       },
       "PrincipalMemberResponse": {
         "type": "object",
@@ -27291,11 +27564,14 @@
             ]
           },
           "task_id": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TaskID"
+              }
+            ]
           }
         }
       },
@@ -27335,8 +27611,7 @@
             ]
           },
           "principal_id": {
-            "type": "integer",
-            "format": "int32"
+            "$ref": "#/components/schemas/PrincipalID"
           }
         }
       },
@@ -27887,7 +28162,8 @@
       "RemoteTargetID": {
         "type": "integer",
         "format": "int32",
-        "description": "Identifier wrapper for a remote target."
+        "description": "Validated positive remote target id.",
+        "minimum": 1
       },
       "RemoteTargetInvokeRequest": {
         "type": "object",
@@ -28408,6 +28684,782 @@
           }
         }
       },
+      "StructuredClassSelector": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/HubuumClassID"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        ],
+        "description": "Exact object-class selector. Exactly one of `id` or `name` is accepted."
+      },
+      "StructuredRelatedPredicate": {
+        "type": "object",
+        "description": "Existential object-relation predicate.\n\nThe selected target class and all filters must match one object reachable\nover a visible bidirectional path no deeper than `depth`.",
+        "required": [
+          "class"
+        ],
+        "properties": {
+          "class": {
+            "$ref": "#/components/schemas/StructuredClassSelector"
+          },
+          "depth": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 10,
+            "minimum": 1
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StructuredSearchFieldPredicate"
+            },
+            "maxItems": 16
+          }
+        },
+        "additionalProperties": false
+      },
+      "StructuredSearchDoneEvent": {
+        "type": "object",
+        "description": "Terminal success event emitted by the structured-search SSE endpoint.",
+        "required": [
+          "version",
+          "kind",
+          "page_limit"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/StructuredSearchResourceKind",
+            "description": "Resource kind shared by all preceding result events."
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Opaque next-page cursor, or null at the final page."
+          },
+          "page_limit": {
+            "type": "integer",
+            "description": "Effective page size after applying server pagination limits.",
+            "minimum": 0
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Exact authorized count when requested; otherwise null."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "DSL version used to execute the request.",
+            "minimum": 0
+          }
+        }
+      },
+      "StructuredSearchErrorEvent": {
+        "type": "object",
+        "description": "Terminal failure event emitted after an SSE response has started.",
+        "required": [
+          "version",
+          "kind",
+          "message"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/StructuredSearchResourceKind",
+            "description": "Resource kind selected by the request."
+          },
+          "message": {
+            "type": "string",
+            "description": "Public API error message."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "DSL version supplied by the request.",
+            "minimum": 0
+          }
+        }
+      },
+      "StructuredSearchExpression": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "args",
+              "op"
+            ],
+            "properties": {
+              "args": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StructuredSearchExpression"
+                },
+                "maxItems": 64,
+                "minItems": 2
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "and"
+                ]
+              }
+            },
+            "maxProperties": 2
+          },
+          {
+            "type": "object",
+            "required": [
+              "args",
+              "op"
+            ],
+            "properties": {
+              "args": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StructuredSearchExpression"
+                },
+                "maxItems": 64,
+                "minItems": 2
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "or"
+                ]
+              }
+            },
+            "maxProperties": 2
+          },
+          {
+            "type": "object",
+            "required": [
+              "arg",
+              "op"
+            ],
+            "properties": {
+              "arg": {
+                "$ref": "#/components/schemas/StructuredSearchExpression"
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "not"
+                ]
+              }
+            },
+            "maxProperties": 2
+          },
+          {
+            "type": "object",
+            "required": [
+              "predicate",
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "type": "string",
+                "enum": [
+                  "field"
+                ]
+              },
+              "predicate": {
+                "$ref": "#/components/schemas/StructuredSearchFieldPredicate"
+              }
+            },
+            "maxProperties": 2
+          },
+          {
+            "type": "object",
+            "required": [
+              "predicate",
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "type": "string",
+                "enum": [
+                  "related"
+                ]
+              },
+              "predicate": {
+                "$ref": "#/components/schemas/StructuredRelatedPredicate"
+              }
+            },
+            "maxProperties": 2
+          }
+        ],
+        "description": "Recursive boolean expression used by version 1 structured search."
+      },
+      "StructuredSearchField": {
+        "type": "string",
+        "description": "Searchable and sortable fields across all version 1 target catalogs.\n\nEach request validates this enum against its selected target. See\n`docs/search_api.md` for the target/field matrix.",
+        "enum": [
+          "id",
+          "name",
+          "description",
+          "collection_id",
+          "created_at",
+          "updated_at",
+          "revision",
+          "json_data",
+          "validate_schema",
+          "json_schema",
+          "identity_scope",
+          "proper_name",
+          "email",
+          "occurred_at",
+          "entity_type",
+          "entity_id",
+          "entity_name",
+          "action",
+          "actor_kind",
+          "actor_user_id",
+          "initiator_user_id",
+          "summary",
+          "metadata",
+          "managed_by",
+          "external_key",
+          "last_sync_attempted_at",
+          "last_sync_success_at",
+          "owner_group_id",
+          "created_by",
+          "disabled_at"
+        ]
+      },
+      "StructuredSearchFieldPredicate": {
+        "type": "object",
+        "description": "One typed field predicate.\n\nJSON fields require `path`. `is_null` omits `value`; all other operators\nrequire a scalar or bounded scalar array.",
+        "required": [
+          "field",
+          "operator"
+        ],
+        "properties": {
+          "field": {
+            "$ref": "#/components/schemas/StructuredSearchField"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/StructuredSearchOperator"
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1
+          },
+          "value": {}
+        },
+        "additionalProperties": false
+      },
+      "StructuredSearchOperator": {
+        "type": "string",
+        "description": "Operators supported by the structured DSL.\n\nOperator applicability depends on the selected target field. JSON-path\nfields additionally support array, key, and network operations.",
+        "enum": [
+          "equals",
+          "iequals",
+          "contains",
+          "icontains",
+          "startswith",
+          "istartswith",
+          "endswith",
+          "iendswith",
+          "like",
+          "regex",
+          "gt",
+          "gte",
+          "lt",
+          "lte",
+          "between",
+          "within_network",
+          "contains_network",
+          "contains_ip",
+          "overlaps_network",
+          "inet_equals",
+          "in",
+          "all",
+          "array_length",
+          "has_key",
+          "is_null"
+        ]
+      },
+      "StructuredSearchRequest": {
+        "type": "object",
+        "description": "Version 1 structured resource-search request.",
+        "required": [
+          "version",
+          "target"
+        ],
+        "properties": {
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Opaque cursor returned by an identical prior request and auth context.",
+            "minLength": 1
+          },
+          "filter": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StructuredSearchExpression",
+                "description": "Optional recursive boolean predicate."
+              }
+            ]
+          },
+          "include_total": {
+            "type": "boolean",
+            "description": "Compute and return an exact authorized result count when true."
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Requested page size, clamped by server pagination configuration.",
+            "minimum": 1
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StructuredSearchSort"
+            },
+            "description": "Stable target-specific sort keys. The resource default applies when empty.",
+            "maxItems": 8
+          },
+          "target": {
+            "$ref": "#/components/schemas/StructuredSearchTarget",
+            "description": "Resource catalog and optional exact object-class constraint."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "DSL grammar version. Version 1 is currently required.",
+            "maximum": 1,
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false,
+        "example": {
+          "filter": {
+            "args": [
+              {
+                "op": "field",
+                "predicate": {
+                  "field": "description",
+                  "operator": "icontains",
+                  "value": "production"
+                }
+              },
+              {
+                "arg": {
+                  "op": "related",
+                  "predicate": {
+                    "class": {
+                      "name": "Room"
+                    },
+                    "depth": 2,
+                    "filters": [
+                      {
+                        "field": "json_data",
+                        "operator": "equals",
+                        "path": "status",
+                        "value": "retired"
+                      }
+                    ]
+                  }
+                },
+                "op": "not"
+              }
+            ],
+            "op": "and"
+          },
+          "include_total": false,
+          "limit": 100,
+          "sort": [
+            {
+              "direction": "asc",
+              "field": "name"
+            }
+          ],
+          "target": {
+            "class": {
+              "name": "Server"
+            },
+            "kind": "object"
+          },
+          "version": 1
+        }
+      },
+      "StructuredSearchResourceKind": {
+        "type": "string",
+        "description": "Resource catalogs addressable by version 1 of the structured search DSL.",
+        "enum": [
+          "collection",
+          "class",
+          "object",
+          "audit_event",
+          "user",
+          "group",
+          "service_account"
+        ]
+      },
+      "StructuredSearchResponse": {
+        "type": "object",
+        "description": "Cursor-paginated result envelope for structured resource search.",
+        "required": [
+          "version",
+          "kind",
+          "results"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/StructuredSearchResourceKind",
+            "description": "Resource kind shared by every result item."
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Opaque next-page cursor, or null at the final page."
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StructuredSearchResult"
+            },
+            "description": "Tagged resource values using the normal public list representation."
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Exact authorized count when requested; otherwise null."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "DSL version used to produce this response.",
+            "minimum": 0
+          }
+        }
+      },
+      "StructuredSearchResult": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "resource",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "collection"
+                ]
+              },
+              "resource": {
+                "$ref": "#/components/schemas/Collection"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "resource",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "class"
+                ]
+              },
+              "resource": {
+                "$ref": "#/components/schemas/HubuumClassExpanded"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "resource",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "object"
+                ]
+              },
+              "resource": {
+                "$ref": "#/components/schemas/HubuumObject"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "resource",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "audit_event"
+                ]
+              },
+              "resource": {
+                "$ref": "#/components/schemas/EventResponse"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "resource",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user"
+                ]
+              },
+              "resource": {
+                "$ref": "#/components/schemas/UserResponse"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "resource",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "group"
+                ]
+              },
+              "resource": {
+                "$ref": "#/components/schemas/GroupResponse"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "resource",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "service_account"
+                ]
+              },
+              "resource": {
+                "$ref": "#/components/schemas/ServiceAccountResponse"
+              }
+            }
+          }
+        ],
+        "description": "Tagged union of public resource representations returned by the DSL."
+      },
+      "StructuredSearchSort": {
+        "type": "object",
+        "description": "Stable sort key and direction for structured results.",
+        "required": [
+          "field"
+        ],
+        "properties": {
+          "direction": {
+            "$ref": "#/components/schemas/StructuredSearchSortDirection"
+          },
+          "field": {
+            "$ref": "#/components/schemas/StructuredSearchField"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StructuredSearchSortDirection": {
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      },
+      "StructuredSearchStartedEvent": {
+        "type": "object",
+        "description": "First event emitted by the structured-search SSE endpoint.",
+        "required": [
+          "version",
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/StructuredSearchResourceKind",
+            "description": "Resource kind selected by the request."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "DSL version used to execute the request.",
+            "minimum": 0
+          }
+        }
+      },
+      "StructuredSearchTarget": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "collection"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "class"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "class": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StructuredClassSelector"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "object"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "audit_event"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "group"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "service_account"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "One resource catalog selected by a structured search request.\n\nObject searches may optionally be constrained to one exact class. All\nother target variants are property-free tagged objects."
+      },
       "TaskConfig": {
         "type": "object",
         "required": [
@@ -28533,6 +29585,12 @@
             "format": "int32"
           }
         }
+      },
+      "TaskID": {
+        "type": "integer",
+        "format": "int32",
+        "description": "Validated positive task id.",
+        "minimum": 1
       },
       "TaskKind": {
         "type": "string",
@@ -28865,7 +29923,8 @@
       "TokenID": {
         "type": "integer",
         "format": "int32",
-        "description": "Identifier wrapper for a [`PrincipalToken`]."
+        "description": "Validated positive token id.",
+        "minimum": 1
       },
       "TokenListState": {
         "type": "string",

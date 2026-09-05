@@ -22,7 +22,6 @@ import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { TableExportMenu } from "@/components/table-export-menu";
-import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1CollectionsByCollectionId,
@@ -38,8 +37,8 @@ import {
 	putApiV1CollectionsByCollectionIdPermissionsGroupByGroupId,
 } from "@/lib/api/generated/client";
 import type {
-	EffectiveGroupPermission,
 	Collection,
+	EffectiveGroupPermission,
 	Permission,
 	Permissions as PermissionName,
 	UpdateCollection,
@@ -59,6 +58,8 @@ import {
 	formatCollectionPath,
 	isRootCollection,
 } from "@/lib/collection-hierarchy";
+import { canManageCollectionPermissions } from "@/lib/collection-permission-access";
+import { useConfirm } from "@/lib/confirm-context";
 import {
 	EDIT_STATE_EVENT,
 	type EditStateEventDetail,
@@ -68,7 +69,6 @@ import {
 	type ConsoleGroup,
 	formatScopedGroupName,
 } from "@/lib/identity-scopes";
-import { canManageCollectionPermissions } from "@/lib/collection-permission-access";
 import { useCurrentUserId } from "@/lib/use-current-user-id";
 import {
 	directoryLookupStatus,

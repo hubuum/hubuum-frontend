@@ -3,10 +3,11 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 
 /**
- * Identifier wrapper for a [`HubuumClassRelation`].
+ * Validated positive class relation id.
+ * @minimum 1
  */
 export type HubuumClassRelationID = number;

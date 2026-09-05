@@ -75,6 +75,8 @@ export function useDialogAccessibility({
 		const frame = window.requestAnimationFrame(() => {
 			const dialog = dialogRef.current;
 			if (!dialog) return;
+			// Do not undo navigation that happened before this frame ran.
+			if (dialog.contains(document.activeElement)) return;
 			const initialFocus = initialFocusSelector
 				? dialog.querySelector<HTMLElement>(initialFocusSelector)
 				: null;
@@ -87,6 +89,12 @@ export function useDialogAccessibility({
 			if (dialogStack.at(-1) !== dialogIdRef.current) return;
 
 			if (event.key === "Escape") {
+				// Let a nested lookup dismiss itself before dismissing its dialog.
+				if (
+					event.target instanceof Element &&
+					event.target.closest("[data-escape-popover]")
+				)
+					return;
 				event.preventDefault();
 				event.stopPropagation();
 				onCloseRef.current();

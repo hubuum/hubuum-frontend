@@ -115,69 +115,69 @@ export function LoginBackgroundPicker({
 
 		setSelection(nextSelection);
 		applyBackground(background);
-		window.localStorage.setItem(
-			LOGIN_BACKGROUND_STORAGE_KEY,
-			nextSelection,
-		);
+		window.localStorage.setItem(LOGIN_BACKGROUND_STORAGE_KEY, nextSelection);
 	}
 
 	const randomPreview = mountedOptions[0];
 
 	return (
-		<fieldset className="login-background-picker">
-			<legend>Background</legend>
-			<div className="login-background-options">
-				{backgrounds.slice(0, BUILTIN_BACKGROUNDS.length).map((item) => (
-					<button
-						key={item.id}
-						type="button"
-						className="login-background-option"
-						aria-pressed={selection === item.id}
-						onClick={() => chooseBackground(item.id)}
-					>
-						<span
-							className={`login-background-swatch login-background-swatch--${item.id}`}
-							aria-hidden="true"
-						/>
-						<span>{item.label}</span>
-					</button>
-				))}
-				{randomPreview ? (
-					<button
-						type="button"
-						className="login-background-option"
-						aria-pressed={selection === RANDOM_BACKGROUND_ID}
-						onClick={() => chooseBackground(RANDOM_BACKGROUND_ID)}
-					>
-						<span
-							className="login-background-swatch login-background-swatch--random"
-							style={
-								{
-									"--login-background-preview": `url("${randomPreview.url}")`,
-								} as CSSProperties
-							}
-							aria-hidden="true"
-						/>
-						<span>Random</span>
-					</button>
-				) : null}
-				{mountedOptions.map((item) => (
-					<button
-						key={item.id}
-						type="button"
-						className="login-background-option"
-						aria-pressed={selection === item.id}
-						onClick={() => chooseBackground(item.id)}
-					>
-						<span
-							className="login-background-swatch"
-							style={{ backgroundImage: `url("${item.url}")` }}
-							aria-hidden="true"
-						/>
-						<span>{item.label}</span>
-					</button>
-				))}
-			</div>
-		</fieldset>
+		<details className="login-appearance">
+			<summary>Appearance</summary>
+			<fieldset className="login-background-picker">
+				<legend>Background</legend>
+				<div className="login-background-options">
+					{backgrounds.slice(0, BUILTIN_BACKGROUNDS.length).map((item) => (
+						<button
+							key={item.id}
+							type="button"
+							className="login-background-option"
+							aria-pressed={selection === item.id}
+							onClick={() => chooseBackground(item.id)}
+						>
+							<span
+								className={`login-background-swatch login-background-swatch--${item.id}`}
+								aria-hidden="true"
+							/>
+							<span>{item.label}</span>
+						</button>
+					))}
+					{randomPreview ? (
+						<button
+							type="button"
+							className="login-background-option"
+							aria-pressed={selection === RANDOM_BACKGROUND_ID}
+							onClick={() => chooseBackground(RANDOM_BACKGROUND_ID)}
+						>
+							<span
+								className="login-background-swatch login-background-swatch--random"
+								style={
+									{
+										"--login-background-preview": `url("${randomPreview.url}")`,
+									} as CSSProperties
+								}
+								aria-hidden="true"
+							/>
+							<span>Random</span>
+						</button>
+					) : null}
+					{mountedOptions.map((item) => (
+						<button
+							key={item.id}
+							type="button"
+							className="login-background-option"
+							aria-pressed={selection === item.id}
+							onClick={() => chooseBackground(item.id)}
+						>
+							<span
+								className="login-background-swatch"
+								style={{ backgroundImage: `url("${item.url}")` }}
+								aria-hidden="true"
+							/>
+							<span>{item.label}</span>
+						</button>
+					))}
+				</div>
+			</fieldset>
+		</details>
 	);
 }

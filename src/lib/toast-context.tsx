@@ -14,7 +14,7 @@ type ToastAction = {
 	href: string;
 };
 
-type Toast = {
+export type Toast = {
 	id: string;
 	message: string;
 	type: ToastType;
@@ -40,11 +40,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 			const toast: Toast = { id, message, type, action };
 
 			setToasts((current) => [...current, toast]);
-
-			// Auto-dismiss after 4 seconds
-			setTimeout(() => {
-				setToasts((current) => current.filter((t) => t.id !== id));
-			}, 4000);
 		},
 		[],
 	);

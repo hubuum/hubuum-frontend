@@ -1,7 +1,59 @@
 "use client";
 
 import Link from "next/link";
-import { useToast } from "@/lib/toast-context";
+import { useEffect, useState } from "react";
+import { type Toast, useToast } from "@/lib/toast-context";
+
+function ToastMessage({
+	toast,
+	removeToast,
+}: {
+	toast: Toast;
+	removeToast: (id: string) => void;
+}) {
+	const [hovered, setHovered] = useState(false);
+	const [focused, setFocused] = useState(false);
+	useEffect(() => {
+		if (toast.type === "error" || toast.action || hovered || focused) return;
+		const timer = window.setTimeout(() => removeToast(toast.id), 6000);
+		return () => window.clearTimeout(timer);
+	}, [toast, hovered, focused, removeToast]);
+	return (
+		<output
+			className={`toast toast--${toast.type}`}
+			aria-live={toast.type === "error" ? "assertive" : "polite"}
+			onPointerEnter={() => setHovered(true)}
+			onPointerLeave={() => setHovered(false)}
+			onFocusCapture={() => setFocused(true)}
+			onBlurCapture={(event) => {
+				if (!event.currentTarget.contains(event.relatedTarget))
+					setFocused(false);
+			}}
+		>
+			<div className="toast-message">
+				{toast.action ? (
+					<Link
+						href={toast.action.href}
+						className="toast-link"
+						onClick={() => removeToast(toast.id)}
+					>
+						{toast.message}
+					</Link>
+				) : (
+					toast.message
+				)}
+			</div>
+			<button
+				type="button"
+				className="toast-close"
+				aria-label="Dismiss notification"
+				onClick={() => removeToast(toast.id)}
+			>
+				×
+			</button>
+		</output>
+	);
+}
 
 export function ToastContainer() {
 	const { toasts, removeToast } = useToast();
@@ -13,38 +65,7 @@ export function ToastContainer() {
 	return (
 		<div className="toast-container">
 			{toasts.map((toast) => (
-				<output
-					key={toast.id}
-					className={`toast toast--${toast.type}`}
-					aria-live="polite"
-				>
-					<div className="toast-message">
-						{toast.action ? (
-							<Link
-								href={toast.action.href}
-								className="toast-link"
-								onClick={() => removeToast(toast.id)}
-							>
-								{toast.message}
-							</Link>
-						) : (
-							toast.message
-						)}
-					</div>
-					<button
-						type="button"
-						className="toast-close"
-						onClick={() => removeToast(toast.id)}
-						aria-label="Dismiss notification"
-					>
-						<svg viewBox="0 0 24 24" aria-hidden="true">
-							<path
-								d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4z"
-								fill="currentColor"
-							/>
-						</svg>
-					</button>
-				</output>
+				<ToastMessage key={toast.id} toast={toast} removeToast={removeToast} />
 			))}
 		</div>
 	);

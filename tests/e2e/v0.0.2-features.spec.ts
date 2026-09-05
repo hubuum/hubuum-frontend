@@ -8,17 +8,14 @@ const bffPrefix = "/_hubuum-bff/hubuum";
 
 async function signIn(page: Page) {
 	await page.goto("/login");
-	await expect(
-		page.getByText(
-			/Choose the identity provider|Leave blank for local accounts/,
-		),
-	).toBeVisible();
 	const provider = page.locator("#identity-scope");
-	await expect(provider).toBeVisible();
+	await expect(
+		page.getByRole("form", { name: "Login form" }),
+	).not.toHaveAttribute("data-provider-discovery", "loading");
 	const providerSelect = page.locator("select#identity-scope");
 	if (await providerSelect.isVisible()) {
 		await providerSelect.selectOption(identityScope);
-	} else {
+	} else if ((await provider.getAttribute("type")) !== "hidden") {
 		await provider.fill(identityScope);
 	}
 	await page.getByLabel("Username").fill(username ?? "");
@@ -122,7 +119,9 @@ test.describe("v0.0.3 server features", () => {
 			page.getByText(/Read-only effective server settings/),
 		).toBeVisible();
 		await expect(
-			page.getByRole("heading", { name: "Backup & restore" }),
+			page.getByRole("heading", {
+				name: /^(?:Backup & restore|Recovery & permissions)$/,
+			}),
 		).toBeVisible();
 
 		await page.goto("/admin/backups");
@@ -738,7 +737,7 @@ test.describe("v0.0.3 server features", () => {
 			await expect
 				.poll(() => new URL(page.url()).searchParams.get("search"))
 				.toBe("e2e-host");
-			await page.getByRole("button", { name: "Group" }).click();
+			await page.getByRole("button", { name: "Aggregate" }).click();
 			const groupingMenu = page.getByRole("dialog", {
 				name: "Group objects",
 			});
@@ -926,13 +925,12 @@ test.describe("v0.0.3 server features", () => {
 				page.getByRole("heading", { name: objectName }),
 			).toBeVisible();
 
-			const activityPanel = page.getByRole("article").filter({
-				has: page.getByRole("heading", { name: "Object audit and history" }),
-			});
-			const auditSection = activityPanel.locator("section").filter({
-				has: page.getByText("Recent audit events", { exact: true }),
-			});
-			const auditEventRow = auditSection.locator("tbody tr").first();
+			await expect(
+				page.getByRole("heading", { name: "Object audit and history" }),
+			).toBeVisible();
+			const auditEventRow = page
+				.getByRole("row", { name: /^View details for audit event / })
+				.first();
 			await expect(auditEventRow).toBeVisible();
 			await auditEventRow.click();
 			const auditDialog = page.getByRole("dialog", {
@@ -958,10 +956,9 @@ test.describe("v0.0.3 server features", () => {
 			).toBeEnabled();
 			await auditDialog.getByRole("button", { name: "Close dialog" }).click();
 
-			const historySection = activityPanel.locator("section").filter({
-				has: page.getByText("Version history", { exact: true }),
-			});
-			const historyRow = historySection.locator("tbody tr").first();
+			const historyRow = page
+				.getByRole("row", { name: /^View details for history version / })
+				.first();
 			await expect(historyRow).toBeVisible();
 			await historyRow.click();
 			const historyDialog = page.getByRole("dialog", {
@@ -986,9 +983,11 @@ test.describe("v0.0.3 server features", () => {
 			await historyDialog.getByRole("button", { name: "Close dialog" }).click();
 
 			await page.goto("/audit");
-			const globalAuditRow = page.locator("tbody tr").first();
+			const globalAuditRow = page
+				.getByRole("row", { name: /^View details for event / })
+				.first();
 			await expect(globalAuditRow).toBeVisible();
-			await globalAuditRow.click();
+			await globalAuditRow.press("Enter");
 			const globalAuditDialog = page.getByRole("dialog", {
 				name: /Audit event #/,
 			});

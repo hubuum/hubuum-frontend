@@ -32,7 +32,6 @@ import {
 	fetchExportClasses,
 	fetchExportCollections,
 } from "@/lib/api/export-options";
-import { fetchClassObjectDirectory } from "@/lib/api/resource-directory";
 import {
 	createReportTemplate,
 	fetchReportOutput,
@@ -47,6 +46,7 @@ import {
 	type TaskResponse,
 	updateReportTemplate,
 } from "@/lib/api/reporting";
+import { fetchClassObjectDirectory } from "@/lib/api/resource-directory";
 import {
 	getTaskProgressPercent as getTaskProgress,
 	getTaskStatusTone,
@@ -57,17 +57,17 @@ import {
 	formatCollectionOption,
 } from "@/lib/collection-hierarchy";
 import {
+	buildExportTemplateSavePayload,
+	createExportTemplateDraft,
+	duplicateExportTemplateDraft,
 	type ExportTemplateDraft,
 	type ExportTemplateDraftErrors,
 	type ExportTemplateDraftField,
 	type ExportTemplateEditorSection,
 	type ExportTemplateValidationContext,
-	type HtmlDocumentMode,
-	buildExportTemplateSavePayload,
-	createExportTemplateDraft,
-	duplicateExportTemplateDraft,
 	filterClassesForCollection,
 	getEditorTabForErrors,
+	type HtmlDocumentMode,
 	parsePositiveInteger,
 	reportTemplateToExportTemplateDraft,
 	validateExportTemplateDraft,
@@ -84,8 +84,8 @@ import {
 	formatExportTimestamp as formatTimestamp,
 	getBookmarkableReportHref,
 	getExportResultHref,
-	getReportResultText as getResultText,
 	getReportConfigurationHref,
+	getReportResultText as getResultText,
 } from "@/lib/export-workspace";
 import {
 	type DiscoveredJsonField,
@@ -1709,7 +1709,17 @@ export function ExportTemplateEditor({
 												new TextEncoder().encode(testText).byteLength,
 											)}
 										</span>
-										<span>{testResult.warningCount} warning(s)</span>
+										<span
+											role="status"
+											className={
+												testResult.truncated || testResult.warningCount > 0
+													? "warning-banner"
+													: undefined
+											}
+										>
+											{testResult.truncated ? "Incomplete output · " : ""}
+											{testResult.warningCount} warning(s)
+										</span>
 										{testResult.truncated ? <span>Truncated</span> : null}
 									</div>
 									{testTaskId ? (

@@ -1,7 +1,8 @@
 "use client";
 
+import { json } from "@codemirror/lang-json";
 import type { ChangeEvent } from "react";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { CodeEditor } from "@/components/code-editor";
 import { readJsonFileAsPrettyText } from "@/lib/json-file";
@@ -12,7 +13,7 @@ import {
 	summarizeJsonDocument,
 	validateJsonAgainstSchema,
 } from "@/lib/json-inspector";
-import { json } from "@codemirror/lang-json";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 type JsonEditorProps = {
 	id: string;
@@ -54,9 +55,10 @@ export function JsonEditor({
 	validationEnabled = false,
 }: JsonEditorProps) {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
+	const [fileError, setFileError] = useState<string | null>(null);
+	const previewValue = useDebouncedValue(value, 250);
 	const jsonExtensions = useMemo(() => [json()], []);
-	const parsed = useMemo(() => parseJsonText(value), [value]);
-	const formattedValue = useMemo(() => formatJsonText(value), [value]);
+	const parsed = useMemo(() => parseJsonText(previewValue), [previewValue]);
 
 	const documentSummary = useMemo(() => {
 		if (parsed.kind !== "success") {
@@ -97,16 +99,18 @@ export function JsonEditor({
 		}
 
 		try {
+			setFileError(null);
 			const jsonText = await readJsonFileAsPrettyText(file);
 			onChange(jsonText);
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Failed to read JSON file.";
-			window.alert(message);
+			setFileError(message);
 		}
 	}
 
 	function onFormat() {
+		const formattedValue = formatJsonText(value);
 		if (!formattedValue) {
 			return;
 		}
@@ -134,7 +138,7 @@ export function JsonEditor({
 						type="button"
 						className="ghost"
 						onClick={onFormat}
-						disabled={disabled || !formattedValue}
+						disabled={disabled || !value.trim()}
 					>
 						Format JSON
 					</button>
@@ -161,13 +165,23 @@ export function JsonEditor({
 			/>
 
 			{helperText ? <div className="muted">{helperText}</div> : null}
+			{fileError ? (
+				<p className="error-banner" role="alert">
+					{fileError} Choose another JSON file.
+				</p>
+			) : null}
 
 			<div className="json-editor-meta">
+				{previewValue !== value ? (
+					<p className="muted" role="status">
+						Checking JSON…
+					</p>
+				) : null}
 				{parsed.kind === "empty" ? (
 					<div className="muted">JSON field is empty.</div>
 				) : null}
 
-				{parsed.kind === "error" ? (
+				{previewValue === value && parsed.kind === "error" ? (
 					<div className="error-banner">
 						{renderSyntaxErrorMessage(
 							parsed.error.message,

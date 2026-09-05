@@ -5,7 +5,7 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
+| `main` (unreleased) | `v0.0.11` | `ghcr.io/hubuum/hubuum-server:v0.0.11` |
 | `v0.0.13` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
 | `v0.0.12` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
 | `v0.0.11` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
@@ -21,12 +21,20 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Unreleased `main` validates the generated Server `v0.0.9`
+listed server tag. Unreleased `main` validates the generated Server `v0.0.11`
 contract and the live scoped and unscoped token lifecycles against
-`sha256:1f12baf882b6d3df5b4b2dbdf26aad0793274e57f86a2c186b8e1e68632db5db`.
+`sha256:c475cfa422dd075ae7827ed835bff323c2bf911158e4424fa3b2ff12363fe511`.
 A separate scheduled workflow tests the frontend against the moving backend
 `:main` image to surface future compatibility changes without making normal CI
 nondeterministic.
+
+Unreleased `main` uses Server `v0.0.11` API types, including structured search,
+storage backend configuration, and backup format version 5. Existing unified
+search and class-selection flows keep their current behavior. Runtime
+configuration uses the storage query budget while retaining the older database
+timeout field as a fallback. To recover from a version 4 backup, restore it using
+the older server before upgrading and creating a version 5 backup; the frontend submits
+backup documents to the server for validation without converting them.
 
 Compatibility means that authentication, session handling, and the frontend's
 core backend contract suite pass. Frontend `v0.0.2` relies on Server `v0.0.2`

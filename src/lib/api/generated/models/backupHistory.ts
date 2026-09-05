@@ -3,14 +3,15 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 import type { BackupHistorySections } from './backupHistorySections';
 
 /**
- * Privileged, restore-only table snapshots. In backup version 4, each section
- * name and row shape corresponds to the PostgreSQL table restored from it.
- * These are versioned disaster-recovery internals, not portable import data.
+ * Privileged, restore-only logical snapshots. Backup version 5 identifies
+ * sections by stable Hubuum resources rather than PostgreSQL tables. Each
+ * storage adapter explicitly maps its persistence layout to these versioned
+ * sections. These are disaster-recovery internals, not portable import data.
  */
 export interface BackupHistory {
   sections: BackupHistorySections;

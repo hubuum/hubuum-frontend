@@ -10,11 +10,12 @@ import type {
 } from "@/lib/api/generated/models";
 import { parseReportMaxAge } from "@/lib/report-max-age";
 import type { ReportResultStatus } from "@/lib/report-result-status";
+import { protectPrivateResponse } from "@/lib/security-policy";
+import { ServerTiming } from "@/lib/server-timing";
 import {
 	getTemplateReportRunStore,
 	type TemplateReportRunStore,
 } from "@/lib/template-report-run-store";
-import { ServerTiming } from "@/lib/server-timing";
 
 const REPORT_POLL_INTERVAL_MS = 50;
 const REPORT_WAIT_TIMEOUT_MS = 30_000;
@@ -298,12 +299,7 @@ function rawOutputResponse(upstream: Response): Response {
 		headers.set("X-Hubuum-Export-Truncated", truncated);
 	}
 
-	if (contentType.split(";")[0]?.trim().toLowerCase() === "text/html") {
-		headers.set(
-			"Content-Security-Policy",
-			"sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:",
-		);
-	}
+	protectPrivateResponse(headers);
 
 	return new Response(upstream.body, {
 		status: 200,

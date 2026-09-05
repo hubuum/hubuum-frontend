@@ -14,11 +14,13 @@ test("login, session validation, and logout work against a live backend", async 
 
 	await page.goto("/login");
 	const provider = page.locator("#identity-scope");
-	await expect(provider).toBeVisible();
+	await expect(
+		page.getByRole("form", { name: "Login form" }),
+	).not.toHaveAttribute("data-provider-discovery", "loading");
 	const providerSelect = page.locator("select#identity-scope");
 	if (await providerSelect.isVisible()) {
 		await providerSelect.selectOption(identityScope);
-	} else {
+	} else if ((await provider.getAttribute("type")) !== "hidden") {
 		await provider.fill(identityScope);
 	}
 	await page.getByLabel("Username").fill(username ?? "");
@@ -41,9 +43,7 @@ test("login, session validation, and logout work against a live backend", async 
 		username: "admin",
 	});
 
-	await page
-		.getByRole("button", { name: /Open account menu for/ })
-		.click();
+	await page.getByRole("button", { name: /Open account menu for/ }).click();
 	await page.getByRole("button", { name: "Sign out" }).click();
 	await page.waitForURL("**/login");
 

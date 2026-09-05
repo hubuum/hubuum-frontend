@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 
 export * from './addOperation';
@@ -63,6 +63,7 @@ export * from './eventDeliveryResponse';
 export * from './eventDeliveryStatus';
 export * from './eventDeliveryStatusCounts';
 export * from './eventDeliveryUpdateResponse';
+export * from './eventEntityId';
 export * from './eventFanoutHealth';
 export * from './eventResponse';
 export * from './eventSink';
@@ -260,6 +261,7 @@ export * from './personalComputedFieldDefinitionRequest';
 export * from './principalCollectionPermissions';
 export * from './principalID';
 export * from './principalKey';
+export * from './principalKind';
 export * from './principalMemberResponse';
 export * from './principalSettings';
 export * from './principalSettingsPatchDocument';
@@ -304,9 +306,26 @@ export * from './serviceAccountResponse';
 export * from './sharedComputedScopeResponse';
 export * from './sharedComputedScopeResponseErrors';
 export * from './sharedComputedScopeResponseValues';
+export * from './structuredClassSelector';
+export * from './structuredRelatedPredicate';
+export * from './structuredSearchDoneEvent';
+export * from './structuredSearchErrorEvent';
+export * from './structuredSearchExpression';
+export * from './structuredSearchField';
+export * from './structuredSearchFieldPredicate';
+export * from './structuredSearchOperator';
+export * from './structuredSearchRequest';
+export * from './structuredSearchResourceKind';
+export * from './structuredSearchResponse';
+export * from './structuredSearchResult';
+export * from './structuredSearchSort';
+export * from './structuredSearchSortDirection';
+export * from './structuredSearchStartedEvent';
+export * from './structuredSearchTarget';
 export * from './taskConfig';
 export * from './taskDetails';
 export * from './taskEventResponse';
+export * from './taskID';
 export * from './taskKind';
 export * from './taskLinks';
 export * from './taskProgress';

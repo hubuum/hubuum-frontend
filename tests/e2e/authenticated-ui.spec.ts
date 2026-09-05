@@ -29,11 +29,13 @@ test.describe("authenticated workspace", () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto("/login");
 		const provider = page.locator("#identity-scope");
-		await expect(provider).toBeVisible();
+		await expect(
+			page.getByRole("form", { name: "Login form" }),
+		).not.toHaveAttribute("data-provider-discovery", "loading");
 		const providerSelect = page.locator("select#identity-scope");
 		if (await providerSelect.isVisible()) {
 			await providerSelect.selectOption(identityScope);
-		} else {
+		} else if ((await provider.getAttribute("type")) !== "hidden") {
 			await provider.fill(identityScope);
 		}
 		await page.getByLabel("Username").fill(username ?? "");
@@ -242,15 +244,13 @@ test.describe("authenticated workspace", () => {
 			},
 		);
 
-		await page
-			.getByRole("button", { name: "Data", exact: true })
-			.click();
+		await page.getByRole("button", { name: "Data", exact: true }).click();
 
 		const classesLink = page.getByRole("link", {
 			name: "Classes: define object schemas inside collections",
 		});
 		await expect(classesLink).toHaveAttribute("href", "/classes");
-		await classesLink.focus();
+		await page.getByRole("button", { name: "Show Classes shortcuts" }).click();
 		const classPullout = page.getByRole("region", {
 			name: "Classes navigation",
 		});
@@ -258,15 +258,15 @@ test.describe("authenticated workspace", () => {
 		await expect(
 			classPullout.getByRole("link", { name: "Browse all" }),
 		).toHaveCount(0);
-		await expect(
-			classPullout.locator('a[href="/classes/17"]'),
-		).toContainText("Devices");
+		await expect(classPullout.locator('a[href="/classes/17"]')).toContainText(
+			"Devices",
+		);
 
 		const objectsLink = page.getByRole("link", {
 			name: "Objects: manage instances within classes",
 		});
 		await expect(objectsLink).toHaveAttribute("href", "/objects");
-		await objectsLink.focus();
+		await page.getByRole("button", { name: "Show Objects shortcuts" }).click();
 		const objectPullout = page.getByRole("region", {
 			name: "Objects navigation",
 		});
@@ -275,7 +275,7 @@ test.describe("authenticated workspace", () => {
 		).toHaveCount(0);
 		await expect(
 			objectPullout.locator('a[href="/objects?classId=17"]'),
-			).toContainText("Devices");
+		).toContainText("Devices");
 	});
 
 	test("cursor pagination follows browser Back and Forward history", async ({
@@ -563,15 +563,11 @@ test.describe("authenticated workspace", () => {
 				status: 200,
 				contentType: "application/json",
 				headers:
-					cursor === null
-						? { "X-Next-Cursor": "classes-page-2" }
-						: undefined,
+					cursor === null ? { "X-Next-Cursor": "classes-page-2" } : undefined,
 				body: JSON.stringify(
 					cursor === "classes-page-2"
 						? [buildClass(targetId)]
-						: Array.from({ length: 250 }, (_, index) =>
-								buildClass(index + 1),
-							),
+						: Array.from({ length: 250 }, (_, index) => buildClass(index + 1)),
 				),
 			});
 		});
@@ -688,22 +684,21 @@ test.describe("authenticated workspace", () => {
 				});
 			},
 		);
-		await page.route(
-			"**/_hubuum-bff/classes/251/objects?**",
-			async (route) => {
-				await route.fulfill({
-					status: 200,
-					contentType: "application/json",
-					body: "[]",
-				});
-			},
-		);
+		await page.route("**/_hubuum-bff/classes/251/objects?**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: "[]",
+			});
+		});
 
 		await page.goto("/objects?classId=251");
 		await expect(page).toHaveURL(/\/objects\?classId=251$/);
 		await expect(
-			page.locator(".resource-index-context-select"),
-		).toHaveText("Catalog entries (#251)");
+			page.getByRole("button", {
+				name: "Objects class context: Catalog entries",
+			}),
+		).toContainText("Catalog entries");
 		const exactClassRequest = classRequests.find(
 			(requestUrl) => requestUrl.searchParams.get("id__in") === "251",
 		);
@@ -747,8 +742,7 @@ test.describe("authenticated workspace", () => {
 		expect(
 			collectionRequests.some(
 				(requestUrl) =>
-					requestUrl.searchParams.get("name__icontains") ===
-						"collection-351" &&
+					requestUrl.searchParams.get("name__icontains") === "collection-351" &&
 					requestUrl.searchParams.get("include_total") === "false",
 			),
 		).toBe(true);
@@ -766,8 +760,12 @@ test.describe("authenticated workspace", () => {
 		});
 		await iamTrigger.click();
 		const iamPullout = page.getByRole("region", { name: "IAM navigation" });
-		await expect(iamPullout.getByRole("link", { name: /Users:/ })).toBeVisible();
-		await expect(iamPullout.getByRole("link", { name: /Groups:/ })).toBeVisible();
+		await expect(
+			iamPullout.getByRole("link", { name: /Users:/ }),
+		).toBeVisible();
+		await expect(
+			iamPullout.getByRole("link", { name: /Groups:/ }),
+		).toBeVisible();
 		await expect(
 			iamPullout.getByRole("link", { name: /Service accounts:/ }),
 		).toBeVisible();
@@ -784,7 +782,10 @@ test.describe("authenticated workspace", () => {
 		).toBeVisible();
 	});
 
-	test("events uses the in-page title format", async ({ page }) => {
+	test("events and search keep titles and actions in context", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
 		await page.goto("/admin/events");
 
 		await expect(page.locator(".topbar-heading")).toHaveCount(0);
@@ -797,6 +798,72 @@ test.describe("authenticated workspace", () => {
 				exact: true,
 			}),
 		).toBeVisible();
+
+		await page.route(`**${bffPrefix}/api/v1/search?*`, (route) =>
+			route.fulfill({
+				json: {
+					query: "nommo",
+					results: {
+						collections: [
+							{
+								id: 1,
+								name: "nommo",
+								description: "Search fixture",
+								parent_collection_id: null,
+								created_at: "2026-01-01T12:00:00Z",
+								updated_at: "2026-01-01T12:00:00Z",
+								revision: 1,
+							},
+						],
+						classes: [],
+						objects: [],
+					},
+					next: {},
+				},
+			}),
+		);
+		await page.goto("/search?q=nommo");
+		await expect(
+			page.getByRole("heading", { name: "Search", exact: true }),
+		).toHaveCount(0);
+		await expect(
+			page.getByRole("heading", { name: 'Results for "nommo"', exact: true }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("textbox", {
+				name: "Search collections, classes, and objects",
+			}),
+		).toHaveValue("nommo");
+		await expect(page.getByText("Search", { exact: true })).toHaveCount(0);
+		for (const [label, count] of [
+			["Collections", 1],
+			["Classes", 0],
+			["Objects", 0],
+		] as const) {
+			const section = page
+				.locator("section")
+				.filter({
+					has: page.getByRole("heading", {
+						name: `${label}: ${count}`,
+						exact: true,
+					}),
+				})
+				.last();
+			await expect(section).toBeVisible();
+			await expect(section.getByRole("table")).toHaveCount(count);
+			await expect(
+				section.getByRole("button", { name: "Download", exact: true }),
+			).toHaveCount(count);
+		}
+		await expect(
+			page.getByRole("button", { name: "Download", exact: true }),
+		).toBeEnabled();
+
+		await page.goto("/search");
+		await expect(
+			page.getByRole("heading", { name: "Unified search" }),
+		).toBeVisible();
+		await expect(page.getByText("Search", { exact: true })).toHaveCount(0);
 	});
 
 	test("topology dropdowns share left-edge anchoring", async ({ page }) => {
@@ -806,9 +873,7 @@ test.describe("authenticated workspace", () => {
 			const menu = trigger.locator("..").locator(".topology-nav-menu-items");
 			await expect(menu).toBeVisible();
 			await expect
-				.poll(() =>
-					menu.evaluate((element) => getComputedStyle(element).left),
-				)
+				.poll(() => menu.evaluate((element) => getComputedStyle(element).left))
 				.toBe("0px");
 			await trigger.click();
 		}
@@ -840,12 +905,10 @@ test.describe("authenticated workspace", () => {
 					? { accent: "blue", label: "Clouds", value: "clouds" }
 					: selectedLabel === "Forest"
 						? { accent: "pine", label: "Forest", value: "forest" }
-					: { accent: "rose", label: "Sunset", value: "sunset" };
+						: { accent: "rose", label: "Sunset", value: "sunset" };
 
 		try {
-			await atmosphere
-				.getByRole("button", { name: target.label })
-				.click();
+			await atmosphere.getByRole("button", { name: target.label }).click();
 			await expect(page.locator("html")).toHaveAttribute(
 				"data-atmosphere",
 				target.value,
@@ -900,7 +963,7 @@ test.describe("authenticated workspace", () => {
 		const resources = [
 			{
 				path: "/classes",
-				action: "Filter classes",
+				action: "Find classes on this page",
 			},
 			{
 				path: "/objects?classId=1",
@@ -1084,9 +1147,9 @@ test.describe("authenticated workspace", () => {
 		expect(classRelationRequests).toHaveLength(2);
 		expect(classRelationRequests[0]?.searchParams.get("limit")).toBe("250");
 		expect(classRelationRequests[0]?.searchParams.get("sort")).toBe("id.asc");
-		expect(
-			classRelationRequests[0]?.searchParams.get("include_total"),
-		).toBe("false");
+		expect(classRelationRequests[0]?.searchParams.get("include_total")).toBe(
+			"false",
+		);
 		expect(classRelationRequests[0]?.searchParams.has("cursor")).toBe(false);
 		expect(classRelationRequests[1]?.searchParams.get("cursor")).toBe(
 			"relation-page-2",
@@ -1193,9 +1256,7 @@ test.describe("authenticated workspace", () => {
 			},
 		);
 
-		await page.goto(
-			"/relations/classes?classId=1&classView=connected",
-		);
+		await page.goto("/relations/classes?classId=1&classView=connected");
 		await expect(
 			page.getByRole("row").filter({ hasText: lateClass.name }),
 		).toBeVisible();
@@ -1204,9 +1265,9 @@ test.describe("authenticated workspace", () => {
 		expect(relatedClassRequests[0]?.searchParams.get("sort")).toBe(
 			"path.asc,id.asc",
 		);
-		expect(
-			relatedClassRequests[0]?.searchParams.get("include_total"),
-		).toBe("false");
+		expect(relatedClassRequests[0]?.searchParams.get("include_total")).toBe(
+			"false",
+		);
 		expect(relatedClassRequests[1]?.searchParams.get("cursor")).toBe(
 			"connected-class-page-2",
 		);
@@ -1275,27 +1336,24 @@ test.describe("authenticated workspace", () => {
 				});
 			},
 		);
-		await page.route(
-			"**/_hubuum-bff/classes/1/objects?**",
-			async (route) => {
-				const requestUrl = new URL(route.request().url());
-				objectDirectoryRequests.push(requestUrl);
-				const exactIds = requestUrl.searchParams.get("id__in");
-				const nameSearch = requestUrl.searchParams.get("name__icontains");
-				await route.fulfill({
-					status: 200,
-					contentType: "application/json",
-					body: JSON.stringify(
-						exactIds === String(bookmarkedObject.id)
-							? [bookmarkedObject]
-							: exactIds === String(replacementObject.id) ||
-									nameSearch === "Replacement source object"
-								? [replacementObject]
-								: [],
-					),
-				});
-			},
-		);
+		await page.route("**/_hubuum-bff/classes/1/objects?**", async (route) => {
+			const requestUrl = new URL(route.request().url());
+			objectDirectoryRequests.push(requestUrl);
+			const exactIds = requestUrl.searchParams.get("id__in");
+			const nameSearch = requestUrl.searchParams.get("name__icontains");
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify(
+					exactIds === String(bookmarkedObject.id)
+						? [bookmarkedObject]
+						: exactIds === String(replacementObject.id) ||
+								nameSearch === "Replacement source object"
+							? [replacementObject]
+							: [],
+				),
+			});
+		});
 		await page.route(
 			"**/api/v1/classes/1/objects/*/related/objects?**",
 			async (route) => {
@@ -1313,18 +1371,13 @@ test.describe("authenticated workspace", () => {
 		await expect(
 			page.getByText(bookmarkedObject.name, { exact: true }),
 		).toBeVisible();
-		await expect(page).toHaveURL(
-			new RegExp(`objectId=${bookmarkedObject.id}`),
-		);
+		await expect(page).toHaveURL(new RegExp(`objectId=${bookmarkedObject.id}`));
 		const bookmarkedRequest = objectDirectoryRequests.find(
 			(requestUrl) =>
-				requestUrl.searchParams.get("id__in") ===
-				String(bookmarkedObject.id),
+				requestUrl.searchParams.get("id__in") === String(bookmarkedObject.id),
 		);
 		expect(bookmarkedRequest?.searchParams.get("limit")).toBe("50");
-		expect(bookmarkedRequest?.searchParams.get("include_total")).toBe(
-			"false",
-		);
+		expect(bookmarkedRequest?.searchParams.get("include_total")).toBe("false");
 
 		await page.getByRole("button", { name: "Find object" }).click();
 		await page
@@ -1418,8 +1471,7 @@ test.describe("authenticated workspace", () => {
 					const inputBounds = input.getBoundingClientRect();
 					const searchBounds = search.getBoundingClientRect();
 					const downloadBounds = download.getBoundingClientRect();
-					const centerY = (bounds: DOMRect) =>
-						bounds.top + bounds.height / 2;
+					const centerY = (bounds: DOMRect) => bounds.top + bounds.height / 2;
 					return (
 						getComputedStyle(element).display === "grid" &&
 						downloadBounds.right <= inputBounds.left &&
@@ -1439,8 +1491,8 @@ test.describe("authenticated workspace", () => {
 		expect(
 			await toolsShareOneRow(
 				".collections-table-tools",
-				"Filter loaded collections",
-				"Filter collections",
+				"Find collections on this loaded page",
+				"Find collections on this page",
 			),
 		).toBe(true);
 
@@ -1456,8 +1508,8 @@ test.describe("authenticated workspace", () => {
 		expect(
 			await toolsShareOneRow(
 				".classes-table-tools",
-				"Filter loaded classes",
-				"Filter classes",
+				"Find classes on this loaded page",
+				"Find classes on this page",
 			),
 		).toBe(true);
 
@@ -1481,7 +1533,8 @@ test.describe("authenticated workspace", () => {
 		).toBeLessThanOrEqual(36);
 		expect(
 			Math.abs(
-				((headerRowBounds?.y ?? 0) + (headerRowBounds?.height ?? 0) / 2) -
+				(headerRowBounds?.y ?? 0) +
+					(headerRowBounds?.height ?? 0) / 2 -
 					((selectAllBounds?.y ?? 0) + (selectAllBounds?.height ?? 0) / 2),
 			),
 		).toBeLessThanOrEqual(1);
@@ -1542,9 +1595,9 @@ test.describe("authenticated workspace", () => {
 		);
 		const beforeTableLeft = beforeLastResize[0]?.left ?? 0;
 		const afterTableLeft = afterLastResize[0]?.left ?? 0;
-		expect(
-			afterLastResize.map(({ left }) => left - afterTableLeft),
-		).toEqual(beforeLastResize.map(({ left }) => left - beforeTableLeft));
+		expect(afterLastResize.map(({ left }) => left - afterTableLeft)).toEqual(
+			beforeLastResize.map(({ left }) => left - beforeTableLeft),
+		);
 		expect(afterLastResize[4]?.width).toBe(
 			(beforeLastResize[4]?.width ?? 0) + lastDragDistance,
 		);
@@ -1621,14 +1674,16 @@ test.describe("authenticated workspace", () => {
 			heading.getByRole("heading", { name: "Objects" }),
 		).toBeVisible();
 		await expect(
-			heading.locator(".resource-index-context-select"),
-		).toHaveText("Math (#1)");
+			heading.getByRole("button", { name: "Objects class context" }),
+		).toContainText("Math");
 		await expect(summary).toContainText("2/9");
 		await expect(create).toBeVisible();
 		await expect(page.locator(".fab--create")).toBeHidden();
 		await expect(page.locator(".topbar .topbar-left")).toHaveCount(0);
 		await expect(
-			page.locator(".topbar .resource-index-context-select"),
+			page
+				.locator(".topbar")
+				.getByRole("button", { name: "Objects class context" }),
 		).toHaveCount(0);
 
 		const exportSearchTools = card.locator(".object-export-search-tools");
@@ -1736,16 +1791,16 @@ test.describe("authenticated workspace", () => {
 			const topbar = page.locator(".topbar");
 			const navigation = topbar.locator(".topology-navigation--topbar");
 			const resourceCard = page.locator(".objects-resource-index");
-			const classSelect = resourceCard.locator(
-				".resource-index-context-select",
-			);
+			const classSelect = resourceCard.getByRole("button", {
+				name: "Objects class context",
+			});
 			await expect(navigation).toBeVisible();
 			await expect(page.locator(".sidebar.card")).toBeHidden();
 			await expect(resourceCard).toBeVisible();
 			await expect(classSelect).toBeVisible();
 			await expect(topbar.locator(".topbar-left")).toHaveCount(0);
 			await expect(
-				topbar.locator(".resource-index-context-select"),
+				topbar.getByRole("button", { name: "Objects class context" }),
 			).toHaveCount(0);
 
 			const layout = await page.evaluate(() => {
@@ -1760,7 +1815,7 @@ test.describe("authenticated workspace", () => {
 					".objects-resource-index",
 				);
 				const selectElement = document.querySelector<HTMLElement>(
-					".objects-resource-index .resource-index-context-select",
+					'[aria-label^="Objects class context:"]',
 				);
 				const utilitiesElement =
 					document.querySelector<HTMLElement>(".topbar-right");
@@ -1866,9 +1921,7 @@ test.describe("authenticated workspace", () => {
 		const before = await readAtmosphere();
 
 		try {
-			await atmosphere
-				.getByRole("button", { name: targetLabel })
-				.click();
+			await atmosphere.getByRole("button", { name: targetLabel }).click();
 			await expect(page.locator("html")).toHaveAttribute(
 				"data-atmosphere",
 				targetAtmosphere,
@@ -1882,9 +1935,7 @@ test.describe("authenticated workspace", () => {
 			expect(after.haze).not.toBe(before.haze);
 			expect(after.topbarBackground).not.toBe(before.topbarBackground);
 		} finally {
-			await atmosphere
-				.getByRole("button", { name: selectedLabel })
-				.click();
+			await atmosphere.getByRole("button", { name: selectedLabel }).click();
 		}
 	});
 
@@ -1994,9 +2045,7 @@ test.describe("authenticated workspace", () => {
 					status: 200,
 					contentType: "application/json",
 					headers:
-						isExactLookup &&
-						!cursor &&
-						normalizedSearch === "shared"
+						isExactLookup && !cursor && normalizedSearch === "shared"
 							? { "X-Next-Cursor": "collection-page-2" }
 							: undefined,
 					body: JSON.stringify(collections),
@@ -2014,9 +2063,7 @@ test.describe("authenticated workspace", () => {
 		});
 		await page.goto("/imports");
 		await importsReady;
-		await expect(
-			page.getByText("Loading previous imports..."),
-		).toBeHidden();
+		await expect(page.getByText("Loading previous imports...")).toBeHidden();
 
 		await page.locator('input[type="file"]').setInputFiles({
 			name: "large-directory-import.json",
@@ -2063,9 +2110,7 @@ test.describe("authenticated workspace", () => {
 		await page
 			.getByRole("spinbutton", { name: "Delegate group override" })
 			.fill("");
-		await page
-			.getByRole("combobox")
-			.selectOption("existing_override");
+		await page.getByRole("combobox").selectOption("existing_override");
 		await expect(
 			page.getByText(/Multiple visible collections are named Shared/),
 		).toBeVisible();
@@ -2076,8 +2121,7 @@ test.describe("authenticated workspace", () => {
 		await page.getByRole("button", { name: "Find collection" }).click();
 		await page.getByLabel("Collection name or ID").fill("Unique");
 		await page.getByRole("option", { name: /Unique.*#252/ }).click();
-		await expect(page.getByText("Selected: Unique (#252)"))
-			.toBeVisible();
+		await expect(page.getByText("Selected: Unique (#252)")).toBeVisible();
 		await expect(
 			page.getByRole("button", { name: "Continue to policies" }),
 		).toBeEnabled();
@@ -3063,9 +3107,7 @@ test.describe("authenticated workspace", () => {
 
 		const selectRelatedClass = async (name: string) => {
 			await page.getByRole("button", { name: "Find class" }).click();
-			await page
-				.getByRole("combobox", { name: "Class name" })
-				.fill(name);
+			await page.getByRole("combobox", { name: "Class name" }).fill(name);
 			await page
 				.getByRole("listbox", { name: "Find class search results" })
 				.getByRole("option")

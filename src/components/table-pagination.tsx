@@ -15,6 +15,7 @@ type TablePaginationProps = {
 	onFirstPage: () => void;
 	currentCount: number;
 	totalCount?: number | null;
+	busy?: boolean;
 };
 
 export function TablePagination({
@@ -25,20 +26,22 @@ export function TablePagination({
 	onFirstPage,
 	currentCount,
 	totalCount = null,
+	busy = false,
 }: TablePaginationProps) {
 	const paginationId = useId();
 
 	useEffect(() => {
 		return registerPaginationShortcut(paginationId, {
-			canGoNext: () => hasNextPage,
-			canGoPrev: () => hasPrevPage,
-			canGoFirst: () => hasPrevPage,
+			canGoNext: () => hasNextPage && !busy,
+			canGoPrev: () => hasPrevPage && !busy,
+			canGoFirst: () => hasPrevPage && !busy,
 			onNextPage,
 			onPrevPage,
 			onFirstPage,
 		});
 	}, [
 		paginationId,
+		busy,
 		hasNextPage,
 		hasPrevPage,
 		onNextPage,
@@ -53,6 +56,7 @@ export function TablePagination({
 	return (
 		<div
 			className="table-pagination"
+			aria-busy={busy}
 			onFocusCapture={() => markPaginationActive(paginationId)}
 			onPointerDownCapture={() => markPaginationActive(paginationId)}
 		>
@@ -65,6 +69,7 @@ export function TablePagination({
 					<button
 						type="button"
 						className="ghost table-pagination-action"
+						disabled={busy}
 						onClick={() => {
 							markPaginationActive(paginationId);
 							onPrevPage();
@@ -77,6 +82,7 @@ export function TablePagination({
 					<button
 						type="button"
 						className="ghost table-pagination-action"
+						disabled={busy}
 						onClick={() => {
 							markPaginationActive(paginationId);
 							onNextPage();
@@ -88,7 +94,12 @@ export function TablePagination({
 			</div>
 			<div className="table-pagination-controls">
 				{hasPrevPage ? (
-					<button type="button" className="ghost" onClick={onFirstPage}>
+					<button
+						type="button"
+						className="ghost"
+						onClick={onFirstPage}
+						disabled={busy}
+					>
 						First
 					</button>
 				) : null}

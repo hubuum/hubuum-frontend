@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 
 export type GetApiV1ClassesByNameByClassNameObjectsParams = {
@@ -15,6 +15,20 @@ include?: string;
  * Sort by object fields or computed.shared.<key>/computed.personal.<key>; computed sorting supports at most two explicit sort fields
  */
 sort?: string;
+/**
+ * Required exact target-class selector for a named related group; use class.id instead for an integer ID
+ */
+'related.<alias>.class.name'?: string;
+/**
+ * Target-object predicate correlated within the named group; supports id, name, description, collection_id, created_at, updated_at, revision, and json_data
+ */
+'related.<alias>.object.<field>__<operator>'?: string;
+/**
+ * Maximum bidirectional relationship depth for the named group; defaults to 1 and is capped at 10
+ * @minimum 1
+ * @maximum 10
+ */
+'related.<alias>.depth__lte'?: number;
 /**
  * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
  * @minimum 1

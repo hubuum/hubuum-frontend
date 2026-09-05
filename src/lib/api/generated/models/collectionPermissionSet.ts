@@ -3,21 +3,21 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 import type { Permission } from './permission';
 import type { ResourceRevision } from './resourceRevision';
 
 /**
- * The revisioned, SQL-owned authorization state for a collection.
+ * The revisioned authorization grant set for a collection.
  *
- * Individual permission rows are implementation details of this aggregate;
+ * Individual grants are implementation details of this aggregate;
  * callers condition mutations on the revision of the complete set.
  */
 export interface CollectionPermissionSet {
   collection_id: number;
   /**
-     * ACL rows contain stable group identifiers without embedding mutable
+     * ACL entries contain stable group identifiers without embedding mutable
      * group representations that are outside this aggregate's revision.
      */
   permissions: Permission[];

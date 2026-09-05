@@ -40,6 +40,90 @@ async function prepareLogin(
 }
 
 test.describe("public accessibility", () => {
+	test("a sole provider is implicit and password visibility is controllable", async ({
+		page,
+	}) => {
+		await page.route("**/_hubuum-bff/auth/providers", (route) =>
+			route.fulfill({ json: { providers: ["local"] } }),
+		);
+		await page.goto("/login");
+		await expect(
+			page.getByRole("heading", { name: "Sign in to Hubuum" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("form", { name: "Login form" }),
+		).toHaveAttribute("data-provider-discovery", "available");
+		await expect(
+			page.getByRole("combobox", { name: "Authentication provider" }),
+		).toHaveCount(0);
+		await expect(page.locator('input[name="identity_scope"]')).toHaveValue(
+			"local",
+		);
+		await page.getByLabel("Password", { exact: true }).fill("visibility-test");
+		await page.getByRole("button", { name: "Show password" }).click();
+		await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
+			"type",
+			"text",
+		);
+		await page.getByRole("button", { name: "Hide password" }).click();
+		await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
+			"type",
+			"password",
+		);
+		await expect(
+			page.getByRole("button", { name: "Sunset", exact: true }),
+		).toBeHidden();
+		await page.getByText("Appearance", { exact: true }).click();
+		await expect(
+			page.getByRole("button", { name: "Sunset", exact: true }),
+		).toBeVisible();
+	});
+
+	test("each document gets a fresh CSP nonce and rejects untrusted inline scripts", async ({
+		page,
+		request,
+	}) => {
+		const first = await request.get("/login");
+		const second = await request.get("/login");
+		const policy = first.headers()["content-security-policy"];
+		const scriptPolicy = policy
+			.split(";")
+			.find((directive) => directive.trim().startsWith("script-src"));
+		expect(scriptPolicy).toContain("'nonce-");
+		expect(scriptPolicy).not.toContain("'unsafe-inline'");
+		expect(second.headers()["content-security-policy"]).not.toBe(policy);
+		await prepareLogin(page, "light");
+		await expect(
+			page.getByRole("form", { name: "Login form" }),
+		).not.toHaveAttribute("data-provider-discovery", "loading");
+		await page.getByRole("button", { name: "Show password" }).click();
+		await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
+			"type",
+			"text",
+		);
+		await page.route("**/login", async (route) => {
+			const response = await route.fetch();
+			const nonce = response
+				.headers()
+				["content-security-policy"].match(/'nonce-([^']+)'/)?.[1];
+			expect(nonce).toBeTruthy();
+			const html = (await response.text()).replace(
+				"</body>",
+				`<script>document.documentElement.dataset.untrustedScript = 'executed'</script><script nonce="${nonce}">document.documentElement.dataset.trustedScript = 'executed'</script></body>`,
+			);
+			await route.fulfill({ response, body: html });
+		});
+		await page.goto("/login");
+		await expect(page.locator("html")).toHaveAttribute(
+			"data-trusted-script",
+			"executed",
+		);
+		await expect(page.locator("html")).not.toHaveAttribute(
+			"data-untrusted-script",
+			"executed",
+		);
+	});
+
 	for (const theme of themes) {
 		test(`login has no serious accessibility violations in ${theme} mode`, async ({
 			page,
@@ -213,6 +297,7 @@ test.describe("public accessibility", () => {
 		page,
 	}) => {
 		await prepareLogin(page, "light");
+		await page.getByText("Appearance", { exact: true }).click();
 		await expect(
 			page.getByRole("button", { name: "Sunset", pressed: true }),
 		).toBeVisible();
@@ -231,10 +316,9 @@ test.describe("public accessibility", () => {
 		await expect
 			.poll(() =>
 				page.evaluate(() => ({
-					background:
-						getComputedStyle(
-							document.querySelector(".auth-background") as HTMLElement,
-						).backgroundImage,
+					background: getComputedStyle(
+						document.querySelector(".auth-background") as HTMLElement,
+					).backgroundImage,
 					buttonColor: getComputedStyle(
 						document.querySelector(".login-submit") as HTMLElement,
 					).backgroundColor,
@@ -256,16 +340,13 @@ test.describe("public accessibility", () => {
 			)
 			.toBe("rgb(47, 88, 164)");
 
-		await page
-			.getByRole("button", { name: "Forest", exact: true })
-			.click();
+		await page.getByRole("button", { name: "Forest", exact: true }).click();
 		await expect
 			.poll(() =>
 				page.evaluate(() => ({
-					background:
-						getComputedStyle(
-							document.querySelector(".auth-background") as HTMLElement,
-						).backgroundImage,
+					background: getComputedStyle(
+						document.querySelector(".auth-background") as HTMLElement,
+					).backgroundImage,
 					buttonColor: getComputedStyle(
 						document.querySelector(".login-submit") as HTMLElement,
 					).backgroundColor,
@@ -279,6 +360,7 @@ test.describe("public accessibility", () => {
 			});
 
 		await page.reload();
+		await page.getByText("Appearance", { exact: true }).click();
 		await expect(
 			page.getByRole("button", {
 				name: "Forest",
@@ -378,7 +460,7 @@ test.describe("Stillwater design language", () => {
 		expect(
 			new Set(
 				Object.values(atmosphere).map((palette) => JSON.stringify(palette)),
-		).size,
+			).size,
 		).toBe(8);
 	});
 
@@ -415,9 +497,7 @@ test.describe("Stillwater design language", () => {
 					}
 					context.fillStyle = color;
 					context.fillRect(0, 0, 1, 1);
-					return Array.from(
-						context.getImageData(0, 0, 1, 1).data.slice(0, 3),
-					);
+					return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
 				};
 				const luminance = (channels: number[]) =>
 					channels
@@ -489,8 +569,7 @@ test.describe("public visual regression", () => {
 				await prepareLogin(page, theme);
 				// Runner CPU text antialiasing affects about 1.35% of tablet pixels;
 				// the stale UI baselines this suite caught differed by at least 3%.
-				const maxDiffPixelRatio =
-					viewport.name === "tablet" ? 0.015 : 0.01;
+				const maxDiffPixelRatio = viewport.name === "tablet" ? 0.015 : 0.01;
 				await expect(page).toHaveScreenshot(
 					`login-${viewport.name}-${theme}.png`,
 					{
@@ -507,21 +586,18 @@ test.describe("public visual regression", () => {
 		test(`login forest desktop ${theme}`, async ({ page }) => {
 			await page.setViewportSize({ width: 1440, height: 1000 });
 			await prepareLogin(page, theme);
-			await page
-				.getByRole("button", { name: "Forest", exact: true })
-				.click();
+			await page.getByText("Appearance", { exact: true }).click();
+			await page.getByRole("button", { name: "Forest", exact: true }).click();
+			await page.getByText("Appearance", { exact: true }).click();
 			await expect(page.locator(".auth-background")).toHaveCSS(
 				"background-image",
 				/forest\.webp/,
 			);
-			await expect(page).toHaveScreenshot(
-				`login-forest-desktop-${theme}.png`,
-				{
-					animations: "disabled",
-					fullPage: true,
-					maxDiffPixelRatio: 0.01,
-				},
-			);
+			await expect(page).toHaveScreenshot(`login-forest-desktop-${theme}.png`, {
+				animations: "disabled",
+				fullPage: true,
+				maxDiffPixelRatio: 0.01,
+			});
 		});
 	}
 });

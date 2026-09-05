@@ -4,10 +4,11 @@ import type { HubuumClassExpanded } from "@/lib/api/generated/models";
 
 export async function fetchExpandedClass(
 	classId: number,
+	signal?: AbortSignal,
 ): Promise<HubuumClassExpanded> {
 	const response = await fetch(
 		`${hubuumBffPath(`/api/v1/classes/${classId}`)}?include=collection`,
-		{ credentials: "include" },
+		{ credentials: "include", ...(signal ? { signal } : {}) },
 	);
 	const text = await response.text();
 	let payload: unknown = null;

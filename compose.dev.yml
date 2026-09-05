@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     read_only: true
     tmpfs:
-      - /data:size=32m,uid=999,gid=1000,mode=0700
+      - /data:size=32m,mode=1777
       - /tmp:size=16m,mode=1777
     ports:
       - "127.0.0.1:${VALKEY_DEV_PORT:-6379}:6379"

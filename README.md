@@ -12,7 +12,7 @@ Next.js frontend scaffold for the Hubuum REST API, built for secure horizontal s
 - TanStack Query for snappy client-side data fetching
 - OpenAPI generator wiring (`orval`) for typed client generation from `openapi.json`
 - Biome-based linting (`npm run lint`)
-- Baseline security headers (CSP, frame-ancestors, referrer policy, etc.)
+- Per-request script nonces and baseline security headers (CSP, frame-ancestors, referrer policy, etc.)
 - Multi-stage Dockerfile suitable for OKD deployments
 
 ## Architecture
@@ -34,6 +34,19 @@ path in the `next` query parameter, and explain that the session expired. A
 sign the user out.
 
 This keeps pods stateless and horizontally scalable. Any pod can serve any authenticated request as long as it can read the same Valkey instance.
+
+Application documents are dynamically rendered with a fresh CSP nonce. Production
+scripts require that nonce or trust inherited from a nonce-authorized script;
+development additionally permits evaluation for Next.js tooling. Runtime editor
+and resizing styles still require inline styles. BFF responses are private and
+must not be stored by shared caches. Active report content (HTML, XHTML, SVG) is
+sandboxed without scripts or same-origin privileges on both report routes and the
+generic proxy. Export warning and truncation headers remain visible to the UI.
+
+Sign-out waits briefly for pending preference saves, then always attempts to end
+the session. A failed sign-out keeps the workspace visible with a persistent error
+and a retry instruction. Local logout proceeds even when backend token revocation
+times out.
 
 ## BFF route layout
 
@@ -110,7 +123,9 @@ the matching configured authentication provider. After login, the BFF verifies
 the issued token against `/api/v1/iam/me`. This prevents an older backend that
 ignores the new field from accidentally authenticating a same-named local user.
 When the public provider-discovery endpoint is available, the form presents its
-scopes as a select menu. A missing, failed, or malformed discovery
+scopes as a select menu when multiple options exist; a sole provider is
+selected implicitly. The password field has a visibility toggle, and optional
+background choices live under Appearance. A missing, failed, or malformed discovery
 response keeps the manual identity-scope field available for older servers.
 
 Principal and group labels include their non-local scope where names can be
@@ -151,6 +166,34 @@ service accounts cannot receive new tokens. Local group membership editors can
 add either human users or service accounts by name, and each service-account
 detail page lists its current runtime group memberships separately from its
 owner group.
+
+## Workspace navigation and resource selection
+
+Use **Go to…** or **Ctrl/Cmd+K** to find a workspace destination, pinned resource,
+or the current page's create action. Up to three pinned destinations also appear
+as direct links below the toolbar. Data-menu destination links and shortcut
+expansion buttons are separate controls. Mobile navigation traps keyboard focus
+while open and returns it to its trigger when closed.
+
+The Objects class picker searches all accessible classes, loads more options
+with cursor pagination, and resolves selected IDs independently of the first
+option page. Options include IDs and collection context to distinguish duplicate
+names. Collection lookups fetch matching resources on demand and retain exact
+ID entry. Supporting class and collection lists follow every cursor instead of
+stopping at 250 entries. Lookup popovers stay within the viewport when opened or
+resized.
+
+**Find on this page** filters only the loaded rows. Classes and Collections also
+provide **Search all** links to the full resource search. While a table changes
+page, the previous rows remain visible with an updating indicator and disabled
+row actions; pagination and sort changes preserve the scroll position. Arrow and
+Enter shortcuts operate only within the focused table and preserve native form,
+button, and link behavior.
+
+JSON editor code loads when needed. Validation and document summaries wait for a
+short typing pause; formatting runs only when requested. Error notifications and
+notifications containing actions persist until dismissed. Ordinary notifications
+pause while hovered or focused.
 
 ## Object data columns
 
@@ -433,7 +476,7 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Current `main` development is validated against Hubuum Server `v0.0.9`.
+Current `main` development is validated against Hubuum Server `v0.0.11`.
 Hubuum Frontend `v0.0.13` is validated against Server `v0.0.9`.
 Releases provide:
 
@@ -474,7 +517,7 @@ server image:
 npm run test:live-backend
 ```
 
-The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.9`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.11`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
@@ -488,7 +531,7 @@ replaces the live test database.
 
 Useful overrides:
 
-- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.9`
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.11`
 - `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
 - `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
 - `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`

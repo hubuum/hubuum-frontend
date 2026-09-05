@@ -3,7 +3,9 @@
 import {
 	type KeyboardEvent,
 	type ReactNode,
+	type RefObject,
 	useEffect,
+	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
@@ -30,6 +32,13 @@ type DirectoryLookupPopoverProps<T> = {
 	placeholder: string;
 	value: string;
 	variant?: "inline" | "popover";
+	triggerLabel?: string;
+	triggerAccessibleLabel?: string;
+	onOpenChange?: (open: boolean) => void;
+	onLoadMore?: () => void;
+	loadingMore?: boolean;
+	buttonId?: string;
+	buttonRef?: RefObject<HTMLButtonElement | null>;
 };
 
 function IconSearch() {
@@ -56,10 +65,18 @@ export function DirectoryLookupPopover<T>({
 	placeholder,
 	value,
 	variant = "popover",
+	triggerLabel = "Find",
+	triggerAccessibleLabel,
+	onOpenChange,
+	onLoadMore,
+	loadingMore = false,
+	buttonRef,
+	buttonId,
 }: DirectoryLookupPopoverProps<T>) {
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const triggerRef = useRef<HTMLButtonElement | null>(null);
 	const inputRef = useRef<HTMLInputElement | null>(null);
+	const popoverRef = useRef<HTMLDivElement | null>(null);
 	const [open, setOpen] = useState(false);
 	const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
 	const inline = variant === "inline";
@@ -69,6 +86,36 @@ export function DirectoryLookupPopover<T>({
 	const listboxId = `${idPrefix}-options`;
 	const helperId = `${idPrefix}-lookup-hint`;
 	const popoverId = `${idPrefix}-popover`;
+	useLayoutEffect(() => {
+		if (!open || inline) return;
+		const root = rootRef.current;
+		const popover = popoverRef.current;
+		if (!root || !popover) return;
+		const position = () => {
+			const anchor = root.getBoundingClientRect();
+			const width = popover.getBoundingClientRect().width;
+			const left = Math.max(
+				8,
+				Math.min(anchor.left, document.documentElement.clientWidth - width - 8),
+			);
+			popover.style.left = `${left - anchor.left}px`;
+			popover.style.right = "auto";
+		};
+		position();
+		const observer = new ResizeObserver(position);
+		observer.observe(root);
+		observer.observe(popover);
+		window.addEventListener("resize", position);
+		window.addEventListener("scroll", position, true);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener("resize", position);
+			window.removeEventListener("scroll", position, true);
+		};
+	}, [inline, open]);
+	useEffect(() => {
+		onOpenChange?.(open);
+	}, [onOpenChange, open]);
 
 	function optionId(option: DirectoryLookupOption<T>): string {
 		return `${idPrefix}-option-${option.id}`;
@@ -228,16 +275,24 @@ export function DirectoryLookupPopover<T>({
 	}
 
 	return (
-		<div className="directory-lookup" ref={rootRef}>
+		<div
+			className="directory-lookup"
+			ref={rootRef}
+			data-escape-popover={open ? "" : undefined}
+		>
 			<button
-				ref={triggerRef}
+				id={buttonId}
+				ref={(node) => {
+					triggerRef.current = node;
+					if (buttonRef) buttonRef.current = node;
+				}}
 				type="button"
 				className="ghost directory-lookup-trigger"
 				disabled={disabled}
-				aria-label={label}
+				aria-label={triggerAccessibleLabel ?? label}
 				aria-expanded={open}
 				aria-controls={open ? popoverId : undefined}
-				title={disabled ? disabledHint : label}
+				title={disabled ? disabledHint : (triggerAccessibleLabel ?? label)}
 				onClick={() => {
 					if (open) {
 						close();
@@ -247,10 +302,14 @@ export function DirectoryLookupPopover<T>({
 				}}
 			>
 				<IconSearch />
-				<span>Find</span>
+				<span>{triggerLabel}</span>
 			</button>
 			{open ? (
-				<div id={popoverId} className="card directory-lookup-popover">
+				<div
+					id={popoverId}
+					ref={popoverRef}
+					className="card directory-lookup-popover"
+				>
 					<div className="directory-lookup-popover-header">
 						<strong>{label}</strong>
 						<button type="button" className="ghost" onClick={() => close(true)}>
@@ -262,6 +321,16 @@ export function DirectoryLookupPopover<T>({
 					<small id={helperId} className="muted" aria-live="polite">
 						{helperText}
 					</small>
+					{onLoadMore ? (
+						<button
+							type="button"
+							className="ghost"
+							onClick={onLoadMore}
+							disabled={loadingMore}
+						>
+							{loadingMore ? "Loading…" : "Load more results"}
+						</button>
+					) : null}
 				</div>
 			) : null}
 		</div>
