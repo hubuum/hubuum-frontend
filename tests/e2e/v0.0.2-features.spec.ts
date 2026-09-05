@@ -19,7 +19,7 @@ async function signIn(page: Page) {
 		await provider.fill(identityScope);
 	}
 	await page.getByLabel("Username").fill(username ?? "");
-	await page.getByLabel("Password").fill(password ?? "");
+	await page.getByLabel("Password", { exact: true }).fill(password ?? "");
 	await page.getByRole("button", { name: "Enter workspace" }).click();
 	await page.waitForURL("**/app");
 }
