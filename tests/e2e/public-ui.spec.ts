@@ -60,15 +60,25 @@ test.describe("public accessibility", () => {
 			"local",
 		);
 		await page.getByLabel("Password", { exact: true }).fill("visibility-test");
-		await page.getByRole("button", { name: "Show password" }).click();
+		await page.keyboard.press("Tab");
+		await expect(
+			page.getByRole("button", { name: "Show password" }),
+		).toBeFocused();
+		await page.keyboard.press("Space");
 		await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
 			"type",
 			"text",
 		);
+		await expect(
+			page.getByRole("button", { name: "Hide password" }),
+		).toHaveAttribute("aria-pressed", "true");
 		await page.getByRole("button", { name: "Hide password" }).click();
 		await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
 			"type",
 			"password",
+		);
+		await expect(page.getByLabel("Password", { exact: true })).toHaveValue(
+			"visibility-test",
 		);
 		await expect(
 			page.getByRole("button", { name: "Sunset", exact: true }),
