@@ -5,13 +5,10 @@ import {
 	getProxyRequestBody,
 	getProxyResponseBody,
 } from "@/lib/api/proxy-bodies";
-import { copySafeIncomingRequestHeaders } from "@/lib/api/proxy-request-headers";
 import { copyPaginationHeaders } from "@/lib/api/proxy-pagination-headers";
+import { copySafeIncomingRequestHeaders } from "@/lib/api/proxy-request-headers";
 import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
-import {
-	discardAdminProbeResponse,
-	probeAdminAccess,
-} from "@/lib/auth/admin";
+import { discardAdminProbeResponse, probeAdminAccess } from "@/lib/auth/admin";
 import { validateBackendSession } from "@/lib/auth/backend-session-validation";
 import {
 	clearSessionCookie,
@@ -29,6 +26,7 @@ import {
 	operationalErrorFields,
 	operationalLevelForStatus,
 } from "@/lib/operational-events";
+import { protectPrivateResponse } from "@/lib/security-policy";
 
 type RouteContext = {
 	params: Promise<{
@@ -192,9 +190,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	if (isAdminOnlyMetaPath(path)) {
 		const probe = await probeAdminAccess(session.token, correlationId);
 		if (probe.status === "allowed") {
-			if (
-				canReuseAdminProbeResponse(method, path, request.nextUrl.search)
-			) {
+			if (canReuseAdminProbeResponse(method, path, request.nextUrl.search)) {
 				reusableAdminResponse = probe.response;
 			} else {
 				discardAdminProbeResponse(probe.response);
@@ -350,6 +346,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	}
 	copyPaginationHeaders(upstreamResponse.headers, response.headers);
 	copySafeUpstreamResponseHeaders(upstreamResponse.headers, response.headers);
+	protectPrivateResponse(response.headers);
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
 
 	if (upstreamResponse.status === 401) {

@@ -3,11 +3,17 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 
 export interface ExportConfig {
-  /** @minimum 0 */
+  /**
+     * Deprecated compatibility alias for `storage_query_budget_ms`.
+     *
+     * The value is identical and remains present so administrator clients do
+     * not break while migrating away from the PostgreSQL-shaped field name.
+     * @minimum 0
+     */
   database_statement_timeout_ms: number;
   /** @minimum 0 */
   max_output_bytes: number;
@@ -16,6 +22,11 @@ export interface ExportConfig {
   output_retention_hours: number;
   /** @minimum 0 */
   stage_timeout_ms: number;
+  /**
+     * Backend-neutral budget applied to each export storage read stage.
+     * @minimum 0
+     */
+  storage_query_budget_ms: number;
   /** @minimum 0 */
   template_fuel: number;
   /** @minimum 0 */

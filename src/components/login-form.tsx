@@ -29,6 +29,7 @@ export function LoginForm({
 	const [identityScope, setIdentityScope] = useState("");
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
+	const [showPassword, setShowPassword] = useState(false);
 	const [providerDiscovery, setProviderDiscovery] =
 		useState<ProviderDiscoveryState>({ status: "loading" });
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -141,6 +142,7 @@ export function LoginForm({
 		<form
 			action={loginEndpoint}
 			aria-label="Login form"
+			data-provider-discovery={providerDiscovery.status}
 			className="card login-card"
 			method="post"
 			onSubmit={(event) => {
@@ -148,7 +150,15 @@ export function LoginForm({
 				void submitLogin();
 			}}
 		>
-			{providerDiscovery.status !== "fallback" ? (
+			{providerDiscovery.status === "available" &&
+			providerOptions.length === 1 ? (
+				<input
+					id="identity-scope"
+					type="hidden"
+					name="identity_scope"
+					value={selectedProvider}
+				/>
+			) : providerDiscovery.status !== "fallback" ? (
 				<>
 					<label htmlFor="identity-scope">Authentication provider</label>
 					<select
@@ -184,7 +194,8 @@ export function LoginForm({
 						spellCheck={false}
 					/>
 					<p className="muted login-field-hint">
-						Leave blank for local accounts, or enter the configured provider scope.
+						Leave blank for local accounts, or enter the configured provider
+						scope.
 					</p>
 				</>
 			)}
@@ -195,6 +206,8 @@ export function LoginForm({
 				name="username"
 				type="text"
 				autoComplete="username"
+				autoCapitalize="none"
+				spellCheck={false}
 				placeholder="Enter your username"
 				value={username}
 				onChange={(event) => setUsername(event.target.value)}
@@ -202,16 +215,42 @@ export function LoginForm({
 			/>
 
 			<label htmlFor="password">Password</label>
-			<input
-				id="password"
-				name="password"
-				type="password"
-				autoComplete="current-password"
-				placeholder="Enter your password"
-				value={password}
-				onChange={(event) => setPassword(event.target.value)}
-				required
-			/>
+			<div className="login-password-field">
+				<input
+					id="password"
+					name="password"
+					type={showPassword ? "text" : "password"}
+					autoComplete="current-password"
+					placeholder="Enter your password"
+					value={password}
+					onChange={(event) => setPassword(event.target.value)}
+					required
+				/>
+
+				<button
+					type="button"
+					className="login-password-toggle"
+					aria-label={showPassword ? "Hide password" : "Show password"}
+					title={showPassword ? "Hide password" : "Show password"}
+					aria-controls="password"
+					aria-pressed={showPassword}
+					onClick={() => setShowPassword((current) => !current)}
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="1.75"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						aria-hidden="true"
+					>
+						<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+						<circle cx="12" cy="12" r="3" />
+						{showPassword ? <path d="m3 3 18 18" /> : null}
+					</svg>
+				</button>
+			</div>
 
 			{error ? (
 				<div className="error-banner" role="alert">

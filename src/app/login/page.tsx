@@ -41,12 +41,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 		errorCode === SESSION_EXPIRED_ERROR_CODE
 			? "Your session has expired. Sign in again to continue."
 			: errorCode === "identity_scope_unavailable"
-			? "The requested identity scope is unavailable or unsupported by this server."
-			: errorCode === "session_store_unavailable"
-				? "The frontend session store is unavailable. Try again shortly."
-			: errorCode
-				? "Login failed. Check your credentials and identity scope."
-				: null;
+				? "The requested identity scope is unavailable or unsupported by this server."
+				: errorCode === "session_store_unavailable"
+					? "The frontend session store is unavailable. Try again shortly."
+					: errorCode
+						? "Login failed. Check your credentials and identity scope."
+						: null;
 
 	return (
 		<main className="auth-page">
@@ -57,11 +57,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
 			<section className="auth-shell" aria-label="Workspace sign in">
 				<div className="auth-form-panel">
+					<h1 className="login-heading">Sign in to Hubuum</h1>
 					<LoginForm initialError={initialError} returnTo={returnTo} />
 					<p className="footer-note">
-						{process.env.NEXT_PUBLIC_APP_NAME ?? "Hubuum Console"} ·{
-							APPLICATION_VERSION
-						}
+						{process.env.NEXT_PUBLIC_APP_NAME ?? "Hubuum Console"} ·
+						{APPLICATION_VERSION}
 					</p>
 				</div>
 			</section>

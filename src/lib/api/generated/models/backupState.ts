@@ -3,12 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 import type { BackupStateSections } from './backupStateSections';
 
 /**
- * Exact logical rows used by the destructive full-system restore path.
+ * Canonical logical rows used by the destructive full-system restore path.
  */
 export interface BackupState {
   sections: BackupStateSections;

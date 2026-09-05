@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	keepPreviousData,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
@@ -11,6 +16,7 @@ import { GroupDirectoryLookup } from "@/components/group-directory-lookup";
 import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
+import { TableQueryStatus } from "@/components/table-query-status";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1CollectionsByCollectionId,
@@ -76,11 +82,13 @@ async function fetchCollections(
 	limit: number,
 	cursor?: string,
 	sort?: string,
+	signal?: AbortSignal,
 ): Promise<CollectionsPageData> {
 	const response = await getApiV1Collections(
 		{ limit, cursor, sort },
 		{
 			credentials: "include",
+			signal,
 		},
 	);
 
@@ -133,6 +141,11 @@ export function CollectionsTable() {
 	});
 
 	const pagination = useCursorPagination({ defaultLimit: 100 });
+	// biome-ignore lint/correctness/useExhaustiveDependencies: selections belong to the current page.
+	useEffect(() => {
+		setSelectedCollectionIds([]);
+	}, [pagination.cursor, pagination.limit]);
+
 	const { sortState, setSort, getSortParam } = useTableSort();
 
 	const query = useQuery({
@@ -142,8 +155,14 @@ export function CollectionsTable() {
 			pagination.limit,
 			getSortParam(),
 		],
-		queryFn: () =>
-			fetchCollections(pagination.limit, pagination.cursor, getSortParam()),
+		queryFn: ({ signal }) =>
+			fetchCollections(
+				pagination.limit,
+				pagination.cursor,
+				getSortParam(),
+				signal,
+			),
+		placeholderData: keepPreviousData,
 	});
 	const groupDirectory = useDirectorySearch({
 		queryKey: ["collection-assignee-group-directory"],
@@ -250,7 +269,7 @@ export function CollectionsTable() {
 	);
 
 	const deleteSelectedCollections = useCallback(async () => {
-		if (!selectedCollectionIds.length) {
+		if (query.isPlaceholderData || !selectedCollectionIds.length) {
 			return;
 		}
 
@@ -291,6 +310,7 @@ export function CollectionsTable() {
 
 		deleteMutation.mutate([...selectedCollectionIds]);
 	}, [
+		query.isPlaceholderData,
 		confirm,
 		hierarchy.byId,
 		hierarchy.childrenByParentId,
@@ -409,6 +429,7 @@ export function CollectionsTable() {
 	});
 
 	const keyboardNav = useTableKeyboardNav({
+		enabled: !query.isPlaceholderData,
 		items: filteredCollections,
 		getId: (collection) => collection.id,
 		onOpen: (collection) => router.push(`/collections/${collection.id}`),
@@ -476,6 +497,7 @@ export function CollectionsTable() {
 		};
 
 		const onSelectAll = () => {
+			if (query.isPlaceholderData) return;
 			setSelectedCollectionIds(
 				filteredCollections.map((collection) => collection.id),
 			);
@@ -487,7 +509,7 @@ export function CollectionsTable() {
 			window.removeEventListener(DESELECT_ALL_EVENT, onDeselectAll);
 			window.removeEventListener(SELECT_ALL_EVENT, onSelectAll);
 		};
-	}, [filteredCollections]);
+	}, [filteredCollections, query.isPlaceholderData]);
 
 	useEffect(() => {
 		window.dispatchEvent(
@@ -501,27 +523,33 @@ export function CollectionsTable() {
 		);
 	}, [selectedCollectionIds.length, deleteSelectedCollections]);
 
-	const resourceSummary =
-		query.data
-			? buildResourceSummary({
-					shown: searchTerm ? filteredCollections.length : null,
-					loaded: collections.length,
-					total: pageData?.totalCount,
-					selected: selectedCollectionIds.length,
-				})
-			: query.isLoading
-				? buildResourceSummary({ status: "Loading…" })
-				: [];
+	const resourceSummary = query.data
+		? buildResourceSummary({
+				shown: searchTerm ? filteredCollections.length : null,
+				loaded: collections.length,
+				total: pageData?.totalCount,
+				selected: selectedCollectionIds.length,
+			})
+		: query.isLoading
+			? buildResourceSummary({ status: "Loading…" })
+			: [];
 
 	if (query.isLoading) {
 		return <div className="card">Loading collections...</div>;
 	}
 
-	if (query.isError) {
+	if (query.isError && !query.data) {
 		return (
 			<div className="card error-banner">
 				Failed to load collections.{" "}
 				{query.error instanceof Error ? query.error.message : "Unknown error"}
+				<button
+					type="button"
+					className="ghost"
+					onClick={() => void query.refetch()}
+				>
+					Retry
+				</button>
 			</div>
 		);
 	}
@@ -710,6 +738,7 @@ export function CollectionsTable() {
 			</CreateModal>
 
 			<div className="card resource-index">
+				<TableQueryStatus query={query} />
 				<div className="table-header">
 					<ResourceIndexHeading
 						title="Collections"
@@ -718,15 +747,25 @@ export function CollectionsTable() {
 						createLabel="New collection"
 					/>
 					<div className="table-tools collections-table-tools">
-						<TableExportMenu view={exportView} compact />
+						<TableExportMenu
+							view={exportView}
+							compact
+							disabled={query.isFetching}
+						/>
+						<Link
+							className="link-chip"
+							href={`/search?kinds=collection&q=${encodeURIComponent(searchInput.trim())}`}
+						>
+							Search all collections
+						</Link>
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
 								<input
-									aria-label="Filter loaded collections"
+									aria-label="Find collections on this loaded page"
 									className="table-filter-input"
 									value={searchInput}
 									onChange={(event) => setSearchInput(event.target.value)}
-									placeholder="Filter loaded items"
+									placeholder="Find on this page"
 								/>
 								{normalizeSearchTerm(searchInput) ? (
 									<button
@@ -742,7 +781,7 @@ export function CollectionsTable() {
 							<button
 								type="submit"
 								className="ghost icon-button"
-								aria-label="Filter collections"
+								aria-label="Find collections on this page"
 							>
 								<IconSearch />
 							</button>
@@ -755,7 +794,7 @@ export function CollectionsTable() {
 					<EmptyState
 						title={
 							searchTerm
-								? `No collections match "${searchTerm}".`
+								? `No collections on this page match "${searchTerm}".`
 								: "No collections available."
 						}
 						description={
@@ -779,6 +818,9 @@ export function CollectionsTable() {
 						<section className="table-wrap" aria-label="Collections table">
 							<table
 								id="collections-table"
+								ref={keyboardNav.tableRef}
+								aria-busy={query.isFetching}
+								inert={query.isPlaceholderData}
 								className="responsive-data-table collections-data-table"
 							>
 								<caption className="sr-only">Collections</caption>
@@ -921,6 +963,7 @@ export function CollectionsTable() {
 					pageData.prevCursor ||
 					pagination.hasPrevPage) ? (
 					<TablePagination
+						busy={query.isFetching}
 						hasNextPage={!!pageData.nextCursor}
 						hasPrevPage={pagination.hasPrevPage || !!pageData.prevCursor}
 						onNextPage={() =>

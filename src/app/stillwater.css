@@ -1,8 +1,3 @@
-/*
- * Stillwater is Hubuum's production design language. Historical study rules
- * remain inert while the fixed v6 root selector carries the product layout.
- */
-
 html[data-design-variant] {
 	--font-display: "Space Grotesk Variable", sans-serif;
 	--font-reading: "Space Grotesk Variable", sans-serif;
@@ -30,530 +25,6 @@ html[data-design-variant] pre,
 html[data-design-variant] .sidebar-footer,
 html[data-design-variant] .preview-query {
 	font-family: var(--font-code);
-}
-
-.design-switcher {
-	display: grid;
-	gap: 0.55rem;
-	padding: 0.72rem;
-	border: 1px solid var(--nav-line);
-	color: var(--nav-ink);
-}
-
-.design-switcher-heading {
-	display: grid;
-	gap: 0.08rem;
-}
-
-.design-switcher-heading span {
-	color: var(--nav-muted);
-	font-family: var(--font-code);
-	font-size: 0.58rem;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
-}
-
-.design-switcher-heading strong {
-	font-family: var(--font-display);
-	font-size: 0.82rem;
-	font-weight: 650;
-}
-
-.design-switcher-options {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 0.25rem;
-}
-
-.design-switcher-options a {
-	display: grid;
-	min-height: 1.8rem;
-	place-items: center;
-	border: 1px solid var(--nav-line);
-	color: var(--nav-muted);
-	font-family: var(--font-code);
-	font-size: 0.58rem;
-	letter-spacing: 0.04em;
-}
-
-.design-switcher-options a:hover,
-.design-switcher-options a:focus-visible {
-	border-color: var(--accent-luminous);
-	color: var(--nav-ink);
-}
-
-.design-switcher-options a.is-active {
-	border-color: var(--accent-luminous);
-	background: var(--accent-luminous);
-	color: var(--nav-bg);
-}
-
-.app-shell.sidebar-collapsed .design-switcher-heading {
-	display: none;
-}
-
-.app-shell.sidebar-collapsed .design-switcher {
-	padding: 0.35rem;
-}
-
-.app-shell.sidebar-collapsed .design-switcher-options {
-	grid-template-columns: 1fr;
-}
-
-/* -------------------------------------------------------------------------- */
-/* V2 — Field notes: a warm editorial catalogue with archival materiality.    */
-/* -------------------------------------------------------------------------- */
-
-html[data-design-variant="v2"] {
-	--font-display: "Fraunces Variable", Georgia, serif;
-	--font-reading: "Space Grotesk Variable", sans-serif;
-	--font-code: "JetBrains Mono Variable", monospace;
-	--accent: #a13f24;
-	--accent-strong: #74301f;
-	--accent-hover: #74301f;
-	--accent-soft: #f1ddd0;
-	--accent-luminous: #e79a68;
-	--accent-contrast: #fffaf0;
-	--secondary-accent: #676d45;
-	--secondary-accent-strong: #4a5031;
-	--secondary-accent-soft: #e4e2d0;
-	--secondary-accent-luminous: #b4b982;
-	--bg: #f0eadc;
-	--bg-strong: #ded5c3;
-	--bg-highlight: #f8f3e9;
-	--card: #fbf7ed;
-	--field-bg: #fffaf1;
-	--ink: #29251f;
-	--muted: #72695d;
-	--line: #c8bcaa;
-	--warm: #c36b3b;
-	--nav-bg: #33352a;
-	--nav-ink: #f7f0df;
-	--nav-muted: #c7c5ad;
-	--nav-line: #5b5d4c;
-	--danger: #a52b35;
-	--danger-contrast: #fff8ed;
-	--danger-soft: #efd6d4;
-	--danger-line: #d5aaa7;
-	--radius: 0;
-	--shadow: none;
-	--shadow-float: 0 22px 60px rgba(54, 45, 32, 0.2);
-}
-
-html[data-design-variant="v2"][data-theme="dark"] {
-	--bg: #201d18;
-	--bg-strong: #171511;
-	--bg-highlight: #2b2720;
-	--card: #25211b;
-	--field-bg: #1d1a16;
-	--ink: #f2eadb;
-	--muted: #b9ad9d;
-	--line: #4e463b;
-	--accent: #eb8a62;
-	--accent-strong: #f2a486;
-	--accent-soft: #49281e;
-	--accent-luminous: #ef9e79;
-	--accent-contrast: #21130d;
-	--secondary-accent: #b5bc7b;
-	--secondary-accent-strong: #d2d89c;
-	--secondary-accent-soft: #353824;
-	--secondary-accent-luminous: #c4ca8e;
-	--nav-bg: #171812;
-	--nav-line: #424434;
-}
-
-html[data-design-variant="v2"] body {
-	background-color: var(--bg);
-	background-image: linear-gradient(
-		90deg,
-		transparent 0,
-		transparent calc(100% - 1px),
-		color-mix(in srgb, var(--line) 42%, transparent) calc(100% - 1px)
-	);
-	background-size: 84px 100%;
-}
-
-html[data-design-variant="v2"] h1,
-html[data-design-variant="v2"] h2,
-html[data-design-variant="v2"] h3,
-html[data-design-variant="v2"] h4,
-html[data-design-variant="v2"] .brand-name {
-	font-variation-settings:
-		"SOFT" 75,
-		"WONK" 1;
-	font-weight: 540;
-	letter-spacing: -0.035em;
-}
-
-html[data-design-variant="v2"] .app-layout {
-	grid-template-columns: minmax(232px, 262px) minmax(0, 1fr);
-	gap: clamp(1rem, 2.5vw, 2.6rem);
-	max-width: 1720px;
-	margin: 0 auto;
-	padding: 1.25rem clamp(1rem, 2.5vw, 2.5rem);
-}
-
-html[data-design-variant="v2"] .sidebar.card {
-	top: 1.25rem;
-	max-height: calc(100vh - 2.5rem);
-	padding: 1.15rem 0;
-	border-width: 0 1px 0 0;
-	border-radius: 0;
-	background: transparent;
-	box-shadow: none;
-}
-
-html[data-design-variant="v2"] .sidebar-header,
-html[data-design-variant="v2"] .design-switcher,
-html[data-design-variant="v2"] .sidebar nav,
-html[data-design-variant="v2"] .sidebar-footer {
-	margin-right: 1.25rem;
-}
-
-html[data-design-variant="v2"] .sidebar .brand-glyph {
-	border-radius: 50%;
-	background: var(--accent);
-	color: var(--accent-contrast);
-}
-
-html[data-design-variant="v2"] .sidebar .brand-name {
-	color: var(--ink);
-	font-size: 1.3rem;
-}
-
-html[data-design-variant="v2"] .sidebar .brand-product,
-html[data-design-variant="v2"] .sidebar-label,
-html[data-design-variant="v2"] .sidebar-footer {
-	color: var(--muted);
-}
-
-html[data-design-variant="v2"] .design-switcher {
-	border-width: 1px 0;
-	color: var(--ink);
-}
-
-html[data-design-variant="v2"] .design-switcher-heading span,
-html[data-design-variant="v2"] .design-switcher-options a {
-	color: var(--muted);
-}
-
-html[data-design-variant="v2"] .design-switcher-options a {
-	border-color: var(--line);
-}
-
-html[data-design-variant="v2"] .design-switcher-options a.is-active {
-	background: var(--ink);
-	color: var(--card);
-}
-
-html[data-design-variant="v2"] .sidebar-link,
-html[data-design-variant="v2"] button.sidebar-link-button {
-	min-height: 2.15rem;
-	border-width: 0 0 1px;
-	border-color: color-mix(in srgb, var(--line) 66%, transparent);
-	border-radius: 0;
-	color: var(--muted);
-}
-
-html[data-design-variant="v2"] .sidebar-link:hover,
-html[data-design-variant="v2"] button.sidebar-link-button:hover {
-	background: transparent;
-	color: var(--accent);
-}
-
-html[data-design-variant="v2"] .sidebar-link.active {
-	border-color: var(--accent);
-	background: transparent;
-	box-shadow: none;
-	color: var(--accent);
-}
-
-html[data-design-variant="v2"] .topbar.card {
-	top: 1.25rem;
-	padding: 0.75rem 0 1rem;
-	border-width: 0 0 1px;
-	border-radius: 0;
-	background: color-mix(in srgb, var(--bg) 92%, transparent);
-	box-shadow: none;
-	backdrop-filter: blur(12px);
-}
-
-html[data-design-variant="v2"] .topbar-heading {
-	font-size: 1.55rem;
-	font-weight: 520;
-}
-
-html[data-design-variant="v2"] .content {
-	gap: 1.4rem;
-	padding: 0.45rem 0 3rem;
-}
-
-html[data-design-variant="v2"] .card {
-	border-width: 1px 0 0;
-	border-radius: 0;
-	background: color-mix(in srgb, var(--card) 74%, transparent);
-	box-shadow: none;
-}
-
-html[data-design-variant="v2"] .content .card {
-	padding: 1.15rem 0;
-}
-
-html[data-design-variant="v2"] input,
-html[data-design-variant="v2"] select,
-html[data-design-variant="v2"] textarea,
-html[data-design-variant="v2"] button,
-html[data-design-variant="v2"] .link-chip,
-html[data-design-variant="v2"] .status-pill {
-	border-radius: 0;
-}
-
-html[data-design-variant="v2"] button,
-html[data-design-variant="v2"] .link-chip {
-	box-shadow: inset 0 -1px 0 color-mix(in srgb, currentColor 32%, transparent);
-}
-
-html[data-design-variant="v2"] .workspace-hero,
-html[data-design-variant="v2"] .landing-hero {
-	padding: clamp(1.6rem, 4vw, 3.8rem) 0;
-	border-width: 1px 0;
-	background: transparent;
-}
-
-html[data-design-variant="v2"] .workspace-hero::after,
-html[data-design-variant="v2"] .landing-hero::after {
-	right: 2rem;
-	border-color: var(--line);
-	border-radius: 50%;
-	box-shadow:
-		0 0 0 2rem color-mix(in srgb, var(--secondary-accent) 7%, transparent),
-		0 0 0 4rem color-mix(in srgb, var(--secondary-accent) 4%, transparent);
-}
-
-html[data-design-variant="v2"] .workspace-hero-copy h2,
-html[data-design-variant="v2"] .landing-hero h2 {
-	max-width: 13ch;
-	font-size: clamp(2.8rem, 6.2vw, 6rem);
-	font-weight: 440;
-	line-height: 0.98;
-}
-
-html[data-design-variant="v2"] .eyebrow,
-html[data-design-variant="v2"] th,
-html[data-design-variant="v2"] label {
-	font-family: var(--font-code);
-	font-size: 0.68rem;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-}
-
-html[data-design-variant="v2"] table {
-	border-collapse: collapse;
-}
-
-html[data-design-variant="v2"] thead {
-	background: transparent;
-}
-
-html[data-design-variant="v2"] th {
-	border-top: 1px solid var(--ink);
-	border-bottom: 1px solid var(--ink);
-	color: var(--ink);
-}
-
-html[data-design-variant="v2"] td {
-	border-bottom: 1px solid var(--line);
-}
-
-/* -------------------------------------------------------------------------- */
-/* V4 — Topology: a spatial canvas with compact category menus.                */
-/* -------------------------------------------------------------------------- */
-
-html[data-design-variant="v4"] {
-	--font-display: "Space Grotesk Variable", sans-serif;
-	--font-reading: "Space Grotesk Variable", sans-serif;
-	--font-code: "JetBrains Mono Variable", monospace;
-	--accent: #6c4ee3;
-	--accent-strong: #4e35b8;
-	--accent-hover: #4e35b8;
-	--accent-soft: #e9e4ff;
-	--accent-luminous: #a594ff;
-	--accent-contrast: #fff;
-	--secondary-accent: #138b80;
-	--secondary-accent-strong: #0d685f;
-	--secondary-accent-soft: #d8efeb;
-	--secondary-accent-luminous: #68d5c8;
-	--bg: #edf1f8;
-	--bg-strong: #dde5f0;
-	--bg-highlight: #f6f8fc;
-	--card: #fbfcff;
-	--field-bg: #fff;
-	--ink: #19233a;
-	--muted: #65718a;
-	--line: #b9c5d8;
-	--warm: #d8734d;
-	--nav-bg: #172139;
-	--nav-ink: #f5f7ff;
-	--nav-muted: #aeb9d0;
-	--nav-line: #3b4968;
-	--danger: #bd3351;
-	--danger-contrast: #fff;
-	--danger-soft: #f5dce3;
-	--danger-line: #ddaeb9;
-	--radius: 22px;
-	--shadow: 0 16px 45px rgba(48, 61, 91, 0.1);
-	--shadow-float: 0 28px 75px rgba(33, 43, 70, 0.2);
-}
-
-html[data-design-variant="v4"][data-theme="dark"] {
-	--bg: #0e1524;
-	--bg-strong: #080d18;
-	--bg-highlight: #161f33;
-	--card: #121b2d;
-	--field-bg: #0d1525;
-	--ink: #edf1ff;
-	--muted: #a1acc4;
-	--line: #34415d;
-	--accent: #a796ff;
-	--accent-strong: #c1b6ff;
-	--accent-soft: #30275b;
-	--accent-luminous: #b6a8ff;
-	--accent-contrast: #150f2d;
-	--secondary-accent: #65d8cb;
-	--secondary-accent-strong: #91e7dc;
-	--secondary-accent-soft: #193d3b;
-	--secondary-accent-luminous: #7ce2d6;
-	--nav-bg: #080e1b;
-	--nav-line: #2d3a56;
-}
-
-html[data-design-variant="v4"] body {
-	background-color: var(--bg);
-	background-image: radial-gradient(
-		circle,
-		color-mix(in srgb, var(--secondary-accent) 22%, transparent) 1px,
-		transparent 1.4px
-	);
-	background-size: 24px 24px;
-}
-
-html[data-design-variant="v4"] .card {
-	border-color: color-mix(in srgb, var(--line) 84%, transparent);
-}
-
-html[data-design-variant="v4"] .design-switcher {
-	border-radius: 14px;
-	background: color-mix(in srgb, var(--nav-ink) 5%, transparent);
-}
-
-html[data-design-variant="v4"] .design-switcher-options a {
-	border-radius: 999px;
-}
-
-html[data-design-variant="v4"] .topbar.card {
-	border-radius: 20px;
-	background: color-mix(in srgb, var(--card) 86%, transparent);
-	box-shadow: var(--shadow);
-	backdrop-filter: blur(20px);
-}
-
-html[data-design-variant="v4"] .content {
-	width: 100%;
-	max-width: none;
-	margin: 0;
-	padding-bottom: 3rem;
-}
-
-html[data-design-variant="v4"] .workspace-hero,
-html[data-design-variant="v4"] .landing-hero {
-	min-height: 20rem;
-	border-radius: 34px;
-	background:
-		radial-gradient(
-			circle at 88% 22%,
-			var(--accent) 0 0.48rem,
-			transparent 0.52rem
-		),
-		radial-gradient(
-			circle at 74% 67%,
-			var(--secondary-accent) 0 0.38rem,
-			transparent 0.42rem
-		),
-		linear-gradient(
-			125deg,
-			color-mix(in srgb, var(--card) 92%, transparent),
-			color-mix(in srgb, var(--accent-soft) 74%, transparent)
-		);
-}
-
-html[data-design-variant="v4"] .workspace-hero::before,
-html[data-design-variant="v4"] .landing-hero::before {
-	content: "";
-	position: absolute;
-	right: 8%;
-	top: 20%;
-	width: 22%;
-	height: 48%;
-	border-top: 1px solid var(--accent);
-	border-right: 1px solid var(--secondary-accent);
-	transform: skew(-28deg) rotate(-8deg);
-	pointer-events: none;
-}
-
-html[data-design-variant="v4"] .workspace-hero::after,
-html[data-design-variant="v4"] .landing-hero::after {
-	right: 9%;
-	top: 22%;
-	width: 11rem;
-	height: 11rem;
-	border-color: color-mix(in srgb, var(--accent) 42%, transparent);
-	box-shadow:
-		0 0 0 2.5rem color-mix(in srgb, var(--accent) 6%, transparent),
-		0 0 0 5rem color-mix(in srgb, var(--secondary-accent) 4%, transparent);
-}
-
-html[data-design-variant="v4"] .workspace-hero-copy h2,
-html[data-design-variant="v4"] .landing-hero h2 {
-	max-width: 10ch;
-	font-size: clamp(2.7rem, 5.6vw, 5.7rem);
-	font-weight: 560;
-	letter-spacing: -0.075em;
-}
-
-html[data-design-variant="v4"] .card,
-html[data-design-variant="v4"] input,
-html[data-design-variant="v4"] select,
-html[data-design-variant="v4"] textarea,
-html[data-design-variant="v4"] button,
-html[data-design-variant="v4"] .link-chip {
-	border-radius: 18px;
-}
-
-html[data-design-variant="v4"] .report-card,
-html[data-design-variant="v4"] .action-card {
-	position: relative;
-	overflow: hidden;
-}
-
-html[data-design-variant="v4"] .report-card::before,
-html[data-design-variant="v4"] .action-card::before {
-	content: "";
-	position: absolute;
-	right: -1.4rem;
-	top: -1.4rem;
-	width: 3.8rem;
-	height: 3.8rem;
-	border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-	border-radius: 50%;
-}
-
-html[data-design-variant="v4"] th,
-html[data-design-variant="v4"] .eyebrow {
-	font-family: var(--font-code);
-}
-
-html[data-design-variant="v4"] tbody tr:hover {
-	background: color-mix(in srgb, var(--accent-soft) 62%, transparent);
 }
 
 .topology-navigation {
@@ -749,194 +220,7 @@ html[data-design-variant="v4"] tbody tr:hover {
 	font-size: 0.56rem;
 	white-space: nowrap;
 }
-
-@media (min-width: 901px) {
-	html[data-design-variant="v4"] .app-layout,
-	html[data-design-variant="v4"] .app-shell.sidebar-collapsed .app-layout {
-		display: block;
-		width: 100%;
-		padding: 0.85rem;
-	}
-
-	html[data-design-variant="v4"] .sidebar.card {
-		display: none;
-	}
-
-	html[data-design-variant="v4"] .topology-topbar-identity {
-		display: flex;
-		align-items: center;
-		gap: 0.45rem;
-		flex: 0 0 auto;
-	}
-
-	html[data-design-variant="v4"] .topology-topbar-identity .brand-lockup {
-		flex: 0 0 auto;
-	}
-
-	html[data-design-variant="v4"] .topology-topbar-identity .brand-glyph {
-		width: 2.1rem;
-		height: 2.1rem;
-		flex-basis: 2.1rem;
-		border-radius: 50%;
-	}
-
-	html[data-design-variant="v4"] .design-switcher-heading,
-	html[data-design-variant="v4"] .sidebar-footer {
-		display: none;
-	}
-
-	html[data-design-variant="v4"] .design-switcher {
-		flex: 0 0 auto;
-		padding: 0.28rem;
-	}
-
-	html[data-design-variant="v4"] .topology-topbar-identity .design-switcher {
-		border-color: var(--line);
-		background: color-mix(in srgb, var(--bg-strong) 72%, transparent);
-		color: var(--ink);
-	}
-
-	html[data-design-variant="v4"] .design-switcher-options {
-		display: flex;
-	}
-
-	html[data-design-variant="v4"] .design-switcher-options a {
-		min-width: 2.2rem;
-	}
-
-	html[data-design-variant="v4"]
-		.topology-topbar-identity
-		.design-switcher-options
-		a {
-		border-color: var(--line);
-		color: var(--muted);
-	}
-
-	html[data-design-variant="v4"]
-		.topology-topbar-identity
-		.design-switcher-options
-		a.is-active {
-		border-color: var(--accent);
-		background: var(--accent);
-		color: var(--accent-contrast);
-	}
-
-	html[data-design-variant="v4"] .topbar-left {
-		flex: 0 1 auto;
-	}
-
-	html[data-design-variant="v4"] .topology-navigation--topbar {
-		display: flex;
-		flex: 0 1 auto;
-		align-items: center;
-		gap: 0.22rem;
-		min-width: 0;
-	}
-
-	html[data-design-variant="v4"] .topology-home-link {
-		flex: 0 0 auto;
-	}
-
-	html[data-design-variant="v4"] .topology-home-link .sidebar-link,
-	html[data-design-variant="v4"]
-		.topology-nav-menu
-		> button.topology-nav-trigger {
-		min-height: 2.3rem;
-		padding: 0.48rem 0.66rem;
-		border-radius: 999px;
-		font-size: 0.78rem;
-	}
-
-	html[data-design-variant="v4"] .topology-home-link .sidebar-link {
-		color: var(--nav-muted);
-	}
-
-	html[data-design-variant="v4"] .topology-home-link .sidebar-link:hover,
-	html[data-design-variant="v4"] .topology-home-link .sidebar-link.active {
-		border-color: var(--accent-luminous);
-		background: var(--accent-luminous);
-		box-shadow: none;
-		color: var(--nav-bg);
-	}
-
-	html[data-design-variant="v4"] .topology-nav-menu {
-		flex: 0 0 auto;
-	}
-
-	html[data-design-variant="v4"] .topology-nav-menu-items {
-		position: absolute;
-		top: 100%;
-		left: 0;
-		z-index: 90;
-		width: max-content;
-		min-width: 15rem;
-		max-width: min(21rem, calc(100vw - 2rem));
-		padding-top: 0.55rem;
-	}
-
-	html[data-design-variant="v4"] .topology-nav-menu-panel {
-		padding: 0.45rem;
-		border: 1px solid var(--line);
-		border-radius: 16px;
-		background: var(--card);
-		box-shadow: var(--shadow-float);
-	}
-
-	html[data-design-variant="v4"]
-		.topology-nav-menu:nth-last-child(-n + 2)
-		.topology-nav-menu-items {
-		right: 0;
-		left: auto;
-	}
-
-	html[data-design-variant="v4"] .topology-nav-menu-items .sidebar-link {
-		min-height: 2.5rem;
-		border-radius: 11px;
-		color: var(--muted);
-	}
-
-	html[data-design-variant="v4"] .topology-nav-menu-items .sidebar-link:hover {
-		background: var(--accent-soft);
-		color: var(--ink);
-	}
-
-	html[data-design-variant="v4"] .topology-nav-menu-items .sidebar-link.active {
-		border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
-		background: var(--accent-soft);
-		box-shadow: none;
-		color: var(--accent-strong);
-	}
-
-	html[data-design-variant="v4"] .app-shell.sidebar-collapsed .sidebar-header {
-		display: block;
-	}
-
-	html[data-design-variant="v4"] .app-shell.sidebar-collapsed .sidebar-text {
-		display: inline;
-	}
-
-	html[data-design-variant="v4"] .app-shell.sidebar-collapsed .sidebar-link {
-		justify-content: flex-start;
-		padding-inline: 0.66rem;
-	}
-
-	html[data-design-variant="v4"] .app-main {
-		gap: 0.9rem;
-		width: 100%;
-		padding: 0;
-	}
-
-	html[data-design-variant="v4"] .topbar.card {
-		position: sticky;
-		top: 0.85rem;
-		z-index: 80;
-		flex-wrap: wrap;
-	}
-}
-
-/* -------------------------------------------------------------------------- */
 /* V6 — Stillwater: tranquil, atmospheric and deliberately professional.      */
-/* -------------------------------------------------------------------------- */
 
 html[data-design-variant="v6"] {
 	--font-display: "Fraunces Variable", Georgia, serif;
@@ -1305,35 +589,6 @@ html[data-design-variant="v6"] .sidebar-footer {
 	color: var(--nav-muted);
 }
 
-html[data-design-variant="v6"] .design-switcher {
-	padding: 0.58rem;
-	border-color: color-mix(in srgb, var(--nav-line) 72%, transparent);
-	border-radius: 15px;
-	background: color-mix(in srgb, var(--card) 50%, transparent);
-	color: var(--ink);
-}
-
-html[data-design-variant="v6"] .design-switcher-heading span,
-html[data-design-variant="v6"] .design-switcher-options a {
-	color: var(--muted);
-}
-
-html[data-design-variant="v6"] .design-switcher-options a {
-	border-color: transparent;
-	border-radius: 999px;
-}
-
-html[data-design-variant="v6"] .design-switcher-options a:hover {
-	border-color: var(--line);
-	color: var(--ink);
-}
-
-html[data-design-variant="v6"] .design-switcher-options a.is-active {
-	border-color: var(--accent);
-	background: var(--accent);
-	color: var(--accent-contrast);
-}
-
 html[data-design-variant="v6"] .sidebar nav {
 	gap: 0.85rem;
 }
@@ -1529,13 +784,8 @@ html[data-design-variant="v6"] tbody tr:hover {
 html[data-design-variant="v6"] .create-button.resource-index-create {
 	min-height: 2.15rem;
 	padding: 0.34rem 0.62rem;
-	border: 1px solid
-		color-mix(in srgb, var(--secondary-accent) 24%, var(--line));
-	background: color-mix(
-		in srgb,
-		var(--secondary-accent-soft) 54%,
-		var(--card)
-	);
+	border: 1px solid color-mix(in srgb, var(--secondary-accent) 24%, var(--line));
+	background: color-mix(in srgb, var(--secondary-accent-soft) 54%, var(--card));
 	box-shadow: none;
 	color: var(--secondary-accent-strong);
 	font-size: 0.82rem;
@@ -1543,12 +793,9 @@ html[data-design-variant="v6"] .create-button.resource-index-create {
 }
 
 html[data-design-variant="v6"] .create-button.resource-index-create:hover,
-html[data-design-variant="v6"] .create-button.resource-index-create:focus-visible {
-	border-color: color-mix(
-		in srgb,
-		var(--secondary-accent) 42%,
-		var(--line)
-	);
+html[data-design-variant="v6"]
+	.create-button.resource-index-create:focus-visible {
+	border-color: color-mix(in srgb, var(--secondary-accent) 42%, var(--line));
 	background: var(--secondary-accent-soft);
 	box-shadow: none;
 	color: var(--secondary-accent-strong);
@@ -1626,57 +873,6 @@ html[data-design-variant="v6"] .create-button.resource-index-create:focus-visibl
 		border-color: color-mix(in srgb, var(--secondary-accent) 34%, var(--line));
 		border-radius: 50%;
 		background: color-mix(in srgb, var(--card) 72%, transparent);
-		color: var(--secondary-accent-strong);
-	}
-
-	html[data-design-variant="v6"] .topology-topbar-identity .design-switcher {
-		flex: 0 0 auto;
-		padding: 0.22rem;
-		border-color: var(--atmosphere-line);
-		background: color-mix(
-			in srgb,
-			var(--secondary-accent-soft) 48%,
-			transparent
-		);
-	}
-
-	html[data-design-variant="v6"]
-		.topology-topbar-identity
-		.design-switcher-heading {
-		display: none;
-	}
-
-	html[data-design-variant="v6"]
-		.topology-topbar-identity
-		.design-switcher-options {
-		display: flex;
-	}
-
-	html[data-design-variant="v6"]
-		.topology-topbar-identity
-		.design-switcher-options
-		a {
-		min-width: 1.9rem;
-		min-height: 1.9rem;
-		border-color: transparent;
-		color: var(--muted);
-	}
-
-	html[data-design-variant="v6"]
-		.topology-topbar-identity
-		.design-switcher-options
-		a:hover {
-		border-color: var(--atmosphere-line);
-		background: color-mix(in srgb, var(--card) 62%, transparent);
-		color: var(--ink);
-	}
-
-	html[data-design-variant="v6"]
-		.topology-topbar-identity
-		.design-switcher-options
-		a.is-active {
-		border-color: color-mix(in srgb, var(--secondary-accent) 42%, var(--line));
-		background: var(--secondary-accent-soft);
 		color: var(--secondary-accent-strong);
 	}
 
@@ -1793,7 +989,9 @@ html[data-design-variant="v6"] .create-button.resource-index-create:focus-visibl
 
 	html[data-design-variant="v6"] .topology-flyout-trigger:hover,
 	html[data-design-variant="v6"] .topology-flyout-trigger:focus-visible,
-	html[data-design-variant="v6"] .topology-flyout[data-open="true"] > .topology-flyout-trigger {
+	html[data-design-variant="v6"]
+		.topology-flyout[data-open="true"]
+		> .topology-flyout-trigger {
 		background: color-mix(
 			in srgb,
 			var(--secondary-accent-soft) 76%,
@@ -1956,33 +1154,11 @@ html[data-design-variant="v6"] .create-button.resource-index-create:focus-visibl
 
 /* Shared small-screen behavior keeps the production drawer interaction. */
 @media (max-width: 900px) {
-	html[data-design-variant] .design-switcher {
-		margin-bottom: 0.35rem;
-	}
-
-	html[data-design-variant]
-		.app-shell.sidebar-collapsed
-		.design-switcher-heading {
-		display: grid;
-	}
-
-	html[data-design-variant] .app-shell.sidebar-collapsed .design-switcher {
-		padding: 0.72rem;
-	}
-
-	html[data-design-variant]
-		.app-shell.sidebar-collapsed
-		.design-switcher-options {
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-	}
-
-	html[data-design-variant="v2"] .app-layout,
 	html[data-design-variant="v6"] .app-layout {
 		grid-template-columns: 1fr;
 		padding: 0.7rem;
 	}
 
-	html[data-design-variant="v2"] .sidebar.card,
 	html[data-design-variant="v6"] .sidebar.card {
 		position: fixed;
 		top: 0;
@@ -1994,27 +1170,12 @@ html[data-design-variant="v6"] .create-button.resource-index-create:focus-visibl
 		transform: translateX(-110%);
 	}
 
-	html[data-design-variant="v2"] .app-shell.mobile-sidebar-open .sidebar,
 	html[data-design-variant="v6"] .app-shell.mobile-sidebar-open .sidebar {
 		transform: translateX(0);
 	}
 
-	html[data-design-variant="v2"] .topbar.card,
 	html[data-design-variant="v6"] .topbar.card {
 		top: 0.7rem;
-	}
-
-	html[data-design-variant="v2"] .sidebar-header,
-	html[data-design-variant="v2"] .design-switcher,
-	html[data-design-variant="v2"] .sidebar nav,
-	html[data-design-variant="v2"] .sidebar-footer {
-		margin-right: 0;
-	}
-
-	html[data-design-variant="v2"] .sidebar.card {
-		padding: 1rem;
-		border-width: 0 1px 0 0;
-		background: var(--bg);
 	}
 
 	html[data-design-variant="v6"] .sidebar.card {
@@ -2022,35 +1183,9 @@ html[data-design-variant="v6"] .create-button.resource-index-create:focus-visibl
 		border-radius: 0 24px 24px 0;
 		background: color-mix(in srgb, var(--card) 94%, var(--bg));
 	}
-
-	html[data-design-variant="v4"] .topology-navigation {
-		gap: 0.45rem;
-	}
-
-	html[data-design-variant="v4"] .topology-home-link .sidebar-link,
-	html[data-design-variant="v4"]
-		.topology-nav-menu
-		> button.topology-nav-trigger {
-		min-height: 2.6rem;
-	}
-
-	html[data-design-variant="v4"] .topology-nav-menu-items {
-		padding: 0.25rem 0 0.35rem 0.65rem;
-	}
-
-	html[data-design-variant="v4"] .topology-nav-menu-panel {
-		padding-left: 0.35rem;
-		border-left: 1px solid var(--nav-line);
-	}
 }
 
 @media (max-width: 620px) {
-	html[data-design-variant] .design-switcher-options a {
-		font-size: 0.52rem;
-	}
-
-	html[data-design-variant="v2"] .workspace-hero-copy h2,
-	html[data-design-variant="v4"] .workspace-hero-copy h2,
 	html[data-design-variant="v6"] .workspace-hero-copy h2 {
 		font-size: clamp(2.35rem, 13vw, 4rem);
 	}
@@ -2094,11 +1229,7 @@ html[data-design-variant="v6"][data-atmosphere] {
 
 html[data-design-variant="v6"][data-theme="light"][data-atmosphere]
 	.topbar.card {
-	--nav-muted: color-mix(
-		in srgb,
-		var(--theme-ink) 72%,
-		var(--theme-accent)
-	);
+	--nav-muted: color-mix(in srgb, var(--theme-ink) 72%, var(--theme-accent));
 	--nav-ink: var(--theme-ink);
 }
 

@@ -1,16 +1,22 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	keepPreviousData,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
-import { JsonEditor } from "@/components/json-editor";
 import { ResourceIndexHeading } from "@/components/resource-index-heading";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
+import { TableQueryStatus } from "@/components/table-query-status";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1ClassesByClassId,
@@ -47,6 +53,11 @@ import { useShiftSelect } from "@/lib/use-shift-select";
 import { useTableKeyboardNav } from "@/lib/use-table-keyboard-nav";
 import { useTableSort } from "@/lib/use-table-sort";
 
+const JsonEditor = dynamic(
+	() => import("@/components/json-editor").then((module) => module.JsonEditor),
+	{ loading: () => <p role="status">Loading editor…</p> },
+);
+
 function IconSearch() {
 	return (
 		<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -69,11 +80,13 @@ async function fetchClasses(
 	limit: number,
 	cursor?: string,
 	sort?: string,
+	signal?: AbortSignal,
 ): Promise<ClassesPageData> {
 	const response = await getApiV1Classes(
 		{ limit, cursor, sort },
 		{
 			credentials: "include",
+			signal,
 		},
 	);
 
@@ -122,12 +135,18 @@ export function ClassesTable() {
 	);
 
 	const pagination = useCursorPagination({ defaultLimit: 100 });
+	// biome-ignore lint/correctness/useExhaustiveDependencies: selections belong to the current page.
+	useEffect(() => {
+		setSelectedClassIds([]);
+	}, [pagination.cursor, pagination.limit]);
+
 	const { sortState, setSort, getSortParam } = useTableSort();
 
 	const classesQuery = useQuery({
 		queryKey: ["classes", pagination.cursor, pagination.limit, getSortParam()],
-		queryFn: () =>
-			fetchClasses(pagination.limit, pagination.cursor, getSortParam()),
+		queryFn: ({ signal }) =>
+			fetchClasses(pagination.limit, pagination.cursor, getSortParam(), signal),
+		placeholderData: keepPreviousData,
 	});
 	const collectionDirectory = useDirectorySearch({
 		queryKey: ["collection-directory", "class-form"],
@@ -232,7 +251,7 @@ export function ClassesTable() {
 	});
 
 	const deleteSelectedClasses = useCallback(async () => {
-		if (!selectedClassIds.length) {
+		if (classesQuery.isPlaceholderData || !selectedClassIds.length) {
 			return;
 		}
 
@@ -252,7 +271,12 @@ export function ClassesTable() {
 		}
 
 		deleteMutation.mutate([...selectedClassIds]);
-	}, [confirm, selectedClassIds, deleteMutation]);
+	}, [
+		confirm,
+		selectedClassIds,
+		deleteMutation,
+		classesQuery.isPlaceholderData,
+	]);
 
 	function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -339,6 +363,7 @@ export function ClassesTable() {
 	});
 
 	const keyboardNav = useTableKeyboardNav({
+		enabled: !classesQuery.isPlaceholderData,
 		items: filteredClasses,
 		getId: (classItem) => classItem.id,
 		onOpen: (classItem) => router.push(`/classes/${classItem.id}`),
@@ -376,6 +401,7 @@ export function ClassesTable() {
 		};
 
 		const onSelectAll = () => {
+			if (classesQuery.isPlaceholderData) return;
 			setSelectedClassIds(filteredClasses.map((classItem) => classItem.id));
 		};
 
@@ -385,7 +411,7 @@ export function ClassesTable() {
 			window.removeEventListener(DESELECT_ALL_EVENT, onDeselectAll);
 			window.removeEventListener(SELECT_ALL_EVENT, onSelectAll);
 		};
-	}, [filteredClasses]);
+	}, [filteredClasses, classesQuery.isPlaceholderData]);
 
 	useEffect(() => {
 		window.dispatchEvent(
@@ -399,29 +425,35 @@ export function ClassesTable() {
 		);
 	}, [selectedClassIds.length, deleteSelectedClasses]);
 
-	const resourceSummary =
-		classesQuery.data
-			? buildResourceSummary({
-					shown: searchTerm ? filteredClasses.length : null,
-					loaded: classes.length,
-					total: pageData?.totalCount,
-					selected: selectedClassIds.length,
-				})
-			: classesQuery.isLoading
-				? buildResourceSummary({ status: "Loading…" })
-				: [];
+	const resourceSummary = classesQuery.data
+		? buildResourceSummary({
+				shown: searchTerm ? filteredClasses.length : null,
+				loaded: classes.length,
+				total: pageData?.totalCount,
+				selected: selectedClassIds.length,
+			})
+		: classesQuery.isLoading
+			? buildResourceSummary({ status: "Loading…" })
+			: [];
 
 	if (classesQuery.isLoading) {
 		return <div className="card">Loading classes...</div>;
 	}
 
-	if (classesQuery.isError) {
+	if (classesQuery.isError && !classesQuery.data) {
 		return (
 			<div className="card error-banner">
 				Failed to load classes.{" "}
 				{classesQuery.error instanceof Error
 					? classesQuery.error.message
 					: "Unknown error"}
+				<button
+					type="button"
+					className="ghost"
+					onClick={() => void classesQuery.refetch()}
+				>
+					Retry
+				</button>
 			</div>
 		);
 	}
@@ -600,6 +632,7 @@ export function ClassesTable() {
 			</CreateModal>
 
 			<div className="card resource-index">
+				<TableQueryStatus query={classesQuery} />
 				<div className="table-header">
 					<ResourceIndexHeading
 						title="Classes"
@@ -608,15 +641,25 @@ export function ClassesTable() {
 						createLabel="New class"
 					/>
 					<div className="table-tools classes-table-tools">
-						<TableExportMenu view={exportView} compact />
+						<TableExportMenu
+							view={exportView}
+							compact
+							disabled={classesQuery.isFetching}
+						/>
+						<Link
+							className="link-chip"
+							href={`/search?kinds=class&q=${encodeURIComponent(searchInput.trim())}`}
+						>
+							Search all classes
+						</Link>
 						<form className="table-filter-form" onSubmit={onFilterSubmit}>
 							<div className="table-filter-field">
 								<input
-									aria-label="Filter loaded classes"
+									aria-label="Find classes on this loaded page"
 									className="table-filter-input"
 									value={searchInput}
 									onChange={(event) => setSearchInput(event.target.value)}
-									placeholder="Filter loaded items"
+									placeholder="Find on this page"
 								/>
 								{normalizeSearchTerm(searchInput) ? (
 									<button
@@ -632,7 +675,7 @@ export function ClassesTable() {
 							<button
 								type="submit"
 								className="ghost icon-button"
-								aria-label="Filter classes"
+								aria-label="Find classes on this page"
 							>
 								<IconSearch />
 							</button>
@@ -645,12 +688,12 @@ export function ClassesTable() {
 					<EmptyState
 						title={
 							searchTerm
-								? `No classes match "${searchTerm}".`
+								? `No classes on this page match "${searchTerm}".`
 								: "No classes available."
 						}
 						description={
 							searchTerm
-								? "Clear the filter to return to the full class list."
+								? "Clear Find on page or search all accessible classes."
 								: "Create a class in a collection before adding objects."
 						}
 							action={
@@ -672,6 +715,9 @@ export function ClassesTable() {
 						<section className="table-wrap" aria-label="Classes table">
 							<table
 								id="classes-table"
+								ref={keyboardNav.tableRef}
+								aria-busy={classesQuery.isFetching}
+								inert={classesQuery.isPlaceholderData}
 								className="responsive-data-table classes-data-table"
 							>
 								<caption className="sr-only">Classes</caption>
@@ -797,6 +843,7 @@ export function ClassesTable() {
 					pageData.prevCursor ||
 					pagination.hasPrevPage) ? (
 					<TablePagination
+						busy={classesQuery.isFetching}
 						hasNextPage={!!pageData.nextCursor}
 						hasPrevPage={pagination.hasPrevPage || !!pageData.prevCursor}
 						onNextPage={() =>

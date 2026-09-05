@@ -209,16 +209,19 @@ export function SearchWorkspace() {
 			searchClassSchema,
 			searchObjectData,
 		],
-		queryFn: async () =>
-			fetchUnifiedSearch({
-				q: searchQuery,
-				kinds: SEARCH_GROUPS.filter((item) =>
-					selectedGroups.includes(item.group),
-				).map((item) => item.kind),
-				limitPerKind: DEFAULT_UNIFIED_SEARCH_LIMIT,
-				searchClassSchema,
-				searchObjectData,
-			}),
+		queryFn: async ({ signal }) =>
+			fetchUnifiedSearch(
+				{
+					q: searchQuery,
+					kinds: SEARCH_GROUPS.filter((item) =>
+						selectedGroups.includes(item.group),
+					).map((item) => item.kind),
+					limitPerKind: DEFAULT_UNIFIED_SEARCH_LIMIT,
+					searchClassSchema,
+					searchObjectData,
+				},
+				{ signal },
+			),
 		enabled: searchQuery.length > 0 && selectedGroups.length > 0,
 	});
 
@@ -754,7 +757,7 @@ export function SearchWorkspace() {
 								{isLoadingMore ? "Loading..." : "Load more"}
 							</button>
 						) : null}
-						{exportMenu}
+						{items.length > 0 ? exportMenu : null}
 					</div>
 				</div>
 
@@ -830,7 +833,6 @@ export function SearchWorkspace() {
 		return (
 			<section className="stack search-page">
 				<header className="stack search-page-header">
-					<p className="eyebrow">Search</p>
 					<h2>Unified search</h2>
 					<p className="muted search-summary">
 						Use the top bar to search across collections, classes, and objects.
@@ -849,7 +851,6 @@ export function SearchWorkspace() {
 	return (
 		<section className="stack search-page">
 			<header className="stack search-page-header">
-				<p className="eyebrow">Search</p>
 				<h2>Results for "{searchQuery}"</h2>
 				<p className="muted search-summary">
 					{totalLoadedResults} loaded across {selectedGroups.length} kind

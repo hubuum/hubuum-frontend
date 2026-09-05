@@ -27,6 +27,7 @@ async function performLogout(request: NextRequest) {
 		await backendFetchRaw(BACKEND_LOGOUT_PATH, {
 			correlationId,
 			method: "POST",
+			signal: AbortSignal.timeout(5_000),
 			token: session.token,
 		}).catch(() => {
 			// Continue local logout even if backend logout fails.

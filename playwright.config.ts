@@ -1,3 +1,4 @@
+import path from "node:path";
 import { defineConfig } from "@playwright/test";
 
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
@@ -12,6 +13,12 @@ export default defineConfig({
 	reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "list",
 	outputDir: "test-results/playwright",
 	snapshotPathTemplate: "{testDir}/__screenshots__/{testFilePath}/{arg}{ext}",
+	expect: {
+		toHaveScreenshot: {
+			stylePath: path.join(__dirname, "tests/e2e/visual-stability.css"),
+			maxDiffPixelRatio: 0.01,
+		},
+	},
 	use: {
 		baseURL: externalBaseUrl ?? localBaseUrl,
 		trace: "retain-on-failure",

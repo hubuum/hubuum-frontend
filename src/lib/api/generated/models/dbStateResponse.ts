@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 
 export interface DbStateResponse {
@@ -60,19 +60,19 @@ export interface DbStateResponse {
      */
   connections_closed_max_lifetime: number;
   /**
-     * Cumulative connections established by the pool.
+     * Cumulative connections established by the context.
      * @minimum 0
      */
   connections_created: number;
   /** Current database size in bytes. */
   db_size: number;
   /**
-     * Established connections currently waiting in the pool.
+     * Established connections currently waiting in the context.
      * @minimum 0
      */
   idle_connections: number;
   /**
-     * Established connections currently checked out of the pool.
+     * Established connections currently checked out of the context.
      * @minimum 0
      */
   in_use_connections: number;
@@ -82,7 +82,7 @@ export interface DbStateResponse {
      */
   last_vacuum_time?: string | null;
   /**
-     * Configured maximum number of connections in this process-local pool.
+     * Configured maximum number of connections in this process-local context.
      * @minimum 0
      */
   max_connections: number;
@@ -92,7 +92,7 @@ export interface DbStateResponse {
      */
   pending_acquisitions: number;
   /**
-     * Connections currently managed by this process-local pool.
+     * Connections currently managed by this process-local context.
      * @minimum 0
      */
   total_connections: number;

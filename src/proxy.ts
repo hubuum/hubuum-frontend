@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { FRONTEND_API_PREFIX } from "@/lib/api/frontend";
 import {
 	CORRELATION_ID_COOKIE,
 	CORRELATION_ID_HEADER,
 	generateCorrelationId,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
+import { sanitizeOperationalPath } from "@/lib/operational-events";
 import { REQUEST_PATH_HEADER } from "@/lib/request-context";
+import {
+	buildContentSecurityPolicy,
+	CSP_NONCE_HEADER,
+	PRIVATE_CACHE_CONTROL,
+} from "@/lib/security-policy";
 
 const LEGACY_DESIGN_COOKIE = "hubuum.design";
 
@@ -31,7 +37,13 @@ export function proxy(request: NextRequest) {
 	const path = request.nextUrl.pathname;
 	const contentType = request.headers.get("content-type") ?? "-";
 	const accept = request.headers.get("accept") ?? "-";
-	const isApiRequest = path.startsWith("/api/");
+	const isApiRequest =
+		path.startsWith(`${FRONTEND_API_PREFIX}/`) || path.startsWith("/api/");
+	const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+	const csp = buildContentSecurityPolicy(
+		nonce,
+		process.env.NODE_ENV !== "production",
+	);
 	const headerCorrelationId = normalizeCorrelationId(
 		request.headers.get(CORRELATION_ID_HEADER),
 	);
@@ -43,10 +55,12 @@ export function proxy(request: NextRequest) {
 		: generateCorrelationId();
 
 	console.info(
-		`[hubuum-http][cid=${correlationId}] ${request.method} ${path} ct=${contentType} accept=${accept}`,
+		`[hubuum-http][cid=${correlationId}] ${request.method} ${sanitizeOperationalPath(path)} ct=${contentType} accept=${accept}`,
 	);
 
 	const forwardedHeaders = new Headers(request.headers);
+	forwardedHeaders.set(CSP_NONCE_HEADER, nonce);
+	forwardedHeaders.set("Content-Security-Policy", csp);
 	forwardedHeaders.set(CORRELATION_ID_HEADER, correlationId);
 	forwardedHeaders.set(
 		REQUEST_PATH_HEADER,
@@ -78,6 +92,10 @@ export function proxy(request: NextRequest) {
 	}
 
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
+	response.headers.set("Content-Security-Policy", csp);
+	if (isApiRequest || request.headers.get("accept")?.includes("text/html")) {
+		response.headers.set("Cache-Control", PRIVATE_CACHE_CONTROL);
+	}
 	if (request.cookies.has(LEGACY_DESIGN_COOKIE)) {
 		response.cookies.set(LEGACY_DESIGN_COOKIE, "", {
 			httpOnly: true,

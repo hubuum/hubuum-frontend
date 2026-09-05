@@ -3,6 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { endBrowserSession } from "@/lib/logout";
+import { useToast } from "@/lib/toast-context";
 
 import {
 	clearUserSettingsForLogout,
@@ -21,24 +23,28 @@ export function LogoutButton({
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const [isPending, setIsPending] = useState(false);
+	const { showToast } = useToast();
 
 	async function signOut() {
 		setIsPending(true);
 
 		try {
-			await Promise.race([
-				flushUserSettings({ keepalive: true }),
-				new Promise<void>((resolve) => window.setTimeout(resolve, 750)),
-			]);
-			await fetch("/_hubuum-bff/auth/logout", {
-				method: "POST",
-				credentials: "include",
-			});
-		} finally {
-			clearUserSettingsForLogout();
+			await endBrowserSession(() => flushUserSettings({ keepalive: true }));
+			try {
+				clearUserSettingsForLogout();
+			} catch {
+				// Browser storage may be unavailable; the server session has ended.
+			}
 			queryClient.clear();
 			router.push("/login");
 			router.refresh();
+		} catch {
+			showToast(
+				"Sign-out could not be completed. You may still be signed in. Please try Sign out again.",
+				"error",
+			);
+		} finally {
+			setIsPending(false);
 		}
 	}
 

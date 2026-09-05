@@ -1,22 +1,26 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
-
-import { JsonEditor } from "@/components/json-editor";
+import { parseJsonText, validateJsonAgainstSchema } from "@/lib/json-inspector";
 import {
 	buildObjectCreateDataModel,
 	isObjectCreatePathAllowed,
-	removeObjectCreateDataValue,
 	type ObjectCreateDataField,
+	removeObjectCreateDataValue,
 } from "@/lib/object-create-data";
 import {
 	createObjectDataFieldValue,
 	getObjectDataValue,
+	type ObjectDataFieldType,
 	parseObjectDataPath,
 	setObjectDataValue,
-	type ObjectDataFieldType,
 } from "@/lib/object-data-editing";
-import { parseJsonText, validateJsonAgainstSchema } from "@/lib/json-inspector";
+
+const JsonEditor = dynamic(
+	() => import("@/components/json-editor").then((module) => module.JsonEditor),
+	{ loading: () => <p role="status">Loading editor…</p> },
+);
 
 type ObjectCreateDataEditorProps = {
 	disabled?: boolean;

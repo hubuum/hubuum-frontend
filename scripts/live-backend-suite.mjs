@@ -188,10 +188,10 @@ async function main() {
       clientConfig.data.authentication.max_token_lifetime_hours >= defaultTokenLifetimeHours,
     "Client config is missing the effective maximum token lifetime.",
   );
-  pass("discovered public v0.0.9 pagination and authentication configuration");
+  pass("discovered public v0.0.11 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
-  assert(openapi.data.info?.version === "0.0.9", "Server OpenAPI is not version 0.0.9.");
+  assert(openapi.data.info?.version === "0.0.11", "Server OpenAPI is not version 0.0.11.");
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
     openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
@@ -199,6 +199,12 @@ async function main() {
   );
   assert(openapi.data.paths?.["/api/v1/backups"], "OpenAPI is missing backups.");
   assert(openapi.data.paths?.["/api/v1/restores"], "OpenAPI is missing restores.");
+  assert(
+    openapi.data.paths?.["/api/v1/search"]?.post &&
+      openapi.data.paths?.["/api/v1/search/stream"]?.post &&
+      openapi.data.components?.schemas?.StructuredSearchRequest,
+    "OpenAPI is missing the structured search contract.",
+  );
   assert(
     openapi.data.paths?.["/api/v1/classes/{class_id}/computed-fields"],
     "OpenAPI is missing shared computed fields.",
@@ -269,7 +275,7 @@ async function main() {
     openapi.data.components?.schemas?.PrincipalSettingsResponse,
     "OpenAPI is missing revisioned principal settings responses.",
   );
-  pass("server OpenAPI exposes the expected v0.0.9 contract");
+  pass("server OpenAPI exposes the expected v0.0.11 contract");
 
   const token = await loginAs(adminName, adminPassword);
   pass("admin login returns a bearer token");
@@ -300,7 +306,18 @@ async function main() {
       ),
     "Admin config is missing token-retention settings.",
   );
-  pass("read redacted v0.0.9 admin runtime configuration");
+  assert(
+    typeof runningConfig.data.database?.backend === "string" &&
+      runningConfig.data.database.backend.length > 0,
+    "Admin config is missing the storage backend.",
+  );
+  assert(
+    Number.isInteger(runningConfig.data.exports?.storage_query_budget_ms) &&
+      runningConfig.data.exports.storage_query_budget_ms ===
+        runningConfig.data.exports.database_statement_timeout_ms,
+    "Admin config is missing the storage query budget or its compatibility alias.",
+  );
+  pass("read redacted v0.0.11 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -880,7 +897,7 @@ async function main() {
   pass("created and completed a backup task");
 
   const backupOutput = await request("GET", `/api/v1/backups/${backup.data.id}/output`, auth);
-  assert(backupOutput.data.backup_version === 4, "Backup document should use format version 4.");
+  assert(backupOutput.data.backup_version === 5, "Backup document should use format version 5.");
   assert(hasHeader(backupOutput.headers, "digest"), "Backup output should include Digest.");
   assert(
     hasHeader(backupOutput.headers, "x-hubuum-backup-sha256"),
@@ -899,7 +916,7 @@ async function main() {
       stagedRestore.data.restore_capability.length > 0,
     "Staged restore should return a one-time capability.",
   );
-  assert(stagedRestore.data.validation?.backup_version === 4, "Restore validation should report backup version 4.");
+  assert(stagedRestore.data.validation?.backup_version === 5, "Restore validation should report backup version 5.");
   const restoreStatus = await request(
     "GET",
     `/api/v1/restores/${stagedRestore.data.id}/status`,

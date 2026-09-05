@@ -1,0 +1,198 @@
+.sidebar-layer {
+	display: contents;
+}
+.classes-table-tools,
+.collections-table-tools {
+	grid-template-columns: auto auto minmax(14rem, 1fr);
+	width: min(43rem, 100%);
+	gap: 0.6rem;
+}
+.resource-index .table-filter-input:placeholder-shown {
+	padding-right: 0.9rem;
+}
+.table-pagination-info {
+	gap: 0.65rem;
+}
+button.table-pagination-action {
+	min-height: 2.75rem;
+	padding: 0.5rem 0.75rem;
+	text-decoration: none;
+}
+@media (max-width: 1200px) {
+	.classes-table-tools,
+	.collections-table-tools {
+		grid-template-columns: auto minmax(0, 1fr);
+		width: min(29rem, 100%);
+	}
+	.resource-index .classes-table-tools .table-filter-form,
+	.resource-index .collections-table-tools .table-filter-form {
+		grid-column: 1 / -1;
+		width: 100%;
+	}
+}
+.sidebar-header {
+	gap: 0.5rem;
+}
+.resource-picker {
+	min-width: 0;
+	max-width: 100%;
+}
+.resource-picker .directory-lookup-trigger {
+	min-height: 2.75rem;
+	max-width: 100%;
+	text-align: left;
+}
+.resource-picker .directory-lookup-trigger span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.resource-picker .directory-lookup-popover {
+	width: min(28rem, calc(100vw - 2rem));
+	max-height: min(36rem, 70vh);
+	overflow-y: auto;
+	z-index: 90;
+}
+.resource-picker .directory-lookup-options {
+	max-height: 18rem;
+	overflow-y: auto;
+}
+.topology-flyout-link-row {
+	display: flex;
+	align-items: stretch;
+}
+.topology-flyout-link-row > a {
+	flex: 1;
+	min-width: 0;
+}
+.topology-flyout-toggle {
+	min-width: 2.75rem;
+	min-height: 2.75rem;
+	padding: 0.5rem;
+}
+.topology-flyout-toggle svg {
+	width: 1rem;
+	height: 1rem;
+}
+.workspace-pinned-nav {
+	display: flex;
+	gap: 0.75rem;
+	align-items: center;
+	overflow-x: auto;
+	padding: 0.2rem 0.7rem;
+}
+.workspace-pinned-nav a {
+	display: block;
+	max-width: 16rem;
+	min-height: 2.75rem;
+	padding: 0.6rem 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+.command-trigger {
+	white-space: nowrap;
+}
+.command-dialog {
+	max-width: 36rem;
+}
+.command-options {
+	display: grid;
+	gap: 0.25rem;
+	max-height: 50vh;
+	overflow-y: auto;
+}
+.command-options > a,
+.command-options > button {
+	text-align: left;
+	padding: 0.65rem 0.8rem;
+	min-height: 2.75rem;
+	border-radius: 8px;
+}
+.command-options > a:hover,
+.command-options > a:focus-visible {
+	background: var(--accent-soft);
+}
+.login-heading {
+	margin: 0 0 1rem;
+	font-size: 1.5rem;
+	text-align: center;
+}
+.login-password-field {
+	position: relative;
+	display: grid;
+}
+.login-password-field input {
+	padding-inline-end: 3.25rem;
+}
+.login-password-toggle {
+	position: absolute;
+	inset-inline-end: 0.125rem;
+	top: 50%;
+	transform: translateY(-50%);
+	display: grid;
+	place-items: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	padding: 0;
+	background: transparent;
+	color: var(--ink);
+}
+.login-password-toggle:hover {
+	background: var(--accent-soft);
+}
+.login-password-toggle svg {
+	width: 1.25rem;
+	height: 1.25rem;
+}
+.login-appearance {
+	justify-self: center;
+	width: min(58rem, 100%);
+}
+.login-appearance > summary {
+	cursor: pointer;
+	width: fit-content;
+	margin: 0 auto;
+	min-height: 2.75rem;
+	padding: 0.65rem 1rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--card);
+	color: var(--ink);
+}
+.login-appearance > summary:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 3px;
+}
+.login-appearance[open] > summary {
+	margin-bottom: 0.5rem;
+}
+.toast-container {
+	max-height: calc(100dvh - 2rem);
+	overflow-y: auto;
+}
+.toast-close {
+	flex-shrink: 0;
+	min-width: 2.75rem;
+	min-height: 2.75rem;
+}
+table:focus-visible,
+tr:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+@media (max-width: 620px) {
+	.workspace-pinned-nav {
+		gap: 0.55rem;
+		font-size: 0.85rem;
+	}
+	.command-trigger {
+		min-width: 2.75rem;
+		padding: 0.45rem;
+		font-size: 0.8rem;
+	}
+	.login-heading {
+		font-size: 1.3rem;
+	}
+}

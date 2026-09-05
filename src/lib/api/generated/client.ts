@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
 import type {
   ApiErrorResponse,
@@ -158,6 +158,8 @@ import type {
   RunningConfig,
   ServiceAccountPointResponse,
   ServiceAccountResponse,
+  StructuredSearchRequest,
+  StructuredSearchResponse,
   TaskEventResponse,
   TaskQueueStateResponse,
   TaskResponse,
@@ -649,6 +651,11 @@ export type getApiV0MetaDbResponse401 = {
   status: 401
 }
 
+export type getApiV0MetaDbResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
 export type getApiV0MetaDbResponse500 = {
   data: ApiErrorResponse
   status: 500
@@ -657,7 +664,7 @@ export type getApiV0MetaDbResponse500 = {
 export type getApiV0MetaDbResponseSuccess = (getApiV0MetaDbResponse200) & {
   headers: Headers;
 };
-export type getApiV0MetaDbResponseError = (getApiV0MetaDbResponse401 | getApiV0MetaDbResponse500) & {
+export type getApiV0MetaDbResponseError = (getApiV0MetaDbResponse401 | getApiV0MetaDbResponse404 | getApiV0MetaDbResponse500) & {
   headers: Headers;
 };
 
@@ -1670,7 +1677,7 @@ export const getGetApiV1ClassesByNameByClassNameObjectsUrl = (className: string,
 }
 
 /**
- * Name-addressed alias for listing the current objects in a class. Numeric-looking class names remain names. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Name-addressed alias for listing the current objects in a class. Numeric-looking class names remain names. Named related.<alias> groups filter objects by bounded, permission-visible paths to independent target objects. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary List objects in a class by class name
  */
 export const getApiV1ClassesByNameByClassNameObjects = async (className: string,
@@ -2806,7 +2813,7 @@ export const getGetApiV1ClassesByClassIdTrailingUrl = (classId: number,
 }
 
 /**
- * Lists objects in the path class. Enabled computed fields can be filtered with computed.shared.<key> or computed.personal.<key> using the normal __operator suffix, and sorted with the same names. Computed querying supports at most two computed filter parameters and two explicit sort fields per request. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * Lists objects in the path class. Enabled computed fields can be filtered with computed.shared.<key> or computed.personal.<key> using the normal __operator suffix, and sorted with the same names. Named related.<alias> groups filter objects by bounded, permission-visible paths to independent target objects. Computed querying supports at most two computed filter parameters and two explicit sort fields per request. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Classes By Class Id Trailing
  */
 export const getApiV1ClassesByClassIdTrailing = async (classId: number,
@@ -13205,10 +13212,87 @@ export const getApiV1Search = async (params: GetApiV1SearchParams, options?: Req
 
 
 
-export type getApiV1SearchStreamResponse200 = {
-  data: void
+export type postApiV1SearchResponse200 = {
+  data: StructuredSearchResponse
   status: 200
 }
+
+export type postApiV1SearchResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1SearchResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1SearchResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1SearchResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1SearchResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type postApiV1SearchResponse415 = {
+  data: ApiErrorResponse
+  status: 415
+}
+
+export type postApiV1SearchResponseSuccess = (postApiV1SearchResponse200) & {
+  headers: Headers;
+};
+export type postApiV1SearchResponseError = (postApiV1SearchResponse400 | postApiV1SearchResponse401 | postApiV1SearchResponse403 | postApiV1SearchResponse404 | postApiV1SearchResponse413 | postApiV1SearchResponse415) & {
+  headers: Headers;
+};
+
+export type postApiV1SearchResponse = (postApiV1SearchResponseSuccess | postApiV1SearchResponseError)
+
+export const getPostApiV1SearchUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/search`
+}
+
+/**
+ * Runs the versioned, typed Hubuum resource-search DSL. Version 1 targets collections, classes, objects, audit events, users, groups, or service accounts. Boolean and/or/not expressions compose target-specific field predicates; object queries may additionally use permission-aware existential related-object predicates and an optional exact class selector. See docs/search_api.md for the complete grammar and field/operator matrix.
+ * @summary Post Api V1 Search
+ */
+export const postApiV1Search = async (structuredSearchRequest: StructuredSearchRequest, options?: RequestInit): Promise<postApiV1SearchResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+const res = await fetch(getPostApiV1SearchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(structuredSearchRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1SearchResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1SearchResponse
+}
+
+
 
 export type getApiV1SearchStreamResponse400 = {
   data: ApiErrorResponse
@@ -13220,14 +13304,12 @@ export type getApiV1SearchStreamResponse401 = {
   status: 401
 }
 
-export type getApiV1SearchStreamResponseSuccess = (getApiV1SearchStreamResponse200) & {
-  headers: Headers;
-};
+;
 export type getApiV1SearchStreamResponseError = (getApiV1SearchStreamResponse400 | getApiV1SearchStreamResponse401) & {
   headers: Headers;
 };
 
-export type getApiV1SearchStreamResponse = (getApiV1SearchStreamResponseSuccess | getApiV1SearchStreamResponseError)
+export type getApiV1SearchStreamResponse = (getApiV1SearchStreamResponseError)
 
 export const getGetApiV1SearchStreamUrl = (params: GetApiV1SearchStreamParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -13262,8 +13344,73 @@ export const getApiV1SearchStream = async (params: GetApiV1SearchStreamParams, o
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: getApiV1SearchStreamResponse['data'] = body ? JSON.parse(body) : undefined
+  const data: getApiV1SearchStreamResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1SearchStreamResponse
+}
+
+
+
+export type postApiV1SearchStreamResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1SearchStreamResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1SearchStreamResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type postApiV1SearchStreamResponse415 = {
+  data: ApiErrorResponse
+  status: 415
+}
+
+;
+export type postApiV1SearchStreamResponseError = (postApiV1SearchStreamResponse400 | postApiV1SearchStreamResponse401 | postApiV1SearchStreamResponse413 | postApiV1SearchStreamResponse415) & {
+  headers: Headers;
+};
+
+export type postApiV1SearchStreamResponse = (postApiV1SearchStreamResponseError)
+
+export const getPostApiV1SearchStreamUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/search/stream`
+}
+
+/**
+ * Runs the same versioned structured resource-search DSL as POST /api/v1/search and returns server-sent events. The stream emits started, zero or more tagged result events, and one terminal done event carrying cursor metadata; execution failures after streaming starts produce a terminal error event.
+ * @summary Post Api V1 Search Stream
+ */
+export const postApiV1SearchStream = async (structuredSearchRequest: StructuredSearchRequest, options?: RequestInit): Promise<postApiV1SearchStreamResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+const res = await fetch(getPostApiV1SearchStreamUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(structuredSearchRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1SearchStreamResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1SearchStreamResponse
 }
 
 

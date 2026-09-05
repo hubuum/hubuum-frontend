@@ -46,7 +46,7 @@ export function useTableSort() {
 			// Reset to first page when changing sort
 			params.delete("cursor");
 
-			router.push(`${pathname}?${params.toString()}`);
+			router.push(`${pathname}?${params.toString()}`, { scroll: false });
 		},
 		[pathname, router, searchParams, sortState],
 	);
@@ -61,7 +61,7 @@ export function useTableSort() {
 		params.delete("sort");
 		params.delete("cursor");
 		const query = params.toString();
-		router.push(query ? `${pathname}?${query}` : pathname);
+		router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
 	}, [pathname, router, searchParams]);
 
 	return {

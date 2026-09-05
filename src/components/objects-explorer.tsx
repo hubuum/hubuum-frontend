@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -12,34 +13,32 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { ClassDirectoryLookup } from "@/components/class-directory-lookup";
 import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
-import { ObjectCreateDataEditor } from "@/components/object-create-data-editor";
 import {
-	ObjectGroupingMenu,
 	type ObjectAggregateMeasureField,
 	type ObjectAggregateMeasureSelection,
 	type ObjectGroupingField,
+	ObjectGroupingMenu,
 } from "@/components/object-grouping-menu";
-import {
-	ObjectServerFilterMenu,
-} from "@/components/object-server-filter-menu";
+import { ObjectServerFilterMenu } from "@/components/object-server-filter-menu";
 import { ResourceIndexHeading } from "@/components/resource-index-heading";
+import { ResourcePicker } from "@/components/resource-picker";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TablePagination } from "@/components/table-pagination";
-import {
-	fetchPersonalComputedFields,
-	fetchSharedComputedFields,
-} from "@/lib/api/computed-fields";
-import { fetchClientPaginationConfig } from "@/lib/api/client-config";
+import { TableQueryStatus } from "@/components/table-query-status";
 import {
 	CLASS_OBJECT_SAMPLES_GC_TIME,
 	CLASS_OBJECT_SAMPLES_STALE_TIME,
 	classObjectSamplesQueryKey,
 	fetchClassObjectSamples,
 } from "@/lib/api/class-objects";
+import { fetchClientPaginationConfig } from "@/lib/api/client-config";
+import {
+	fetchPersonalComputedFields,
+	fetchSharedComputedFields,
+} from "@/lib/api/computed-fields";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import {
 	fetchObjectAggregates,
@@ -53,7 +52,6 @@ import type {
 	NewHubuumObject,
 } from "@/lib/api/generated/models";
 import {
-	fetchClassDirectory,
 	fetchClassesByIds,
 	fetchCollectionDirectory,
 	fetchCollectionsByIds,
@@ -74,6 +72,13 @@ import {
 	getSingularObjectClassName,
 } from "@/lib/object-create-label";
 import {
+	formatObjectAggregateDimension,
+	formatObjectAggregateMeasure,
+	formatObjectAggregateMeasureLabel,
+	groupObjectRows,
+	type ObjectGroupSort,
+} from "@/lib/object-grouping";
+import {
 	resolveObjectServerFilterComputedFields,
 	resolveObjectServerFilterDataFields,
 } from "@/lib/object-server-filter-fields";
@@ -86,13 +91,6 @@ import {
 	serializeObjectServerFilters,
 	toServerFilterDataPath,
 } from "@/lib/object-server-filters";
-import {
-	formatObjectAggregateDimension,
-	formatObjectAggregateMeasure,
-	formatObjectAggregateMeasureLabel,
-	groupObjectRows,
-	type ObjectGroupSort,
-} from "@/lib/object-grouping";
 import {
 	matchesFreeTextSearch,
 	normalizeSearchTerm,
@@ -119,6 +117,14 @@ import {
 	writeUserSetting,
 } from "@/lib/user-settings-client";
 import { PORTABLE_USER_SETTING_KEYS } from "@/lib/user-settings-types";
+
+const ObjectCreateDataEditor = dynamic(
+	() =>
+		import("@/components/object-create-data-editor").then(
+			(module) => module.ObjectCreateDataEditor,
+		),
+	{ loading: () => <p role="status">Loading editor…</p> },
+);
 
 function IconSearch() {
 	return (
@@ -290,6 +296,7 @@ async function fetchObjectsByClass(
 	cursor?: string,
 	sort?: string,
 	serverFilters: readonly ObjectServerFilter[] = [],
+	signal?: AbortSignal,
 ): Promise<ObjectsPageData> {
 	const params = new URLSearchParams();
 	params.set("limit", String(resolveServerPageLimit(limit)));
@@ -302,6 +309,7 @@ async function fetchObjectsByClass(
 		`/_hubuum-bff/classes/${classId}/objects?${params.toString()}`,
 		{
 			credentials: "include",
+			signal,
 		},
 	);
 	const payload = await parseJsonPayload(response);
@@ -974,10 +982,6 @@ export function ObjectsExplorer() {
 		},
 		enabled: parsedClassId !== null,
 	});
-	const classDirectory = useDirectorySearch({
-		queryKey: ["class-directory", "object-explorer"],
-		queryFn: fetchClassDirectory,
-	});
 	const collectionDirectory = useDirectorySearch({
 		queryKey: ["collection-directory", "object-form"],
 		queryFn: fetchCollectionDirectory,
@@ -998,6 +1002,11 @@ export function ObjectsExplorer() {
 	const { showToast } = useToast();
 
 	const pagination = useCursorPagination({ defaultLimit: 100 });
+	// biome-ignore lint/correctness/useExhaustiveDependencies: selections belong to the current page.
+	useEffect(() => {
+		setSelectedObjectIds([]);
+	}, [pagination.cursor, pagination.limit]);
+
 	const { sortState, setSort, clearSort, getSortParam } = useTableSort();
 	const clientPaginationQuery = useQuery({
 		queryKey: ["client-config", "pagination"],
@@ -1091,14 +1100,20 @@ export function ObjectsExplorer() {
 			getSortParam(),
 			serverFilterSignature,
 		],
-		queryFn: async () =>
+		queryFn: async ({ signal }) =>
 			fetchObjectsByClass(
 				parsedClassId ?? 0,
 				effectiveFetchLimit,
 				pagination.cursor,
 				getSortParam(),
 				serverFilters,
-		),
+				signal,
+			),
+		placeholderData: (previous, query) =>
+			query?.queryKey[1] === parsedClassId &&
+			query?.queryKey[5] === serverFilterSignature
+				? previous
+				: undefined,
 		enabled: parsedClassId !== null,
 	});
 	const visibleCollectionIds = useMemo(
@@ -1139,7 +1154,9 @@ export function ObjectsExplorer() {
 		return map;
 	}, [collectionSelection, selectedClass, visibleCollectionsQuery.data]);
 	const activePageCanSeedObjectSamples =
-		pagination.cursor === undefined && serverFilters.length === 0;
+		pagination.cursor === undefined &&
+		serverFilters.length === 0 &&
+		!objectsQuery.isPlaceholderData;
 	const objectSamplesQuery = useQuery({
 		queryKey: classObjectSamplesQueryKey(parsedClassId),
 		queryFn: () => fetchClassObjectSamples(parsedClassId ?? 0),
@@ -1241,7 +1258,11 @@ export function ObjectsExplorer() {
 	});
 
 	const deleteSelectedObjects = useCallback(async () => {
-		if (!selectedObjectIds.length || parsedClassId === null) {
+		if (
+			objectsQuery.isPlaceholderData ||
+			!selectedObjectIds.length ||
+			parsedClassId === null
+		) {
 			return;
 		}
 
@@ -1261,7 +1282,13 @@ export function ObjectsExplorer() {
 			classId: parsedClassId,
 			objectIds: [...selectedObjectIds],
 		});
-	}, [confirm, selectedObjectIds, parsedClassId, deleteMutation]);
+	}, [
+		objectsQuery.isPlaceholderData,
+		confirm,
+		selectedObjectIds,
+		parsedClassId,
+		deleteMutation,
+	]);
 
 	useEffect(() => {
 		if (!isCreateModalOpen) {
@@ -1605,18 +1632,28 @@ export function ObjectsExplorer() {
 			aggregateCursor,
 			serverFilterSignature,
 		],
-		queryFn: () =>
-			fetchObjectAggregates({
-				classId: parsedClassId ?? 0,
-				groupBy: serverGroupingField
-					? [serverGroupingField.serverGroupBy ?? "name"]
-					: [],
-				measures: aggregateMeasures,
-				sort: toObjectAggregateSort(groupSort),
-				limit: effectiveFetchLimit,
-				cursor: aggregateCursor ?? undefined,
-				filters: serverFilters,
-			}),
+		queryFn: ({ signal }) =>
+			fetchObjectAggregates(
+				{
+					classId: parsedClassId ?? 0,
+					groupBy: serverGroupingField
+						? [serverGroupingField.serverGroupBy ?? "name"]
+						: [],
+					measures: aggregateMeasures,
+					sort: toObjectAggregateSort(groupSort),
+					limit: effectiveFetchLimit,
+					cursor: aggregateCursor ?? undefined,
+					filters: serverFilters,
+				},
+				signal,
+			),
+		placeholderData: (previous, query) =>
+			query?.queryKey[1] === parsedClassId &&
+			query.queryKey[2] === serverGroupingField?.serverGroupBy &&
+			query.queryKey[3] === aggregateMeasureSignature &&
+			query.queryKey[7] === serverFilterSignature
+				? previous
+				: undefined,
 		enabled: parsedClassId !== null && serverAggregationActive,
 	});
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset aggregate pagination whenever its request scope changes.
@@ -1710,63 +1747,59 @@ export function ObjectsExplorer() {
 			return left.id - right.id;
 		});
 	}, [activeDataColumns, dataColumnSort, filteredObjects]);
-	const groupedExportView = useMemo<TableExportView<DisplayedAggregateGroup>>(
-		() => {
-			const columns: TableExportColumn<DisplayedAggregateGroup>[] = [
-				{
-					key: "group",
-					label: activeGroupingField?.label ?? "Scope",
-					getValue: (group) => group.label,
-				},
-				{
-					key: "count",
-					label: "Count",
-					getValue: (group) => group.count,
-				},
-			];
-			for (const [index, measure] of aggregateMeasures.entries()) {
-				const fieldLabel =
-					aggregateMeasureFieldLabels.get(measure.field) ?? measure.field;
-				columns.push({
-					key: `measure.${index}.${measure.operation}.${measure.field}`,
-					label: formatObjectAggregateMeasureLabel(
-						measure.operation,
-						fieldLabel,
-					),
-					getValue: (group) => group.measures?.[index]?.value ?? null,
-				});
-				columns.push({
-					key: `measure.${index}.value_count`,
-					label: `${fieldLabel} · contributing values`,
-					getValue: (group) => group.measures?.[index]?.valueCount ?? 0,
-				});
-				columns.push({
-					key: `measure.${index}.skipped_count`,
-					label: `${fieldLabel} · skipped values`,
-					getValue: (group) => group.measures?.[index]?.skippedCount ?? 0,
-				});
-			}
+	const groupedExportView = useMemo<
+		TableExportView<DisplayedAggregateGroup>
+	>(() => {
+		const columns: TableExportColumn<DisplayedAggregateGroup>[] = [
+			{
+				key: "group",
+				label: activeGroupingField?.label ?? "Scope",
+				getValue: (group) => group.label,
+			},
+			{
+				key: "count",
+				label: "Count",
+				getValue: (group) => group.count,
+			},
+		];
+		for (const [index, measure] of aggregateMeasures.entries()) {
+			const fieldLabel =
+				aggregateMeasureFieldLabels.get(measure.field) ?? measure.field;
+			columns.push({
+				key: `measure.${index}.${measure.operation}.${measure.field}`,
+				label: formatObjectAggregateMeasureLabel(measure.operation, fieldLabel),
+				getValue: (group) => group.measures?.[index]?.value ?? null,
+			});
+			columns.push({
+				key: `measure.${index}.value_count`,
+				label: `${fieldLabel} · contributing values`,
+				getValue: (group) => group.measures?.[index]?.valueCount ?? 0,
+			});
+			columns.push({
+				key: `measure.${index}.skipped_count`,
+				label: `${fieldLabel} · skipped values`,
+				getValue: (group) => group.measures?.[index]?.skippedCount ?? 0,
+			});
+		}
 
-			return {
-				id:
-					parsedClassId === null
-						? "objects.grouped"
-						: `objects.class.${parsedClassId}.grouped`,
-				fileName: `${selectedClass?.name ?? "objects"}-aggregates-view`,
-				sheetName: `${selectedClass?.name ?? "Objects"} aggregates`,
-				columns,
-				rows: displayedGroups,
-			};
-		},
-		[
-			activeGroupingField?.label,
-			aggregateMeasureFieldLabels,
-			aggregateMeasures,
-			displayedGroups,
-			parsedClassId,
-			selectedClass?.name,
-		],
-	);
+		return {
+			id:
+				parsedClassId === null
+					? "objects.grouped"
+					: `objects.class.${parsedClassId}.grouped`,
+			fileName: `${selectedClass?.name ?? "objects"}-aggregates-view`,
+			sheetName: `${selectedClass?.name ?? "Objects"} aggregates`,
+			columns,
+			rows: displayedGroups,
+		};
+	}, [
+		activeGroupingField?.label,
+		aggregateMeasureFieldLabels,
+		aggregateMeasures,
+		displayedGroups,
+		parsedClassId,
+		selectedClass?.name,
+	]);
 	const objectExportColumns = useMemo<
 		TableExportColumn<HubuumObjectComputedResponse>[]
 	>(() => {
@@ -2187,6 +2220,7 @@ export function ObjectsExplorer() {
 	});
 	const keyboardNav = useTableKeyboardNav({
 		items: displayedObjects,
+		enabled: !objectsQuery.isPlaceholderData,
 		getId: (objectItem) => objectItem.id,
 		onOpen: (objectItem) =>
 			router.push(`/objects/${objectItem.hubuum_class_id}/${objectItem.id}`),
@@ -2225,6 +2259,7 @@ export function ObjectsExplorer() {
 		};
 
 		const onSelectAll = () => {
+			if (objectsQuery.isPlaceholderData) return;
 			setSelectedObjectIds(displayedObjects.map((obj) => obj.id));
 		};
 
@@ -2234,7 +2269,7 @@ export function ObjectsExplorer() {
 			window.removeEventListener(DESELECT_ALL_EVENT, onDeselectAll);
 			window.removeEventListener(SELECT_ALL_EVENT, onSelectAll);
 		};
-	}, [displayedObjects]);
+	}, [displayedObjects, objectsQuery.isPlaceholderData]);
 
 	useEffect(() => {
 		window.dispatchEvent(
@@ -2393,7 +2428,11 @@ export function ObjectsExplorer() {
 	function setAggregateMeasureSelection(
 		nextMeasures: ObjectAggregateMeasureSelection[],
 	) {
-		if (nextMeasures.length > 0 && activeGroupingField && !serverGroupingField) {
+		if (
+			nextMeasures.length > 0 &&
+			activeGroupingField &&
+			!serverGroupingField
+		) {
 			setGroupFieldId(null);
 		}
 		setAggregateMeasures(nextMeasures);
@@ -2746,9 +2785,7 @@ export function ObjectsExplorer() {
 							value={dataInput}
 							onChange={setDataInput}
 							disabled={!createSelectedClass}
-							validationEnabled={
-								createSelectedClass?.validate_schema ?? false
-							}
+							validationEnabled={createSelectedClass?.validate_schema ?? false}
 							schema={createSelectedClass?.json_schema}
 							sampleData={serverFilterSampleData}
 						/>
@@ -2767,38 +2804,36 @@ export function ObjectsExplorer() {
 		);
 	}
 
-	const resourceSummary =
-		serverAggregationActive
-			? objectAggregatesQuery.data
-				? buildResourceSummary({
-						loaded: serverAggregateGroups.length,
-						loadedNoun:
-							serverAggregateGroups.length === 1 ? "group" : "groups",
-						total: objectAggregatesQuery.data.totalCount,
-						selected: selectedObjectIds.length,
-					})
-				: parsedClassId
-					? buildResourceSummary({ status: "Loading…" })
-					: buildResourceSummary({ status: "No class selected" })
-			: objectsQuery.data
-				? buildResourceSummary({
-						compactLoadedTotal: true,
-						shown: searchTerm ? filteredObjects.length : null,
-						shownLabel: "shown on page",
-						loaded: objects.length,
-						total: pageData?.totalCount,
-						totalLabel: serverFilters.length ? "matches" : "total",
-						selected: selectedObjectIds.length,
-						details:
-							activeGroupingField && !serverGroupingField
-								? [
-										`${displayedGroups.length} group${displayedGroups.length === 1 ? "" : "s"}`,
-									]
-								: [],
-					})
-				: parsedClassId
-					? buildResourceSummary({ status: "Loading…" })
-					: buildResourceSummary({ status: "No class selected" });
+	const resourceSummary = serverAggregationActive
+		? objectAggregatesQuery.data
+			? buildResourceSummary({
+					loaded: serverAggregateGroups.length,
+					loadedNoun: serverAggregateGroups.length === 1 ? "group" : "groups",
+					total: objectAggregatesQuery.data.totalCount,
+					selected: selectedObjectIds.length,
+				})
+			: parsedClassId
+				? buildResourceSummary({ status: "Loading…" })
+				: buildResourceSummary({ status: "No class selected" })
+		: objectsQuery.data
+			? buildResourceSummary({
+					compactLoadedTotal: true,
+					shown: searchTerm ? filteredObjects.length : null,
+					shownLabel: "shown on page",
+					loaded: objects.length,
+					total: pageData?.totalCount,
+					totalLabel: serverFilters.length ? "matches" : "total",
+					selected: selectedObjectIds.length,
+					details:
+						activeGroupingField && !serverGroupingField
+							? [
+									`${displayedGroups.length} group${displayedGroups.length === 1 ? "" : "s"}`,
+								]
+							: [],
+				})
+			: parsedClassId
+				? buildResourceSummary({ status: "Loading…" })
+				: buildResourceSummary({ status: "No class selected" });
 
 	return (
 		<div className="stack">
@@ -2818,6 +2853,10 @@ export function ObjectsExplorer() {
 			) : null}
 
 			<div className="card table-wrap resource-index objects-resource-index">
+				<TableQueryStatus
+					query={serverAggregationActive ? objectAggregatesQuery : objectsQuery}
+				/>
+				<TableQueryStatus query={selectedClassQuery} />
 				<div className="table-header">
 					<ResourceIndexHeading
 						title="Objects"
@@ -2827,38 +2866,12 @@ export function ObjectsExplorer() {
 						context={
 							<>
 								<span className="resource-index-context-label">of</span>
-								<span
-									className="resource-index-context-select"
-									aria-live="polite"
-								>
-									{selectedClass
-										? `${selectedClass.name} (#${selectedClass.id})`
-										: parsedClassId !== null
-											? selectedClassQuery.isLoading
-												? `Loading class #${parsedClassId}…`
-												: `Class #${parsedClassId} (unresolved)`
-											: "No class selected"}
-								</span>
-								<ClassDirectoryLookup
-									classes={classDirectory.query.data?.items ?? []}
-									helperText={directoryLookupStatus({
-										count: classDirectory.query.data?.items.length ?? 0,
-										isError: classDirectory.query.isError,
-										isLoading: classDirectory.query.isLoading,
-										isPartial: Boolean(classDirectory.query.data?.isPartial),
-										isReady: classDirectory.isReady,
-										minimumLength: classDirectory.minimumLength,
-										resourcePlural: "classes",
-										resourceSingular: "class",
-										term: classDirectory.term,
-									})}
-									idPrefix="objects-class-context-directory"
-									onChange={classDirectory.setSearch}
-									onSelect={(classItem) => {
-										classDirectory.setSearch("");
-										onClassContextChange(String(classItem.id));
-									}}
-									value={classDirectory.search}
+								<ResourcePicker
+									kind="class"
+									label="Objects class context"
+									value={selectedClassId}
+									selectedName={selectedClass?.name}
+									onChange={onClassContextChange}
 								/>
 							</>
 						}
@@ -3158,8 +3171,7 @@ export function ObjectsExplorer() {
 								<TableExportMenu
 									view={groupedExportView}
 									disabled={
-										objectsQuery.isFetching ||
-										objectAggregatesQuery.isFetching
+										objectsQuery.isFetching || objectAggregatesQuery.isFetching
 									}
 								/>
 							) : (
@@ -3275,7 +3287,9 @@ export function ObjectsExplorer() {
 					<div className="muted">Select a class to load its objects.</div>
 				) : serverAggregationActive && objectAggregatesQuery.isLoading ? (
 					<div>Loading object aggregates...</div>
-				) : serverAggregationActive && objectAggregatesQuery.isError ? (
+				) : serverAggregationActive &&
+					objectAggregatesQuery.isError &&
+					!objectAggregatesQuery.data ? (
 					<div className="error-banner">
 						Failed to aggregate objects.{" "}
 						{objectAggregatesQuery.error instanceof Error
@@ -3284,7 +3298,9 @@ export function ObjectsExplorer() {
 					</div>
 				) : !serverAggregationActive && objectsQuery.isLoading ? (
 					<div>Loading objects...</div>
-				) : !serverAggregationActive && objectsQuery.isError ? (
+				) : !serverAggregationActive &&
+					objectsQuery.isError &&
+					!objectsQuery.data ? (
 					<div className="error-banner">
 						Failed to load objects.{" "}
 						{objectsQuery.error instanceof Error
@@ -3410,7 +3426,8 @@ export function ObjectsExplorer() {
 													{result?.displayValue ?? "—"}
 													{result ? (
 														<small>
-															{result.valueCount} used · {result.skippedCount} skipped
+															{result.valueCount} used · {result.skippedCount}{" "}
+															skipped
 														</small>
 													) : null}
 												</td>
@@ -3444,7 +3461,12 @@ export function ObjectsExplorer() {
 							Swipe horizontally to see more columns. Names remain pinned.
 						</p>
 						<section className="object-table-scroll" aria-label="Objects table">
-							<table id="objects-table">
+							<table
+								id="objects-table"
+								ref={keyboardNav.tableRef}
+								aria-busy={objectsQuery.isFetching}
+								inert={objectsQuery.isPlaceholderData}
+							>
 								<caption className="sr-only">Objects</caption>
 								<colgroup>
 									<col
@@ -3765,6 +3787,11 @@ export function ObjectsExplorer() {
 					aggregateCursorHistory.length > 0 ||
 					objectAggregatesQuery.data.prevCursor ? (
 						<TablePagination
+							busy={
+								serverAggregationActive
+									? objectAggregatesQuery.isFetching
+									: objectsQuery.isFetching
+							}
 							hasNextPage={Boolean(objectAggregatesQuery.data.nextCursor)}
 							hasPrevPage={
 								aggregateCursorHistory.length > 0 ||
@@ -3789,6 +3816,11 @@ export function ObjectsExplorer() {
 						pageData.prevCursor ||
 						pagination.hasPrevPage) ? (
 					<TablePagination
+						busy={
+							serverAggregationActive
+								? objectAggregatesQuery.isFetching
+								: objectsQuery.isFetching
+						}
 						hasNextPage={!!pageData.nextCursor}
 						hasPrevPage={pagination.hasPrevPage || !!pageData.prevCursor}
 						onNextPage={() =>

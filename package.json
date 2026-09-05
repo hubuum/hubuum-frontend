@@ -7,8 +7,8 @@
 	},
 	"scripts": {
 		"dev": "next dev",
-		"dev:deps": "docker compose -f compose.dev.yml up -d --wait",
-		"dev:deps:down": "docker compose -f compose.dev.yml down",
+		"dev:deps": "bash scripts/dev-deps.sh up",
+		"dev:deps:down": "bash scripts/dev-deps.sh down",
 		"build": "next build",
 		"perf:budget": "node scripts/check-performance-budgets.mjs",
 		"release:dependencies": "node scripts/check-release-dependencies.mjs",
@@ -16,6 +16,7 @@
 		"test": "vitest run",
 		"test:performance-budget": "node --test scripts/check-performance-budgets.test.mjs",
 		"test:release-dependencies": "node --test scripts/check-release-dependencies.test.mjs",
+		"test:dev-deps": "node --test scripts/dev-deps.test.mjs",
 		"test:e2e": "playwright test",
 		"test:e2e:authenticated": "bash scripts/authenticated-e2e-test.sh",
 		"test:e2e:authenticated:full": "bash scripts/full-authenticated-e2e.sh",

@@ -73,11 +73,12 @@ export function buildObjectAggregateSearchParams(
 
 export async function fetchObjectAggregates(
 	request: ObjectAggregateRequest,
+	signal?: AbortSignal,
 ): Promise<ObjectAggregatePage> {
 	const params = buildObjectAggregateSearchParams(request);
 	const response = await fetch(
 		`${hubuumBffPath(`/api/v1/classes/${request.classId}/object-aggregates`)}?${params.toString()}`,
-		{ credentials: "include" },
+		{ credentials: "include", ...(signal ? { signal } : {}) },
 	);
 	const payload: unknown = await response.json().catch(() => null);
 	if (response.status !== 200) {

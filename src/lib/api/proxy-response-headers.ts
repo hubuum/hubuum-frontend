@@ -4,6 +4,8 @@ const SAFE_UPSTREAM_RESPONSE_HEADERS = [
 	"digest",
 	"etag",
 	"x-hubuum-backup-sha256",
+	"x-hubuum-export-warnings",
+	"x-hubuum-export-truncated",
 ] as const;
 
 export function copySafeUpstreamResponseHeaders(

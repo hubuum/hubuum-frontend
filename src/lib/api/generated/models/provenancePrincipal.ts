@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.9
+ * OpenAPI spec version: 0.0.11
  */
+import type { PrincipalID } from './principalID';
 
 /**
  * Durable principal identity used in provenance responses and sink envelopes.
@@ -16,5 +17,5 @@
 export interface ProvenancePrincipal {
   /** @nullable */
   name?: string | null;
-  principal_id: number;
+  principal_id: PrincipalID;
 }

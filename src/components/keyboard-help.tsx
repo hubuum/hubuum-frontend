@@ -15,6 +15,7 @@ type Shortcut = {
 };
 
 const shortcuts: Shortcut[] = [
+	{ keys: ["Ctrl/Cmd", "K"], description: "Find destinations and actions" },
 	{ keys: ["C"], description: "Create new item (on applicable pages)" },
 	{ keys: ["E"], description: "Edit current item (on applicable pages)" },
 	{ keys: ["Shift", "Enter"], description: "Save or create from a form" },

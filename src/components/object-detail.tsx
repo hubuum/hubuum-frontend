@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -17,7 +18,6 @@ import { ClassDirectoryLookup } from "@/components/class-directory-lookup";
 import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { CreateModal } from "@/components/create-modal";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
-import { JsonEditor } from "@/components/json-editor";
 import { ObjectDetailTracker } from "@/components/object-detail-tracker";
 import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
@@ -83,6 +83,11 @@ import {
 	directoryLookupStatus,
 	useDirectorySearch,
 } from "@/lib/use-directory-search";
+
+const JsonEditor = dynamic(
+	() => import("@/components/json-editor").then((module) => module.JsonEditor),
+	{ loading: () => <p role="status">Loading editor…</p> },
+);
 
 type ObjectDetailProps = {
 	classId: number;

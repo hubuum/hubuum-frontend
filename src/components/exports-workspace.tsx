@@ -44,14 +44,6 @@ import {
 } from "@/lib/api/export-options";
 import type { HubuumClassExpanded } from "@/lib/api/generated/models";
 import {
-	fetchClassDirectory,
-	fetchClassObjectDirectory,
-} from "@/lib/api/resource-directory";
-import {
-	buildCollectionHierarchy,
-	formatCollectionOption,
-} from "@/lib/collection-hierarchy";
-import {
 	deleteReportTemplate,
 	fetchReportOutput,
 	fetchReportResultStatuses,
@@ -68,11 +60,36 @@ import {
 	type TaskResponse,
 } from "@/lib/api/reporting";
 import {
+	fetchClassDirectory,
+	fetchClassObjectDirectory,
+} from "@/lib/api/resource-directory";
+import {
 	fetchTasks,
 	getTaskProgressPercent,
 	getTaskStatusTone,
 	isTerminalTaskStatus,
 } from "@/lib/api/tasking";
+import {
+	buildCollectionHierarchy,
+	formatCollectionOption,
+} from "@/lib/collection-hierarchy";
+import {
+	EXPORT_ACTION_HINTS,
+	type ExportWorkspaceView,
+	filterReportTemplates,
+	formatExportBytes as formatBytes,
+	formatExportContentType,
+	formatExportScope,
+	formatExportTimestamp as formatTimestamp,
+	getExportResultHref,
+	getReportResultText as getResultText,
+} from "@/lib/export-workspace";
+import { parsePositiveInteger } from "@/lib/number-input";
+import {
+	resolveObjectServerFilterComputedFields,
+	resolveObjectServerFilterDataFields,
+} from "@/lib/object-server-filter-fields";
+import { type ObjectServerFilter } from "@/lib/object-server-filters";
 import {
 	buildIncludeFromRows,
 	type IncludeBuilderRow,
@@ -86,23 +103,6 @@ import {
 	getReportQueryOperators,
 } from "@/lib/report-query";
 import { SCOPE_QUERY_FIELDS } from "@/lib/report-scope-fields";
-import {
-	EXPORT_ACTION_HINTS,
-	filterReportTemplates,
-	formatExportBytes as formatBytes,
-	formatExportContentType,
-	formatExportScope,
-	formatExportTimestamp as formatTimestamp,
-	type ExportWorkspaceView,
-	getExportResultHref,
-	getReportResultText as getResultText,
-} from "@/lib/export-workspace";
-import {
-	resolveObjectServerFilterComputedFields,
-	resolveObjectServerFilterDataFields,
-} from "@/lib/object-server-filter-fields";
-import { type ObjectServerFilter } from "@/lib/object-server-filters";
-import { parsePositiveInteger } from "@/lib/number-input";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 type QueryBuilderFilter = {
@@ -1984,7 +1984,17 @@ export function ExportsWorkspace({
 													{formatExportContentType(lastResult.contentType)}
 												</span>
 												<span>{formatBytes(lastResultView.totalBytes)}</span>
-												<span>{lastResult.warningCount} warning(s)</span>
+												<span
+													role="status"
+													className={
+														lastResult.truncated || lastResult.warningCount > 0
+															? "warning-banner"
+															: undefined
+													}
+												>
+													{lastResult.truncated ? "Incomplete output · " : ""}
+													{lastResult.warningCount} warning(s)
+												</span>
 												<span>
 													{lastResult.truncated
 														? "Truncated by backend"
