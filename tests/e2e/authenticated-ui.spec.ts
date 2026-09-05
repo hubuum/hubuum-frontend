@@ -9,15 +9,10 @@ const sessionExpiredMessage =
 	"Your session has expired. Sign in again to continue.";
 
 async function revokeCurrentBackendToken(page: Page) {
-	const status = await page.evaluate(async () => {
-		return (
-			await fetch("/_hubuum-bff/hubuum/api/v0/auth/logout", {
-				method: "POST",
-				credentials: "include",
-			})
-		).status;
+	const response = await page.request.post(`${bffPrefix}/api/v0/auth/logout`, {
+		headers: { Origin: new URL(page.url()).origin },
 	});
-	expect(status).toBe(200);
+	expect(response.status()).toBe(200);
 }
 
 test.describe("authenticated workspace", () => {
@@ -84,19 +79,23 @@ test.describe("authenticated workspace", () => {
 	});
 
 	test("an expired backend session returns to login", async ({ page }) => {
-		await page.goto("/audit");
-		await expect(
-			page.getByRole("heading", { name: "Event stream" }),
-		).toBeVisible();
-		await revokeCurrentBackendToken(page);
-		await page.evaluate(() => {
-			window.setTimeout(() => {
-				void fetch(
-					"/_hubuum-bff/hubuum/api/v1/events?limit=1&include_total=false",
-					{ credentials: "include" },
-				);
-			}, 0);
-		});
+		// Revoke immediately before the audit request reaches the backend so
+		// its real 401 triggers the redirect without evaluating a departing page.
+		await page.route(
+			`**${bffPrefix}/api/v1/events?**`,
+			async (route) => {
+				await revokeCurrentBackendToken(page);
+				await route.continue();
+			},
+			{ times: 1 },
+		);
+		const expiredResponse = page.waitForResponse(
+			(response) =>
+				new URL(response.url()).pathname === `${bffPrefix}/api/v1/events` &&
+				response.status() === 401,
+		);
+		await page.goto("/audit", { waitUntil: "domcontentloaded" });
+		await expiredResponse;
 
 		await expect(page).toHaveURL(
 			/\/login\?error=session_expired&next=%2Faudit$/,
@@ -983,20 +982,26 @@ test.describe("authenticated workspace", () => {
 				await expect(card).toBeVisible();
 				await expect(action).toBeVisible();
 
-				const bounds = await Promise.all([
-					card.boundingBox(),
-					action.boundingBox(),
-				]);
-				expect(bounds[0]).not.toBeNull();
-				expect(bounds[1]).not.toBeNull();
-				expect(bounds[1]?.x ?? 0).toBeGreaterThanOrEqual(
-					(bounds[0]?.x ?? 0) - 1,
-				);
-				expect(
-					(bounds[1]?.x ?? 0) + (bounds[1]?.width ?? 0),
-				).toBeLessThanOrEqual(
-					(bounds[0]?.x ?? 0) + (bounds[0]?.width ?? 0) + 1,
-				);
+				// Read both rectangles together: hydration can replace the card
+				// between separate element-handle measurements.
+				await expect
+					.poll(
+						() =>
+							action.evaluate((element) => {
+								const card = element.closest(".resource-index");
+								if (!card || !element.isConnected) return false;
+								const cardBounds = card.getBoundingClientRect();
+								const actionBounds = element.getBoundingClientRect();
+								return (
+									cardBounds.width > 0 &&
+									actionBounds.width > 0 &&
+									actionBounds.left >= cardBounds.left - 1 &&
+									actionBounds.right <= cardBounds.right + 1
+								);
+							}),
+						{ message: `${resource.action} fits its card at ${width}px` },
+					)
+					.toBe(true);
 			}
 		}
 	});
@@ -2500,6 +2505,11 @@ test.describe("authenticated workspace", () => {
 			).toBeEnabled();
 
 			await page.goto("/exports?view=one-off");
+			// The template was created above; its loaded count confirms the
+			// client has hydrated before changing the server-rendered select.
+			await expect(
+				page.getByRole("tab", { name: /Templates [1-9]\d* saved/ }),
+			).toBeVisible();
 			await page
 				.getByRole("combobox", { name: "Scope", exact: true })
 				.selectOption("related_objects");
