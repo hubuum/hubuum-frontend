@@ -1,5 +1,6 @@
 const ROUTE_TITLES: Readonly<Record<string, string>> = {
 	"/app": "Home",
+	"/about": "About",
 	"/account": "Profile",
 	"/account/appearance": "Appearance",
 	"/account/tokens": "Tokens",

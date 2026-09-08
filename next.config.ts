@@ -1,10 +1,12 @@
 import type { NextConfig } from "next";
 
 import packageJson from "./package.json";
+import { resolveApplicationVersion } from "./src/lib/build-version";
 
-const applicationVersion =
-	process.env.NEXT_PUBLIC_APP_VERSION?.trim() ||
-	`v${packageJson.version}+dirty`;
+const applicationVersion = resolveApplicationVersion({
+	packageVersion: packageJson.version,
+	configuredVersion: process.env.NEXT_PUBLIC_APP_VERSION,
+});
 
 const nextConfig: NextConfig = {
 	allowedDevOrigins: ["127.0.0.1"],

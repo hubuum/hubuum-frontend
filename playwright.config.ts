@@ -28,7 +28,7 @@ export default defineConfig({
 	webServer: externalBaseUrl
 		? undefined
 		: {
-				command: "npm run dev",
+				command: "npm run dev -- --listen 127.0.0.1",
 				url: `${localBaseUrl}/login`,
 				reuseExistingServer: !process.env.CI,
 				timeout: 120_000,

@@ -170,8 +170,11 @@ owner group.
 ## Workspace navigation and resource selection
 
 Use **Go to…** or **Ctrl/Cmd+K** to find a workspace destination, pinned resource,
-or the current page's create action. Up to three pinned destinations also appear
-as direct links below the toolbar. Data-menu destination links and shortcut
+or the current page's create action. Type a query and press **Enter** to activate
+the first matching destination or action, or search resources when none match.
+Use the arrow keys to choose a different result before pressing Enter.
+Up to three pinned destinations also appear as direct links below the toolbar.
+Data-menu destination links and shortcut
 expansion buttons are separate controls. Mobile navigation traps keyboard focus
 while open and returns it to its trigger when closed.
 
@@ -432,6 +435,22 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+Both `npm run dev` and `npm start` accept `--port` and `--listen` after npm's
+`--` separator. Local commands default to `localhost:3000`:
+
+```sh
+npm run dev -- --port 4000
+npm start -- --port 4000 --listen '*'
+```
+
+Quote `'*'` to listen on all IPv4 interfaces. A specific hostname, IPv4 address,
+or IPv6 address is also accepted (for example, `--listen ::1` or `--listen ::`).
+`PORT` in the process environment still sets the default port; an explicit flag
+wins. Local launchers ignore an inherited `HOSTNAME` so a shell's machine name
+does not override the localhost default. Container images continue to use their
+explicit `PORT`/`HOSTNAME` configuration. See `npm run dev -- --help` or
+`npm start -- --help` for options.
+
 The login page ships with Sunset, Mountains, Clouds, and Forest backgrounds. Sunset is
 the first-run default, and the browser remembers a person's
 selection on that device. Optional private login backgrounds belong in
@@ -485,11 +504,30 @@ Releases provide:
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
-The application version is visible in the navigation, on the login page, and
-in `/healthz` and `/readyz` responses. Release images show the exact tag (for
-example, `v0.0.13`); commit images show `v0.0.13+<short-sha>`; unversioned local
-builds show `v0.0.13+dirty`. Image builds may set the immutable identity with
-`docker build --build-arg APP_VERSION=...`.
+The **About Hubuum** page (`/about`) shows the frontend version and the connected
+server's reported version. Open it from the account menu, the navigation version,
+or **Go to…**. It is available to all signed-in users. Server discovery reads the
+running server's public `/api-doc/openapi.json` on the frontend server; it does
+not use admin metadata or the bundled API contract. If discovery fails, About
+still shows the frontend version and marks the server version unavailable.
+Older servers may report only their package release number.
+
+The frontend version also appears in the navigation, on the login page, and in
+`/healthz` and `/readyz` responses. Local and CI builds use
+`git describe --tags --match 'v[0-9]*' --always --dirty`: a clean release is
+`v0.0.13`; 16 commits after it is `v0.0.13-16-g256d59b`; uncommitted tracked
+changes append `-dirty`. Without a reachable release tag, Git reports the commit
+ID. Without Git metadata, builds show the package version with `+unknown`.
+
+`NEXT_PUBLIC_APP_VERSION` can override the build identity. Container contexts
+exclude `.git`, so pass the identity from the host checkout:
+
+```sh
+docker build --build-arg APP_VERSION="$(node scripts/print-application-version.mjs)" .
+```
+
+CI fetches release tags and history before resolving this value. Release images
+continue to embed their exact release tag. The version is fixed at build time.
 
 See [compatibility](docs/compatibility.md) and the
 [maintainer release guide](docs/releasing.md). Release deployments should pin a

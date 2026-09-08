@@ -146,6 +146,80 @@ test.describe("workspace quality", () => {
 		).toBeVisible();
 	});
 
+	test("Go to Enter runs a resource search directly from the input", async ({
+		page,
+	}) => {
+		await page
+			.getByRole("button", { name: "Go to or create", exact: true })
+			.click();
+		const input = page.getByLabel("Find a destination or action");
+		const query = "router & switch / 日本語";
+		await input.fill(`  ${query}  `);
+		await input.press("Enter");
+		await expect(page).toHaveURL(
+			(url) =>
+				url.pathname === "/search" && url.searchParams.get("q") === query,
+		);
+		await expect(
+			page.getByRole("dialog", { name: "Go to or create" }),
+		).toBeHidden();
+	});
+
+	test("Go to Enter opens the first matching destination", async ({ page }) => {
+		await page
+			.getByRole("button", { name: "Go to or create", exact: true })
+			.click();
+		const input = page.getByLabel("Find a destination or action");
+		await input.fill("About");
+		await input.press("Enter");
+		await expect(page).toHaveURL(/\/about$/);
+		await expect(
+			page.getByRole("dialog", { name: "Go to or create" }),
+		).toBeHidden();
+	});
+
+	test("Go to Enter opens a matching create action", async ({ page }) => {
+		await page
+			.getByRole("button", { name: "Go to or create", exact: true })
+			.click();
+		const input = page.getByLabel("Find a destination or action");
+		await input.fill("New class");
+		await input.press("Enter");
+		await expect(
+			page.getByRole("dialog", { name: "Create class" }),
+		).toBeVisible();
+	});
+
+	test("Go to ignores blank or composing Enter and preserves explicit selection", async ({
+		page,
+	}) => {
+		await page
+			.getByRole("button", { name: "Go to or create", exact: true })
+			.click();
+		const dialog = page.getByRole("dialog", { name: "Go to or create" });
+		const input = page.getByLabel("Find a destination or action");
+		await input.fill("   ");
+		await input.press("Enter");
+		await expect(dialog).toBeVisible();
+		await expect(input).toBeFocused();
+		await input.fill("About");
+		await input.dispatchEvent("keydown", { key: "Enter", isComposing: true });
+		await expect(dialog).toBeVisible();
+		await expect(input).toBeFocused();
+		await input.press("Control+Enter");
+		await expect(dialog).toBeVisible();
+		await input.press("ArrowUp");
+		const resourceSearch = dialog.getByRole("link", {
+			name: "Search resources for “About”",
+		});
+		await expect(resourceSearch).toBeFocused();
+		await resourceSearch.press("Enter");
+		await expect(page).toHaveURL(
+			(url) =>
+				url.pathname === "/search" && url.searchParams.get("q") === "About",
+		);
+	});
+
 	test("navigation shortcuts expand separately from destination links", async ({
 		page,
 	}) => {

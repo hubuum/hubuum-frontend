@@ -1827,12 +1827,17 @@ export function AppShell({
 								) : null}
 							</nav>
 						</div>
-						<p
+						<Link
 							className="sidebar-footer"
+							href="/about"
+							prefetch={false}
+							aria-label="About Hubuum"
+							aria-current={appPathname === "/about" ? "page" : undefined}
+							onClick={() => setMobileSidebarOpen(false)}
 							title={`Hubuum Frontend ${APPLICATION_VERSION}`}
 						>
 							{APPLICATION_VERSION}
-						</p>
+						</Link>
 					</aside>
 					{isMobileSidebarOpen ? (
 						<button
@@ -2121,6 +2126,17 @@ export function AppShell({
 										})}
 									</div>
 
+									<div className="menu-group">
+										<Link
+											className="menu-item"
+											href="/about"
+											prefetch={false}
+											aria-current={appPathname === "/about" ? "page" : undefined}
+											onClick={() => setUserMenuOpen(false)}
+										>
+											About Hubuum
+										</Link>
+									</div>
 									<div className="menu-group menu-signout-group">
 										<LogoutButton className="menu-item menu-item-danger account-menu-signout" />
 									</div>

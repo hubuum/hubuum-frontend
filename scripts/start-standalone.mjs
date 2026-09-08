@@ -3,6 +3,20 @@ import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 
+import { parseServerOptions, printServerHelp } from "./server-options.mjs";
+
+let options;
+try {
+	options = parseServerOptions(process.argv.slice(2));
+} catch (error) {
+	console.error(`[startup] ${error.message}`);
+	process.exit(1);
+}
+if (options.help) {
+	printServerHelp("npm start");
+	process.exit(0);
+}
+
 const rootDir = process.cwd();
 const standaloneDir = resolve(rootDir, ".next/standalone");
 const standaloneServer = resolve(standaloneDir, "server.js");
@@ -38,7 +52,7 @@ if (existsSync(sourcePublicDir)) {
 console.info("[startup] Synced standalone static/public assets");
 
 const child = spawn(process.execPath, [standaloneServer], {
-	env: process.env,
+	env: { ...process.env, PORT: options.port, HOSTNAME: options.listen },
 	stdio: "inherit",
 });
 
