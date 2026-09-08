@@ -58,6 +58,7 @@ The frontend owns only routes under `/_hubuum-bff/...`.
 | `/_hubuum-bff/auth/providers` | Discovers public authentication providers from backend `/api/v0/auth/providers`; the login form falls back to a manual identity-scope field when unavailable. |
 | `/_hubuum-bff/auth/logout` | Logs out locally and asks the backend to revoke the current token. |
 | `/_hubuum-bff/auth/session` | Readiness-friendly session check for the browser session. |
+| `/_hubuum-bff/hubuum/api/v1/restores/<id>/status` | Capability-authenticated restore status, available after database replacement invalidates bearer sessions. |
 | `/_hubuum-bff/hubuum/<backend-path>` | Generic authenticated BFF proxy. For example, `/_hubuum-bff/hubuum/api/v1/classes` calls backend `/api/v1/classes` with the server-side bearer token. |
 | `/_hubuum-bff/classes/...` | Frontend helper BFF routes that normalize a few class/object workflows before calling backend APIs. |
 | `/_hubuum-bff/settings` | Reads and updates the current principal's durable console preferences through the backend settings API, with a temporary Valkey fallback for older servers. |
@@ -340,6 +341,9 @@ kept only in component memory, never browser storage. Confirmation requires the
 exact phrase `REPLACE ALL HUBUUM DATA` and a second danger dialog. A confirmed
 restore replaces the complete Hubuum database, including identities and
 permissions, and invalidates existing sessions and tokens.
+Confirmation queues the restore and keeps polling its capability-protected
+status until success or failure. Keep this page open until it finishes, then
+sign in again with credentials from the restored backup.
 
 The BFF uses `/api/v1/iam/me/settings` when the backend exposes the principal
 settings API. Console preferences live under a versioned `hubuum_frontend`
@@ -496,12 +500,17 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Current `main` development is validated against Hubuum Server `v0.0.11`.
-Hubuum Frontend `v0.0.13` is validated against Server `v0.0.9`.
+Current `main` development is validated against Hubuum Server `v0.0.12`.
+Hubuum Frontend `v0.0.14` is validated against Server `v0.0.12`.
+Run the server's separate migration workload before startup and deploy its
+restore executor before confirming web restores. The console polls queued
+restores through completion; keep the restore page open so its in-memory
+capability remains available after existing sessions become invalid. See the
+[compatibility guide](docs/compatibility.md) for upgrade requirements.
 Releases provide:
 
-- `ghcr.io/hubuum/hubuum-frontend:v0.0.13` for Linux AMD64 and ARM64;
-- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.13`;
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.14` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.14`;
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
@@ -556,11 +565,11 @@ server image:
 npm run test:live-backend
 ```
 
-The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.11`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.12`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
-redacted admin configuration, backup/restore staging, shared and personal
+redacted admin configuration, backup staging and isolated asynchronous restoration, shared and personal
 computed fields, events/audit, history/as-of, event sink, subscription, delivery
 lifecycle, public token-lifetime discovery, authoritative token expiry,
 client pagination discovery, by-name routes, object aggregation, computed
@@ -570,7 +579,7 @@ replaces the live test database.
 
 Useful overrides:
 
-- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.11`
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.12`
 - `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
 - `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
 - `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`
@@ -587,7 +596,7 @@ npm run gen:api
 ```
 
 Generated output goes to `src/lib/api/generated`.
-The generator runs via `npx orval@8.27.0`, so network access is required when generating.
+The generator runs via `npx orval@8.30.0`, so network access is required when generating.
 
 ## Deployment notes (OKD)
 
@@ -621,7 +630,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.13 \
+  --version 0.0.14 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -630,7 +639,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.13 \
+  --version 0.0.14 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com

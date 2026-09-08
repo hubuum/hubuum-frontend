@@ -77,7 +77,7 @@ a digest-pinned Compose quickstart, checksums, and a GitHub Release.
 7. Check out that clean commit and run:
 
    ```sh
-   bash scripts/check-release-readiness.sh v0.0.13
+   bash scripts/check-release-readiness.sh v0.0.14
    ```
 
 ## Publish
@@ -85,8 +85,8 @@ a digest-pinned Compose quickstart, checksums, and a GitHub Release.
 Create and push an annotated tag from the verified commit:
 
 ```sh
-git tag -a v0.0.13 -m "Hubuum Frontend v0.0.13"
-git push origin v0.0.13
+git tag -a v0.0.14 -m "Hubuum Frontend v0.0.14"
+git push origin v0.0.14
 ```
 
 The tag workflow rechecks dependency freshness and unresolved Dependabot pull

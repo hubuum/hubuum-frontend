@@ -9,6 +9,7 @@ import {
 } from "@/lib/correlation";
 import {
 	buildSessionExpiryLoginPath,
+	isMonitoringRestore,
 	isSessionExpiryResponse,
 } from "@/lib/session-expiry";
 import { clearUserSettingsForLogout } from "@/lib/user-settings-client";
@@ -95,7 +96,11 @@ function getSameOriginRequestUrl(input: RequestInfo | URL): URL | null {
 }
 
 function redirectAfterSessionExpiry() {
-	if (sessionExpiryRedirectStarted || window.location.pathname === "/login") {
+	if (
+		sessionExpiryRedirectStarted ||
+		window.location.pathname === "/login" ||
+		isMonitoringRestore()
+	) {
 		return;
 	}
 

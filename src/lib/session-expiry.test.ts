@@ -2,10 +2,22 @@ import { describe, expect, it } from "vitest";
 
 import {
 	buildSessionExpiryLoginPath,
+	deferSessionExpiryForRestore,
+	isMonitoringRestore,
 	isSessionExpiryResponse,
 } from "@/lib/session-expiry";
 
 describe("session expiry", () => {
+	it("defers redirects only while a restore monitor is mounted, with idempotent cleanup", () => {
+		const first = deferSessionExpiryForRestore();
+		const second = deferSessionExpiryForRestore();
+		expect(isMonitoringRestore()).toBe(true);
+		first();
+		first();
+		expect(isMonitoringRestore()).toBe(true);
+		second();
+		expect(isMonitoringRestore()).toBe(false);
+	});
 	it.each([
 		"/_hubuum-bff/hubuum/api/v1/events",
 		"/_hubuum-bff/classes/7/objects",
@@ -20,10 +32,7 @@ describe("session expiry", () => {
 	it("does not treat authorization failures or auth endpoints as expiry", () => {
 		expect(
 			isSessionExpiryResponse(
-				new URL(
-					"/_hubuum-bff/hubuum/api/v1/events",
-					"https://hubuum.invalid",
-				),
+				new URL("/_hubuum-bff/hubuum/api/v1/events", "https://hubuum.invalid"),
 				403,
 			),
 		).toBe(false);

@@ -3,19 +3,24 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.11
+ * OpenAPI spec version: 0.0.12
  */
 import type { LoginRateLimitConfig } from './loginRateLimitConfig';
 import type { SecretStatus } from './secretStatus';
 
 export interface AuthenticationConfig {
+  active_token_hash_key_id: string;
   admin_groupname: string;
   /** @nullable */
   admin_identity_scope?: string | null;
   login_rate_limit: LoginRateLimitConfig;
   max_token_lifetime_hours: number;
+  previous_token_hash_key_ids: string[];
   provider_config_path: SecretStatus;
+  require_stable_token_hash_key: boolean;
   stable_token_hash_key_configured: boolean;
+  token_hash_key_mode: string;
+  token_hash_key_ring_identity: string;
   token_lifetime_hours: number;
   token_retention_days: number;
   /** @minimum 10 */

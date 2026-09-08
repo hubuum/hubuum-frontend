@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.11` | `ghcr.io/hubuum/hubuum-server:v0.0.11` |
+| `main` (unreleased) | `v0.0.12` | `ghcr.io/hubuum/hubuum-server:v0.0.12` |
+| `v0.0.14` | `v0.0.12` | `ghcr.io/hubuum/hubuum-server:v0.0.12` |
 | `v0.0.13` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
 | `v0.0.12` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
 | `v0.0.11` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
@@ -21,14 +22,14 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Unreleased `main` validates the generated Server `v0.0.11`
+listed server tag. Frontend `v0.0.14` and unreleased `main` validate the generated Server `v0.0.12`
 contract and the live scoped and unscoped token lifecycles against
-`sha256:c475cfa422dd075ae7827ed835bff323c2bf911158e4424fa3b2ff12363fe511`.
+`sha256:6441ccbe2906d80d0e6ef5e8a9b8e4a7e1afc9c39c8d43d93ac62a5cd0e6e865`.
 A separate scheduled workflow tests the frontend against the moving backend
 `:main` image to surface future compatibility changes without making normal CI
 nondeterministic.
 
-Unreleased `main` uses Server `v0.0.11` API types, including structured search,
+Frontend `v0.0.14` uses Server `v0.0.12` API types, including structured search,
 storage backend configuration, and backup format version 5. Existing unified
 search and class-selection flows keep their current behavior. Runtime
 configuration uses the storage query budget while retaining the older database
@@ -69,3 +70,19 @@ administrator checks, and direct recovery from expired sessions.
 Frontend `v0.0.13` retains the Server `v0.0.9` contract while adding scalable
 on-demand target-object search to relation creation and refreshing the complete
 application, development, generation, container, and CI dependency baseline.
+
+Frontend `v0.0.14` adopts Server `v0.0.12`, including asynchronous web restore
+confirmation. Confirmation returns `202 Accepted`; the console retains the
+restore capability in memory and polls until a terminal result, including after
+old bearer sessions become invalid. Keep the restore page open until it finishes.
+The exact restore-status BFF route accepts only capability-authenticated reads;
+all other backend proxy routes continue to require a frontend session.
+
+Before deploying Server `v0.0.12`, run `hubuum-admin --migrate` as a separate
+one-shot workload and deploy `hubuum-admin --restore-executor` before enabling
+web restore confirmations. Both requirements apply to the default single-role
+mode. Install the matching template worker with the server and administrator.
+See the [Server v0.0.12 upgrade notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.12)
+for the certified upgrade path, version 5 backups, resource limits, and optional
+split-role deployment. Older frontend releases assume synchronous restoration
+and should not confirm web restores against this server release.

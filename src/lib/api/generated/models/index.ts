@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.11
+ * OpenAPI spec version: 0.0.12
  */
 
 export * from './addOperation';
@@ -299,6 +299,7 @@ export * from './restoreStageResponse';
 export * from './restoreTimestamps';
 export * from './restoreValidationSummary';
 export * from './runningConfig';
+export * from './secretSourceConfig';
 export * from './secretStatus';
 export * from './serverConfig';
 export * from './serviceAccountPointResponse';
@@ -338,6 +339,7 @@ export * from './tokenID';
 export * from './tokenListState';
 export * from './tokenResourceScope';
 export * from './tokenScopeDetails';
+export * from './tracingConfig';
 export * from './unifiedSearchBatchResponse';
 export * from './unifiedSearchDoneEvent';
 export * from './unifiedSearchErrorEvent';

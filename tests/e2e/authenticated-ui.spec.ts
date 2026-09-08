@@ -39,6 +39,123 @@ test.describe("authenticated workspace", () => {
 		await page.waitForURL("**/app");
 	});
 
+	for (const terminalStatus of ["succeeded", "failed"] as const) {
+		test(`queued restore reaches ${terminalStatus} after session expiry`, async ({
+			page,
+		}) => {
+			let status = "validated";
+			const stage = {
+				id: 987654,
+				requested_by_identity_scope: "local",
+				requested_by_name: "admin",
+				sha256: "a".repeat(64),
+				byte_size: 42,
+				expires_at: "2099-01-01T00:00:00Z",
+				created_at: "2026-09-08T00:00:00Z",
+				updated_at: "2026-09-08T00:00:00Z",
+				validation: {
+					backup_version: 5,
+					source_version: "0.0.12",
+					total_items: 1,
+					includes_history: false,
+				},
+			};
+			await page.route(`**${bffPrefix}/api/v1/restores`, (route) =>
+				route.fulfill({
+					status: 201,
+					json: {
+						...stage,
+						status,
+						restore_capability: "test-restore-capability",
+					},
+				}),
+			);
+			await page.route(
+				`**${bffPrefix}/api/v1/restores/${stage.id}/status`,
+				(route) => {
+					expect(route.request().headers()["x-hubuum-restore-capability"]).toBe(
+						"test-restore-capability",
+					);
+					return route.fulfill({
+						json: {
+							...stage,
+							status,
+							error:
+								status === "failed"
+									? "Executor could not restore the backup."
+									: null,
+						},
+					});
+				},
+			);
+			await page.route(
+				`**${bffPrefix}/api/v1/restores/${stage.id}/confirm`,
+				(route) => {
+					status = "confirmed";
+					return route.fulfill({ status: 202, json: { ...stage, status } });
+				},
+			);
+			await page.goto("/admin/backups");
+			// The initial query starts after hydration; wait before selecting a
+			// file so the client can retain the input's change event.
+			await expect(
+				page.getByRole("button", { name: "Refresh", exact: true }),
+			).toBeEnabled();
+			await page.getByLabel("Hubuum backup document").setInputFiles({
+				name: "backup.json",
+				mimeType: "application/json",
+				buffer: Buffer.from('{"backup_version":5}'),
+			});
+			await page.getByRole("button", { name: "Validate and stage" }).click();
+			await page
+				.getByLabel(/Type REPLACE ALL HUBUUM DATA/)
+				.fill("REPLACE ALL HUBUUM DATA");
+			await page
+				.getByRole("button", { name: "Replace all Hubuum data", exact: true })
+				.click();
+			await page
+				.getByRole("button", { name: "Replace all data", exact: true })
+				.click();
+			await expect(
+				page.getByText("Restore queued or running.", { exact: false }),
+			).toBeVisible();
+			await expect(
+				page.getByRole("heading", { name: "Restore completed" }),
+			).toHaveCount(0);
+			await expect(
+				page.getByRole("button", {
+					name: "Replace all Hubuum data",
+					exact: true,
+				}),
+			).toBeDisabled();
+			await page.route(`**${bffPrefix}/api/v1/iam/me`, (route) =>
+				route.fulfill({ status: 401, json: { message: "Session expired" } }),
+			);
+			await page.evaluate(async () => {
+				await fetch("/_hubuum-bff/hubuum/api/v1/iam/me");
+			});
+			status = terminalStatus;
+			if (terminalStatus === "succeeded") {
+				await expect(
+					page.getByRole("heading", { name: "Restore completed" }),
+				).toBeVisible();
+				await expect(
+					page.getByRole("link", { name: "Sign in again" }),
+				).toBeVisible();
+			} else {
+				await expect(
+					page
+						.getByRole("alert")
+						.filter({ hasText: "Executor could not restore the backup." }),
+				).toBeVisible();
+				await expect(
+					page.getByRole("heading", { name: "Restore completed" }),
+				).toHaveCount(0);
+			}
+			await expect(page).toHaveURL(/\/admin\/backups$/);
+		});
+	}
+
 	test("dashboard has no serious accessibility violations", async ({
 		page,
 	}) => {

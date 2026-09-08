@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/docker-compose.live-backend.yml"
 PROJECT="${HUBUUM_LIVE_COMPOSE_PROJECT:-hubuum-frontend-live-test}"
-IMAGE="${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.11}"
+IMAGE="${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.12}"
 PORT="${HUBUUM_LIVE_BACKEND_PORT:-9999}"
 BASE_URL="${HUBUUM_LIVE_BACKEND_URL:-http://127.0.0.1:${PORT}}"
 KEEP_STACK="${HUBUUM_LIVE_KEEP_STACK:-0}"
@@ -61,11 +61,16 @@ reset_output="$(docker compose -f "${COMPOSE_FILE}" -p "${PROJECT}" exec -T hubu
 admin_password="$(printf '%s\n' "${reset_output}" | sed -n 's/^Password for user admin reset to: //p' | tail -1)"
 
 if [ -z "${admin_password}" ]; then
-  echo "Could not parse admin password from hubuum-admin output:"
-  printf '%s\n' "${reset_output}"
+  echo "Could not obtain the disposable admin credential."
   exit 1
 fi
 
-HUBUUM_LIVE_BACKEND_URL="${BASE_URL}" \
+disposable_restore=0
+if [[ "${BASE_URL}" == "http://127.0.0.1:${PORT}" ]]; then
+  disposable_restore=1
+fi
+
+HUBUUM_LIVE_DISPOSABLE_RESTORE="${disposable_restore}" \
+  HUBUUM_LIVE_BACKEND_URL="${BASE_URL}" \
   HUBUUM_LIVE_ADMIN_PASSWORD="${admin_password}" \
   node scripts/live-backend-suite.mjs
