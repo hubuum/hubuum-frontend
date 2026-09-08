@@ -24,8 +24,8 @@ export function parseServerOptions(
 
 	let port = env.PORT?.trim() || undefined;
 	// Shells often export the machine's HOSTNAME. Local commands bind only to
-	// localhost unless the user explicitly chooses a listen address.
-	let listen = "localhost";
+	// IPv4 loopback unless the user explicitly chooses a listen address.
+	let listen = "127.0.0.1";
 	const consumed = new Set();
 	for (const token of tokens) {
 		if (
@@ -80,7 +80,7 @@ export function printServerHelp(command) {
 	console.info(`Usage: ${command} -- [options]
 
   --port, -p <port>       Port from 1 to 65535 (default: PORT or 3000)
-  --listen <address>     Hostname or IP address (default: localhost)
+  --listen <address>     Hostname or IP address (default: 127.0.0.1)
                         Use '*' for all IPv4 interfaces, or :: for IPv6.
   --hostname, -H <host>  Alias for --listen
   --help, -h             Show this help

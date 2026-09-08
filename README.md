@@ -433,10 +433,10 @@ Run the development server:
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://127.0.0.1:3000`.
 
 Both `npm run dev` and `npm start` accept `--port` and `--listen` after npm's
-`--` separator. Local commands default to `localhost:3000`:
+`--` separator. Local commands default to `127.0.0.1:3000`:
 
 ```sh
 npm run dev -- --port 4000
@@ -447,8 +447,9 @@ Quote `'*'` to listen on all IPv4 interfaces. A specific hostname, IPv4 address,
 or IPv6 address is also accepted (for example, `--listen ::1` or `--listen ::`).
 `PORT` in the process environment still sets the default port; an explicit flag
 wins. Local launchers ignore an inherited `HOSTNAME` so a shell's machine name
-does not override the localhost default. Container images continue to use their
-explicit `PORT`/`HOSTNAME` configuration. See `npm run dev -- --help` or
+does not override the loopback default. Using an explicit IPv4 address avoids
+differences in how systems resolve `localhost` to IPv4 or IPv6. Container images
+continue to use their explicit `PORT`/`HOSTNAME` configuration. See `npm run dev -- --help` or
 `npm start -- --help` for options.
 
 The login page ships with Sunset, Mountains, Clouds, and Forest backgrounds. Sunset is

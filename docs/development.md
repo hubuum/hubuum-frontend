@@ -60,10 +60,11 @@ Then start Next.js:
 npm run dev
 ```
 
-Open <http://localhost:3000>. Authenticated use requires both the configured
+Open <http://127.0.0.1:3000>. Authenticated use requires both the configured
 Hubuum Server and Valkey; `/readyz` reports whether both dependencies are ready.
 
-Local development and production launchers default to `localhost:3000`. Choose
+Local development and production launchers default to `127.0.0.1:3000` to avoid
+differences in IPv4/IPv6 resolution of `localhost`. Choose
 another port or listen address with npm's `--` argument separator:
 
 ```sh

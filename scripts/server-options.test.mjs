@@ -21,14 +21,14 @@ afterEach(async () => {
 	);
 });
 
-test("defaults to localhost:3000 even when the shell exports its machine hostname", () => {
+test("defaults to 127.0.0.1:3000 even when the shell exports its machine hostname", () => {
 	assert.deepEqual(
 		parseServerOptions([], { HOSTNAME: "workstation.example" }),
 		{
 			help: false,
 			port: "3000",
 			portSpecified: false,
-			listen: "localhost",
+			listen: "127.0.0.1",
 			remainingArgs: [],
 		},
 	);
@@ -138,7 +138,7 @@ test("production help and invalid flags work before a build exists", async () =>
 	const script = scriptPath("start-standalone.mjs");
 	const result = await run(process.execPath, [script, "--help"], setup);
 	assert.match(result.stdout, /--listen/);
-	assert.match(result.stdout, /localhost/);
+	assert.match(result.stdout, /127\.0\.0\.1/);
 	await assert.rejects(
 		run(process.execPath, [script, "--port=0"], setup),
 		(error) => {
@@ -161,7 +161,7 @@ test("production forwards bind options to the generated server and still copies 
 	);
 	const script = scriptPath("start-standalone.mjs");
 	for (const [args, expected] of [
-		[[], { port: "3000", listen: "localhost" }],
+		[[], { port: "3000", listen: "127.0.0.1" }],
 		[["--port", "4400", "--listen", "*"], { port: "4400", listen: "0.0.0.0" }],
 		[["--port=4500", "--listen=::1"], { port: "4500", listen: "::1" }],
 	]) {
@@ -211,6 +211,6 @@ test("development passes normalized options to Next.js without losing its other 
 	assert.deepEqual(JSON.parse(defaults.stdout), [
 		"dev",
 		"--hostname",
-		"localhost",
+		"127.0.0.1",
 	]);
 });
