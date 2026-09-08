@@ -33,7 +33,7 @@ services:
       HUBUUM_CLIENT_ALLOWLIST: "*"
       HUBUUM_DATABASE_URL: postgres://hubuum:hubuum_password@postgres:5432/hubuum
       HUBUUM_LOGIN_RATE_LIMIT_ENABLED: "false"
-      HUBUUM_TOKEN_HASH_KEY: release-smoke-token-hash-key
+      HUBUUM_TOKEN_HASH_KEY: release-smoke-test-only-token-hash-key
 
   valkey:
     image: docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:a0dbf4c1d5708782907c10e2c72deff317518518b5288a58416981d9db95d30b

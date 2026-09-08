@@ -96,13 +96,16 @@ test.describe("authenticated workspace", () => {
 				},
 			);
 			await page.goto("/admin/backups");
-			await page
-				.getByLabel("Hubuum backup document")
-				.setInputFiles({
-					name: "backup.json",
-					mimeType: "application/json",
-					buffer: Buffer.from('{"backup_version":5}'),
-				});
+			// The initial query starts after hydration; wait before selecting a
+			// file so the client can retain the input's change event.
+			await expect(
+				page.getByRole("button", { name: "Refresh", exact: true }),
+			).toBeEnabled();
+			await page.getByLabel("Hubuum backup document").setInputFiles({
+				name: "backup.json",
+				mimeType: "application/json",
+				buffer: Buffer.from('{"backup_version":5}'),
+			});
 			await page.getByRole("button", { name: "Validate and stage" }).click();
 			await page
 				.getByLabel(/Type REPLACE ALL HUBUUM DATA/)

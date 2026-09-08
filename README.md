@@ -341,6 +341,9 @@ kept only in component memory, never browser storage. Confirmation requires the
 exact phrase `REPLACE ALL HUBUUM DATA` and a second danger dialog. A confirmed
 restore replaces the complete Hubuum database, including identities and
 permissions, and invalidates existing sessions and tokens.
+Confirmation queues the restore and keeps polling its capability-protected
+status until success or failure. Keep this page open until it finishes, then
+sign in again with credentials from the restored backup.
 
 The BFF uses `/api/v1/iam/me/settings` when the backend exposes the principal
 settings API. Console preferences live under a versioned `hubuum_frontend`
