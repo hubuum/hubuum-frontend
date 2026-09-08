@@ -18,6 +18,10 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated restore confirmation for `202 Accepted`, with capability-authenticated
   status polling through success or failure after old sessions become invalid.
   Keep the restore page open until completion; capabilities stay in memory.
+- Quiesce background workers before destructive web restores. Server `v0.0.12`
+  can report a drain timeout while background activity remains in its maintenance
+  barrier; the console displays that failure. Contract checks stop their separate
+  disposable worker before confirming the final restore.
 
 ### Added
 

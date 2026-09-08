@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+
 const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
 const adminPassword = process.env.HUBUUM_LIVE_ADMIN_PASSWORD;
@@ -1634,6 +1636,15 @@ async function main() {
   pass("deleted event sink");
 
   if (process.env.HUBUUM_LIVE_DISPOSABLE_RESTORE === "1") {
+    const project = process.env.HUBUUM_LIVE_COMPOSE_PROJECT;
+    assert(project, "Disposable restore requires its owned Compose project.");
+    // Stop accepting background work before replacing the database. The API
+    // remains running so confirmation and capability polling exercise HTTP.
+    execFileSync("docker", [
+      "compose", "-f", "docker-compose.live-backend.yml", "-p", project,
+      "stop", "--timeout", "30", "worker",
+    ], { stdio: "inherit", timeout: 40_000 });
+
     // This suite owns the disposable database. Restore only after every other
     // check, because successful replacement invalidates all existing tokens.
     const confirmedRestore = await request("POST", `/api/v1/restores/${stagedRestore.data.id}/confirm`, {
@@ -1654,7 +1665,7 @@ async function main() {
         expected: [200, 503],
       });
       if (status.status === 503) return null;
-      assert(status.data.status !== "failed", "Isolated restore executor failed.");
+      assert(status.data.status !== "failed", `Isolated restore executor failed: ${status.data.error ?? "no public error reported"}`);
       return status.data.status === "succeeded" ? status.data : null;
     }, { attempts: 120, intervalMs: 500 });
     pass("read the completed restore receipt with capability authentication only");

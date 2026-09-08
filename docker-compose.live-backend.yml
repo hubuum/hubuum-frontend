@@ -40,8 +40,9 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    environment:
+    environment: &backend-environment
       DATABASE_URL: postgres://hubuum:hubuum_password@postgres:5432/hubuum
+      HUBUUM_RUNTIME_ROLE: api
       HUBUUM_BIND_IP: 0.0.0.0
       HUBUUM_CLIENT_ALLOWLIST: "*"
       HUBUUM_DATABASE_URL: postgres://hubuum:hubuum_password@postgres:5432/hubuum
@@ -51,3 +52,12 @@ services:
       HUBUUM_TOKEN_HASH_KEY: live-backend-test-token-hash-key
     ports:
       - "127.0.0.1:${HUBUUM_LIVE_BACKEND_PORT:-9999}:8080"
+
+  worker:
+    image: ${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.12}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *backend-environment
+      HUBUUM_RUNTIME_ROLE: worker

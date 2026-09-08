@@ -82,6 +82,12 @@ Before deploying Server `v0.0.12`, run `hubuum-admin --migrate` as a separate
 one-shot workload and deploy `hubuum-admin --restore-executor` before enabling
 web restore confirmations. Both requirements apply to the default single-role
 mode. Install the matching template worker with the server and administrator.
+Quiesce background workers before destructive web restores. Server `v0.0.12`
+can report a drain timeout when background activity remains in its maintenance
+barrier; the console displays that failure instead of reporting completion.
+The disposable contract stack runs API and worker roles separately and stops
+its worker before confirming the final restore, while keeping HTTP status
+polling available throughout.
 See the [Server v0.0.12 upgrade notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.12)
 for the certified upgrade path, version 5 backups, resource limits, and optional
 split-role deployment. Older frontend releases assume synchronous restoration

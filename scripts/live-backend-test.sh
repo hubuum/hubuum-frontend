@@ -72,5 +72,6 @@ fi
 
 HUBUUM_LIVE_DISPOSABLE_RESTORE="${disposable_restore}" \
   HUBUUM_LIVE_BACKEND_URL="${BASE_URL}" \
+  HUBUUM_LIVE_COMPOSE_PROJECT="${PROJECT}" \
   HUBUUM_LIVE_ADMIN_PASSWORD="${admin_password}" \
   node scripts/live-backend-suite.mjs
