@@ -1,6 +1,6 @@
 {
 	"name": "hubuum-frontend",
-	"version": "0.0.13",
+	"version": "0.0.14",
 	"private": true,
 	"engines": {
 		"node": ">=24.0.0"
@@ -27,7 +27,7 @@
 		"test:live-backend": "scripts/live-backend-test.sh",
 		"lint": "biome lint .",
 		"typecheck": "next typegen && tsc --noEmit",
-		"gen:api": "npx --yes orval@8.27.0 --clean --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
+		"gen:api": "npx --yes orval@8.30.0 --clean --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
 		"audit:prod": "npm audit --omit=dev"
 	},
 	"dependencies": {
@@ -36,8 +36,8 @@
 		"@codemirror/lang-json": "^6.0.2",
 		"@codemirror/language": "^6.12.4",
 		"@codemirror/lint": "^6.9.7",
-		"@codemirror/state": "^6.7.1",
-		"@codemirror/view": "^6.43.9",
+		"@codemirror/state": "^6.7.4",
+		"@codemirror/view": "^6.43.11",
 		"@fontsource-variable/fraunces": "^5.3.0",
 		"@fontsource-variable/jetbrains-mono": "^5.3.0",
 		"@fontsource-variable/space-grotesk": "^5.3.0",
@@ -47,7 +47,7 @@
 		"codemirror": "^6.0.2",
 		"fflate": "0.8.3",
 		"ioredis": "^6.0.0",
-		"next": "^16.3.3",
+		"next": "^16.3.4",
 		"prismjs": "^1.30.0",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
@@ -56,19 +56,19 @@
 		"zod": "^4.5.4"
 	},
 	"overrides": {
-		"postcss": "8.5.26",
+		"postcss": "8.5.28",
 		"sharp": "0.35.4"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
-		"@biomejs/biome": "^2.5.11",
-		"@playwright/test": "^1.62.1",
-		"@types/node": "^26.4.0",
+		"@biomejs/biome": "^2.5.12",
+		"@playwright/test": "^1.63.0",
+		"@types/node": "^26.5.0",
 		"@types/react": "^19.2.18",
-		"@types/react-dom": "^19.2.5",
+		"@types/react-dom": "^19.2.7",
 		"@typescript/native": "npm:typescript@^7.0.2",
 		"typescript": "npm:@typescript/typescript6@^6.0.2",
-		"vitest": "^4.1.11"
+		"vitest": "^5.0.0"
 	},
 	"allowScripts": {
 		"fsevents@2.3.2": true,

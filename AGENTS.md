@@ -106,7 +106,7 @@ Do not edit generated or transient directories such as `node_modules/`,
 - Treat `openapi.json` as the source of truth for generated API types.
 - After changing the OpenAPI document, run `npm run gen:api` and commit the
   resulting `src/lib/api/generated/` changes together with the contract.
-- Generation uses pinned Orval 8.21.0 through `npx` and requires network access.
+- Generation uses pinned Orval 8.30.0 through `npx` and requires network access.
 - The generation command also applies the repository's BFF-prefix patch. Do not
   reproduce that patch with manual edits to generated files.
 

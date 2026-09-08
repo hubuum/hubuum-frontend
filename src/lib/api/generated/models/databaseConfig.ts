@@ -3,17 +3,22 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.11
+ * OpenAPI spec version: 0.0.12
  */
 import type { SecretStatus } from './secretStatus';
 
 export interface DatabaseConfig {
   /** Complete storage backend selected by the application composition root. */
   backend: string;
+  migrator_role: string;
+  owner_role: string;
   /** @minimum 0 */
   pool_acquire_timeout_ms: number;
   /** @minimum 0 */
   pool_size: number;
+  privilege_mode: string;
+  role_mode: string;
+  runtime_role: string;
   /** @minimum 0 */
   statement_timeout_ms: number;
   url: SecretStatus;

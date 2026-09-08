@@ -7,7 +7,7 @@
       "name": "MIT",
       "identifier": "MIT"
     },
-    "version": "0.0.11"
+    "version": "0.0.12"
   },
   "servers": [
     {
@@ -2332,7 +2332,7 @@
           "classes"
         ],
         "summary": "Get the related-object graph by class and object name",
-        "description": "Auto-generated documentation for GET /api/v1/classes/by-name/{class_name}/objects/by-name/{object_name}/related/graph.",
+        "description": "Returns the complete bounded neighborhood graph as one response. This endpoint is not paginated: limit is a maximum related-node safety bound, include_total has no effect, and X-Total-Count is not returned.",
         "operationId": "getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedGraph",
         "parameters": [
           {
@@ -2955,7 +2955,7 @@
           "classes"
         ],
         "summary": "Get the related-class graph by class name",
-        "description": "Auto-generated documentation for GET /api/v1/classes/by-name/{class_name}/related/graph.",
+        "description": "Returns the complete bounded neighborhood graph as one response. This endpoint is not paginated: limit is a maximum related-node safety bound, include_total has no effect, and X-Total-Count is not returned.",
         "operationId": "getApiV1ClassesByNameByClassNameRelatedGraph",
         "parameters": [
           {
@@ -4644,7 +4644,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id Objects By Object Id Related Graph",
-        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/{object_id}/related/graph.",
+        "description": "Returns the complete bounded neighborhood graph as one response. This endpoint is not paginated: limit is a maximum related-node safety bound, include_total has no effect, and X-Total-Count is not returned.",
         "operationId": "getApiV1ClassesByClassIdObjectsByObjectIdRelatedGraph",
         "parameters": [
           {
@@ -5275,7 +5275,7 @@
           "classes"
         ],
         "summary": "Get Api V1 Classes By Class Id Related Graph",
-        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/related/graph.",
+        "description": "Returns the complete bounded neighborhood graph as one response. This endpoint is not paginated: limit is a maximum related-node safety bound, include_total has no effect, and X-Total-Count is not returned.",
         "operationId": "getApiV1ClassesByClassIdRelatedGraph",
         "parameters": [
           {
@@ -18410,8 +18410,8 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "Restore completed",
+          "202": {
+            "description": "Restore confirmed and queued for the isolated executor",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -18429,7 +18429,7 @@
             }
           },
           "400": {
-            "description": "Confirmation phrase is invalid",
+            "description": "Invalid confirmation",
             "content": {
               "application/json": {
                 "schema": {
@@ -18449,7 +18449,7 @@
             }
           },
           "403": {
-            "description": "Administrator or capability rejected",
+            "description": "Administrator access required or restore capability rejected",
             "content": {
               "application/json": {
                 "schema": {
@@ -18459,7 +18459,7 @@
             }
           },
           "409": {
-            "description": "Stage state or SHA-256 mismatch",
+            "description": "Restore stage cannot be confirmed",
             "content": {
               "application/json": {
                 "schema": {
@@ -19436,11 +19436,19 @@
           "token_retention_purge_interval_seconds",
           "token_retention_purge_batch_size",
           "stable_token_hash_key_configured",
+          "token_hash_key_mode",
+          "active_token_hash_key_id",
+          "previous_token_hash_key_ids",
+          "token_hash_key_ring_identity",
+          "require_stable_token_hash_key",
           "admin_groupname",
           "provider_config_path",
           "login_rate_limit"
         ],
         "properties": {
+          "active_token_hash_key_id": {
+            "type": "string"
+          },
           "admin_groupname": {
             "type": "string"
           },
@@ -19457,11 +19465,26 @@
             "type": "integer",
             "format": "int64"
           },
+          "previous_token_hash_key_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "provider_config_path": {
             "$ref": "#/components/schemas/SecretStatus"
           },
+          "require_stable_token_hash_key": {
+            "type": "boolean"
+          },
           "stable_token_hash_key_configured": {
             "type": "boolean"
+          },
+          "token_hash_key_mode": {
+            "type": "string"
+          },
+          "token_hash_key_ring_identity": {
+            "type": "string"
           },
           "token_lifetime_hours": {
             "type": "integer",
@@ -20440,12 +20463,23 @@
           "url",
           "pool_size",
           "pool_acquire_timeout_ms",
-          "statement_timeout_ms"
+          "statement_timeout_ms",
+          "role_mode",
+          "privilege_mode",
+          "owner_role",
+          "migrator_role",
+          "runtime_role"
         ],
         "properties": {
           "backend": {
             "type": "string",
             "description": "Complete storage backend selected by the application composition root."
+          },
+          "migrator_role": {
+            "type": "string"
+          },
+          "owner_role": {
+            "type": "string"
           },
           "pool_acquire_timeout_ms": {
             "type": "integer",
@@ -20456,6 +20490,15 @@
             "type": "integer",
             "format": "int32",
             "minimum": 0
+          },
+          "privilege_mode": {
+            "type": "string"
+          },
+          "role_mode": {
+            "type": "string"
+          },
+          "runtime_role": {
+            "type": "string"
           },
           "statement_timeout_ms": {
             "type": "integer",
@@ -26708,7 +26751,8 @@
         "required": [
           "default_page_limit",
           "max_page_limit",
-          "max_transitive_depth"
+          "max_transitive_depth",
+          "max_traversal_work_rows"
         ],
         "properties": {
           "default_page_limit": {
@@ -26720,6 +26764,10 @@
             "minimum": 0
           },
           "max_transitive_depth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "max_traversal_work_rows": {
             "type": "integer",
             "format": "int32"
           }
@@ -28358,7 +28406,7 @@
               "string",
               "null"
             ],
-            "description": "Returned only when a stage is created. It is stored only as a hash and\nmust be supplied to confirm or inspect the restore while its staging\nrecord exists. A successful restore deletes every staging record."
+            "description": "Returned only when a stage is created. It is stored only as a hash and\nmust be supplied to confirm or inspect the restore while its staging\nrecord exists. Success retains only a document-free terminal receipt."
           },
           "sha256": {
             "type": "string"
@@ -28435,10 +28483,12 @@
           "backups",
           "restores",
           "remote_calls",
+          "secrets",
           "authentication",
           "permissions",
           "pagination",
-          "network"
+          "network",
+          "tracing"
         ],
         "properties": {
           "authentication": {
@@ -28471,11 +28521,58 @@
           "restores": {
             "$ref": "#/components/schemas/RestoreConfig"
           },
+          "secrets": {
+            "$ref": "#/components/schemas/SecretSourceConfig"
+          },
           "server": {
             "$ref": "#/components/schemas/ServerConfig"
           },
           "tasks": {
             "$ref": "#/components/schemas/TaskConfig"
+          },
+          "tracing": {
+            "$ref": "#/components/schemas/TracingConfig"
+          }
+        }
+      },
+      "SecretSourceConfig": {
+        "type": "object",
+        "required": [
+          "provider",
+          "file_root_configured",
+          "cache_capacity_per_consumer",
+          "cache_total_bytes_per_consumer",
+          "cache_ttl_seconds",
+          "stale_values_allowed",
+          "projected_symlinks_confined_to_root"
+        ],
+        "properties": {
+          "cache_capacity_per_consumer": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cache_total_bytes_per_consumer": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cache_ttl_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "file_root_configured": {
+            "type": "boolean",
+            "description": "Whether a mounted-secret root was configured. The path is never returned."
+          },
+          "projected_symlinks_confined_to_root": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Selected process-wide provider. Values are `environment`, `file`, or\n`invalid` when startup configuration cannot be parsed."
+          },
+          "stale_values_allowed": {
+            "type": "boolean"
           }
         }
       },
@@ -30022,6 +30119,98 @@
           }
         },
         "additionalProperties": false
+      },
+      "TracingConfig": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "protocol",
+          "endpoint",
+          "static_headers",
+          "ca_certificate_configured",
+          "client_certificate_configured",
+          "client_private_key",
+          "connect_timeout_ms",
+          "export_timeout_ms",
+          "flush_timeout_ms",
+          "queue_capacity",
+          "batch_size",
+          "sampling_mode",
+          "sampling_ratio",
+          "service_name",
+          "service_namespace",
+          "deployment_environment",
+          "trust_incoming_sampling",
+          "propagate_outbound"
+        ],
+        "properties": {
+          "batch_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ca_certificate_configured": {
+            "type": "boolean"
+          },
+          "client_certificate_configured": {
+            "type": "boolean"
+          },
+          "client_private_key": {
+            "$ref": "#/components/schemas/SecretStatus"
+          },
+          "connect_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "deployment_environment": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "endpoint": {
+            "$ref": "#/components/schemas/SecretStatus"
+          },
+          "export_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "flush_timeout_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "propagate_outbound": {
+            "type": "boolean"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "queue_capacity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sampling_mode": {
+            "type": "string"
+          },
+          "sampling_ratio": {
+            "type": "number",
+            "format": "double"
+          },
+          "service_name": {
+            "type": "string"
+          },
+          "service_namespace": {
+            "type": "string"
+          },
+          "static_headers": {
+            "$ref": "#/components/schemas/SecretStatus"
+          },
+          "trust_incoming_sampling": {
+            "type": "boolean"
+          }
+        }
       },
       "UnifiedSearchBatchResponse": {
         "type": "object",

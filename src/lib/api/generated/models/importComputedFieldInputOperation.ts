@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.11
+ * OpenAPI spec version: 0.0.12
  */
 
 export type ImportComputedFieldInputOperation = { [key: string]: unknown };

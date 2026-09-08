@@ -188,10 +188,10 @@ async function main() {
       clientConfig.data.authentication.max_token_lifetime_hours >= defaultTokenLifetimeHours,
     "Client config is missing the effective maximum token lifetime.",
   );
-  pass("discovered public v0.0.11 pagination and authentication configuration");
+  pass("discovered public v0.0.12 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
-  assert(openapi.data.info?.version === "0.0.11", "Server OpenAPI is not version 0.0.11.");
+  assert(openapi.data.info?.version === "0.0.12", "Server OpenAPI is not version 0.0.12.");
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
     openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
@@ -275,7 +275,7 @@ async function main() {
     openapi.data.components?.schemas?.PrincipalSettingsResponse,
     "OpenAPI is missing revisioned principal settings responses.",
   );
-  pass("server OpenAPI exposes the expected v0.0.11 contract");
+  pass("server OpenAPI exposes the expected v0.0.12 contract");
 
   const token = await loginAs(adminName, adminPassword);
   pass("admin login returns a bearer token");
@@ -317,7 +317,7 @@ async function main() {
         runningConfig.data.exports.database_statement_timeout_ms,
     "Admin config is missing the storage query budget or its compatibility alias.",
   );
-  pass("read redacted v0.0.11 admin runtime configuration");
+  pass("read redacted v0.0.12 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -1632,6 +1632,36 @@ async function main() {
 
   await request("DELETE", `/api/v1/event-sinks/${sink.data.id}`, { ...auth, expected: 204 });
   pass("deleted event sink");
+
+  if (process.env.HUBUUM_LIVE_DISPOSABLE_RESTORE === "1") {
+    // This suite owns the disposable database. Restore only after every other
+    // check, because successful replacement invalidates all existing tokens.
+    const confirmedRestore = await request("POST", `/api/v1/restores/${stagedRestore.data.id}/confirm`, {
+      ...auth,
+      body: {
+        confirmation: "REPLACE ALL HUBUUM DATA",
+        restore_capability: stagedRestore.data.restore_capability,
+        sha256: stagedRestore.data.sha256,
+      },
+      expected: 202,
+    });
+    assert(confirmedRestore.data.status === "confirmed", "Restore should be queued.");
+    pass("confirmed a restore asynchronously with HTTP 202");
+
+    await waitFor("restore terminal receipt", async () => {
+      const status = await request("GET", `/api/v1/restores/${stagedRestore.data.id}/status`, {
+        headers: { "X-Hubuum-Restore-Capability": stagedRestore.data.restore_capability },
+        expected: [200, 503],
+      });
+      if (status.status === 503) return null;
+      assert(status.data.status !== "failed", "Isolated restore executor failed.");
+      return status.data.status === "succeeded" ? status.data : null;
+    }, { attempts: 120, intervalMs: 500 });
+    pass("read the completed restore receipt with capability authentication only");
+    await request("GET", "/api/v1/iam/me", { ...auth, expected: 401 });
+    pass("verified database replacement invalidated the old bearer session");
+
+  }
 
   console.log(`Live backend contract suite passed against ${baseUrl}.`);
 }

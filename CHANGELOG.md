@@ -6,6 +6,55 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.14] - 2026-09-08
+
+### Compatibility
+
+- Adopted the Hubuum Server `v0.0.12` contract and immutable CI image. Run the
+  server's separate `hubuum-admin --migrate` workload before startup and deploy
+  `hubuum-admin --restore-executor` before allowing web restore confirmations.
+  Install the matching template worker and follow the server's version 5 backup
+  and upgrade requirements, including intermediate upgrades from `v0.0.9`.
+- Updated restore confirmation for `202 Accepted`, with capability-authenticated
+  status polling through success or failure after old sessions become invalid.
+  Keep the restore page open until completion; capabilities stay in memory.
+
+### Added
+
+- Added About Hubuum with frontend and connected-server versions, configurable
+  local listen addresses and ports, and Enter support in the Go to palette.
+- Added complete, on-demand resource lookup across collection, class, object,
+  import, export, relation, membership, and IAM administration workflows.
+
+### Changed
+
+- Improved Go to navigation, pinned destinations, sign-in controls, resource
+  picker placement, mobile focus, table loading continuity, keyboard shortcuts,
+  and lazy editor loading with debounced validation.
+- Updated application and development dependencies, including Next.js `16.3.4`,
+  Playwright `1.63.0`, Vitest `5.0.0`, Biome `2.5.12`, Orval `8.30.0`, and
+  PostCSS `8.5.28`. Refreshed Valkey to `9.1.2`, Alpine images to `3.24`, and
+  the pinned browser image. All GitHub Actions pins were checked against their
+  latest stable versions; no dependency exceptions were needed.
+- Added dependency freshness and full authenticated browser release gates,
+  portable visual checks, and Docker/Podman-compatible development startup.
+
+### Fixed
+
+- Kept cursor pagination synchronized with browser history and loaded complete
+  class and object relation results, export catalogs, permission selections,
+  principal memberships, and detail references beyond initial preload limits.
+- Aligned the release readiness backend target with the release contract and
+  added explicit database migration workloads to disposable test stacks.
+
+### Security
+
+- Required per-request CSP script nonces, prevented shared caching of private
+  responses, sandboxed active report content, and preserved safe export metadata.
+- Bounded sign-out waits while retaining a visible error when logout fails.
+  Restore status uses a narrowly scoped capability-authenticated read route;
+  server-side session and administrator checks continue to protect other APIs.
+
 ## [0.0.13] - 2026-08-29
 
 ### Compatibility

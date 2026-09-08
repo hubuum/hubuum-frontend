@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { type ChangeEvent, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 
 import { useConfirm } from "@/lib/confirm-context";
 import {
@@ -10,6 +10,7 @@ import {
 	createBackupTask,
 	downloadBackupDocument,
 	fetchRestoreStatus,
+	isTerminalRestoreStatus,
 	parseBackupDocument,
 	RESTORE_CONFIRMATION_PHRASE,
 	stageRestoreDocument,
@@ -20,6 +21,7 @@ import type {
 	TaskResponse,
 } from "@/lib/api/generated/models";
 import { fetchTasks, isTerminalTaskStatus } from "@/lib/api/tasking";
+import { deferSessionExpiryForRestore } from "@/lib/session-expiry";
 
 type StagedRestore = {
 	capability: string;
@@ -151,10 +153,12 @@ export function AdminBackupRestoreWorkspace() {
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [staged, setStaged] = useState<StagedRestore | null>(null);
 	const [confirmation, setConfirmation] = useState("");
-	const [restoreComplete, setRestoreComplete] = useState(false);
+	const releaseRestoreMonitor = useRef<(() => void) | null>(null);
+	useEffect(() => () => releaseRestoreMonitor.current?.(), []);
 
 	const backupsQuery = useQuery({
 		queryKey: ["admin-backup-tasks"],
+		enabled: staged === null || staged.stage.status === "validated",
 		queryFn: async () =>
 			(await fetchTasks({ kind: "backup", limit: 20 })).tasks,
 		refetchInterval: (query) =>
@@ -176,6 +180,8 @@ export function AdminBackupRestoreWorkspace() {
 		mutationFn: async (file: File) =>
 			stageRestoreDocument(parseBackupDocument(await file.text())),
 		onSuccess: (result) => {
+			releaseRestoreMonitor.current?.();
+			releaseRestoreMonitor.current = null;
 			setStaged(result);
 			setConfirmation("");
 			setSelectedFile(null);
@@ -189,11 +195,18 @@ export function AdminBackupRestoreWorkspace() {
 			if (!staged) throw new Error("No restore is staged.");
 			return fetchRestoreStatus(staged.stage.id, staged.capability);
 		},
-		enabled: staged !== null && !restoreComplete,
-		refetchInterval: 5_000,
+		enabled: staged !== null,
+		initialData: staged?.stage,
+		refetchInterval: (query) =>
+			query.state.data && isTerminalRestoreStatus(query.state.data.status)
+				? false
+				: 2_000,
+		refetchOnWindowFocus: false,
 	});
 
 	const currentStage = statusQuery.data ?? staged?.stage ?? null;
+	const restoreComplete = currentStage?.status === "succeeded";
+	const restoreInProgress = currentStage?.status === "confirmed";
 
 	const confirmMutation = useMutation({
 		mutationFn: async () => {
@@ -204,10 +217,21 @@ export function AdminBackupRestoreWorkspace() {
 				staged.stage.sha256,
 			);
 		},
-		onSuccess: () => {
-			setRestoreComplete(true);
-			setStaged(null);
+		onMutate: () => {
+			releaseRestoreMonitor.current ??= deferSessionExpiryForRestore();
+		},
+		onSuccess: async (stage) => {
+			await queryClient.cancelQueries({
+				queryKey: ["admin-restore-status", stage.id],
+			});
+			setStaged((previous) => (previous ? { ...previous, stage } : null));
+			queryClient.setQueryData(["admin-restore-status", stage.id], stage);
 			setConfirmation("");
+		},
+		onError: () => {
+			// An ambiguous confirmation may have queued the restore. Keep status
+			// polling and its capability alive until this workspace is left.
+			void statusQuery.refetch();
 		},
 	});
 
@@ -217,7 +241,12 @@ export function AdminBackupRestoreWorkspace() {
 	}
 
 	async function onConfirmRestore() {
-		if (!staged || confirmation !== RESTORE_CONFIRMATION_PHRASE) return;
+		if (
+			!staged ||
+			currentStage?.status !== "validated" ||
+			confirmation !== RESTORE_CONFIRMATION_PHRASE
+		)
+			return;
 		const accepted = await confirm({
 			title: "Replace all Hubuum data?",
 			description:
@@ -281,6 +310,11 @@ export function AdminBackupRestoreWorkspace() {
 							ref={fileInputRef}
 							type="file"
 							accept="application/json,.json"
+							disabled={
+								restoreInProgress ||
+								restoreComplete ||
+								confirmMutation.isPending
+							}
 							onChange={onFileChange}
 						/>
 					</label>
@@ -297,14 +331,20 @@ export function AdminBackupRestoreWorkspace() {
 					<button
 						type="button"
 						onClick={() => selectedFile && stageMutation.mutate(selectedFile)}
-						disabled={!selectedFile || stageMutation.isPending}
+						disabled={
+							!selectedFile ||
+							stageMutation.isPending ||
+							restoreInProgress ||
+							restoreComplete ||
+							confirmMutation.isPending
+						}
 					>
 						{stageMutation.isPending ? "Validating…" : "Validate and stage"}
 					</button>
 				</article>
 			</div>
 
-			{currentStage ? (
+			{currentStage && !restoreComplete ? (
 				<article className="card stack panel-card">
 					<div className="relations-toolbar">
 						<div>
@@ -353,10 +393,26 @@ export function AdminBackupRestoreWorkspace() {
 						</span>
 						<input
 							value={confirmation}
+							disabled={
+								currentStage.status !== "validated" || confirmMutation.isPending
+							}
 							onChange={(event) => setConfirmation(event.target.value)}
 							autoComplete="off"
 						/>
 					</label>
+					{restoreInProgress ? (
+						<p role="status">
+							Restore queued or running. Keep this page open while Hubuum
+							replaces the data.
+						</p>
+					) : null}
+					{currentStage.status === "failed" ||
+					currentStage.status === "expired" ? (
+						<div className="error-banner" role="alert">
+							{currentStage.error ||
+								`Restore ${currentStage.status}. Stage the backup again to retry.`}
+						</div>
+					) : null}
 					{statusQuery.isError ? (
 						<div className="error-banner" role="alert">
 							{statusQuery.error.message}
@@ -372,12 +428,13 @@ export function AdminBackupRestoreWorkspace() {
 						type="button"
 						onClick={onConfirmRestore}
 						disabled={
+							currentStage.status !== "validated" ||
 							confirmation !== RESTORE_CONFIRMATION_PHRASE ||
 							confirmMutation.isPending
 						}
 					>
 						{confirmMutation.isPending
-							? "Replacing all data…"
+							? "Queuing restore…"
 							: "Replace all Hubuum data"}
 					</button>
 				</article>

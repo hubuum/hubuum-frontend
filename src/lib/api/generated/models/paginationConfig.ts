@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.11
+ * OpenAPI spec version: 0.0.12
  */
 
 export interface PaginationConfig {
@@ -12,4 +12,5 @@ export interface PaginationConfig {
   /** @minimum 0 */
   max_page_limit: number;
   max_transitive_depth: number;
+  max_traversal_work_rows: number;
 }

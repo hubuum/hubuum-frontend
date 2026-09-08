@@ -16,6 +16,12 @@ import { acquireOperationIdempotencyKey } from "@/lib/operation-idempotency";
 
 export const RESTORE_CONFIRMATION_PHRASE = "REPLACE ALL HUBUUM DATA";
 
+export function isTerminalRestoreStatus(
+	status: RestoreStageResponse["status"],
+): boolean {
+	return status === "succeeded" || status === "failed" || status === "expired";
+}
+
 export type BackupDownload = {
 	blob: Blob;
 	filename: string;
@@ -158,7 +164,7 @@ export async function confirmRestore(
 		},
 		{ credentials: "include" },
 	);
-	if (response.status !== 200) {
+	if (response.status !== 202) {
 		throw new Error(
 			getApiErrorMessage(response.data, "System restore failed."),
 		);

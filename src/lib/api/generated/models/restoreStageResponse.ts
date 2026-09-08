@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.11
+ * OpenAPI spec version: 0.0.12
  */
 import type { RestoreJobStatus } from './restoreJobStatus';
 import type { RestoreValidationSummary } from './restoreValidationSummary';
@@ -26,7 +26,7 @@ export interface RestoreStageResponse {
   /**
      * Returned only when a stage is created. It is stored only as a hash and
      * must be supplied to confirm or inspect the restore while its staging
-     * record exists. A successful restore deletes every staging record.
+     * record exists. Success retains only a document-free terminal receipt.
      * @nullable
      */
   restore_capability?: string | null;
