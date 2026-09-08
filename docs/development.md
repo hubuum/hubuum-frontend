@@ -60,8 +60,30 @@ Then start Next.js:
 npm run dev
 ```
 
-Open <http://localhost:3000>. Authenticated use requires both the configured
+Open <http://127.0.0.1:3000>. Authenticated use requires both the configured
 Hubuum Server and Valkey; `/readyz` reports whether both dependencies are ready.
+
+Local development and production launchers default to `127.0.0.1:3000` to avoid
+differences in IPv4/IPv6 resolution of `localhost`. Choose
+another port or listen address with npm's `--` argument separator:
+
+```sh
+npm run dev -- --port 4000 --listen 127.0.0.1
+npm run dev -- --port=4000 --listen='*'
+# After npm run build:
+npm start -- --port 4000 --listen localhost
+```
+
+`--listen '*'` binds all IPv4 interfaces; quote the asterisk so the shell does
+not expand it into filenames. IPv6 addresses such as `::1` (loopback) or `::`
+(all IPv6 interfaces) are accepted, with or without brackets. `--hostname`/`-H`
+remain aliases for `--listen`, and `-p` is an alias for `--port`.
+
+An explicit `--port` overrides the process environment's `PORT`. Set `PORT`
+before launching, not in `.env.local`. Local launchers ignore inherited
+`HOSTNAME` values and use `--listen` for the bind address. Container images keep
+their explicit `PORT`/`HOSTNAME` settings. Other Next.js development options,
+such as `--webpack`, are forwarded unchanged. Use `--help` to see the options.
 
 Sunset, Mountains, Clouds, and Forest are bundled login backgrounds, with Sunset used
 on a device that has not selected one yet. Private login

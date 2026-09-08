@@ -72,6 +72,7 @@ export function WorkspaceCommands({
 			"Tasks",
 			"Audit",
 			"Account",
+			"About",
 		].map((label) => ({
 			label,
 			href: label === "Home" ? "/app" : `/${label.toLowerCase()}`,
@@ -107,6 +108,23 @@ export function WorkspaceCommands({
 				options.length
 		]?.focus();
 	}
+	function searchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+		if (event.nativeEvent.isComposing) return;
+		if (event.key !== "Enter") {
+			navigateOptions(event);
+			return;
+		}
+		if (
+			!search.trim() ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey ||
+			event.shiftKey
+		)
+			return;
+		event.preventDefault();
+		listRef.current?.querySelector<HTMLElement>("a, button")?.click();
+	}
 	return (
 		<CreateModal
 			open={open}
@@ -120,7 +138,8 @@ export function WorkspaceCommands({
 					<input
 						value={search}
 						onChange={(event) => setSearch(event.target.value)}
-						onKeyDown={navigateOptions}
+						onKeyDown={searchKeyDown}
+						enterKeyHint="go"
 						placeholder="Objects, tasks, create…"
 					/>
 				</label>

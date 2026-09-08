@@ -5,6 +5,7 @@ import { buildDocumentTitle, getRouteTitle } from "@/lib/page-title";
 describe("page titles", () => {
 	it.each([
 		["/app", "Home"],
+		["/about", "About"],
 		["/account", "Profile"],
 		["/account/appearance", "Appearance"],
 		["/relations/objects", "Object relations"],

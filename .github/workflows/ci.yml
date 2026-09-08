@@ -46,6 +46,8 @@ jobs:
         run: npm run test:release-dependencies
       - name: Test development dependency launcher
         run: npm run test:dev-deps
+      - name: Test server command-line options
+        run: npm run test:server-options
       - name: Build
         run: npm run build
       - name: Enforce frontend performance budgets
@@ -149,12 +151,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.20.0
       - name: Resolve build version
         id: version
         shell: bash
-        run: |
-          package_version="$(jq --raw-output .version package.json)"
-          echo "value=v${package_version}+${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+        run: echo "value=$(node scripts/print-application-version.mjs)" >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - name: Validate development dependencies
@@ -244,12 +250,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.20.0
       - name: Resolve build version
         id: version
         shell: bash
-        run: |
-          package_version="$(jq --raw-output .version package.json)"
-          echo "value=v${package_version}+${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+        run: echo "value=$(node scripts/print-application-version.mjs)" >> "$GITHUB_OUTPUT"
 
   publish-main-image:
     name: publish-main-image

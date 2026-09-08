@@ -6,7 +6,7 @@
 		"node": ">=24.0.0"
 	},
 	"scripts": {
-		"dev": "next dev",
+		"dev": "node scripts/dev-server.mjs",
 		"dev:deps": "bash scripts/dev-deps.sh up",
 		"dev:deps:down": "bash scripts/dev-deps.sh down",
 		"build": "next build",
@@ -17,6 +17,7 @@
 		"test:performance-budget": "node --test scripts/check-performance-budgets.test.mjs",
 		"test:release-dependencies": "node --test scripts/check-release-dependencies.test.mjs",
 		"test:dev-deps": "node --test scripts/dev-deps.test.mjs",
+		"test:server-options": "node --test scripts/server-options.test.mjs",
 		"test:e2e": "playwright test",
 		"test:e2e:authenticated": "bash scripts/authenticated-e2e-test.sh",
 		"test:e2e:authenticated:full": "bash scripts/full-authenticated-e2e.sh",
