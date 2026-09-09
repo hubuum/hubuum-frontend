@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
 
 env:
-  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.12@sha256:6441ccbe2906d80d0e6ef5e8a9b8e4a7e1afc9c39c8d43d93ac62a5cd0e6e865
+  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.13@sha256:512562e789d6430875c5075faf832a9669a4f266f7fe9fbf8c1524b49a6476c5
   IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
@@ -71,7 +71,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Test against Hubuum Server v0.0.12
+      - name: Test against Hubuum Server v0.0.13
         env:
           HUBUUM_LIVE_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: npm run test:live-backend
@@ -206,7 +206,7 @@ jobs:
           HUBUUM_FRONTEND_IMAGE: hubuum-frontend:ci
           HUBUUM_FRONTEND_PORT: 13001
         run: bash scripts/quickstart-smoke.sh
-      - name: Smoke test frontend BFF against Hubuum Server v0.0.12
+      - name: Smoke test frontend BFF against Hubuum Server v0.0.13
         env:
           HUBUUM_COMPAT_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: bash scripts/release-stack-smoke.sh

@@ -6,11 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.0.14] - 2026-09-08
+## [0.0.14] - 2026-09-09
 
 ### Compatibility
 
-- Adopted the Hubuum Server `v0.0.12` contract and immutable CI image. Run the
+- Adopted the Hubuum Server `v0.0.13` contract and immutable CI image. Run the
   server's separate `hubuum-admin --migrate` workload before startup and deploy
   `hubuum-admin --restore-executor` before allowing web restore confirmations.
   Install the matching template worker and follow the server's version 5 backup
@@ -18,6 +18,9 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated restore confirmation for `202 Accepted`, with capability-authenticated
   status polling through success or failure after old sessions become invalid.
   Keep the restore page open until completion; capabilities stay in memory.
+- Target Server `v0.0.13` for its restore maintenance-generation and JSON `null`
+  fixes. Upgrade the separate restore executor alongside the server and other
+  matching binaries.
 
 ### Added
 
@@ -545,7 +548,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.13...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.14...HEAD
+[0.0.14]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.13...v0.0.14
 [0.0.13]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.12...v0.0.13
 [0.0.12]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.11...v0.0.12
 [0.0.11]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.10...v0.0.11

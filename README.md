@@ -500,8 +500,8 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Current `main` development is validated against Hubuum Server `v0.0.12`.
-Hubuum Frontend `v0.0.14` is validated against Server `v0.0.12`.
+Current `main` development is validated against Hubuum Server `v0.0.13`.
+Hubuum Frontend `v0.0.14` is validated against Server `v0.0.13`.
 Run the server's separate migration workload before startup and deploy its
 restore executor before confirming web restores. The console polls queued
 restores through completion; keep the restore page open so its in-memory
@@ -565,7 +565,7 @@ server image:
 npm run test:live-backend
 ```
 
-The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.12`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.13`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
@@ -574,12 +574,13 @@ computed fields, events/audit, history/as-of, event sink, subscription, delivery
 lifecycle, public token-lifetime discovery, authoritative token expiry,
 client pagination discovery, by-name routes, object aggregation, computed
 querying, JSON Patch, and pagination APIs directly, and tears the stack down.
-Restore confirmation is intentionally excluded so this contract suite never
-replaces the live test database.
+The final check confirms a restore only against the disposable stack owned by
+the test wrapper, then verifies completion and invalidation of the old token.
+Restore confirmation is skipped when targeting an externally supplied backend URL.
 
 Useful overrides:
 
-- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.12`
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.13`
 - `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
 - `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
 - `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`
