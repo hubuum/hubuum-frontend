@@ -1,5 +1,3 @@
-import { execFileSync } from "node:child_process";
-
 const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
 const adminPassword = process.env.HUBUUM_LIVE_ADMIN_PASSWORD;
@@ -190,10 +188,10 @@ async function main() {
       clientConfig.data.authentication.max_token_lifetime_hours >= defaultTokenLifetimeHours,
     "Client config is missing the effective maximum token lifetime.",
   );
-  pass("discovered public v0.0.12 pagination and authentication configuration");
+  pass("discovered public v0.0.13 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
-  assert(openapi.data.info?.version === "0.0.12", "Server OpenAPI is not version 0.0.12.");
+  assert(openapi.data.info?.version === "0.0.13", "Server OpenAPI is not version 0.0.13.");
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
     openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
@@ -277,7 +275,7 @@ async function main() {
     openapi.data.components?.schemas?.PrincipalSettingsResponse,
     "OpenAPI is missing revisioned principal settings responses.",
   );
-  pass("server OpenAPI exposes the expected v0.0.12 contract");
+  pass("server OpenAPI exposes the expected v0.0.13 contract");
 
   const token = await loginAs(adminName, adminPassword);
   pass("admin login returns a bearer token");
@@ -319,7 +317,7 @@ async function main() {
         runningConfig.data.exports.database_statement_timeout_ms,
     "Admin config is missing the storage query budget or its compatibility alias.",
   );
-  pass("read redacted v0.0.12 admin runtime configuration");
+  pass("read redacted v0.0.13 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -1636,15 +1634,6 @@ async function main() {
   pass("deleted event sink");
 
   if (process.env.HUBUUM_LIVE_DISPOSABLE_RESTORE === "1") {
-    const project = process.env.HUBUUM_LIVE_COMPOSE_PROJECT;
-    assert(project, "Disposable restore requires its owned Compose project.");
-    // Stop accepting background work before replacing the database. The API
-    // remains running so confirmation and capability polling exercise HTTP.
-    execFileSync("docker", [
-      "compose", "-f", "docker-compose.live-backend.yml", "-p", project,
-      "stop", "--timeout", "30", "worker",
-    ], { stdio: "inherit", timeout: 40_000 });
-
     // This suite owns the disposable database. Restore only after every other
     // check, because successful replacement invalidates all existing tokens.
     const confirmedRestore = await request("POST", `/api/v1/restores/${stagedRestore.data.id}/confirm`, {

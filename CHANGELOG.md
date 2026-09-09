@@ -6,11 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.0.14] - 2026-09-08
+## [0.0.14] - 2026-09-09
 
 ### Compatibility
 
-- Adopted the Hubuum Server `v0.0.12` contract and immutable CI image. Run the
+- Adopted the Hubuum Server `v0.0.13` contract and immutable CI image. Run the
   server's separate `hubuum-admin --migrate` workload before startup and deploy
   `hubuum-admin --restore-executor` before allowing web restore confirmations.
   Install the matching template worker and follow the server's version 5 backup
@@ -18,10 +18,9 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated restore confirmation for `202 Accepted`, with capability-authenticated
   status polling through success or failure after old sessions become invalid.
   Keep the restore page open until completion; capabilities stay in memory.
-- Quiesce background workers before destructive web restores. Server `v0.0.12`
-  can report a drain timeout while background activity remains in its maintenance
-  barrier; the console displays that failure. Contract checks stop their separate
-  disposable worker before confirming the final restore.
+- Target Server `v0.0.13` for its restore maintenance-generation and JSON `null`
+  fixes. Upgrade the separate restore executor alongside the server and other
+  matching binaries.
 
 ### Added
 
