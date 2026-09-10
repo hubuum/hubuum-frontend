@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.13` | `ghcr.io/hubuum/hubuum-server:v0.0.13` |
+| `main` (unreleased) | `v0.0.14` | `ghcr.io/hubuum/hubuum-server:v0.0.14` |
+| `v0.0.15` | `v0.0.14` | `ghcr.io/hubuum/hubuum-server:v0.0.14` |
 | `v0.0.14` | `v0.0.13` | `ghcr.io/hubuum/hubuum-server:v0.0.13` |
 | `v0.0.13` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
 | `v0.0.12` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
@@ -22,9 +23,9 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Frontend `v0.0.14` and unreleased `main` validate the generated Server `v0.0.13`
+listed server tag. Frontend `v0.0.15` and unreleased `main` validate the generated Server `v0.0.14`
 contract and the live scoped and unscoped token lifecycles against
-`sha256:512562e789d6430875c5075faf832a9669a4f266f7fe9fbf8c1524b49a6476c5`.
+`sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
 A separate scheduled workflow tests the frontend against the moving backend
 `:main` image to surface future compatibility changes without making normal CI
 nondeterministic.
@@ -78,16 +79,23 @@ old bearer sessions become invalid. Keep the restore page open until it finishes
 The exact restore-status BFF route accepts only capability-authenticated reads;
 all other backend proxy routes continue to require a frontend session.
 
-Before deploying Server `v0.0.13`, run `hubuum-admin --migrate` as a separate
+Frontend `v0.0.15` adopts Server `v0.0.14` with no API shape changes. The server
+fixes backup validation, external membership provenance, retained history, and
+resource revisions after history-free restores. Backup format 5 is unchanged,
+and this release adds no database migration. The certified application upgrade
+and rollback path is Server `v0.0.13` to `v0.0.14`; application rollback retains
+the migrated database. Existing history-free backup artifacts can be restored
+directly with the fixed restore executor.
+
+Before deploying Server `v0.0.14`, run `hubuum-admin --migrate` as a separate
 one-shot workload and deploy `hubuum-admin --restore-executor` before enabling
 web restore confirmations. Both requirements apply to the default single-role
-mode. Use matching `v0.0.13` binaries for the server, administrator, template worker,
-and separately deployed restore executor. This release fixes restore failures
-while instances acknowledge maintenance and preserves JSON `null` during
-PostgreSQL restoration. The disposable contract suite exercises confirmation,
+mode. Use matching `v0.0.14` binaries for the server, administrator, template worker,
+and separately deployed restore executor to apply the recovery fixes. The
+disposable contract suite exercises confirmation,
 capability-only completion polling, and token invalidation with background
 workers running.
-See the [Server v0.0.13 release notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.13)
+See the [Server v0.0.14 release notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.14)
 for these fixes and matching-binary requirements.
 See the [Server v0.0.12 upgrade notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.12)
 for the certified upgrade path, version 5 backups, resource limits, and optional

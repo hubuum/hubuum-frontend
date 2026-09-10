@@ -188,10 +188,10 @@ async function main() {
       clientConfig.data.authentication.max_token_lifetime_hours >= defaultTokenLifetimeHours,
     "Client config is missing the effective maximum token lifetime.",
   );
-  pass("discovered public v0.0.13 pagination and authentication configuration");
+  pass("discovered public v0.0.14 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
-  assert(openapi.data.info?.version === "0.0.13", "Server OpenAPI is not version 0.0.13.");
+  assert(openapi.data.info?.version === "0.0.14", "Server OpenAPI is not version 0.0.14.");
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
     openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
@@ -275,7 +275,7 @@ async function main() {
     openapi.data.components?.schemas?.PrincipalSettingsResponse,
     "OpenAPI is missing revisioned principal settings responses.",
   );
-  pass("server OpenAPI exposes the expected v0.0.13 contract");
+  pass("server OpenAPI exposes the expected v0.0.14 contract");
 
   const token = await loginAs(adminName, adminPassword);
   pass("admin login returns a bearer token");
@@ -317,7 +317,7 @@ async function main() {
         runningConfig.data.exports.database_statement_timeout_ms,
     "Admin config is missing the storage query budget or its compatibility alias.",
   );
-  pass("read redacted v0.0.13 admin runtime configuration");
+  pass("read redacted v0.0.14 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,

@@ -102,6 +102,74 @@ test.describe("workspace quality", () => {
 		await prepareWorkspace(page);
 	});
 
+	for (const theme of ["light", "dark"] as const) {
+		test(`search shortcut hints follow focus and input in ${theme} mode`, async ({
+			page,
+		}, testInfo) => {
+			await page.setViewportSize({ width: 1440, height: 1000 });
+			await page.getByRole("button", { name: /Open account menu for/ }).click();
+			await page
+				.getByRole("button", {
+					name: theme === "dark" ? "Dark" : "Light",
+					exact: true,
+				})
+				.click();
+			await page.keyboard.press("Escape");
+			const commands = page.getByRole("button", {
+				name: "Go to or create",
+				exact: true,
+			});
+			const search = page.getByRole("textbox", {
+				name: "Search collections, classes, and objects",
+			});
+			const hint = page.getByText("Type / to search", { exact: true });
+			await commands.focus();
+			await expect(hint).toBeVisible();
+			await expect(commands.getByText("Ctrl/⌘ K", { exact: true })).toBeVisible();
+			await expect(commands).toHaveAttribute(
+				"aria-keyshortcuts",
+				"Control+k Meta+k",
+			);
+			await expect(search).toHaveAttribute("aria-keyshortcuts", "/");
+			const violations = (
+				await new AxeBuilder({ page }).analyze()
+			).violations.filter((item) =>
+				["serious", "critical"].includes(item.impact ?? ""),
+			);
+			expect(violations).toEqual([]);
+			await page.screenshot({ path: testInfo.outputPath("shortcut-hints.png") });
+			await page.keyboard.press("/");
+			await expect(search).toBeFocused();
+			await expect(search).toHaveValue("");
+			await expect(hint).toBeHidden();
+			await search.fill("router");
+			await page.keyboard.press("/");
+			await expect(search).toHaveValue("router/");
+			await commands.focus();
+			await expect(hint).toBeHidden();
+			await search.fill("");
+			await commands.focus();
+			await expect(hint).toBeVisible();
+			await page.keyboard.press("Control+k");
+			await expect(page.getByLabel("Find a destination or action")).toBeFocused();
+			await page.keyboard.press("Escape");
+			for (const width of [1024, 390]) {
+				await page.setViewportSize({ width, height: 844 });
+				await expect(search).toBeHidden();
+				await commands.focus();
+				await page.keyboard.press("/");
+				const dialog = page.getByRole("dialog", { name: "Search workspace" });
+				await expect(dialog).toBeVisible();
+				await expect(dialog.getByRole("textbox")).toBeFocused();
+				await page.keyboard.press("Escape");
+				expect(
+					await page.evaluate(() => document.body.scrollWidth <= innerWidth),
+				).toBe(true);
+			}
+			await expect(commands.getByText("Ctrl/⌘ K", { exact: true })).toBeHidden();
+		});
+	}
+
 	test("table shortcuts respect other controls and move actual row focus", async ({
 		page,
 	}) => {

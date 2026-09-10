@@ -23,6 +23,12 @@ a digest-pinned Compose quickstart, checksums, and a GitHub Release.
    blocks on open Dependabot pull requests. It uses the current repository from
    authenticated `gh`; set `GITHUB_REPOSITORY=owner/repository` when running it
    outside a checkout recognized by `gh`.
+
+   npm can move a package's `latest` tag to an older maintenance line. The gate
+   requires the newer stable version from `latest` or the declared range's
+   `wanted` version, without requiring a downgrade. `npm outdated` can still
+   list such a package after it is current, as with Node.js types `26.5.1`
+   when `latest` points to `22.20.2`.
 3. Prefer updating a dependency over deferring it. When a concrete
    compatibility constraint makes that impossible, add an exact entry to
    `release-dependency-exceptions.json` in the release pull request:
@@ -77,7 +83,7 @@ a digest-pinned Compose quickstart, checksums, and a GitHub Release.
 7. Check out that clean commit and run:
 
    ```sh
-   bash scripts/check-release-readiness.sh v0.0.14
+   bash scripts/check-release-readiness.sh v0.0.15
    ```
 
 ## Publish
@@ -85,8 +91,8 @@ a digest-pinned Compose quickstart, checksums, and a GitHub Release.
 Create and push an annotated tag from the verified commit:
 
 ```sh
-git tag -a v0.0.14 -m "Hubuum Frontend v0.0.14"
-git push origin v0.0.14
+git tag -a v0.0.15 -m "Hubuum Frontend v0.0.15"
+git push origin v0.0.15
 ```
 
 The tag workflow rechecks dependency freshness and unresolved Dependabot pull

@@ -92,7 +92,41 @@ button.table-pagination-action {
 	flex-shrink: 0;
 }
 .command-trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
 	white-space: nowrap;
+}
+.shortcut-hint-key {
+	min-width: 1.25rem;
+	padding: 0.1rem 0.3rem;
+	font-size: 0.7rem;
+	line-height: 1.2;
+	border-radius: 4px;
+	box-shadow: 0 1px 0 var(--line);
+}
+.topbar-search-input:not(:focus)::placeholder {
+	color: transparent;
+}
+.topbar-search-hint {
+	position: absolute;
+	inset: 0 0.9rem;
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	overflow: hidden;
+	white-space: nowrap;
+	pointer-events: none;
+	color: var(--muted);
+	font-size: 0.84rem;
+}
+.topbar-search-field:focus-within .topbar-search-hint {
+	display: none;
+}
+@media (max-width: 900px) {
+	.command-trigger .shortcut-hint-key {
+		display: none;
+	}
 }
 .command-dialog {
 	max-width: 36rem;
