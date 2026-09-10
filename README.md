@@ -171,7 +171,10 @@ owner group.
 ## Workspace navigation and resource selection
 
 Use **Go to…** or **Ctrl/Cmd+K** to find a workspace destination, pinned resource,
-or the current page's create action. Type a query and press **Enter** to activate
+or the current page's create action. The desktop control shows its shortcut;
+the empty workspace search shows **Type / to search** until focused. Press **/**
+outside a text field to focus workspace search or open it on a smaller screen.
+Type a query and press **Enter** to activate
 the first matching destination or action, or search resources when none match.
 Use the arrow keys to choose a different result before pressing Enter.
 Up to three pinned destinations also appear as direct links below the toolbar.
@@ -500,8 +503,8 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Current `main` development is validated against Hubuum Server `v0.0.13`.
-Hubuum Frontend `v0.0.14` is validated against Server `v0.0.13`.
+Current `main` development is validated against Hubuum Server `v0.0.14`.
+Hubuum Frontend `v0.0.15` is validated against Server `v0.0.14`.
 Run the server's separate migration workload before startup and deploy its
 restore executor before confirming web restores. The console polls queued
 restores through completion; keep the restore page open so its in-memory
@@ -509,8 +512,8 @@ capability remains available after existing sessions become invalid. See the
 [compatibility guide](docs/compatibility.md) for upgrade requirements.
 Releases provide:
 
-- `ghcr.io/hubuum/hubuum-frontend:v0.0.14` for Linux AMD64 and ARM64;
-- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.14`;
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.15` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.15`;
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
@@ -565,7 +568,7 @@ server image:
 npm run test:live-backend
 ```
 
-The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.13`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.14`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
@@ -580,7 +583,7 @@ Restore confirmation is skipped when targeting an externally supplied backend UR
 
 Useful overrides:
 
-- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.13`
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.14`
 - `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
 - `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
 - `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`
@@ -631,7 +634,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.14 \
+  --version 0.0.15 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -640,7 +643,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.14 \
+  --version 0.0.15 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com

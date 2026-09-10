@@ -124,6 +124,44 @@ test("parseNpmOutdated reports direct application and development dependencies",
 	);
 });
 
+test("parseNpmOutdated still requires range updates when latest is an older maintenance release", () => {
+	const record = {
+		current: "26.5.0",
+		wanted: "26.5.1",
+		latest: "22.20.2",
+		type: "devDependencies",
+	};
+	assert.deepEqual(
+		parseNpmOutdated(JSON.stringify({ "@types/node": record })),
+		[{
+			ecosystem: "npm",
+			dependency: "@types/node",
+			currentVersion: "26.5.0",
+			targetVersion: "26.5.1",
+			detail: "devDependencies",
+		}],
+	);
+	assert.deepEqual(
+		parseNpmOutdated(JSON.stringify({
+			"@types/node": { ...record, current: "26.5.1" },
+		})),
+		[],
+	);
+});
+
+test("parseNpmOutdated requires newer latest releases even when the range is current", () => {
+	const stale = parseNpmOutdated(JSON.stringify({
+		next: {
+			current: "16.3.4",
+			wanted: "16.3.4",
+			latest: "17.0.0",
+			type: "dependencies",
+		},
+	}));
+	assert.equal(stale.length, 1);
+	assert.equal(stale[0].targetVersion, "17.0.0");
+});
+
 test("validateExceptions requires a concrete, tracked, unexpired deferral", () => {
 	const exception = {
 		ecosystem: "npm",

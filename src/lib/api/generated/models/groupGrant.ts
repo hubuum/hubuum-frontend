@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.13
+ * OpenAPI spec version: 0.0.14
  */
 import type { Permissions } from './permissions';
 

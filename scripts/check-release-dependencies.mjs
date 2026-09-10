@@ -167,18 +167,32 @@ export function parseNpmOutdated(output) {
 	}
 
 	return Object.entries(records)
-		.filter(
-			([, record]) =>
-				["dependencies", "devDependencies"].includes(record.type) &&
-				record.current !== record.latest,
+		.filter(([, record]) =>
+			["dependencies", "devDependencies"].includes(record.type),
 		)
-		.map(([dependency, record]) => ({
-			ecosystem: "npm",
-			dependency,
-			currentVersion: String(record.current),
-			targetVersion: String(record.latest),
-			detail: record.type,
-		}));
+		.flatMap(([dependency, record]) => {
+			// A maintenance release can move npm's latest tag behind the installed
+			// line. Still require newer versions from either latest or our range.
+			const current = parseSemverTag(String(record.current));
+			const latest = parseSemverTag(String(record.latest));
+			const wanted = parseSemverTag(String(record.wanted));
+			const target = latest && wanted && compareSemver(wanted, latest) > 0
+				? wanted
+				: latest;
+			if (current && target && compareSemver(current, target) >= 0) {
+				return [];
+			}
+			if (record.current === record.latest && !target) {
+				return [];
+			}
+			return [{
+				ecosystem: "npm",
+				dependency,
+				currentVersion: String(record.current),
+				targetVersion: target?.tag ?? String(record.latest),
+				detail: record.type,
+			}];
+		});
 }
 
 function validDate(value) {

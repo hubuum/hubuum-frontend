@@ -6,6 +6,33 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.15] - 2026-09-10
+
+### Added
+
+- Added visible keyboard hints for empty workspace search (`/`) and the
+  desktop Go to control (`Ctrl/Cmd+K`).
+
+### Compatibility
+
+- Adopted the Hubuum Server `v0.0.14` contract and immutable CI image. The API
+  shapes and backup format 5 are unchanged; the server fixes backup validation
+  and recovery of membership provenance, history, and resource revisions.
+- Use matching `v0.0.14` server, administrator, template worker, and separate
+  restore-executor binaries. This server release adds no database migration;
+  the certified application upgrade and rollback path is from `v0.0.13`.
+
+### Changed
+
+- Updated React and its types to `19.3.0`, Zod to `4.6.1`, and Node.js types
+  to `26.5.1` as part of the release dependency gate.
+
+### Fixed
+
+- Kept dependency freshness checks from requiring a downgrade when npm's
+  `latest` tag points to an older maintenance release, while still requiring
+  available updates in the declared dependency range.
+
 ## [0.0.14] - 2026-09-09
 
 ### Compatibility

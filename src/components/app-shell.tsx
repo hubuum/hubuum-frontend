@@ -1897,9 +1897,13 @@ export function AppShell({
 								className="ghost command-trigger"
 								onClick={() => setCommandsOpen(true)}
 								aria-label="Go to or create"
+								aria-keyshortcuts="Control+k Meta+k"
 								title="Go to or create (Ctrl/Cmd+K)"
 							>
 								Go to…
+								<kbd className="keyboard-key shortcut-hint-key">
+									Ctrl/⌘ K
+								</kbd>
 							</button>
 							<form
 								className="topbar-search-form desktop-search-form"
@@ -1908,11 +1912,17 @@ export function AppShell({
 								<div className="topbar-search-field">
 									<input
 										aria-label="Search collections, classes, and objects"
+										aria-keyshortcuts="/"
 										className="topbar-search-input"
 										value={searchInput}
 										onChange={(event) => setSearchInput(event.target.value)}
 										placeholder="Search collections, classes, and objects"
 									/>
+									{searchInput === "" ? (
+										<span className="topbar-search-hint" aria-hidden="true">
+											Type <kbd className="keyboard-key shortcut-hint-key">/</kbd> to search
+										</span>
+									) : null}
 									{normalizeSearchTerm(searchInput) ? (
 										<button
 											type="button"
@@ -1938,6 +1948,7 @@ export function AppShell({
 								className="ghost icon-button mobile-only mobile-search-trigger"
 								onClick={() => setMobileSearchOpen(true)}
 								aria-label="Search workspace"
+								aria-keyshortcuts="/"
 								title="Search workspace"
 							>
 								<IconSearch />
