@@ -1,3 +1,5 @@
+import { verifySchemaEvolution } from "./live-schema-suite.mjs";
+
 const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
 const adminPassword = process.env.HUBUUM_LIVE_ADMIN_PASSWORD;
@@ -276,6 +278,12 @@ async function main() {
     "OpenAPI is missing revisioned principal settings responses.",
   );
   pass("server OpenAPI exposes the expected v0.0.14 contract");
+  const hasSchemaEvolution = Boolean(openapi.data.paths?.["/api/v1/classes/{class_id}/schema/revisions"]);
+  if (process.env.HUBUUM_LIVE_REQUIRE_SCHEMA === "1") {
+    assert(hasSchemaEvolution, "This run requires the server-main schema evolution contract.");
+  }
+  const backupVersion = hasSchemaEvolution ? 6 : 5;
+
 
   const token = await loginAs(adminName, adminPassword);
   pass("admin login returns a bearer token");
@@ -506,6 +514,11 @@ async function main() {
     "Token list metadata must not expose the raw bearer token.",
   );
   pass("minted, inspected, and used an unscoped service-account token");
+  if (hasSchemaEvolution) {
+    await verifySchemaEvolution({ request, waitFor, auth, readerToken: unscopedToken, collectionId: collection.data.id, suffix });
+    pass("verified staged schemas, impact comparison, report authorization, pending and strict activation, stale proofs, and object evidence");
+  }
+
 
   await request(
     "POST",
@@ -897,12 +910,17 @@ async function main() {
   pass("created and completed a backup task");
 
   const backupOutput = await request("GET", `/api/v1/backups/${backup.data.id}/output`, auth);
-  assert(backupOutput.data.backup_version === 5, "Backup document should use format version 5.");
+  assert(backupOutput.data.backup_version === backupVersion, `Backup document should use format version ${backupVersion}.`);
   assert(hasHeader(backupOutput.headers, "digest"), "Backup output should include Digest.");
   assert(
     hasHeader(backupOutput.headers, "x-hubuum-backup-sha256"),
     "Backup output should include X-Hubuum-Backup-SHA256.",
   );
+  if (hasSchemaEvolution) {
+    for (const section of ["class_schema_revisions", "class_schema_state", "object_schema_evidence"]) {
+      assert(backupOutput.data.state?.sections?.[section], `Backup is missing ${section}.`);
+    }
+  }
   pass("downloaded backup output with integrity metadata");
 
   const stagedRestore = await request("POST", "/api/v1/restores", {
@@ -916,7 +934,7 @@ async function main() {
       stagedRestore.data.restore_capability.length > 0,
     "Staged restore should return a one-time capability.",
   );
-  assert(stagedRestore.data.validation?.backup_version === 5, "Restore validation should report backup version 5.");
+  assert(stagedRestore.data.validation?.backup_version === backupVersion, `Restore validation should report backup version ${backupVersion}.`);
   const restoreStatus = await request(
     "GET",
     `/api/v1/restores/${stagedRestore.data.id}/status`,
@@ -1379,9 +1397,8 @@ async function main() {
     ...auth,
     body: {
       description: "Updated by frontend live backend contract tests",
-      json_schema: { type: "object" },
       name: classUpdatedName,
-      validate_schema: false,
+      ...(hasSchemaEvolution ? {} : { json_schema: { type: "object" }, validate_schema: false }),
     },
     expected: [200, 202],
   });

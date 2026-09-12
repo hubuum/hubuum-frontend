@@ -15,6 +15,7 @@ import type { PaginationConfig } from './paginationConfig';
 import type { PermissionConfig } from './permissionConfig';
 import type { RemoteCallConfig } from './remoteCallConfig';
 import type { RestoreConfig } from './restoreConfig';
+import type { SchemaValidationConfig } from './schemaValidationConfig';
 import type { SecretSourceConfig } from './secretSourceConfig';
 import type { ServerConfig } from './serverConfig';
 import type { TaskConfig } from './taskConfig';
@@ -31,6 +32,7 @@ export interface RunningConfig {
   permissions: PermissionConfig;
   remote_calls: RemoteCallConfig;
   restores: RestoreConfig;
+  schema_validation: SchemaValidationConfig;
   secrets: SecretSourceConfig;
   server: ServerConfig;
   tasks: TaskConfig;

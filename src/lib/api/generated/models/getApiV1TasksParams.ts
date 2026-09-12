@@ -8,7 +8,7 @@
 
 export type GetApiV1TasksParams = {
 /**
- * Optional task kind filter (import|export|backup|reindex|remote_call)
+ * Optional task kind filter (import|export|backup|reindex|remote_call|schema_validation; schema tasks require administrator access)
  */
 kind: string;
 /**

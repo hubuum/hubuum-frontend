@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.0.14
  */
 import type { CollectionKey } from './collectionKey';
+import type { ImportSchemaActivation } from './importSchemaActivation';
 import type { ImportWriteCondition } from './importWriteCondition';
 import type { RestoreTimestamps } from './restoreTimestamps';
 
@@ -19,6 +20,7 @@ export interface ImportClassInput {
   name: string;
   /** @nullable */
   ref?: string | null;
+  schema_activation?: null | ImportSchemaActivation;
   timestamps?: null | RestoreTimestamps;
   /** @nullable */
   validate_schema?: boolean | null;

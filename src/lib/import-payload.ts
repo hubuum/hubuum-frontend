@@ -455,6 +455,11 @@ export function buildImportSubmissionPayload(
 	};
 
 	if (options.collectionMode === "existing_override") {
+		if (payload.graph.classes?.some((item) => item.schema_activation)) {
+			throw new Error(
+				"Imports with staged schema activation must use their file destinations. Revision numbers belong to the original class; changing the destination could activate another policy.",
+			);
+		}
 		if (!collectionName) {
 			throw new Error("Target collection is required.");
 		}
@@ -463,6 +468,11 @@ export function buildImportSubmissionPayload(
 	}
 
 	if (options.collectionMode === "create_override") {
+		if (payload.graph.classes?.some((item) => item.schema_activation)) {
+			throw new Error(
+				"Imports with staged schema activation must use their file destinations. A new collection does not contain the staged revisions.",
+			);
+		}
 		if (!collectionName) {
 			throw new Error("Target collection is required.");
 		}

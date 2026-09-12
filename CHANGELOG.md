@@ -6,6 +6,25 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Added a guided Schema workspace for server main: propose immutable revisions,
+  review policy changes, analyze object impact, and explicitly activate. Saved
+  links reopen revisions and reports; history, compliance, revalidation, and
+  administrator pending activation share the existing console controls.
+- Added schema and validation audit filters, schema task labels, effective
+  validation limits, and a separate pinned server-main contract check.
+
+### Compatibility
+
+- Generated the development API client from server main after hubuum/hubuum#402.
+  The released server target remains `v0.0.14`; older servers retain inline
+  schema editing. Metadata saves omit schema fields, and imports retain explicit
+  staged activation while preventing unsafe destination overrides.
+- Server main requires backup format 6 and a schema migration. Older backups
+  must first be restored with their matching server release. See
+  `docs/compatibility.md` for source/image revisions and upgrade requirements.
+
 ## [0.0.15] - 2026-09-10
 
 ### Added
