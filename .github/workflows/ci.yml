@@ -20,6 +20,13 @@ env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
+  backend-schema-preview:
+    name: backend-schema-preview
+    uses: ./.github/workflows/backend-main-compat.yml
+    with:
+      # Published main at the schema-evolution merge (hubuum/hubuum#402).
+      server_image: ghcr.io/hubuum/hubuum-server@sha256:b423ea6a7461662cb9a1e6324270358efa17ae9f909d55b3bb814c36d78b847e
+
   validate:
     name: validate
     runs-on: ubuntu-latest

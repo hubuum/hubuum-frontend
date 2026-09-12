@@ -8,7 +8,7 @@
 import type { BackupHistorySections } from './backupHistorySections';
 
 /**
- * Privileged, restore-only logical snapshots. Backup version 5 identifies
+ * Privileged, restore-only logical snapshots. Backup version 6 identifies
  * sections by stable Hubuum resources rather than PostgreSQL tables. Each
  * storage adapter explicitly maps its persistence layout to these versioned
  * sections. These are disaster-recovery internals, not portable import data.

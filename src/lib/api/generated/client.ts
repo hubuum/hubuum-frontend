@@ -11,6 +11,7 @@ import type {
   BackupDocument,
   BackupRequest,
   ClassComputationState,
+  ClassSchemaResponse,
   ClearRateLimitResponse,
   ClientConfig,
   Collection,
@@ -50,6 +51,8 @@ import type {
   GetApiV1ClassesByClassIdPermissionsParams,
   GetApiV1ClassesByClassIdRelatedClassesParams,
   GetApiV1ClassesByClassIdRelatedRelationsParams,
+  GetApiV1ClassesByClassIdSchemaObjectsParams,
+  GetApiV1ClassesByClassIdSchemaRevisionsParams,
   GetApiV1ClassesByClassIdTrailingParams,
   GetApiV1ClassesByNameByClassNameObjectAggregatesParams,
   GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameParams,
@@ -107,6 +110,7 @@ import type {
   HistoryResponseRemoteTargetHistory,
   HubuumClass,
   HubuumClassExpanded,
+  HubuumClassID,
   HubuumClassRelation,
   HubuumClassWithPath,
   HubuumObject,
@@ -156,11 +160,19 @@ import type {
   RestoreConfirmRequest,
   RestoreStageResponse,
   RunningConfig,
+  SchemaActivationRequest,
+  SchemaActivationResponse,
+  SchemaCompliancePage,
+  SchemaRevision,
+  SchemaRevisionResponse,
+  SchemaStageRequest,
+  SchemaWorkResponse,
   ServiceAccountPointResponse,
   ServiceAccountResponse,
   StructuredSearchRequest,
   StructuredSearchResponse,
   TaskEventResponse,
+  TaskID,
   TaskQueueStateResponse,
   TaskResponse,
   UnifiedSearchResponse,
@@ -4397,6 +4409,779 @@ export const deleteApiV1ClassesByClassIdRelationsByRelationId = async (classId: 
 
   const data: deleteApiV1ClassesByClassIdRelationsByRelationIdResponse['data'] = body ? JSON.parse(body) : undefined
   return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdRelationsByRelationIdResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdSchemaResponse200 = {
+  data: ClassSchemaResponse
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdSchemaResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdSchemaResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByClassIdSchemaResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdSchemaResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type getApiV1ClassesByClassIdSchemaResponseSuccess = (getApiV1ClassesByClassIdSchemaResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdSchemaResponseError = (getApiV1ClassesByClassIdSchemaResponse400 | getApiV1ClassesByClassIdSchemaResponse403 | getApiV1ClassesByClassIdSchemaResponse404 | getApiV1ClassesByClassIdSchemaResponse409) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdSchemaResponse = (getApiV1ClassesByClassIdSchemaResponseSuccess | getApiV1ClassesByClassIdSchemaResponseError)
+
+export const getGetApiV1ClassesByClassIdSchemaUrl = (classId: HubuumClassID,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/schema.
+ * @summary Get Api V1 Classes By Class Id Schema
+ */
+export const getApiV1ClassesByClassIdSchema = async (classId: HubuumClassID, options?: RequestInit): Promise<getApiV1ClassesByClassIdSchemaResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdSchemaUrl(classId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdSchemaResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdSchemaResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdSchemaObjectsResponse200 = {
+  data: SchemaCompliancePage
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdSchemaObjectsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByClassIdSchemaObjectsResponseSuccess = (getApiV1ClassesByClassIdSchemaObjectsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdSchemaObjectsResponseError = (getApiV1ClassesByClassIdSchemaObjectsResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdSchemaObjectsResponse = (getApiV1ClassesByClassIdSchemaObjectsResponseSuccess | getApiV1ClassesByClassIdSchemaObjectsResponseError)
+
+export const getGetApiV1ClassesByClassIdSchemaObjectsUrl = (classId: HubuumClassID,
+    params?: GetApiV1ClassesByClassIdSchemaObjectsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/objects?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/objects`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/schema/objects.
+ * @summary Get Api V1 Classes By Class Id Schema Objects
+ */
+export const getApiV1ClassesByClassIdSchemaObjects = async (classId: HubuumClassID,
+    params?: GetApiV1ClassesByClassIdSchemaObjectsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdSchemaObjectsResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdSchemaObjectsUrl(classId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdSchemaObjectsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdSchemaObjectsResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdSchemaRevisionsResponse200 = {
+  data: SchemaRevisionResponse[]
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdSchemaRevisionsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdSchemaRevisionsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByClassIdSchemaRevisionsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdSchemaRevisionsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type getApiV1ClassesByClassIdSchemaRevisionsResponseSuccess = (getApiV1ClassesByClassIdSchemaRevisionsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdSchemaRevisionsResponseError = (getApiV1ClassesByClassIdSchemaRevisionsResponse400 | getApiV1ClassesByClassIdSchemaRevisionsResponse403 | getApiV1ClassesByClassIdSchemaRevisionsResponse404 | getApiV1ClassesByClassIdSchemaRevisionsResponse409) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdSchemaRevisionsResponse = (getApiV1ClassesByClassIdSchemaRevisionsResponseSuccess | getApiV1ClassesByClassIdSchemaRevisionsResponseError)
+
+export const getGetApiV1ClassesByClassIdSchemaRevisionsUrl = (classId: HubuumClassID,
+    params?: GetApiV1ClassesByClassIdSchemaRevisionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/revisions?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/revisions`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/schema/revisions.
+ * @summary Get Api V1 Classes By Class Id Schema Revisions
+ */
+export const getApiV1ClassesByClassIdSchemaRevisions = async (classId: HubuumClassID,
+    params?: GetApiV1ClassesByClassIdSchemaRevisionsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdSchemaRevisionsResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdSchemaRevisionsUrl(classId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdSchemaRevisionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdSchemaRevisionsResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdSchemaRevisionsResponse201 = {
+  data: SchemaRevisionResponse
+  status: 201
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsResponseSuccess = (postApiV1ClassesByClassIdSchemaRevisionsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdSchemaRevisionsResponseError = (postApiV1ClassesByClassIdSchemaRevisionsResponse400 | postApiV1ClassesByClassIdSchemaRevisionsResponse403 | postApiV1ClassesByClassIdSchemaRevisionsResponse404 | postApiV1ClassesByClassIdSchemaRevisionsResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdSchemaRevisionsResponse = (postApiV1ClassesByClassIdSchemaRevisionsResponseSuccess | postApiV1ClassesByClassIdSchemaRevisionsResponseError)
+
+export const getPostApiV1ClassesByClassIdSchemaRevisionsUrl = (classId: HubuumClassID,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/revisions`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/schema/revisions.
+ * @summary Post Api V1 Classes By Class Id Schema Revisions
+ */
+export const postApiV1ClassesByClassIdSchemaRevisions = async (classId: HubuumClassID,
+    schemaStageRequest: SchemaStageRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdSchemaRevisionsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1ClassesByClassIdSchemaRevisionsUrl(classId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schemaStageRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdSchemaRevisionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdSchemaRevisionsResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse200 = {
+  data: SchemaRevisionResponse
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponseSuccess = (getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponseError = (getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse400 | getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse403 | getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse404 | getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse409) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse = (getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponseSuccess | getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponseError)
+
+export const getGetApiV1ClassesByClassIdSchemaRevisionsByRevisionUrl = (classId: HubuumClassID,
+    revision: SchemaRevision,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/revisions/${revision}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/schema/revisions/{revision}.
+ * @summary Get Api V1 Classes By Class Id Schema Revisions By Revision
+ */
+export const getApiV1ClassesByClassIdSchemaRevisionsByRevision = async (classId: HubuumClassID,
+    revision: SchemaRevision, options?: RequestInit): Promise<getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdSchemaRevisionsByRevisionUrl(classId,revision),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse
+}
+
+
+
+export type deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse200 = {
+  data: SchemaRevisionResponse
+  status: 200
+}
+
+export type deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponseSuccess = (deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse200) & {
+  headers: Headers;
+};
+export type deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponseError = (deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse400 | deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse403 | deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse404 | deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse409) & {
+  headers: Headers;
+};
+
+export type deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse = (deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponseSuccess | deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponseError)
+
+export const getDeleteApiV1ClassesByClassIdSchemaRevisionsByRevisionUrl = (classId: HubuumClassID,
+    revision: SchemaRevision,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/revisions/${revision}`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/classes/{class_id}/schema/revisions/{revision}.
+ * @summary Delete Api V1 Classes By Class Id Schema Revisions By Revision
+ */
+export const deleteApiV1ClassesByClassIdSchemaRevisionsByRevision = async (classId: HubuumClassID,
+    revision: SchemaRevision, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse> => {
+
+  const res = await fetch(getDeleteApiV1ClassesByClassIdSchemaRevisionsByRevisionUrl(classId,revision),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdSchemaRevisionsByRevisionResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse200 = {
+  data: SchemaActivationResponse
+  status: 200
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponseSuccess = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse200) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponseError = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse400 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse403 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse404 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponseSuccess | postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponseError)
+
+export const getPostApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateUrl = (classId: HubuumClassID,
+    revision: SchemaRevision,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/revisions/${revision}/activate`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/schema/revisions/{revision}/activate.
+ * @summary Post Api V1 Classes By Class Id Schema Revisions By Revision Activate
+ */
+export const postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivate = async (classId: HubuumClassID,
+    revision: SchemaRevision,
+    schemaActivationRequest: SchemaActivationRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateUrl(classId,revision),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schemaActivationRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse202 = {
+  data: SchemaWorkResponse
+  status: 202
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponseSuccess = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse202) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponseError = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse400 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse403 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse404 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponseSuccess | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponseError)
+
+export const getPostApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactUrl = (classId: HubuumClassID,
+    revision: SchemaRevision,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/revisions/${revision}/impact`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/schema/revisions/{revision}/impact.
+ * @summary Post Api V1 Classes By Class Id Schema Revisions By Revision Impact
+ */
+export const postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpact = async (classId: HubuumClassID,
+    revision: SchemaRevision, options?: RequestInit): Promise<postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse> => {
+
+  const res = await fetch(getPostApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactUrl(classId,revision),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse202 = {
+  data: SchemaWorkResponse
+  status: 202
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponseSuccess = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse202) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponseError = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse400 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse403 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse404 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponseSuccess | postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponseError)
+
+export const getPostApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateUrl = (classId: HubuumClassID,
+    revision: SchemaRevision,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/revisions/${revision}/revalidate`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/schema/revisions/{revision}/revalidate.
+ * @summary Post Api V1 Classes By Class Id Schema Revisions By Revision Revalidate
+ */
+export const postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidate = async (classId: HubuumClassID,
+    revision: SchemaRevision, options?: RequestInit): Promise<postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse> => {
+
+  const res = await fetch(getPostApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateUrl(classId,revision),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdSchemaRevisionsByRevisionRevalidateResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse200 = {
+  data: SchemaWorkResponse
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponseSuccess = (getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponseError = (getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse400 | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse403 | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse404 | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse409) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse = (getApiV1ClassesByClassIdSchemaTasksByTaskIdResponseSuccess | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponseError)
+
+export const getGetApiV1ClassesByClassIdSchemaTasksByTaskIdUrl = (classId: HubuumClassID,
+    taskId: TaskID,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/tasks/${taskId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/schema/tasks/{task_id}.
+ * @summary Get Api V1 Classes By Class Id Schema Tasks By Task Id
+ */
+export const getApiV1ClassesByClassIdSchemaTasksByTaskId = async (classId: HubuumClassID,
+    taskId: TaskID, options?: RequestInit): Promise<getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdSchemaTasksByTaskIdUrl(classId,taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse
+}
+
+
+
+export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse200 = {
+  data: SchemaWorkResponse
+  status: 200
+}
+
+export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponseSuccess = (deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse200) & {
+  headers: Headers;
+};
+export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponseError = (deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse400 | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse403 | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse404 | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse409) & {
+  headers: Headers;
+};
+
+export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse = (deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponseSuccess | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponseError)
+
+export const getDeleteApiV1ClassesByClassIdSchemaTasksByTaskIdUrl = (classId: HubuumClassID,
+    taskId: TaskID,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/tasks/${taskId}`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/classes/{class_id}/schema/tasks/{task_id}.
+ * @summary Delete Api V1 Classes By Class Id Schema Tasks By Task Id
+ */
+export const deleteApiV1ClassesByClassIdSchemaTasksByTaskId = async (classId: HubuumClassID,
+    taskId: TaskID, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1ClassesByClassIdSchemaTasksByTaskIdUrl(classId,taskId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse
 }
 
 

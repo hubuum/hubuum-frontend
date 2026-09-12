@@ -15,4 +15,5 @@ export const TaskKind = {
   backup: 'backup',
   reindex: 'reindex',
   remote_call: 'remote_call',
+  schema_validation: 'schema_validation',
 } as const;

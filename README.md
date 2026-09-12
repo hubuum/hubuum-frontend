@@ -384,6 +384,28 @@ includes names, descriptions, collection selectors, schema validation, and JSON
 schema. Opening one focuses its editor immediately, and Escape restores the
 draft. Permission-gated hierarchy moves remain a separate collection operation.
 
+On server builds with versioned schemas, the class page instead links to a
+dedicated **Schema** workspace. Its guided flow is **Propose → Review changes →
+Analyze impact → Activate**. Saving a proposal creates an immutable revision;
+it does not change the active policy. The workspace compares the document and
+enforcement flag with the active revision, shows bounded impact findings, and
+requires explicit activation. A compatible analysis can become outdated when
+objects or the active schema change; refresh the analysis after a conflict.
+
+Impact reports, aggregate counts, and revalidation require unrestricted
+administrator access. Class editors can save a proposal and share its revision
+link for an administrator to review. Administrator activation with pending
+validation is a separate, confirmed action. Activation leaves object JSON
+unchanged, queues revalidation and any dependent computed rebuild, and makes
+subsequent writes use the new policy. Compliance pages list accessible objects
+as valid, invalid, pending, or not required, including after migration.
+
+Saved revision and task links can be reopened after navigation or reload. Drafts
+remain unsaved until **Save revision**. History allows an older document to be
+used as the starting point for a new revision; active or retired documents are
+never edited in place. Servers without the schema endpoints retain the inline
+schema editor. See [compatibility](docs/compatibility.md) for the preview target.
+
 Escape is the console-wide safe exit for transient work. It closes the most
 recently opened menu, create form, or edit mode without saving its draft; nested
 modes unwind one at a time. Escape is ignored while an inline save or delete is

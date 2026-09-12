@@ -57,7 +57,7 @@ if [ "${ready}" -ne 1 ]; then
 fi
 
 echo "Resetting admin password for live test session..."
-reset_output="$(docker compose -f "${COMPOSE_FILE}" -p "${PROJECT}" exec -T hubuum hubuum-admin --reset-password admin)"
+reset_output="$(docker compose -f "${COMPOSE_FILE}" -p "${PROJECT}" exec -T hubuum /usr/local/bin/hubuum-admin --reset-password admin)"
 admin_password="$(printf '%s\n' "${reset_output}" | sed -n 's/^Password for user admin reset to: //p' | tail -1)"
 
 if [ -z "${admin_password}" ]; then
