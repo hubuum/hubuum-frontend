@@ -48,6 +48,8 @@ jobs:
         run: npm run test:dev-deps
       - name: Test server command-line options
         run: npm run test:server-options
+      - name: Test local sandbox tooling
+        run: npm run test:sandbox
       - name: Build
         run: npm run build
       - name: Enforce frontend performance budgets
