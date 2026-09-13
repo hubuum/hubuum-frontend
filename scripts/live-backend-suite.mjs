@@ -295,6 +295,17 @@ async function main() {
   assert(runningConfig.data.backups, "Admin config is missing backup settings.");
   assert(runningConfig.data.restores, "Admin config is missing restore settings.");
   assert(runningConfig.data.permissions, "Admin config is missing permission settings.");
+  if (
+    process.env.HUBUUM_LIVE_REQUIRE_SCHEMA === "1" ||
+    openapi.data.components?.schemas?.BackupConfig?.properties?.max_capture_rows
+  ) {
+    assert(
+      Number.isInteger(runningConfig.data.backups.max_capture_rows) &&
+        runningConfig.data.backups.max_capture_rows > 0,
+      "Admin config is missing the backup capture-row budget.",
+    );
+    pass("read the effective backup capture-row budget");
+  }
   assert(
     runningConfig.data.authentication?.token_lifetime_hours ===
       defaultTokenLifetimeHours,

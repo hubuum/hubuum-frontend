@@ -14,6 +14,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   administrator pending activation share the existing console controls.
 - Added schema and validation audit filters, schema task labels, effective
   validation limits, and a separate pinned server-main contract check.
+- Show the effective backup capture-row limit in administrator Configuration,
+  with an unavailable value on older servers.
 
 ### Compatibility
 

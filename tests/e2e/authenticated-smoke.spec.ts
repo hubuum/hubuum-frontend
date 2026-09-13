@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+import { frontendApiPath, hubuumBffPath } from "@/lib/api/frontend";
+
 const username = process.env.E2E_USERNAME;
 const password = process.env.E2E_PASSWORD;
 const identityScope = process.env.E2E_IDENTITY_SCOPE ?? "local";
@@ -8,6 +10,59 @@ const identityScope = process.env.E2E_IDENTITY_SCOPE ?? "local";
 test("About requires sign-in", async ({ page }) => {
 	await page.goto("/about");
 	await expect(page).toHaveURL(/\/login(?:\?|$)/);
+});
+
+test("Configuration shows the effective backup capture limit on desktop and mobile", async ({
+	page,
+}) => {
+	test.skip(
+		!username || !password,
+		"Requires the disposable authenticated test stack.",
+	);
+	await page.goto("/login");
+	const login = await page.request.post(frontendApiPath("/auth/login"), {
+		headers: { Origin: new URL(page.url()).origin },
+		data: {
+			username,
+			password,
+			identity_scope: identityScope,
+		},
+	});
+	expect(login.status()).toBe(200);
+	const response = await page.request.get(
+		hubuumBffPath("/api/v1/admin/config"),
+	);
+	expect(response.status()).toBe(200);
+	const config = await response.json();
+	const captureRows: unknown = config.backups?.max_capture_rows;
+	const expectedLimit =
+		typeof captureRows === "number"
+			? new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(
+					captureRows,
+				)
+			: "n/a";
+	await page.goto("/admin/configuration");
+	await expect(
+		page.getByRole("heading", { name: "Runtime configuration", exact: true }),
+	).toBeVisible();
+	const limit = page.getByRole("listitem").filter({
+		has: page.getByText("Maximum backup capture rows", { exact: true }),
+	});
+	await expect(limit.locator("strong")).toHaveText(expectedLimit);
+	for (const width of [1440, 390]) {
+		await page.setViewportSize({ width, height: 900 });
+		await expect(limit).toBeVisible();
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth <= window.innerWidth,
+			),
+		).toBe(true);
+		const accessibility = await new AxeBuilder({ page })
+			.include("main")
+			.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+			.analyze();
+		expect(accessibility.violations).toEqual([]);
+	}
 });
 
 test("About shows both versions and works on desktop and mobile", async ({

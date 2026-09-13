@@ -423,6 +423,10 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 											value: formatBytes(backups.max_output_bytes),
 										},
 										{
+											label: "Maximum backup capture rows",
+											value: formatNumber(backups.max_capture_rows),
+										},
+										{
 											label: "Backup retention",
 											value: `${formatNumber(backups.output_retention_hours)} h`,
 										},

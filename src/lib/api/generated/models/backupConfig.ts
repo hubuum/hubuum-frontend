@@ -10,6 +10,8 @@ export interface BackupConfig {
   /** @minimum 0 */
   max_active_tasks_per_user: number;
   /** @minimum 0 */
+  max_capture_rows: number;
+  /** @minimum 0 */
   max_output_bytes: number;
   output_retention_hours: number;
 }
