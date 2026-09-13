@@ -3,6 +3,36 @@
 Hubuum Frontend releases publish a multi-architecture image, an OCI Helm chart,
 a digest-pinned Compose quickstart, checksums, and a GitHub Release.
 
+## Backend preview support
+
+Frontend changes may support unreleased backend features while preserving the
+supported released-server baseline in `docs/compatibility.md`.
+
+| Backend target | Purpose |
+| --- | --- |
+| Released tag and immutable image digest | Required compatibility baseline and deployment default. |
+| Specific main commit and immutable image digest | Reproducible preview contract checks. |
+| Moving `:main` image | Scheduled detection of upcoming compatibility changes. |
+
+Merge preview support only after checks pass against both pinned targets. Use
+endpoint capabilities and explicit compatibility fallbacks to preserve older
+server behavior; a development server's version string may still identify the
+previous release. Record the OpenAPI source commit and tested image digest in
+`docs/compatibility.md`, and refresh them together after checking contract drift.
+
+The `backend-schema-preview / contract` check gates main image publication
+through `publish-main-metadata`, alongside the released-server contract check.
+A failed or skipped preview check prevents the dependent publication jobs from
+running. The scheduled moving-main check is separate from this pinned gate.
+
+A frontend release may include preview support while retaining its released
+backend baseline. Release notes must identify preview features and their
+required backend snapshot. When a backend release is selected, compare its final
+contract, regenerate the API client, update compatibility and deployment pins,
+and rerun the full release verification below. If a change cannot preserve the
+current baseline, hold it or keep the feature disabled until the supported
+backend version is intentionally raised.
+
 ## Prepare
 
 1. Let the repository's npm and GitHub Actions Dependabot updates finish, then
@@ -58,11 +88,11 @@ a digest-pinned Compose quickstart, checksums, and a GitHub Release.
 4. Update `package.json`, `package-lock.json`, the Helm chart, Compose defaults,
    and `CHANGELOG.md` to the same release version. Merge this final combined
    release change to `main` through one pull request only after its `validate`,
-   `backend-contract`, `browser-quality`, `visual-regression`,
-   `authenticated-browser-smoke`, `authenticated-browser`, and `package`
-   checks pass.
-5. Wait for `validate`, `backend-contract`, `browser-quality`,
-   `visual-regression`, `authenticated-browser-smoke`, `package`, and
+   `backend-contract`, `backend-schema-preview / contract`, `browser-quality`,
+   `visual-regression`, `authenticated-browser-smoke`, `authenticated-browser`,
+   and `package` checks pass.
+5. Wait for `validate`, `backend-contract`, `backend-schema-preview / contract`,
+   `browser-quality`, `visual-regression`, `authenticated-browser-smoke`, `package`, and
    `publish-main` to pass on the exact merged `main` commit. The publisher
    builds AMD64 and ARM64 images on matching native GitHub-hosted runners,
    assembles the multi-architecture manifest, and publishes its attestation and

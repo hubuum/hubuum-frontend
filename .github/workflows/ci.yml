@@ -244,6 +244,7 @@ jobs:
     needs:
       - validate
       - backend-contract
+      - backend-schema-preview
       - browser-quality
       - visual-regression
       - authenticated-browser-smoke
