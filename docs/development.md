@@ -1,8 +1,15 @@
 # Local development
 
 The frontend development environment runs Next.js on the host and Valkey in a
-small Docker Compose service. Hubuum Server is an external dependency and must
-already be running somewhere reachable from the host.
+small Docker Compose service. The standard workflow below uses an external
+Hubuum Server reachable from the host.
+
+For an isolated server with a freshly restored test corpus, run
+`npm run dev:sandbox -- --pr 411`. It starts the dependencies and frontend and
+prompts for a `corpus-admin` password. See the [sandbox guide](local-sandbox.md)
+for tag/SHA/PR selection, keeping and resuming data, and
+[resetting sandbox user passwords](local-sandbox.md#set-or-reset-user-passwords).
+This workflow does not require `dev:deps` or edits to `.env.local`.
 
 ## First-time setup
 

@@ -1,0 +1,58 @@
+x-labels: &labels
+  io.hubuum.sandbox.owner: ${SANDBOX_OWNER:?}
+  io.hubuum.sandbox.run: ${SANDBOX_RUN:?}
+  io.hubuum.sandbox.project: ${SANDBOX_PROJECT:?}
+
+x-server-env: &server-env
+  HUBUUM_DATABASE_URL: postgres://hubuum:${SANDBOX_DB_PASSWORD:?}@postgres:5432/hubuum
+  HUBUUM_DATABASE_ROLE_MODE: single
+  HUBUUM_TOKEN_HASH_KEY: ${SANDBOX_TOKEN_KEY:?}
+  HUBUUM_LOG_LEVEL: warn
+  HUBUUM_EVENT_RETENTION_PURGE_ENABLED: "false"
+
+services:
+  postgres:
+    image: docker.io/library/postgres:18.4@sha256:22c89fe0d0f507606260237fd55e51f6137f58b2d5bcf6152242b96d9fe8f9a4
+    labels: *labels
+    environment:
+      POSTGRES_DB: hubuum
+      POSTGRES_USER: hubuum
+      POSTGRES_PASSWORD: ${SANDBOX_DB_PASSWORD:?}
+    volumes:
+      - database:/var/lib/postgresql
+
+  valkey:
+    image: docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:a0dbf4c1d5708782907c10e2c72deff317518518b5288a58416981d9db95d30b
+    labels: *labels
+    command: [valkey-server, --appendonly, "no", --save, ""]
+    read_only: true
+    tmpfs: [/data, /tmp]
+    ports:
+      - "127.0.0.1::6379"
+
+  hubuum:
+    image: ${SANDBOX_IMAGE:?}
+    pull_policy: never
+    labels: *labels
+    environment:
+      <<: *server-env
+      HUBUUM_BIND_IP: 0.0.0.0
+      HUBUUM_CLIENT_ALLOWLIST: "*"
+    ports:
+      - "127.0.0.1::8080"
+
+  restore-executor:
+    image: ${SANDBOX_IMAGE:?}
+    pull_policy: never
+    labels: *labels
+    entrypoint: [/usr/local/bin/hubuum-admin]
+    command: [--restore-executor]
+    environment: *server-env
+
+volumes:
+  database:
+    labels: *labels
+
+networks:
+  default:
+    labels: *labels

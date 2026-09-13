@@ -416,7 +416,12 @@ Use Node.js 24 LTS. Install dependencies:
 npm ci
 ```
 
-Create an environment file:
+To run against a disposable local server with 3,000 test objects, use
+`npm run dev:sandbox -- --pr 411` and choose a `corpus-admin` password at the
+prompt. The [sandbox guide](docs/local-sandbox.md) covers tags, commit SHAs, PRs,
+and [resetting user passwords](docs/local-sandbox.md#set-or-reset-user-passwords).
+
+To use an existing backend instead, create an environment file:
 
 ```bash
 cp .env.example .env.local

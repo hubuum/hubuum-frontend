@@ -9,6 +9,8 @@
 		"dev": "node scripts/dev-server.mjs",
 		"dev:deps": "bash scripts/dev-deps.sh up",
 		"dev:deps:down": "bash scripts/dev-deps.sh down",
+		"dev:sandbox": "node scripts/dev-sandbox.mjs",
+		"test:sandbox": "node --test scripts/sandbox/*.test.mjs",
 		"build": "next build",
 		"perf:budget": "node scripts/check-performance-budgets.mjs",
 		"release:dependencies": "node scripts/check-release-dependencies.mjs",
