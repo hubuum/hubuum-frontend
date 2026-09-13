@@ -35,6 +35,7 @@ function formatTimestamp(value: string | null | undefined): string {
 }
 
 function getTaskLabel(task: Pick<TaskRecord, "kind">): string {
+	if (task.kind === "schema_validation") return "Schema validation";
 	if (task.kind === "import") {
 		return "Import";
 	}

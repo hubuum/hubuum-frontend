@@ -149,6 +149,23 @@ keeps it only in the child-process environment, and removes the containers and
 volumes afterward. Override the pinned compatibility image with
 `HUBUUM_AUTH_E2E_BACKEND_IMAGE` when testing another server build.
 
+To exercise the upcoming schema workflow against the published server main:
+
+```sh
+HUBUUM_LIVE_BACKEND_IMAGE=ghcr.io/hubuum/hubuum-server:main \
+  HUBUUM_LIVE_REQUIRE_SCHEMA=1 npm run test:live-backend
+HUBUUM_AUTH_E2E_BACKEND_IMAGE=ghcr.io/hubuum/hubuum-server:main \
+  npm run test:e2e:authenticated -- --grep 'schema workspace'
+```
+
+The contract run includes impact comparisons, stale-proof rejection, pending
+and strict activation, administrator report restrictions, evidence, and backup
+format 6. The browser suite covers the guided flow, conflicts, restricted
+reports, cancellation, accessible pagination, and mobile layout with controlled
+API responses after a real login. Use the digest in `docs/compatibility.md` for
+the same server build as the preview CI job. No production deployment default
+is changed by these overrides.
+
 The broader authenticated dashboard and create-flow checks run when
 `E2E_USERNAME` and `E2E_PASSWORD` are set. Point either Playwright suite at an
 already running frontend with `PLAYWRIGHT_BASE_URL`, for example

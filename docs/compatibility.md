@@ -30,6 +30,58 @@ A separate scheduled workflow tests the frontend against the moving backend
 `:main` image to surface future compatibility changes without making normal CI
 nondeterministic.
 
+## Server main schema preview
+
+The unreleased frontend also prepares for
+[server PR #402](https://github.com/hubuum/hubuum/pull/402). Its OpenAPI snapshot
+comes from server main commit
+`5baa9008cce9929b123624067266d3fe221eeb69`. That development contract still reports
+`info.version: 0.0.14`; endpoint availability, rather than that version string,
+selects the versioned-schema interface. The supported release target and deployment
+defaults remain `v0.0.14` until the next server release is selected.
+
+An additional pull-request contract job tests the published main image at
+`ghcr.io/hubuum/hubuum-server@sha256:54b96bbd12b8aa476c0ea3e922940c58793bda5b67678edacff01852e2f91b6d`.
+Its image source revision matches the source snapshot above and includes the
+schema-evolution merge and the subsequent backup capture budgets. The running
+image's OpenAPI document matches the vendored snapshot exactly. Scheduled and
+manually dispatched checks can still follow `:main`; preview checks require the
+new schema endpoints instead of silently skipping them.
+
+The Schema workspace stages immutable revisions, compares changes, runs impact
+analysis, and activates with explicit strict or administrator pending policy.
+It also exposes retained revision history, object compliance, and background
+revalidation. Ordinary metadata saves omit schema fields. Older servers retain
+the inline editor when revision discovery returns 404; authorization or transient
+errors do not enable that fallback. Audit filters include `class_schema` and
+`object_validation`, tasks recognize `schema_validation`, and administrator
+configuration includes the effective schema validation limits.
+
+Administrator Configuration also shows the effective backup capture-row limit
+introduced by [server PR #408](https://github.com/hubuum/hubuum/pull/408), or
+`n/a` when an older server omits it. Server main enforces byte and row-work
+budgets during backup capture, including offline administrator operations.
+`HUBUUM_BACKUP_MAX_CAPTURE_ROWS` defaults to 1,000,000; configure matching limits
+for the server, workers, and administrator tools when larger workloads need them.
+
+Imports preserve explicit `schema_activation` and its proof during dry runs and
+submission. Such imports must use their original file destinations: overriding
+the destination could attach class-local revision numbers to another class.
+To change a populated class policy through import, stage the exact policy in
+its Schema workspace and include that revision in the file. Legacy policy
+overwrites now conflict. Activation requires administrator authority; strict
+imports roll back failed work together, while best-effort imports can retain
+successful class activation despite separate object failures.
+
+Server main uses **backup format 6**. Restore format 5 and older artifacts with
+their matching server release, then migrate the database and create a new format
+6 backup. The frontend does not convert backup documents. Drain old workers,
+run migrations before startup, and use matching server, administrator, worker,
+and restore-executor binaries. Existing enforced objects begin pending after
+migration; administrators can revalidate from the Schema workspace. Review the
+[server schema and upgrade guide](https://github.com/hubuum/hubuum/blob/5baa9008cce9929b123624067266d3fe221eeb69/docs/schema_evolution.md)
+before testing an upgrade with real data.
+
 Frontend `v0.0.14` uses Server `v0.0.13` API types, including structured search,
 storage backend configuration, and backup format version 5. Existing unified
 search and class-selection flows keep their current behavior. Runtime

@@ -81,4 +81,4 @@ BACKEND_BASE_URL="${BASE_URL}" \
   E2E_IDENTITY_SCOPE="local" \
   E2E_USERNAME="admin" \
   E2E_PASSWORD="${admin_password}" \
-  npx playwright test tests/e2e/authenticated-smoke.spec.ts tests/e2e/workspace-quality.spec.ts --workers=1 "$@"
+  npx playwright test tests/e2e/authenticated-smoke.spec.ts tests/e2e/workspace-quality.spec.ts tests/e2e/schema-workspace.spec.ts --workers=1 "$@"

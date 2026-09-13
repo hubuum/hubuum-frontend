@@ -1,6 +1,8 @@
 export const EVENT_ENTITY_TYPES = [
 	"collection",
 	"class",
+	"class_schema",
+	"object_validation",
 	"object",
 	"class_relation",
 	"object_relation",

@@ -96,6 +96,29 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 
 	return (
 		<div className="runtime-config-grid">
+			{config.schema_validation ? (
+				<RuntimeStatCard
+					title="Schema validation limits"
+					rows={[
+						{
+							label: "Schema document",
+							value: formatBytes(config.schema_validation.max_schema_bytes),
+						},
+						{
+							label: "Schema expansion work",
+							value: formatNumber(config.schema_validation.max_expanded_work),
+						},
+						{
+							label: "Object document",
+							value: formatBytes(config.schema_validation.max_instance_bytes),
+						},
+						{
+							label: "Object validation work",
+							value: formatNumber(config.schema_validation.max_instance_work),
+						},
+					]}
+				/>
+			) : null}
 			<div className="runtime-config-row runtime-config-row--three">
 				<RuntimeStatCard
 					title="Server & network"
@@ -398,6 +421,10 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 										{
 											label: "Maximum backup output",
 											value: formatBytes(backups.max_output_bytes),
+										},
+										{
+											label: "Maximum backup capture rows",
+											value: formatNumber(backups.max_capture_rows),
 										},
 										{
 											label: "Backup retention",

@@ -20,6 +20,13 @@ env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
+  backend-schema-preview:
+    name: backend-schema-preview
+    uses: ./.github/workflows/backend-main-compat.yml
+    with:
+      # Server main 5baa9008, including schema evolution and backup capture budgets.
+      server_image: ghcr.io/hubuum/hubuum-server@sha256:54b96bbd12b8aa476c0ea3e922940c58793bda5b67678edacff01852e2f91b6d
+
   validate:
     name: validate
     runs-on: ubuntu-latest
@@ -237,6 +244,7 @@ jobs:
     needs:
       - validate
       - backend-contract
+      - backend-schema-preview
       - browser-quality
       - visual-regression
       - authenticated-browser-smoke

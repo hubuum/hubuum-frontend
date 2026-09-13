@@ -1022,6 +1022,10 @@ export function ImportsWorkspace({
 										<div className="warning-banner">
 											Matching records may be overwritten when this import
 											executes.
+											On servers with versioned schemas, changing a populated
+											class policy requires a saved revision from its Schema
+											workspace and matching schema_activation in the import
+											file. Run a dry run before importing.
 										</div>
 									) : null}
 									<GuidedFlowContinue

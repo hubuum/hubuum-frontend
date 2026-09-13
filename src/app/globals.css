@@ -6756,6 +6756,34 @@ button.template-data-field:hover {
 	min-width: 0;
 }
 
+.schema-workspace pre,
+.schema-workspace code {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.schema-document {
+	max-height: 32rem;
+	overflow: auto;
+}
+
+.schema-workspace .guided-flow-continue {
+	position: static;
+}
+
+.schema-change-values {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	gap: 0.75rem;
+	align-items: start;
+}
+
+@media (max-width: 640px) {
+	.schema-change-values {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
 .guided-flow-actions {
 	justify-content: flex-end;
 }
