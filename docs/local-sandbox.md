@@ -78,6 +78,13 @@ frontend run removes the sandbox when that run ends. Stop the attached frontend
 with `Ctrl-C` before `resume` or `down`. Password resets can run in a second
 terminal while the frontend is attached.
 
+`down` removes the sandbox's containers and database; it is not a command to
+stop only the frontend. It rejects `--keep`, `--port`, and `--listen` so those
+flags cannot imply that data will be retained. It also refuses removal while a
+Next.js development process is still running in this checkout, including a
+frontend left behind after its launcher exited. To pause work and keep data,
+use `--keep` on start/resume and press `Ctrl-C` in that frontend's terminal.
+
 To prepare just the containers without prompting for a login password:
 
 ```sh

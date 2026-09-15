@@ -45,6 +45,15 @@ export function parseOptions(args, env = process.env) {
 			["start", "resume", "status", "down", "password"].includes(action),
 		"Expected start, resume, status, down, or password.",
 	);
+	const runsFrontend = action === "start" || action === "resume";
+	requireValue(
+		!values.keep || runsFrontend,
+		"--keep only applies to start or resume. down removes the sandbox and its data. To keep data, stop a frontend launched with --keep using Ctrl-C.",
+	);
+	requireValue(
+		runsFrontend || (values.port === undefined && values.listen === undefined),
+		"--port and --listen only apply to start or resume. They do not select a frontend to stop; down removes the named sandbox and its data.",
+	);
 	requireValue(
 		/^[a-z][a-z0-9-]{0,31}$/.test(values.name),
 		"Name must start with a lowercase letter and contain at most 32 letters, digits, or hyphens.",

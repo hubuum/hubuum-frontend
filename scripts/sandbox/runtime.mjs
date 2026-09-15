@@ -1,8 +1,8 @@
+import { randomBytes, randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { access, mkdir, open, readFile, realpath, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { delimiter, isAbsolute, join } from "node:path";
-import { randomBytes, randomUUID } from "node:crypto";
 
 import {
 	atomicJson,
@@ -468,7 +468,7 @@ export async function checkDevelopmentProcess(root, probe = process.kill) {
 		if (error.code === "ESRCH") return;
 	}
 	throw new Error(
-		"This checkout already has a Next.js development process. Stop that frontend before starting another.",
+		"This checkout already has a Next.js development process. Stop that frontend before continuing.",
 	);
 }
 

@@ -12,8 +12,8 @@ import {
 } from "./sandbox/auth.mjs";
 import { parseOptions } from "./sandbox/core.mjs";
 import {
-	checkPort,
 	checkDevelopmentProcess,
+	checkPort,
 	frontendEnvironment,
 	lock,
 	Sandbox,
@@ -35,7 +35,7 @@ Selectors (choose one for start):
 Options:
   --name <name>         Sandbox name (default: default)
   --corpus <name>       Server corpus (currently comprehensive)
-  --keep               Retain containers and data after exit
+  --keep               Retain containers and data after start/resume exits
   --no-frontend        Start dependencies only; requires --keep for start
   --no-build           Do not build unpublished SHA/PR targets locally
   --port, -p <port>     Frontend port (default: PORT or 3000)
@@ -46,7 +46,10 @@ Options:
 
 Fresh interactive starts prompt for a corpus-admin password. A dependency-only
 start can defer passwords until 'password --user <name>'. Passwords are never
-printed or saved to files. See docs/local-sandbox.md for accounts and examples.`);
+printed or saved to files.
+
+Stop an attached frontend with Ctrl-C. down removes containers and data; it
+does not accept --keep, --port, or --listen. See docs/local-sandbox.md for examples.`);
 }
 
 function summary(state) {
@@ -166,6 +169,7 @@ export async function main(args = process.argv.slice(2)) {
 			create: options.action === "start",
 		});
 		if (options.action === "down") {
+			await checkDevelopmentProcess(ROOT);
 			await clean(sandbox);
 			return;
 		}
