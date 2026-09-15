@@ -1,8 +1,15 @@
 # Local development
 
 The frontend development environment runs Next.js on the host and Valkey in a
-small Docker Compose service. Hubuum Server is an external dependency and must
-already be running somewhere reachable from the host.
+small Docker Compose service. The standard workflow below uses an external
+Hubuum Server reachable from the host.
+
+For an isolated server with a freshly restored test corpus, run
+`npm run dev:sandbox -- --pr 411`. It starts the dependencies and frontend and
+prompts for a `corpus-admin` password. See the [sandbox guide](local-sandbox.md)
+for tag/SHA/PR selection, keeping and resuming data, and
+[resetting sandbox user passwords](local-sandbox.md#set-or-reset-user-passwords).
+This workflow does not require `dev:deps` or edits to `.env.local`.
 
 ## First-time setup
 
@@ -153,15 +160,16 @@ To exercise the upcoming schema workflow against the published server main:
 
 ```sh
 HUBUUM_LIVE_BACKEND_IMAGE=ghcr.io/hubuum/hubuum-server:main \
-  HUBUUM_LIVE_REQUIRE_SCHEMA=1 npm run test:live-backend
+  HUBUUM_LIVE_REQUIRE_SCHEMA=1 HUBUUM_LIVE_REQUIRE_SCHEMA_REPORTS=1 npm run test:live-backend
 HUBUUM_AUTH_E2E_BACKEND_IMAGE=ghcr.io/hubuum/hubuum-server:main \
   npm run test:e2e:authenticated -- --grep 'schema workspace'
 ```
 
 The contract run includes impact comparisons, stale-proof rejection, pending
-and strict activation, administrator report restrictions, evidence, and backup
+and strict activation, administrator report restrictions, saved diagnostics,
+HTML generation with custom layouts, immutable retained downloads, and backup
 format 6. The browser suite covers the guided flow, conflicts, restricted
-reports, cancellation, accessible pagination, and mobile layout with controlled
+reports, HTML viewing/downloads and object links, cancellation, accessible pagination, and mobile layout with controlled
 API responses after a real login. Use the digest in `docs/compatibility.md` for
 the same server build as the preview CI job. No production deployment default
 is changed by these overrides.

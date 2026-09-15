@@ -24,8 +24,8 @@ jobs:
     name: backend-schema-preview
     uses: ./.github/workflows/backend-main-compat.yml
     with:
-      # Server main 5baa9008, including schema evolution and backup capture budgets.
-      server_image: ghcr.io/hubuum/hubuum-server@sha256:54b96bbd12b8aa476c0ea3e922940c58793bda5b67678edacff01852e2f91b6d
+      # Server main 85a18be2 (linux/amd64), including saved diagnostics and HTML repair reports.
+      server_image: ghcr.io/hubuum/hubuum-server@sha256:5aca779e65bca5f75affa110923b3767d7af8d21b5f344a17c8c90f28b41b478
 
   validate:
     name: validate
@@ -55,6 +55,8 @@ jobs:
         run: npm run test:dev-deps
       - name: Test server command-line options
         run: npm run test:server-options
+      - name: Test local sandbox tooling
+        run: npm run test:sandbox
       - name: Build
         run: npm run build
       - name: Enforce frontend performance budgets

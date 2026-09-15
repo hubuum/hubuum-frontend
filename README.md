@@ -42,6 +42,8 @@ and resizing styles still require inline styles. BFF responses are private and
 must not be stored by shared caches. Active report content (HTML, XHTML, SVG) is
 sandboxed without scripts or same-origin privileges on both report routes and the
 generic proxy. Export warning and truncation headers remain visible to the UI.
+Schema repair HTML may open object links in new tabs that do not inherit the
+report sandbox; the report itself remains script-disabled and isolated.
 
 Sign-out waits briefly for pending preference saves, then always attempts to end
 the session. A failed sign-out keeps the workspace visible with a persistent error
@@ -438,7 +440,12 @@ Use Node.js 24 LTS. Install dependencies:
 npm ci
 ```
 
-Create an environment file:
+To run against a disposable local server with 3,000 test objects, use
+`npm run dev:sandbox -- --pr 411` and choose a `corpus-admin` password at the
+prompt. The [sandbox guide](docs/local-sandbox.md) covers tags, commit SHAs, PRs,
+and [resetting user passwords](docs/local-sandbox.md#set-or-reset-user-passwords).
+
+To use an existing backend instead, create an environment file:
 
 ```bash
 cp .env.example .env.local

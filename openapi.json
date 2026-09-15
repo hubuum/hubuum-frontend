@@ -6412,6 +6412,16 @@
                 }
               }
             }
+          },
+          "413": {
+            "description": "Report exceeds the 16 MiB assembly budget; saved work is retained",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -6538,7 +6548,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Administrator report with bounded redacted samples and exact/advisory population boundary",
+            "description": "Administrator report with complete grouped impact mismatches and exact/advisory population boundary",
             "content": {
               "application/json": {
                 "schema": {
@@ -6579,6 +6589,16 @@
           },
           "409": {
             "description": "Stale revision, incompatible activation or invalid lifecycle transition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Report exceeds the 16 MiB assembly budget; saved work is retained",
             "content": {
               "application/json": {
                 "schema": {
@@ -6664,6 +6684,187 @@
           },
           "409": {
             "description": "Stale revision, incompatible activation or invalid lifecycle transition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Report exceeds the 16 MiB assembly budget; saved work is retained",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/schema/tasks/{task_id}/report": {
+      "get": {
+        "tags": [
+          "schema evolution"
+        ],
+        "summary": "Get Api V1 Classes By Class Id Schema Tasks By Task Id Report",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/schema/tasks/{task_id}/report.",
+        "operationId": "getApiV1ClassesByClassIdSchemaTasksByTaskIdReport",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HubuumClassID"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Source impact analysis",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TaskID"
+            }
+          },
+          {
+            "name": "download",
+            "in": "query",
+            "description": "Download the retained HTML",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Same retained HTML without reanalysis or rerendering",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Source analysis access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Analysis or retained report not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "schema evolution"
+        ],
+        "summary": "Post Api V1 Classes By Class Id Schema Tasks By Task Id Report",
+        "description": "Auto-generated documentation for POST /api/v1/classes/{class_id}/schema/tasks/{task_id}/report.",
+        "operationId": "postApiV1ClassesByClassIdSchemaTasksByTaskIdReport",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HubuumClassID"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Source impact analysis",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TaskID"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaRepairReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Generated and retained complete HTML rendering of saved findings",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid URL, layout or rendering budget",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Source analysis or template access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Impact analysis not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Complete report exceeds assembly or output limit; previous report is retained",
             "content": {
               "application/json": {
                 "schema": {
@@ -20145,6 +20346,114 @@
         ]
       }
     },
+    "/api/v1/tasks/{task_id}/cancel": {
+      "post": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Post Api V1 Tasks By Task Id Cancel",
+        "description": "Auto-generated documentation for POST /api/v1/tasks/{task_id}/cancel.",
+        "operationId": "postApiV1TasksByTaskIdCancel",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Task ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TaskID"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Terminal task; repeated requests return the same state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Durable cancellation requested; executor cleanup is pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid cancellation reason or status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Cancellation is not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Expected status no longer matches",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/tasks/{task_id}/events": {
       "get": {
         "tags": [
@@ -29695,6 +30004,89 @@
           }
         }
       },
+      "SchemaActualValue": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "null"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "boolean"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "number"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "string"
+            ],
+            "properties": {
+              "string": {
+                "type": "object",
+                "required": [
+                  "characters"
+                ],
+                "properties": {
+                  "characters": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "array"
+            ],
+            "properties": {
+              "array": {
+                "type": "object",
+                "required": [
+                  "items"
+                ],
+                "properties": {
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "object"
+            ],
+            "properties": {
+              "object": {
+                "type": "object",
+                "required": [
+                  "properties"
+                ],
+                "properties": {
+                  "properties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "description": "Context deliberately includes types and sizes, never actual scalar values."
+      },
       "SchemaComplianceCounts": {
         "type": "object",
         "required": [
@@ -29748,6 +30140,89 @@
           }
         }
       },
+      "SchemaDiagnosticOmission": {
+        "type": "string",
+        "enum": [
+          "actual_value_redacted",
+          "instance_path_redacted_or_too_long",
+          "schema_constraint_unavailable_or_too_large"
+        ]
+      },
+      "SchemaDiagnosticSnapshotResponse": {
+        "type": "object",
+        "required": [
+          "object_revision",
+          "inspected_at",
+          "diagnostics"
+        ],
+        "properties": {
+          "diagnostics": {
+            "$ref": "#/components/schemas/SchemaDiagnostics"
+          },
+          "inspected_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "object_revision": {
+            "$ref": "#/components/schemas/ResourceRevision"
+          }
+        }
+      },
+      "SchemaDiagnostics": {
+        "type": "object",
+        "description": "Diagnostics belong to one inspected snapshot, never to current object data.",
+        "required": [
+          "issues",
+          "truncated"
+        ],
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchemaIssue"
+            }
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "At least one further issue exists; the unvisited remainder is not counted."
+          }
+        }
+      },
+      "SchemaExpectedValue": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "value",
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "available"
+                ]
+              },
+              "value": {}
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "omitted"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Distinguishes an expected JSON null from an omitted schema constraint."
+      },
       "SchemaFailure": {
         "type": "object",
         "description": "One failure, containing only a keyword and bounded schema-owned metadata.",
@@ -29794,7 +30269,7 @@
               "type": "integer",
               "format": "int32"
             },
-            "description": "At most five object IDs per group; values and instance paths are omitted."
+            "description": "All object IDs in this group, in scan order; the field name is retained for compatibility.\nOlder reports may contain only samples. Values and instance paths are omitted."
           }
         }
       },
@@ -29858,6 +30333,32 @@
           }
         }
       },
+      "SchemaImpactFindingResponse": {
+        "type": "object",
+        "required": [
+          "object_id",
+          "reason"
+        ],
+        "properties": {
+          "object_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/SchemaFailure"
+          },
+          "snapshot": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SchemaDiagnosticSnapshotResponse"
+              }
+            ]
+          }
+        }
+      },
       "SchemaImpactReadiness": {
         "type": "string",
         "enum": [
@@ -29886,15 +30387,69 @@
             "items": {
               "$ref": "#/components/schemas/SchemaFailureGroup"
             },
-            "description": "At most 20 groups, counting the first failure per object."
+            "description": "Every committed mismatched object, grouped by its first failure without a group limit."
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchemaImpactFindingResponse"
+            },
+            "description": "Saved diagnostics, object revision and inspection time. Older findings have no snapshot."
           },
           "ungrouped_failures": {
             "type": "integer",
             "format": "int64",
-            "description": "Failures whose group did not fit the report limit.",
+            "description": "Failures omitted by older capped reports; zero for newly started analyses.\nRerun an older analysis to obtain its complete object lists.",
             "minimum": 0
           }
         }
+      },
+      "SchemaIssue": {
+        "type": "object",
+        "description": "JSON Pointers use zero-based array indexes; an empty pointer means the root.",
+        "required": [
+          "reason",
+          "message",
+          "expected",
+          "actual",
+          "alternative",
+          "omissions"
+        ],
+        "properties": {
+          "actual": {
+            "$ref": "#/components/schemas/SchemaActualValue"
+          },
+          "alternative": {
+            "type": "boolean",
+            "description": "A failed alternative is explanatory, not an independently required repair."
+          },
+          "expected": {
+            "$ref": "#/components/schemas/SchemaExpectedValue"
+          },
+          "instance_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "omissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchemaDiagnosticOmission"
+            }
+          },
+          "reason": {
+            "$ref": "#/components/schemas/SchemaFailure"
+          }
+        }
+      },
+      "SchemaObjectUrlTemplate": {
+        "type": "string",
+        "description": "Absolute frontend URL containing exactly one `{object_id}` placeholder.",
+        "example": "https://inventory.example/objects/{object_id}"
       },
       "SchemaReference": {
         "type": "object",
@@ -29911,6 +30466,29 @@
             "$ref": "#/components/schemas/SchemaRevision"
           }
         }
+      },
+      "SchemaRepairReportRequest": {
+        "type": "object",
+        "required": [
+          "object_url_template"
+        ],
+        "properties": {
+          "object_url_template": {
+            "$ref": "#/components/schemas/SchemaObjectUrlTemplate"
+          },
+          "template_id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExportTemplateID",
+                "description": "Optional stored HTML layout. It must render `report_content` exactly once."
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "SchemaRevision": {
         "type": "integer",
@@ -30118,7 +30696,8 @@
             "items": {
               "type": "integer",
               "format": "int32"
-            }
+            },
+            "description": "Up to 20 summary IDs; impact.failures contains all committed mismatches."
           },
           "kind": {
             "$ref": "#/components/schemas/SchemaWorkKind"
@@ -31206,12 +31785,42 @@
         ],
         "description": "One resource catalog selected by a structured search request.\n\nObject searches may optionally be constrained to one exact class. All\nother target variants are property-free tagged objects."
       },
+      "TaskCancelRequest": {
+        "type": "object",
+        "description": "An idempotent stop request. The optional expected status protects queued-only withdrawals.",
+        "properties": {
+          "expected_status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TaskStatus"
+              }
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512
+          }
+        },
+        "additionalProperties": false
+      },
       "TaskConfig": {
         "type": "object",
         "required": [
           "workers",
           "poll_interval_ms",
           "lease_seconds",
+          "import_execution_timeout_seconds",
+          "export_execution_timeout_seconds",
+          "backup_execution_timeout_seconds",
+          "reindex_execution_timeout_seconds",
+          "remote_call_execution_timeout_seconds",
+          "schema_validation_execution_timeout_seconds",
           "heartbeat_seconds",
           "recovery_interval_seconds",
           "computed_reindex_batch_size",
@@ -31220,8 +31829,18 @@
           "remote_call_max_active_per_user"
         ],
         "properties": {
+          "backup_execution_timeout_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
           "computed_reindex_batch_size": {
             "type": "integer",
+            "minimum": 0
+          },
+          "export_execution_timeout_seconds": {
+            "type": "integer",
+            "format": "int64",
             "minimum": 0
           },
           "export_max_active_per_user": {
@@ -31229,6 +31848,11 @@
             "minimum": 0
           },
           "heartbeat_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "import_execution_timeout_seconds": {
             "type": "integer",
             "format": "int64",
             "minimum": 0
@@ -31252,8 +31876,23 @@
             "format": "int64",
             "minimum": 0
           },
+          "reindex_execution_timeout_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "remote_call_execution_timeout_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
           "remote_call_max_active_per_user": {
             "type": "integer",
+            "minimum": 0
+          },
+          "schema_validation_execution_timeout_seconds": {
+            "type": "integer",
+            "format": "int64",
             "minimum": 0
           },
           "workers": {
@@ -31532,9 +32171,19 @@
           }
         }
       },
+      "TaskRemoteSideEffectState": {
+        "type": "string",
+        "description": "Conservative dispatch evidence. An in-flight request can already have\naffected the remote system even when no HTTP response was received.",
+        "enum": [
+          "not_sent",
+          "possibly_sent",
+          "legacy_unknown"
+        ]
+      },
       "TaskResponse": {
         "type": "object",
         "required": [
+          "unattempted_items",
           "id",
           "kind",
           "status",
@@ -31543,6 +32192,26 @@
           "links"
         ],
         "properties": {
+          "cancel_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cancel_requested_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "cancel_requested_by": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -31556,6 +32225,13 @@
                 "$ref": "#/components/schemas/TaskDetails"
               }
             ]
+          },
+          "execution_deadline_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
           },
           "finished_at": {
             "type": [
@@ -31576,6 +32252,16 @@
           },
           "progress": {
             "$ref": "#/components/schemas/TaskProgress"
+          },
+          "remote_side_effect_state": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TaskRemoteSideEffectState"
+              }
+            ]
           },
           "request_redacted_at": {
             "type": [
@@ -31606,6 +32292,17 @@
               "string",
               "null"
             ]
+          },
+          "terminal_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unattempted_items": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Items without a committed result; authoritative for a terminal task."
           }
         }
       },

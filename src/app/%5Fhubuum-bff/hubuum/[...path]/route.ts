@@ -346,7 +346,13 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	}
 	copyPaginationHeaders(upstreamResponse.headers, response.headers);
 	copySafeUpstreamResponseHeaders(upstreamResponse.headers, response.headers);
-	protectPrivateResponse(response.headers);
+	protectPrivateResponse(response.headers, {
+		// These reports open object links in new tabs; keep the report itself script-disabled and isolated.
+		schemaRepairReport:
+			/^\/api\/v1\/classes\/[1-9]\d*\/schema\/tasks\/[1-9]\d*\/report\/?$/.test(
+				path,
+			),
+	});
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
 
 	if (upstreamResponse.status === 401) {

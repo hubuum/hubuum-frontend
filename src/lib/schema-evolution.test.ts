@@ -96,6 +96,14 @@ describe("schema proposal admission", () => {
 });
 
 describe("strict schema activation", () => {
+	it("asks users to wait for running analysis rather than start another run", () => {
+		expect(
+			schemaActivationBlock(candidate, active, summary, {
+				...work,
+				status: "running",
+			}),
+		).toBe("Wait for the impact analysis to finish before activation.");
+	});
 	it("accepts a current compatible proof for the exact target and baseline", () => {
 		expect(schemaActivationBlock(candidate, active, summary, work)).toBeNull();
 	});

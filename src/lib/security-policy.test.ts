@@ -3,9 +3,23 @@ import {
 	buildContentSecurityPolicy,
 	protectPrivateResponse,
 	REPORT_SANDBOX_POLICY,
+	SCHEMA_REPORT_SANDBOX_POLICY,
 } from "@/lib/security-policy";
 
 describe("response security", () => {
+	it("allows schema repair object links to open the console while isolating the report", () => {
+		const headers = new Headers({ "Content-Type": "text/html" });
+		protectPrivateResponse(headers, { schemaRepairReport: true });
+		expect(headers.get("content-security-policy")).toBe(
+			SCHEMA_REPORT_SANDBOX_POLICY,
+		);
+		expect(SCHEMA_REPORT_SANDBOX_POLICY).toContain(
+			"allow-popups allow-popups-to-escape-sandbox",
+		);
+		expect(SCHEMA_REPORT_SANDBOX_POLICY).not.toMatch(
+			/allow-scripts|allow-same-origin|allow-forms/,
+		);
+	});
 	it.each([
 		"text/html;charset=utf-8",
 		"application/xhtml+xml",

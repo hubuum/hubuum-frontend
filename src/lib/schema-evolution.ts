@@ -66,6 +66,8 @@ export function schemaActivationBlock(
 		work.target.revision !== candidate.revision
 	)
 		return "This report belongs to another revision or operation. Analyze this proposal.";
+	if (work.status === "running")
+		return "Wait for the impact analysis to finish before activation.";
 	if (work.status !== "complete")
 		return `Analysis is ${work.status}. Complete a fresh analysis before activation.`;
 	if (work.readiness === "incompatible")

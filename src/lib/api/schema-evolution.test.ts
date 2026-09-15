@@ -4,6 +4,9 @@ import {
 	fetchActiveSchema,
 	fetchSchemaCompliance,
 	fetchSchemaSummary,
+	generateSchemaRepairReport,
+	hasSchemaRepairReport,
+	schemaRepairReportUrl,
 	stageSchema,
 	supportsSchemaRevisions,
 } from "@/lib/api/schema-evolution";
@@ -19,6 +22,63 @@ function mockResponse(data: unknown, status = 200) {
 }
 
 describe("schema API boundary", () => {
+	it("generates HTML through the BFF with the chosen layout and absolute object links", async () => {
+		const mock = vi.fn(
+			async () =>
+				new Response("<!doctype html><p>Saved report</p>", {
+					headers: { "Content-Type": "text/html;charset=utf-8" },
+				}),
+		);
+		vi.stubGlobal("fetch", mock);
+		const request = {
+			object_url_template: "https://inventory.example/objects/2/{object_id}",
+			template_id: 7,
+		};
+		await generateSchemaRepairReport(2, 20, request);
+		expect(mock).toHaveBeenCalledWith(
+			"/_hubuum-bff/hubuum/api/v1/classes/2/schema/tasks/20/report",
+			expect.objectContaining({
+				method: "POST",
+				credentials: "include",
+				body: JSON.stringify(request),
+			}),
+		);
+		expect(schemaRepairReportUrl(2, 20, { download: true })).toBe(
+			"/_hubuum-bff/hubuum/api/v1/classes/2/schema/tasks/20/report?download=true",
+		);
+	});
+	it("checks retained HTML without mistaking denied access for a missing report", async () => {
+		mockResponse({}, 404);
+		await expect(hasSchemaRepairReport(2, 20)).resolves.toBe(false);
+		mockResponse({ message: "Administrator access required" }, 403);
+		await expect(hasSchemaRepairReport(2, 20)).rejects.toMatchObject({
+			status: 403,
+		});
+	});
+	it("preserves generation errors, including output limits and unavailable older endpoints", async () => {
+		for (const status of [400, 403, 404, 413, 503]) {
+			const mock = mockResponse(
+				{ message: "Cannot generate this report" },
+				status,
+			);
+			await expect(
+				generateSchemaRepairReport(2, 20, {
+					object_url_template:
+						"https://inventory.example/objects/2/{object_id}",
+				}),
+			).rejects.toMatchObject({
+				status,
+				message: "Cannot generate this report",
+			});
+			expect(mock).toHaveBeenCalledTimes(1);
+		}
+	});
+	it("rejects a success response that is not HTML", async () => {
+		mockResponse({});
+		await expect(hasSchemaRepairReport(2, 20)).rejects.toThrow(
+			"did not return an HTML repair report",
+		);
+	});
 	it("recognizes older servers returning a plain-text 404", async () => {
 		vi.stubGlobal(
 			"fetch",

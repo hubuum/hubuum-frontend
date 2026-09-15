@@ -35,6 +35,7 @@ export interface SchemaWorkResponse {
   impact?: null | SchemaImpactResponse;
   /** @minimum 0 */
   invalid: number;
+  /** Up to 20 summary IDs; impact.failures contains all committed mismatches. */
   invalid_samples: number[];
   kind: SchemaWorkKind;
   /** @minimum 0 */

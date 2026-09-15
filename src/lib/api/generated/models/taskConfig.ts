@@ -8,11 +8,17 @@
 
 export interface TaskConfig {
   /** @minimum 0 */
+  backup_execution_timeout_seconds: number;
+  /** @minimum 0 */
   computed_reindex_batch_size: number;
+  /** @minimum 0 */
+  export_execution_timeout_seconds: number;
   /** @minimum 0 */
   export_max_active_per_user: number;
   /** @minimum 0 */
   heartbeat_seconds: number;
+  /** @minimum 0 */
+  import_execution_timeout_seconds: number;
   /** @minimum 0 */
   import_max_active_per_user: number;
   /** @minimum 0 */
@@ -22,7 +28,13 @@ export interface TaskConfig {
   /** @minimum 0 */
   recovery_interval_seconds: number;
   /** @minimum 0 */
+  reindex_execution_timeout_seconds: number;
+  /** @minimum 0 */
+  remote_call_execution_timeout_seconds: number;
+  /** @minimum 0 */
   remote_call_max_active_per_user: number;
+  /** @minimum 0 */
+  schema_validation_execution_timeout_seconds: number;
   /** @minimum 0 */
   workers: number;
 }

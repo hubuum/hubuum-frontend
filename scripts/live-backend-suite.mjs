@@ -279,8 +279,12 @@ async function main() {
   );
   pass("server OpenAPI exposes the expected v0.0.14 contract");
   const hasSchemaEvolution = Boolean(openapi.data.paths?.["/api/v1/classes/{class_id}/schema/revisions"]);
+  const hasSchemaRepairReports = Boolean(openapi.data.paths?.["/api/v1/classes/{class_id}/schema/tasks/{task_id}/report"]);
   if (process.env.HUBUUM_LIVE_REQUIRE_SCHEMA === "1") {
     assert(hasSchemaEvolution, "This run requires the server-main schema evolution contract.");
+  }
+  if (process.env.HUBUUM_LIVE_REQUIRE_SCHEMA_REPORTS === "1") {
+    assert(hasSchemaRepairReports, "This run requires saved schema diagnostics and HTML repair reports.");
   }
   const backupVersion = hasSchemaEvolution ? 6 : 5;
 
@@ -526,7 +530,7 @@ async function main() {
   );
   pass("minted, inspected, and used an unscoped service-account token");
   if (hasSchemaEvolution) {
-    await verifySchemaEvolution({ request, waitFor, auth, readerToken: unscopedToken, collectionId: collection.data.id, suffix });
+    await verifySchemaEvolution({ request, waitFor, auth, readerToken: unscopedToken, collectionId: collection.data.id, suffix, hasRepairReports: hasSchemaRepairReports });
     pass("verified staged schemas, impact comparison, report authorization, pending and strict activation, stale proofs, and object evidence");
   }
 
