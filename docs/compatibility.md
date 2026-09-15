@@ -35,22 +35,87 @@ nondeterministic.
 The unreleased frontend also prepares for
 [server PR #402](https://github.com/hubuum/hubuum/pull/402). Its OpenAPI snapshot
 comes from server main commit
-`5baa9008cce9929b123624067266d3fe221eeb69`. That development contract still reports
+`85a18be2e0d9240f917b6ba8ba5e0f5ab71f34a0`. That development contract still reports
 `info.version: 0.0.14`; endpoint availability, rather than that version string,
 selects the versioned-schema interface. The supported release target and deployment
 defaults remain `v0.0.14` until the next server release is selected.
 
 An additional pull-request contract job tests the published main image at
-`ghcr.io/hubuum/hubuum-server@sha256:54b96bbd12b8aa476c0ea3e922940c58793bda5b67678edacff01852e2f91b6d`.
+`ghcr.io/hubuum/hubuum-server@sha256:5aca779e65bca5f75affa110923b3767d7af8d21b5f344a17c8c90f28b41b478`
+for the CI runner's `linux/amd64` platform.
 Its image source revision matches the source snapshot above and includes the
-schema-evolution merge and the subsequent backup capture budgets. The running
+schema evolution, backup capture budgets, saved diagnostics, and HTML repair reports. The running
 image's OpenAPI document matches the vendored snapshot exactly. Scheduled and
 manually dispatched checks can still follow `:main`; preview checks require the
-new schema endpoints instead of silently skipping them.
+schema and HTML repair-report endpoints instead of silently skipping them.
 
 The Schema workspace stages immutable revisions, compares changes, runs impact
 analysis, and activates with explicit strict or administrator pending policy.
-It also exposes retained revision history, object compliance, and background
+The review step's **Analyze impact** action starts the check directly. Normal
+progression to **Activate** stays disabled until a current compatible analysis
+is available (an authoritatively empty class needs no scan). Failed, incomplete,
+or outdated results keep the user at analysis with options to revise the proposal
+or analyze again. Administrators can separately expand **Override compatibility
+checks** and confirm activation with pending validation; this may leave existing
+objects invalid and does not repair their data.
+Impact reports can be downloaded as JSON, including every field returned by the
+server and all retained object IDs, regardless of the displayed page. Downloads
+are generated on demand; the screen pages failure groups and IDs to keep large
+reports manageable. Unfinished or interrupted work is labeled as a partial report.
+Display pagination does not reduce the server response size: polling still reads
+all committed findings, so payload size grows with the number of mismatches.
+
+With [server PR #412](https://github.com/hubuum/hubuum/pull/412), `impact.failures`
+groups every committed mismatch by its first failure. Each group's `samples`
+field contains all of its object IDs; the separate `invalid_samples` summary
+remains capped at 20. Passing objects remain aggregate counts, and stale or
+uninspectable objects have no proven mismatch diagnosis. Running or interrupted
+analyses include only findings committed so far.
+
+The server changes for [#415](https://github.com/hubuum/hubuum/issues/415) add
+`impact.findings`, with saved object revisions, inspection times, and up to 32
+diagnostic issues per object. **What needs fixing** shows the server's explanations,
+JSON Pointer locations, expected constraints, actual types/sizes, and explicit
+omissions. Root pointers, omitted locations, and expected JSON null remain distinct.
+Alternative-branch explanations are not presented as independently required repairs.
+Diagnostics describe inspected data; the frontend does not reconstruct them from
+current objects. A null snapshot is explained as a legacy first-failure finding.
+
+When the response includes `findings`, **View HTML report** and **Download HTML
+report** generate a server report if none is retained, then reuse its saved output.
+**Refresh HTML report** explicitly replaces that rendering using the latest saved
+findings and selected layout. It never starts a new analysis or activates a schema.
+A failed generation preserves the prior report. The frontend supplies absolute
+links to its actual `/objects/{class_id}/{object_id}` routes so downloaded links
+work. HTML is opened through the authenticated BFF, with scripts and same-origin
+access disabled; only these repair reports may open object pages in new tabs that
+do not inherit the report sandbox. Access is checked by the backend for generation,
+viewing, and downloads, including already retained output.
+
+**Report layout** optionally selects a saved HTML template; the server's default
+needs no template. A custom layout must be a body fragment containing
+`{{ report_content }}` exactly once, including when using shared includes. In the
+template editor, choose HTML output, reusable fragment, and **Full document** mode
+to avoid the frontend's standard document wrapper, then supply just the layout
+fragment. The server supplies the outer document and complete canonical findings.
+Its output limit fails generation explicitly rather than saving truncated HTML.
+
+Older reports may retain at most 20 groups and five IDs per group, including
+checkpoints resumed after an upgrade. The frontend identifies omissions from
+`ungrouped_failures` and groups whose `objects` count exceeds `samples.length`,
+and advises a new analysis on an updated server. It preserves those reports as
+returned when downloading; it cannot recover missing IDs. A short list alone
+does not imply sampling. Older servers without `findings` retain the grouped
+failure display and JSON download. Neither the supported release nor deployment
+defaults change with this development preview.
+
+Before upgrading the server for saved diagnostics and HTML reports, drain old
+schema workers, apply migration `20260914000003`, then start matching upgraded API
+and worker processes. Rerun older analyses to obtain richer diagnostics; upgrades
+cannot recover details that were never saved. Retained HTML belongs to its source
+task and is not included in logical schema-work backups or restores.
+
+The workspace also exposes retained revision history, object compliance, and background
 revalidation. Ordinary metadata saves omit schema fields. Older servers retain
 the inline editor when revision discovery returns 404; authorization or transient
 errors do not enable that fallback. Audit filters include `class_schema` and
@@ -79,7 +144,7 @@ their matching server release, then migrate the database and create a new format
 run migrations before startup, and use matching server, administrator, worker,
 and restore-executor binaries. Existing enforced objects begin pending after
 migration; administrators can revalidate from the Schema workspace. Review the
-[server schema and upgrade guide](https://github.com/hubuum/hubuum/blob/5baa9008cce9929b123624067266d3fe221eeb69/docs/schema_evolution.md)
+[server schema and upgrade guide](https://github.com/hubuum/hubuum/blob/85a18be2e0d9240f917b6ba8ba5e0f5ab71f34a0/docs/schema_evolution.md)
 before testing an upgrade with real data.
 
 Frontend `v0.0.14` uses Server `v0.0.13` API types, including structured search,

@@ -7,6 +7,7 @@ import {
 	getApiV1ClassesByClassIdSchemaRevisionsByRevision,
 	getApiV1ClassesByClassIdSchemaTasksByTaskId,
 	getGetApiV1ClassesByClassIdSchemaRevisionsUrl,
+	getGetApiV1ClassesByClassIdSchemaTasksByTaskIdReportUrl,
 	postApiV1ClassesByClassIdSchemaRevisions,
 	postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivate,
 	postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpact,
@@ -15,9 +16,66 @@ import {
 import type {
 	ComplianceStatus,
 	SchemaActivationRequest,
+	SchemaRepairReportRequest,
 	SchemaRevisionResponse,
 	SchemaStageRequest,
 } from "@/lib/api/generated/models";
+
+export const schemaRepairReportUrl =
+	getGetApiV1ClassesByClassIdSchemaTasksByTaskIdReportUrl;
+
+async function checkHtmlReport(response: Response): Promise<void> {
+	if (response.status !== 200) {
+		const body = await response.text();
+		let data: unknown = body;
+		try {
+			data = JSON.parse(body);
+		} catch {
+			/* Older servers may return plain text. */
+		}
+		throw new SchemaApiError(response.status, data);
+	}
+	if (
+		response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !==
+		"text/html"
+	) {
+		await response.body?.cancel();
+		throw new Error("The server did not return an HTML repair report.");
+	}
+	// The browser opens the retained artifact through the protected BFF. Never inject its HTML into the console.
+	await response.body?.cancel();
+}
+
+export async function hasSchemaRepairReport(
+	classId: number,
+	taskId: number,
+	signal?: AbortSignal,
+): Promise<boolean> {
+	const response = await fetch(schemaRepairReportUrl(classId, taskId), {
+		...options(signal),
+		headers: { Accept: "text/html" },
+	});
+	if (response.status === 404) {
+		await response.body?.cancel();
+		return false;
+	}
+	await checkHtmlReport(response);
+	return true;
+}
+
+export async function generateSchemaRepairReport(
+	classId: number,
+	taskId: number,
+	request: SchemaRepairReportRequest,
+): Promise<void> {
+	const response = await fetch(schemaRepairReportUrl(classId, taskId), {
+		...options(),
+		method: "POST",
+		headers: { "Content-Type": "application/json", Accept: "text/html" },
+		body: JSON.stringify(request),
+	});
+	await checkHtmlReport(response);
+}
 
 export const SCHEMA_PAGE_SIZE = 50;
 

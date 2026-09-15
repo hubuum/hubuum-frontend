@@ -11,6 +11,9 @@ export interface SchemaFailureGroup {
   /** @minimum 0 */
   objects: number;
   reason: SchemaFailure;
-  /** At most five object IDs per group; values and instance paths are omitted. */
+  /**
+     * All object IDs in this group, in scan order; the field name is retained for compatibility.
+     * Older reports may contain only samples. Values and instance paths are omitted.
+     */
   samples: number[];
 }

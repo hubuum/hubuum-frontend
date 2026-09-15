@@ -99,7 +99,7 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 		queryFn: ({ signal }) => fetchSchemaWork(classId, taskId as number, signal),
 		enabled: taskId !== null && canReadReports,
 		retry: false,
-		// Readiness can become stale even after completion. Poll only the bounded report.
+		// Readiness can become stale even after completion. Reports include all findings.
 		refetchInterval: (query) =>
 			query.state.status === "error"
 				? false
@@ -351,6 +351,24 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 				summaryQuery.isError ? undefined : summaryQuery.data,
 				matchingWork,
 			);
+	const activationDisabled =
+		busy ||
+		draft !== null ||
+		activationBlock !== null ||
+		activeQuery.isFetching ||
+		summaryQuery.isFetching ||
+		revisionQuery.isFetching ||
+		workQuery.isFetching;
+	const analysisRunning = matchingWork?.status === "running";
+	const hasImpactReport = matchingWork?.kind === "impact";
+	const analysisDisabled =
+		busy || draft !== null || candidate?.status !== "staged" || analysisRunning;
+
+	function analyzeImpact() {
+		setError(null);
+		setNotice(null);
+		startMutation.mutate("impact");
+	}
 
 	async function confirmActivation(policy: SchemaActivationPolicy) {
 		setError(null);
@@ -371,6 +389,27 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 			return;
 		activationMutation.mutate(policy);
 	}
+	const administratorActivation =
+		canReadReports && candidate?.status === "staged" ? (
+			<details className="card stack">
+				<summary>Override compatibility checks (administrator)</summary>
+				<div className="stack">
+					<p>
+						Activate even if objects fail validation or analysis is incomplete.
+						Existing objects stay unchanged and may remain invalid. New writes
+						must satisfy the new policy.
+					</p>
+					<button
+						type="button"
+						className="danger"
+						disabled={busy || !!draft || !active}
+						onClick={() => void confirmActivation("allow_pending")}
+					>
+						Activate with pending validation…
+					</button>
+				</div>
+			</details>
+		) : null;
 
 	if (classQuery.isPending || activeQuery.isPending)
 		return <p role="status">Loading class schema…</p>;
@@ -543,7 +582,12 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 								id: "activate",
 								label: "Activate",
 								hint: "Apply the policy explicitly",
-								enabled: !busy && !draft && !!candidate,
+								disabledHint: activationBlock
+									? "Complete compatible analysis first"
+									: "Checking activation readiness",
+								enabled:
+									!activationDisabled ||
+									(!busy && !draft && candidate?.status === "active"),
 							},
 						]}
 					/>
@@ -616,7 +660,7 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 										>
 											{candidate.status === "staged"
 												? "Revise proposal"
-												: "Use as starting point"}
+												: "Create proposal from this revision"}
 										</button>
 										{candidate.status === "staged" ? (
 											<button
@@ -708,14 +752,37 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 											? "Saving revision…"
 											: "Save revision"}
 									</button>
-								) : (
-									<GuidedFlowContinue
-										title="Assess the saved revision"
-										summary="Analyze existing objects before deciding whether to activate."
-										nextLabel="Analyze impact"
-										onContinue={() => navigate({ step: "impact" })}
-									/>
-								)}
+								) : candidate?.status === "staged" ? (
+									<div className="stack">
+										<p>
+											Analyze existing objects before activation. This checks
+											the proposal without changing their data or current
+											compliance.
+										</p>
+										{canReadReports ? (
+											<button
+												type="button"
+												disabled={hasImpactReport ? busy : analysisDisabled}
+												onClick={() =>
+													hasImpactReport
+														? navigate({ step: "impact" })
+														: analyzeImpact()
+												}
+											>
+												{startMutation.isPending
+													? "Starting analysis…"
+													: hasImpactReport
+														? "View analysis"
+														: "Analyze impact"}
+											</button>
+										) : (
+											<p>
+												Share the saved revision link with an administrator to
+												run and review its impact analysis.
+											</p>
+										)}
+									</div>
+								) : null}
 							</article>
 						</GuidedFlowPanel>
 					) : null}
@@ -735,7 +802,12 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 									authorize this proposal.
 								</p>
 							) : null}
-							{matchingWork ? <SchemaWorkReport work={matchingWork} /> : null}
+							{matchingWork ? (
+								<SchemaWorkReport
+									key={matchingWork.task_id}
+									work={matchingWork}
+								/>
+							) : null}
 							{matchingWork?.status === "running" && canReadReports ? (
 								<button
 									type="button"
@@ -769,18 +841,16 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 											<>
 												<button
 													type="button"
-													disabled={
-														busy ||
-														draft !== null ||
-														candidate?.status !== "staged" ||
-														matchingWork?.status === "running"
-													}
-													onClick={() => {
-														setError(null);
-														startMutation.mutate("impact");
-													}}
+													disabled={analysisDisabled}
+													onClick={analyzeImpact}
 												>
-													{matchingWork ? "Analyze again" : "Analyze impact"}
+													{startMutation.isPending
+														? "Starting analysis…"
+														: analysisRunning
+															? "Analysis in progress…"
+															: matchingWork
+																? "Analyze again"
+																: "Analyze impact"}
 												</button>
 												<form
 													className="action-row"
@@ -818,13 +888,29 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 											</p>
 										)}
 									</div>
-									<GuidedFlowContinue
-										title="Review activation"
-										summary="A compatible report enables normal activation. An administrator can explicitly allow pending validation."
-										nextLabel="Activate"
-										disabled={!!draft}
-										onContinue={() => navigate({ step: "activate" })}
-									/>
+									{candidate?.status === "staged" ? (
+										<>
+											<GuidedFlowContinue
+												title={
+													analysisRunning
+														? "Checking existing objects"
+														: activationBlock
+															? "Activation blocked"
+															: "Ready to activate"
+												}
+												summary={
+													activationBlock ??
+													"The proposal is compatible with existing objects. Review and confirm activation next."
+												}
+												nextLabel="Review activation"
+												disabled={activationDisabled}
+												onContinue={() => navigate({ step: "activate" })}
+												backLabel="Revise proposal"
+												onBack={!busy ? () => beginDraft(candidate) : undefined}
+											/>
+											{administratorActivation}
+										</>
+									) : null}
 								</>
 							) : (
 								<article className="card stack">
@@ -859,47 +945,28 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 												Existing object data remains unchanged.
 											</p>
 											{activationBlock ? (
-												<p className="info-banner">{activationBlock}</p>
+												<div className="stack">
+													<p className="info-banner">{activationBlock}</p>
+													<button
+														type="button"
+														className="ghost"
+														disabled={busy}
+														onClick={() => navigate({ step: "impact" })}
+													>
+														Return to impact analysis
+													</button>
+												</div>
 											) : null}
 											<button
 												type="button"
-												disabled={
-													busy ||
-													!!draft ||
-													!!activationBlock ||
-													activeQuery.isFetching ||
-													summaryQuery.isFetching ||
-													revisionQuery.isFetching ||
-													workQuery.isFetching
-												}
+												disabled={activationDisabled}
 												onClick={() =>
 													void confirmActivation("reject_incompatible")
 												}
 											>
 												Activate after compatibility checks
 											</button>
-											{canReadReports && candidate?.status === "staged" ? (
-												<details>
-													<summary>Administrator activation option</summary>
-													<div className="stack">
-														<p>
-															Allow activation without compatible impact proof.
-															Enforced objects become pending until
-															revalidation; some may fail the new policy.
-														</p>
-														<button
-															type="button"
-															className="danger"
-															disabled={busy || !!draft || !active}
-															onClick={() =>
-																void confirmActivation("allow_pending")
-															}
-														>
-															Activate with pending validation…
-														</button>
-													</div>
-												</details>
-											) : null}
+											{administratorActivation}
 										</>
 									)}
 								</article>

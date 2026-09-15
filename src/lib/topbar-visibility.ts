@@ -15,7 +15,7 @@ const COMPACT_TOPBAR_ROUTE_PREFIXES = [
 export function usesCompactTopbar(pathname: string): boolean {
 	if (
 		/^\/objects\/\d+\/\d+$/.test(pathname) ||
-		/^\/classes\/\d+$/.test(pathname) ||
+		/^\/classes\/\d+(?:\/schema)?$/.test(pathname) ||
 		/^\/collections\/\d+$/.test(pathname)
 	) {
 		return true;

@@ -160,15 +160,16 @@ To exercise the upcoming schema workflow against the published server main:
 
 ```sh
 HUBUUM_LIVE_BACKEND_IMAGE=ghcr.io/hubuum/hubuum-server:main \
-  HUBUUM_LIVE_REQUIRE_SCHEMA=1 npm run test:live-backend
+  HUBUUM_LIVE_REQUIRE_SCHEMA=1 HUBUUM_LIVE_REQUIRE_SCHEMA_REPORTS=1 npm run test:live-backend
 HUBUUM_AUTH_E2E_BACKEND_IMAGE=ghcr.io/hubuum/hubuum-server:main \
   npm run test:e2e:authenticated -- --grep 'schema workspace'
 ```
 
 The contract run includes impact comparisons, stale-proof rejection, pending
-and strict activation, administrator report restrictions, evidence, and backup
+and strict activation, administrator report restrictions, saved diagnostics,
+HTML generation with custom layouts, immutable retained downloads, and backup
 format 6. The browser suite covers the guided flow, conflicts, restricted
-reports, cancellation, accessible pagination, and mobile layout with controlled
+reports, HTML viewing/downloads and object links, cancellation, accessible pagination, and mobile layout with controlled
 API responses after a real login. Use the digest in `docs/compatibility.md` for
 the same server build as the preview CI job. No production deployment default
 is changed by these overrides.

@@ -1,3 +1,5 @@
+import { downloadBlob } from "@/lib/download-file";
+
 export type TableExportFormat = "csv" | "json" | "xlsx" | "ods";
 
 export type TableExportColumn<Row> = {
@@ -272,14 +274,7 @@ export function downloadTableExportFile(
 	file: TableExportFile,
 ): string {
 	const blob = new Blob([file.bytes], { type: file.mimeType });
-	const url = URL.createObjectURL(blob);
-	const link = document.createElement("a");
-	link.href = url;
-	link.download = `${sanitizeExportFileName(snapshot.fileName)}.${file.extension}`;
-	link.style.display = "none";
-	document.body.append(link);
-	link.click();
-	link.remove();
-	window.setTimeout(() => URL.revokeObjectURL(url), 0);
-	return link.download;
+	const fileName = `${sanitizeExportFileName(snapshot.fileName)}.${file.extension}`;
+	downloadBlob(blob, fileName);
+	return fileName;
 }
