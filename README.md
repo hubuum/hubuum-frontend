@@ -62,6 +62,7 @@ The frontend owns only routes under `/_hubuum-bff/...`.
 | `/_hubuum-bff/hubuum/<backend-path>` | Generic authenticated BFF proxy. For example, `/_hubuum-bff/hubuum/api/v1/classes` calls backend `/api/v1/classes` with the server-side bearer token. |
 | `/_hubuum-bff/classes/...` | Frontend helper BFF routes that normalize a few class/object workflows before calling backend APIs. |
 | `/_hubuum-bff/settings` | Reads and updates the current principal's durable console preferences through the backend settings API, with a temporary Valkey fallback for older servers. |
+| `/_hubuum-bff/credential-mutations` | Confirms the current human's password and performs one credential mutation when the backend requires a fresh authentication approval. Approval secrets stay inside the BFF. |
 
 The frontend deliberately does not own `/api/v0/...` or `/api/v1/...`. This
 lets a colocated reverse proxy route those paths directly to the backend while
@@ -115,6 +116,25 @@ requiring global meta access.
 Cursor-paginated helper requests that do not display an exact total pass
 `include_total=false`; primary data tables retain the default exact-count
 behavior when they show `X-Total-Count` in pagination controls.
+
+## Credential operations
+
+Servers enforcing fresh authentication for credential management trigger a
+current-password confirmation after returning `403` with
+`reason: reauthentication_required`. This covers token creation and renewal,
+local user creation, password updates, credential-bearing imports (including dry
+runs), and restore confirmation. The submitted operation is frozen while the
+confirmation is open. The BFF obtains and immediately consumes a single-use
+approval with the same session bearer, preserving the exact request and the
+server-resolved token expiry. Passwords are discarded after submission; approval
+secrets never reach browser JavaScript or browser storage.
+
+Older servers continue accepting the original requests without an approval
+endpoint or an extra password prompt. Ordinary permission failures do not
+trigger confirmation. An incorrect confirmation password preserves a valid
+session, and failed or ambiguous mutations are never retried automatically.
+After a lost response, inspect the affected credentials, task, or restore before
+trying again. Imports retain their idempotency key through both BFF paths.
 
 ## Scoped identities
 

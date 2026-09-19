@@ -30,6 +30,30 @@ A separate scheduled workflow tests the frontend against the moving backend
 `:main` image to surface future compatibility changes without making normal CI
 nondeterministic.
 
+## Optional credential approvals
+
+The frontend also supports the fresh-authentication protocol from
+[Server PR #423](https://github.com/hubuum/hubuum/pull/423). Support is selected
+per operation by the server's `403` / `reauthentication_required` response, not
+by a version check or a required capability probe. The minimum backend contract
+and the pinned release target remain unchanged.
+
+Token creation/renewal, local user creation, password changes, credential imports
+(including dry runs), and restore confirmation use a password dialog when
+required. The dedicated BFF obtains and consumes an approval in request memory,
+using the same bearer for both requests. Token expiry is copied verbatim from
+the approval response, including microsecond precision. Revision preconditions,
+import idempotency keys, and restore confirmation capabilities are preserved.
+The generic proxy blocks direct approval creation to keep approval secrets out
+of the browser; safe approval metadata reads remain available for recovery.
+
+Older servers receive the original mutation with no approval discovery or
+password prompt. A required approval that fails never falls back to a
+bearer-only mutation. Incorrect passwords preserve valid sessions; throttling,
+provider failures, permission errors, and expired sessions retain their distinct
+failure behavior. A lost mutation response requires checking account/task/restore
+state before retrying; the BFF reports the approval record ID when available.
+
 ## Server main schema preview
 
 The unreleased frontend also prepares for
