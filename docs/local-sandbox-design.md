@@ -280,7 +280,11 @@ with the verified sandbox values, and never accept a remote database or backend
 URL for restoration. The state file contains identities, ports, and owned
 resource references, with no passwords, tokens, or restore capabilities.
 `down` checks ownership labels and removes exact recorded resources; it does not
-prune globally or delete a project solely because its name matches. `resume`
+prune globally or delete a project solely because its name matches. On Linux it
+can also stop a frontend left behind by an exited launcher, after verifying its
+checkout, per-run prefixes, launcher command, and dedicated process group. It
+waits for that frontend to exit before removing dependencies. A live launcher
+still owns its shutdown through Ctrl-C. `resume`
 requires the recorded image and database; missing state must not silently reseed.
 
 Each fresh run gets a new database. Changing server versions must not implicitly

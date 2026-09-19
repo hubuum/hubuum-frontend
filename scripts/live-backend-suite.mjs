@@ -1,4 +1,5 @@
 import { verifySchemaEvolution } from "./live-schema-suite.mjs";
+import { verifyTaskCancellation } from "./live-task-suite.mjs";
 
 const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
@@ -190,10 +191,10 @@ async function main() {
       clientConfig.data.authentication.max_token_lifetime_hours >= defaultTokenLifetimeHours,
     "Client config is missing the effective maximum token lifetime.",
   );
-  pass("discovered public v0.0.14 pagination and authentication configuration");
+  pass("discovered public v0.0.15 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
-  assert(openapi.data.info?.version === "0.0.14", "Server OpenAPI is not version 0.0.14.");
+  assert(openapi.data.info?.version === "0.0.15", "Server OpenAPI is not version 0.0.15.");
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
     openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
@@ -277,13 +278,19 @@ async function main() {
     openapi.data.components?.schemas?.PrincipalSettingsResponse,
     "OpenAPI is missing revisioned principal settings responses.",
   );
-  pass("server OpenAPI exposes the expected v0.0.14 contract");
+  pass("server OpenAPI exposes the expected v0.0.15 contract");
+  assert(openapi.data.paths?.["/api/v1/tasks/{task_id}/cancel"]?.post,
+    "OpenAPI is missing task cancellation.");
+  for (const field of ["cancel_requested_at", "cancel_requested_by", "cancel_reason", "execution_deadline_at", "terminal_reason", "unattempted_items", "remote_side_effect_state"]) {
+    assert(openapi.data.components?.schemas?.TaskResponse?.properties?.[field],
+      `TaskResponse is missing ${field}.`);
+  }
   const hasSchemaEvolution = Boolean(openapi.data.paths?.["/api/v1/classes/{class_id}/schema/revisions"]);
   const hasSchemaRepairReports = Boolean(openapi.data.paths?.["/api/v1/classes/{class_id}/schema/tasks/{task_id}/report"]);
-  if (process.env.HUBUUM_LIVE_REQUIRE_SCHEMA === "1") {
-    assert(hasSchemaEvolution, "This run requires the server-main schema evolution contract.");
+  if (process.env.HUBUUM_LIVE_REQUIRE_SCHEMA !== "0") {
+    assert(hasSchemaEvolution, "This run requires the released schema evolution contract.");
   }
-  if (process.env.HUBUUM_LIVE_REQUIRE_SCHEMA_REPORTS === "1") {
+  if (process.env.HUBUUM_LIVE_REQUIRE_SCHEMA_REPORTS !== "0") {
     assert(hasSchemaRepairReports, "This run requires saved schema diagnostics and HTML repair reports.");
   }
   const backupVersion = hasSchemaEvolution ? 6 : 5;
@@ -296,6 +303,10 @@ async function main() {
   const adminUserId = 1;
 
   const runningConfig = await request("GET", "/api/v1/admin/config", auth);
+  for (const kind of ["import", "export", "backup", "reindex", "remote_call", "schema_validation"]) {
+    const timeout = runningConfig.data.tasks?.[`${kind}_execution_timeout_seconds`];
+    assert(Number.isInteger(timeout) && timeout > 0, `Missing ${kind} execution limit.`);
+  }
   assert(runningConfig.data.backups, "Admin config is missing backup settings.");
   assert(runningConfig.data.restores, "Admin config is missing restore settings.");
   assert(runningConfig.data.permissions, "Admin config is missing permission settings.");
@@ -340,7 +351,7 @@ async function main() {
         runningConfig.data.exports.database_statement_timeout_ms,
     "Admin config is missing the storage query budget or its compatibility alias.",
   );
-  pass("read redacted v0.0.14 admin runtime configuration");
+  pass("read redacted v0.0.15 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -529,6 +540,8 @@ async function main() {
     "Token list metadata must not expose the raw bearer token.",
   );
   pass("minted, inspected, and used an unscoped service-account token");
+  await verifyTaskCancellation({ request, waitFor, auth, readerToken: unscopedToken });
+  pass("verified task cancellation acknowledgement, idempotence, authorization, and UTF-8 reason limits");
   if (hasSchemaEvolution) {
     await verifySchemaEvolution({ request, waitFor, auth, readerToken: unscopedToken, collectionId: collection.data.id, suffix, hasRepairReports: hasSchemaRepairReports });
     pass("verified staged schemas, impact comparison, report authorization, pending and strict activation, stale proofs, and object evidence");
@@ -922,6 +935,7 @@ async function main() {
     { attempts: 60, intervalMs: 250 },
   );
   assert(completedBackup.details?.backup?.output_available, "Backup output should be available.");
+  assert(completedBackup.execution_deadline_at, "Claimed backup must retain its execution deadline.");
   pass("created and completed a backup task");
 
   const backupOutput = await request("GET", `/api/v1/backups/${backup.data.id}/output`, auth);

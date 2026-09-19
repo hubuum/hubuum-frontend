@@ -1,10 +1,109 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+	cancelTask,
 	formatTaskElapsedTime,
+	getImportUnattemptedCount,
 	getTaskProgressPercent,
 	getTaskStatusTone,
+	taskCancelReasonError,
 } from "@/lib/api/tasking";
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("task cancellation", () => {
+	it.each([200, 202])(
+		"accepts HTTP %s and preserves the authoritative task status",
+		async (status) => {
+			const task = {
+				id: 7,
+				status: status === 200 ? "cancelled" : "running",
+				cancel_requested_at: "2026-09-15T12:00:00Z",
+			};
+			const fetch = vi.fn(
+				async () => new Response(JSON.stringify(task), { status }),
+			);
+			vi.stubGlobal("fetch", fetch);
+			await expect(
+				cancelTask(7, { reason: "Wrong input", expected_status: "queued" }),
+			).resolves.toEqual(task);
+			expect(fetch).toHaveBeenCalledWith(
+				"/_hubuum-bff/hubuum/api/v1/tasks/7/cancel",
+				expect.objectContaining({
+					method: "POST",
+					credentials: "include",
+					body: JSON.stringify({
+						reason: "Wrong input",
+						expected_status: "queued",
+					}),
+				}),
+			);
+		},
+	);
+	it("sends an empty object for unconditional cancellation without a reason", async () => {
+		const fetch = vi.fn(async () => new Response('{"status":"succeeded"}'));
+		vi.stubGlobal("fetch", fetch);
+		await expect(cancelTask(7)).resolves.toEqual({ status: "succeeded" });
+		expect(fetch).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ body: "{}" }),
+		);
+	});
+	it.each([400, 403, 404, 409, 503])(
+		"preserves HTTP %s errors without retrying a cancellation",
+		async (status) => {
+			const fetch = vi.fn(
+				async () =>
+					new Response('{"message":"Cancellation refused"}', { status }),
+			);
+			vi.stubGlobal("fetch", fetch);
+			await expect(cancelTask(7)).rejects.toThrow("Cancellation refused");
+			expect(fetch).toHaveBeenCalledTimes(1);
+		},
+	);
+	it("validates UTF-8 bytes and control characters before sending", async () => {
+		expect(taskCancelReasonError("")).toBeNull();
+		expect(taskCancelReasonError("ø".repeat(256))).toBeNull();
+		expect(taskCancelReasonError("ø".repeat(257))).toContain("512 UTF-8 bytes");
+		expect(taskCancelReasonError("😀".repeat(128))).toBeNull();
+		for (const reason of [
+			" ",
+			"line\nbreak",
+			"tab\tvalue",
+			"control\u0085value",
+		]) {
+			expect(taskCancelReasonError(reason)).toContain("single-line");
+		}
+		const fetch = vi.fn();
+		vi.stubGlobal("fetch", fetch);
+		await expect(cancelTask(7, { reason: "ø".repeat(257) })).rejects.toThrow(
+			"512 UTF-8 bytes",
+		);
+		expect(fetch).not.toHaveBeenCalled();
+	});
+	it("reads the aggregate unattempted count without treating it as a failed item", () => {
+		expect(
+			getImportUnattemptedCount({
+				outcome: "unattempted",
+				details: { count: 23 },
+			}),
+		).toBe(23);
+		expect(
+			getImportUnattemptedCount({ outcome: "failed", details: { count: 23 } }),
+		).toBeNull();
+		for (const details of [
+			null,
+			{},
+			{ count: "23" },
+			{ count: -1 },
+			{ count: 1.5 },
+		]) {
+			expect(
+				getImportUnattemptedCount({ outcome: "unattempted", details }),
+			).toBeNull();
+		}
+	});
+});
 
 describe("task presentation helpers", () => {
 	it("maps task outcomes to shared status tones", () => {

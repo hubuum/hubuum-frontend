@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.14
+ * OpenAPI spec version: 0.0.15
  */
 import type { ResourceRevision } from './resourceRevision';
 import type { SchemaReference } from './schemaReference';

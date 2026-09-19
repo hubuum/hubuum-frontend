@@ -11,6 +11,7 @@ import {
 	withAdmin,
 } from "./sandbox/auth.mjs";
 import { parseOptions } from "./sandbox/core.mjs";
+import { stopOrphanedFrontend } from "./sandbox/frontend.mjs";
 import {
 	checkDevelopmentProcess,
 	checkPort,
@@ -48,8 +49,9 @@ Fresh interactive starts prompt for a corpus-admin password. A dependency-only
 start can defer passwords until 'password --user <name>'. Passwords are never
 printed or saved to files.
 
-Stop an attached frontend with Ctrl-C. down removes containers and data; it
-does not accept --keep, --port, or --listen. See docs/local-sandbox.md for examples.`);
+Stop an attached frontend with Ctrl-C. down also stops a verified orphaned sandbox
+frontend on Linux before removing containers and data. It does not accept --keep,
+--port, or --listen. See docs/local-sandbox.md for examples.`);
 }
 
 function summary(state) {
@@ -169,7 +171,7 @@ export async function main(args = process.argv.slice(2)) {
 			create: options.action === "start",
 		});
 		if (options.action === "down") {
-			await checkDevelopmentProcess(ROOT);
+			await stopOrphanedFrontend(ROOT, sandbox.state);
 			await clean(sandbox);
 			return;
 		}

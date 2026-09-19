@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
 import {
-	cp,
 	mkdir,
 	mkdtemp,
 	readFile,
-	realpath,
 	rm,
 	writeFile,
 } from "node:fs/promises";
@@ -261,49 +259,6 @@ test("Next.js preflight distinguishes an active process from an unlocked stale f
 			throw Object.assign(new Error("gone"), { code: "ESRCH" });
 		});
 		assert.equal(await readFile(path, "utf8"), contents);
-	} finally {
-		await rm(root, { recursive: true, force: true });
-	}
-});
-
-test("down preserves a sandbox when its launcher exited but a frontend is still alive", async () => {
-	const root = await realpath(
-		await mkdtemp(join(tmpdir(), "sandbox-down-guard-")),
-	);
-	const directory = join(root, ".local/sandboxes/default");
-	const owner = hash(root).slice(0, 12);
-	const run = "12345678-1234-1234-1234-123456789abc";
-	const state = JSON.stringify({
-		version: 1,
-		name: "default",
-		owner,
-		run,
-		project: `hubuum-sandbox-${owner}-default-${run.slice(0, 8)}`,
-		phase: "preparing",
-		// Never invoke a container runtime, even if the guard regresses.
-		runtime: process.execPath,
-	});
-	try {
-		await cp(new URL("../", import.meta.url), join(root, "scripts"), {
-			recursive: true,
-		});
-		await mkdir(directory, { recursive: true });
-		await writeFile(join(directory, "state.json"), state);
-		await mkdir(join(root, ".next/dev"), { recursive: true });
-		const frontendLock = JSON.stringify({ pid: process.pid });
-		await writeFile(join(root, ".next/dev/lock"), frontendLock);
-		await assert.rejects(
-			command(process.execPath, [
-				join(root, "scripts/dev-sandbox.mjs"),
-				"down",
-			]),
-			/Next.js development process/,
-		);
-		assert.equal(await readFile(join(directory, "state.json"), "utf8"), state);
-		assert.equal(
-			await readFile(join(root, ".next/dev/lock"), "utf8"),
-			frontendLock,
-		);
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}

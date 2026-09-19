@@ -80,10 +80,13 @@ terminal while the frontend is attached.
 
 `down` removes the sandbox's containers and database; it is not a command to
 stop only the frontend. It rejects `--keep`, `--port`, and `--listen` so those
-flags cannot imply that data will be retained. It also refuses removal while a
-Next.js development process is still running in this checkout, including a
-frontend left behind after its launcher exited. To pause work and keep data,
-use `--keep` on start/resume and press `Ctrl-C` in that frontend's terminal.
+flags cannot imply that data will be retained. On Linux, if the launcher has
+exited but left its frontend running, `down` verifies the checkout, sandbox run,
+and frontend process group, stops that group, and waits before removing the
+dependencies. It leaves frontends for other sandboxes or ordinary `npm run dev`
+alone. If process ownership cannot be verified, stop the frontend manually;
+other platforms still require stopping it before `down`. To pause work and keep
+data, use `--keep` on start/resume and press `Ctrl-C` in that frontend's terminal.
 
 To prepare just the containers without prompting for a login password:
 
@@ -168,6 +171,24 @@ classes each with absent, advisory, and enforced schemas. It includes collection
 permissions, three class relations, 300 object relations, 45 shared computed
 field definitions, one personal definition, and history. The object relations
 form small connected groups rather than one large connected graph.
+
+Sandbox servers allow up to 16 MiB of HTML export output so schema repair
+reports can include the corpus's rich diagnostics. Template rendering gets
+1,000,000 execution units (MiniJinja fuel). The server's ordinary defaults of
+256 KiB and 50,000 execution units can reject HTML generation for a completed
+analysis with only a few hundred findings. This affects the optional HTML
+artifact, not the saved analysis or enforcement policy. Use the JSON download to retrieve the available
+analysis data if HTML generation fails; changing the HTML layout does not reduce
+the findings that must be assembled. Separate server ceilings still apply:
+4 MiB for finding assembly and 4 MiB for the expanded template context.
+
+The settings are `HUBUUM_EXPORT_MAX_OUTPUT_BYTES=16777216` and
+`HUBUUM_EXPORT_TEMPLATE_FUEL=1000000` on the sandbox's Hubuum Server container.
+New sandboxes use them automatically. Existing sandboxes retain
+their saved Compose configuration and need the backend container reconfigured;
+restarting the frontend or repeating the analysis does not change this limit.
+Keep the existing database, Valkey, and published backend port when reconfiguring
+a sandbox containing work you want to retain.
 
 The server owns the backup, manifest, and recipe and can evolve them together
 with its restore format. The frontend does not generate fixtures or translate

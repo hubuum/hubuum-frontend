@@ -2,7 +2,58 @@ import type {
 	SchemaActualValue,
 	SchemaDiagnosticOmission,
 	SchemaImpactResponse,
+	SchemaImpactFindingResponse,
+	SchemaIssue,
 } from "@/lib/api/generated/models";
+import { groupObjectRows } from "@/lib/object-grouping";
+
+export type SchemaDiagnosticGroup = {
+	id: string;
+	issue: SchemaIssue | null;
+	objects: { finding: SchemaImpactFindingResponse; occurrences: number }[];
+	occurrences: number;
+};
+
+export function consolidateSchemaIssues(
+	findings: readonly SchemaImpactFindingResponse[],
+): SchemaDiagnosticGroup[] {
+	const rows = findings.flatMap((finding) => {
+		const issues = finding.snapshot?.diagnostics.issues;
+		return issues?.length
+			? issues.map((issue) => ({ finding, issue: issue as SchemaIssue | null }))
+			: [{ finding, issue: null }];
+	});
+	return groupObjectRows(
+		rows,
+		({ finding, issue }) =>
+			issue ? { issue } : { reason: finding.reason, legacy: !finding.snapshot },
+		"count-desc",
+	)
+		.map((group) => {
+			const objects = new Map<
+				number,
+				SchemaDiagnosticGroup["objects"][number]
+			>();
+			for (const { finding } of group.rows) {
+				const object = objects.get(finding.object_id);
+				if (object) object.occurrences++;
+				else objects.set(finding.object_id, { finding, occurrences: 1 });
+			}
+			return {
+				id: group.id,
+				issue: group.rows[0].issue,
+				objects: [...objects.values()].sort(
+					(left, right) => left.finding.object_id - right.finding.object_id,
+				),
+				occurrences: group.count,
+			};
+		})
+		.sort(
+			(left, right) =>
+				right.objects.length - left.objects.length ||
+				left.id.localeCompare(right.id),
+		);
+}
 
 export const schemaOmissionLabels: Record<SchemaDiagnosticOmission, string> = {
 	actual_value_redacted: "Actual value redacted",

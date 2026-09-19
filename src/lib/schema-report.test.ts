@@ -1,10 +1,119 @@
 import { describe, expect, it } from "vitest";
-import type { SchemaImpactResponse } from "@/lib/api/generated/models";
+import type {
+	SchemaImpactFindingResponse,
+	SchemaImpactResponse,
+	SchemaIssue,
+} from "@/lib/api/generated/models";
 import {
+	consolidateSchemaIssues,
 	schemaActualDescription,
 	schemaFailureCoverage,
 	schemaObjectUrlTemplate,
 } from "@/lib/schema-report";
+
+describe("consolidated schema errors", () => {
+	const issue: SchemaIssue = {
+		reason: { keyword: "type", schema_path: "/properties/address/type" },
+		message: "Expected a string.",
+		instance_path: "/address",
+		expected: { status: "available", value: "string" },
+		actual: "number",
+		alternative: false,
+		omissions: ["actual_value_redacted"],
+	};
+	function finding(id: number, issues = [issue]): SchemaImpactFindingResponse {
+		return {
+			object_id: id,
+			reason: issue.reason,
+			snapshot: {
+				object_revision: id,
+				inspected_at: `2026-09-15T00:00:${String(id).padStart(2, "0")}Z`,
+				diagnostics: { issues, truncated: id === 1 },
+			},
+		};
+	}
+	it("shows the same error once while retaining every object snapshot", () => {
+		const findings = [finding(1), finding(2)];
+		const groups = consolidateSchemaIssues(findings);
+		expect(groups).toHaveLength(1);
+		expect(groups[0].objects.map((member) => member.finding)).toEqual(findings);
+		expect(groups[0].objects[0].finding.snapshot?.diagnostics.truncated).toBe(
+			true,
+		);
+		expect(groups[0].objects[1].finding.snapshot?.object_revision).toBe(2);
+	});
+	it("counts affected objects once while retaining repeated redacted occurrences", () => {
+		const groups = consolidateSchemaIssues([
+			finding(1, [issue, issue]),
+			finding(2),
+		]);
+		expect(groups).toHaveLength(1);
+		expect(groups[0].objects).toHaveLength(2);
+		expect(groups[0].occurrences).toBe(3);
+		expect(groups[0].objects.map((object) => object.occurrences)).toEqual([
+			2, 1,
+		]);
+	});
+	it("allows one object to belong to several error groups", () => {
+		const groups = consolidateSchemaIssues([
+			finding(1, [issue, { ...issue, instance_path: "/other" }]),
+			finding(2),
+		]);
+		expect(
+			groups.map((group) =>
+				group.objects.map((member) => member.finding.object_id),
+			),
+		).toEqual([[1, 2], [1]]);
+	});
+	it.each<Partial<SchemaIssue>>([
+		{ instance_path: "/interfaces/3/address" },
+		{ instance_path: "" },
+		{ instance_path: null },
+		{ expected: { status: "available", value: null } },
+		{ expected: { status: "omitted" } },
+		{ actual: { string: { characters: 4 } } },
+		{ alternative: true },
+		{ omissions: [] },
+		{ reason: { ...issue.reason, schema_path: "/another/type" } },
+		{ message: "Another explanation." },
+	])("keeps different retained details separate: %j", (difference) => {
+		expect(
+			consolidateSchemaIssues([
+				finding(1),
+				finding(2, [{ ...issue, ...difference }]),
+			]),
+		).toHaveLength(2);
+	});
+	it("ignores JSON object key order without changing array order or input data", () => {
+		const first = {
+			...issue,
+			expected: { status: "available" as const, value: { a: 1, b: 2 } },
+		};
+		const second = {
+			...issue,
+			expected: { status: "available" as const, value: { b: 2, a: 1 } },
+		};
+		const findings = [finding(1, [first]), finding(2, [second])];
+		const before = structuredClone(findings);
+		expect(consolidateSchemaIssues(findings)).toHaveLength(1);
+		expect(findings).toEqual(before);
+	});
+	it("keeps legacy first failures separate from detailed issues and empty snapshots", () => {
+		const legacy = { ...finding(1), snapshot: null };
+		const groups = consolidateSchemaIssues([
+			legacy,
+			{ ...legacy, object_id: 2 },
+			finding(3),
+			finding(4, []),
+		]);
+		expect(groups).toHaveLength(3);
+		expect(groups[0].objects.map((member) => member.finding.object_id)).toEqual(
+			[1, 2],
+		);
+	});
+	it("handles an empty report", () =>
+		expect(consolidateSchemaIssues([])).toEqual([]));
+});
 
 function impact(
 	failures: SchemaImpactResponse["failures"],

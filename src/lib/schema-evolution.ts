@@ -4,6 +4,75 @@ import type {
 	SchemaStageRequest,
 	SchemaWorkResponse,
 } from "@/lib/api/generated/models";
+import { buildObjectDataPatchPlan } from "@/lib/api/object-data-patch";
+
+export type SchemaFlowStep = "schema" | "validation" | "review" | "activate";
+
+export function schemaFlowStep(value: string | null): SchemaFlowStep {
+	if (value === "impact") return "review";
+	if (value === "validation" || value === "review" || value === "activate")
+		return value;
+	return "schema";
+}
+
+export function sameSchemaPolicy(
+	left: SchemaStageRequest,
+	right: SchemaStageRequest,
+): boolean {
+	return (
+		left.validate_schema === right.validate_schema &&
+		buildObjectDataPatchPlan(
+			left.json_schema ?? null,
+			right.json_schema ?? null,
+		).changes.length === 0
+	);
+}
+
+export function summarizeSchemaChanges(
+	active: SchemaStageRequest,
+	proposal: SchemaStageRequest,
+) {
+	const documentChanges = buildObjectDataPatchPlan(
+		active.json_schema ?? null,
+		proposal.json_schema ?? null,
+	).changes;
+	const schema =
+		documentChanges.length === 0
+			? "unchanged"
+			: proposal.json_schema == null
+				? "removed"
+				: active.json_schema == null
+					? "added"
+					: "updated";
+	const enforcement =
+		active.validate_schema === proposal.validate_schema
+			? "unchanged"
+			: proposal.validate_schema
+				? "enabled"
+				: "disabled";
+	return { schema, enforcement, documentChanges };
+}
+
+// Testing a stored, unenforced schema needs an enforced snapshot. Never change
+// the proposal's selected policy or use this separate test as activation proof.
+export function schemaTestPolicy(
+	policy: SchemaStageRequest,
+): SchemaStageRequest | null {
+	return policy.json_schema == null || policy.validate_schema
+		? null
+		: { json_schema: policy.json_schema, validate_schema: true };
+}
+
+export function schemaActivationLabel(
+	active: SchemaStageRequest | undefined,
+	proposal: SchemaStageRequest | undefined,
+): string {
+	if (proposal?.validate_schema && !active?.validate_schema)
+		return "Activate schema & enable enforcement";
+	if (!proposal?.validate_schema && active?.validate_schema)
+		return "Activate changes & turn off enforcement";
+	return "Activate schema";
+}
 
 export function parseSchemaDraft(
 	input: string,

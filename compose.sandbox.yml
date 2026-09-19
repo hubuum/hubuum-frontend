@@ -38,6 +38,9 @@ services:
       <<: *server-env
       HUBUUM_BIND_IP: 0.0.0.0
       HUBUUM_CLIENT_ALLOWLIST: "*"
+      # Rich corpus reports exceed the default byte and template execution limits.
+      HUBUUM_EXPORT_MAX_OUTPUT_BYTES: "16777216"
+      HUBUUM_EXPORT_TEMPLATE_FUEL: "1000000"
     ports:
       - "127.0.0.1::8080"
 

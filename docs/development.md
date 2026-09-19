@@ -156,23 +156,20 @@ keeps it only in the child-process environment, and removes the containers and
 volumes afterward. Override the pinned compatibility image with
 `HUBUUM_AUTH_E2E_BACKEND_IMAGE` when testing another server build.
 
-To exercise the upcoming schema workflow against the published server main:
+The default test target is released Server `v0.0.15`. To focus on schemas and
+task cancellation:
 
 ```sh
-HUBUUM_LIVE_BACKEND_IMAGE=ghcr.io/hubuum/hubuum-server:main \
-  HUBUUM_LIVE_REQUIRE_SCHEMA=1 HUBUUM_LIVE_REQUIRE_SCHEMA_REPORTS=1 npm run test:live-backend
-HUBUUM_AUTH_E2E_BACKEND_IMAGE=ghcr.io/hubuum/hubuum-server:main \
-  npm run test:e2e:authenticated -- --grep 'schema workspace'
+npm run test:live-backend
+npm run test:e2e:authenticated -- --grep 'schema workspace|task cancellation'
 ```
 
-The contract run includes impact comparisons, stale-proof rejection, pending
-and strict activation, administrator report restrictions, saved diagnostics,
-HTML generation with custom layouts, immutable retained downloads, and backup
-format 6. The browser suite covers the guided flow, conflicts, restricted
-reports, HTML viewing/downloads and object links, cancellation, accessible pagination, and mobile layout with controlled
-API responses after a real login. Use the digest in `docs/compatibility.md` for
-the same server build as the preview CI job. No production deployment default
-is changed by these overrides.
+The contract run requires schema evolution, saved diagnostics and HTML reports,
+task cancellation, per-kind deadlines, and backup format 6. Browser checks cover
+the guided schema flow, conflicts, reports, accessible pagination, cancellation
+acknowledgement, authorization failures, and mobile layout after a real login.
+CI pins the release digest listed in `docs/compatibility.md`. The scheduled
+backend-main workflow continues checking future server builds separately.
 
 The broader authenticated dashboard and create-flow checks run when
 `E2E_USERNAME` and `E2E_PASSWORD` are set. Point either Playwright suite at an

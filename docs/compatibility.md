@@ -5,7 +5,7 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.14` | `ghcr.io/hubuum/hubuum-server:v0.0.14` |
+| `main` (unreleased) | `v0.0.15` | `ghcr.io/hubuum/hubuum-server:v0.0.15` |
 | `v0.0.15` | `v0.0.14` | `ghcr.io/hubuum/hubuum-server:v0.0.14` |
 | `v0.0.14` | `v0.0.13` | `ghcr.io/hubuum/hubuum-server:v0.0.13` |
 | `v0.0.13` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
@@ -23,31 +23,45 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Frontend `v0.0.15` and unreleased `main` validate the generated Server `v0.0.14`
-contract and the live scoped and unscoped token lifecycles against
+listed server tag. Unreleased `main` targets Server `v0.0.15` at
+`sha256:36af667dbc9e221a40448496d4a87e168c999d0834df4b69177345ff3d36e821`.
+Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
-A separate scheduled workflow tests the frontend against the moving backend
-`:main` image to surface future compatibility changes without making normal CI
-nondeterministic.
+A separate scheduled workflow follows the moving backend `:main` image.
 
-## Server main schema preview
+## Server v0.0.15
 
-The unreleased frontend also prepares for
-[server PR #402](https://github.com/hubuum/hubuum/pull/402). Its OpenAPI snapshot
-comes from server main commit
-`85a18be2e0d9240f917b6ba8ba5e0f5ab71f34a0`. That development contract still reports
-`info.version: 0.0.14`; endpoint availability, rather than that version string,
-selects the versioned-schema interface. The supported release target and deployment
-defaults remain `v0.0.14` until the next server release is selected.
+The OpenAPI snapshot is taken directly from the server's `v0.0.15` tag
+(commit `4bb889c6`). Normal contract checks now require versioned schemas,
+saved diagnostics, HTML repair reports, and task cancellation. The earlier
+separate schema-preview CI job is superseded by the release contract check.
 
-An additional pull-request contract job tests the published main image at
-`ghcr.io/hubuum/hubuum-server@sha256:5aca779e65bca5f75affa110923b3767d7af8d21b5f344a17c8c90f28b41b478`
-for the CI runner's `linux/amd64` platform.
-Its image source revision matches the source snapshot above and includes the
-schema evolution, backup capture budgets, saved diagnostics, and HTML repair reports. The running
-image's OpenAPI document matches the vendored snapshot exactly. Scheduled and
-manually dispatched checks can still follow `:main`; preview checks require the
-schema and HTML repair-report endpoints instead of silently skipping them.
+### Task cancellation and deadlines
+
+Task detail pages submit cancellation through the authenticated BFF. Queued
+withdrawal sends `expected_status: queued`; a conflict refreshes the task and
+requires another explicit request. Active cancellation returns `202` and keeps
+polling until the server acknowledges cleanup. A completed task keeps its factual
+result. Optional reasons are single-line text limited to 512 UTF-8 bytes.
+
+The page displays cancellation actor, reason and time, execution deadline,
+terminal reason, authoritative terminal unattempted counts, aggregate import
+receipts, and remote dispatch evidence. Strict imports roll back uncommitted
+work; best-effort imports and reindex/schema batches retain committed work.
+Cancelled exports and backups publish no partial output. Remote requests may
+already have caused effects and are never automatically retried by the console.
+Configuration shows all six per-kind execution limits. Queue wait does not
+consume those limits; deadlines are pinned at first claim.
+
+The backend enforces cancellation authority independently of task visibility.
+Owners, unscoped administrators, and eligible service-account owner-group members
+may cancel authorized work. Scoped tokens are limited to their own submissions;
+internal reindex and schema work require an unscoped administrator. Treetop
+installations must deploy the `CancelTask` action and policies. Request
+cancellation before restore maintenance draining begins; the API returns `503`
+once that gate closes. Restore confirmation is outside task cancellation.
+
+### Schemas and repair reports
 
 The Schema workspace stages immutable revisions, compares changes, runs impact
 analysis, and activates with explicit strict or administrator pending policy.
@@ -81,6 +95,18 @@ Alternative-branch explanations are not presented as independently required repa
 Diagnostics describe inspected data; the frontend does not reconstruct them from
 current objects. A null snapshot is explained as a legacy first-failure finding.
 
+**What needs fixing** defaults to **By error**, consolidating identical retained
+issue descriptions and listing every affected object with its inspected revision,
+time, and truncation notice. An object may appear under multiple errors; repeated
+identical occurrences within an object are counted without duplicating its link.
+Different locations, constraints, actual type/size details, alternative flags, or
+omissions stay separate. **By object** retains the original detailed view. The
+JSON download preserves the server response without consolidating its records.
+Server `v0.0.15` does not consolidate errors in HTML repair reports. The console's
+**By error** view is local presentation of the retained per-object diagnostics;
+it does not change the server response or HTML. **Refresh HTML report** renders
+saved findings again using the released server renderer and its resource limits.
+
 When the response includes `findings`, **View HTML report** and **Download HTML
 report** generate a server report if none is retained, then reuse its saved output.
 **Refresh HTML report** explicitly replaces that rendering using the latest saved
@@ -99,6 +125,17 @@ template editor, choose HTML output, reusable fragment, and **Full document** mo
 to avoid the frontend's standard document wrapper, then supply just the layout
 fragment. The server supplies the outer document and complete canonical findings.
 Its output limit fails generation explicitly rather than saving truncated HTML.
+The server's `HUBUUM_EXPORT_MAX_OUTPUT_BYTES` defaults to 256 KiB and can be raised
+up to 16 MiB for HTML repair reports. Finding assembly uses the smaller of this
+setting and 4 MiB; the expanded template context has a separate 4 MiB ceiling.
+An assembly-budget error during HTML generation does not mean the analysis
+failed or enforcement changed. Saved findings and the JSON download remain
+available when they fit the JSON report's separate 16 MiB assembly budget.
+Increasing the output setting requires a backend restart, but no new analysis.
+Rendering also uses `HUBUUM_EXPORT_TEMPLATE_FUEL`, which defaults to 50,000
+MiniJinja execution units. An "engine ran out of fuel" error means this separate
+execution limit was reached; increasing the byte limit alone does not fix it.
+The local sandbox sets 1,000,000 execution units for the corpus's repair reports.
 
 Older reports may retain at most 20 groups and five IDs per group, including
 checkpoints resumed after an upgrade. The frontend identifies omissions from
@@ -106,13 +143,15 @@ checkpoints resumed after an upgrade. The frontend identifies omissions from
 and advises a new analysis on an updated server. It preserves those reports as
 returned when downloading; it cannot recover missing IDs. A short list alone
 does not imply sampling. Older servers without `findings` retain the grouped
-failure display and JSON download. Neither the supported release nor deployment
-defaults change with this development preview.
+failure display and JSON download.
 
-Before upgrading the server for saved diagnostics and HTML reports, drain old
-schema workers, apply migration `20260914000003`, then start matching upgraded API
-and worker processes. Rerun older analyses to obtain richer diagnostics; upgrades
-cannot recover details that were never saved. Retained HTML belongs to its source
+Before upgrading, drain old task and schema workers and run `hubuum-admin --migrate`
+as a separate workload. This includes task cancellation migration `20260914000001`,
+saved diagnostics migration `20260914000003`, schema evolution/findings, and the
+byte-ordered cursor indexes. Schedule a quiet period for constraint validation and
+index builds. Start matching `v0.0.15` API, worker, administrator, template worker,
+and restore-executor binaries with consistent limits. Rerun older analyses to
+obtain richer diagnostics; upgrades cannot recover details that were never saved. Retained HTML belongs to its source
 task and is not included in logical schema-work backups or restores.
 
 The workspace also exposes retained revision history, object compliance, and background
@@ -124,7 +163,7 @@ configuration includes the effective schema validation limits.
 
 Administrator Configuration also shows the effective backup capture-row limit
 introduced by [server PR #408](https://github.com/hubuum/hubuum/pull/408), or
-`n/a` when an older server omits it. Server main enforces byte and row-work
+`n/a` when an older server omits it. Server `v0.0.15` enforces byte and row-work
 budgets during backup capture, including offline administrator operations.
 `HUBUUM_BACKUP_MAX_CAPTURE_ROWS` defaults to 1,000,000; configure matching limits
 for the server, workers, and administrator tools when larger workloads need them.
@@ -138,13 +177,13 @@ overwrites now conflict. Activation requires administrator authority; strict
 imports roll back failed work together, while best-effort imports can retain
 successful class activation despite separate object failures.
 
-Server main uses **backup format 6**. Restore format 5 and older artifacts with
+Server `v0.0.15` uses **backup format 6**. Restore format 5 and older artifacts with
 their matching server release, then migrate the database and create a new format
 6 backup. The frontend does not convert backup documents. Drain old workers,
 run migrations before startup, and use matching server, administrator, worker,
 and restore-executor binaries. Existing enforced objects begin pending after
 migration; administrators can revalidate from the Schema workspace. Review the
-[server schema and upgrade guide](https://github.com/hubuum/hubuum/blob/85a18be2e0d9240f917b6ba8ba5e0f5ab71f34a0/docs/schema_evolution.md)
+[server schema and upgrade guide](https://github.com/hubuum/hubuum/blob/v0.0.15/docs/schema_evolution.md)
 before testing an upgrade with real data.
 
 Frontend `v0.0.14` uses Server `v0.0.13` API types, including structured search,

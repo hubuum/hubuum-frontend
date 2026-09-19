@@ -242,6 +242,9 @@ async function mockSchema(
 	page: Page,
 	options: {
 		admin?: boolean;
+		active?: SchemaRevisionResponse;
+		proposed?: SchemaRevisionResponse;
+		nextStagedRevision?: number;
 		incompatible?: boolean;
 		conflict?: boolean;
 		running?: boolean;
@@ -253,8 +256,8 @@ async function mockSchema(
 		work?: SchemaWorkResponse;
 	} = {},
 ) {
-	let active = { ...activeRevision };
-	let proposed = { ...proposedRevision };
+	let active = { ...(options.active ?? activeRevision) };
+	let proposed = { ...(options.proposed ?? proposedRevision) };
 	let work = structuredClone(options.work ?? report());
 	if (options.running) work.status = "running";
 	if (options.status) work.status = options.status;
@@ -276,6 +279,9 @@ async function mockSchema(
 		}
 	}
 	const impactWork = structuredClone(work);
+	let nextStagedRevision = options.nextStagedRevision ?? 2;
+	const snapshots = new Map<number, SchemaRevisionResponse>();
+	const snapshotWork = new Map<number, SchemaWorkResponse>();
 	const requests: { method: string; path: string; body: unknown }[] = [];
 	await page.route("**/_hubuum-bff/hubuum/api/v1/classes/10?*", (route) =>
 		route.fulfill({
@@ -335,9 +341,30 @@ async function mockSchema(
 				),
 			});
 		if (path === "/revisions" && method === "POST") {
-			proposed = { ...proposed, ...body };
-			return route.fulfill({ status: 201, json: proposed });
+			const saved: SchemaRevisionResponse = {
+				...proposed,
+				...body,
+				revision: nextStagedRevision++,
+				status: "staged",
+			};
+			if (saved.revision === 2) proposed = saved;
+			else snapshots.set(saved.revision, saved);
+			return route.fulfill({ status: 201, json: saved });
 		}
+		const snapshot = snapshots.get(Number(path.split("/")[2]));
+		if (snapshot && method === "GET") return route.fulfill({ json: snapshot });
+		if (snapshot && path.endsWith("/impact")) {
+			const check: SchemaWorkResponse = {
+				...report(),
+				task_id: 30,
+				status: options.running ? "running" : "complete",
+				target: { class_id: 10, revision: snapshot.revision },
+			};
+			snapshotWork.set(check.task_id, check);
+			return route.fulfill({ status: 202, json: check });
+		}
+		if (path === "/revisions/1" && method === "GET")
+			return route.fulfill({ json: active });
 		if (path === "/revisions/2" && method === "GET")
 			return route.fulfill({ json: proposed });
 		if (path === "/revisions/2" && method === "DELETE") {
@@ -351,6 +378,10 @@ async function mockSchema(
 					json: { message: "Analysis unavailable. Try again." },
 				});
 			work = structuredClone(impactWork);
+			if (!proposed.validate_schema) {
+				work.valid = 0;
+				work.not_required = work.examined;
+			}
 			return route.fulfill({ status: 202, json: work });
 		}
 		if (path === "/revisions/2/activate") {
@@ -373,6 +404,11 @@ async function mockSchema(
 			});
 		}
 		if (path.startsWith("/tasks/")) {
+			const check = snapshotWork.get(Number(path.split("/")[2]));
+			if (check) {
+				if (method === "DELETE") check.status = "cancelled";
+				return route.fulfill({ json: check });
+			}
 			if (options.admin === false)
 				return route.fulfill({
 					status: 403,
@@ -438,23 +474,29 @@ test.describe("schema workspace", () => {
 		const requests = await mockSchema(page);
 		await page.goto("/classes/10/schema");
 		await page
-			.getByRole("button", {
-				name: "Create proposal from this revision",
-				exact: true,
-			})
-			.click();
+			.getByRole("textbox", { name: "Proposed JSON schema", exact: true })
+			.fill('{"type":"object"}');
+		await page.getByRole("button", { name: "Continue to validation" }).click();
 		await page
 			.getByRole("checkbox", { name: "Enforce validation on object writes" })
 			.check();
 		await page
-			.getByRole("textbox", { name: "Proposed JSON schema", exact: true })
-			.fill('{"type":"object"}');
-		await page
-			.getByRole("button", { name: "Continue to review changes" })
+			.getByRole("button", { name: "Continue to review & test" })
 			.click();
 		await expect(
-			page.getByRole("heading", { name: "Changes from active revision 1" }),
+			page.getByRole("heading", { name: "What will change" }),
 		).toBeVisible();
+		const changes = page.getByRole("article", { name: "Proposed changes" });
+		await expect(
+			changes.getByText("Add the proposed schema.", { exact: true }),
+		).toBeVisible();
+		await expect(changes.locator("pre").first()).toBeHidden();
+		await changes.getByText("View schema changes", { exact: true }).click();
+		await expect(changes.locator("pre").last()).toContainText(
+			'"type": "object"',
+		);
+		await expect(changes).not.toContainText("/validate_schema");
+		await changes.getByText("View schema changes", { exact: true }).click();
 		await page
 			.getByRole("button", { name: "Save revision", exact: true })
 			.click();
@@ -468,11 +510,11 @@ test.describe("schema workspace", () => {
 				.map((item) => item.path),
 		).toEqual(["/revisions"]);
 		await page
-			.getByRole("button", { name: "Analyze impact", exact: true })
+			.getByRole("button", { name: "Check existing objects", exact: true })
 			.click();
 		await expect(page).toHaveURL(/task=20/);
 		await expect(
-			page.getByRole("tab", { name: /3\. Analyze impact/ }),
+			page.getByRole("tab", { name: /3\. Review & test/ }),
 		).toHaveAttribute("aria-selected", "true");
 		expect(
 			requests.filter(
@@ -492,9 +534,9 @@ test.describe("schema workspace", () => {
 			page.getByRole("button", { name: "Continue to review activation" }),
 		).toBeEnabled();
 		await expect(page.getByRole("tab", { name: /4\. Activate/ })).toBeEnabled();
-		await page.getByRole("tab", { name: /2\. Review changes/ }).click();
+		await page.getByRole("tab", { name: /2\. Validation/ }).click();
 		await page
-			.getByRole("button", { name: "View analysis", exact: true })
+			.getByRole("button", { name: "View findings", exact: true })
 			.click();
 		await expect(
 			page.getByRole("heading", { name: "Impact analysis · Revision 2" }),
@@ -504,10 +546,346 @@ test.describe("schema workspace", () => {
 				(item) => item.path.endsWith("/impact") && item.method === "POST",
 			),
 		).toHaveLength(1);
+		await page.evaluate(() => {
+			window.scrollTo({ top: 0, behavior: "instant" });
+			if (document.activeElement instanceof HTMLElement)
+				document.activeElement.blur();
+		});
 		await page.screenshot({
 			path: testInfo.outputPath("schema-impact-desktop.png"),
 			fullPage: true,
 		});
+	});
+
+	for (const enable of [true, false]) {
+		test(`explains ${enable ? "enabling" : "disabling"} validation without a JSON policy diff`, async ({
+			page,
+		}, testInfo) => {
+			await mockSchema(page, {
+				active: {
+					...activeRevision,
+					json_schema: { type: "object" },
+					validate_schema: !enable,
+				},
+				proposed: { ...proposedRevision, validate_schema: enable },
+			});
+			await page.goto("/classes/10/schema?revision=2&step=review");
+			const changes = page.getByRole("article", { name: "Proposed changes" });
+			await expect(
+				changes.getByText(
+					enable ? "Enable schema validation" : "Turn off schema validation",
+					{ exact: true },
+				),
+			).toBeVisible();
+			await expect(changes).toContainText("The schema itself is unchanged.");
+			await expect(changes).toContainText(
+				enable
+					? "New and edited objects must match the schema."
+					: "Objects can be saved without matching a schema.",
+			);
+			await expect(changes).not.toContainText("validate_schema");
+			await expect(changes.locator("pre, details")).toHaveCount(0);
+			for (const width of [1280, 390]) {
+				await page.setViewportSize({ width, height: 900 });
+				expect(
+					await page.evaluate(
+						() => document.documentElement.scrollWidth <= window.innerWidth,
+					),
+				).toBe(true);
+				await changes.screenshot({
+					path: testInfo.outputPath(`validation-change-${width}.png`),
+				});
+			}
+		});
+	}
+
+	test("checks directly from Validation and reuses the real report in Review", async ({
+		page,
+	}, testInfo) => {
+		const requests = await mockSchema(page);
+		await page.goto("/classes/10/schema?step=propose&view=flow&revision=1");
+		await expect(
+			page.getByRole("heading", { name: "Proposed schema" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: "Active revision 1" }),
+		).toHaveCount(0);
+		await page
+			.getByRole("textbox", { name: "Proposed JSON schema", exact: true })
+			.fill('{"type":"object"}');
+		await page.getByRole("button", { name: "Continue to validation" }).click();
+		await page
+			.getByRole("checkbox", { name: "Enforce validation on object writes" })
+			.check();
+		await page
+			.getByRole("button", { name: "Check existing objects", exact: true })
+			.click();
+		await expect(
+			page.getByText("Check complete", { exact: true }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("tab", { name: /2\. Validation/ }),
+		).toHaveAttribute("aria-selected", "true");
+		expect(
+			requests.filter((r) => r.method === "POST").map((r) => r.path),
+		).toEqual(["/revisions", "/revisions/2/impact"]);
+		await page.evaluate(() => {
+			window.scrollTo({ top: 0, behavior: "instant" });
+			if (document.activeElement instanceof HTMLElement)
+				document.activeElement.blur();
+		});
+		await page.screenshot({
+			path: testInfo.outputPath("schema-validation-desktop.png"),
+			fullPage: true,
+		});
+		await page
+			.getByRole("button", { name: "View findings", exact: true })
+			.click();
+		await expect(
+			page.getByRole("heading", { name: "Impact analysis · Revision 2" }),
+		).toBeVisible();
+		await page.getByRole("tab", { name: /1\. Schema/ }).click();
+		await page
+			.getByRole("textbox", { name: "Proposed JSON schema", exact: true })
+			.fill('{"type":"object","required":["name"]}');
+		await page.getByRole("tab", { name: /3\. Review & test/ }).click();
+		await expect(
+			page.getByRole("button", { name: "Continue to review activation" }),
+		).toBeDisabled();
+		await expect(
+			page.getByText("These results are for the saved proposal.", {
+				exact: false,
+			}),
+		).toBeVisible();
+		expect(requests.filter((r) => r.path.endsWith("/impact"))).toHaveLength(1);
+	});
+
+	test("tests an unenforced schema separately and activates only the selected off policy", async ({
+		page,
+	}) => {
+		const requests = await mockSchema(page);
+		await page.goto("/classes/10/schema");
+		await page
+			.getByRole("textbox", { name: "Proposed JSON schema", exact: true })
+			.fill('{"type":"object"}');
+		await page.getByRole("button", { name: "Continue to validation" }).click();
+		await page
+			.getByRole("button", { name: "Check existing objects", exact: true })
+			.click();
+		await expect(page).toHaveURL(/check=30/);
+		await expect(
+			page.getByText("Check complete", { exact: true }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("checkbox", {
+				name: "Enforce validation on object writes",
+			}),
+		).not.toBeChecked();
+		const posts = requests.filter((r) => r.method === "POST");
+		expect(posts.map((r) => r.path)).toEqual([
+			"/revisions",
+			"/revisions/2/impact",
+			"/revisions",
+			"/revisions/3/impact",
+		]);
+		expect(posts[0].body).toEqual({
+			json_schema: { type: "object" },
+			validate_schema: false,
+		});
+		expect(posts[2].body).toEqual({
+			json_schema: { type: "object" },
+			validate_schema: true,
+		});
+		await page
+			.getByRole("button", { name: "View findings", exact: true })
+			.click();
+		await expect(
+			page.getByRole("heading", { name: "Impact analysis · Revision 3" }),
+		).toBeVisible();
+		await expect(
+			page.getByText("Your proposed enforcement remains off.", {
+				exact: false,
+			}),
+		).toBeVisible();
+		await page.reload();
+		await expect(
+			page.getByRole("heading", { name: "Impact analysis · Revision 3" }),
+		).toBeVisible();
+		await page
+			.getByRole("button", { name: "Continue to review activation" })
+			.click();
+		await page
+			.getByRole("button", { name: "Activate schema", exact: true })
+			.click();
+		await page
+			.getByRole("alertdialog")
+			.getByRole("button", { name: "Activate schema", exact: true })
+			.click();
+		await expect(
+			page.getByText("Active revision 2", { exact: true }),
+		).toBeVisible();
+		expect(requests.find((r) => r.path.endsWith("/activate"))).toMatchObject({
+			path: "/revisions/2/activate",
+			body: {
+				expected_active_revision: 1,
+				policy: "reject_incompatible",
+				impact_task_id: 20,
+			},
+		});
+		await expect(
+			page.getByRole("region", { name: "Class schema", exact: true }),
+		).toContainText("Enforcement on writesOff");
+	});
+
+	test("cancels both checks for an unenforced proposal", async ({ page }) => {
+		const requests = await mockSchema(page, { running: true });
+		await page.goto("/classes/10/schema");
+		await page
+			.getByRole("textbox", { name: "Proposed JSON schema", exact: true })
+			.fill('{"type":"object"}');
+		await page.getByRole("button", { name: "Continue to validation" }).click();
+		await page
+			.getByRole("button", { name: "Check existing objects", exact: true })
+			.click();
+		await expect(
+			page.getByText("Check running", { exact: true }),
+		).toBeVisible();
+		await page
+			.getByRole("button", { name: "Cancel work", exact: true })
+			.click();
+		await page
+			.getByRole("alertdialog")
+			.getByRole("button", { name: "Cancel work", exact: true })
+			.click();
+		await expect(
+			page.getByText("Check cancelled", { exact: true }),
+		).toBeVisible();
+		expect(
+			requests.filter((r) => r.method === "DELETE").map((r) => r.path),
+		).toEqual(["/tasks/20", "/tasks/30"]);
+		await expect(
+			page.getByRole("checkbox", {
+				name: "Enforce validation on object writes",
+			}),
+		).not.toBeChecked();
+	});
+
+	test("separates current setup from editing on the class page", async ({
+		page,
+	}, testInfo) => {
+		await mockSchema(page);
+		await page.goto("/classes/10");
+		const status = page.getByRole("region", {
+			name: "Class schema",
+			exact: true,
+		});
+		await expect(
+			status.getByRole("heading", { name: "Schema & validation" }),
+		).toBeVisible();
+		await expect(status).toContainText("No schema is configured");
+		await expect(status).toContainText(
+			"This does not mean existing objects have passed a schema check",
+		);
+		await page.evaluate(() => {
+			window.scrollTo({ top: 0, behavior: "instant" });
+			if (document.activeElement instanceof HTMLElement)
+				document.activeElement.blur();
+		});
+		await page.screenshot({
+			path: testInfo.outputPath("class-schema-status-desktop.png"),
+			fullPage: true,
+		});
+		await status
+			.getByRole("link", { name: "Change validation settings" })
+			.click();
+		await expect(
+			page.getByRole("tab", { name: /2\. Validation/ }),
+		).toHaveAttribute("aria-selected", "true");
+		await expect(
+			page.getByRole("checkbox", {
+				name: "Enforce validation on object writes",
+			}),
+		).toBeDisabled();
+		await expect(
+			page.getByRole("button", { name: "Discard draft" }),
+		).toHaveCount(0);
+	});
+
+	test("retains edited schema when the server rejects a check before staging", async ({
+		page,
+	}) => {
+		const requests = await mockSchema(page);
+		await page.route(`**${schemaPath}/revisions`, (route) =>
+			route.request().method() === "POST"
+				? route.fulfill({
+						status: 400,
+						json: { message: "Unsupported schema constraint" },
+					})
+				: route.fallback(),
+		);
+		await page.goto("/classes/10/schema");
+		const text = '{"type":"object","minProperties":1}';
+		await page
+			.getByRole("textbox", { name: "Proposed JSON schema", exact: true })
+			.fill(text);
+		await page.getByRole("button", { name: "Continue to validation" }).click();
+		await page
+			.getByRole("button", { name: "Check existing objects", exact: true })
+			.click();
+		await expect(page.getByRole("main").getByRole("alert")).toContainText(
+			"Unsupported schema constraint",
+		);
+		await page.getByRole("tab", { name: /1\. Schema/ }).click();
+		await expect(
+			page.getByRole("textbox", { name: "Proposed JSON schema", exact: true }),
+		).toHaveText(text);
+		await expect(
+			page.getByRole("button", { name: "Discard draft" }),
+		).toBeVisible();
+		expect(requests.some((r) => r.path.endsWith("/impact"))).toBe(false);
+	});
+
+	test("shows pending live validation without claiming a check is running", async ({
+		page,
+	}) => {
+		await mockSchema(page);
+		await page.route(`**${schemaPath}`, (route) =>
+			route.fulfill({
+				json: {
+					active: {
+						...activeRevision,
+						validate_schema: true,
+						json_schema: { type: "object" },
+					},
+					object_epoch: 3,
+					counts: { valid: 3, invalid: 2, pending: 5, not_required: 0 },
+				},
+			}),
+		);
+		await page.goto("/classes/10");
+		const status = page.getByRole("region", {
+			name: "Class schema",
+			exact: true,
+		});
+		await expect(status).toContainText("Enforcement on writesOn");
+		await expect(status).toContainText("Awaiting validation5");
+		await expect(status).toContainText(
+			"A check may be running, or revalidation may be needed",
+		);
+		await expect(
+			status.getByRole("button", { name: "Revalidate active schema" }),
+		).toBeEnabled();
+		await page.setViewportSize({ width: 390, height: 844 });
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth <= window.innerWidth,
+			),
+		).toBe(true);
+		const accessibility = await new AxeBuilder({ page })
+			.include("main")
+			.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+			.analyze();
+		expect(accessibility.violations).toEqual([]);
 	});
 
 	test("requires explicit activation and follows its revalidation and rebuild", async ({
@@ -522,7 +900,7 @@ test.describe("schema workspace", () => {
 			page.getByRole("tab", { name: /4\. Activate/ }),
 		).toHaveAttribute("aria-selected", "true");
 		await page
-			.getByRole("button", { name: "Activate after compatibility checks" })
+			.getByRole("button", { name: "Activate schema & enable enforcement" })
 			.click();
 		await expect(page.getByRole("alertdialog")).toBeVisible();
 		expect(requests.some((item) => item.path.endsWith("/activate"))).toBe(
@@ -530,10 +908,13 @@ test.describe("schema workspace", () => {
 		);
 		await page
 			.getByRole("alertdialog")
-			.getByRole("button", { name: "Activate schema", exact: true })
+			.getByRole("button", {
+				name: "Activate schema & enable enforcement",
+				exact: true,
+			})
 			.click();
 		await expect(
-			page.getByRole("heading", { name: "Active revision 2", exact: true }),
+			page.getByText("Active revision 2", { exact: true }),
 		).toBeVisible();
 		await expect(
 			page.getByRole("link", { name: "Follow computed-field rebuild #22" }),
@@ -561,7 +942,7 @@ test.describe("schema workspace", () => {
 				.getByRole("heading", { name: "Classes", exact: true }),
 		).toHaveCount(0);
 		await expect(
-			page.getByRole("heading", { name: "Schema · Devices", exact: true }),
+			page.getByRole("heading", { name: "Edit schema · Devices", exact: true }),
 		).toBeVisible();
 		await page
 			.getByRole("button", { name: "Open account menu for admin" })
@@ -646,7 +1027,7 @@ test.describe("schema workspace", () => {
 				.getByRole("heading", { name: "Classes", exact: true }),
 		).toHaveCount(0);
 		await expect(
-			page.getByRole("heading", { name: "Schema · Devices", exact: true }),
+			page.getByRole("heading", { name: "Edit schema · Devices", exact: true }),
 		).toBeVisible();
 		await expect
 			.poll(() =>
@@ -661,6 +1042,11 @@ test.describe("schema workspace", () => {
 			["serious", "critical"].includes(item.impact ?? ""),
 		);
 		expect(violations).toEqual([]);
+		await page.evaluate(() => {
+			window.scrollTo({ top: 0, behavior: "instant" });
+			if (document.activeElement instanceof HTMLElement)
+				document.activeElement.blur();
+		});
 		await page.screenshot({
 			path: testInfo.outputPath("schema-impact-mobile.png"),
 			fullPage: true,
@@ -678,6 +1064,11 @@ test.describe("schema workspace", () => {
 			["serious", "critical"].includes(item.impact ?? ""),
 		);
 		expect(darkViolations).toEqual([]);
+		await page.evaluate(() => {
+			window.scrollTo({ top: 0, behavior: "instant" });
+			if (document.activeElement instanceof HTMLElement)
+				document.activeElement.blur();
+		});
 		await page.screenshot({
 			path: testInfo.outputPath("schema-impact-mobile-dark.png"),
 			fullPage: true,
@@ -694,6 +1085,7 @@ test.describe("schema workspace", () => {
 		const diagnostics = page.getByRole("region", {
 			name: "Object diagnostics",
 		});
+		await diagnostics.getByLabel("View findings").selectOption("objects");
 		await diagnostics
 			.getByText("Object #100 · 4 recorded issues", { exact: true })
 			.click();
@@ -740,6 +1132,11 @@ test.describe("schema workspace", () => {
 				["serious", "critical"].includes(item.impact ?? ""),
 			),
 		).toEqual([]);
+		await page.evaluate(() => {
+			window.scrollTo({ top: 0, behavior: "instant" });
+			if (document.activeElement instanceof HTMLElement)
+				document.activeElement.blur();
+		});
 		await page.screenshot({
 			path: testInfo.outputPath("schema-diagnostics-mobile.png"),
 			fullPage: true,
@@ -756,6 +1153,71 @@ test.describe("schema workspace", () => {
 				.getByText(/This older finding retained only its first failure/)
 				.filter({ visible: true }),
 		).toBeVisible();
+	});
+
+	test("consolidates repeated errors and paginates all affected objects without changing JSON", async ({
+		page,
+	}) => {
+		const work = diagnosticReport();
+		const findings = work.impact?.findings;
+		const snapshot = findings?.[0].snapshot;
+		if (!findings || !snapshot) throw new Error("Diagnostics fixture required");
+		for (const finding of findings)
+			finding.snapshot = {
+				...structuredClone(snapshot),
+				object_revision: finding.object_id,
+			};
+		await mockSchema(page, { work });
+		await mockRepairReports(page);
+		await page.goto("/classes/10/schema?revision=2&task=20&step=impact");
+		const diagnostics = page.getByRole("region", {
+			name: "Object diagnostics",
+		});
+		await expect(diagnostics.getByLabel("View findings")).toHaveValue("errors");
+		await expect(
+			diagnostics.getByText(
+				"4 distinct errors across 12 objects · Errors 1–4",
+				{ exact: true },
+			),
+		).toBeVisible();
+		const error = diagnostics.locator("details").filter({
+			has: page
+				.locator("summary")
+				.filter({ hasText: "Required property hostname is missing." }),
+		});
+		await error.locator("summary").click();
+		await expect(
+			error.getByText("Required property hostname is missing.", {
+				exact: true,
+			}),
+		).toHaveCount(1);
+		await expect(error.getByRole("link", { name: /^Open object/ })).toHaveCount(
+			10,
+		);
+		await expect(
+			error.getByText(
+				/More issues exist than the server retained for this object/,
+			),
+		).toHaveCount(10);
+		await error.getByRole("button", { name: "Next page", exact: true }).click();
+		await expect(
+			error.getByRole("link", { name: "Open object #111", exact: true }),
+		).toHaveAttribute("href", "/objects/10/111");
+		await expect(error.getByText(/Object revision 111/)).toBeVisible();
+		expect(await downloadReport(page)).toEqual(work);
+		await page.setViewportSize({ width: 390, height: 844 });
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => document.documentElement.scrollWidth <= window.innerWidth,
+				),
+			)
+			.toBe(true);
+		expect(
+			(await new AxeBuilder({ page }).analyze()).violations.filter((item) =>
+				["serious", "critical"].includes(item.impact ?? ""),
+			),
+		).toEqual([]);
 	});
 
 	test("generates a chosen HTML layout once and reuses the saved report for viewing and download", async ({
@@ -978,6 +1440,11 @@ test.describe("schema workspace", () => {
 			["serious", "critical"].includes(item.impact ?? ""),
 		);
 		expect(violations).toEqual([]);
+		await page.evaluate(() => {
+			window.scrollTo({ top: 0, behavior: "instant" });
+			if (document.activeElement instanceof HTMLElement)
+				document.activeElement.blur();
+		});
 		await page.screenshot({
 			path: testInfo.outputPath("schema-full-report-mobile.png"),
 			fullPage: true,
@@ -1069,7 +1536,7 @@ test.describe("schema workspace", () => {
 					}),
 				).toHaveCount(0);
 				await expect(
-					page.getByRole("button", { name: "Analysis in progress…" }),
+					page.getByRole("button", { name: "Check in progress…" }),
 				).toBeDisabled();
 				await expect(
 					page.getByText(
@@ -1079,7 +1546,8 @@ test.describe("schema workspace", () => {
 			} else {
 				await expect(
 					page.getByRole("button", {
-						name: state === "missing" ? "Analyze impact" : "Analyze again",
+						name:
+							state === "missing" ? "Check existing objects" : "Check again",
 						exact: true,
 					}),
 				).toBeEnabled();
@@ -1096,14 +1564,14 @@ test.describe("schema workspace", () => {
 		const requests = await mockSchema(page, { analysisError: true });
 		await page.goto("/classes/10/schema?revision=2&step=review");
 		await page
-			.getByRole("button", { name: "Analyze impact", exact: true })
+			.getByRole("button", { name: "Check existing objects", exact: true })
 			.click();
 		await expect(page.getByRole("main").getByRole("alert")).toContainText(
 			"Analysis unavailable",
 		);
 		await expect(page).toHaveURL(/revision=2&step=review/);
 		await expect(
-			page.getByRole("button", { name: "Analyze impact", exact: true }),
+			page.getByRole("button", { name: "Check existing objects", exact: true }),
 		).toBeEnabled();
 		await expect(
 			page.getByRole("tab", { name: /4\. Activate/ }),
@@ -1131,10 +1599,10 @@ test.describe("schema workspace", () => {
 		);
 		await page.goto("/classes/10/schema?revision=2&step=review");
 		await page
-			.getByRole("button", { name: "Analyze impact", exact: true })
+			.getByRole("button", { name: "Check existing objects", exact: true })
 			.click();
 		await expect(
-			page.getByRole("button", { name: "Analysis in progress…" }),
+			page.getByRole("button", { name: "Check in progress…" }),
 		).toBeDisabled();
 		await expect(
 			page.getByRole("tab", { name: /4\. Activate/ }),
@@ -1173,7 +1641,7 @@ test.describe("schema workspace", () => {
 			})
 			.click();
 		await expect(
-			page.getByRole("heading", { name: "Active revision 2", exact: true }),
+			page.getByText("Active revision 2", { exact: true }),
 		).toBeVisible();
 		expect(
 			requests.find((item) => item.path.endsWith("/activate"))?.body,
@@ -1186,7 +1654,7 @@ test.describe("schema workspace", () => {
 		const requests = await mockSchema(page, { incompatible: true });
 		await page.goto("/classes/10/schema?revision=2&task=20&step=impact");
 		await page
-			.getByRole("button", { name: "Analyze again", exact: true })
+			.getByRole("button", { name: "Check again", exact: true })
 			.click();
 		await expect
 			.poll(() => requests.filter((item) => item.path.endsWith("/impact")))
@@ -1198,14 +1666,15 @@ test.describe("schema workspace", () => {
 			.getByRole("button", { name: "Revise proposal", exact: true })
 			.click();
 		await expect(
-			page.getByRole("heading", { name: "Unsaved proposal" }),
+			page.getByRole("heading", { name: "Proposed schema" }),
 		).toBeVisible();
+		await page.getByRole("tab", { name: /2\. Validation/ }).click();
 		await expect(
 			page.getByRole("checkbox", {
 				name: "Enforce validation on object writes",
 			}),
 		).toBeChecked();
-		await expect(page).not.toHaveURL(/task=/);
+		await expect(page).toHaveURL(/task=20/);
 		expect(requests.some((item) => item.path.endsWith("/activate"))).toBe(
 			false,
 		);
@@ -1217,13 +1686,13 @@ test.describe("schema workspace", () => {
 		await mockSchema(page, { incompatible: true });
 		await page.goto("/classes/10/schema?revision=2&task=20&step=activate");
 		await expect(
-			page.getByRole("button", { name: "Activate after compatibility checks" }),
+			page.getByRole("button", {
+				name: "Activate schema & enable enforcement",
+			}),
 		).toBeDisabled();
-		await page
-			.getByRole("button", { name: "Return to impact analysis" })
-			.click();
+		await page.getByRole("button", { name: "Return to review & test" }).click();
 		await expect(
-			page.getByRole("tab", { name: /3\. Analyze impact/ }),
+			page.getByRole("tab", { name: /3\. Review & test/ }),
 		).toHaveAttribute("aria-selected", "true");
 	});
 
@@ -1236,7 +1705,9 @@ test.describe("schema workspace", () => {
 			.getByRole("button", { name: "Continue to review activation" })
 			.click();
 		await expect(
-			page.getByRole("button", { name: "Activate after compatibility checks" }),
+			page.getByRole("button", {
+				name: "Activate schema & enable enforcement",
+			}),
 		).toBeEnabled();
 		expect(requests.some((item) => item.path.endsWith("/impact"))).toBe(false);
 	});
@@ -1247,11 +1718,14 @@ test.describe("schema workspace", () => {
 		const requests = await mockSchema(page, { conflict: true });
 		await page.goto("/classes/10/schema?revision=2&task=20&step=activate");
 		await page
-			.getByRole("button", { name: "Activate after compatibility checks" })
+			.getByRole("button", { name: "Activate schema & enable enforcement" })
 			.click();
 		await page
 			.getByRole("alertdialog")
-			.getByRole("button", { name: "Activate schema", exact: true })
+			.getByRole("button", {
+				name: "Activate schema & enable enforcement",
+				exact: true,
+			})
 			.click();
 		await expect(page.getByRole("main").getByRole("alert")).toContainText(
 			"The proposal is retained",
@@ -1262,16 +1736,67 @@ test.describe("schema workspace", () => {
 		).toHaveLength(1);
 	});
 
+	for (const status of ["retired", "abandoned"] as const) {
+		test(`saves an unchanged ${status} policy as a new proposal without administrator access`, async ({
+			page,
+		}) => {
+			const historical = { ...proposedRevision, status };
+			const requests = await mockSchema(page, {
+				admin: false,
+				active: { ...activeRevision, revision: 3 },
+				proposed: historical,
+				nextStagedRevision: 4,
+			});
+			await page.goto("/classes/10/schema?revision=2&view=revision");
+			await expect(
+				page.getByRole("heading", { name: `Revision 2 · ${status}` }),
+			).toBeVisible();
+			await page
+				.getByRole("button", { name: "Edit as a new proposal" })
+				.click();
+			await page.getByRole("tab", { name: /3\. Review & test/ }).click();
+			await expect(
+				page.getByText("share its revision link", { exact: false }),
+			).toBeVisible();
+			await expect(
+				page.getByRole("button", { name: "Check existing objects" }),
+			).toHaveCount(0);
+			await page
+				.getByRole("button", { name: "Save revision", exact: true })
+				.click();
+			await expect(page).toHaveURL(/revision=4/);
+			await expect(
+				page.getByText("Saved proposal · Revision 4", { exact: true }),
+			).toBeVisible();
+			await expect(
+				page.getByRole("link", { name: "Link to this revision" }),
+			).toHaveAttribute("href", /revision=4/);
+			await expect(
+				page.getByRole("button", { name: "Save revision", exact: true }),
+			).toHaveCount(0);
+			expect(requests.filter((item) => item.method === "POST")).toEqual([
+				{
+					method: "POST",
+					path: "/revisions",
+					body: {
+						json_schema: historical.json_schema,
+						validate_schema: historical.validate_schema,
+					},
+				},
+			]);
+		});
+	}
+
 	test("restricts reports and provides an administrator handoff", async ({
 		page,
 	}) => {
 		const requests = await mockSchema(page, { admin: false });
 		await page.goto("/classes/10/schema?revision=2&task=20&step=impact");
 		await expect(
-			page.getByText("Share the saved revision link", { exact: false }),
+			page.getByText("share its revision link", { exact: false }),
 		).toBeVisible();
 		await expect(
-			page.getByRole("button", { name: "Analyze impact", exact: true }),
+			page.getByRole("button", { name: "Check existing objects", exact: true }),
 		).toHaveCount(0);
 		await expect(
 			page.getByText("Override compatibility checks (administrator)", {
@@ -1288,13 +1813,14 @@ test.describe("schema workspace", () => {
 	}) => {
 		await mockSchema(page);
 		await page.goto("/classes/10/schema?revision=2");
-		await page.getByRole("tab", { name: /1\. Propose/ }).focus();
+		await page.getByRole("tab", { name: /1\. Schema/ }).focus();
 		await page.keyboard.press("ArrowRight");
 		await expect(
-			page.getByRole("tab", { name: /2\. Review changes/ }),
+			page.getByRole("tab", { name: /2\. Validation/ }),
 		).toBeFocused();
+		await page.goto("/classes/10");
 		await page
-			.getByRole("button", { name: "Object compliance", exact: true })
+			.getByRole("link", { name: "Object compliance", exact: true })
 			.click();
 		await page.getByLabel("Compliance status").selectOption("pending");
 		await expect(
@@ -1353,9 +1879,7 @@ test.describe("schema workspace", () => {
 			},
 		);
 		await page.goto("/classes/10");
-		await expect(
-			page.getByRole("link", { name: "Manage schema" }),
-		).toBeVisible();
+		await expect(page.getByRole("link", { name: "Edit schema" })).toBeVisible();
 		await page.getByRole("button", { name: /^Edit class name\./ }).click();
 		await page
 			.getByRole("textbox", { name: "Class name", exact: true })
@@ -1383,7 +1907,7 @@ test.describe("schema workspace", () => {
 				name: "Validate objects against JSON schema",
 			}),
 		).toBeVisible();
-		await expect(page.getByRole("link", { name: "Manage schema" })).toHaveCount(
+		await expect(page.getByRole("link", { name: "Edit schema" })).toHaveCount(
 			0,
 		);
 	});

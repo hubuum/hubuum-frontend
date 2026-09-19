@@ -45,7 +45,7 @@ export function SchemaRevisionHistory({ classId }: { classId: number }) {
 							<tr key={revision.revision}>
 								<td>
 									<Link
-										href={`/classes/${classId}/schema?revision=${revision.revision}`}
+										href={`/classes/${classId}/schema?view=revision&revision=${revision.revision}`}
 									>
 										Revision {revision.revision}
 									</Link>
