@@ -8,6 +8,10 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Upgrade disposable backend and smoke-test PostgreSQL fixtures from 17 to 18
+  with an immutable image pin. Test stacks create fresh databases; no production
+  database migration is part of this change.
+
 - Update Next.js to 16.3.5, TanStack Query to 5.103.1, Zod to 4.6.5,
   CodeMirror, development tooling, and Docker build workflow actions.
 - Update the pinned Orval API generator to 8.34.0 and Node 24 build/CI
