@@ -6,6 +6,13 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Update Next.js to 16.3.5, TanStack Query to 5.103.1, Zod to 4.6.5,
+  CodeMirror, development tooling, and Docker build workflow actions.
+- Update the pinned Orval API generator to 8.34.0 and Node 24 build/CI
+  runtime to 24.21.0 with a verified immutable container digest.
+
 ### Added
 
 - Added a guided Schema workspace for server main: propose immutable revisions,
