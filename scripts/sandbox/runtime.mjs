@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { access, mkdir, open, readFile, realpath, rm } from "node:fs/promises";
+import { access, readFile, realpath, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { delimiter, isAbsolute, join } from "node:path";
 
@@ -13,6 +13,8 @@ import {
 	requireValue,
 	SHA,
 } from "./core.mjs";
+
+export { lock } from "./lock.mjs";
 
 const OWNER = "io.hubuum.sandbox.owner";
 const RUN = "io.hubuum.sandbox.run";
@@ -404,38 +406,6 @@ function envValue(info, key) {
 	)?.slice(key.length + 1);
 	requireValue(value, "Sandbox container configuration is incomplete.");
 	return value;
-}
-
-export async function lock(root, name) {
-	const directory = join(root, ".local", "sandbox-locks");
-	await mkdir(directory, { recursive: true, mode: 0o700 });
-	const path = join(directory, `${name}.lock`);
-	let handle;
-	try {
-		handle = await open(path, "wx", 0o600);
-	} catch (error) {
-		if (error.code !== "EEXIST") throw error;
-		const pid = Number(await readFile(path, "utf8"));
-		requireValue(
-			Number.isSafeInteger(pid) && pid > 0,
-			"Invalid sandbox lock; inspect it before removing it.",
-		);
-		let active = true;
-		try {
-			process.kill(pid, 0);
-		} catch (probe) {
-			if (probe.code === "ESRCH") active = false;
-		}
-		requireValue(
-			!active,
-			"Sandbox is busy. Stop its frontend with Ctrl-C before resume or down.",
-		);
-		await rm(path);
-		handle = await open(path, "wx", 0o600);
-	}
-	await handle.writeFile(String(process.pid));
-	await handle.close();
-	return () => rm(path, { force: true });
 }
 
 export async function checkPort(port, host) {
