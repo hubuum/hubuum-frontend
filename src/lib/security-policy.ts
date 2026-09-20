@@ -2,6 +2,10 @@ export const CSP_NONCE_HEADER = "x-hubuum-nonce";
 export const PRIVATE_CACHE_CONTROL = "private, no-store";
 export const REPORT_SANDBOX_POLICY =
 	"sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+export const SCHEMA_REPORT_SANDBOX_POLICY = REPORT_SANDBOX_POLICY.replace(
+	"sandbox;",
+	"sandbox allow-popups allow-popups-to-escape-sandbox;",
+);
 
 export function buildContentSecurityPolicy(
 	nonce: string,
@@ -22,7 +26,10 @@ export function buildContentSecurityPolicy(
 	].join("; ");
 }
 
-export function protectPrivateResponse(headers: Headers): void {
+export function protectPrivateResponse(
+	headers: Headers,
+	options: { schemaRepairReport?: boolean } = {},
+): void {
 	headers.set("Cache-Control", PRIVATE_CACHE_CONTROL);
 	headers.set("X-Content-Type-Options", "nosniff");
 	const contentType = headers
@@ -36,7 +43,12 @@ export function protectPrivateResponse(headers: Headers): void {
 			contentType,
 		)
 	) {
-		headers.set("Content-Security-Policy", REPORT_SANDBOX_POLICY);
+		headers.set(
+			"Content-Security-Policy",
+			options.schemaRepairReport
+				? SCHEMA_REPORT_SANDBOX_POLICY
+				: REPORT_SANDBOX_POLICY,
+		);
 		headers.set("Referrer-Policy", "no-referrer");
 	}
 }

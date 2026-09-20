@@ -13,6 +13,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { ClassSchemaStatus } from "@/components/class-schema-status";
 import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { ComputedFieldsPanel } from "@/components/computed-fields-panel";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
@@ -34,10 +35,7 @@ import {
 	fetchClassesByIds,
 	fetchCollectionDirectory,
 } from "@/lib/api/resource-directory";
-import {
-	fetchActiveSchema,
-	supportsSchemaRevisions,
-} from "@/lib/api/schema-evolution";
+import { supportsSchemaRevisions } from "@/lib/api/schema-evolution";
 import { presentClassRelation } from "@/lib/class-relation-presentation";
 import { useConfirm } from "@/lib/confirm-context";
 import {
@@ -135,11 +133,6 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 		retry: false,
 	});
 	const legacySchemaEditing = schemaSupportQuery.data === false;
-	const activeSchemaQuery = useQuery({
-		queryKey: ["schema", classId, "active"],
-		queryFn: ({ signal }) => fetchActiveSchema(classId, signal),
-		enabled: schemaSupportQuery.data === true,
-	});
 	const collectionDirectory = useDirectorySearch({
 		queryKey: ["class-detail-collection-directory", classId],
 		queryFn: fetchCollectionDirectory,
@@ -861,28 +854,19 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 								</section>
 							</div>
 						) : (
-							<section
-								className="stack class-detail-schema-panel"
-								aria-label="Class schema"
-							>
-								<h2>
-									Schema
-									{activeSchemaQuery.data
-										? ` · Active revision ${activeSchemaQuery.data.revision}`
-										: ""}
-								</h2>
-								<p>
-									Validation{" "}
-									{classData.validate_schema ? "enforced" : "not enforced"}.
-									Propose, analyze, and activate schema changes in the schema
-									workspace.
-								</p>
-								<Link className="link-chip" href={`/classes/${classId}/schema`}>
-									Manage schema
-								</Link>
+							<>
+								{schemaSupportQuery.data === true ? (
+									<ClassSchemaStatus classId={classId} />
+								) : null}
+								{schemaSupportQuery.isPending ? (
+									<p role="status">Loading schema capabilities…</p>
+								) : null}
 								{schemaSupportQuery.isError ? (
-									<p role="alert">
-										Could not check schema capabilities.{" "}
+									<div className="stack">
+										<p role="alert">
+											Could not check schema capabilities.{" "}
+											{schemaSupportQuery.error.message}
+										</p>
 										<button
 											type="button"
 											className="ghost"
@@ -890,9 +874,9 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 										>
 											Retry schema check
 										</button>
-									</p>
+									</div>
 								) : null}
-							</section>
+							</>
 						)}
 
 						{formError ? <div className="error-banner">{formError}</div> : null}

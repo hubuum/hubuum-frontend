@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.14
+ * OpenAPI spec version: 0.0.15
  */
 import type { SchemaImpactReadiness } from './schemaImpactReadiness';
 import type { SchemaImpactResponse } from './schemaImpactResponse';
@@ -35,6 +35,7 @@ export interface SchemaWorkResponse {
   impact?: null | SchemaImpactResponse;
   /** @minimum 0 */
   invalid: number;
+  /** Up to 20 summary IDs; impact.failures contains all committed mismatches. */
   invalid_samples: number[];
   kind: SchemaWorkKind;
   /** @minimum 0 */

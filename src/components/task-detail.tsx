@@ -1,14 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect } from "react";
 import { TableExportMenu } from "@/components/table-export-menu";
+import { TaskCancellation } from "@/components/task-cancellation";
 import { getApiV1IamUsersByUserId } from "@/lib/api/generated/client";
-import {
-	formatEventActor,
-	formatEventInitiator,
-} from "@/lib/event-provenance";
+import { formatEventActor, formatEventInitiator } from "@/lib/event-provenance";
 import { getExportResultHref } from "@/lib/export-workspace";
 import {
 	fetchImportProjection,
@@ -16,6 +14,7 @@ import {
 	fetchTask,
 	fetchTaskEvents,
 	formatTaskElapsedTime,
+	getImportUnattemptedCount,
 	getTaskStatusTone,
 	isTerminalTaskStatus,
 	type TaskRecord,
@@ -80,6 +79,7 @@ function getTaskHeading(task: TaskRecord | null, taskId: number): string {
 }
 
 export function TaskDetail({ taskId }: TaskDetailProps) {
+	const queryClient = useQueryClient();
 	const taskQuery = useQuery({
 		queryKey: ["task", taskId],
 		queryFn: () => fetchTask(taskId),
@@ -120,6 +120,15 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 		enabled: submittedByUserId != null,
 	});
 
+	const status = taskQuery.data?.status;
+	useEffect(() => {
+		if (!isTerminalTaskStatus(status)) return;
+		// Polling stops at completion; fetch the final receipts and cleanup event once.
+		for (const key of ["task-events", "import-results", "import-task"]) {
+			void queryClient.invalidateQueries({ queryKey: [key, taskId] });
+		}
+	}, [queryClient, status, taskId]);
+
 	useEffect(() => {
 		const task = taskQuery.data;
 		if (!task) {
@@ -148,7 +157,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 		);
 	}
 
-	const activeTask = importProjectionQuery.data ?? taskQuery.data ?? null;
+	const activeTask = taskQuery.data ?? null;
 	const taskTone = getTaskStatusTone(activeTask?.status);
 	const isImportTask = activeTask?.kind === "import";
 	const exportDetails = activeTask?.details?.export ?? null;
@@ -237,6 +246,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 				key: "outcome",
 				label: "Outcome",
 				getValue: (result: (typeof importResults)[number]) => result.outcome,
+			},
+			{
+				key: "unattempted",
+				label: "Unattempted items",
+				getValue: (result: (typeof importResults)[number]) =>
+					getImportUnattemptedCount(result),
 			},
 			{
 				key: "error",
@@ -329,6 +344,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 						<span>Failed</span>
 						<strong>{activeTask.progress.failed_items}</strong>
 					</div>
+					{isTerminalTaskStatus(activeTask.status) ? (
+						<div className="summary-pill">
+							<span>Unattempted</span>
+							<strong>{activeTask.unattempted_items ?? "n/a"}</strong>
+						</div>
+					) : null}
 				</div>
 
 				<div className="task-details-grid">
@@ -348,6 +369,60 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 						<strong>Submitted by</strong>
 						<p className="muted">{submittedByLabel}</p>
 					</div>
+					<div>
+						<strong>Execution deadline</strong>
+						<p className="muted">
+							{formatTimestamp(activeTask.execution_deadline_at)}
+						</p>
+					</div>
+					{activeTask.terminal_reason ? (
+						<div>
+							<strong>Completion reason</strong>
+							<p className="muted">
+								{activeTask.terminal_reason === "deadline_exceeded"
+									? "Execution deadline exceeded"
+									: activeTask.terminal_reason === "cancel_requested"
+										? "Cancellation requested"
+										: activeTask.terminal_reason}
+							</p>
+						</div>
+					) : null}
+					{activeTask.cancel_requested_at ? (
+						<>
+							<div>
+								<strong>Cancellation requested</strong>
+								<p className="muted">
+									{formatTimestamp(activeTask.cancel_requested_at)}
+								</p>
+							</div>
+							<div>
+								<strong>Requested by</strong>
+								<p className="muted">
+									{activeTask.cancel_requested_by == null
+										? "Unavailable"
+										: `Principal #${activeTask.cancel_requested_by}`}
+								</p>
+							</div>
+							<div>
+								<strong>Cancellation reason</strong>
+								<p className="muted">
+									{activeTask.cancel_reason ?? "No reason supplied"}
+								</p>
+							</div>
+						</>
+					) : null}
+					{activeTask.kind === "remote_call" ? (
+						<div>
+							<strong>Remote dispatch</strong>
+							<p className="muted">
+								{activeTask.remote_side_effect_state === "not_sent"
+									? "Not sent"
+									: activeTask.remote_side_effect_state === "possibly_sent"
+										? "Possibly sent; external effects may have occurred"
+										: "Unknown; no retained dispatch evidence"}
+							</p>
+						</div>
+					) : null}
 					<div>
 						<strong>Request redacted</strong>
 						<p className="muted">
@@ -403,6 +478,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 				{activeTask.summary ? (
 					<div className="info-banner">{activeTask.summary}</div>
 				) : null}
+				<TaskCancellation key={activeTask.id} task={activeTask} />
 				{importProjectionQuery.isError ? (
 					<div className="error-banner">
 						Failed to load import-specific task details.{" "}
@@ -512,6 +588,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 										<th>Entity</th>
 										<th>Action</th>
 										<th>Outcome</th>
+										<th>Unattempted items</th>
 										<th>Error</th>
 									</tr>
 								</thead>
@@ -522,6 +599,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 											<td>{result.entity_kind}</td>
 											<td>{result.action}</td>
 											<td>{result.outcome}</td>
+											<td>{getImportUnattemptedCount(result) ?? "—"}</td>
 											<td>{result.error ?? "n/a"}</td>
 										</tr>
 									))}

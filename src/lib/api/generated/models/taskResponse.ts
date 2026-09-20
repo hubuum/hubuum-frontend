@@ -3,23 +3,33 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.14
+ * OpenAPI spec version: 0.0.15
  */
 import type { TaskDetails } from './taskDetails';
 import type { TaskKind } from './taskKind';
 import type { TaskLinks } from './taskLinks';
 import type { TaskProgress } from './taskProgress';
+import type { TaskRemoteSideEffectState } from './taskRemoteSideEffectState';
 import type { TaskStatus } from './taskStatus';
 
 export interface TaskResponse {
+  /** @nullable */
+  cancel_reason?: string | null;
+  /** @nullable */
+  cancel_requested_at?: string | null;
+  /** @nullable */
+  cancel_requested_by?: number | null;
   created_at: string;
   details?: null | TaskDetails;
+  /** @nullable */
+  execution_deadline_at?: string | null;
   /** @nullable */
   finished_at?: string | null;
   id: number;
   kind: TaskKind;
   links: TaskLinks;
   progress: TaskProgress;
+  remote_side_effect_state?: null | TaskRemoteSideEffectState;
   /** @nullable */
   request_redacted_at?: string | null;
   /** @nullable */
@@ -29,4 +39,8 @@ export interface TaskResponse {
   submitted_by?: number | null;
   /** @nullable */
   summary?: string | null;
+  /** @nullable */
+  terminal_reason?: string | null;
+  /** Items without a committed result; authoritative for a terminal task. */
+  unattempted_items: number;
 }

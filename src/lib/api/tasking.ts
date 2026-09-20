@@ -1,16 +1,19 @@
 import { collectAllCursorPages } from "@/lib/api/cursor-pages";
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
+import { hubuumBffPath } from "@/lib/api/frontend";
 import {
 	getApiV1ImportsByTaskId,
 	getApiV1ImportsByTaskIdResults,
 	getApiV1TasksByTaskId,
 	getApiV1TasksByTaskIdEvents,
 	postApiV1Imports,
+	postApiV1TasksByTaskIdCancel,
 } from "@/lib/api/generated/client";
 import type {
 	ImportRequest,
 	ImportTaskResultResponse,
 	TaskEventResponse,
+	TaskCancelRequest,
 	TaskKind,
 	TaskResponse,
 	TaskStatus,
@@ -148,11 +151,7 @@ export function formatTaskElapsedTime(
 			: now;
 	const runtime = finishedAt - startedAt;
 
-	if (
-		Number.isNaN(startedAt) ||
-		Number.isNaN(finishedAt) ||
-		runtime < 0
-	) {
+	if (Number.isNaN(startedAt) || Number.isNaN(finishedAt) || runtime < 0) {
 		return "n/a";
 	}
 
@@ -252,7 +251,7 @@ export async function fetchTasks(
 	}
 
 	const response = await fetch(
-		`/_hubuum-bff/hubuum/api/v1/tasks?${searchParams.toString()}`,
+		hubuumBffPath(`/api/v1/tasks?${searchParams.toString()}`),
 		{
 			credentials: "include",
 		},
@@ -306,6 +305,50 @@ export async function fetchTask(taskId: number): Promise<TaskResponse> {
 	}
 
 	return response.data;
+}
+
+export function taskCancelReasonError(reason: string): string | null {
+	if (!reason) return null;
+	if (!reason.trim() || /\p{Cc}/u.test(reason)) {
+		return "Enter a nonempty, single-line reason or leave it blank.";
+	}
+	if (new TextEncoder().encode(reason).length > 512) {
+		return "The reason must be at most 512 UTF-8 bytes.";
+	}
+	return null;
+}
+
+export async function cancelTask(
+	taskId: number,
+	request: TaskCancelRequest = {},
+): Promise<TaskResponse> {
+	const invalidReason = taskCancelReasonError(request.reason ?? "");
+	if (invalidReason) throw new Error(invalidReason);
+	const response = await postApiV1TasksByTaskIdCancel(taskId, request, {
+		credentials: "include",
+	});
+	if (response.status !== 200 && response.status !== 202) {
+		throw new Error(
+			getApiErrorMessage(response.data, "Failed to request task cancellation."),
+		);
+	}
+	return response.data;
+}
+
+export function getImportUnattemptedCount(
+	result: Pick<ImportTaskResultResponse, "outcome" | "details">,
+): number | null {
+	if (
+		result.outcome !== "unattempted" ||
+		!result.details ||
+		typeof result.details !== "object" ||
+		!("count" in result.details)
+	)
+		return null;
+	const count = result.details.count;
+	return typeof count === "number" && Number.isSafeInteger(count) && count >= 0
+		? count
+		: null;
 }
 
 export async function fetchTaskEvents(

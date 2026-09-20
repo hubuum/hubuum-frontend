@@ -72,6 +72,40 @@ describe("generic BFF proxy admin gate", () => {
 	});
 
 	it.each([
+		"api/v1/classes/10/schema/tasks/20/report",
+		"api/v1/classes/10/schema/tasks/20/report?download=true",
+	])(
+		"preserves schema report bytes and working object links for %s",
+		async (path) => {
+			const html =
+				'<a href="https://console.example/objects/10/100" target="_blank" rel="noopener noreferrer">Object #100</a>';
+			mocks.fetch.mockResolvedValue(
+				new Response(html, {
+					headers: {
+						"Content-Type": "text/html",
+						"Content-Disposition": 'attachment; filename="repair.html"',
+					},
+				}),
+			);
+			const response = await GET(
+				request(path),
+				routeContext(path.split("?")[0].split("/")),
+			);
+			expect(await response.text()).toBe(html);
+			expect(response.headers.get("content-security-policy")).toContain(
+				"sandbox allow-popups allow-popups-to-escape-sandbox;",
+			);
+			expect(response.headers.get("content-security-policy")).not.toMatch(
+				/allow-scripts|allow-same-origin/,
+			);
+			expect(response.headers.get("content-disposition")).toContain(
+				"repair.html",
+			);
+			expect(response.headers.get("cache-control")).toBe("private, no-store");
+		},
+	);
+
+	it.each([
 		"text/html; charset=utf-8",
 		"application/xhtml+xml",
 		"image/svg+xml",

@@ -40,4 +40,5 @@ jobs:
         env:
           HUBUUM_LIVE_BACKEND_IMAGE: ${{ inputs.server_image || 'ghcr.io/hubuum/hubuum-server:main' }}
           HUBUUM_LIVE_REQUIRE_SCHEMA: "1"
+          HUBUUM_LIVE_REQUIRE_SCHEMA_REPORTS: "1"
         run: npm run test:live-backend

@@ -1,10 +1,75 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
+import { SchemaObjectDiagnostics } from "@/components/schema-object-diagnostics";
+import { SchemaRepairReportActions } from "@/components/schema-repair-report-actions";
+import { TablePagination } from "@/components/table-pagination";
 import type {
+	SchemaFailureGroup,
 	SchemaImpactCounts,
 	SchemaWorkResponse,
 } from "@/lib/api/generated/models";
+import { downloadBlob } from "@/lib/download-file";
+import { schemaFailureCoverage } from "@/lib/schema-report";
+
+const failurePageSize = 10;
+const objectPageSize = 10;
+
+function FailureObjects({
+	group,
+	classId,
+	groupNumber,
+}: {
+	group: SchemaFailureGroup;
+	classId: number;
+	groupNumber: number;
+}) {
+	const [requestedPage, setPage] = useState(0);
+	const page = Math.min(
+		requestedPage,
+		Math.max(0, Math.ceil(group.samples.length / objectPageSize) - 1),
+	);
+	const start = page * objectPageSize;
+	const ids = group.samples.slice(start, start + objectPageSize);
+	return (
+		<section
+			className="stack"
+			aria-label={`Object IDs for failure group ${groupNumber}`}
+		>
+			{ids.length > 0 ? (
+				<>
+					<p className="muted">
+						IDs {start + 1}–{start + ids.length} of {group.samples.length}{" "}
+						available
+					</p>
+					<div className="action-row">
+						{ids.map((id) => (
+							<Link
+								key={id}
+								href={`/objects/${classId}/${id}`}
+								prefetch={false}
+							>
+								Object #{id}
+							</Link>
+						))}
+					</div>
+				</>
+			) : (
+				<p className="muted">No object IDs retained.</p>
+			)}
+			<TablePagination
+				hasNextPage={start + ids.length < group.samples.length}
+				hasPrevPage={page > 0}
+				onNextPage={() => setPage(page + 1)}
+				onPrevPage={() => setPage(page - 1)}
+				onFirstPage={() => setPage(0)}
+				currentCount={ids.length}
+				totalCount={group.samples.length}
+			/>
+		</section>
+	);
+}
 
 const impactLabels: Record<keyof SchemaImpactCounts, string> = {
 	newly_invalid: "Would become invalid",
@@ -19,6 +84,28 @@ const impactLabels: Record<keyof SchemaImpactCounts, string> = {
 
 export function SchemaWorkReport({ work }: { work: SchemaWorkResponse }) {
 	const impact = work.impact;
+	const coverage = useMemo(
+		() => (impact ? schemaFailureCoverage(impact) : null),
+		[impact],
+	);
+	const [requestedPage, setPage] = useState(0);
+	const groupCount = impact?.failures.length ?? 0;
+	const page = Math.min(
+		requestedPage,
+		Math.max(0, Math.ceil(groupCount / failurePageSize) - 1),
+	);
+	const start = page * failurePageSize;
+	const groups = impact?.failures.slice(start, start + failurePageSize) ?? [];
+
+	function downloadReport() {
+		downloadBlob(
+			new Blob([`${JSON.stringify(work, null, 2)}\n`], {
+				type: "application/json;charset=utf-8",
+			}),
+			`schema-impact-class-${work.target.class_id}-revision-${work.target.revision}-task-${work.task_id}-${work.status}.json`,
+		);
+	}
+
 	return (
 		<article className="card stack" aria-label="Schema work report">
 			<div className="panel-header">
@@ -33,6 +120,25 @@ export function SchemaWorkReport({ work }: { work: SchemaWorkResponse }) {
 				{(work.elapsed_millis / 1000).toFixed(1)} seconds of processing
 			</p>
 			<Link href={`/tasks/${work.task_id}`}>Task #{work.task_id}</Link>
+			{work.kind === "impact" ? (
+				<div className="stack">
+					<button type="button" className="link-chip" onClick={downloadReport}>
+						{work.status === "complete"
+							? "Download report (JSON)"
+							: "Download partial report (JSON)"}
+					</button>
+					<p className="muted">
+						Includes all available report data and object IDs across every page.
+						Unfinished runs contain only findings saved so far.
+					</p>
+					{impact?.findings !== undefined ? (
+						<SchemaRepairReportActions
+							classId={work.target.class_id}
+							taskId={work.task_id}
+						/>
+					) : null}
+				</div>
+			) : null}
 			{work.status === "failed" ||
 			work.status === "cancelled" ||
 			work.status === "superseded" ? (
@@ -43,11 +149,13 @@ export function SchemaWorkReport({ work }: { work: SchemaWorkResponse }) {
 			) : null}
 			{work.kind === "impact" ? (
 				<p className="info-banner">
-					{work.readiness === "compatible"
-						? "Compatible with the current object population. Activation checks this again."
-						: work.readiness === "incompatible"
-							? "Incompatible: objects fail the proposed schema."
-							: "Inconclusive: analysis is unfinished, could not inspect every object, or the schema or population changed."}
+					{work.status === "running"
+						? "Checking existing objects. Wait for the analysis to finish before reviewing activation."
+						: work.readiness === "compatible"
+							? "Compatible with the current object population. Activation checks this again."
+							: work.readiness === "incompatible"
+								? "Incompatible: objects fail the proposed schema."
+								: "Inconclusive: analysis is unfinished, could not inspect every object, or the schema or population changed."}
 				</p>
 			) : null}
 			{impact ? (
@@ -64,13 +172,29 @@ export function SchemaWorkReport({ work }: { work: SchemaWorkResponse }) {
 							</div>
 						))}
 					</dl>
-					{impact.failures.length > 0 ? (
-						<>
-							<h4>First reported failures</h4>
+					{coverage && coverage.omitted > 0 ? (
+						<p className="info-banner">
+							This older report omitted {coverage.omitted} object IDs from its
+							failure details. The download includes only retained IDs. Analyze
+							again on an updated server for complete lists.
+						</p>
+					) : null}
+					{impact.findings ? (
+						<SchemaObjectDiagnostics
+							classId={work.target.class_id}
+							findings={impact.findings}
+						/>
+					) : null}
+					{groupCount > 0 ? (
+						<section className="stack" aria-label="Failure details">
+							<h4>Failures by constraint</h4>
 							<p className="muted">
-								Up to 20 groups and five example IDs per group. Each object
-								contributes its first failure; fixing it may reveal further
-								issues.
+								{coverage?.available} object IDs available in {groupCount}{" "}
+								failure groups. Each object contributes its first failure;
+								fixing it may reveal further issues.
+							</p>
+							<p className="muted">
+								Groups {start + 1}–{start + groups.length} of {groupCount}
 							</p>
 							<div className="table-wrap">
 								<table>
@@ -78,11 +202,11 @@ export function SchemaWorkReport({ work }: { work: SchemaWorkResponse }) {
 										<tr>
 											<th>Constraint</th>
 											<th>Objects</th>
-											<th>Examples</th>
+											<th>Object IDs</th>
 										</tr>
 									</thead>
 									<tbody>
-										{impact.failures.map((group) => (
+										{groups.map((group, index) => (
 											<tr key={JSON.stringify(group.reason)}>
 												<td>
 													{group.reason.missing_property != null
@@ -96,29 +220,29 @@ export function SchemaWorkReport({ work }: { work: SchemaWorkResponse }) {
 												</td>
 												<td>{group.objects}</td>
 												<td>
-													<div className="action-row">
-														{group.samples.map((id) => (
-															<Link
-																key={id}
-																href={`/objects/${work.target.class_id}/${id}`}
-															>
-																Object #{id}
-															</Link>
-														))}
-													</div>
+													<FailureObjects
+														group={group}
+														classId={work.target.class_id}
+														groupNumber={start + index + 1}
+													/>
 												</td>
 											</tr>
 										))}
 									</tbody>
 								</table>
 							</div>
-						</>
-					) : null}
-					{impact.ungrouped_failures > 0 ? (
-						<p>
-							{impact.ungrouped_failures} additional failures did not fit the
-							report’s group limit.
-						</p>
+							<nav aria-label="Failure group pages">
+								<TablePagination
+									hasNextPage={start + groups.length < groupCount}
+									hasPrevPage={page > 0}
+									onNextPage={() => setPage(page + 1)}
+									onPrevPage={() => setPage(page - 1)}
+									onFirstPage={() => setPage(0)}
+									currentCount={groups.length}
+									totalCount={groupCount}
+								/>
+							</nav>
+						</section>
 					) : null}
 				</>
 			) : (

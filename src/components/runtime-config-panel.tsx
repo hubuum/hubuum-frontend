@@ -119,6 +119,25 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 					]}
 				/>
 			) : null}
+			<RuntimeStatCard
+				title="Task execution limits"
+				rows={(
+					[
+						["Import", tasks.import_execution_timeout_seconds],
+						["Export", tasks.export_execution_timeout_seconds],
+						["Backup", tasks.backup_execution_timeout_seconds],
+						["Reindex", tasks.reindex_execution_timeout_seconds],
+						["Remote call", tasks.remote_call_execution_timeout_seconds],
+						[
+							"Schema validation",
+							tasks.schema_validation_execution_timeout_seconds,
+						],
+					] as const
+				).map(([label, value]) => ({
+					label,
+					value: typeof value === "number" ? formatSeconds(value) : "n/a",
+				}))}
+			/>
 			<div className="runtime-config-row runtime-config-row--three">
 				<RuntimeStatCard
 					title="Server & network"

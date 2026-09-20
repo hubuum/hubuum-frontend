@@ -16,17 +16,10 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
 
 env:
-  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.14@sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594
+  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.15@sha256:36af667dbc9e221a40448496d4a87e168c999d0834df4b69177345ff3d36e821
   IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
-  backend-schema-preview:
-    name: backend-schema-preview
-    uses: ./.github/workflows/backend-main-compat.yml
-    with:
-      # Server main 5baa9008, including schema evolution and backup capture budgets.
-      server_image: ghcr.io/hubuum/hubuum-server@sha256:54b96bbd12b8aa476c0ea3e922940c58793bda5b67678edacff01852e2f91b6d
-
   validate:
     name: validate
     runs-on: ubuntu-latest
@@ -55,6 +48,8 @@ jobs:
         run: npm run test:dev-deps
       - name: Test server command-line options
         run: npm run test:server-options
+      - name: Test local sandbox tooling
+        run: npm run test:sandbox
       - name: Build
         run: npm run build
       - name: Enforce frontend performance budgets
@@ -78,7 +73,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Test against Hubuum Server v0.0.14
+      - name: Test against Hubuum Server v0.0.15
         env:
           HUBUUM_LIVE_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: npm run test:live-backend
@@ -213,7 +208,7 @@ jobs:
           HUBUUM_FRONTEND_IMAGE: hubuum-frontend:ci
           HUBUUM_FRONTEND_PORT: 13001
         run: bash scripts/quickstart-smoke.sh
-      - name: Smoke test frontend BFF against Hubuum Server v0.0.14
+      - name: Smoke test frontend BFF against Hubuum Server v0.0.15
         env:
           HUBUUM_COMPAT_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: bash scripts/release-stack-smoke.sh
@@ -244,7 +239,6 @@ jobs:
     needs:
       - validate
       - backend-contract
-      - backend-schema-preview
       - browser-quality
       - visual-regression
       - authenticated-browser-smoke

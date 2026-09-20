@@ -19,6 +19,7 @@ describe("topbar visibility", () => {
 		"/statistics",
 		"/objects/10/31",
 		"/classes/10",
+		"/classes/10/schema",
 		"/collections/20",
 	])("removes the redundant heading from %s", (pathname) => {
 		expect(usesCompactTopbar(pathname)).toBe(true);
