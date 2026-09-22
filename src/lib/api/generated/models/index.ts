@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.15
+ * OpenAPI spec version: 0.0.16
  */
 
 export * from './addOperation';
@@ -54,6 +54,11 @@ export * from './computedScopeResponseErrors';
 export * from './computedScopeResponseValues';
 export * from './copyOperation';
 export * from './countsResponse';
+export * from './credentialApprovalRecord';
+export * from './credentialApprovalRequest';
+export * from './credentialApprovalResponse';
+export * from './credentialApprovalSecret';
+export * from './credentialOperation';
 export * from './currentTokenMetadata';
 export * from './databaseConfig';
 export * from './dbStateResponse';
@@ -281,12 +286,14 @@ export * from './probeResponse';
 export * from './provenance';
 export * from './provenanceActor';
 export * from './provenancePrincipal';
+export * from './rebuildTaskDetails';
 export * from './relatedClassGraph';
 export * from './relatedObjectGraph';
 export * from './releaseRateLimitResponse';
 export * from './remoteAuthConfig';
 export * from './remoteCallConfig';
 export * from './remoteCallResult';
+export * from './remoteCallTaskDetails';
 export * from './remoteHttpMethod';
 export * from './remoteInvocationBodyOverride';
 export * from './remoteInvocationParameters';
@@ -302,10 +309,14 @@ export * from './replaceOperation';
 export * from './resourceRevision';
 export * from './restoreConfig';
 export * from './restoreConfirmRequest';
+export * from './restoreJobID';
 export * from './restoreJobStatus';
 export * from './restoreStageResponse';
 export * from './restoreTimestamps';
 export * from './restoreValidationSummary';
+export * from './retainedBackupDetails';
+export * from './retainedExportDetails';
+export * from './retainedImportDetails';
 export * from './runningConfig';
 export * from './schemaActivationPolicy';
 export * from './schemaActivationRequest';
@@ -331,6 +342,7 @@ export * from './schemaRevision';
 export * from './schemaRevisionResponse';
 export * from './schemaRevisionStatus';
 export * from './schemaStageRequest';
+export * from './schemaTaskDetails';
 export * from './schemaValidationConfig';
 export * from './schemaWorkKind';
 export * from './schemaWorkResponse';
@@ -362,10 +374,12 @@ export * from './structuredSearchTarget';
 export * from './taskCancelRequest';
 export * from './taskConfig';
 export * from './taskDetails';
+export * from './taskDiscoveryTarget';
 export * from './taskEventResponse';
 export * from './taskID';
 export * from './taskKind';
 export * from './taskLinks';
+export * from './taskOutputDiscoveryState';
 export * from './taskProgress';
 export * from './taskQueueStateResponse';
 export * from './taskRemoteSideEffectState';
@@ -398,5 +412,6 @@ export * from './updateHubuumObjectRequest';
 export * from './updateRemoteTarget';
 export * from './updateServiceAccount';
 export * from './updateUser';
+export * from './userID';
 export * from './userPointResponse';
 export * from './userResponse';

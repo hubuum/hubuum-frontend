@@ -255,6 +255,11 @@ test.describe("authenticated workspace", () => {
 
 	test("account menu mirrors the account section tabs", async ({ page }) => {
 		await page.goto("/account");
+		// The profile query starts after hydration; wait before clicking the
+		// server-rendered menu trigger so its event handler is ready.
+		await expect(
+			page.getByRole("textbox", { name: "Username", exact: true }),
+		).toHaveValue(username ?? "");
 		const expected = [
 			["/account", "Profile", "Identity"],
 			["/account/appearance", "Appearance", "Interface"],

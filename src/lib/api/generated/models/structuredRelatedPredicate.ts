@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.15
+ * OpenAPI spec version: 0.0.16
  */
 import type { StructuredClassSelector } from './structuredClassSelector';
 import type { StructuredSearchFieldPredicate } from './structuredSearchFieldPredicate';

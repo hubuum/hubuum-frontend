@@ -156,7 +156,7 @@ keeps it only in the child-process environment, and removes the containers and
 volumes afterward. Override the pinned compatibility image with
 `HUBUUM_AUTH_E2E_BACKEND_IMAGE` when testing another server build.
 
-The default test target is released Server `v0.0.15`. To focus on schemas and
+The default test target is released Server `v0.0.16`. To focus on schemas and
 task cancellation:
 
 ```sh
@@ -171,6 +171,13 @@ the guided schema flow, conflicts, reports, accessible pagination, cancellation
 acknowledgement, authorization failures, and mobile layout after a real login.
 CI pins the release digest listed in `docs/compatibility.md`. The scheduled
 backend-main workflow continues checking future server builds separately.
+
+`npm run test:e2e:authenticated:full` runs the complete authenticated suite,
+then the live credential approval and restore checks on the same disposable
+stack. Release readiness requires both to pass against Server `v0.0.16`.
+Restore runs last because it replaces the database and invalidates tokens.
+When explicitly testing an older backend image, set
+`HUBUUM_FULL_E2E_CREDENTIAL_APPROVALS=legacy` to verify its original mutation flow.
 
 The broader authenticated dashboard and create-flow checks run when
 `E2E_USERNAME` and `E2E_PASSWORD` are set. Point either Playwright suite at an
@@ -188,7 +195,7 @@ responses without backend credentials.
 disposable backend and an already running frontend. Set `PLAYWRIGHT_BASE_URL`,
 `E2E_USERNAME=admin`, and capture `E2E_PASSWORD` in memory using the disposable
 container's `hubuum-admin --reset-password admin` immediately before each run.
-Set `E2E_CREDENTIAL_APPROVALS=required` for a server with PR #423, or `legacy`
+Set `E2E_CREDENTIAL_APPROVALS=required` for Server `v0.0.16` or newer, or `legacy`
 for a server without it, then run:
 
 ```sh
@@ -215,7 +222,7 @@ VALKEY_URL=redis://127.0.0.1:6380/0
 
 ### Forward server compatibility
 
-The live contract suite defaults to the pinned Server `0.0.15` contract. Set
+The live contract suite defaults to the pinned Server `0.0.16` contract. Set
 `HUBUUM_LIVE_EXPECT_SERVER_VERSION` when verifying a specific release candidate.
 The scheduled backend-main job sets `HUBUUM_LIVE_FORWARD_COMPATIBILITY=1` to
 exercise the complete contract across server version bumps; required release CI

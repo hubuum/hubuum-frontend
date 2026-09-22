@@ -3,22 +3,150 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.15
+ * OpenAPI spec version: 0.0.16
  */
 
 export type GetApiV1TasksParams = {
 /**
- * Optional task kind filter (import|export|backup|reindex|remote_call|schema_validation; schema tasks require administrator access)
+ * Explicit target class
  */
-kind: string;
+class_id?: number;
 /**
- * Optional task status filter
+ * Explicit target object
  */
-status: string;
+object_id?: number;
+/**
+ * Explicit target collection
+ */
+collection_id?: number;
+/**
+ * class_relation or object_relation; requires relation_id
+ */
+relation_type?: string;
+/**
+ * Explicit relation identity; requires relation_type
+ */
+relation_id?: number;
+/**
+ * Target schema revision; requires class_id
+ */
+schema_revision?: number;
+/**
+ * Retained work kind: impact or revalidation
+ */
+schema_work_kind?: string;
+/**
+ * Retained work status: running, failed, complete, cancelled, superseded
+ */
+schema_work_status?: string;
+/**
+ * Target computation revision; requires class_id
+ */
+computation_revision?: number;
+/**
+ * Remote target configuration identity
+ */
+remote_target_id?: number;
+/**
+ * not_sent, possibly_sent or legacy_unknown
+ */
+remote_side_effect_state?: string;
+/**
+ * Captured export scope kind
+ */
+export_scope_kind?: string;
+/**
+ * Resolved export template identity
+ */
+export_template_id?: number;
+/**
+ * Known export warning outcome
+ */
+export_has_warnings?: boolean;
+/**
+ * Known export truncation outcome
+ */
+export_truncated?: boolean;
+/**
+ * Captured import dry run option
+ */
+import_dry_run?: boolean;
+/**
+ * strict or best_effort
+ */
+import_atomicity?: string;
+/**
+ * abort or overwrite
+ */
+import_collision_policy?: string;
+/**
+ * abort or continue
+ */
+import_permission_policy?: string;
+/**
+ * Known terminal import failure count is nonzero
+ */
+import_has_failed_items?: boolean;
+/**
+ * Captured backup history option
+ */
+backup_include_history?: boolean;
+/**
+ * available, expired, not_produced or unknown; exports and backups
+ */
+output_state?: string;
+/**
+ * Comma-separated task kinds (import|export|backup|reindex|remote_call|schema_validation; schema tasks require administrator access)
+ */
+kind?: string;
+/**
+ * Comma-separated task statuses
+ */
+status?: string;
+/**
+ * Restrict to terminal or nonterminal states; must agree with status
+ */
+terminal?: boolean;
+/**
+ * Match durable cancellation intent
+ */
+cancel_requested?: boolean;
+/**
+ * cancel_requested or deadline_exceeded
+ */
+terminal_reason?: string;
+/**
+ * 32 hexadecimal digits identifying the originating trace
+ */
+trace_id?: string;
+/**
+ * RFC 3339 created timestamp; inclusive lower bound
+ */
+created_after?: string;
+/**
+ * RFC 3339 created timestamp; exclusive upper bound
+ */
+created_before?: string;
+/**
+ * RFC 3339 started timestamp; inclusive lower bound
+ */
+started_after?: string;
+/**
+ * RFC 3339 started timestamp; exclusive upper bound
+ */
+started_before?: string;
+/**
+ * RFC 3339 finished timestamp; inclusive lower bound
+ */
+finished_after?: string;
+/**
+ * RFC 3339 finished timestamp; exclusive upper bound
+ */
+finished_before?: string;
 /**
  * Optional submitter user id filter (effective only for admins)
  */
-submitted_by: number;
+submitted_by?: number;
 /**
  * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
  * @minimum 1
@@ -28,11 +156,11 @@ limit?: number;
 /**
  * Comma-separated sort fields. Supported fields: id, kind, status, submitted_by, created_at, started_at, finished_at. Example: kind.asc,id.desc
  */
-sort: string;
+sort?: string;
 /**
  * Cursor token from X-Next-Cursor
  */
-cursor: string;
+cursor?: string;
 /**
  * Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.
  */

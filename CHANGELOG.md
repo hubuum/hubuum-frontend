@@ -6,6 +6,28 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.17] - 2026-09-22
+
+### Compatibility
+
+- Adopt the released Server `v0.0.16` OpenAPI contract and immutable image
+  `sha256:37b3299edd845a0c2aa7772d7d68565233ac8c1802bc44be3fb4bbc6dfa8778e`
+  from commit `8f4194ffe25d172d579b676f109efbdc71d9aab7`. Regenerate the API
+  client for credential approvals, retained task details, and task search.
+- Promote credential approval support from the tested preview to the released
+  server baseline. Existing password confirmation and older-server fallbacks
+  are preserved; approval secrets remain inside the BFF.
+- Before upgrading the server, deploy approval-capable clients, retain a verified
+  `v0.0.15` backup, quiesce protected mutations, drain workers, and apply the task
+  discovery and credential approval migrations. Upgrade all API replicas and
+  workers, administrator tools, template worker, and restore executor together.
+  Backup format remains 6. See `docs/compatibility.md` for rollout requirements.
+
+### Changed
+
+- Run live credential mutation and approved restore browser checks as part of
+  the complete authenticated release suite against the pinned server release.
+
 ## [0.0.16] - 2026-09-22
 
 ### Changed
@@ -636,7 +658,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.16...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.17...HEAD
+[0.0.17]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.16...v0.0.17
 [0.0.16]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.15...v0.0.16
 [0.0.15]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.14...v0.0.15
 [0.0.14]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.13...v0.0.14
