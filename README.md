@@ -568,7 +568,8 @@ updates, logs, and cleanup.
 ## Release artifacts
 
 Current `main` development targets Hubuum Server `v0.0.15`.
-Hubuum Frontend `v0.0.15` is validated against Server `v0.0.14`.
+Hubuum Frontend `v0.0.16` is validated against Server `v0.0.15` and supports
+fresh credential approvals when an upcoming server requires them.
 Run the server's separate migration workload before startup and deploy its
 restore executor before confirming web restores. The console polls queued
 restores through completion; keep the restore page open so its in-memory
@@ -576,8 +577,8 @@ capability remains available after existing sessions become invalid. See the
 [compatibility guide](docs/compatibility.md) for upgrade requirements.
 Releases provide:
 
-- `ghcr.io/hubuum/hubuum-frontend:v0.0.15` for Linux AMD64 and ARM64;
-- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.15`;
+- `ghcr.io/hubuum/hubuum-frontend:v0.0.16` for Linux AMD64 and ARM64;
+- `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.16`;
 - a digest-pinned Compose quickstart archive and SHA-256 checksums; and
 - build provenance and an image SBOM through GHCR attestations.
 
@@ -698,7 +699,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.15 \
+  --version 0.0.16 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -707,7 +708,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.15 \
+  --version 0.0.16 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com
