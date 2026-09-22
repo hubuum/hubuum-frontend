@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.14
+ * OpenAPI spec version: 0.0.15
  */
 import type {
   ApiErrorResponse,
@@ -53,6 +53,7 @@ import type {
   GetApiV1ClassesByClassIdRelatedRelationsParams,
   GetApiV1ClassesByClassIdSchemaObjectsParams,
   GetApiV1ClassesByClassIdSchemaRevisionsParams,
+  GetApiV1ClassesByClassIdSchemaTasksByTaskIdReportParams,
   GetApiV1ClassesByClassIdTrailingParams,
   GetApiV1ClassesByNameByClassNameObjectAggregatesParams,
   GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameParams,
@@ -163,6 +164,7 @@ import type {
   SchemaActivationRequest,
   SchemaActivationResponse,
   SchemaCompliancePage,
+  SchemaRepairReportRequest,
   SchemaRevision,
   SchemaRevisionResponse,
   SchemaStageRequest,
@@ -171,6 +173,7 @@ import type {
   ServiceAccountResponse,
   StructuredSearchRequest,
   StructuredSearchResponse,
+  TaskCancelRequest,
   TaskEventResponse,
   TaskID,
   TaskQueueStateResponse,
@@ -4939,10 +4942,15 @@ export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse409 
   status: 409
 }
 
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
 export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponseSuccess = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse202) & {
   headers: Headers;
 };
-export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponseError = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse400 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse403 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse404 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse409) & {
+export type postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponseError = (postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse400 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse403 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse404 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse409 | postApiV1ClassesByClassIdSchemaRevisionsByRevisionImpactResponse413) & {
   headers: Headers;
 };
 
@@ -5075,10 +5083,15 @@ export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse409 = {
   status: 409
 }
 
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
 export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponseSuccess = (getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse200) & {
   headers: Headers;
 };
-export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponseError = (getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse400 | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse403 | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse404 | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse409) & {
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdResponseError = (getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse400 | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse403 | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse404 | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse409 | getApiV1ClassesByClassIdSchemaTasksByTaskIdResponse413) & {
   headers: Headers;
 };
 
@@ -5143,10 +5156,15 @@ export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse409 = {
   status: 409
 }
 
+export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
 export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponseSuccess = (deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse200) & {
   headers: Headers;
 };
-export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponseError = (deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse400 | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse403 | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse404 | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse409) & {
+export type deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponseError = (deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse400 | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse403 | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse404 | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse409 | deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse413) & {
   headers: Headers;
 };
 
@@ -5182,6 +5200,156 @@ export const deleteApiV1ClassesByClassIdSchemaTasksByTaskId = async (classId: Hu
 
   const data: deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdSchemaTasksByTaskIdResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse200 = {
+  data: string
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponseSuccess = (getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponseError = (getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse403 | getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse = (getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponseSuccess | getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponseError)
+
+export const getGetApiV1ClassesByClassIdSchemaTasksByTaskIdReportUrl = (classId: HubuumClassID,
+    taskId: TaskID,
+    params?: GetApiV1ClassesByClassIdSchemaTasksByTaskIdReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/tasks/${taskId}/report?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/tasks/${taskId}/report`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/schema/tasks/{task_id}/report.
+ * @summary Get Api V1 Classes By Class Id Schema Tasks By Task Id Report
+ */
+export const getApiV1ClassesByClassIdSchemaTasksByTaskIdReport = async (classId: HubuumClassID,
+    taskId: TaskID,
+    params?: GetApiV1ClassesByClassIdSchemaTasksByTaskIdReportParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdSchemaTasksByTaskIdReportUrl(classId,taskId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse200 = {
+  data: string
+  status: 200
+}
+
+export type postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse413 = {
+  data: ApiErrorResponse
+  status: 413
+}
+
+export type postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponseSuccess = (postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse200) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponseError = (postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse400 | postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse403 | postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse404 | postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse413) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse = (postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponseSuccess | postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponseError)
+
+export const getPostApiV1ClassesByClassIdSchemaTasksByTaskIdReportUrl = (classId: HubuumClassID,
+    taskId: TaskID,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/tasks/${taskId}/report`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/schema/tasks/{task_id}/report.
+ * @summary Post Api V1 Classes By Class Id Schema Tasks By Task Id Report
+ */
+export const postApiV1ClassesByClassIdSchemaTasksByTaskIdReport = async (classId: HubuumClassID,
+    taskId: TaskID,
+    schemaRepairReportRequest: SchemaRepairReportRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1ClassesByClassIdSchemaTasksByTaskIdReportUrl(classId,taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schemaRepairReportRequest)
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse
 }
 
 
@@ -14736,6 +14904,97 @@ export const getApiV1TasksByTaskId = async (taskId: number, options?: RequestIni
 
   const data: getApiV1TasksByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1TasksByTaskIdResponse
+}
+
+
+
+export type postApiV1TasksByTaskIdCancelResponse200 = {
+  data: TaskResponse
+  status: 200
+}
+
+export type postApiV1TasksByTaskIdCancelResponse202 = {
+  data: TaskResponse
+  status: 202
+}
+
+export type postApiV1TasksByTaskIdCancelResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1TasksByTaskIdCancelResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1TasksByTaskIdCancelResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1TasksByTaskIdCancelResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1TasksByTaskIdCancelResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1TasksByTaskIdCancelResponseSuccess = (postApiV1TasksByTaskIdCancelResponse200 | postApiV1TasksByTaskIdCancelResponse202) & {
+  headers: Headers;
+};
+export type postApiV1TasksByTaskIdCancelResponseError = (postApiV1TasksByTaskIdCancelResponse400 | postApiV1TasksByTaskIdCancelResponse401 | postApiV1TasksByTaskIdCancelResponse403 | postApiV1TasksByTaskIdCancelResponse404 | postApiV1TasksByTaskIdCancelResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1TasksByTaskIdCancelResponse = (postApiV1TasksByTaskIdCancelResponseSuccess | postApiV1TasksByTaskIdCancelResponseError)
+
+export const getPostApiV1TasksByTaskIdCancelUrl = (taskId: TaskID,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/tasks/${taskId}/cancel`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/tasks/{task_id}/cancel.
+ * @summary Post Api V1 Tasks By Task Id Cancel
+ */
+export const postApiV1TasksByTaskIdCancel = async (taskId: TaskID,
+    taskCancelRequest: TaskCancelRequest, options?: RequestInit): Promise<postApiV1TasksByTaskIdCancelResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1TasksByTaskIdCancelUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(taskCancelRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1TasksByTaskIdCancelResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1TasksByTaskIdCancelResponse
 }
 
 

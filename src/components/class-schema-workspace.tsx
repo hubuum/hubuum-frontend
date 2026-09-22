@@ -17,8 +17,8 @@ import { fetchExpandedClass } from "@/lib/api/classes";
 import type {
 	SchemaActivationPolicy,
 	SchemaRevisionResponse,
+	SchemaWorkResponse,
 } from "@/lib/api/generated/models";
-import { buildObjectDataPatchPlan } from "@/lib/api/object-data-patch";
 import {
 	abandonSchema,
 	activateSchema,
@@ -35,8 +35,14 @@ import { useConfirm } from "@/lib/confirm-context";
 import {
 	parseSchemaDraft,
 	positiveSchemaId,
+	type SchemaFlowStep,
+	sameSchemaPolicy,
 	schemaActivationBlock,
+	schemaActivationLabel,
 	schemaDocument,
+	schemaFlowStep,
+	schemaTestPolicy,
+	summarizeSchemaChanges,
 } from "@/lib/schema-evolution";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
@@ -47,10 +53,34 @@ const JsonEditor = dynamic(
 		loading: () => <p role="status">Loading editor…</p>,
 	},
 );
-
-type Step = "propose" | "review" | "impact" | "activate";
 type Draft = { input: string; enforce: boolean; base: SchemaRevisionResponse };
-const steps: Step[] = ["propose", "review", "impact", "activate"];
+function draftFrom(revision: SchemaRevisionResponse): Draft {
+	return {
+		input: schemaDocument(revision.json_schema),
+		enforce: revision.validate_schema,
+		base: revision,
+	};
+}
+function useSchemaWork(
+	classId: number,
+	taskId: number | null,
+	enabled: boolean,
+) {
+	return useQuery({
+		queryKey: ["schema", classId, "work", taskId],
+		queryFn: ({ signal }) => fetchSchemaWork(classId, taskId as number, signal),
+		enabled: taskId !== null && enabled,
+		retry: false,
+		refetchInterval: (query) =>
+			query.state.status === "error"
+				? false
+				: query.state.data?.status === "running"
+					? 2000
+					: query.state.data?.kind === "impact"
+						? 10000
+						: false,
+	});
+}
 
 export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 	const router = useRouter();
@@ -59,13 +89,11 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 	const confirm = useConfirm();
 	const revisionId = positiveSchemaId(params.get("revision"));
 	const taskId = positiveSchemaId(params.get("task"));
-	const rebuildId = positiveSchemaId(params.get("rebuild"));
-	const requestedStep = params.get("step") as Step;
-	const step = steps.includes(requestedStep) ? requestedStep : "propose";
+	const checkId = positiveSchemaId(params.get("check"));
+	const checkRevision = positiveSchemaId(params.get("check_revision"));
+	const step = schemaFlowStep(params.get("step"));
 	const view = params.get("view") ?? "flow";
-	const [draft, setDraft] = useState<Draft | null>(null);
-	const checkedDraft = useDebouncedValue(draft, 250);
-	const checkingDraft = draft !== checkedDraft;
+	const [editedDraft, setDraft] = useState<Draft | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
 	const [reportInput, setReportInput] = useState("");
@@ -92,29 +120,69 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 		retry: false,
 	});
 	const candidate = revisionId === null ? active : revisionQuery.data;
-	// A successful summary read establishes actual report access, including token scope.
+	const draft = useMemo(
+		() => editedDraft ?? (candidate ? draftFrom(candidate) : null),
+		[editedDraft, candidate],
+	);
+	const checkedDraft = useDebouncedValue(draft, 250);
+	const checkingDraft = draft !== checkedDraft;
+	const proposal = useMemo(() => {
+		try {
+			return {
+				value: checkedDraft
+					? parseSchemaDraft(checkedDraft.input, checkedDraft.enforce)
+					: null,
+				error: null,
+			};
+		} catch (cause) {
+			return {
+				value: null,
+				error: cause instanceof Error ? cause.message : "Invalid schema.",
+			};
+		}
+	}, [checkedDraft]);
+	const dirty = useMemo(() => {
+		if (!editedDraft) return false;
+		try {
+			return !sameSchemaPolicy(
+				parseSchemaDraft(editedDraft.input, editedDraft.enforce),
+				editedDraft.base,
+			);
+		} catch {
+			return true;
+		}
+	}, [editedDraft]);
+	// Successful summary access establishes administrator access, including token scope.
 	const canReadReports = summaryQuery.isSuccess && summaryQuery.data !== null;
-	const workQuery = useQuery({
-		queryKey: ["schema", classId, "work", taskId],
-		queryFn: ({ signal }) => fetchSchemaWork(classId, taskId as number, signal),
-		enabled: taskId !== null && canReadReports,
-		retry: false,
-		// Readiness can become stale even after completion. Poll only the bounded report.
-		refetchInterval: (query) =>
-			query.state.status === "error"
-				? false
-				: query.state.data?.status === "running"
-					? 2000
-					: query.state.data?.kind === "impact"
-						? 10000
-						: false,
-	});
+	const workQuery = useSchemaWork(classId, taskId, canReadReports);
+	const checkQuery = useSchemaWork(classId, checkId, canReadReports);
 	const work = workQuery.data;
 	const matchingWork =
 		work?.target.class_id === classId &&
 		work.target.revision === candidate?.revision
 			? work
 			: undefined;
+	const checkPolicyQuery = useQuery({
+		queryKey: ["schema", classId, "revision", checkRevision],
+		queryFn: ({ signal }) =>
+			fetchSchemaRevision(classId, checkRevision as number, signal),
+		enabled: checkRevision !== null && checkId !== null && canReadReports,
+		retry: false,
+	});
+	const expectedTestPolicy = candidate ? schemaTestPolicy(candidate) : null;
+	const testWork =
+		checkQuery.data?.target.class_id === classId &&
+		checkQuery.data.target.revision === checkRevision &&
+		checkQuery.data.kind === "impact" &&
+		checkPolicyQuery.data &&
+		expectedTestPolicy &&
+		sameSchemaPolicy(checkPolicyQuery.data, expectedTestPolicy)
+			? checkQuery.data
+			: undefined;
+	const needsSeparateTest = !!expectedTestPolicy && view !== "report";
+	const displayedWork = needsSeparateTest ? testWork : matchingWork;
+	const analysisRunning =
+		matchingWork?.status === "running" || testWork?.status === "running";
 
 	function navigate(values: Record<string, string | number | null>) {
 		const next = new URLSearchParams(params);
@@ -124,7 +192,12 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 		}
 		router.replace(`/classes/${classId}/schema?${next}`, { scroll: false });
 	}
-
+	function cacheWork(result: SchemaWorkResponse) {
+		queryClient.setQueryData(
+			["schema", classId, "work", result.task_id],
+			result,
+		);
+	}
 	async function refreshSchema() {
 		await Promise.all([
 			queryClient.invalidateQueries({ queryKey: ["schema", classId] }),
@@ -133,7 +206,6 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 			queryClient.invalidateQueries({ queryKey: ["tasks"] }),
 		]);
 	}
-
 	const workStatus = work?.status;
 	useEffect(() => {
 		if (!workStatus || workStatus === "running") return;
@@ -144,17 +216,15 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 			queryKey: ["schema", classId, "compliance"],
 		});
 	}, [classId, queryClient, workStatus]);
-
 	useEffect(() => {
-		if (!draft) return;
+		if (!dirty) return;
 		const warn = (event: BeforeUnloadEvent) => {
 			event.preventDefault();
 			event.returnValue = "";
 		};
 		window.addEventListener("beforeunload", warn);
 		return () => window.removeEventListener("beforeunload", warn);
-	}, [draft]);
-
+	}, [dirty]);
 	function onError(cause: Error) {
 		setError(
 			cause instanceof SchemaApiError && cause.status === 409
@@ -167,55 +237,87 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 		)
 			void refreshSchema();
 	}
+	async function saveProposal() {
+		if (!draft) throw new Error("Wait for the schema to load.");
+		const policy = parseSchemaDraft(draft.input, draft.enforce);
+		if (
+			candidate &&
+			sameSchemaPolicy(policy, candidate) &&
+			["active", "staged"].includes(candidate.status)
+		)
+			return candidate;
+		const saved = await stageSchema(classId, policy);
+		queryClient.setQueryData(
+			["schema", classId, "revision", saved.revision],
+			saved,
+		);
+		setDraft(null);
+		setNotice(
+			saved.status === "active"
+				? "This policy is already active. No new revision was needed."
+				: `Revision ${saved.revision} is saved. The active schema has not changed.`,
+		);
+		navigate({
+			revision: saved.revision,
+			task: null,
+			check: null,
+			check_revision: null,
+			rebuild: null,
+		});
+		return saved;
+	}
 	const stageMutation = useMutation({
-		mutationFn: async () => {
-			if (!draft) throw new Error("Start a proposal first.");
-			return stageSchema(classId, parseSchemaDraft(draft.input, draft.enforce));
-		},
-		onSuccess: async (revision) => {
-			setDraft(null);
-			setNotice(
-				revision.status === "active"
-					? "This policy is already active. No new revision was needed."
-					: `Revision ${revision.revision} is saved. The active schema has not changed.`,
-			);
+		mutationFn: saveProposal,
+		onSuccess: async (saved) => {
 			navigate({
-				revision: revision.revision,
+				revision: saved.revision,
 				task: null,
-				rebuild: null,
+				check: null,
+				check_revision: null,
 				step: "review",
 			});
 			await refreshSchema();
 		},
 		onError,
 	});
-	const startMutation = useMutation({
-		mutationFn: async (kind: "impact" | "revalidation") => {
-			const target = kind === "impact" ? candidate : active;
-			if (!target) throw new Error("Load a schema revision first.");
-			return startSchemaWork(classId, target.revision, kind);
-		},
-		onSuccess: async (result) => {
-			queryClient.setQueryData(
-				["schema", classId, "work", result.task_id],
-				result,
-			);
-			navigate({
-				revision: result.target.revision,
+	const checkMutation = useMutation({
+		mutationFn: async () => {
+			const saved = await saveProposal();
+			const result = await startSchemaWork(classId, saved.revision, "impact");
+			cacheWork(result);
+			const route = {
+				revision: saved.revision,
 				task: result.task_id,
-				step: result.kind === "impact" ? "impact" : "activate",
-				view: "flow",
-			});
-			await refreshSchema();
+				check: null,
+				check_revision: null,
+			};
+			navigate(route);
+			// An unenforced policy reports "not required". Test an enforced snapshot
+			// separately, while retaining the exact selected policy and its activation proof.
+			const testPolicy = schemaTestPolicy(saved);
+			if (testPolicy) {
+				const snapshot = await stageSchema(classId, testPolicy);
+				const check = await startSchemaWork(
+					classId,
+					snapshot.revision,
+					"impact",
+				);
+				cacheWork(check);
+				navigate({
+					...route,
+					check: check.task_id,
+					check_revision: snapshot.revision,
+				});
+			}
 		},
+		onSuccess: refreshSchema,
 		onError,
 	});
 	const activationMutation = useMutation({
 		mutationFn: async (policy: SchemaActivationPolicy) => {
-			if (!candidate || !active || draft)
+			if (!candidate || !active || dirty || checkingDraft)
 				throw new Error("Save and review a revision first.");
 			if (policy === "reject_incompatible") {
-				// Refresh readiness without silently changing the user's reviewed baseline.
 				const latestWork =
 					matchingWork?.kind === "impact"
 						? await fetchSchemaWork(classId, matchingWork.task_id)
@@ -237,46 +339,52 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 			});
 		},
 		onSuccess: async (result) => {
-			setNotice(
-				`Revision ${result.active.revision} is now active. Existing object data is unchanged.`,
-			);
-			navigate({
-				revision: result.active.revision,
-				task: result.task_id ?? null,
-				rebuild: result.dependent_rebuild_task_id ?? null,
-				step: "activate",
-			});
+			setDraft(null);
 			await refreshSchema();
+			const next = new URLSearchParams();
+			if (result.task_id) next.set("schema_task", String(result.task_id));
+			if (result.dependent_rebuild_task_id)
+				next.set("schema_rebuild", String(result.dependent_rebuild_task_id));
+			router.push(`/classes/${classId}?${next}`);
 		},
 		onError,
 	});
 	const abandonMutation = useMutation({
 		mutationFn: () => abandonSchema(classId, candidate?.revision as number),
 		onSuccess: async () => {
+			setDraft(null);
 			setNotice("The staged revision was abandoned.");
+			navigate({ view: "revision" });
 			await refreshSchema();
 		},
 		onError,
 	});
 	const cancelMutation = useMutation({
-		mutationFn: () =>
-			cancelSchemaWork(classId, matchingWork?.task_id as number),
+		mutationFn: async () => {
+			const running = [matchingWork, testWork].filter(
+				(item) => item?.status === "running",
+			);
+			for (const item of running)
+				if (item) cacheWork(await cancelSchemaWork(classId, item.task_id));
+		},
 		onSuccess: async () => {
 			setNotice("Work cancelled. Completed batches are retained.");
 			await refreshSchema();
 		},
-		onError,
+		onError: (cause) => {
+			onError(cause);
+			void refreshSchema();
+		},
 	});
 	const busy =
 		stageMutation.isPending ||
-		startMutation.isPending ||
+		checkMutation.isPending ||
 		activationMutation.isPending ||
 		abandonMutation.isPending ||
 		cancelMutation.isPending;
-
-	async function discardDraft() {
+	async function leaveEditor() {
 		if (
-			draft &&
+			dirty &&
 			!(await confirm({
 				title: "Discard this unsaved proposal?",
 				description: "The draft has not been saved as a revision.",
@@ -286,72 +394,51 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 		)
 			return;
 		setDraft(null);
-		setError(null);
-		navigate({ step: "propose" });
+		router.push(`/classes/${classId}`);
 	}
 	useEscapeToCancel({
-		enabled: draft !== null && !busy,
+		enabled: dirty && !busy,
 		onCancel: () => {
-			void discardDraft();
+			void leaveEditor();
 		},
 	});
-
 	function beginDraft(source: SchemaRevisionResponse) {
 		setError(null);
 		setNotice(null);
-		setDraft({
-			input: schemaDocument(source.json_schema),
-			enforce: source.validate_schema,
-			base: source,
-		});
-		navigate({ step: "propose", view: "flow", task: null, rebuild: null });
+		setDraft(draftFrom(source));
+		navigate({ step: "schema", view: "flow" });
 	}
-
-	const proposal = useMemo(() => {
-		if (!checkedDraft)
-			return {
-				value: candidate
-					? {
-							json_schema: candidate.json_schema ?? null,
-							validate_schema: candidate.validate_schema,
-						}
-					: null,
-				error: null,
-			};
-		try {
-			return {
-				value: parseSchemaDraft(checkedDraft.input, checkedDraft.enforce),
-				error: null,
-			};
-		} catch (cause) {
-			return {
-				value: null,
-				error: cause instanceof Error ? cause.message : "Invalid schema.",
-			};
-		}
-	}, [candidate, checkedDraft]);
-	const changes = useMemo(
+	const review = useMemo(
 		() =>
 			active && proposal.value
-				? buildObjectDataPatchPlan(
-						{
-							json_schema: active.json_schema ?? null,
-							validate_schema: active.validate_schema,
-						},
-						proposal.value,
-					).changes
-				: [],
+				? summarizeSchemaChanges(active, proposal.value)
+				: null,
 		[active, proposal.value],
 	);
-	const activationBlock = workQuery.isError
-		? "The impact report could not be refreshed. Reload it before activation."
-		: schemaActivationBlock(
-				candidate,
-				active,
-				summaryQuery.isError ? undefined : summaryQuery.data,
-				matchingWork,
-			);
-
+	const activationBlock = dirty
+		? "The proposal has changed. Check it again before activation."
+		: workQuery.isError
+			? "The impact report could not be refreshed. Reload it before activation."
+			: schemaActivationBlock(
+					candidate,
+					active,
+					summaryQuery.isError ? undefined : summaryQuery.data,
+					matchingWork,
+				);
+	const activationDisabled =
+		busy ||
+		checkingDraft ||
+		activationBlock !== null ||
+		activeQuery.isFetching ||
+		summaryQuery.isFetching ||
+		revisionQuery.isFetching ||
+		workQuery.isFetching;
+	const analysisDisabled =
+		busy || checkingDraft || !!proposal.error || !candidate || analysisRunning;
+	const activationLabel = schemaActivationLabel(
+		active,
+		proposal.value ?? undefined,
+	);
 	async function confirmActivation(policy: SchemaActivationPolicy) {
 		setError(null);
 		setNotice(null);
@@ -361,16 +448,222 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 				title: `Activate revision ${candidate?.revision}${pending ? " with pending validation" : ""}?`,
 				description: pending
 					? "This changes the active policy without proving existing objects compatible. Object JSON remains unchanged. Enforced objects become pending while background validation runs; subsequent writes must satisfy the new schema. Disabling enforcement makes validation not required."
-					: "This changes the active policy and starts background revalidation. Existing object JSON remains unchanged. The server checks the active revision and compatibility again before committing.",
+					: candidate?.validate_schema
+						? "New and edited objects must match this schema. Background validation checks existing objects without changing their JSON. The server checks compatibility again before committing."
+						: "Object writes will not be required to match a schema. Existing object JSON remains unchanged; live compliance becomes not required.",
 				confirmLabel: pending
 					? "Activate with pending validation"
-					: "Activate schema",
+					: activationLabel,
 				...(pending ? { tone: "danger" as const } : {}),
 			}))
 		)
 			return;
 		activationMutation.mutate(policy);
 	}
+	const administratorActivation =
+		canReadReports && candidate?.status === "staged" ? (
+			<details className="card stack">
+				<summary>Override compatibility checks (administrator)</summary>
+				<div className="stack">
+					<p>
+						Activate even if objects fail validation or analysis is incomplete.
+						Existing objects stay unchanged and may remain invalid. New writes
+						must satisfy the new policy.
+					</p>
+					<button
+						type="button"
+						className="danger"
+						disabled={busy || dirty || checkingDraft || !active}
+						onClick={() => void confirmActivation("allow_pending")}
+					>
+						Activate with pending validation…
+					</button>
+				</div>
+			</details>
+		) : null;
+	const checkActions = (
+		<div className="stack">
+			{canReadReports ? (
+				<div className="action-row">
+					{view !== "report" ? (
+						<button
+							type="button"
+							disabled={analysisDisabled}
+							onClick={() => {
+								setError(null);
+								setNotice(null);
+								checkMutation.mutate();
+							}}
+						>
+							{checkMutation.isPending
+								? "Starting check…"
+								: analysisRunning
+									? "Check in progress…"
+									: displayedWork && !dirty
+										? "Check again"
+										: "Check existing objects"}
+						</button>
+					) : null}
+					{analysisRunning ? (
+						<button
+							type="button"
+							className="ghost"
+							disabled={busy}
+							onClick={async () => {
+								if (
+									await confirm({
+										title: "Cancel schema work?",
+										description:
+											"Completed batches remain. Cancellation stops further results; it does not undo activation.",
+										confirmLabel: "Cancel work",
+										tone: "danger",
+									})
+								)
+									cancelMutation.mutate();
+							}}
+						>
+							Cancel work
+						</button>
+					) : null}
+				</div>
+			) : (
+				<p>
+					Class-wide checks require unrestricted administrator access. Save the
+					proposal and share its revision link with an administrator.
+				</p>
+			)}
+			{dirty && (taskId || checkId) ? (
+				<p className="info-banner">
+					These results are for the saved proposal. Check again to test your
+					changes.
+				</p>
+			) : null}
+			{workQuery.isPending && taskId && canReadReports ? (
+				<p role="status">Loading schema report…</p>
+			) : null}
+			{workQuery.isError ? (
+				<p role="alert" className="error-banner">
+					{workQuery.error.message}
+				</p>
+			) : null}
+			{checkPolicyQuery.isError ? (
+				<p role="alert" className="error-banner">
+					Could not verify the schema used for this test.{" "}
+					{checkPolicyQuery.error.message}
+				</p>
+			) : null}
+			{checkQuery.isError ? (
+				<p role="alert" className="error-banner">
+					The schema test could not be loaded. {checkQuery.error.message}
+				</p>
+			) : null}
+			{work && !matchingWork ? (
+				<p role="alert" className="error-banner">
+					This task belongs to a different revision. Its findings cannot
+					authorize this proposal.
+				</p>
+			) : null}
+			{checkQuery.data && checkPolicyQuery.isSuccess && !testWork ? (
+				<p role="alert" className="error-banner">
+					This schema test belongs to a different revision.
+				</p>
+			) : null}
+		</div>
+	);
+	const changeSummary = (
+		<article className="card stack" aria-label="Proposed changes">
+			<h3>What will change</h3>
+			{review ? (
+				review.schema === "unchanged" && review.enforcement === "unchanged" ? (
+					<p>No changes to activate.</p>
+				) : (
+					<>
+						<div>
+							<strong>
+								{review.enforcement === "enabled"
+									? "Enable schema validation"
+									: review.enforcement === "disabled"
+										? "Turn off schema validation"
+										: proposal.value?.validate_schema
+											? "Keep schema validation enabled"
+											: "Keep schema validation off"}
+							</strong>
+							<p>
+								{proposal.value?.validate_schema
+									? "New and edited objects must match the schema. Existing objects will be checked in the background."
+									: "Objects can be saved without matching a schema."}
+							</p>
+						</div>
+						<p>
+							{
+								{
+									unchanged: "The schema itself is unchanged.",
+									added: "Add the proposed schema.",
+									removed: "Remove the current schema.",
+									updated:
+										"Replace the current schema with the proposed version.",
+								}[review.schema]
+							}
+						</p>
+						{review.documentChanges.length > 0 ? (
+							<details className="stack">
+								<summary>View schema changes</summary>
+								<p className="muted">
+									Compared with active revision {active?.revision}.
+								</p>
+								<ul>
+									{review.documentChanges.slice(0, 50).map((change) => (
+										<li key={change.path}>
+											<strong>{change.operation}</strong>{" "}
+											<code>{change.path || "/"}</code>
+											<div className="schema-change-values">
+												<pre>
+													{JSON.stringify(change.previousValue, null, 2) ??
+														"(absent)"}
+												</pre>
+												<span>changes to</span>
+												<pre>
+													{JSON.stringify(change.nextValue, null, 2) ??
+														"(absent)"}
+												</pre>
+											</div>
+										</li>
+									))}
+								</ul>
+								{review.documentChanges.length > 50 ? (
+									<p>
+										{review.documentChanges.length - 50} further changes.
+										Inspect the complete document in the Schema step.
+									</p>
+								) : null}
+							</details>
+						) : null}
+					</>
+				)
+			) : null}
+			{dirty ||
+			candidate?.status === "retired" ||
+			candidate?.status === "abandoned" ? (
+				<button
+					type="button"
+					disabled={busy || checkingDraft || !!proposal.error}
+					onClick={() => {
+						setError(null);
+						stageMutation.mutate();
+					}}
+				>
+					{stageMutation.isPending ? "Saving revision…" : "Save revision"}
+				</button>
+			) : null}
+		</article>
+	);
+	const testExplanation = checkId ? (
+		<p className="info-banner">
+			Schema test only: these findings show whether objects match the schema.
+			Your proposed enforcement remains off. Activation uses a separate check of
+			that setting.
+		</p>
+	) : null;
 
 	if (classQuery.isPending || activeQuery.isPending)
 		return <p role="status">Loading class schema…</p>;
@@ -391,97 +684,31 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 		<section className="stack schema-workspace">
 			<header className="panel-header">
 				<div>
-					<h1>Schema · {classQuery.data?.name}</h1>
+					<h1>
+						{view === "flow" ? "Edit schema" : "Schema"} ·{" "}
+						{classQuery.data?.name}
+					</h1>
 					<p className="muted">
-						Propose a revision, review its effects, and activate when ready.
+						{view === "flow"
+							? "Prepare and test a change. The current setup stays active until you activate."
+							: "Saved revisions and validation results."}
 					</p>
 				</div>
-				{!draft ? (
-					<Link className="link-chip" href={`/classes/${classId}`}>
-						Back to class
-					</Link>
-				) : (
+				{dirty ? (
 					<button
 						type="button"
 						className="ghost"
 						disabled={busy}
-						onClick={() => void discardDraft()}
+						onClick={() => void leaveEditor()}
 					>
 						Discard draft
 					</button>
+				) : (
+					<Link className="link-chip" href={`/classes/${classId}`}>
+						Back to class
+					</Link>
 				)}
 			</header>
-			<article className="card stack">
-				<div className="panel-header">
-					<h2>Active revision {active?.revision}</h2>
-					<span className="status-pill">
-						Validation {active?.validate_schema ? "enforced" : "not enforced"}
-					</span>
-				</div>
-				{canReadReports && summaryQuery.data ? (
-					<div className="summary-grid">
-						{Object.entries(summaryQuery.data.counts).map(([key, count]) => (
-							<div className="summary-pill" key={key}>
-								<span>{key.replaceAll("_", " ")}</span>
-								<strong>{count}</strong>
-							</div>
-						))}
-					</div>
-				) : null}
-				{summaryQuery.isError ? (
-					<p className="error-banner" role="alert">
-						Could not load administrator schema status.{" "}
-						{summaryQuery.error.message}
-					</p>
-				) : null}
-				{summaryQuery.isSuccess && !canReadReports ? (
-					<p className="muted">
-						Impact analysis, aggregate counts, and revalidation require
-						unrestricted administrator access. Save a proposal and share its
-						revision link with an administrator.
-					</p>
-				) : null}
-				<div className="action-row">
-					<button
-						type="button"
-						disabled={busy || draft !== null || !active}
-						onClick={() => active && beginDraft(active)}
-					>
-						Propose change
-					</button>
-					<button
-						type="button"
-						className="ghost"
-						disabled={busy || draft !== null}
-						onClick={() => navigate({ view: "history" })}
-					>
-						Revision history
-					</button>
-					<button
-						type="button"
-						className="ghost"
-						disabled={busy || draft !== null}
-						onClick={() => navigate({ view: "compliance" })}
-					>
-						Object compliance
-					</button>
-					{canReadReports ? (
-						<button
-							type="button"
-							className="ghost"
-							disabled={
-								busy || draft !== null || matchingWork?.status === "running"
-							}
-							onClick={() => {
-								setError(null);
-								startMutation.mutate("revalidation");
-							}}
-						>
-							Revalidate active schema
-						</button>
-					) : null}
-				</div>
-			</article>
 			{error ? (
 				<p className="error-banner" role="alert">
 					{error}
@@ -492,418 +719,364 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 					{notice}
 				</p>
 			) : null}
+			{summaryQuery.isError ? (
+				<p className="error-banner" role="alert">
+					Could not load administrator schema status.{" "}
+					{summaryQuery.error.message}
+				</p>
+			) : null}
+			{revisionQuery.isError ? (
+				<p className="error-banner" role="alert">
+					{revisionQuery.error.message}
+				</p>
+			) : null}
 			{view === "history" ? (
 				<SchemaRevisionHistory classId={classId} />
 			) : view === "compliance" ? (
 				<SchemaCompliancePanel classId={classId} />
+			) : view === "report" ? (
+				<>
+					{checkActions}
+					{matchingWork ? (
+						<SchemaWorkReport key={matchingWork.task_id} work={matchingWork} />
+					) : null}
+				</>
+			) : view === "revision" ? (
+				candidate ? (
+					<article className="card stack">
+						<h2>
+							Revision {candidate.revision} · {candidate.status}
+						</h2>
+						<p>
+							Enforcement on writes: {candidate.validate_schema ? "On" : "Off"}
+						</p>
+						<pre className="schema-document">
+							{schemaDocument(candidate.json_schema) || "No schema document"}
+						</pre>
+						<button type="button" onClick={() => beginDraft(candidate)}>
+							Edit as a new proposal
+						</button>
+					</article>
+				) : null
 			) : (
 				<>
-					{revisionQuery.isError ? (
-						<p className="error-banner" role="alert">
-							{revisionQuery.error.message}
+					<div className="panel-header">
+						<p className="muted">
+							{dirty
+								? "Unsaved proposal"
+								: candidate?.status === "staged"
+									? `Saved proposal · Revision ${candidate.revision}`
+									: `Starting from revision ${candidate?.revision ?? "…"}`}
 						</p>
-					) : null}
-					{candidate && !draft ? (
-						<div className="panel-header">
-							<h2>
-								Revision {candidate.revision} · {candidate.status}
-							</h2>
-							<Link
-								href={`/classes/${classId}/schema?revision=${candidate.revision}${taskId ? `&task=${taskId}&step=${step}` : ""}`}
-							>
+						{candidate?.status === "staged" && !dirty ? (
+							<Link href={`/classes/${classId}/schema?${params}`}>
 								Link to this revision{taskId ? " and report" : ""}
 							</Link>
-						</div>
-					) : null}
-					<GuidedFlowTabs<Step>
+						) : null}
+					</div>
+					<GuidedFlowTabs<SchemaFlowStep>
 						activeStep={step}
 						ariaLabel="Schema change steps"
 						idPrefix="schema-flow"
 						onChange={(next) => navigate({ step: next })}
 						steps={[
 							{
-								id: "propose",
-								label: "Propose",
-								hint: "Define the schema and enforcement",
+								id: "schema",
+								label: "Schema",
+								hint: "Edit the document",
 								enabled: !busy,
 							},
 							{
-								id: "review",
-								label: "Review changes",
-								hint: "Compare with the active policy",
-								enabled: !busy && !checkingDraft && proposal.value !== null,
+								id: "validation",
+								label: "Validation",
+								hint: "Choose enforcement and try it",
+								enabled: !busy && !!candidate,
 							},
 							{
-								id: "impact",
-								label: "Analyze impact",
-								hint: "Check existing objects",
-								enabled: !busy && !draft && !!candidate,
+								id: "review",
+								label: "Review & test",
+								hint: "Review changes and findings",
+								enabled: !busy && !checkingDraft && !!proposal.value,
 							},
 							{
 								id: "activate",
 								label: "Activate",
-								hint: "Apply the policy explicitly",
-								enabled: !busy && !draft && !!candidate,
+								hint: "Apply the change",
+								disabledHint: "Complete compatible analysis first",
+								enabled:
+									!activationDisabled ||
+									(!busy && !dirty && candidate?.status === "active"),
 							},
 						]}
 					/>
-					{step === "propose" ? (
-						<GuidedFlowPanel idPrefix="schema-flow" stepId="propose">
+					{step === "schema" ? (
+						<GuidedFlowPanel idPrefix="schema-flow" stepId="schema">
 							{draft ? (
-								<>
-									<div className="card stack">
-										<h3>Unsaved proposal</h3>
-										<p>
-											Started from revision {draft.base.revision}. Saving
-											creates an immutable revision and leaves the active policy
-											unchanged.
-										</p>
-										{draft.base.revision !== active?.revision ? (
-											<p className="info-banner">
-												The starting revision differs from the current active
-												schema. Review all changes before saving.
-											</p>
-										) : null}
-										<label className="control-check">
-											<input
-												type="checkbox"
-												checked={draft.enforce}
-												disabled={busy}
-												onChange={(event) =>
-													setDraft({ ...draft, enforce: event.target.checked })
-												}
-											/>
-											<span>Enforce validation on object writes</span>
-										</label>
-										<JsonEditor
-											id="schema-proposal"
-											disabled={busy}
-											label="Proposed JSON schema"
-											mode="schema"
-											value={draft.input}
-											onChange={(input) => setDraft({ ...draft, input })}
-											rows={16}
-											helperText="Leave empty and turn off enforcement to remove the schema. The server validates supported schema features and limits when you save."
-										/>
-										{proposal.error ? (
-											<p role="status">{proposal.error}</p>
-										) : null}
-									</div>
-									<GuidedFlowContinue
-										title="Review your proposal"
-										summary="Compare the complete policy before saving a revision."
-										nextLabel="Review changes"
-										disabled={busy || checkingDraft || !!proposal.error}
-										onContinue={() => navigate({ step: "review" })}
-									/>
-								</>
-							) : candidate ? (
-								<div className="card stack">
+								<article className="card stack">
+									<h2>Proposed schema</h2>
 									<p>
-										Validation{" "}
-										{candidate.validate_schema ? "enforced" : "not enforced"}.
-										Saved schema revisions cannot be edited.
+										Define the shape of object data. Choose whether to enforce
+										it in Validation.
 									</p>
-									<pre className="schema-document">
-										{schemaDocument(candidate.json_schema) ||
-											"No schema document"}
-									</pre>
-									<div className="action-row">
+									<JsonEditor
+										id="schema-proposal"
+										disabled={busy}
+										label="Proposed JSON schema"
+										mode="schema"
+										value={draft.input}
+										onChange={(input) => setDraft({ ...draft, input })}
+										rows={16}
+										helperText="Leave empty to remove the schema, then turn off enforcement in Validation. The server checks supported schema features and limits when you save or check."
+									/>
+									{proposal.error ? (
+										<p role="status">{proposal.error}</p>
+									) : null}
+								</article>
+							) : null}
+							<GuidedFlowContinue
+								title="Set up validation"
+								summary="Decide whether object writes must match this schema, and try it against existing objects."
+								nextLabel="Validation"
+								disabled={busy || !draft}
+								onContinue={() => navigate({ step: "validation" })}
+							/>
+						</GuidedFlowPanel>
+					) : null}
+					{step === "validation" ? (
+						<GuidedFlowPanel idPrefix="schema-flow" stepId="validation">
+							<article className="card stack">
+								<h2>Validation setup</h2>
+								{draft ? (
+									<label className="control-check">
+										<input
+											type="checkbox"
+											checked={draft.enforce}
+											disabled={busy || (!draft.enforce && !draft.input.trim())}
+											onChange={(event) =>
+												setDraft({ ...draft, enforce: event.target.checked })
+											}
+										/>
+										<span>Enforce validation on object writes</span>
+									</label>
+								) : null}
+								<p>
+									{draft?.enforce
+										? "After activation, new and edited objects must match the schema. Existing objects are checked in the background."
+										: "After activation, objects can be saved without matching the schema. You can still test the schema below."}
+								</p>
+								{proposal.error ? <p role="status">{proposal.error}</p> : null}
+							</article>
+							<article className="card stack">
+								<h3>Try it on existing objects</h3>
+								<p>
+									This runs a real check against saved objects. It saves your
+									proposal and leaves the active setup and object data
+									unchanged.
+								</p>
+								{proposal.value?.json_schema == null ? (
+									<p>
+										No schema is configured. This check evaluates the proposed
+										setup; it cannot test objects against a schema.
+									</p>
+								) : null}
+								{checkActions}
+								{testExplanation}
+								{displayedWork ? (
+									<div className="stack" role="status">
+										<strong>Check {displayedWork.status}</strong>
+										<p>
+											{displayedWork.examined} objects examined ·{" "}
+											{displayedWork.valid} valid · {displayedWork.invalid}{" "}
+											invalid · {displayedWork.not_required} not required ·{" "}
+											{displayedWork.uninspectable} unassessed
+										</p>
 										<button
 											type="button"
-											disabled={busy}
-											onClick={() => beginDraft(candidate)}
+											className="ghost"
+											onClick={() => navigate({ step: "review" })}
 										>
-											{candidate.status === "staged"
-												? "Revise proposal"
-												: "Use as starting point"}
+											View findings
 										</button>
-										{candidate.status === "staged" ? (
-											<button
-												type="button"
-												className="ghost"
-												disabled={busy}
-												onClick={async () => {
-													if (
-														await confirm({
-															title: `Abandon revision ${candidate.revision}?`,
-															description:
-																"The revision stays in history and will not be activated.",
-															confirmLabel: "Abandon revision",
-															tone: "danger",
-														})
-													)
-														abandonMutation.mutate();
-												}}
-											>
-												Abandon revision
-											</button>
-										) : null}
 									</div>
-									<GuidedFlowContinue
-										title="Inspect this revision"
-										summary="Review its differences from the current active policy."
-										nextLabel="Review changes"
-										onContinue={() => navigate({ step: "review" })}
-									/>
-								</div>
-							) : null}
+								) : null}
+							</article>
+							<GuidedFlowContinue
+								title="Review the change"
+								summary="Compare the proposal with the current setup and review the check results before activation."
+								nextLabel="Review & test"
+								disabled={busy || checkingDraft || !!proposal.error}
+								onContinue={() => navigate({ step: "review" })}
+							/>
 						</GuidedFlowPanel>
 					) : null}
 					{step === "review" ? (
 						<GuidedFlowPanel idPrefix="schema-flow" stepId="review">
+							{changeSummary}
 							<article className="card stack">
-								<h3>Changes from active revision {active?.revision}</h3>
+								<h3>Check existing objects</h3>
 								<p>
-									Validation:{" "}
-									{active?.validate_schema ? "enforced" : "not enforced"} →{" "}
-									{proposal.value?.validate_schema
-										? "enforced"
-										: "not enforced"}
+									Test the proposal without changing object data or live
+									compliance. Review any validation failures below.
 								</p>
-								{changes.length === 0 ? (
-									<p>No policy changes from the active revision.</p>
-								) : (
-									<ul>
-										{changes.slice(0, 50).map((change) => (
-											<li key={change.path}>
-												<strong>{change.operation}</strong>{" "}
-												<code>{change.path || "/"}</code>
-												<div className="schema-change-values">
-													<pre>
-														{JSON.stringify(change.previousValue, null, 2) ??
-															"(absent)"}
-													</pre>
-													<span>changes to</span>
-													<pre>
-														{JSON.stringify(change.nextValue, null, 2) ??
-															"(absent)"}
-													</pre>
-												</div>
-											</li>
-										))}
-									</ul>
-								)}
-								{changes.length > 50 ? (
-									<p>
-										{changes.length - 50} further changes. Inspect the complete
-										document in the Propose step.
-									</p>
+								{checkActions}
+								{canReadReports ? (
+									<details>
+										<summary>Open an existing analysis</summary>
+										<form
+											className="action-row"
+											onSubmit={(event) => {
+												event.preventDefault();
+												const id = positiveSchemaId(reportInput);
+												if (id)
+													navigate({
+														task: id,
+														check: null,
+														check_revision: null,
+													});
+											}}
+										>
+											<label className="control-field">
+												<span>Existing analysis task ID</span>
+												<input
+													type="number"
+													min={1}
+													step={1}
+													value={reportInput}
+													onChange={(event) =>
+														setReportInput(event.target.value)
+													}
+												/>
+											</label>
+											<button
+												type="submit"
+												className="ghost"
+												disabled={!positiveSchemaId(reportInput) || busy}
+											>
+												Open report
+											</button>
+										</form>
+									</details>
 								) : null}
-								{draft ? (
-									<button
-										type="button"
-										disabled={
-											busy ||
-											checkingDraft ||
-											!!proposal.error ||
-											changes.length === 0
-										}
-										onClick={() => {
-											setError(null);
-											stageMutation.mutate();
-										}}
-									>
-										{stageMutation.isPending
-											? "Saving revision…"
-											: "Save revision"}
-									</button>
-								) : (
-									<GuidedFlowContinue
-										title="Assess the saved revision"
-										summary="Analyze existing objects before deciding whether to activate."
-										nextLabel="Analyze impact"
-										onContinue={() => navigate({ step: "impact" })}
-									/>
-								)}
 							</article>
+							{testExplanation}
+							{displayedWork ? (
+								<SchemaWorkReport
+									key={displayedWork.task_id}
+									work={displayedWork}
+								/>
+							) : null}
+							{needsSeparateTest && matchingWork ? (
+								<details>
+									<summary>Activation impact with enforcement off</summary>
+									<SchemaWorkReport
+										key={matchingWork.task_id}
+										work={matchingWork}
+									/>
+								</details>
+							) : null}
+							{candidate?.status === "staged" || dirty ? (
+								<>
+									<GuidedFlowContinue
+										title={
+											analysisRunning
+												? "Checking existing objects"
+												: activationBlock
+													? "Activation blocked"
+													: "Ready to activate"
+										}
+										summary={
+											activationBlock ??
+											"The selected policy is ready. Review and confirm activation next."
+										}
+										nextLabel="Review activation"
+										disabled={activationDisabled}
+										onContinue={() => navigate({ step: "activate" })}
+										backLabel="Revise proposal"
+										onBack={
+											!busy ? () => navigate({ step: "schema" }) : undefined
+										}
+									/>
+									{administratorActivation}
+								</>
+							) : (
+								<p>No policy change is waiting for activation.</p>
+							)}
+							{candidate?.status === "staged" && !dirty ? (
+								<button
+									type="button"
+									className="ghost"
+									disabled={busy || analysisRunning}
+									onClick={async () => {
+										if (
+											await confirm({
+												title: `Abandon revision ${candidate.revision}?`,
+												description:
+													"The revision stays in history and will not be activated.",
+												confirmLabel: "Abandon revision",
+												tone: "danger",
+											})
+										)
+											abandonMutation.mutate();
+									}}
+								>
+									Abandon revision
+								</button>
+							) : null}
 						</GuidedFlowPanel>
 					) : null}
-					{step === "impact" || step === "activate" ? (
-						<GuidedFlowPanel idPrefix="schema-flow" stepId={step}>
-							{workQuery.isPending && taskId && canReadReports ? (
-								<p role="status">Loading schema report…</p>
-							) : null}
-							{workQuery.isError ? (
-								<p role="alert" className="error-banner">
-									{workQuery.error.message}
+					{step === "activate" ? (
+						<GuidedFlowPanel idPrefix="schema-flow" stepId="activate">
+							<article className="card stack">
+								<h2>
+									{candidate?.status === "active"
+										? "This revision is active"
+										: "Activate this change"}
+								</h2>
+								<p>
+									Enforcement on writes:{" "}
+									{active?.validate_schema ? "On" : "Off"} →{" "}
+									{proposal.value?.validate_schema ? "On" : "Off"}
 								</p>
-							) : null}
-							{work && !matchingWork ? (
-								<p role="alert" className="error-banner">
-									This task belongs to a different revision. Its findings cannot
-									authorize this proposal.
+								<p>
+									{proposal.value?.validate_schema
+										? "New and edited objects must match the schema. Background validation will check existing objects and record their compliance."
+										: "Object writes will not be required to match a schema. Live compliance will be not required, even if the schema test found mismatches."}{" "}
+									Existing object data remains unchanged.
 								</p>
-							) : null}
-							{matchingWork ? <SchemaWorkReport work={matchingWork} /> : null}
-							{matchingWork?.status === "running" && canReadReports ? (
+								{candidate?.status !== "active" ? (
+									<>
+										<p>
+											Activation replaces revision {active?.revision} with
+											revision {candidate?.revision}.
+										</p>
+										{activationBlock ? (
+											<p className="info-banner">{activationBlock}</p>
+										) : null}
+										<button
+											type="button"
+											disabled={activationDisabled}
+											onClick={() =>
+												void confirmActivation("reject_incompatible")
+											}
+										>
+											{activationLabel}
+										</button>
+									</>
+								) : (
+									<Link href={`/classes/${classId}`}>
+										View current schema &amp; validation
+									</Link>
+								)}
 								<button
 									type="button"
 									className="ghost"
 									disabled={busy}
-									onClick={async () => {
-										if (
-											await confirm({
-												title: "Cancel schema work?",
-												description:
-													"Completed batches remain. Cancellation stops further results; it does not undo activation.",
-												confirmLabel: "Cancel work",
-												tone: "danger",
-											})
-										)
-											cancelMutation.mutate();
-									}}
+									onClick={() => navigate({ step: "review" })}
 								>
-									Cancel work
+									Return to review &amp; test
 								</button>
-							) : null}
-							{step === "impact" ? (
-								<>
-									<div className="card stack">
-										<h3>Analyze this proposal</h3>
-										<p>
-											Checks the proposed and active policies against the same
-											objects without changing their data or current compliance.
-										</p>
-										{canReadReports ? (
-											<>
-												<button
-													type="button"
-													disabled={
-														busy ||
-														draft !== null ||
-														candidate?.status !== "staged" ||
-														matchingWork?.status === "running"
-													}
-													onClick={() => {
-														setError(null);
-														startMutation.mutate("impact");
-													}}
-												>
-													{matchingWork ? "Analyze again" : "Analyze impact"}
-												</button>
-												<form
-													className="action-row"
-													onSubmit={(event) => {
-														event.preventDefault();
-														const id = positiveSchemaId(reportInput);
-														if (id) navigate({ task: id });
-													}}
-												>
-													<label className="control-field">
-														<span>Existing analysis task ID</span>
-														<input
-															type="number"
-															min={1}
-															step={1}
-															value={reportInput}
-															onChange={(event) =>
-																setReportInput(event.target.value)
-															}
-														/>
-													</label>
-													<button
-														type="submit"
-														className="ghost"
-														disabled={!positiveSchemaId(reportInput)}
-													>
-														Open report
-													</button>
-												</form>
-											</>
-										) : (
-											<p>
-												Share the saved revision link with an administrator to
-												run and review its impact analysis.
-											</p>
-										)}
-									</div>
-									<GuidedFlowContinue
-										title="Review activation"
-										summary="A compatible report enables normal activation. An administrator can explicitly allow pending validation."
-										nextLabel="Activate"
-										disabled={!!draft}
-										onContinue={() => navigate({ step: "activate" })}
-									/>
-								</>
-							) : (
-								<article className="card stack">
-									<h3>
-										{candidate?.status === "active"
-											? "This revision is active"
-											: "Activate this revision"}
-									</h3>
-									{candidate?.status === "active" ? (
-										<>
-											<p>
-												New writes use this policy. Background validation
-												records compliance without rewriting object JSON.
-											</p>
-											{rebuildId ? (
-												<Link href={`/tasks/${rebuildId}`}>
-													Follow computed-field rebuild #{rebuildId}
-												</Link>
-											) : null}
-											<button
-												type="button"
-												className="ghost"
-												onClick={() => navigate({ view: "compliance" })}
-											>
-												View object compliance
-											</button>
-										</>
-									) : (
-										<>
-											<p>
-												Activation replaces revision {active?.revision}.
-												Existing object data remains unchanged.
-											</p>
-											{activationBlock ? (
-												<p className="info-banner">{activationBlock}</p>
-											) : null}
-											<button
-												type="button"
-												disabled={
-													busy ||
-													!!draft ||
-													!!activationBlock ||
-													activeQuery.isFetching ||
-													summaryQuery.isFetching ||
-													revisionQuery.isFetching ||
-													workQuery.isFetching
-												}
-												onClick={() =>
-													void confirmActivation("reject_incompatible")
-												}
-											>
-												Activate after compatibility checks
-											</button>
-											{canReadReports && candidate?.status === "staged" ? (
-												<details>
-													<summary>Administrator activation option</summary>
-													<div className="stack">
-														<p>
-															Allow activation without compatible impact proof.
-															Enforced objects become pending until
-															revalidation; some may fail the new policy.
-														</p>
-														<button
-															type="button"
-															className="danger"
-															disabled={busy || !!draft || !active}
-															onClick={() =>
-																void confirmActivation("allow_pending")
-															}
-														>
-															Activate with pending validation…
-														</button>
-													</div>
-												</details>
-											) : null}
-										</>
-									)}
-								</article>
-							)}
+							</article>
+							{administratorActivation}
 						</GuidedFlowPanel>
 					) : null}
 				</>

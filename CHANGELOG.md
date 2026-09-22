@@ -19,24 +19,30 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Added a guided Schema workspace for server main: propose immutable revisions,
+- Added a guided Schema workspace for Server `v0.0.15`: propose immutable revisions,
   review policy changes, analyze object impact, and explicitly activate. Saved
   links reopen revisions and reports; history, compliance, revalidation, and
   administrator pending activation share the existing console controls.
 - Added schema and validation audit filters, schema task labels, effective
-  validation limits, and a separate pinned server-main contract check.
+  validation limits, and a release-pinned backend contract check.
 - Show the effective backup capture-row limit in administrator Configuration,
   with an unavailable value on older servers.
+- Added task cancellation with guarded queued withdrawal, durable-request polling,
+  UTF-8 reason validation, deadline and cancellation metadata, remote dispatch
+  evidence, and aggregate unattempted import counts. Configuration shows all
+  per-kind execution limits.
 
 ### Compatibility
 
-- Generated the development API client from server main after hubuum/hubuum#402.
-  The released server target remains `v0.0.14`; older servers retain inline
-  schema editing. Metadata saves omit schema fields, and imports retain explicit
-  staged activation while preventing unsafe destination overrides.
-- Server main requires backup format 6 and a schema migration. Older backups
-  must first be restored with their matching server release. See
-  `docs/compatibility.md` for source/image revisions and upgrade requirements.
+- Adopted the released Server `v0.0.15` OpenAPI contract and immutable CI image.
+  Required contract checks cover schemas, retained diagnostics and HTML repair
+  reports, cancellation, execution limits, and backup format 6.
+- Server `v0.0.15` does not consolidate errors in HTML reports. The console keeps
+  individual saved diagnostics and supports report resource-limit failures.
+- Drain old task/schema workers and run migrations before starting matching
+  `v0.0.15` server, administrator, worker, template worker, and restore-executor
+  binaries. Restore older backups using their matching release before upgrading.
+  See `docs/compatibility.md` for the full upgrade requirements.
 
 ## [0.0.15] - 2026-09-10
 

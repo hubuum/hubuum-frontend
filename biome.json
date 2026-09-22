@@ -5,6 +5,7 @@
 			"**",
 			"!**/node_modules",
 			"!**/.next",
+			"!**/.local",
 			"!playwright-report",
 			"!test-results",
 			"!src/lib/api/generated"

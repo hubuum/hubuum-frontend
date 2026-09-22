@@ -26,6 +26,9 @@ playwright-report
 test-results
 *.tsbuildinfo
 
+# Owned local sandbox state, downloaded corpuses, and source/build caches.
+/.local/
+
 # Private runtime login artwork. Keep the instructions, never the images.
 /login-backgrounds/*
 !/login-backgrounds/README.md

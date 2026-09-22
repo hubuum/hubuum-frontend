@@ -1,8 +1,15 @@
 # Local development
 
 The frontend development environment runs Next.js on the host and Valkey in a
-small Docker Compose service. Hubuum Server is an external dependency and must
-already be running somewhere reachable from the host.
+small Docker Compose service. The standard workflow below uses an external
+Hubuum Server reachable from the host.
+
+For an isolated server with a freshly restored test corpus, run
+`npm run dev:sandbox -- --pr 411`. It starts the dependencies and frontend and
+prompts for a `corpus-admin` password. See the [sandbox guide](local-sandbox.md)
+for tag/SHA/PR selection, keeping and resuming data, and
+[resetting sandbox user passwords](local-sandbox.md#set-or-reset-user-passwords).
+This workflow does not require `dev:deps` or edits to `.env.local`.
 
 ## First-time setup
 
@@ -149,22 +156,21 @@ keeps it only in the child-process environment, and removes the containers and
 volumes afterward. Override the pinned compatibility image with
 `HUBUUM_AUTH_E2E_BACKEND_IMAGE` when testing another server build.
 
-To exercise the upcoming schema workflow against the published server main:
+The default test target is released Server `v0.0.15`. To focus on schemas and
+task cancellation:
 
 ```sh
-HUBUUM_LIVE_BACKEND_IMAGE=ghcr.io/hubuum/hubuum-server:main \
-  HUBUUM_LIVE_REQUIRE_SCHEMA=1 npm run test:live-backend
-HUBUUM_AUTH_E2E_BACKEND_IMAGE=ghcr.io/hubuum/hubuum-server:main \
-  npm run test:e2e:authenticated -- --grep 'schema workspace'
+npm run test:credential-fixtures
+npm run test:live-backend
+npm run test:e2e:authenticated -- --grep 'schema workspace|task cancellation'
 ```
 
-The contract run includes impact comparisons, stale-proof rejection, pending
-and strict activation, administrator report restrictions, evidence, and backup
-format 6. The browser suite covers the guided flow, conflicts, restricted
-reports, cancellation, accessible pagination, and mobile layout with controlled
-API responses after a real login. Use the digest in `docs/compatibility.md` for
-the same server build as the preview CI job. No production deployment default
-is changed by these overrides.
+The contract run requires schema evolution, saved diagnostics and HTML reports,
+task cancellation, per-kind deadlines, and backup format 6. Browser checks cover
+the guided schema flow, conflicts, reports, accessible pagination, cancellation
+acknowledgement, authorization failures, and mobile layout after a real login.
+CI pins the release digest listed in `docs/compatibility.md`. The scheduled
+backend-main workflow continues checking future server builds separately.
 
 The broader authenticated dashboard and create-flow checks run when
 `E2E_USERNAME` and `E2E_PASSWORD` are set. Point either Playwright suite at an
@@ -206,3 +212,13 @@ VALKEY_DEV_PORT=6380 npm run dev:deps
 ```dotenv
 VALKEY_URL=redis://127.0.0.1:6380/0
 ```
+
+### Forward server compatibility
+
+The live contract suite defaults to the pinned Server `0.0.15` contract. Set
+`HUBUUM_LIVE_EXPECT_SERVER_VERSION` when verifying a specific release candidate.
+The scheduled backend-main job sets `HUBUUM_LIVE_FORWARD_COMPATIBILITY=1` to
+exercise the complete contract across server version bumps; required release CI
+retains its exact version check. Credential fixtures obtain approval only after
+`reauthentication_required`, preserving the bearer, body, expiry precision, and
+request guards. Older servers need no approval endpoint.

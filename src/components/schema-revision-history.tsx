@@ -20,8 +20,8 @@ export function SchemaRevisionHistory({ classId }: { classId: number }) {
 		<section className="card stack" aria-label="Schema revision history">
 			<h2>Revision history</h2>
 			<p className="muted">
-				Saved documents are immutable. Open a revision to inspect it or use it
-				as the starting point for a new proposal.
+				Saved documents are immutable. Open a revision to inspect it or create a
+				new proposal from its schema and validation setting.
 			</p>
 			{query.isPending ? <p role="status">Loading revisions…</p> : null}
 			{query.isError ? (
@@ -45,7 +45,7 @@ export function SchemaRevisionHistory({ classId }: { classId: number }) {
 							<tr key={revision.revision}>
 								<td>
 									<Link
-										href={`/classes/${classId}/schema?revision=${revision.revision}`}
+										href={`/classes/${classId}/schema?view=revision&revision=${revision.revision}`}
 									>
 										Revision {revision.revision}
 									</Link>

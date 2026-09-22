@@ -3,19 +3,23 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.14
+ * OpenAPI spec version: 0.0.15
  */
 import type { SchemaFailureGroup } from './schemaFailureGroup';
 import type { SchemaImpactCounts } from './schemaImpactCounts';
+import type { SchemaImpactFindingResponse } from './schemaImpactFindingResponse';
 import type { SchemaReference } from './schemaReference';
 
 export interface SchemaImpactResponse {
   baseline: SchemaReference;
   counts: SchemaImpactCounts;
-  /** At most 20 groups, counting the first failure per object. */
+  /** Every committed mismatched object, grouped by its first failure without a group limit. */
   failures: SchemaFailureGroup[];
+  /** Saved diagnostics, object revision and inspection time. Older findings have no snapshot. */
+  findings?: SchemaImpactFindingResponse[];
   /**
-     * Failures whose group did not fit the report limit.
+     * Failures omitted by older capped reports; zero for newly started analyses.
+     * Rerun an older analysis to obtain its complete object lists.
      * @minimum 0
      */
   ungrouped_failures: number;

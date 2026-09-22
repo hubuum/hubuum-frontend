@@ -42,6 +42,8 @@ and resizing styles still require inline styles. BFF responses are private and
 must not be stored by shared caches. Active report content (HTML, XHTML, SVG) is
 sandboxed without scripts or same-origin privileges on both report routes and the
 generic proxy. Export warning and truncation headers remain visible to the UI.
+Schema repair HTML may open object links in new tabs that do not inherit the
+report sandbox; the report itself remains script-disabled and isolated.
 
 Sign-out waits briefly for pending preference saves, then always attempts to end
 the session. A failed sign-out keeps the workspace visible with a persistent error
@@ -112,6 +114,14 @@ redacts secret values before returning the effective settings.
 Task activity shown to regular users comes from `/api/v1/tasks` through the BFF
 proxy, so users can see the task records available to their account without
 requiring global meta access.
+
+Task detail pages support cancellation with optional reasons, guarded queued
+withdrawal, and polling until running work acknowledges cleanup. They show
+execution deadlines, cancellation metadata, unattempted import items, and remote
+dispatch evidence. Cancellation preserves already committed work according to the
+task kind; remote effects may need reconciliation. Administrator Configuration
+shows per-kind execution limits. See [compatibility](docs/compatibility.md) for
+Server `v0.0.15` authorization and upgrade requirements.
 
 Cursor-paginated helper requests that do not display an exact total pass
 `include_total=false`; primary data tables retain the default exact-count
@@ -404,13 +414,20 @@ includes names, descriptions, collection selectors, schema validation, and JSON
 schema. Opening one focuses its editor immediately, and Escape restores the
 draft. Permission-gated hierarchy moves remain a separate collection operation.
 
-On server builds with versioned schemas, the class page instead links to a
-dedicated **Schema** workspace. Its guided flow is **Propose → Review changes →
-Analyze impact → Activate**. Saving a proposal creates an immutable revision;
-it does not change the active policy. The workspace compares the document and
-enforcement flag with the active revision, shows bounded impact findings, and
-requires explicit activation. A compatible analysis can become outdated when
-objects or the active schema change; refresh the analysis after a conflict.
+On server builds with versioned schemas, the class page shows the current schema,
+write enforcement, and existing-object validation state. **Edit schema** opens
+**Schema → Validation → Review & test → Activate** directly in the editor.
+**Check existing objects** in Validation saves the proposal and runs a real server
+analysis without changing the active policy, object data, or live compliance.
+Review & test shows the differences and findings; activation is always explicit.
+Activation returns to the class page with links to background validation and any
+computed-field rebuild. A compatible analysis can become outdated when objects
+or the active schema change; refresh the analysis after a conflict.
+
+When enforcement is off, checking a stored schema also saves an enforced snapshot
+and analyzes it to find mismatches. This test never enables enforcement on the
+proposal. Activation uses the separate impact result for the exact selected
+policy; a schema test cannot authorize activation of a different revision.
 
 Impact reports, aggregate counts, and revalidation require unrestricted
 administrator access. Class editors can save a proposal and share its revision
@@ -421,10 +438,10 @@ subsequent writes use the new policy. Compliance pages list accessible objects
 as valid, invalid, pending, or not required, including after migration.
 
 Saved revision and task links can be reopened after navigation or reload. Drafts
-remain unsaved until **Save revision**. History allows an older document to be
+remain unsaved until **Save revision** or **Check existing objects**. History allows an older document to be
 used as the starting point for a new revision; active or retired documents are
 never edited in place. Servers without the schema endpoints retain the inline
-schema editor. See [compatibility](docs/compatibility.md) for the preview target.
+schema editor. See [compatibility](docs/compatibility.md) for the released server target.
 
 Escape is the console-wide safe exit for transient work. It closes the most
 recently opened menu, create form, or edit mode without saving its draft; nested
@@ -458,7 +475,12 @@ Use Node.js 24 LTS. Install dependencies:
 npm ci
 ```
 
-Create an environment file:
+To run against a disposable local server with 3,000 test objects, use
+`npm run dev:sandbox -- --pr 411` and choose a `corpus-admin` password at the
+prompt. The [sandbox guide](docs/local-sandbox.md) covers tags, commit SHAs, PRs,
+and [resetting user passwords](docs/local-sandbox.md#set-or-reset-user-passwords).
+
+To use an existing backend instead, create an environment file:
 
 ```bash
 cp .env.example .env.local
@@ -545,7 +567,7 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
-Current `main` development is validated against Hubuum Server `v0.0.14`.
+Current `main` development targets Hubuum Server `v0.0.15`.
 Hubuum Frontend `v0.0.15` is validated against Server `v0.0.14`.
 Run the server's separate migration workload before startup and deploy its
 restore executor before confirming web restores. The console polls queued
@@ -610,7 +632,7 @@ server image:
 npm run test:live-backend
 ```
 
-The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.14`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.15`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
@@ -625,7 +647,7 @@ Restore confirmation is skipped when targeting an externally supplied backend UR
 
 Useful overrides:
 
-- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.14`
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.15`
 - `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
 - `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
 - `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`

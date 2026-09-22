@@ -7,7 +7,12 @@ import type {
 import {
 	parseSchemaDraft,
 	positiveSchemaId,
+	sameSchemaPolicy,
 	schemaActivationBlock,
+	schemaActivationLabel,
+	schemaFlowStep,
+	schemaTestPolicy,
+	summarizeSchemaChanges,
 } from "@/lib/schema-evolution";
 
 const active: SchemaRevisionResponse = {
@@ -96,6 +101,14 @@ describe("schema proposal admission", () => {
 });
 
 describe("strict schema activation", () => {
+	it("asks users to wait for running analysis rather than start another run", () => {
+		expect(
+			schemaActivationBlock(candidate, active, summary, {
+				...work,
+				status: "running",
+			}),
+		).toBe("Wait for the impact analysis to finish before activation.");
+	});
 	it("accepts a current compatible proof for the exact target and baseline", () => {
 		expect(schemaActivationBlock(candidate, active, summary, work)).toBeNull();
 	});
@@ -165,4 +178,89 @@ describe("strict schema activation", () => {
 			).not.toBeNull();
 		},
 	);
+});
+
+describe("schema editing workflow", () => {
+	it("keeps existing links usable with the new steps", () => {
+		expect(schemaFlowStep("propose")).toBe("schema");
+		expect(schemaFlowStep("impact")).toBe("review");
+		expect(schemaFlowStep(null)).toBe("schema");
+		expect(schemaFlowStep("validation")).toBe("validation");
+	});
+	it("compares the entire policy without treating JSON key order as a change", () => {
+		const left = {
+			json_schema: { type: "object", properties: {} },
+			validate_schema: false,
+		};
+		expect(
+			sameSchemaPolicy(left, {
+				...left,
+				json_schema: { properties: {}, type: "object" },
+			}),
+		).toBe(true);
+		expect(sameSchemaPolicy(left, { ...left, validate_schema: true })).toBe(
+			false,
+		);
+		expect(sameSchemaPolicy(left, { ...left, json_schema: false })).toBe(false);
+	});
+	it("tests an unenforced boolean schema without changing the selected policy", () => {
+		const policy = { json_schema: false, validate_schema: false };
+		expect(schemaTestPolicy(policy)).toEqual({
+			json_schema: false,
+			validate_schema: true,
+		});
+		expect(policy.validate_schema).toBe(false);
+		expect(schemaTestPolicy({ ...policy, validate_schema: true })).toBeNull();
+		expect(
+			schemaTestPolicy({ json_schema: null, validate_schema: false }),
+		).toBeNull();
+	});
+	it("states enforcement changes in the activation action", () => {
+		expect(schemaActivationLabel(active, candidate)).toBe(
+			"Activate schema & enable enforcement",
+		);
+		expect(schemaActivationLabel(candidate, active)).toBe(
+			"Activate changes & turn off enforcement",
+		);
+		expect(schemaActivationLabel(candidate, candidate)).toBe("Activate schema");
+	});
+});
+
+describe("schema change summaries", () => {
+	it("summarizes an enforcement toggle without a document diff", () => {
+		const policy = { json_schema: { type: "object" }, validate_schema: false };
+		expect(
+			summarizeSchemaChanges(policy, { ...policy, validate_schema: true }),
+		).toEqual({
+			schema: "unchanged",
+			enforcement: "enabled",
+			documentChanges: [],
+		});
+		expect(
+			summarizeSchemaChanges({ ...policy, validate_schema: true }, policy)
+				.enforcement,
+		).toBe("disabled");
+	});
+	it("treats a boolean false schema as a document when adding and removing it", () => {
+		const empty = { json_schema: null, validate_schema: false };
+		const policy = { json_schema: false, validate_schema: false };
+		expect(summarizeSchemaChanges(empty, policy).schema).toBe("added");
+		expect(summarizeSchemaChanges(policy, empty).schema).toBe("removed");
+	});
+	it("keeps document paths relative to the schema, including similarly named properties", () => {
+		const before = {
+			json_schema: { properties: { validate_schema: { type: "string" } } },
+			validate_schema: true,
+		};
+		const after = {
+			...before,
+			json_schema: { properties: { validate_schema: { type: "boolean" } } },
+		};
+		const result = summarizeSchemaChanges(before, after);
+		expect(result.schema).toBe("updated");
+		expect(result.enforcement).toBe("unchanged");
+		expect(result.documentChanges.map((change) => change.path)).toEqual([
+			"/properties/validate_schema/type",
+		]);
+	});
 });
