@@ -6,19 +6,26 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.16] - 2026-09-22
+
 ### Changed
 
 - Upgrade disposable backend and smoke-test PostgreSQL fixtures from 17 to 18
   with an immutable image pin. Test stacks create fresh databases; no production
   database migration is part of this change.
 
-- Update Next.js to 16.3.5, TanStack Query to 5.103.1, Zod to 4.6.5,
-  CodeMirror, development tooling, and Docker build workflow actions.
+- Update Next.js to 16.3.5, TanStack Query to 5.103.2, Zod to 4.6.5,
+  CodeMirror state to 6.7.6 and view to 6.43.13, development tooling, and
+  Docker build workflow actions. All application, development, and GitHub
+  Actions dependencies are current; no release dependency exceptions are needed.
 - Update the pinned Orval API generator to 8.34.0 and Node 24 build/CI
   runtime to 24.21.0 with a verified immutable container digest.
 
 ### Added
 
+- Add an isolated local sandbox with server tag/SHA/PR selection, restored
+  corpus data, password provisioning, keep/resume support, and ownership-checked
+  cleanup, including verified orphaned frontends on Linux.
 - Request fresh password confirmation for credential mutations when the server
   requires it, including token creation and renewal, local users and password
   changes, credential imports, and restore confirmation. The BFF keeps approval
@@ -39,6 +46,11 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Compatibility
 
+- Credential approval support is a preview for the upcoming server, verified
+  against commit `61f1bfd3455af26254e1dc73e697a80b0536813a` and image digest
+  `sha256:e40fc33e2cbd6d73ce1bb281d3836468feb28493ff4343c1099211083cf83181`.
+  The supported released-server baseline remains `v0.0.15`; older servers do not
+  require the new password confirmation flow.
 - Adopted the released Server `v0.0.15` OpenAPI contract and immutable CI image.
   Required contract checks cover schemas, retained diagnostics and HTML repair
   reports, cancellation, execution limits, and backup format 6.
@@ -48,6 +60,11 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `v0.0.15` server, administrator, worker, template worker, and restore-executor
   binaries. Restore older backups using their matching release before upgrading.
   See `docs/compatibility.md` for the full upgrade requirements.
+
+### Fixed
+
+- Prevent concurrent stale-lock recovery or a delayed release from removing a
+  newer sandbox owner's lock. Recover earlier PID-file locks safely.
 
 ## [0.0.15] - 2026-09-10
 
@@ -618,7 +635,9 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.14...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.16...HEAD
+[0.0.16]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.15...v0.0.16
+[0.0.15]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.14...v0.0.15
 [0.0.14]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.13...v0.0.14
 [0.0.13]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.12...v0.0.13
 [0.0.12]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.11...v0.0.12

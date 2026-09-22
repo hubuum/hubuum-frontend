@@ -6,6 +6,7 @@ should pin both components to explicit versions.
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
 | `main` (unreleased) | `v0.0.15` | `ghcr.io/hubuum/hubuum-server:v0.0.15` |
+| `v0.0.16` | `v0.0.15` | `ghcr.io/hubuum/hubuum-server:v0.0.15` |
 | `v0.0.15` | `v0.0.14` | `ghcr.io/hubuum/hubuum-server:v0.0.14` |
 | `v0.0.14` | `v0.0.13` | `ghcr.io/hubuum/hubuum-server:v0.0.13` |
 | `v0.0.13` | `v0.0.9` | `ghcr.io/hubuum/hubuum-server:v0.0.9` |
@@ -23,7 +24,7 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Unreleased `main` targets Server `v0.0.15` at
+listed server tag. Frontend `v0.0.16` and unreleased `main` target Server `v0.0.15` at
 `sha256:36af667dbc9e221a40448496d4a87e168c999d0834df4b69177345ff3d36e821`.
 Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
@@ -36,6 +37,15 @@ The frontend also supports the fresh-authentication protocol from
 per operation by the server's `403` / `reauthentication_required` response, not
 by a version check or a required capability probe. The minimum backend contract
 and the pinned release target remain unchanged.
+
+The `v0.0.16` frontend release verifies this preview protocol against Server
+commit `61f1bfd3455af26254e1dc73e697a80b0536813a`, with image
+`ghcr.io/hubuum/hubuum-server@sha256:e40fc33e2cbd6d73ce1bb281d3836468feb28493ff4343c1099211083cf83181`.
+Both Linux AMD64 and ARM64 image labels identify that source commit. The bundled
+OpenAPI document remains the released Server `v0.0.15` contract described below;
+the approval helper preserves its fallback for that release. An upcoming server
+release needs its final contract and immutable image checked before replacing
+the supported baseline.
 
 Token creation/renewal, local user creation, password changes, credential imports
 (including dry runs), and restore confirmation use a password dialog when

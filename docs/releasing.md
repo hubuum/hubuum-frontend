@@ -20,10 +20,11 @@ server behavior; a development server's version string may still identify the
 previous release. Record the OpenAPI source commit and tested image digest in
 `docs/compatibility.md`, and refresh them together after checking contract drift.
 
-The `backend-schema-preview / contract` check gates main image publication
-through `publish-main-metadata`, alongside the released-server contract check.
-A failed or skipped preview check prevents the dependent publication jobs from
-running. The scheduled moving-main check is separate from this pinned gate.
+Versioned schemas are now part of the released-server `backend-contract` check;
+the former separate schema-preview workflow is retired. For other preview
+features, dispatch **Backend main compatibility** with the recorded immutable
+image digest and require that run to pass on the final release commit. The
+scheduled moving-main check remains a separate early warning.
 
 A frontend release may include preview support while retaining its released
 backend baseline. Release notes must identify preview features and their
@@ -88,10 +89,10 @@ backend version is intentionally raised.
 4. Update `package.json`, `package-lock.json`, the Helm chart, Compose defaults,
    and `CHANGELOG.md` to the same release version. Merge this final combined
    release change to `main` through one pull request only after its `validate`,
-   `backend-contract`, `backend-schema-preview / contract`, `browser-quality`,
+   `backend-contract`, `browser-quality`,
    `visual-regression`, `authenticated-browser-smoke`, `authenticated-browser`,
    and `package` checks pass.
-5. Wait for `validate`, `backend-contract`, `backend-schema-preview / contract`,
+5. Wait for `validate`, `backend-contract`,
    `browser-quality`, `visual-regression`, `authenticated-browser-smoke`, `package`, and
    `publish-main` to pass on the exact merged `main` commit. The publisher
    builds AMD64 and ARM64 images on matching native GitHub-hosted runners,
@@ -113,7 +114,7 @@ backend version is intentionally raised.
 7. Check out that clean commit and run:
 
    ```sh
-   bash scripts/check-release-readiness.sh v0.0.15
+   bash scripts/check-release-readiness.sh v0.0.16
    ```
 
 ## Publish
@@ -121,8 +122,8 @@ backend version is intentionally raised.
 Create and push an annotated tag from the verified commit:
 
 ```sh
-git tag -a v0.0.15 -m "Hubuum Frontend v0.0.15"
-git push origin v0.0.15
+git tag -a v0.0.16 -m "Hubuum Frontend v0.0.16"
+git push origin v0.0.16
 ```
 
 The tag workflow rechecks dependency freshness and unresolved Dependabot pull
