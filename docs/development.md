@@ -160,6 +160,7 @@ The default test target is released Server `v0.0.15`. To focus on schemas and
 task cancellation:
 
 ```sh
+npm run test:credential-fixtures
 npm run test:live-backend
 npm run test:e2e:authenticated -- --grep 'schema workspace|task cancellation'
 ```
@@ -189,3 +190,13 @@ VALKEY_DEV_PORT=6380 npm run dev:deps
 ```dotenv
 VALKEY_URL=redis://127.0.0.1:6380/0
 ```
+
+### Forward server compatibility
+
+The live contract suite defaults to the pinned Server `0.0.15` contract. Set
+`HUBUUM_LIVE_EXPECT_SERVER_VERSION` when verifying a specific release candidate.
+The scheduled backend-main job sets `HUBUUM_LIVE_FORWARD_COMPATIBILITY=1` to
+exercise the complete contract across server version bumps; required release CI
+retains its exact version check. Credential fixtures obtain approval only after
+`reauthentication_required`, preserving the bearer, body, expiry precision, and
+request guards. Older servers need no approval endpoint.

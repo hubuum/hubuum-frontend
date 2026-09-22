@@ -1,9 +1,12 @@
+import { credentialRequest } from "./live-credential-request.mjs";
 import { verifySchemaEvolution } from "./live-schema-suite.mjs";
 import { verifyTaskCancellation } from "./live-task-suite.mjs";
 
 const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
 const adminPassword = process.env.HUBUUM_LIVE_ADMIN_PASSWORD;
+const expectedServerVersion = process.env.HUBUUM_LIVE_EXPECT_SERVER_VERSION ??
+  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.15");
 
 if (!adminPassword) {
   throw new Error("HUBUUM_LIVE_ADMIN_PASSWORD is required.");
@@ -194,7 +197,11 @@ async function main() {
   pass("discovered public v0.0.15 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
-  assert(openapi.data.info?.version === "0.0.15", "Server OpenAPI is not version 0.0.15.");
+  assert(typeof openapi.data.info?.version === "string", "Server OpenAPI omitted its version.");
+  if (expectedServerVersion !== null) {
+    assert(openapi.data.info.version === expectedServerVersion,
+      `Server OpenAPI is not version ${expectedServerVersion}.`);
+  }
   assert(openapi.data.paths?.["/api/v1/events"], "OpenAPI is missing /api/v1/events.");
   assert(
     openapi.data.paths?.["/api/v1/collections/{collection_id}/event-subscriptions"],
@@ -278,7 +285,7 @@ async function main() {
     openapi.data.components?.schemas?.PrincipalSettingsResponse,
     "OpenAPI is missing revisioned principal settings responses.",
   );
-  pass("server OpenAPI exposes the expected v0.0.15 contract");
+  pass(`server ${openapi.data.info.version} exposes the required frontend contract`);
   assert(openapi.data.paths?.["/api/v1/tasks/{task_id}/cancel"]?.post,
     "OpenAPI is missing task cancellation.");
   for (const field of ["cancel_requested_at", "cancel_requested_by", "cancel_reason", "execution_deadline_at", "terminal_reason", "unattempted_items", "remote_side_effect_state"]) {
@@ -470,17 +477,19 @@ async function main() {
   expectId(hubuumObject.data, "Created object");
   pass("created object");
 
-  const unscopedTokenResponse = await request(
+  const unscopedTokenBody = {
+    description: "Unscoped live-backend lifecycle token",
+    name: `live_unscoped_token_${suffix}`,
+  };
+  const unscopedTokenResponse = await credentialRequest(request, adminPassword,
     "POST",
     `/api/v1/iam/principals/${serviceAccount.data.id}/tokens`,
     {
       ...auth,
-      body: {
-        description: "Unscoped live-backend lifecycle token",
-        name: `live_unscoped_token_${suffix}`,
-      },
+      body: unscopedTokenBody,
       expected: 201,
     },
+    { kind: "create_token", principal_id: serviceAccount.data.id, token: unscopedTokenBody },
   );
   const unscopedToken = expectBearerToken(
     unscopedTokenResponse.data,
@@ -559,21 +568,23 @@ async function main() {
   });
   pass("revoked the unscoped token and rejected further use");
 
-  const scopedTokenResponse = await request(
+  const scopedTokenBody = {
+    description: "Scoped live-backend lifecycle token",
+    name: `live_scoped_token_${suffix}`,
+    scope: {
+      permissions: ["ReadCollection"],
+      resources: [{ id: collection.data.id, kind: "collection" }],
+    },
+  };
+  const scopedTokenResponse = await credentialRequest(request, adminPassword,
     "POST",
     `/api/v1/iam/principals/${serviceAccount.data.id}/tokens`,
     {
       ...auth,
-      body: {
-        description: "Scoped live-backend lifecycle token",
-        name: `live_scoped_token_${suffix}`,
-        scope: {
-          permissions: ["ReadCollection"],
-          resources: [{ id: collection.data.id, kind: "collection" }],
-        },
-      },
+      body: scopedTokenBody,
       expected: 201,
     },
+    { kind: "create_token", principal_id: serviceAccount.data.id, token: scopedTokenBody },
   );
   const scopedToken = expectBearerToken(
     scopedTokenResponse.data,
@@ -987,16 +998,17 @@ async function main() {
   pass("created limited IAM group");
 
   const limitedPassword = `LiveBackendTest_${suffix}!`;
-  const limitedUser = await request("POST", "/api/v1/iam/users", {
-    ...auth,
-    body: {
-      email: `live_${suffix}@example.test`,
-      name: `live_user_${suffix}`,
-      password: limitedPassword,
-      proper_name: "Live Backend Test User",
-    },
-    expected: 201,
-  });
+  const limitedUserBody = {
+    email: `live_${suffix}@example.test`,
+    name: `live_user_${suffix}`,
+    password: limitedPassword,
+    proper_name: "Live Backend Test User",
+  };
+  const limitedUser = await credentialRequest(request, adminPassword,
+    "POST", "/api/v1/iam/users",
+    { ...auth, body: limitedUserBody, expected: 201 },
+    { kind: "create_user", user: limitedUserBody },
+  );
   expectId(limitedUser.data, "Created limited user");
   pass("created limited user");
 
@@ -1682,15 +1694,16 @@ async function main() {
   if (process.env.HUBUUM_LIVE_DISPOSABLE_RESTORE === "1") {
     // This suite owns the disposable database. Restore only after every other
     // check, because successful replacement invalidates all existing tokens.
-    const confirmedRestore = await request("POST", `/api/v1/restores/${stagedRestore.data.id}/confirm`, {
-      ...auth,
-      body: {
-        confirmation: "REPLACE ALL HUBUUM DATA",
-        restore_capability: stagedRestore.data.restore_capability,
-        sha256: stagedRestore.data.sha256,
-      },
-      expected: 202,
-    });
+    const confirmation = {
+      confirmation: "REPLACE ALL HUBUUM DATA",
+      restore_capability: stagedRestore.data.restore_capability,
+      sha256: stagedRestore.data.sha256,
+    };
+    const confirmedRestore = await credentialRequest(request, adminPassword,
+      "POST", `/api/v1/restores/${stagedRestore.data.id}/confirm`,
+      { ...auth, body: confirmation, expected: 202 },
+      { kind: "confirm_restore", restore_id: stagedRestore.data.id, confirmation },
+    );
     assert(confirmedRestore.data.status === "confirmed", "Restore should be queued.");
     pass("confirmed a restore asynchronously with HTTP 202");
 
