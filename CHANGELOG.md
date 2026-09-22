@@ -18,7 +18,7 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   CodeMirror state to 6.7.6 and view to 6.43.13, development tooling, and
   Docker build workflow actions. All application, development, and GitHub
   Actions dependencies are current; no release dependency exceptions are needed.
-- Update the pinned Orval API generator to 8.34.0 and Node 24 build/CI
+- Update the pinned Orval API generator to 8.36.0 and Node 24 build/CI
   runtime to 24.21.0 with a verified immutable container digest.
 
 ### Added
@@ -63,6 +63,7 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Include the script-pinned API generator in release dependency freshness checks.
 - Prevent concurrent stale-lock recovery or a delayed release from removing a
   newer sandbox owner's lock. Recover earlier PID-file locks safely.
 
