@@ -115,6 +115,16 @@ Task activity shown to regular users comes from `/api/v1/tasks` through the BFF
 proxy, so users can see the task records available to their account without
 requiring global meta access.
 
+The Tasks workspace supports Server `v0.0.16` discovery filters for lifecycle,
+time ranges, recorded resources and revisions, import/export/backup options,
+output retention, and remote calls. Filters and sort order are stored in the URL
+and preserved across cursor pages. The default scope is My tasks; All visible
+tasks uses server authorization, and only administrators can filter another
+submitter. Counts and table exports cover the current page. Task detail pages
+show retained metadata for all six task kinds, distinguish unknown historical
+values from false, and expose available output and schema-report links through
+the BFF. Resource-specific filters require access to the referenced resource.
+
 Task detail pages support cancellation with optional reasons, guarded queued
 withdrawal, and polling until running work acknowledges cleanup. They show
 execution deadlines, cancellation metadata, unattempted import items, and remote

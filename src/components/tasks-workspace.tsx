@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { TableExportMenu } from "@/components/table-export-menu";
 import {
@@ -11,12 +11,20 @@ import {
 	summarizeTaskActivity,
 	type TaskRecord,
 } from "@/lib/api/tasking";
-import { filterMine } from "@/lib/task-notifications";
-import { useCurrentUserId } from "@/lib/use-current-user-id";
+import { TablePagination } from "@/components/table-pagination";
+import { TaskSearchFilters } from "@/components/task-search-filters";
+import {
+	defaultTaskSort,
+	parseTaskFilters,
+	taskSortError,
+} from "@/lib/task-discovery";
+import { useCursorPagination } from "@/lib/use-cursor-pagination";
 
 function parsePositiveInteger(value: string): number | null {
-	const parsed = Number.parseInt(value, 10);
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+	const parsed = Number(value);
+	return /^\d+$/.test(value) && Number.isSafeInteger(parsed) && parsed > 0
+		? parsed
+		: null;
 }
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -50,27 +58,49 @@ function getTaskLabel(task: Pick<TaskRecord, "kind">): string {
 }
 
 type TasksWorkspaceProps = {
-	currentUsername: string | null;
+	currentUserId: number | null;
 };
 
-export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
+export function TasksWorkspace({ currentUserId }: TasksWorkspaceProps) {
 	const router = useRouter();
-	const currentUserId = useCurrentUserId(currentUsername);
+	const search = useSearchParams().toString();
+	const params = new URLSearchParams(search);
+	const scope = params.get("scope") === "all" ? "all" : "mine";
+	const sort = params.get("sort") ?? defaultTaskSort;
+	const { filters, errors } = parseTaskFilters(params);
+	const sortError = taskSortError(sort);
+	if (sortError) errors.push(sortError);
+	if (scope === "mine" && filters.submitted_by != null)
+		errors.push("Select All visible tasks to filter by a submitter ID.");
+	const pagination = useCursorPagination({ defaultLimit: 50 });
+	const canSearch =
+		!errors.length && (scope === "all" || currentUserId != null);
+	const filterKey = new URLSearchParams(params);
+	filterKey.delete("cursor");
 	const [taskLookupInput, setTaskLookupInput] = useState("");
 	const issuedTasksQuery = useQuery({
-		queryKey: ["tasks", "workspace-list", currentUserId],
-		queryFn: async () => {
-			const page = await fetchTasks({
-				submittedBy: currentUserId ?? undefined,
-				limit: 50,
-				sort: "created_at.desc,id.desc",
-			});
-			return currentUserId != null
-				? filterMine(page.tasks, currentUserId)
-				: page.tasks;
-		},
+		queryKey: [
+			"tasks",
+			"workspace-list",
+			currentUserId,
+			scope,
+			filters,
+			sort,
+			pagination.cursor,
+			pagination.limit,
+		],
+		queryFn: () =>
+			fetchTasks({
+				filters,
+				submittedBy:
+					scope === "mine" ? (currentUserId ?? undefined) : undefined,
+				cursor: pagination.cursor,
+				limit: pagination.limit,
+				sort,
+			}),
+		enabled: canSearch,
 		refetchInterval: (query) => {
-			const hasActiveTasks = (query.state.data ?? []).some(
+			const hasActiveTasks = (query.state.data?.tasks ?? []).some(
 				(task) => !isTerminalTaskStatus(task.status),
 			);
 			const isHidden =
@@ -85,10 +115,10 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 		},
 	});
 	const taskSummary = useMemo(
-		() => summarizeTaskActivity(issuedTasksQuery.data ?? []),
+		() => summarizeTaskActivity(issuedTasksQuery.data?.tasks ?? []),
 		[issuedTasksQuery.data],
 	);
-	const issuedTasks = issuedTasksQuery.data ?? [];
+	const issuedTasks = canSearch ? (issuedTasksQuery.data?.tasks ?? []) : [];
 	const issuedTasksExportView = {
 		id: "tasks-issued",
 		fileName: "issued-tasks",
@@ -145,14 +175,29 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 				</p>
 			</header>
 
+			<TaskSearchFilters
+				key={filterKey.toString()}
+				search={search}
+				limit={pagination.limit}
+				errors={errors}
+				onApply={(next) =>
+					router.push(`/tasks?${next.toString()}`, { scroll: false })
+				}
+			/>
+			{scope === "mine" && currentUserId == null ? (
+				<div className="error-banner" role="alert">
+					Your account ID could not be loaded. Reload the page or select All
+					visible tasks to use the server’s access scope.
+				</div>
+			) : null}
 			<div className="imports-layout">
 				<section className="stack">
 					<article className="card stack panel-card">
 						<div className="stack action-card-header">
-							<h3>Recent task activity</h3>
+							<h3>Activity on this page</h3>
 							<p className="muted">
-								This panel polls the v1 task list automatically. Counts are
-								based on the recent tasks returned for your account.
+								Counts cover the current page of matching tasks and refresh
+								automatically.
 							</p>
 						</div>
 
@@ -168,31 +213,33 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 							</div>
 						) : null}
 
-						{!issuedTasksQuery.isLoading && !issuedTasksQuery.isError ? (
+						{canSearch &&
+						!issuedTasksQuery.isLoading &&
+						!issuedTasksQuery.isError ? (
 							<>
 								<div className="summary-grid">
 									<div className="summary-pill">
-										<span>Recent active</span>
+										<span>Active</span>
 										<strong>{taskSummary.activeTasks}</strong>
 									</div>
 									<div className="summary-pill">
-										<span>Recent queued</span>
+										<span>Queued</span>
 										<strong>{taskSummary.queuedTasks}</strong>
 									</div>
 									<div className="summary-pill">
-										<span>Recent running</span>
+										<span>Running</span>
 										<strong>{taskSummary.runningTasks}</strong>
 									</div>
 									<div className="summary-pill">
-										<span>Recent validating</span>
+										<span>Validating</span>
 										<strong>{taskSummary.validatingTasks}</strong>
 									</div>
 									<div className="summary-pill">
-										<span>Recent failed</span>
+										<span>Failed</span>
 										<strong>{taskSummary.failedTasks}</strong>
 									</div>
 									<div className="summary-pill">
-										<span>Recent partial</span>
+										<span>Partial</span>
 										<strong>{taskSummary.partiallySucceededTasks}</strong>
 									</div>
 								</div>
@@ -216,7 +263,11 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 									</div>
 									<div>
 										<strong>Scope</strong>
-										<p className="muted">Your visible tasks</p>
+										<p className="muted">
+											{scope === "mine"
+												? "My matching tasks"
+												: "All visible matching tasks"}
+										</p>
 									</div>
 								</div>
 							</>
@@ -230,8 +281,8 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 							<div className="stack action-card-header">
 								<h3>Issued tasks</h3>
 								<p className="muted">
-									Recent task submissions loaded from the server. Click any row
-									to reopen its detailed task page.
+									Matching submissions from the server. Open a task to inspect
+									its details.
 								</p>
 							</div>
 							<TableExportMenu
@@ -240,6 +291,47 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 								compact
 							/>
 						</div>
+
+						<label className="control-field">
+							Tasks per page
+							<select
+								value={pagination.limit}
+								onChange={(event) =>
+									pagination.setLimit(Number(event.target.value))
+								}
+							>
+								{[...new Set([20, 50, 100, 250, pagination.limit])]
+									.sort((a, b) => a - b)
+									.map((limit) => (
+										<option key={limit} value={limit}>
+											{limit}
+										</option>
+									))}
+							</select>
+						</label>
+						{pagination.cursor && !pagination.hasPrevPage ? (
+							<button
+								type="button"
+								className="ghost"
+								onClick={pagination.goToFirstPage}
+							>
+								Return to first page
+							</button>
+						) : null}
+						<TablePagination
+							hasNextPage={
+								canSearch && Boolean(issuedTasksQuery.data?.nextCursor)
+							}
+							hasPrevPage={pagination.hasPrevPage}
+							onNextPage={() => {
+								if (issuedTasksQuery.data?.nextCursor)
+									pagination.goToNextPage(issuedTasksQuery.data.nextCursor);
+							}}
+							onPrevPage={() => pagination.goToPrevPage()}
+							onFirstPage={pagination.goToFirstPage}
+							currentCount={issuedTasks.length}
+							busy={issuedTasksQuery.isFetching || !canSearch}
+						/>
 
 						{issuedTasksQuery.isLoading ? (
 							<div className="muted">Loading recent tasks...</div>
@@ -253,15 +345,14 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 							</div>
 						) : null}
 
-						{!issuedTasksQuery.isLoading &&
+						{canSearch &&
+						!issuedTasksQuery.isLoading &&
 						!issuedTasksQuery.isError &&
-						(issuedTasksQuery.data?.length ?? 0) === 0 ? (
-							<div className="empty-state">
-								No recent tasks were returned by the server.
-							</div>
+						issuedTasks.length === 0 ? (
+							<div className="empty-state">No tasks match these filters.</div>
 						) : null}
 
-						{issuedTasksQuery.data?.length ? (
+						{issuedTasks.length ? (
 							<div className="table-wrap">
 								<table>
 									<thead>
@@ -309,6 +400,7 @@ export function TasksWorkspace({ currentUsername }: TasksWorkspaceProps) {
 								value={taskLookupInput}
 								onChange={(event) => setTaskLookupInput(event.target.value)}
 								placeholder="Task ID"
+								aria-label="Task ID"
 							/>
 							<button type="submit" className="ghost">
 								Open task
