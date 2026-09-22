@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.15
+ * OpenAPI spec version: 0.0.16
  */
+import type { RetainedBackupDetails } from './retainedBackupDetails';
 
 export interface BackupTaskDetails {
   /** @nullable */
@@ -14,6 +15,7 @@ export interface BackupTaskDetails {
   /** @nullable */
   output_expires_at?: string | null;
   output_url: string;
+  retained?: null | RetainedBackupDetails;
   /** @nullable */
   sha256?: string | null;
 }

@@ -6,7 +6,7 @@ BACKEND_COMPOSE_FILE="${ROOT_DIR}/docker-compose.live-backend.yml"
 VALKEY_COMPOSE_FILE="${ROOT_DIR}/compose.dev.yml"
 BACKEND_PROJECT="${HUBUUM_FULL_E2E_BACKEND_PROJECT:-hubuum-frontend-full-e2e-backend}"
 VALKEY_PROJECT="${HUBUUM_FULL_E2E_VALKEY_PROJECT:-hubuum-frontend-full-e2e-valkey}"
-BACKEND_IMAGE="${HUBUUM_FULL_E2E_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.15@sha256:36af667dbc9e221a40448496d4a87e168c999d0834df4b69177345ff3d36e821}"
+BACKEND_IMAGE="${HUBUUM_FULL_E2E_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.16@sha256:37b3299edd845a0c2aa7772d7d68565233ac8c1802bc44be3fb4bbc6dfa8778e}"
 BACKEND_PORT="${HUBUUM_FULL_E2E_BACKEND_PORT:-19999}"
 VALKEY_PORT="${HUBUUM_FULL_E2E_VALKEY_PORT:-16379}"
 BASE_URL="http://127.0.0.1:${BACKEND_PORT}"
@@ -75,23 +75,25 @@ if [[ "${ready}" -ne 1 ]]; then
   exit 1
 fi
 
-reset_output="$(
-  docker compose -f "${BACKEND_COMPOSE_FILE}" -p "${BACKEND_PROJECT}" \
-    exec -T hubuum hubuum-admin --reset-password admin
-)"
-admin_password="$(
-  printf '%s\n' "${reset_output}" \
-    | sed -n 's/^Password for user admin reset to: //p' \
-    | tail -1
-)"
-unset reset_output
-
-if [[ -z "${admin_password}" ]]; then
-  echo "Could not obtain a disposable admin password." >&2
-  exit 1
-fi
+reset_admin_password() {
+  local reset_output
+  reset_output="$(
+    docker compose -f "${BACKEND_COMPOSE_FILE}" -p "${BACKEND_PROJECT}" \
+      exec -T hubuum /usr/local/bin/hubuum-admin --reset-password admin
+  )"
+  admin_password="$(
+    printf '%s\n' "${reset_output}" \
+      | sed -n 's/^Password for user admin reset to: //p' \
+      | tail -1
+  )"
+  if [[ -z "${admin_password}" ]]; then
+    echo "Could not obtain a disposable admin password." >&2
+    exit 1
+  fi
+}
 
 echo "Running the complete authenticated Chromium suite sequentially."
+reset_admin_password
 CI=1 \
 BACKEND_BASE_URL="${BASE_URL}" \
 VALKEY_URL="redis://127.0.0.1:${VALKEY_PORT}/0" \
@@ -99,5 +101,20 @@ E2E_USERNAME="admin" \
 E2E_PASSWORD="${admin_password}" \
 E2E_IDENTITY_SCOPE="local" \
   npx playwright test tests/e2e/authenticated-ui.spec.ts \
+    --project=chromium \
+    --workers=1
+
+# Restore is deliberately last: it replaces the disposable database and tokens.
+echo "Checking credential approvals and restore against the released server."
+reset_admin_password
+CI=1 \
+BACKEND_BASE_URL="${BASE_URL}" \
+VALKEY_URL="redis://127.0.0.1:${VALKEY_PORT}/0" \
+E2E_USERNAME="admin" \
+E2E_PASSWORD="${admin_password}" \
+E2E_IDENTITY_SCOPE="local" \
+E2E_CREDENTIAL_APPROVALS="${HUBUUM_FULL_E2E_CREDENTIAL_APPROVALS:-required}" \
+E2E_CREDENTIAL_RESTORE=1 \
+  npx playwright test tests/e2e/credential-approvals-live.spec.ts \
     --project=chromium \
     --workers=1

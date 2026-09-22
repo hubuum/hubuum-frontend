@@ -6,7 +6,7 @@ const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
 const adminPassword = process.env.HUBUUM_LIVE_ADMIN_PASSWORD;
 const expectedServerVersion = process.env.HUBUUM_LIVE_EXPECT_SERVER_VERSION ??
-  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.15");
+  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.16");
 
 if (!adminPassword) {
   throw new Error("HUBUUM_LIVE_ADMIN_PASSWORD is required.");
@@ -194,7 +194,7 @@ async function main() {
       clientConfig.data.authentication.max_token_lifetime_hours >= defaultTokenLifetimeHours,
     "Client config is missing the effective maximum token lifetime.",
   );
-  pass("discovered public v0.0.15 pagination and authentication configuration");
+  pass("discovered public v0.0.16 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
   assert(typeof openapi.data.info?.version === "string", "Server OpenAPI omitted its version.");
@@ -358,7 +358,7 @@ async function main() {
         runningConfig.data.exports.database_statement_timeout_ms,
     "Admin config is missing the storage query budget or its compatibility alias.",
   );
-  pass("read redacted v0.0.15 admin runtime configuration");
+  pass("read redacted v0.0.16 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,

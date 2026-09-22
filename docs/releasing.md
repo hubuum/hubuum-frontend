@@ -109,13 +109,14 @@ backend version is intentionally raised.
 
    This release-blocking workflow reruns dependency freshness and exception
    validation, confirms the exact commit's full main CI run, and runs the
-   complete authenticated browser suite against the combined dependency set.
+   complete authenticated browser suite, live credential approvals, and approved
+   restore completion against the combined dependency set and pinned server.
    Wait for its `release-readiness` job to succeed and confirm the listed head
    SHA is the commit that will be tagged.
 7. Check out that clean commit and run:
 
    ```sh
-   bash scripts/check-release-readiness.sh v0.0.16
+   bash scripts/check-release-readiness.sh v0.0.17
    ```
 
 ## Publish
@@ -123,8 +124,8 @@ backend version is intentionally raised.
 Create and push an annotated tag from the verified commit:
 
 ```sh
-git tag -a v0.0.16 -m "Hubuum Frontend v0.0.16"
-git push origin v0.0.16
+git tag -a v0.0.17 -m "Hubuum Frontend v0.0.17"
+git push origin v0.0.17
 ```
 
 The tag workflow rechecks dependency freshness and unresolved Dependabot pull

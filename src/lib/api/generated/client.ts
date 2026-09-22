@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.15
+ * OpenAPI spec version: 0.0.16
  */
 import type {
   ApiErrorResponse,
@@ -25,6 +25,9 @@ import type {
   ComputedFieldPreviewRequest,
   ComputedFieldPreviewResponse,
   CountsResponse,
+  CredentialApprovalRecord,
+  CredentialApprovalRequest,
+  CredentialApprovalResponse,
   DbStateResponse,
   EffectiveGroupPermission,
   EventDeliveryHealthResponse,
@@ -9700,6 +9703,147 @@ export const getApiV1ExportsByTaskIdOutput = async (taskId: number, options?: Re
 
 
 
+export type postApiV1IamCredentialApprovalsResponse201 = {
+  data: CredentialApprovalResponse
+  status: 201
+}
+
+export type postApiV1IamCredentialApprovalsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1IamCredentialApprovalsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1IamCredentialApprovalsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1IamCredentialApprovalsResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1IamCredentialApprovalsResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
+export type postApiV1IamCredentialApprovalsResponseSuccess = (postApiV1IamCredentialApprovalsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1IamCredentialApprovalsResponseError = (postApiV1IamCredentialApprovalsResponse400 | postApiV1IamCredentialApprovalsResponse401 | postApiV1IamCredentialApprovalsResponse403 | postApiV1IamCredentialApprovalsResponse429 | postApiV1IamCredentialApprovalsResponse503) & {
+  headers: Headers;
+};
+
+export type postApiV1IamCredentialApprovalsResponse = (postApiV1IamCredentialApprovalsResponseSuccess | postApiV1IamCredentialApprovalsResponseError)
+
+export const getPostApiV1IamCredentialApprovalsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/credential-approvals`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/iam/credential-approvals.
+ * @summary Post Api V1 Iam Credential Approvals
+ */
+export const postApiV1IamCredentialApprovals = async (credentialApprovalRequest: CredentialApprovalRequest, options?: RequestInit): Promise<postApiV1IamCredentialApprovalsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1IamCredentialApprovalsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(credentialApprovalRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1IamCredentialApprovalsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1IamCredentialApprovalsResponse
+}
+
+
+
+export type getApiV1IamCredentialApprovalsByApprovalIdResponse200 = {
+  data: CredentialApprovalRecord
+  status: 200
+}
+
+export type getApiV1IamCredentialApprovalsByApprovalIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1IamCredentialApprovalsByApprovalIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1IamCredentialApprovalsByApprovalIdResponseSuccess = (getApiV1IamCredentialApprovalsByApprovalIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1IamCredentialApprovalsByApprovalIdResponseError = (getApiV1IamCredentialApprovalsByApprovalIdResponse401 | getApiV1IamCredentialApprovalsByApprovalIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1IamCredentialApprovalsByApprovalIdResponse = (getApiV1IamCredentialApprovalsByApprovalIdResponseSuccess | getApiV1IamCredentialApprovalsByApprovalIdResponseError)
+
+export const getGetApiV1IamCredentialApprovalsByApprovalIdUrl = (approvalId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/iam/credential-approvals/${approvalId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/iam/credential-approvals/{approval_id}.
+ * @summary Get Api V1 Iam Credential Approvals By Approval Id
+ */
+export const getApiV1IamCredentialApprovalsByApprovalId = async (approvalId: number, options?: RequestInit): Promise<getApiV1IamCredentialApprovalsByApprovalIdResponse> => {
+
+  const res = await fetch(getGetApiV1IamCredentialApprovalsByApprovalIdUrl(approvalId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1IamCredentialApprovalsByApprovalIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1IamCredentialApprovalsByApprovalIdResponse
+}
+
+
+
 export type getApiV1IamGroupsResponse200 = {
   data: GroupResponse[]
   status: 200
@@ -12493,6 +12637,11 @@ export type postApiV1IamUsersResponse401 = {
   status: 401
 }
 
+export type postApiV1IamUsersResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
 export type postApiV1IamUsersResponse409 = {
   data: ApiErrorResponse
   status: 409
@@ -12501,7 +12650,7 @@ export type postApiV1IamUsersResponse409 = {
 export type postApiV1IamUsersResponseSuccess = (postApiV1IamUsersResponse201) & {
   headers: Headers;
 };
-export type postApiV1IamUsersResponseError = (postApiV1IamUsersResponse400 | postApiV1IamUsersResponse401 | postApiV1IamUsersResponse409) & {
+export type postApiV1IamUsersResponseError = (postApiV1IamUsersResponse400 | postApiV1IamUsersResponse401 | postApiV1IamUsersResponse403 | postApiV1IamUsersResponse409) & {
   headers: Headers;
 };
 
@@ -14808,7 +14957,7 @@ export type getApiV1TasksResponseError = (getApiV1TasksResponse400 | getApiV1Tas
 
 export type getApiV1TasksResponse = (getApiV1TasksResponseSuccess | getApiV1TasksResponseError)
 
-export const getGetApiV1TasksUrl = (params: GetApiV1TasksParams,) => {
+export const getGetApiV1TasksUrl = (params?: GetApiV1TasksParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -14827,7 +14976,7 @@ export const getGetApiV1TasksUrl = (params: GetApiV1TasksParams,) => {
  * Auto-generated documentation for GET /api/v1/tasks. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
  * @summary Get Api V1 Tasks
  */
-export const getApiV1Tasks = async (params: GetApiV1TasksParams, options?: RequestInit): Promise<getApiV1TasksResponse> => {
+export const getApiV1Tasks = async (params?: GetApiV1TasksParams, options?: RequestInit): Promise<getApiV1TasksResponse> => {
 
   const res = await fetch(getGetApiV1TasksUrl(params),
   {

@@ -3,10 +3,15 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.15
+ * OpenAPI spec version: 0.0.16
  */
 
 export interface ApiErrorResponse {
   error: string;
   message: string;
+  /**
+     * Machine-readable reason for errors with a client recovery flow.
+     * @nullable
+     */
+  reason?: string | null;
 }

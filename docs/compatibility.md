@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.15` | `ghcr.io/hubuum/hubuum-server:v0.0.15` |
+| `main` (unreleased) | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
+| `v0.0.17` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
 | `v0.0.16` | `v0.0.15` | `ghcr.io/hubuum/hubuum-server:v0.0.15` |
 | `v0.0.15` | `v0.0.14` | `ghcr.io/hubuum/hubuum-server:v0.0.14` |
 | `v0.0.14` | `v0.0.13` | `ghcr.io/hubuum/hubuum-server:v0.0.13` |
@@ -24,28 +25,36 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Frontend `v0.0.16` and unreleased `main` target Server `v0.0.15` at
+listed server tag. Frontend `v0.0.17` and unreleased `main` target Server `v0.0.16` at
+`sha256:37b3299edd845a0c2aa7772d7d68565233ac8c1802bc44be3fb4bbc6dfa8778e`.
+Frontend `v0.0.16` retains its Server `v0.0.15` target at
 `sha256:36af667dbc9e221a40448496d4a87e168c999d0834df4b69177345ff3d36e821`.
 Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
 A separate scheduled workflow follows the moving backend `:main` image.
 
-## Optional credential approvals
+## Server v0.0.16
 
-The frontend also supports the fresh-authentication protocol from
-[Server PR #423](https://github.com/hubuum/hubuum/pull/423). Support is selected
-per operation by the server's `403` / `reauthentication_required` response, not
-by a version check or a required capability probe. The minimum backend contract
-and the pinned release target remain unchanged.
+The OpenAPI snapshot is taken directly from the server's `v0.0.16` tag
+(commit `8f4194ffe25d172d579b676f109efbdc71d9aab7`). Both Linux AMD64 and ARM64
+image labels identify that commit. Its API shapes match the preview tested for
+Frontend `v0.0.16`; only the OpenAPI version changed between that preview and
+the release. The generated client now includes credential approvals, retained
+task details, and resource-aware task search parameters. Existing task controls
+keep their current behavior.
 
-The `v0.0.16` frontend release verifies this preview protocol against Server
+Frontend `v0.0.16` previously verified the approval protocol against Server
 commit `61f1bfd3455af26254e1dc73e697a80b0536813a`, with image
 `ghcr.io/hubuum/hubuum-server@sha256:e40fc33e2cbd6d73ce1bb281d3836468feb28493ff4343c1099211083cf83181`.
-Both Linux AMD64 and ARM64 image labels identify that source commit. The bundled
-OpenAPI document remains the released Server `v0.0.15` contract described below;
-the approval helper preserves its fallback for that release. An upcoming server
-release needs its final contract and immutable image checked before replacing
-the supported baseline.
+Frontend `v0.0.17` replaces that preview check with the final released contract
+and image in required CI and release verification.
+
+### Credential approvals
+
+Server `v0.0.16` requires fresh password approval for credential management.
+The frontend selects this flow per operation from the server's `403` /
+`reauthentication_required` response, preserving compatibility with older
+servers without version checks or capability probes.
 
 Token creation/renewal, local user creation, password changes, credential imports
 (including dry runs), and restore confirmation use a password dialog when
@@ -63,10 +72,28 @@ provider failures, permission errors, and expired sessions retain their distinct
 failure behavior. A lost mutation response requires checking account/task/restore
 state before retrying; the BFF reports the approval record ID when available.
 
+### Upgrade requirements
+
+Deploy an approval-capable frontend and update CLI/SDK credential flows before
+upgrading the server. Keep a verified `v0.0.15` backup, quiesce protected mutations,
+drain workers, and run `hubuum-admin --migrate` separately. This release requires
+`2026-09-18-000001_task_discovery` and
+`2026-09-19-000001_credential_approvals`. Upgrade every API replica and worker
+before resuming protected mutations; use matching `v0.0.16` server,
+administrator, template worker, and separately supervised restore executor.
+
+Backup format remains 6, and older format-6 backups without discovery metadata
+remain accepted. External storage adapters and exhaustive task/event decoders
+must adopt the new task details and credential-approval contracts. Application
+rollback also restores the older credential policy and needs a coordinated
+event/data compatibility review. See the
+[Server v0.0.16 release notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.16)
+and [credential rollout guide](https://github.com/hubuum/hubuum/blob/v0.0.16/docs/credential_approvals.md).
+
 ## Server v0.0.15
 
-The OpenAPI snapshot is taken directly from the server's `v0.0.15` tag
-(commit `4bb889c6`). Normal contract checks now require versioned schemas,
+Frontend `v0.0.16` adopted the OpenAPI snapshot from the server's `v0.0.15` tag
+(commit `4bb889c6`). Normal contract checks require versioned schemas,
 saved diagnostics, HTML repair reports, and task cancellation. The earlier
 separate schema-preview CI job is superseded by the release contract check.
 
