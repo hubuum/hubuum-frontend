@@ -116,7 +116,7 @@ backend version is intentionally raised.
 7. Check out that clean commit and run:
 
    ```sh
-   bash scripts/check-release-readiness.sh v0.0.17
+   bash scripts/check-release-readiness.sh v0.0.18
    ```
 
 ## Publish
@@ -124,8 +124,8 @@ backend version is intentionally raised.
 Create and push an annotated tag from the verified commit:
 
 ```sh
-git tag -a v0.0.17 -m "Hubuum Frontend v0.0.17"
-git push origin v0.0.17
+git tag -a v0.0.18 -m "Hubuum Frontend v0.0.18"
+git push origin v0.0.18
 ```
 
 The tag workflow rechecks dependency freshness and unresolved Dependabot pull
