@@ -12315,3 +12315,41 @@ html[data-theme="dark"] button.login-background-option {
 		flex-basis: 5rem;
 	}
 }
+
+.task-filter-summary {
+	cursor: pointer;
+	padding-block: 0.75rem;
+	font-weight: 600;
+}
+
+.task-filter-choices {
+	border: 0;
+	padding: 0;
+	margin: 0;
+	min-width: 0;
+}
+
+.task-filter-choice {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-height: 44px;
+	margin-inline-end: 1rem;
+}
+
+.task-filter-checkbox {
+	width: auto;
+}
+
+.task-metadata dt {
+	font-weight: 600;
+}
+
+.task-metadata dd {
+	margin: 0.4rem 0 0;
+	overflow-wrap: anywhere;
+}
+
+.task-filter-group .form-grid {
+	align-items: start;
+}

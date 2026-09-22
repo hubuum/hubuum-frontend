@@ -1,6 +1,6 @@
 import { credentialRequest } from "./live-credential-request.mjs";
 import { verifySchemaEvolution } from "./live-schema-suite.mjs";
-import { verifyTaskCancellation } from "./live-task-suite.mjs";
+import { verifyTaskCancellation, verifyTaskDiscovery } from "./live-task-suite.mjs";
 
 const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
@@ -948,6 +948,9 @@ async function main() {
   assert(completedBackup.details?.backup?.output_available, "Backup output should be available.");
   assert(completedBackup.execution_deadline_at, "Claimed backup must retain its execution deadline.");
   pass("created and completed a backup task");
+
+  await verifyTaskDiscovery({ request, auth, completedBackup, classId: hubuumClass.data.id });
+  pass("verified retained task discovery, false option filters, resource filters, output state, cursor pagination, and invalid combinations");
 
   const backupOutput = await request("GET", `/api/v1/backups/${backup.data.id}/output`, auth);
   assert(backupOutput.data.backup_version === backupVersion, `Backup document should use format version ${backupVersion}.`);

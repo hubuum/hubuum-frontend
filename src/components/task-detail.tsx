@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { TaskCancellation } from "@/components/task-cancellation";
+import { TaskDiscoveryDetails } from "@/components/task-discovery-details";
 import { getApiV1IamUsersByUserId } from "@/lib/api/generated/client";
 import { formatEventActor, formatEventInitiator } from "@/lib/event-provenance";
-import { getExportResultHref } from "@/lib/export-workspace";
+import { taskOutputHref } from "@/lib/task-metadata";
 import {
 	fetchImportProjection,
 	fetchImportResults,
@@ -297,15 +298,17 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 						<span className={`status-pill status-pill--${taskTone}`}>
 							{activeTask.status}
 						</span>
-						{activeTask.kind === "export" && exportDetails?.output_available ? (
+						{taskOutputHref(activeTask) ? (
 							<Link
 								className="link-chip"
-								href={getExportResultHref(activeTask.id)}
+								href={taskOutputHref(activeTask) ?? ""}
 								target="_blank"
 								rel="noopener noreferrer"
 								prefetch={false}
 							>
-								Open result in new tab
+								{activeTask.kind === "backup"
+									? "Download backup"
+									: "Open result in new tab"}
 							</Link>
 						) : null}
 						<Link className="link-chip" href={backHref}>
@@ -438,7 +441,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 							<div>
 								<strong>Output available</strong>
 								<p className="muted">
-									{exportDetails?.output_available ? "yes" : "no"}
+									{exportDetails == null
+										? "Unknown"
+										: exportDetails.output_available
+											? "yes"
+											: "no"}
 								</p>
 							</div>
 							<div>
@@ -488,6 +495,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 					</div>
 				) : null}
 			</article>
+
+			<TaskDiscoveryDetails task={activeTask} />
 
 			<article className="card stack panel-card">
 				<div className="panel-header">

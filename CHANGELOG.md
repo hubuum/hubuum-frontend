@@ -6,6 +6,14 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Add server-side task discovery filters, bookmarkable searches, sort controls,
+  and cursor pagination to the Tasks workspace.
+- Show retained import, export, backup, reindex, schema-validation, and remote
+  call details, including output retention and authorized output/report links.
+  Missing historical values remain unknown instead of appearing as false.
+
 ## [0.0.17] - 2026-09-22
 
 ### Compatibility

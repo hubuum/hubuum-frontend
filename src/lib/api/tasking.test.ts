@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
 	cancelTask,
+	fetchTasks,
 	formatTaskElapsedTime,
 	getImportUnattemptedCount,
 	getTaskProgressPercent,
@@ -10,6 +11,56 @@ import {
 } from "@/lib/api/tasking";
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("task discovery requests", () => {
+	it("sends filters and cursor together without losing false values", async () => {
+		const fetch = vi.fn<typeof globalThis.fetch>(
+			async () => new Response("[]", { headers: { "x-next-cursor": "next" } }),
+		);
+		vi.stubGlobal("fetch", fetch);
+		await expect(
+			fetchTasks({
+				filters: {
+					kind: "export,backup",
+					output_state: "expired",
+					cancel_requested: false,
+					submitted_by: 7,
+				},
+				cursor: "page two",
+				limit: 50,
+			}),
+		).resolves.toEqual({ tasks: [], nextCursor: "next" });
+		const url = new URL(
+			fetch.mock.calls[0][0] as string,
+			"https://frontend.example",
+		);
+		expect(url.pathname).toBe("/_hubuum-bff/hubuum/api/v1/tasks");
+		expect(Object.fromEntries(url.searchParams)).toEqual({
+			kind: "export,backup",
+			output_state: "expired",
+			cancel_requested: "false",
+			submitted_by: "7",
+			cursor: "page two",
+			limit: "50",
+			sort: "created_at.desc,id.desc",
+			include_total: "false",
+		});
+	});
+	it("surfaces server filter-combination and authorization errors", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async () =>
+					new Response('{"message":"Filters conflict with task kinds"}', {
+						status: 400,
+					}),
+			),
+		);
+		await expect(
+			fetchTasks({ filters: { kind: "import", class_id: 1 } }),
+		).rejects.toThrow("Filters conflict with task kinds");
+	});
+});
 
 describe("task cancellation", () => {
 	it.each([200, 202])(

@@ -19,6 +19,7 @@ import type {
 	TaskStatus,
 } from "@/lib/api/generated/models";
 import { acquireOperationIdempotencyKey } from "@/lib/operation-idempotency";
+import type { TaskFilters } from "@/lib/task-discovery";
 
 export type {
 	ImportRequest,
@@ -30,6 +31,7 @@ export type {
 };
 
 type FetchTasksOptions = {
+	filters?: TaskFilters;
 	cursor?: string;
 	kind?: TaskKind;
 	limit?: number;
@@ -231,6 +233,9 @@ export async function fetchTasks(
 	options: FetchTasksOptions = {},
 ): Promise<TaskListPage> {
 	const searchParams = new URLSearchParams();
+	for (const [key, value] of Object.entries(options.filters ?? {})) {
+		if (value != null) searchParams.set(key, String(value));
+	}
 
 	if (options.kind) {
 		searchParams.set("kind", options.kind);

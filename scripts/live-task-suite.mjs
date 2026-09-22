@@ -64,6 +64,20 @@ export async function verifyTaskCancellation({
 	assert.ok(Number.isInteger(stopped.cancel_requested_by));
 	assert.ok(Number.isInteger(stopped.unattempted_items));
 	assert.equal(stopped.details?.backup?.output_available, false);
+	assert.equal(stopped.details?.backup?.retained?.include_history, false);
+	const cancelledSearch = await request("GET", "/api/v1/tasks", {
+		...auth,
+		query: {
+			kind: "backup",
+			backup_include_history: false,
+			cancel_requested: true,
+			terminal: true,
+			terminal_reason: "cancel_requested",
+			include_total: false,
+			limit: 250,
+		},
+	});
+	assert.ok(cancelledSearch.data.some((task) => task.id === stopped.id));
 	const path = `/api/v1/tasks/${stopped.id}`;
 	await request("POST", `${path}/cancel`, {
 		token: readerToken,
@@ -87,4 +101,80 @@ export async function verifyTaskCancellation({
 			.length,
 		1,
 	);
+}
+
+export async function verifyTaskDiscovery({
+	request,
+	auth,
+	completedBackup,
+	classId,
+}) {
+	assert.equal(
+		completedBackup.details?.backup?.retained?.include_history,
+		false,
+	);
+	assert.equal(
+		completedBackup.details?.backup?.retained?.output_state,
+		"available",
+	);
+	const outputSearch = await request("GET", "/api/v1/tasks", {
+		...auth,
+		query: {
+			kind: "backup",
+			backup_include_history: false,
+			output_state: "available",
+			terminal: true,
+			status: "succeeded",
+			include_total: false,
+			limit: 250,
+		},
+	});
+	assert.ok(outputSearch.data.some((task) => task.id === completedBackup.id));
+	assert.equal(outputSearch.headers.get("x-total-count"), null);
+	const seen = new Set();
+	let cursor;
+	do {
+		const page = await request("GET", "/api/v1/tasks", {
+			...auth,
+			query: {
+				kind: "backup",
+				backup_include_history: false,
+				include_total: false,
+				sort: "created_at.desc,id.desc",
+				limit: 1,
+				cursor,
+			},
+		});
+		for (const task of page.data) {
+			assert.equal(task.kind, "backup");
+			assert.equal(task.details?.backup?.retained?.include_history, false);
+			assert.ok(!seen.has(task.id), "Cursor pagination repeated a task");
+			seen.add(task.id);
+		}
+		cursor = page.headers.get("x-next-cursor");
+		assert.ok(seen.size < 100, "Task pagination did not terminate");
+	} while (cursor);
+	assert.ok(seen.has(completedBackup.id));
+	assert.ok(
+		seen.size >= 2,
+		"Expected completed and cancelled backup tasks on separate pages",
+	);
+	const rebuildSearch = await request("GET", "/api/v1/tasks", {
+		...auth,
+		query: { class_id: classId, kind: "reindex", include_total: false },
+	});
+	assert.ok(rebuildSearch.data.length > 0);
+	assert.ok(
+		rebuildSearch.data.every(
+			(task) => task.details?.reindex?.class_id === classId,
+		),
+	);
+	for (const query of [
+		{ relation_id: 1 },
+		{ schema_revision: 1 },
+		{ terminal: true, status: "running" },
+		{ kind: "import", class_id: classId },
+	]) {
+		await request("GET", "/api/v1/tasks", { ...auth, query, expected: 400 });
+	}
 }
