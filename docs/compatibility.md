@@ -6,6 +6,7 @@ should pin both components to explicit versions.
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
 | `main` (unreleased) | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
+| `v0.0.18` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
 | `v0.0.17` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
 | `v0.0.16` | `v0.0.15` | `ghcr.io/hubuum/hubuum-server:v0.0.15` |
 | `v0.0.15` | `v0.0.14` | `ghcr.io/hubuum/hubuum-server:v0.0.14` |
@@ -25,7 +26,8 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Frontend `v0.0.17` and unreleased `main` target Server `v0.0.16` at
+listed server tag. Frontend `v0.0.17`, `v0.0.18`, and unreleased `main` target
+Server `v0.0.16` at
 `sha256:37b3299edd845a0c2aa7772d7d68565233ac8c1802bc44be3fb4bbc6dfa8778e`.
 Frontend `v0.0.16` retains its Server `v0.0.15` target at
 `sha256:36af667dbc9e221a40448496d4a87e168c999d0834df4b69177345ff3d36e821`.
@@ -48,6 +50,9 @@ commit `61f1bfd3455af26254e1dc73e697a80b0536813a`, with image
 `ghcr.io/hubuum/hubuum-server@sha256:e40fc33e2cbd6d73ce1bb281d3836468feb28493ff4343c1099211083cf83181`.
 Frontend `v0.0.17` replaces that preview check with the final released contract
 and image in required CI and release verification.
+
+Frontend `v0.0.18` adds task discovery filters, bookmarkable searches, cursor
+pagination, and retained task details using the same released-server contract.
 
 ### Credential approvals
 

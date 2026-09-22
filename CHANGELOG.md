@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.18] - 2026-09-22
+
 ### Added
 
 - Add server-side task discovery filters, bookmarkable searches, sort controls,
@@ -13,6 +15,17 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Show retained import, export, backup, reindex, schema-validation, and remote
   call details, including output retention and authorized output/report links.
   Missing historical values remain unknown instead of appearing as false.
+
+### Changed
+
+- Update Next.js to `16.3.6`. Application, development, API generator, and
+  GitHub Actions dependencies pass the release freshness gate with no exceptions.
+
+### Compatibility
+
+- Retain the released Server `v0.0.16` baseline and its pinned image. Task
+  discovery uses that release's search and retained-metadata contract; no
+  backend upgrade is required for deployments already on Server `v0.0.16`.
 
 ## [0.0.17] - 2026-09-22
 
@@ -666,7 +679,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.17...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.18...HEAD
+[0.0.18]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.17...v0.0.18
 [0.0.17]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.16...v0.0.17
 [0.0.16]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.15...v0.0.16
 [0.0.15]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.14...v0.0.15
