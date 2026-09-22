@@ -195,6 +195,17 @@ export function parseNpmOutdated(output) {
 		});
 }
 
+export function evaluateGeneratorFreshness(script, latestVersion) {
+	const pin = /(?:^|\s)npx\s+--yes\s+orval@(\d+\.\d+\.\d+)(?=\s|$)/.exec(script ?? "");
+	if (!pin) fail("gen:api must pin Orval to an exact stable version.");
+	if (typeof latestVersion !== "string" || parseSemverTag(latestVersion)?.specificity !== 3) {
+		fail("npm returned an invalid stable Orval version.");
+	}
+	return parseNpmOutdated(JSON.stringify({
+		orval: { current: pin[1], wanted: pin[1], latest: latestVersion, type: "devDependencies" },
+	})).map((entry) => ({ ...entry, detail: "pinned API generator (gen:api)" }));
+}
+
 function validDate(value) {
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
 		return false;
@@ -427,6 +438,14 @@ export function runReleaseDependencyGate() {
 		fail(`npm outdated failed: ${npmResult.stderr.trim()}`);
 	}
 	const npmStale = parseNpmOutdated(npmResult.stdout);
+	const generatorResult = commandOutput("npm", ["view", "orval", "version", "--json"]);
+	if (generatorResult.status !== 0) {
+		fail(`Could not check the API generator version: ${generatorResult.stderr.trim()}`);
+	}
+	const generatorStale = evaluateGeneratorFreshness(
+		packageDocument.scripts?.["gen:api"],
+		JSON.parse(generatorResult.stdout),
+	);
 
 	const tagsByRepository = new Map();
 	for (const dependency of new Set(pins.map((pin) => pin.dependency))) {
@@ -442,7 +461,7 @@ export function runReleaseDependencyGate() {
 		`repos/${repository}/pulls?state=open&per_page=100`,
 	).filter((pullRequest) => pullRequest.user?.login === "dependabot[bot]");
 	const assessment = assessReleaseDependencies({
-		staleDependencies: [...npmStale, ...actionStale],
+		staleDependencies: [...npmStale, ...generatorStale, ...actionStale],
 		dependabotPullRequests,
 		exceptions,
 	});
@@ -462,7 +481,7 @@ export function runReleaseDependencyGate() {
 	const productionCount = Object.keys(packageDocument.dependencies ?? {}).length;
 	const developmentCount = Object.keys(packageDocument.devDependencies ?? {}).length;
 	console.log(
-		`Release dependency gate passed for ${productionCount} application dependencies, ${developmentCount} development dependencies, ${pins.length} pinned action references, and ${dependabotPullRequests.length} open Dependabot PRs.`,
+		`Release dependency gate passed for ${productionCount} application dependencies, ${developmentCount} development dependencies, the pinned API generator, ${pins.length} pinned action references, and ${dependabotPullRequests.length} open Dependabot PRs.`,
 	);
 }
 

@@ -5,6 +5,7 @@ import {
 	assessReleaseDependencies,
 	collectActionPins,
 	evaluateActionFreshness,
+	evaluateGeneratorFreshness,
 	latestStableTag,
 	parseNpmOutdated,
 	validateExceptions,
@@ -160,6 +161,25 @@ test("parseNpmOutdated requires newer latest releases even when the range is cur
 	}));
 	assert.equal(stale.length, 1);
 	assert.equal(stale[0].targetVersion, "17.0.0");
+});
+
+test("generator freshness covers tools pinned in npm scripts", () => {
+	const script = "npx --yes orval@8.34.0 --clean --config orval.config.mjs";
+	assert.deepEqual(evaluateGeneratorFreshness(script, "8.36.0"), [{
+		ecosystem: "npm", dependency: "orval", currentVersion: "8.34.0",
+		targetVersion: "8.36.0", detail: "pinned API generator (gen:api)",
+	}]);
+	assert.deepEqual(evaluateGeneratorFreshness(script, "8.34.0"), []);
+	assert.deepEqual(evaluateGeneratorFreshness(script, "8.33.0"), []);
+});
+
+test("generator freshness refuses unpinned scripts and invalid registry metadata", () => {
+	for (const script of [undefined, "npx --yes orval@latest", "npx --yes orval@^8.36.0", "npx --yes orval@8.36.0-beta.1"]) {
+		assert.throws(() => evaluateGeneratorFreshness(script, "8.36.0"), /exact stable version/);
+	}
+	for (const latest of [null, {}, "latest", "8.36", "8.36.0-beta.1"]) {
+		assert.throws(() => evaluateGeneratorFreshness("npx --yes orval@8.36.0", latest), /invalid stable Orval version/);
+	}
 });
 
 test("validateExceptions requires a concrete, tracked, unexpired deferral", () => {
