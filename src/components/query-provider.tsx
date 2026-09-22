@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode, useState } from "react";
 
 import { ClientCorrelation } from "@/components/client-correlation";
+import { CredentialConfirmationDialog } from "@/components/credential-confirmation";
 import { makeQueryClient } from "@/lib/query-client";
 
 type QueryProviderProps = {
@@ -17,6 +18,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
 		<QueryClientProvider client={queryClient}>
 			<ClientCorrelation />
 			{children}
+			<CredentialConfirmationDialog />
 		</QueryClientProvider>
 	);
 }

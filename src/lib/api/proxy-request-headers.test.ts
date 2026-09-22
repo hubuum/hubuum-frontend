@@ -8,6 +8,7 @@ describe("copySafeIncomingRequestHeaders", () => {
 			accept: "application/json",
 			"content-type": "application/json-patch+json",
 			"if-match": '"resource:7"',
+			"idempotency-key": "import-retry-key",
 			"x-hubuum-restore-capability": "restore-capability",
 		});
 		const upstream = new Headers();
@@ -21,6 +22,7 @@ describe("copySafeIncomingRequestHeaders", () => {
 		const incoming = new Headers({
 			authorization: "Bearer browser-secret",
 			cookie: "hubuum.sid=secret",
+			"x-hubuum-credential-approval": "browser-approval",
 		});
 		const upstream = new Headers();
 

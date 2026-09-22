@@ -141,6 +141,27 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 		);
 	}
 
+	// Approval secrets stay in the dedicated BFF's request memory. Metadata reads
+	// remain available for resolving an ambiguous mutation result.
+	let normalizedPath = new URL(path, "http://hubuum.invalid").pathname;
+	try {
+		normalizedPath = decodeURIComponent(normalizedPath);
+	} catch {
+		// Next may have already decoded a literal percent sign in a resource name.
+		// Keep the existing proxy behavior for such paths.
+	}
+	if (
+		method !== "GET" &&
+		/^\/api\/v1\/iam\/credential-approvals(?:\/|$)/.test(normalizedPath)
+	) {
+		const response = NextResponse.json(
+			{ message: "Use the credential confirmation flow." },
+			{ status: 403, headers: { [CORRELATION_ID_HEADER]: correlationId } },
+		);
+		protectPrivateResponse(response.headers);
+		return response;
+	}
+
 	const session = await getSessionFromRequest(request);
 	if (!session) {
 		emitOperationalEvent("warn", "bff.proxy.unauthenticated", {

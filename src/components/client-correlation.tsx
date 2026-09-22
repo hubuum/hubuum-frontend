@@ -7,6 +7,7 @@ import {
 	generateCorrelationId,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
+import { fetchWithCredentialApproval } from "@/lib/credential-approval-client";
 import {
 	buildSessionExpiryLoginPath,
 	isMonitoringRestore,
@@ -130,7 +131,9 @@ function installClientFetchPatch() {
 		const interactionCorrelationId = getActiveInteractionCorrelationId();
 		let requestInit = init;
 		if (interactionCorrelationId) {
-			const headers = new Headers(init?.headers);
+			const headers = new Headers(
+				init?.headers ?? (input instanceof Request ? input.headers : undefined),
+			);
 			const existingHeader = normalizeCorrelationId(
 				headers.get(CORRELATION_ID_HEADER),
 			);
@@ -144,7 +147,12 @@ function installClientFetchPatch() {
 			};
 		}
 
-		const response = await originalFetch(input, requestInit);
+		const response = await fetchWithCredentialApproval(
+			originalFetch,
+			requestUrl,
+			input,
+			requestInit,
+		);
 		if (isSessionExpiryResponse(requestUrl, response.status)) {
 			redirectAfterSessionExpiry();
 		}

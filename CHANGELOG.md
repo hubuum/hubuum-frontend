@@ -19,6 +19,11 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Request fresh password confirmation for credential mutations when the server
+  requires it, including token creation and renewal, local users and password
+  changes, credential imports, and restore confirmation. The BFF keeps approval
+  secrets out of the browser and preserves operation, expiry, revision, and
+  idempotency bindings. Older servers retain their existing mutation flow.
 - Added a guided Schema workspace for Server `v0.0.15`: propose immutable revisions,
   review policy changes, analyze object impact, and explicitly activate. Saved
   links reopen revisions and reports; history, compliance, revalidation, and

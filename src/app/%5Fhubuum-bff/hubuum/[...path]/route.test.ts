@@ -40,7 +40,7 @@ vi.mock("@/lib/operational-events", () => ({
 	operationalLevelForStatus: () => "info",
 }));
 
-import { GET } from "@/app/%5Fhubuum-bff/hubuum/[...path]/route";
+import { GET, POST } from "@/app/%5Fhubuum-bff/hubuum/[...path]/route";
 
 const session = {
 	createdAt: Date.now(),
@@ -69,6 +69,35 @@ describe("generic BFF proxy admin gate", () => {
 		mocks.getSessionFromRequest.mockResolvedValue(session);
 		mocks.probeAdminAccess.mockResolvedValue({ status: "forbidden" });
 		mocks.validateBackendSession.mockResolvedValue("valid");
+	});
+
+	it("preserves resource names containing an already decoded percent sign", async () => {
+		mocks.fetch.mockResolvedValue(Response.json({ name: "100%" }));
+		const response = await GET(
+			request("api/v1/classes/by-name/100%25"),
+			routeContext(["api", "v1", "classes", "by-name", "100%"]),
+		);
+		expect(response.status).toBe(200);
+		expect(mocks.fetch).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		"credential-approvals",
+		"%63redential-approvals",
+		"credential-approvals/",
+	])("blocks browser approval issuance via %s", async (segment) => {
+		const path = `api/v1/iam/${segment}`;
+		const response = await POST(
+			new NextRequest(`https://console.example/_hubuum-bff/hubuum/${path}`, {
+				method: "POST",
+				headers: { Origin: "https://console.example" },
+				body: "{}",
+			}),
+			routeContext(path.split("/")),
+		);
+		expect(response.status).toBe(403);
+		expect(response.headers.get("cache-control")).toBe("private, no-store");
+		expect(mocks.fetch).not.toHaveBeenCalled();
 	});
 
 	it.each([

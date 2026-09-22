@@ -2,6 +2,7 @@ const SAFE_INCOMING_REQUEST_HEADERS = [
 	"accept",
 	"content-type",
 	"if-match",
+	"idempotency-key",
 	"x-hubuum-restore-capability",
 ] as const;
 

@@ -160,6 +160,7 @@ The default test target is released Server `v0.0.15`. To focus on schemas and
 task cancellation:
 
 ```sh
+npm run test:credential-fixtures
 npm run test:live-backend
 npm run test:e2e:authenticated -- --grep 'schema workspace|task cancellation'
 ```
@@ -177,6 +178,28 @@ already running frontend with `PLAYWRIGHT_BASE_URL`, for example
 `http://127.0.0.1:3000`. CI runs the public functional checks, portable visual
 comparisons, and disposable authenticated smoke flow as independent jobs.
 
+## Credential approval compatibility checks
+
+`npx playwright test tests/e2e/credential-approvals.spec.ts` checks optional
+password prompting, cancellation, accessibility, responsive layout, and legacy
+responses without backend credentials.
+
+`tests/e2e/credential-approvals-live.spec.ts` is an explicit opt-in test against a
+disposable backend and an already running frontend. Set `PLAYWRIGHT_BASE_URL`,
+`E2E_USERNAME=admin`, and capture `E2E_PASSWORD` in memory using the disposable
+container's `hubuum-admin --reset-password admin` immediately before each run.
+Set `E2E_CREDENTIAL_APPROVALS=required` for a server with PR #423, or `legacy`
+for a server without it, then run:
+
+```sh
+npx playwright test tests/e2e/credential-approvals-live.spec.ts --workers=1
+```
+
+These checks create credentials and imports. On a fully disposable stack only,
+`E2E_CREDENTIAL_RESTORE=1` also verifies backup, approved restore confirmation,
+and capability-authenticated polling through completion. Live credential tests
+disable traces, screenshots, and video so secrets are not recorded in artifacts.
+
 ## Use another Valkey port
 
 If port 6379 is already occupied, start the dependency on another loopback port
@@ -189,3 +212,13 @@ VALKEY_DEV_PORT=6380 npm run dev:deps
 ```dotenv
 VALKEY_URL=redis://127.0.0.1:6380/0
 ```
+
+### Forward server compatibility
+
+The live contract suite defaults to the pinned Server `0.0.15` contract. Set
+`HUBUUM_LIVE_EXPECT_SERVER_VERSION` when verifying a specific release candidate.
+The scheduled backend-main job sets `HUBUUM_LIVE_FORWARD_COMPATIBILITY=1` to
+exercise the complete contract across server version bumps; required release CI
+retains its exact version check. Credential fixtures obtain approval only after
+`reauthentication_required`, preserving the bearer, body, expiry precision, and
+request guards. Older servers need no approval endpoint.
