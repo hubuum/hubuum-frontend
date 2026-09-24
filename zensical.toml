@@ -1,0 +1,37 @@
+[project]
+site_name = "Hubuum web frontend"
+site_description = "Deploy, operate, and contribute to the Hubuum browser interface."
+site_url = "https://hubuum.github.io/hubuum-frontend/"
+repo_url = "https://github.com/hubuum/hubuum-frontend"
+repo_name = "hubuum/hubuum-frontend"
+edit_uri = "edit/main/docs/"
+docs_dir = "docs"
+nav = [
+  { "Overview" = [
+    { "Welcome" = "index.md" },
+    { "Installation and configuration" = "setup.md" },
+    { "Server compatibility" = "compatibility.md" },
+  ] },
+  { "Deploy and operate" = [
+    { "Compose quick start" = "quickstart-compose.md" },
+    { "Observability" = "observability.md" },
+    { "Idempotent operations" = "idempotent-operations.md" },
+    { "Performance budgets" = "performance-budgets.md" },
+  ] },
+  { "Contributing" = [
+    { "Development setup" = "development.md" },
+    { "Local sandbox" = "local-sandbox.md" },
+    { "Sandbox design" = "local-sandbox-design.md" },
+    { "Authenticated browser tests" = "authenticated-browser-testing.md" },
+    { "Release process" = "releasing.md" },
+    { "Release notes" = "changelog.md" },
+    { "Documentation website" = "documentation.md" },
+  ] },
+]
+
+[tool.hubuum_docs]
+versioned = true
+
+[tool.hubuum_docs.source_files]
+"README.md" = "setup.md"
+"CHANGELOG.md" = "changelog.md"

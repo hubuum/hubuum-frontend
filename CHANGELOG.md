@@ -6,6 +6,12 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- A searchable, versioned documentation site with shared Hubuum navigation,
+  automatic GitHub Pages publishing, the latest release as its default,
+  immutable release snapshots, and an explicit development edition.
+
 ## [0.0.18] - 2026-09-22
 
 ### Added

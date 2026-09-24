@@ -1,5 +1,7 @@
 # Hubuum Frontend
 
+[Documentation](https://hubuum.github.io/hubuum-frontend/) · [Hubuum ecosystem](https://hubuum.github.io/)
+
 Next.js frontend scaffold for the Hubuum REST API, built for secure horizontal scaling in OKD.
 
 ## What is scaffolded

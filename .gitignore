@@ -32,3 +32,6 @@ test-results
 # Private runtime login artwork. Keep the instructions, never the images.
 /login-backgrounds/*
 !/login-backgrounds/README.md
+
+# Generated documentation and pinned shared tooling.
+/target/
