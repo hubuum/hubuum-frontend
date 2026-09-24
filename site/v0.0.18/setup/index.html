@@ -1,0 +1,2183 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deploy, operate, and contribute to the Hubuum browser interface.">
+      
+      
+      
+        <link rel="canonical" href="https://hubuum.github.io/hubuum-frontend/v0.0.18/setup/">
+      
+      
+        <link rel="prev" href="./..">
+      
+      
+        <link rel="next" href="../compatibility/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.64">
+    
+    
+      
+        <title>Installation and configuration - Hubuum web frontend</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.40d3fdbb.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.812a03bb.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hubuum-frontend" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  <nav class="hubuum-ecosystem" aria-label="Hubuum projects">
+    <a href="https://hubuum.github.io/"><strong>Hubuum</strong></a>
+    
+      <a href="https://hubuum.github.io/hubuum/">Server</a>
+    
+      <a href="https://hubuum.github.io/hubuum-frontend/">Frontend</a>
+    
+      <a href="https://hubuum.github.io/hubuum-cli/">CLI</a>
+    
+      <a href="https://hubuum.github.io/hubuum-client-rust/">Rust client</a>
+    
+      <a href="https://hubuum.github.io/hubuum-client-python/">Python client</a>
+    
+  </nav>
+  
+  
+    Documentation for <strong>v0.0.18</strong>.
+  
+  <label for="docs-version">Version</label>
+  <select id="docs-version" data-version="v0.0.18"
+    data-manifest="../../versions.json">
+    <option value="v0.0.18">v0.0.18</option>
+  </select>
+  
+
+          </div>
+          
+        </aside>
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Hubuum web frontend" class="md-header__button md-logo" aria-label="Hubuum web frontend" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-network" viewBox="0 0 24 24"><rect width="6" height="6" x="16" y="16" rx="1"/><rect width="6" height="6" x="2" y="16" rx="1"/><rect width="6" height="6" x="9" y="2" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hubuum web frontend
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Installation and configuration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/hubuum/hubuum-frontend" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hubuum/hubuum-frontend
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    
+  
+  
+    
+      
+    
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./.." class="md-tabs__link">
+          
+  
+  Overview
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../quickstart-compose/" class="md-tabs__link">
+          
+  
+  Deploy and operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../development/" class="md-tabs__link">
+          
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Hubuum web frontend" class="md-nav__button md-logo" aria-label="Hubuum web frontend" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-network" viewBox="0 0 24 24"><rect width="6" height="6" x="16" y="16" rx="1"/><rect width="6" height="6" x="2" y="16" rx="1"/><rect width="6" height="6" x="9" y="2" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>
+
+    </a>
+    Hubuum web frontend
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/hubuum/hubuum-frontend" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+  </div>
+  <div class="md-source__repository">
+    hubuum/hubuum-frontend
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Overview
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_1">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Overview
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Welcome
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Installation and configuration
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Installation and configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-scaffolded" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What is scaffolded
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Architecture
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bff-route-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        BFF route layout
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backend-api-access-assumptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backend API access assumptions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credential-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Credential operations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scoped-identities" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scoped identities
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workspace-navigation-and-resource-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Workspace navigation and resource selection
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#object-data-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Object data columns
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bookmarkable-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bookmarkable reports
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#administrator-backup-and-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Administrator backup and restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#collection-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Collection hierarchy
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Quick start
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#container-quickstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Container quickstart
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-artifacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Release artifacts
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-audit-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Security audit gate
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#live-backend-contract-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Live backend contract tests
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openapi-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        OpenAPI generation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-notes-okd" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Deployment notes (OKD)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#container-and-helm-publishing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Container and Helm publishing
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#important-caveat" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Important caveat
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compatibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Server compatibility
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Deploy and operate
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_2">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Deploy and operate
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-compose/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Compose quick start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Observability
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../idempotent-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Idempotent operations
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance-budgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Performance budgets
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Contributing
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_3">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Contributing
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Development setup
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-sandbox/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Local sandbox
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-sandbox-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sandbox design
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authenticated-browser-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authenticated browser tests
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../releasing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Release process
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Release notes
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-scaffolded" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What is scaffolded
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Architecture
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bff-route-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        BFF route layout
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backend-api-access-assumptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backend API access assumptions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credential-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Credential operations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scoped-identities" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scoped identities
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workspace-navigation-and-resource-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Workspace navigation and resource selection
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#object-data-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Object data columns
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bookmarkable-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bookmarkable reports
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#administrator-backup-and-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Administrator backup and restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#collection-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Collection hierarchy
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Quick start
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#container-quickstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Container quickstart
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-artifacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Release artifacts
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-audit-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Security audit gate
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#live-backend-contract-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Live backend contract tests
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openapi-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        OpenAPI generation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-notes-okd" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Deployment notes (OKD)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#container-and-helm-publishing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Container and Helm publishing
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#important-caveat" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Important caveat
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+  
+
+
+<h1 id="hubuum-frontend">Hubuum Frontend<a class="headerlink" href="#hubuum-frontend" title="Permanent link">&para;</a></h1>
+<p>Next.js frontend scaffold for the Hubuum REST API, built for secure horizontal scaling in OKD.</p>
+<h2 id="what-is-scaffolded">What is scaffolded<a class="headerlink" href="#what-is-scaffolded" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Next.js (App Router) + TypeScript</li>
+<li>Server-side auth boundary (BFF pattern)</li>
+<li>Opaque Hubuum API token handling through server sessions</li>
+<li>Shared server-side session store via Valkey</li>
+<li>Catch-all API proxy route that injects <code>Authorization: Bearer &lt;token&gt;</code> server-side</li>
+<li>TanStack Query for snappy client-side data fetching</li>
+<li>OpenAPI generator wiring (<code>orval</code>) for typed client generation from <code>openapi.json</code></li>
+<li>Biome-based linting (<code>npm run lint</code>)</li>
+<li>Per-request script nonces and baseline security headers (CSP, frame-ancestors, referrer policy, etc.)</li>
+<li>Multi-stage Dockerfile suitable for OKD deployments</li>
+</ul>
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<p>Browser clients never receive backend tokens directly.</p>
+<ol>
+<li><code>POST /_hubuum-bff/auth/login</code> forwards credentials to Hubuum <code>/api/v0/auth/login</code>.</li>
+<li>Hubuum returns an opaque token.</li>
+<li>Frontend creates a session id (<code>hubuum.sid</code>) and stores token in Valkey under that key.</li>
+<li>Browser gets only the <code>HttpOnly</code> session cookie.</li>
+<li>Browser data requests go via <code>/_hubuum-bff/hubuum/&lt;path&gt;</code>.</li>
+<li>Proxy reads session from Valkey and injects bearer token for upstream Hubuum request.</li>
+</ol>
+<p>When the backend rejects that bearer token with <code>401 Unauthorized</code>, the BFF
+deletes the Valkey session and clears the browser cookie. Protected navigations
+and client-side requests then return directly to <code>/login</code>, preserve the current
+path in the <code>next</code> query parameter, and explain that the session expired. A
+<code>403 Forbidden</code> response remains an in-place authorization error and does not
+sign the user out.</p>
+<p>This keeps pods stateless and horizontally scalable. Any pod can serve any authenticated request as long as it can read the same Valkey instance.</p>
+<p>Application documents are dynamically rendered with a fresh CSP nonce. Production
+scripts require that nonce or trust inherited from a nonce-authorized script;
+development additionally permits evaluation for Next.js tooling. Runtime editor
+and resizing styles still require inline styles. BFF responses are private and
+must not be stored by shared caches. Active report content (HTML, XHTML, SVG) is
+sandboxed without scripts or same-origin privileges on both report routes and the
+generic proxy. Export warning and truncation headers remain visible to the UI.
+Schema repair HTML may open object links in new tabs that do not inherit the
+report sandbox; the report itself remains script-disabled and isolated.</p>
+<p>Sign-out waits briefly for pending preference saves, then always attempts to end
+the session. A failed sign-out keeps the workspace visible with a persistent error
+and a retry instruction. Local logout proceeds even when backend token revocation
+times out.</p>
+<h2 id="bff-route-layout">BFF route layout<a class="headerlink" href="#bff-route-layout" title="Permanent link">&para;</a></h2>
+<p>The frontend owns only routes under <code>/_hubuum-bff/...</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Frontend route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/_hubuum-bff/auth/login</code></td>
+<td>Accepts browser login payloads, calls backend <code>/api/v0/auth/login</code>, and creates the frontend session cookie.</td>
+</tr>
+<tr>
+<td><code>/_hubuum-bff/auth/providers</code></td>
+<td>Discovers public authentication providers from backend <code>/api/v0/auth/providers</code>; the login form falls back to a manual identity-scope field when unavailable.</td>
+</tr>
+<tr>
+<td><code>/_hubuum-bff/auth/logout</code></td>
+<td>Logs out locally and asks the backend to revoke the current token.</td>
+</tr>
+<tr>
+<td><code>/_hubuum-bff/auth/session</code></td>
+<td>Readiness-friendly session check for the browser session.</td>
+</tr>
+<tr>
+<td><code>/_hubuum-bff/hubuum/api/v1/restores/&lt;id&gt;/status</code></td>
+<td>Capability-authenticated restore status, available after database replacement invalidates bearer sessions.</td>
+</tr>
+<tr>
+<td><code>/_hubuum-bff/hubuum/&lt;backend-path&gt;</code></td>
+<td>Generic authenticated BFF proxy. For example, <code>/_hubuum-bff/hubuum/api/v1/classes</code> calls backend <code>/api/v1/classes</code> with the server-side bearer token.</td>
+</tr>
+<tr>
+<td><code>/_hubuum-bff/classes/...</code></td>
+<td>Frontend helper BFF routes that normalize a few class/object workflows before calling backend APIs.</td>
+</tr>
+<tr>
+<td><code>/_hubuum-bff/settings</code></td>
+<td>Reads and updates the current principal's durable console preferences through the backend settings API, with a temporary Valkey fallback for older servers.</td>
+</tr>
+<tr>
+<td><code>/_hubuum-bff/credential-mutations</code></td>
+<td>Confirms the current human's password and performs one credential mutation when the backend requires a fresh authentication approval. Approval secrets stay inside the BFF.</td>
+</tr>
+</tbody>
+</table>
+<p>The frontend deliberately does not own <code>/api/v0/...</code> or <code>/api/v1/...</code>. This
+lets a colocated reverse proxy route those paths directly to the backend while
+sending browser/app traffic and <code>/_hubuum-bff/...</code> to the Next.js frontend.</p>
+<p>Example edge routing shape:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>/api/v0/*        -&gt; hubuum backend
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>/api/v1/*        -&gt; hubuum backend
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>/_hubuum-bff/*  -&gt; hubuum frontend
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>/*               -&gt; hubuum frontend
+</code></pre></div>
+<p>The internal BFF prefix is intentionally fixed at <code>/_hubuum-bff</code>. Making it an
+environment variable would have some upside, but the tradeoff is not attractive
+for this app:</p>
+<ul>
+<li><strong>Pros:</strong> deployments could choose a different external prefix without edge
+  rewrite rules.</li>
+<li><strong>Cons:</strong> Next.js App Router routes are filesystem-defined, so runtime env
+  cannot actually move the server route files; client code, generated API URLs,
+  route docs, CSP/proxy rules, health checks, and tests would all need to agree
+  on one mutable value; misconfiguration could accidentally put BFF routes back
+  under backend-looking paths.</li>
+</ul>
+<p>If a site needs a different public prefix, prefer an edge/proxy rewrite from the
+public prefix to the frontend's fixed <code>/_hubuum-bff/...</code> routes.</p>
+<p>Browser requests using <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, or <code>DELETE</code> under the BFF prefix
+must carry same-origin request metadata. The frontend accepts an exact matching
+<code>Origin</code>, or <code>Sec-Fetch-Site: same-origin</code> when <code>Origin</code> is absent, and rejects
+cross-origin, same-site sibling, and fully missing metadata before reading a
+session or contacting Hubuum. TLS-terminating proxies must overwrite
+<code>X-Forwarded-Proto</code> and <code>X-Forwarded-Host</code> with the public request values so the
+frontend can compare the browser origin with the external console origin.</p>
+<h2 id="backend-api-access-assumptions">Backend API access assumptions<a class="headerlink" href="#backend-api-access-assumptions" title="Permanent link">&para;</a></h2>
+<p>Hubuum <code>/api/v0/meta/...</code> endpoints are admin-only. The frontend must only call
+them after an admin access check, and current meta usage is limited to the
+admin statistics surface and admin-only landing-page counts. The statistics
+surface shows system counts, database state, and global task state.
+Administrators also have a dedicated read-only Configuration page; the server
+redacts secret values before returning the effective settings.</p>
+<p>Task activity shown to regular users comes from <code>/api/v1/tasks</code> through the BFF
+proxy, so users can see the task records available to their account without
+requiring global meta access.</p>
+<p>The Tasks workspace supports Server <code>v0.0.16</code> discovery filters for lifecycle,
+time ranges, recorded resources and revisions, import/export/backup options,
+output retention, and remote calls. Filters and sort order are stored in the URL
+and preserved across cursor pages. The default scope is My tasks; All visible
+tasks uses server authorization, and only administrators can filter another
+submitter. Counts and table exports cover the current page. Task detail pages
+show retained metadata for all six task kinds, distinguish unknown historical
+values from false, and expose available output and schema-report links through
+the BFF. Resource-specific filters require access to the referenced resource.</p>
+<p>Task detail pages support cancellation with optional reasons, guarded queued
+withdrawal, and polling until running work acknowledges cleanup. They show
+execution deadlines, cancellation metadata, unattempted import items, and remote
+dispatch evidence. Cancellation preserves already committed work according to the
+task kind; remote effects may need reconciliation. Administrator Configuration
+shows per-kind execution limits. See <a href="../compatibility/">compatibility</a> for
+Server <code>v0.0.15</code> authorization and upgrade requirements.</p>
+<p>Cursor-paginated helper requests that do not display an exact total pass
+<code>include_total=false</code>; primary data tables retain the default exact-count
+behavior when they show <code>X-Total-Count</code> in pagination controls.</p>
+<h2 id="credential-operations">Credential operations<a class="headerlink" href="#credential-operations" title="Permanent link">&para;</a></h2>
+<p>Servers enforcing fresh authentication for credential management trigger a
+current-password confirmation after returning <code>403</code> with
+<code>reason: reauthentication_required</code>. This covers token creation and renewal,
+local user creation, password updates, credential-bearing imports (including dry
+runs), and restore confirmation. The submitted operation is frozen while the
+confirmation is open. The BFF obtains and immediately consumes a single-use
+approval with the same session bearer, preserving the exact request and the
+server-resolved token expiry. Passwords are discarded after submission; approval
+secrets never reach browser JavaScript or browser storage.</p>
+<p>Older servers continue accepting the original requests without an approval
+endpoint or an extra password prompt. Ordinary permission failures do not
+trigger confirmation. An incorrect confirmation password preserves a valid
+session, and failed or ambiguous mutations are never retried automatically.
+After a lost response, inspect the affected credentials, task, or restore before
+trying again. Imports retain their idempotency key through both BFF paths.</p>
+<h2 id="scoped-identities">Scoped identities<a class="headerlink" href="#scoped-identities" title="Permanent link">&para;</a></h2>
+<p>The login form accepts an optional identity scope. Blank values and <code>local</code>
+select local Hubuum users; any other value is forwarded as <code>identity_scope</code> for
+the matching configured authentication provider. After login, the BFF verifies
+the issued token against <code>/api/v1/iam/me</code>. This prevents an older backend that
+ignores the new field from accidentally authenticating a same-named local user.
+When the public provider-discovery endpoint is available, the form presents its
+scopes as a select menu when multiple options exist; a sole provider is
+selected implicitly. The password field has a visibility toggle, and optional
+background choices live under Appearance. A missing, failed, or malformed discovery
+response keeps the manual identity-scope field available for older servers.</p>
+<p>Principal and group labels include their non-local scope where names can be
+ambiguous. Provider-managed user profiles, groups, and synchronized group
+memberships are read-only in the console. Users can still be assigned to local
+groups, including users that originated from a provider.
+Import permission selectors include <code>GroupKey.identity_scope</code>, and the import
+workspace defaults omitted scopes to <code>local</code> to match the backend contract.</p>
+<p>Service-account credentials expose the backend's two independent token-scope
+dimensions. Permission scopes select allowed operations, while resource scopes
+select collections, classes, and objects through unified name search. The
+effective authority remains the intersection of the principal's live group
+grants, the permission scope, and the resource scope. The admin creation flow
+creates the account and its first scoped token together; later tokens use the
+same guided scope controls on the account detail page. The owner group controls
+who can manage a service account but does not grant runtime access, so the
+account still needs live group membership before its token has effective
+authority. Server <code>v0.0.4</code> represents both boundaries under one nullable
+<code>scope</code> object, and token lists show the exact permission and resource
+dimensions returned by the server. Selecting a listed token opens its complete
+lifecycle metadata and every permission, collection, class, and object boundary.
+Resource names are resolved beside their exact IDs without exposing the bearer
+token or stored hash. A listed token can be cloned from its detail view: the
+creation flow copies its exact permission and resource boundaries while using a
+fresh expiry, including for expired tokens once the server returns them. Server
+<code>v0.0.5</code> publishes its effective default token
+lifetime and returns the authoritative expiry for each newly issued token. The
+console shows that default beside optional expiry fields while leaving the
+server responsible for materializing omitted expiries. Server <code>v0.0.9</code> also
+publishes the maximum token lifetime and adds revisioned token metadata and
+renewal endpoints. Human users with an
+unscoped session token can mint tokens for themselves from their Account page.
+Human admins can mint for any principal, and human members of a service
+account's owner group can manage its tokens from their Account page.
+Service-account actors never receive token-minting controls, and disabled
+service accounts cannot receive new tokens. Local group membership editors can
+add either human users or service accounts by name, and each service-account
+detail page lists its current runtime group memberships separately from its
+owner group.</p>
+<h2 id="workspace-navigation-and-resource-selection">Workspace navigation and resource selection<a class="headerlink" href="#workspace-navigation-and-resource-selection" title="Permanent link">&para;</a></h2>
+<p>Use <strong>Go to…</strong> or <strong>Ctrl/Cmd+K</strong> to find a workspace destination, pinned resource,
+or the current page's create action. The desktop control shows its shortcut;
+the empty workspace search shows <strong>Type / to search</strong> until focused. Press <strong>/</strong>
+outside a text field to focus workspace search or open it on a smaller screen.
+Type a query and press <strong>Enter</strong> to activate
+the first matching destination or action, or search resources when none match.
+Use the arrow keys to choose a different result before pressing Enter.
+Up to three pinned destinations also appear as direct links below the toolbar.
+Data-menu destination links and shortcut
+expansion buttons are separate controls. Mobile navigation traps keyboard focus
+while open and returns it to its trigger when closed.</p>
+<p>The Objects class picker searches all accessible classes, loads more options
+with cursor pagination, and resolves selected IDs independently of the first
+option page. Options include IDs and collection context to distinguish duplicate
+names. Collection lookups fetch matching resources on demand and retain exact
+ID entry. Supporting class and collection lists follow every cursor instead of
+stopping at 250 entries. Lookup popovers stay within the viewport when opened or
+resized.</p>
+<p><strong>Find on this page</strong> filters only the loaded rows. Classes and Collections also
+provide <strong>Search all</strong> links to the full resource search. While a table changes
+page, the previous rows remain visible with an updating indicator and disabled
+row actions; pagination and sort changes preserve the scroll position. Arrow and
+Enter shortcuts operate only within the focused table and preserve native form,
+button, and link behavior.</p>
+<p>JSON editor code loads when needed. Validation and document summaries wait for a
+short typing pause; formatting runs only when requested. Error notifications and
+notifications containing actions persist until dismissed. Ordinary notifications
+pause while hovered or focused.</p>
+<h2 id="object-data-columns">Object data columns<a class="headerlink" href="#object-data-columns" title="Permanent link">&para;</a></h2>
+<p>The objects workspace can promote fields from each object's JSON <code>data</code> blob
+into table columns. Candidate fields are discovered from the selected class
+schema when available, then augmented from the currently loaded object rows.
+Discovery is page-local and shallowly bounded, so it does not trigger an
+expensive full-dataset scan.</p>
+<p>Object creation stays scoped to the selected class. The default Data editor
+combines schema fields with fields observed in sampled class objects, preloads
+required schema fields, and offers raw JSON as an alternate synchronized tab.
+Closed schemas hide arbitrary-field creation; permissive schemas expose it.</p>
+<p>Column preferences are stored per user and per class id. The <code>Data columns</code>
+menu lets users reset to suggested fields or clear all promoted columns. The
+same menu can show or hide the raw data preview column, also remembered per
+class id. Portable preferences such as light/dark mode, relative text size,
+workspace atmosphere, pins, and selected data columns are saved in the user
+settings store, with <code>localStorage</code> used as an owner-scoped browser cache. The
+Appearance page offers four complete workspace atmospheres: Sunset, Golden
+Hour, Clouds, and Forest. Each atmosphere owns its action, typography, canvas,
+navigation, surface, and ambient palette in both light and dark mode. Viewport
+and activity state such as table widths, sidebar state, recent items, and task
+last-seen timestamps stay device-local.</p>
+<p>The <code>Custom data fields</code> menu lets users create personal fallback columns with a
+label and a <code>|</code>-separated list of data paths. The table shows the first
+non-empty value, so a field like
+<code>os.fedora.version|os.redhat.version|os.macos.version</code> can display one
+normalized <code>OS version</code> column across differently shaped object data. Personal
+display definitions are stored as per-user, per-class console preferences and
+affect presentation only.</p>
+<p>Hubuum Server computed fields are separate domain resources. A class page can
+create and manage shared definitions for all class readers and personal
+definitions stored for the current user. Definitions support typed aggregation
+and presence operations over JSON Pointer paths, can be previewed against an
+existing object or sample data, and shared values can be explicitly rebuilt.
+Object reads opt in with <code>include=computed</code>; enabled shared and personal values
+then appear as individually selectable, per-user object-table columns, in table
+exports and loaded-page search, and on object detail pages. Evaluation errors
+and stale shared materializations remain visible. With Hubuum Server <code>v0.0.3</code>,
+computed columns can sort the complete server result and the Server filters menu
+offers result-type-aware computed predicates, including null, numeric range,
+JSON containment, and negated matching.</p>
+<p>The objects workspace can group by an object, nested data, shared-computed, or
+personal-computed field through the server's permission-aware aggregate
+resource. Server filters run before aggregation, counts cover the complete
+matching class rather than the loaded object page, and aggregate rows have
+their own cursor pagination and exact total. Null, missing, and unavailable
+computed values remain distinct. Personal custom fallback fields still use a
+loaded-page grouping because their first-non-empty path expression is a console
+display preference rather than a server field. With Server <code>v0.0.4</code>, the same
+workspace can add up to four ordered <code>sum</code>, <code>average</code>, <code>min</code>, or <code>max</code> measures
+over numeric JSON and computed fields, either per group or as one global
+aggregate. Measure cells and exports retain contributing and skipped source
+counts. The report template editor also includes runnable MiniJinja <code>groupby</code>
+examples for report-specific grouping and grouped CSV output. Object tables,
+ad-hoc exports, and object-scoped export templates share the same server-filter
+field discovery, typed operators, validation, and backend query grammar for
+object, nested JSON data, and computed fields.</p>
+<h2 id="bookmarkable-reports">Bookmarkable reports<a class="headerlink" href="#bookmarkable-reports" title="Permanent link">&para;</a></h2>
+<p>Saved executable export templates have stable, authenticated report URLs under
+<code>/reports/{template_id}</code>. The frontend remembers the latest task for the
+current session, template revision, and normalized set of run overrides. It
+reuses that task while its backend output remains available; otherwise it
+starts a new template export, waits for the task to finish, and remembers the
+replacement. Concurrent requests for the same report join one generation
+through a short Valkey lock instead of submitting duplicate tasks.</p>
+<p>The backend output body is streamed with its original content type. The
+response is not wrapped in console markup or parsed/reformatted, so saving the
+browser page saves the generated template result itself. HTML report responses
+receive a script-disabled sandbox policy because they are served from the
+console origin.</p>
+<p>Report responses include <code>Server-Timing</code> metrics for session access, template
+revision lookup, report-cache access, task validation or submission, output
+time to first byte, and total server time to response headers. Body transfer
+and browser rendering happen after those measurements and are not included.</p>
+<p>Bookmark URLs can supply the supported template-run overrides through <code>query</code>,
+<code>object_id</code>, <code>missing_data_policy</code>, <code>max_items</code>, and <code>max_output_bytes</code> query
+parameters. Related-object templates require <code>object_id</code>. Existing stored task
+outputs use <code>/reports/runs/{task_id}</code> and are streamed through the same raw
+response boundary. <code>HEAD</code> requests never generate reports, and frontend links
+disable Next.js prefetching so merely rendering or hovering a link cannot start
+a task. An optional <code>max_age</code> parameter limits how old a completed task may be:
+whole numbers are seconds, and <code>s</code>, <code>m</code>, <code>h</code>, or <code>d</code> suffixes are accepted
+(<code>max_age=15m</code>). <code>max_age=0</code> explicitly forces a new run. Updating the saved
+template also causes the next request to generate a new report.</p>
+<p>The default Reports tab is a catalog of executable saved reports, while less
+common one-off JSON exports have their own top-level tab. <code>View</code> opens the
+stable raw URL, <code>Refresh now</code> performs one forced generation, waits for the task
+to finish without opening its output stream, and redirects to the clean
+bookmark URL. <code>Run with changes</code> opens the authenticated configuration
+interface at <code>/exports/reports/{template_id}</code>. That interface uses the same
+visual query builder as template authoring and keeps freshness, missing-data,
+and output-limit overrides available without putting controls inside the
+generated result. Each catalog card distinguishes the template's update time
+from the current saved-default export's generation time and stored-output
+expiry without generating a report during inspection. Saved-query hints
+translate filters and sorting into readable field, operator, and value
+descriptions, and class-scoped reports identify their class. These changes
+affect only the configured URL. The saved default query can be edited directly
+from each catalog card's More menu. Permanent layout, scope, include, and other
+template changes remain in
+<code>/exports/templates/{template_id}</code>, while new definitions start under
+<code>/exports/templates/new</code>. Adding <code>?from={template_id}</code> to the new-template URL
+copies an existing definition into a separately named, unsaved template.</p>
+<p>New template authoring starts with its name, purpose, and output format before
+target, query, hydration, rules, and document design. HTML templates can use a
+standard-page mode where authors edit only the body. The frontend stores that
+body inside a deterministic full HTML template with title and viewport
+metadata, print styling, responsive typography, and readable alternating table
+rows. Advanced authors can instead own the complete HTML document. In both
+modes the raw report route still streams the exact generated backend output;
+it never injects console controls or response-time wrappers.</p>
+<p>Server <code>v0.0.4</code> audit events, resource history, and task lifecycle events carry
+durable provenance. The console shows the immediate actor, root initiator, and
+originating task where available, and audit/subscription filters can match the
+root initiator independently of the worker or system actor.</p>
+<h2 id="administrator-backup-and-restore">Administrator backup and restore<a class="headerlink" href="#administrator-backup-and-restore" title="Permanent link">&para;</a></h2>
+<p>The admin-only Backup &amp; restore workspace creates server background tasks and
+downloads their portable JSON output before the configured retention deadline.
+Backups can include resource and audit history, and the UI exposes the server's
+size, SHA-256, and expiry metadata.</p>
+<p>Restore is a deliberately staged operation. Selecting a backup first uploads
+and validates it without changing live data. The one-time restore capability is
+kept only in component memory, never browser storage. Confirmation requires the
+exact phrase <code>REPLACE ALL HUBUUM DATA</code> and a second danger dialog. A confirmed
+restore replaces the complete Hubuum database, including identities and
+permissions, and invalidates existing sessions and tokens.
+Confirmation queues the restore and keeps polling its capability-protected
+status until success or failure. Keep this page open until it finishes, then
+sign in again with credentials from the restored backup.</p>
+<p>The BFF uses <code>/api/v1/iam/me/settings</code> when the backend exposes the principal
+settings API. Console preferences live under a versioned <code>hubuum_frontend</code>
+namespace in the raw settings document, so recursive merge patches preserve
+settings owned by other clients. While connected to an older backend, the BFF
+uses Valkey without the session TTL. Existing fallback preferences are migrated
+automatically when the backend endpoint becomes available.</p>
+<p>Nested data fields use dotted display paths, while literal dots and backslashes
+inside object keys are escaped:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>metadata.owner     -&gt; nested { "metadata": { "owner": ... } }
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>metadata\.owner    -&gt; literal key { "metadata.owner": ... }
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>path\\.segment     -&gt; literal key { "path\\segment": ... }
+</code></pre></div>
+<p>On an object detail page, editable values in this flattened grid open a focused,
+type-aware control when clicked. Enter saves that field immediately; Escape
+closes the control without changing its value. Text, numbers, booleans, nulls,
+empty objects, and empty arrays retain their JSON types unless the user
+explicitly changes the type. Focused and data-only saves use guarded RFC 6902
+JSON Patch operations, so unrelated concurrent data edits compose and a stale
+value fails safely instead of being overwritten. <code>Edit data</code> also exposes <code>Add
+field</code>, which accepts the same dotted/bracket path syntax and can create missing
+object branches or append the next array item. <code>Edit as JSON</code> opens the raw
+object data document directly, shows a structural change review, and turns
+data-only saves into granular guarded patch operations. Read-only users get a
+plain raw JSON view. Arrays are replaced atomically at their own path, and
+unusually large edits fall back to a guarded whole-document replacement.</p>
+<p>Directly editable values on object, class, and collection detail pages use the
+same whole-field edit target instead of a separate pencil or Edit control. This
+includes names, descriptions, collection selectors, schema validation, and JSON
+schema. Opening one focuses its editor immediately, and Escape restores the
+draft. Permission-gated hierarchy moves remain a separate collection operation.</p>
+<p>On server builds with versioned schemas, the class page shows the current schema,
+write enforcement, and existing-object validation state. <strong>Edit schema</strong> opens
+<strong>Schema → Validation → Review &amp; test → Activate</strong> directly in the editor.
+<strong>Check existing objects</strong> in Validation saves the proposal and runs a real server
+analysis without changing the active policy, object data, or live compliance.
+Review &amp; test shows the differences and findings; activation is always explicit.
+Activation returns to the class page with links to background validation and any
+computed-field rebuild. A compatible analysis can become outdated when objects
+or the active schema change; refresh the analysis after a conflict.</p>
+<p>When enforcement is off, checking a stored schema also saves an enforced snapshot
+and analyzes it to find mismatches. This test never enables enforcement on the
+proposal. Activation uses the separate impact result for the exact selected
+policy; a schema test cannot authorize activation of a different revision.</p>
+<p>Impact reports, aggregate counts, and revalidation require unrestricted
+administrator access. Class editors can save a proposal and share its revision
+link for an administrator to review. Administrator activation with pending
+validation is a separate, confirmed action. Activation leaves object JSON
+unchanged, queues revalidation and any dependent computed rebuild, and makes
+subsequent writes use the new policy. Compliance pages list accessible objects
+as valid, invalid, pending, or not required, including after migration.</p>
+<p>Saved revision and task links can be reopened after navigation or reload. Drafts
+remain unsaved until <strong>Save revision</strong> or <strong>Check existing objects</strong>. History allows an older document to be
+used as the starting point for a new revision; active or retired documents are
+never edited in place. Servers without the schema endpoints retain the inline
+schema editor. See <a href="../compatibility/">compatibility</a> for the released server target.</p>
+<p>Escape is the console-wide safe exit for transient work. It closes the most
+recently opened menu, create form, or edit mode without saving its draft; nested
+modes unwind one at a time. Escape is ignored while an inline save or delete is
+in progress, so leaving the interface never implies that an active request was
+canceled.</p>
+<h2 id="collection-hierarchy">Collection hierarchy<a class="headerlink" href="#collection-hierarchy" title="Permanent link">&para;</a></h2>
+<p>Collections are hierarchical. The frontend shows parent/path information in
+collection lists, lets users create collections under a parent, and supports
+moving non-root collections to another visible parent. The root collection
+cannot be moved or deleted, and collections with direct children must have those
+children moved or deleted before the collection can be deleted.</p>
+<p>Collection permission management distinguishes direct rows from effective
+permissions. Direct rows are editable on the collection detail page. Effective
+permissions include inherited grants from ancestor collections and are shown as
+read-only context for the current principal.</p>
+<p>Collection names are unique among siblings, not globally. UI selectors prefer
+path-aware labels where the API uses collection IDs. Import overrides still use
+the backend's name-based <code>CollectionKey</code>, so the frontend blocks existing
+collection overrides when multiple visible collections share the selected name.</p>
+<h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<p>Use Node.js 24 LTS. Install dependencies:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>npm<span class="w"> </span>ci
+</code></pre></div>
+<p>To run against a disposable local server with 3,000 test objects, use
+<code>npm run dev:sandbox -- --pr 411</code> and choose a <code>corpus-admin</code> password at the
+prompt. The <a href="../local-sandbox/">sandbox guide</a> covers tags, commit SHAs, PRs,
+and <a href="../local-sandbox/#set-or-reset-user-passwords">resetting user passwords</a>.</p>
+<p>To use an existing backend instead, create an environment file:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env.local
+</code></pre></div>
+<p>Set the required environment variables:</p>
+<ul>
+<li><code>BACKEND_BASE_URL</code>: Hubuum API base URL</li>
+<li><code>VALKEY_URL</code>: Valkey URL for server-side sessions; the example points to the
+  local development dependency</li>
+</ul>
+<p>Start the Valkey development dependency:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev:deps
+</code></pre></div>
+<p>Run the development server:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev
+</code></pre></div>
+<p>Open <code>http://127.0.0.1:3000</code>.</p>
+<p>Both <code>npm run dev</code> and <code>npm start</code> accept <code>--port</code> and <code>--listen</code> after npm's
+<code>--</code> separator. Local commands default to <code>127.0.0.1:3000</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev<span class="w"> </span>--<span class="w"> </span>--port<span class="w"> </span><span class="m">4000</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>npm<span class="w"> </span>start<span class="w"> </span>--<span class="w"> </span>--port<span class="w"> </span><span class="m">4000</span><span class="w"> </span>--listen<span class="w"> </span><span class="s1">'*'</span>
+</code></pre></div>
+<p>Quote <code>'*'</code> to listen on all IPv4 interfaces. A specific hostname, IPv4 address,
+or IPv6 address is also accepted (for example, <code>--listen ::1</code> or <code>--listen ::</code>).
+<code>PORT</code> in the process environment still sets the default port; an explicit flag
+wins. Local launchers ignore an inherited <code>HOSTNAME</code> so a shell's machine name
+does not override the loopback default. Using an explicit IPv4 address avoids
+differences in how systems resolve <code>localhost</code> to IPv4 or IPv6. Container images
+continue to use their explicit <code>PORT</code>/<code>HOSTNAME</code> configuration. See <code>npm run dev -- --help</code> or
+<code>npm start -- --help</code> for options.</p>
+<p>The login page ships with Sunset, Mountains, Clouds, and Forest backgrounds. Sunset is
+the first-run default, and the browser remembers a person's
+selection on that device. Optional private login backgrounds belong in
+<code>login-backgrounds/</code>. That directory's image files are ignored by Git and the
+container build; the login page discovers them at runtime and adds both
+individual choices and a Random choice. Compose mounts that directory
+read-only. Helm deployments can provide the same runtime directory through
+<code>loginBackgrounds.existingClaim</code>.</p>
+<p>Stop the development dependency when finished:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev:deps:down
+</code></pre></div>
+<p>See <a href="../development/">local development</a> for backend URL examples,
+dependency lifecycle details, and alternate Valkey ports. In particular,
+<code>BACKEND_BASE_URL</code> must be reachable from the host process running Next.js.</p>
+<p>For production-style local runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nv">BACKEND_BASE_URL</span><span class="o">=</span>http://localhost:7070<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nv">VALKEY_URL</span><span class="o">=</span>redis://127.0.0.1:6379/0<span class="w"> </span>npm<span class="w"> </span>run<span class="w"> </span>build
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nv">BACKEND_BASE_URL</span><span class="o">=</span>http://localhost:7070<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nv">VALKEY_URL</span><span class="o">=</span>redis://127.0.0.1:6379/0<span class="w"> </span>npm<span class="w"> </span>start
+</code></pre></div>
+<h3 id="container-quickstart">Container quickstart<a class="headerlink" href="#container-quickstart" title="Permanent link">&para;</a></h3>
+<p>The release Compose quickstart runs the frontend and Valkey against an existing
+Hubuum Server. It does not install the backend or PostgreSQL:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>cp<span class="w"> </span>.env.quickstart.example<span class="w"> </span>.env.quickstart
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># Edit BACKEND_BASE_URL in .env.quickstart.</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div>
+<p>See <a href="../quickstart-compose/">the Compose quickstart</a> for host networking,
+updates, logs, and cleanup.</p>
+<h2 id="release-artifacts">Release artifacts<a class="headerlink" href="#release-artifacts" title="Permanent link">&para;</a></h2>
+<p>Current <code>main</code> development targets Hubuum Server <code>v0.0.16</code>.
+Hubuum Frontend <code>v0.0.18</code> adds task discovery and retained task details using the
+released Server <code>v0.0.16</code> contract. This baseline also requires fresh password
+approvals for credential management.
+Run the server's separate migration workload before startup and deploy its
+restore executor before confirming web restores. The console polls queued
+restores through completion; keep the restore page open so its in-memory
+capability remains available after existing sessions become invalid. See the
+<a href="../compatibility/">compatibility guide</a> for upgrade requirements.
+Releases provide:</p>
+<ul>
+<li><code>ghcr.io/hubuum/hubuum-frontend:v0.0.18</code> for Linux AMD64 and ARM64;</li>
+<li><code>oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.18</code>;</li>
+<li>a digest-pinned Compose quickstart archive and SHA-256 checksums; and</li>
+<li>build provenance and an image SBOM through GHCR attestations.</li>
+</ul>
+<p>The <strong>About Hubuum</strong> page (<code>/about</code>) shows the frontend version and the connected
+server's reported version. Open it from the account menu, the navigation version,
+or <strong>Go to…</strong>. It is available to all signed-in users. Server discovery reads the
+running server's public <code>/api-doc/openapi.json</code> on the frontend server; it does
+not use admin metadata or the bundled API contract. If discovery fails, About
+still shows the frontend version and marks the server version unavailable.
+Older servers may report only their package release number.</p>
+<p>The frontend version also appears in the navigation, on the login page, and in
+<code>/healthz</code> and <code>/readyz</code> responses. Local and CI builds use
+<code>git describe --tags --match 'v[0-9]*' --always --dirty</code>: a clean release is
+<code>v0.0.13</code>; 16 commits after it is <code>v0.0.13-16-g256d59b</code>; uncommitted tracked
+changes append <code>-dirty</code>. Without a reachable release tag, Git reports the commit
+ID. Without Git metadata, builds show the package version with <code>+unknown</code>.</p>
+<p><code>NEXT_PUBLIC_APP_VERSION</code> can override the build identity. Container contexts
+exclude <code>.git</code>, so pass the identity from the host checkout:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>docker<span class="w"> </span>build<span class="w"> </span>--build-arg<span class="w"> </span><span class="nv">APP_VERSION</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>node<span class="w"> </span>scripts/print-application-version.mjs<span class="k">)</span><span class="s2">"</span><span class="w"> </span>.
+</code></pre></div>
+<p>CI fetches release tags and history before resolving this value. Release images
+continue to embed their exact release tag. The version is fixed at build time.</p>
+<p>See <a href="../compatibility/">compatibility</a> and the
+<a href="../releasing/">maintainer release guide</a>. Release deployments should pin a
+version or digest instead of using the moving <code>main</code> tag.</p>
+<h2 id="security-audit-gate">Security audit gate<a class="headerlink" href="#security-audit-gate" title="Permanent link">&para;</a></h2>
+<p>Run a production-only dependency audit:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>npm<span class="w"> </span>run<span class="w"> </span>audit:prod
+</code></pre></div>
+<p>This checks runtime dependencies only (<code>npm audit --omit=dev</code>), so lint/codegen dev-tool advisories do not block deploys.
+The CI workflow runs this gate together with lint, typecheck, unit tests,
+backend compatibility tests, a production build, container smoke tests,
+Compose validation, and Helm validation.</p>
+<h2 id="live-backend-contract-tests">Live backend contract tests<a class="headerlink" href="#live-backend-contract-tests" title="Permanent link">&para;</a></h2>
+<p>Run the frontend's live backend contract suite against the latest published
+server image:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:live-backend
+</code></pre></div>
+<p>The script defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.16</code>, starts a
+disposable Hubuum server and Postgres database through Docker Compose, waits for
+<code>/readyz</code>, resets the default <code>admin</code> password inside the container, exercises
+the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
+redacted admin configuration, backup staging and isolated asynchronous restoration, shared and personal
+computed fields, events/audit, history/as-of, event sink, subscription, delivery
+lifecycle, public token-lifetime discovery, authoritative token expiry,
+client pagination discovery, by-name routes, object aggregation, computed
+querying, JSON Patch, and pagination APIs directly, and tears the stack down.
+The final check confirms a restore only against the disposable stack owned by
+the test wrapper, then verifies completion and invalidation of the old token.
+Restore confirmation is skipped when targeting an externally supplied backend URL.</p>
+<p>Useful overrides:</p>
+<ul>
+<li><code>HUBUUM_LIVE_BACKEND_IMAGE</code>: backend image to test, defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.16</code></li>
+<li><code>HUBUUM_LIVE_BACKEND_PORT</code>: host port for the live server, defaults to <code>9999</code></li>
+<li><code>HUBUUM_LIVE_POSTGRES_PORT</code>: host port for Postgres, defaults to <code>15432</code></li>
+<li><code>HUBUUM_LIVE_COMPOSE_PROJECT</code>: Compose project name, defaults to <code>hubuum-frontend-live-test</code></li>
+<li><code>HUBUUM_LIVE_KEEP_STACK=1</code>: leave the containers running for debugging</li>
+</ul>
+<h2 id="openapi-generation">OpenAPI generation<a class="headerlink" href="#openapi-generation" title="Permanent link">&para;</a></h2>
+<p><code>openapi.json</code> is in repo root.</p>
+<p>Generate typed clients:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>npm<span class="w"> </span>run<span class="w"> </span>gen:api
+</code></pre></div>
+<p>Generated output goes to <code>src/lib/api/generated</code>.
+The generator runs via <code>npx orval@8.36.0</code>, so network access is required when generating.</p>
+<h2 id="deployment-notes-okd">Deployment notes (OKD)<a class="headerlink" href="#deployment-notes-okd" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Every replica requires <code>VALKEY_URL</code> from a Secret so opaque sessions remain
+  available across Next.js runtimes, restarts, and pods.</li>
+<li>Use <code>/healthz</code> for liveness and <code>/readyz</code> for dependency-aware readiness.</li>
+<li>Frontend-owned BFF routes live under <code>/_hubuum-bff/...</code>; <code>/api/v0/...</code>
+  and <code>/api/v1/...</code> remain available for direct backend routing at the edge.</li>
+<li>Keep Valkey private to the application network and enable persistence or
+  replication according to the deployment's session-availability needs.</li>
+<li>TLS terminate at ingress; keep secure cookies enabled in production.</li>
+</ul>
+<h2 id="container-and-helm-publishing">Container and Helm publishing<a class="headerlink" href="#container-and-helm-publishing" title="Permanent link">&para;</a></h2>
+<p>After all required checks pass, commits to <code>main</code> publish a moving container
+image:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>ghcr.io/hubuum/hubuum-frontend:main
+</code></pre></div>
+<p>The workflow also publishes an immutable full-SHA tag for each commit.
+Both tags are multi-architecture images for <code>linux/amd64</code> and <code>linux/arm64</code>.</p>
+<p>The Helm chart lives in <code>charts/hubuum-frontend</code> and is published to GHCR as
+an OCI chart with a unique prerelease chart version per <code>main</code> build. Tagged
+releases publish a matching stable chart version. The chart defaults its image
+tag from <code>appVersion</code> and also accepts an immutable <code>image.digest</code>.</p>
+<p>Install from the published OCI chart:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>helm<span class="w"> </span>install<span class="w"> </span>hubuum<span class="w"> </span>oci://ghcr.io/hubuum/charts/hubuum-frontend<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.18<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>--set<span class="w"> </span>backend.baseUrl<span class="o">=</span>https://hubuum-api.example.com<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span>--set<span class="w"> </span>valkey.existingSecret.name<span class="o">=</span>hubuum-frontend-valkey
+</code></pre></div>
+<p>For OKD Routes, enable the chart route resource:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>hubuum<span class="w"> </span>oci://ghcr.io/hubuum/charts/hubuum-frontend<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.18<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span>--set<span class="w"> </span>backend.baseUrl<span class="o">=</span>https://hubuum-api.example.com<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span>--set<span class="w"> </span>route.enabled<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">  </span>--set<span class="w"> </span>route.host<span class="o">=</span>hubuum.example.com
+</code></pre></div>
+<h2 id="important-caveat">Important caveat<a class="headerlink" href="#important-caveat" title="Permanent link">&para;</a></h2>
+<p>The current Hubuum OpenAPI spec has many list endpoints that return arrays without explicit pagination/filter query params. For large datasets, frontend UX and backend load will benefit from adding pagination, filtering, and sort parameters to those endpoints.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="./.." class="md-footer__link md-footer__link--prev" aria-label="Previous: Welcome">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Welcome
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../compatibility/" class="md-footer__link md-footer__link--next" aria-label="Next: Server compatibility">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Server compatibility
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Hubuum · MIT licensed
+    </div>
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["navigation.tabs","navigation.tabs.sticky","navigation.sections","navigation.path","navigation.top","navigation.footer","navigation.instant","navigation.instant.progress","content.code.copy","toc.follow"],"redirect":null,"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c04ba553.min.js"></script>
+      
+        <script src="../assets/javascripts/versions.js"></script>
+      
+    
+  </body>
+</html>
