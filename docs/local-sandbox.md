@@ -1,5 +1,8 @@
 # Local Hubuum sandbox
 
+For a small inventory shared across Hubuum interfaces, use the
+[Atlas example walkthrough](example-dataset.md).
+
 Start a disposable Hubuum Server, PostgreSQL, Valkey, and the frontend against a
 server-owned test corpus. Use Node.js 24 LTS, `npm ci`, and Docker with Compose or
 Podman with a Compose provider. Git is needed when an unpublished commit must be
