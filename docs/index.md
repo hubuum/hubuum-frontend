@@ -24,3 +24,8 @@ For terminal or programming interfaces, visit the
 
 The documentation is a static website. Deploy the Next.js frontend itself using
 its application deployment instructions; GitHub Pages hosts these guides only.
+
+## Explore a shared example
+
+[Load and explore Atlas](example-dataset.md) to work with the same classes,
+objects, and relations used in the server, CLI, frontend, and client guides.
