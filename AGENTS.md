@@ -188,6 +188,8 @@ the check passed.
 - In the handoff, summarize changed behavior, list verification actually run,
   and call out remaining risks or unverified paths.
 
+<!-- The generated Next.js instructions contain their own top-level heading. -->
+<!-- markdownlint-disable MD025 -->
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
