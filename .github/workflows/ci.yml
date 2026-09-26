@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches:
       - main
@@ -20,8 +21,49 @@ env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
+  changes:
+    name: Classify changes
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.policy.outputs.code }}
+      markdown: ${{ steps.policy.outputs.markdown }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Verify release metadata
+        run: bash scripts/check-release-readiness.sh
+      - name: Test CI selection and gate
+        run: python3 scripts/test-ci-policy.py
+      - name: Classify changes
+        id: policy
+        run: python3 scripts/ci-policy.py
+
+  markdown:
+    name: Markdown lint
+    needs: changes
+    if: needs.changes.outputs.markdown == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          config: '.markdownlint.json'
+          globs: '**/*.md'
+
   validate:
-    name: validate
+    if: needs.changes.outputs.code == 'true'
+    needs: changes
+    name: Application validation
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -58,10 +100,10 @@ jobs:
         run: npm run perf:budget
       - name: Audit runtime dependencies
         run: npm run audit:prod
-      - name: Verify release metadata
-        run: bash scripts/check-release-readiness.sh
 
   backend-contract:
+    if: needs.changes.outputs.code == 'true'
+    needs: changes
     name: backend-contract
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -81,6 +123,8 @@ jobs:
         run: npm run test:live-backend
 
   browser-quality:
+    if: needs.changes.outputs.code == 'true'
+    needs: changes
     name: browser-quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -100,6 +144,8 @@ jobs:
         run: npm run test:e2e:public
 
   visual-regression:
+    if: needs.changes.outputs.code == 'true'
+    needs: changes
     name: visual-regression
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -128,6 +174,8 @@ jobs:
           retention-days: 14
 
   authenticated-browser-smoke:
+    if: needs.changes.outputs.code == 'true'
+    needs: changes
     name: authenticated-browser-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -149,6 +197,8 @@ jobs:
         run: npm run test:e2e:authenticated
 
   package:
+    if: needs.changes.outputs.code == 'true'
+    needs: changes
     name: package
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -239,6 +289,7 @@ jobs:
     name: publish-main-metadata
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
+      - ci-gate
       - validate
       - backend-contract
       - browser-quality
@@ -350,3 +401,22 @@ jobs:
             --app-version "$GITHUB_SHA"
           helm push "/tmp/hubuum-frontend-${version}.tgz" \
             oci://ghcr.io/${{ github.repository_owner }}/charts
+
+  ci-gate:
+    # Preserve the existing required check name while aggregating every CI job.
+    name: validate
+    if: always()
+    needs: [changes, markdown, validate, backend-contract, browser-quality, visual-regression, authenticated-browser-smoke, package]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - name: Require every selected check to pass
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+          CODE_JOBS: validate backend-contract browser-quality visual-regression authenticated-browser-smoke package
+        run: python3 scripts/ci-policy.py --gate
