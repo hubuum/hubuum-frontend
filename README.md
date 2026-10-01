@@ -730,3 +730,21 @@ helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
 ## Important caveat
 
 The current Hubuum OpenAPI spec has many list endpoints that return arrays without explicit pagination/filter query params. For large datasets, frontend UX and backend load will benefit from adding pagination, filtering, and sort parameters to those endpoints.
+
+## Documentation-only CI
+
+Pull requests and pushes containing only prose or documentation-site inputs run
+Markdown lint and documentation validation without the application test/build
+matrix. Unknown files, source changes, executable examples, and declared
+test/build inputs retain application CI. Mixed changes run both kinds of checks.
+
+`scripts/ci-policy.py` owns the allowlist and exceptions. Update its regression
+tests whenever a document becomes a build, test, or packaging input; direct
+literal Rust includes are checked automatically. Run the policy tests with
+`python3 scripts/test-ci-policy.py`.
+
+The `validate` check is the aggregate CI gate: classification failures,
+failed checks, and unexpectedly skipped required jobs fail it. Keep that check
+required in branch protection. Add the `ci:full` pull-request label or dispatch
+the CI workflow manually to request complete validation. Release validation
+and separately scheduled checks retain their existing coverage.
