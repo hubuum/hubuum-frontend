@@ -9,6 +9,7 @@ docs_dir = "docs"
 nav = [
   { "Overview" = [
     { "Welcome" = "index.md" },
+    { "Atlas example inventory" = "example-dataset.md" },
     { "Installation and configuration" = "setup.md" },
     { "Server compatibility" = "compatibility.md" },
   ] },
