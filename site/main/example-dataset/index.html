@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://hubuum.github.io/hubuum-frontend/main/observability/">
+        <link rel="canonical" href="https://hubuum.github.io/hubuum-frontend/main/example-dataset/">
       
       
-        <link rel="prev" href="../quickstart-compose/">
+        <link rel="prev" href="./..">
       
       
-        <link rel="next" href="../idempotent-operations/">
+        <link rel="next" href="../setup/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Observability - Hubuum web frontend</title>
+        <title>Atlas example inventory - Hubuum web frontend</title>
       
     
     
@@ -79,7 +79,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#operational-observability" class="md-skip">
+        <a href="#explore-the-atlas-example-inventory" class="md-skip">
           Skip to content
         </a>
       
@@ -148,7 +148,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Observability
+              Atlas example inventory
             
           </span>
         </div>
@@ -224,13 +224,15 @@
   
   
   
+    
+  
   
     
       
     
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="./.." class="md-tabs__link">
           
   
@@ -246,15 +248,13 @@
   
   
   
-    
-  
   
     
       
     
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../quickstart-compose/" class="md-tabs__link">
           
   
@@ -343,26 +343,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
         
           
-          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
             
   
   
@@ -380,7 +385,7 @@
           </label>
         
         
-          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
             <label class="md-nav__title" for="__nav_1">
               <span class="md-nav__icon md-icon"></span>
               
@@ -421,10 +426,36 @@
                   
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../example-dataset/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Atlas example inventory
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -439,6 +470,60 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#load-the-shared-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Load the shared dataset
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#follow-the-model-in-the-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Follow the model in the browser
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relations-and-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Relations and access
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -510,31 +595,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
   
@@ -552,7 +632,7 @@
           </label>
         
         
-          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
             <label class="md-nav__title" for="__nav_2">
               <span class="md-nav__icon md-icon"></span>
               
@@ -593,36 +673,10 @@
                   
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Observability
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
         
   
   
@@ -637,121 +691,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#envelope" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Envelope
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#privacy-and-credential-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Privacy and credential safety
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#event-catalog" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Event catalog
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Event catalog">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#generic-browser-to-backend-proxy" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Generic browser-to-backend proxy
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#direct-server-side-backend-calls" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Direct server-side backend calls
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#valkey" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Valkey
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#suggested-operational-views" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Suggested operational views
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#adding-events" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Adding events
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1108,10 +1047,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#envelope" class="md-nav__link">
+  <a href="#load-the-shared-dataset" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Envelope
+        Load the shared dataset
       </span>
     </span>
   </a>
@@ -1119,10 +1058,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#privacy-and-credential-safety" class="md-nav__link">
+  <a href="#follow-the-model-in-the-browser" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Privacy and credential safety
+        Follow the model in the browser
       </span>
     </span>
   </a>
@@ -1130,71 +1069,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#event-catalog" class="md-nav__link">
+  <a href="#relations-and-access" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Event catalog
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Event catalog">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#generic-browser-to-backend-proxy" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Generic browser-to-backend proxy
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#direct-server-side-backend-calls" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Direct server-side backend calls
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#valkey" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Valkey
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#suggested-operational-views" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Suggested operational views
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#adding-events" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Adding events
+        Relations and access
       </span>
     </span>
   </a>
@@ -1222,7 +1100,7 @@
                 
                   
   
-    <a href="https://github.com/hubuum/hubuum-frontend/edit/main/docs/observability.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/hubuum/hubuum-frontend/edit/main/docs/example-dataset.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -1230,84 +1108,96 @@
   
 
 
-<h1 id="operational-observability">Operational observability<a class="headerlink" href="#operational-observability" title="Permanent link">&para;</a></h1>
-<p>Hubuum Frontend emits one-line JSON operational events from server-side code.
-The schema is designed for collection by ordinary container log pipelines and
-does not require a vendor-specific telemetry agent.</p>
-<h2 id="envelope">Envelope<a class="headerlink" href="#envelope" title="Permanent link">&para;</a></h2>
-<p>Every event includes:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-08-03T10:00:00.000Z"</span><span class="p">,</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">"level"</span><span class="p">:</span><span class="w"> </span><span class="s2">"info"</span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">"service"</span><span class="p">:</span><span class="w"> </span><span class="s2">"hubuum-frontend"</span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">"event"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bff.proxy.completed"</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">}</span>
-</code></pre></div>
-<p>Additional fields are flat JSON primitives. Field names and event names use
-lowercase dot, dash, and underscore notation. Strings are capped at 512
-characters, non-finite numbers become <code>null</code>, and nested values are ignored.</p>
-<h2 id="privacy-and-credential-safety">Privacy and credential safety<a class="headerlink" href="#privacy-and-credential-safety" title="Permanent link">&para;</a></h2>
-<p>The formatter rejects fields whose names identify credentials or request
-content, including authorization headers, cookies, passwords, tokens, session
-IDs, restore capabilities, request bodies, and payloads. Credential-looking
-values embedded in error messages are redacted, and error stacks are not
-emitted.</p>
-<p>Backend paths keep their route and query-parameter names for aggregation, but
-all query values are replaced with <code>[redacted]</code>. Credential-bearing path
-segments are also removed. Callers should still pass only the safe path returned
-by <code>getSafeBackendPathForLogs</code> or <code>sanitizeOperationalPath</code>.</p>
-<p>These controls are a final boundary, not permission to pass arbitrary request
-objects to the logger.</p>
-<h2 id="event-catalog">Event catalog<a class="headerlink" href="#event-catalog" title="Permanent link">&para;</a></h2>
-<h3 id="generic-browser-to-backend-proxy">Generic browser-to-backend proxy<a class="headerlink" href="#generic-browser-to-backend-proxy" title="Permanent link">&para;</a></h3>
-<ul>
-<li><code>bff.proxy.completed</code> — backend response headers received; includes method,
-  safe path, source BFF path, status, correlation ID, duration, and content
-  lengths when known.</li>
-<li><code>bff.proxy.failed</code> — upstream connection or fetch failure with bounded error
-  identity.</li>
-<li><code>bff.proxy.rejected</code> — unsupported method or invalid upstream path.</li>
-<li><code>bff.proxy.unauthenticated</code> — request rejected before proxying because no
-  frontend session was available.</li>
-</ul>
-<h3 id="direct-server-side-backend-calls">Direct server-side backend calls<a class="headerlink" href="#direct-server-side-backend-calls" title="Permanent link">&para;</a></h3>
-<ul>
-<li><code>backend.request.completed</code> — login, settings, raw-report, and other
-  server-side backend requests; includes method, safe path, status, correlation
-  ID, duration, and response length when known.</li>
-<li><code>backend.request.failed</code> — backend fetch failed before a response was
-  available.</li>
-</ul>
-<h3 id="valkey">Valkey<a class="headerlink" href="#valkey" title="Permanent link">&para;</a></h3>
-<ul>
-<li><code>valkey.connection.ready</code></li>
-<li><code>valkey.connection.reconnecting</code></li>
-<li><code>valkey.connection.closed</code></li>
-<li><code>valkey.connection.ended</code></li>
-<li><code>valkey.connection.error</code></li>
-<li><code>valkey.ping.failed</code></li>
-</ul>
-<p>No event includes the Valkey URL or key names.</p>
-<h2 id="suggested-operational-views">Suggested operational views<a class="headerlink" href="#suggested-operational-views" title="Permanent link">&para;</a></h2>
-<p>A log backend can derive useful service indicators without parsing prose:</p>
-<ul>
-<li>request rate and status families by <code>event</code>, <code>method</code>, and <code>path</code>;</li>
-<li>p50, p95, and p99 <code>duration_ms</code> for <code>bff.proxy.completed</code> and
-  <code>backend.request.completed</code>;</li>
-<li>upstream transport failures per minute;</li>
-<li>unauthenticated-request spikes;</li>
-<li>Valkey reconnect and terminal-connection events; and</li>
-<li>correlation-ID timelines spanning the frontend and Hubuum Server.</li>
-</ul>
-<p>The duration currently measures time until backend response headers are
-available. For streamed responses, transfer duration and client cancellation
-should be recorded as separate events rather than changing this field's
-meaning.</p>
-<h2 id="adding-events">Adding events<a class="headerlink" href="#adding-events" title="Permanent link">&para;</a></h2>
-<p>Use <code>emitOperationalEvent</code> from <code>src/lib/operational-events.ts</code>. Add a focused
-unit test when introducing a new field category or redaction rule. Prefer one
-completion event over paired start/finish messages unless an operation is long
-running and in-flight visibility is operationally necessary.</p>
+<h1 id="explore-the-atlas-example-inventory">Explore the Atlas example inventory<a class="headerlink" href="#explore-the-atlas-example-inventory" title="Permanent link">&para;</a></h1>
+<p>Use the same small inventory as the server documentation and the other Hubuum
+interfaces. Atlas demonstrates <strong>classes, objects, relations, and access</strong> with
+four classes and ten connected objects.</p>
+<h2 id="load-the-shared-dataset">Load the shared dataset<a class="headerlink" href="#load-the-shared-dataset" title="Permanent link">&para;</a></h2>
+<p>Follow the server's <a href="https://hubuum.github.io/hubuum/main/getting-started/example-dataset/">Atlas dataset guide</a>
+to download and import the inventory into an evaluation server. Atlas is initially
+available in the explicitly selected development edition. When a server release
+includes it, use that release's documentation and downloads. Pin a release or
+exact server commit for repeatable tests; do not copy a second fixture into this
+repository.</p>
+<p>The import aborts atomically on name collisions and contains no passwords,
+tokens, users, or group memberships. Its separate backup replaces all application
+data and is intended for resetting a disposable demo installation. The server
+guide owns the loading, restore, compatibility, and checksum instructions.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Objects to explore</th>
+<th>Schema and authority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Service</td>
+<td>Atlas, Beacon</td>
+<td>Enforced schema; maintained in Hubuum</td>
+</tr>
+<tr>
+<td>Server</td>
+<td>web-01, web-02, worker-01</td>
+<td>Enforced schema; reference inventory data</td>
+</tr>
+<tr>
+<td>Location</td>
+<td>Oslo, Bergen</td>
+<td>Schema-free; reference facilities data</td>
+</tr>
+<tr>
+<td>Context</td>
+<td>Research notes, Migration checklist, Capacity observation</td>
+<td>Schema-free; locally maintained notes and an upstream observation</td>
+</tr>
+</tbody>
+</table>
+<p>A class defines a resource type and its schema policy. Its objects hold the
+individual JSON records. Source ownership is independent of schema policy:
+<code>data.source</code> is example metadata, not automatic synchronization or write
+protection.</p>
+<h2 id="follow-the-model-in-the-browser">Follow the model in the browser<a class="headerlink" href="#follow-the-model-in-the-browser" title="Permanent link">&para;</a></h2>
+<p>Connect the frontend to the server containing Atlas and sign in normally.
+The browser continues to use the frontend's session and BFF; no API token
+needs to be pasted into browser storage.</p>
+<ol>
+<li>Open the classes and inspect <strong>Service</strong>. Its schema requires owner, tier,
+   and environment. Compare it with <strong>Context</strong>, which has no schema.</li>
+<li>Open <strong>Atlas</strong> in Service. Its owner is Platform and its environment is
+   production. Then open <strong>web-01</strong> in Server and inspect its hostname,
+   capacity, and cost data.</li>
+<li>Inspect Atlas's object relations: web-01, web-02, Research notes, and
+   Migration checklist. Their classes connect through the Service–Server
+   and Service–Context class relations.</li>
+<li>Inspect <strong>Research notes</strong> and <strong>Migration checklist</strong> in Context. Their
+   different JSON shapes coexist without a required schema.</li>
+<li>Inspect the Server class's monthly_cost computed field. Once background
+   computation finishes, web-01's value is 50 in fictional cost units.</li>
+</ol>
+<p>Use these same records when making screenshots or demonstrating a workflow.
+Changes made through the frontend affect the shared evaluation server, so
+restore the demo backup when you need the documented starting point again.</p>
+<p>The existing <a href="../local-sandbox/">local sandbox</a> starts with the larger functional
+corpus for broad frontend testing. It does not automatically select Atlas.
+Use an evaluation deployment for the walkthrough, or import Atlas alongside
+the sandbox's existing data. A sandbox reset restores its original corpus.</p>
+<h2 id="relations-and-access">Relations and access<a class="headerlink" href="#relations-and-access" title="Permanent link">&para;</a></h2>
+<p>Atlas runs on web-01 and web-02; their locations are Oslo and Bergen. Atlas
+also links to Research notes and Migration checklist. Class relations define
+which resource types connect; object relations connect these specific instances.</p>
+<p>The example creates empty atlas-readers and atlas-operators groups. A principal
+assigned only to atlas-readers can read all ten objects without changing them.
+A principal assigned only to atlas-operators can read and maintain the five
+Server/Location objects in atlas-demo-operations, but cannot read the service
+catalogue in its parent collection. Test these differences with non-admin
+accounts and an unscoped token; other memberships and token scopes affect access.</p>
+<p>For exact data, expected relationships, and checksums, return to the server's
+<a href="https://hubuum.github.io/hubuum/main/getting-started/example-dataset/">canonical dataset guide</a>.
+The server corpus tests verify import and restore, schemas, permissions,
+computed values, filters, and pagination. Each client retains its own compatibility
+and integration tests; the example does not change its supported server target.</p>
 
 
 
@@ -1345,7 +1235,7 @@ running and in-flight visibility is operationally necessary.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../quickstart-compose/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Compose quick start">
+          <a href="./.." class="md-footer__link md-footer__link--prev" aria-label="Previous: Welcome">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1355,20 +1245,20 @@ running and in-flight visibility is operationally necessary.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Compose quick start
+                Welcome
               </div>
             </div>
           </a>
         
         
           
-          <a href="../idempotent-operations/" class="md-footer__link md-footer__link--next" aria-label="Next: Idempotent operations">
+          <a href="../setup/" class="md-footer__link md-footer__link--next" aria-label="Next: Installation and configuration">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Idempotent operations
+                Installation and configuration
               </div>
             </div>
             <div class="md-footer__button md-icon">
