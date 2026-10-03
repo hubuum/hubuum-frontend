@@ -49,7 +49,7 @@ HUBUUM_VALKEY_PROJECT="${VALKEY_PROJECT}" \
 
 echo "Pulling authenticated-test backend image: ${IMAGE}"
 docker pull "${IMAGE}"
-docker pull postgres:17
+docker compose -f "${BACKEND_COMPOSE_FILE}" -p "${BACKEND_PROJECT}" pull postgres
 
 echo "Starting disposable Hubuum Server on ${BASE_URL}"
 docker compose -f "${BACKEND_COMPOSE_FILE}" -p "${BACKEND_PROJECT}" up -d --force-recreate --renew-anon-volumes

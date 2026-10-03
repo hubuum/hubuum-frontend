@@ -10,6 +10,7 @@ const projectRoot = resolve(scriptDirectory, "..");
 const exceptionPath = join(projectRoot, "release-dependency-exceptions.json");
 const workflowDirectory = join(projectRoot, ".github", "workflows");
 const supportedEcosystems = new Set(["npm", "github-actions"]);
+const sharedWorkflowRepository = "hubuum/.github";
 
 function fail(message) {
 	throw new Error(message);
@@ -67,18 +68,18 @@ export function latestStableTag(tags) {
 export function collectActionPins(workflows) {
 	const pins = new Map();
 	const errors = [];
-	const pinnedUse = /^\s*uses:\s+([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)(?:\/[^@\s]+)?@([0-9a-f]{40})\s+#\s*(v?\d+(?:\.\d+){0,2})\s*$/;
+	const pinnedUse = /^\s*(?:-\s+)?uses:\s+([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)(?:\/[^@\s]+)?@([0-9a-f]{40})\s+#\s*(v?\d+(?:\.\d+){0,2}|main)\s*$/;
 
 	for (const [path, content] of Object.entries(workflows)) {
 		for (const [index, line] of content.split("\n").entries()) {
-			if (!/^\s*uses:/.test(line) || /^\s*uses:\s+\.\//.test(line)) {
+			if (!/^\s*(?:-\s+)?uses:/.test(line) || /^\s*(?:-\s+)?uses:\s+\.\//.test(line)) {
 				continue;
 			}
 
 			const match = pinnedUse.exec(line);
-			if (!match) {
+			if (!match || (match[3] === "main" && match[1] !== sharedWorkflowRepository)) {
 				errors.push(
-					`${path}:${index + 1} must pin an external action to a 40-character commit with a stable version comment.`,
+					`${path}:${index + 1} must pin an external action to a 40-character commit with a stable version comment (or main for ${sharedWorkflowRepository}).`,
 				);
 				continue;
 			}
@@ -109,6 +110,21 @@ export function evaluateActionFreshness(pins, tagsByRepository) {
 
 	for (const pin of pins) {
 		const tags = tagsByRepository.get(pin.dependency) ?? [];
+		if (pin.dependency === sharedWorkflowRepository && pin.version === "main") {
+			const latest = tags.find((tag) => tag.name === "main");
+			if (!/^[0-9a-f]{40}$/.test(latest?.commit?.sha ?? "")) {
+				errors.push(`Could not resolve main for ${pin.dependency}.`);
+			} else if (pin.sha !== latest.commit.sha) {
+				stale.push({
+					ecosystem: "github-actions",
+					dependency: pin.dependency,
+					currentVersion: pin.sha,
+					targetVersion: latest.commit.sha,
+					detail: pin.locations.join(", "),
+				});
+			}
+			continue;
+		}
 		const latest = latestStableTag(tags);
 		const pinnedTag = tags.find((tag) => tag.name === pin.version);
 		const currentVersion = parseSemverTag(pin.version);
@@ -449,6 +465,11 @@ export function runReleaseDependencyGate() {
 
 	const tagsByRepository = new Map();
 	for (const dependency of new Set(pins.map((pin) => pin.dependency))) {
+		if (dependency === sharedWorkflowRepository) {
+			const [commit] = ghApi(`repos/${dependency}/commits/main`);
+			tagsByRepository.set(dependency, [{ name: "main", commit: { sha: commit.sha } }]);
+			continue;
+		}
 		tagsByRepository.set(
 			dependency,
 			ghApi(`repos/${dependency}/tags?per_page=100`),

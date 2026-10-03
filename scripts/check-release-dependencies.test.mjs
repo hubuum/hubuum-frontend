@@ -49,6 +49,59 @@ test("latestStableTag ignores prereleases and prefers a precise stable tag", () 
 	assert.equal(latest.name, "v7.0.0");
 });
 
+test("collectActionPins checks inline steps and ignores local actions", () => {
+	const pins = collectActionPins({
+		"ci.yml": [
+			`      - uses: actions/checkout@${sha1} # v7.0.1`,
+			"      - uses: ./local-action",
+			"        uses: ./another-local-action",
+		].join("\n"),
+	});
+	assert.equal(pins.length, 1);
+	assert.equal(pins[0].dependency, "actions/checkout");
+	assert.throws(
+		() => collectActionPins({ "ci.yml": "      - uses: actions/checkout@v7" }),
+		/must pin an external action/,
+	);
+});
+
+test("collectActionPins permits main comments only for immutable Hubuum shared workflows", () => {
+	const pins = collectActionPins({
+		"docs.yml": `    uses: hubuum/.github/.github/workflows/docs-build.yml@${sha1} # main`,
+	});
+	assert.equal(pins[0].version, "main");
+	assert.equal(pins[0].sha, sha1);
+	for (const use of [
+		`actions/checkout@${sha1} # main`,
+		"hubuum/.github/.github/workflows/docs-build.yml@main # main",
+	]) {
+		assert.throws(
+			() => collectActionPins({ "docs.yml": `    uses: ${use}` }),
+			/must pin an external action/,
+		);
+	}
+});
+
+test("shared workflow freshness requires the resolved main commit", () => {
+	const pins = collectActionPins({
+		"docs.yml": `    uses: hubuum/.github/.github/workflows/docs-build.yml@${sha1} # main`,
+	});
+	const refs = new Map([["hubuum/.github", [{ name: "main", commit: { sha: sha1 } }]]]);
+	assert.deepEqual(evaluateActionFreshness(pins, refs), []);
+	refs.get("hubuum/.github")[0].commit.sha = sha2;
+	assert.deepEqual(evaluateActionFreshness(pins, refs), [{
+		ecosystem: "github-actions",
+		dependency: "hubuum/.github",
+		currentVersion: sha1,
+		targetVersion: sha2,
+		detail: "docs.yml:1",
+	}]);
+	for (const invalid of [[], [{ name: "main", commit: {} }]]) {
+		refs.set("hubuum/.github", invalid);
+		assert.throws(() => evaluateActionFreshness(pins, refs), /Could not resolve main/);
+	}
+});
+
 test("evaluateActionFreshness checks both the version and pinned commit", () => {
 	const pins = [
 		{

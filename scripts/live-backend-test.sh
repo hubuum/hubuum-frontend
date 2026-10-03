@@ -36,7 +36,7 @@ trap cleanup EXIT
 
 echo "Pulling latest live backend image: ${IMAGE}"
 docker pull "${IMAGE}"
-docker pull postgres:17
+docker compose -f "${COMPOSE_FILE}" -p "${PROJECT}" pull postgres
 
 echo "Starting disposable live backend stack '${PROJECT}' on ${BASE_URL}"
 docker compose -f "${COMPOSE_FILE}" -p "${PROJECT}" up -d --force-recreate --renew-anon-volumes
