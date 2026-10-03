@@ -52,7 +52,11 @@ backend version is intentionally raised.
    `release:dependencies` queries the npm registry for installed dependencies
    and the script-pinned Orval generator, verifies every external
    workflow `uses:` pin against the latest stable action tag and commit, and
-   blocks on open Dependabot pull requests. It uses the current repository from
+   blocks on open Dependabot pull requests. The untagged `hubuum/.github`
+   shared documentation workflows use immutable SHAs with a `# main` comment;
+   the gate checks those against that repository's current main commit. Update
+   `.github/docs-tools.env` and workflow `tooling_revision` inputs together with
+   those pins. It uses the current repository from
    authenticated `gh`; set `GITHUB_REPOSITORY=owner/repository` when running it
    outside a checkout recognized by `gh`.
 
