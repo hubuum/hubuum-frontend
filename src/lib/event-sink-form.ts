@@ -115,9 +115,7 @@ export function buildEventSinkPayload(state: EventSinkFormState): NewEventSink {
 	};
 }
 
-function parseDeliveryPolicy(
-	value: string,
-): EventDeliveryPolicy | null | undefined {
+function parseDeliveryPolicy(value: string): EventDeliveryPolicy | undefined {
 	if (!value.trim()) return undefined;
 	let parsed: unknown;
 	try {
@@ -125,7 +123,8 @@ function parseDeliveryPolicy(
 	} catch {
 		throw new Error("Delivery policy must be valid JSON.");
 	}
-	if (parsed === null) return null;
+	// The server treats a top-level null as omitted, so replace the policy explicitly.
+	if (parsed === null) return { min_interval_ms: null };
 	if (typeof parsed !== "object" || Array.isArray(parsed))
 		throw new Error("Delivery policy must be an object or null.");
 	if (

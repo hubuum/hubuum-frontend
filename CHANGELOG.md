@@ -45,6 +45,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Entering `null` in delivery policy JSON disables existing spacing instead of
+  silently preserving it.
 - Exclude generated documentation artifacts from application lint checks.
 - Documentation tables keep long environment-variable names readable, use wider
   reference layouts, and scroll within the table on small screens. Shared style

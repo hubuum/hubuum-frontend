@@ -198,13 +198,23 @@ describe("webhook target setup", () => {
 		).toThrow();
 	});
 
-	it("allows explicitly removing a delivery policy", () => {
+	it.each(["", "  "])("omits a blank delivery policy %j", (deliveryPolicyInput) => {
+		expect(
+			buildEventSinkPayload({
+				...defaultEventSinkFormState,
+				name: "Chat",
+				deliveryPolicyInput,
+			}),
+		).not.toHaveProperty("delivery_policy");
+	});
+
+	it("disables delivery spacing with an explicit policy for null input", () => {
 		expect(
 			buildEventSinkPayload({
 				...defaultEventSinkFormState,
 				name: "Chat",
 				deliveryPolicyInput: "null",
 			}).delivery_policy,
-		).toBeNull();
+		).toEqual({ min_interval_ms: null });
 	});
 });

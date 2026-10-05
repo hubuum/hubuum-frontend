@@ -54,7 +54,7 @@ Existing sinks open as **Custom webhook**, preserving their saved settings.
 Applying a preset to custom settings requires confirmation before replacing them.
 Canceling the sink dialog leaves the saved sink unchanged. Delivery policy JSON
 can adjust pacing; leave it blank to keep the current policy, or enter `null` to
-remove it.
+disable delivery spacing.
 
 Subscriptions retain task-kind filters configured through the API when edited
 in the console. System subscriptions and provider test delivery remain available

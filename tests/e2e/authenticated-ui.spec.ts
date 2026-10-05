@@ -40,7 +40,7 @@ test.describe("authenticated workspace", () => {
 	});
 
 	for (const target of ["slack", "mattermost", "discord"] as const) {
-		test(`webhook ${target} setup creates a normal sink and preserves advanced edits`, async ({
+		test(`webhook ${target} setup preserves advanced edits and can clear delivery spacing`, async ({
 			page,
 		}) => {
 			const name = `e2e-${target}-${Date.now()}`;
@@ -108,6 +108,8 @@ test.describe("authenticated workspace", () => {
 					.getByRole("button", { name: "Cancel", exact: true })
 					.click();
 				await expect(edit.getByLabel("Webhook target")).toHaveValue("custom");
+				await edit.getByText("Delivery policy", { exact: true }).click();
+				await edit.getByLabel("Delivery policy JSON").fill("");
 				const updatedResponse = page.waitForResponse(
 					(result) =>
 						result.url().endsWith(`/api/v1/event-sinks/${sinkId}`) &&
@@ -117,9 +119,39 @@ test.describe("authenticated workspace", () => {
 				await edit.getByRole("button", { name: "Save sink" }).click();
 				const updated = await updatedResponse;
 				expect(updated.status()).toBe(200);
+				expect(updated.request().postDataJSON()).not.toHaveProperty(
+					"delivery_policy",
+				);
 				expect(await updated.json()).toMatchObject({
 					config: sink.config,
 					delivery_policy: sink.delivery_policy,
+				});
+				await expect(edit).not.toBeVisible();
+				await page
+					.getByRole("row")
+					.filter({ hasText: `${name}-edited` })
+					.getByRole("button", { name: "Edit", exact: true })
+					.click();
+				await edit.getByText("Delivery policy", { exact: true }).click();
+				await edit.getByLabel("Delivery policy JSON").fill("null");
+				const clearedResponse = page.waitForResponse(
+					(result) =>
+						result.url().endsWith(`/api/v1/event-sinks/${sinkId}`) &&
+						result.request().method() === "PATCH",
+				);
+				await edit.getByRole("button", { name: "Save sink" }).click();
+				const cleared = await clearedResponse;
+				expect(cleared.status()).toBe(200);
+				expect(await cleared.json()).toMatchObject({
+					config: sink.config,
+					delivery_policy: { min_interval_ms: null },
+				});
+				const persisted = await page.request.get(
+					`${bffPrefix}/api/v1/event-sinks/${sinkId}`,
+				);
+				expect(persisted.status()).toBe(200);
+				expect(await persisted.json()).toMatchObject({
+					delivery_policy: { min_interval_ms: null },
 				});
 			} finally {
 				if (sinkId !== undefined) {

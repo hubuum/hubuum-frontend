@@ -214,7 +214,8 @@ export function EventSinkConfiguration({
 								placeholder={'{"min_interval_ms": 1000}'}
 							/>
 							<span className="field-note">
-								Leave blank to keep the current policy. Enter null to remove it.
+								Leave blank to keep the current policy. Enter null to disable
+								delivery spacing.
 							</span>
 						</label>
 					</details>
