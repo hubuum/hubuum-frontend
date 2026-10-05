@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { GroupKey } from './groupKey';
 import type { PrincipalKey } from './principalKey';
@@ -21,14 +21,14 @@ export type ImportPrincipalSubtype = {
   /** @nullable */
   proper_name?: string | null;
 } | {
-  created_by_key?: null | PrincipalKey;
+  created_by_key?: PrincipalKey | null;
   /** @nullable */
   created_by_ref?: string | null;
   description: string;
   /** @nullable */
   disabled_at?: string | null;
   kind: 'service_account';
-  owner_group_key?: null | GroupKey;
+  owner_group_key?: GroupKey | null;
   /** @nullable */
   owner_group_ref?: string | null;
 };

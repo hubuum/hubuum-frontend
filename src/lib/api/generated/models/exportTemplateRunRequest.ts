@@ -3,14 +3,14 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ExportLimits } from './exportLimits';
 import type { ExportMissingDataPolicy } from './exportMissingDataPolicy';
 
 export interface ExportTemplateRunRequest {
-  limits?: null | ExportLimits;
-  missing_data_policy?: null | ExportMissingDataPolicy;
+  limits?: ExportLimits | null;
+  missing_data_policy?: ExportMissingDataPolicy | null;
   /** @nullable */
   object_id?: number | null;
   /** @nullable */

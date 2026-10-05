@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ObjectRelationLimit } from './objectRelationLimit';
 
@@ -14,9 +14,9 @@ import type { ObjectRelationLimit } from './objectRelationLimit';
 export interface NewHubuumClassRelationFromClass {
   /** @nullable */
   forward_template_alias?: string | null;
-  from_max_relations?: null | ObjectRelationLimit;
+  from_max_relations?: ObjectRelationLimit | null;
   /** @nullable */
   reverse_template_alias?: string | null;
   to_hubuum_class_id: number;
-  to_max_relations?: null | ObjectRelationLimit;
+  to_max_relations?: ObjectRelationLimit | null;
 }

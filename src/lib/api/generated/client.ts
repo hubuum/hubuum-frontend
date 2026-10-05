@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type {
   ApiErrorResponse,
@@ -33,6 +33,8 @@ import type {
   EventDeliveryHealthResponse,
   EventDeliveryResponse,
   EventDeliveryUpdateResponse,
+  EventNotificationPreview,
+  EventNotificationRequest,
   EventResponse,
   EventSink,
   EventSubscription,
@@ -176,6 +178,7 @@ import type {
   ServiceAccountResponse,
   StructuredSearchRequest,
   StructuredSearchResponse,
+  SystemEventSubscription,
   TaskCancelRequest,
   TaskEventResponse,
   TaskID,
@@ -8761,6 +8764,158 @@ const res = await fetch(getPatchApiV1EventSinksBySinkIdUrl(sinkId),
 
 
 
+export type postApiV1EventSinksBySinkIdPreviewResponse200 = {
+  data: EventNotificationPreview
+  status: 200
+}
+
+export type postApiV1EventSinksBySinkIdPreviewResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1EventSinksBySinkIdPreviewResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1EventSinksBySinkIdPreviewResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1EventSinksBySinkIdPreviewResponseSuccess = (postApiV1EventSinksBySinkIdPreviewResponse200) & {
+  headers: Headers;
+};
+export type postApiV1EventSinksBySinkIdPreviewResponseError = (postApiV1EventSinksBySinkIdPreviewResponse400 | postApiV1EventSinksBySinkIdPreviewResponse403 | postApiV1EventSinksBySinkIdPreviewResponse404) & {
+  headers: Headers;
+};
+
+export type postApiV1EventSinksBySinkIdPreviewResponse = (postApiV1EventSinksBySinkIdPreviewResponseSuccess | postApiV1EventSinksBySinkIdPreviewResponseError)
+
+export const getPostApiV1EventSinksBySinkIdPreviewUrl = (sinkId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks/${sinkId}/preview`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/event-sinks/{sink_id}/preview.
+ * @summary Post Api V1 Event Sinks By Sink Id Preview
+ */
+export const postApiV1EventSinksBySinkIdPreview = async (sinkId: number,
+    eventNotificationRequest: EventNotificationRequest, options?: RequestInit): Promise<postApiV1EventSinksBySinkIdPreviewResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1EventSinksBySinkIdPreviewUrl(sinkId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(eventNotificationRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1EventSinksBySinkIdPreviewResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1EventSinksBySinkIdPreviewResponse
+}
+
+
+
+export type postApiV1EventSinksBySinkIdTestResponse202 = {
+  data: EventDeliveryResponse
+  status: 202
+}
+
+export type postApiV1EventSinksBySinkIdTestResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1EventSinksBySinkIdTestResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1EventSinksBySinkIdTestResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1EventSinksBySinkIdTestResponseSuccess = (postApiV1EventSinksBySinkIdTestResponse202) & {
+  headers: Headers;
+};
+export type postApiV1EventSinksBySinkIdTestResponseError = (postApiV1EventSinksBySinkIdTestResponse400 | postApiV1EventSinksBySinkIdTestResponse403 | postApiV1EventSinksBySinkIdTestResponse404) & {
+  headers: Headers;
+};
+
+export type postApiV1EventSinksBySinkIdTestResponse = (postApiV1EventSinksBySinkIdTestResponseSuccess | postApiV1EventSinksBySinkIdTestResponseError)
+
+export const getPostApiV1EventSinksBySinkIdTestUrl = (sinkId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks/${sinkId}/test`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/event-sinks/{sink_id}/test.
+ * @summary Post Api V1 Event Sinks By Sink Id Test
+ */
+export const postApiV1EventSinksBySinkIdTest = async (sinkId: number,
+    eventNotificationRequest: EventNotificationRequest, options?: RequestInit): Promise<postApiV1EventSinksBySinkIdTestResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1EventSinksBySinkIdTestUrl(sinkId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(eventNotificationRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1EventSinksBySinkIdTestResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1EventSinksBySinkIdTestResponse
+}
+
+
+
 export type getApiV1EventsResponse200 = {
   data: EventResponse[]
   status: 200
@@ -14929,6 +15084,370 @@ const res = await fetch(getPostApiV1SearchStreamUrl(),
 
   const data: postApiV1SearchStreamResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1SearchStreamResponse
+}
+
+
+
+export type getApiV1SystemEventSubscriptionsResponse200 = {
+  data: SystemEventSubscription[]
+  status: 200
+}
+
+export type getApiV1SystemEventSubscriptionsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1SystemEventSubscriptionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1SystemEventSubscriptionsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1SystemEventSubscriptionsResponseSuccess = (getApiV1SystemEventSubscriptionsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1SystemEventSubscriptionsResponseError = (getApiV1SystemEventSubscriptionsResponse400 | getApiV1SystemEventSubscriptionsResponse401 | getApiV1SystemEventSubscriptionsResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1SystemEventSubscriptionsResponse = (getApiV1SystemEventSubscriptionsResponseSuccess | getApiV1SystemEventSubscriptionsResponseError)
+
+export const getGetApiV1SystemEventSubscriptionsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/system-event-subscriptions`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/system-event-subscriptions.
+ * @summary Get Api V1 System Event Subscriptions
+ */
+export const getApiV1SystemEventSubscriptions = async ( options?: RequestInit): Promise<getApiV1SystemEventSubscriptionsResponse> => {
+
+  const res = await fetch(getGetApiV1SystemEventSubscriptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1SystemEventSubscriptionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1SystemEventSubscriptionsResponse
+}
+
+
+
+export type postApiV1SystemEventSubscriptionsResponse201 = {
+  data: SystemEventSubscription
+  status: 201
+}
+
+export type postApiV1SystemEventSubscriptionsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1SystemEventSubscriptionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1SystemEventSubscriptionsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1SystemEventSubscriptionsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1SystemEventSubscriptionsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1SystemEventSubscriptionsResponseSuccess = (postApiV1SystemEventSubscriptionsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1SystemEventSubscriptionsResponseError = (postApiV1SystemEventSubscriptionsResponse400 | postApiV1SystemEventSubscriptionsResponse401 | postApiV1SystemEventSubscriptionsResponse403 | postApiV1SystemEventSubscriptionsResponse404 | postApiV1SystemEventSubscriptionsResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1SystemEventSubscriptionsResponse = (postApiV1SystemEventSubscriptionsResponseSuccess | postApiV1SystemEventSubscriptionsResponseError)
+
+export const getPostApiV1SystemEventSubscriptionsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/system-event-subscriptions`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/system-event-subscriptions.
+ * @summary Post Api V1 System Event Subscriptions
+ */
+export const postApiV1SystemEventSubscriptions = async (newEventSubscription: NewEventSubscription, options?: RequestInit): Promise<postApiV1SystemEventSubscriptionsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1SystemEventSubscriptionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(newEventSubscription)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1SystemEventSubscriptionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1SystemEventSubscriptionsResponse
+}
+
+
+
+export type getApiV1SystemEventSubscriptionsBySubscriptionIdResponse200 = {
+  data: SystemEventSubscription
+  status: 200
+}
+
+export type getApiV1SystemEventSubscriptionsBySubscriptionIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1SystemEventSubscriptionsBySubscriptionIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1SystemEventSubscriptionsBySubscriptionIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1SystemEventSubscriptionsBySubscriptionIdResponseSuccess = (getApiV1SystemEventSubscriptionsBySubscriptionIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1SystemEventSubscriptionsBySubscriptionIdResponseError = (getApiV1SystemEventSubscriptionsBySubscriptionIdResponse401 | getApiV1SystemEventSubscriptionsBySubscriptionIdResponse403 | getApiV1SystemEventSubscriptionsBySubscriptionIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1SystemEventSubscriptionsBySubscriptionIdResponse = (getApiV1SystemEventSubscriptionsBySubscriptionIdResponseSuccess | getApiV1SystemEventSubscriptionsBySubscriptionIdResponseError)
+
+export const getGetApiV1SystemEventSubscriptionsBySubscriptionIdUrl = (subscriptionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/system-event-subscriptions/${subscriptionId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/system-event-subscriptions/{subscription_id}.
+ * @summary Get Api V1 System Event Subscriptions By Subscription Id
+ */
+export const getApiV1SystemEventSubscriptionsBySubscriptionId = async (subscriptionId: number, options?: RequestInit): Promise<getApiV1SystemEventSubscriptionsBySubscriptionIdResponse> => {
+
+  const res = await fetch(getGetApiV1SystemEventSubscriptionsBySubscriptionIdUrl(subscriptionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1SystemEventSubscriptionsBySubscriptionIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1SystemEventSubscriptionsBySubscriptionIdResponse
+}
+
+
+
+export type deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse412 = {
+  data: void
+  status: 412
+}
+
+export type deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponseSuccess = (deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponseError = (deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse401 | deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse403 | deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse404 | deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse412) & {
+  headers: Headers;
+};
+
+export type deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse = (deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponseSuccess | deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponseError)
+
+export const getDeleteApiV1SystemEventSubscriptionsBySubscriptionIdUrl = (subscriptionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/system-event-subscriptions/${subscriptionId}`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/system-event-subscriptions/{subscription_id}.
+ * @summary Delete Api V1 System Event Subscriptions By Subscription Id
+ */
+export const deleteApiV1SystemEventSubscriptionsBySubscriptionId = async (subscriptionId: number, options?: RequestInit): Promise<deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1SystemEventSubscriptionsBySubscriptionIdUrl(subscriptionId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deleteApiV1SystemEventSubscriptionsBySubscriptionIdResponse
+}
+
+
+
+export type patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse200 = {
+  data: SystemEventSubscription
+  status: 200
+}
+
+export type patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse412 = {
+  data: void
+  status: 412
+}
+
+export type patchApiV1SystemEventSubscriptionsBySubscriptionIdResponseSuccess = (patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1SystemEventSubscriptionsBySubscriptionIdResponseError = (patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse400 | patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse401 | patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse403 | patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse404 | patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse409 | patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse412) & {
+  headers: Headers;
+};
+
+export type patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse = (patchApiV1SystemEventSubscriptionsBySubscriptionIdResponseSuccess | patchApiV1SystemEventSubscriptionsBySubscriptionIdResponseError)
+
+export const getPatchApiV1SystemEventSubscriptionsBySubscriptionIdUrl = (subscriptionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/system-event-subscriptions/${subscriptionId}`
+}
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/system-event-subscriptions/{subscription_id}.
+ * @summary Patch Api V1 System Event Subscriptions By Subscription Id
+ */
+export const patchApiV1SystemEventSubscriptionsBySubscriptionId = async (subscriptionId: number,
+    updateEventSubscription: UpdateEventSubscription, options?: RequestInit): Promise<patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPatchApiV1SystemEventSubscriptionsBySubscriptionIdUrl(subscriptionId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateEventSubscription)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse
 }
 
 

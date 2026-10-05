@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { StructuredClassSelector } from './structuredClassSelector';
 
@@ -18,7 +18,7 @@ export type StructuredSearchTarget = {
 } | {
   kind: 'class';
 } | {
-  class?: null | StructuredClassSelector;
+  class?: StructuredClassSelector | null;
   kind: 'object';
 } | {
   kind: 'audit_event';

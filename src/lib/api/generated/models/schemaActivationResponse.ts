@@ -3,13 +3,13 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { SchemaRevisionResponse } from './schemaRevisionResponse';
 import type { TaskID } from './taskID';
 
 export interface SchemaActivationResponse {
   active: SchemaRevisionResponse;
-  dependent_rebuild_task_id?: null | TaskID;
-  task_id?: null | TaskID;
+  dependent_rebuild_task_id?: TaskID | null;
+  task_id?: TaskID | null;
 }

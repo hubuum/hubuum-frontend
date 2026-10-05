@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 
 export * from './addOperation';
@@ -65,6 +65,8 @@ export * from './dbStateResponse';
 export * from './effectiveGroupPermission';
 export * from './eventConfig';
 export * from './eventDeliveryHealthResponse';
+export * from './eventDeliveryPolicy';
+export * from './eventDeliveryPurpose';
 export * from './eventDeliveryQueueHealth';
 export * from './eventDeliveryResponse';
 export * from './eventDeliveryStatus';
@@ -72,6 +74,8 @@ export * from './eventDeliveryStatusCounts';
 export * from './eventDeliveryUpdateResponse';
 export * from './eventEntityId';
 export * from './eventFanoutHealth';
+export * from './eventNotificationPreview';
+export * from './eventNotificationRequest';
 export * from './eventResponse';
 export * from './eventSink';
 export * from './eventSinkDeliveryHealth';
@@ -81,6 +85,7 @@ export * from './eventSinkKind';
 export * from './eventSubscription';
 export * from './eventSubscriptionDeliveryHealth';
 export * from './eventSubscriptionFilter';
+export * from './eventSubscriptionID';
 export * from './eventWorkerHealth';
 export * from './eventWorkerWakeupStats';
 export * from './exportConfig';
@@ -371,6 +376,7 @@ export * from './structuredSearchSort';
 export * from './structuredSearchSortDirection';
 export * from './structuredSearchStartedEvent';
 export * from './structuredSearchTarget';
+export * from './systemEventSubscription';
 export * from './taskCancelRequest';
 export * from './taskConfig';
 export * from './taskDetails';

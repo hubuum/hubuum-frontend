@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ComplianceStatus } from './complianceStatus';
 import type { ObjectSchemaEvidence } from './objectSchemaEvidence';
@@ -12,7 +12,7 @@ import type { SchemaReference } from './schemaReference';
 
 export interface ObjectComplianceResponse {
   active_schema: SchemaReference;
-  evidence?: null | ObjectSchemaEvidence;
+  evidence?: ObjectSchemaEvidence | null;
   object_id: number;
   object_revision: ResourceRevision;
   status: ComplianceStatus;

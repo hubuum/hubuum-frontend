@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { CollectionKey } from './collectionKey';
 import type { GroupKey } from './groupKey';
@@ -11,10 +11,10 @@ import type { ImportWriteCondition } from './importWriteCondition';
 import type { Permissions } from './permissions';
 
 export interface ImportCollectionPermissionInput {
-  collection_key?: null | CollectionKey;
+  collection_key?: CollectionKey | null;
   /** @nullable */
   collection_ref?: string | null;
-  condition?: null | ImportWriteCondition;
+  condition?: ImportWriteCondition | null;
   group_key: GroupKey;
   permissions: Permissions[];
   /** @nullable */

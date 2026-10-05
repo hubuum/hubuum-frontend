@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { BackupTaskDetails } from './backupTaskDetails';
 import type { ExportTaskDetails } from './exportTaskDetails';
@@ -13,10 +13,10 @@ import type { RemoteCallTaskDetails } from './remoteCallTaskDetails';
 import type { SchemaTaskDetails } from './schemaTaskDetails';
 
 export interface TaskDetails {
-  backup?: null | BackupTaskDetails;
-  export?: null | ExportTaskDetails;
-  import?: null | ImportTaskDetails;
-  reindex?: null | RebuildTaskDetails;
-  remote_call?: null | RemoteCallTaskDetails;
-  schema_validation?: null | SchemaTaskDetails;
+  backup?: BackupTaskDetails | null;
+  export?: ExportTaskDetails | null;
+  import?: ImportTaskDetails | null;
+  reindex?: RebuildTaskDetails | null;
+  remote_call?: RemoteCallTaskDetails | null;
+  schema_validation?: SchemaTaskDetails | null;
 }

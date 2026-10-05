@@ -3,12 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ExportTemplateID } from './exportTemplateID';
 import type { SchemaObjectUrlTemplate } from './schemaObjectUrlTemplate';
 
 export interface SchemaRepairReportRequest {
   object_url_template: SchemaObjectUrlTemplate;
-  template_id?: null | ExportTemplateID;
+  template_id?: ExportTemplateID | null;
 }

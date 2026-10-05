@@ -28,7 +28,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.16@sha256:37b3299edd845a0c2aa7772d7d68565233ac8c1802bc44be3fb4bbc6dfa8778e
+  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.17@sha256:cc0518167816bfddb38853b8b7217c4a347511318d51e1abca93ca418f31b302
 
 jobs:
   authenticated-browser:

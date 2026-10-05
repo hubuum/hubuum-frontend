@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ProvenancePrincipal } from './provenancePrincipal';
 
@@ -13,5 +13,5 @@ import type { ProvenancePrincipal } from './provenancePrincipal';
 export interface ProvenanceActor {
   /** @nullable */
   kind?: string | null;
-  principal?: null | ProvenancePrincipal;
+  principal?: ProvenancePrincipal | null;
 }

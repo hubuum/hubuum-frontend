@@ -57,8 +57,9 @@ describe("asynchronous restore", () => {
 });
 
 describe("parseBackupDocument", () => {
-	it("accepts a backup-shaped JSON object", () => {
-		expect(parseBackupDocument('{"backup_version":3}').backup_version).toBe(3);
+	it.each([6, 7])("preserves format %i for server validation", (version) => {
+		const document = { backup_version: version, data: { event_sinks: [] } };
+		expect(parseBackupDocument(JSON.stringify(document))).toEqual(document);
 	});
 
 	it("rejects invalid JSON and non-backup values", () => {

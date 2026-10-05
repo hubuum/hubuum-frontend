@@ -3,11 +3,11 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { RetainedImportDetails } from './retainedImportDetails';
 
 export interface ImportTaskDetails {
   results_url: string;
-  retained?: null | RetainedImportDetails;
+  retained?: RetainedImportDetails | null;
 }

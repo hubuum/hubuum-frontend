@@ -3,12 +3,15 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
+import type { EventDeliveryPolicy } from './eventDeliveryPolicy';
 import type { EventSinkKind } from './eventSinkKind';
 
 export interface NewEventSink {
+  /** Transport settings. Webhooks support body_template, url_secret_ref, and response rules. */
   config?: unknown;
+  delivery_policy?: EventDeliveryPolicy | null;
   enabled?: boolean;
   kind: EventSinkKind;
   name: string;

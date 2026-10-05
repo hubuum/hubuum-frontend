@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
-import { JsonEditor } from "@/components/json-editor";
+import { EventSinkConfiguration } from "@/components/event-sink-configuration";
 import { TableExportMenu } from "@/components/table-export-menu";
 import {
 	createEventSink,
@@ -340,37 +340,12 @@ export function AdminEventsWorkspace() {
 								))}
 							</select>
 						</label>
-
-						<label className="control-field">
-							<span>Secret reference</span>
-							<input
-								value={sinkForm.secretRef}
-								onChange={(event) =>
-									setSinkForm((current) => ({
-										...current,
-										secretRef: event.target.value,
-									}))
-								}
-								placeholder="event-webhook-secret"
-							/>
-							<span className="field-note">
-								Reference an externally managed secret; do not enter secret
-								values.
-							</span>
-						</label>
 					</div>
 
-					<JsonEditor
-						id="event-sink-config"
-						label="Configuration JSON"
-						value={sinkForm.configInput}
-						onChange={(configInput) =>
-							setSinkForm((current) => ({ ...current, configInput }))
-						}
-						mode="data"
-						rows={9}
+					<EventSinkConfiguration
+						state={sinkForm}
+						onChange={setSinkForm}
 						disabled={isSavingSink}
-						helperText="Transport-specific configuration is validated by the backend."
 					/>
 
 					<label className="control-check">
@@ -468,8 +443,8 @@ export function AdminEventsWorkspace() {
 					<div className="stack action-card-header">
 						<h3>Event sinks</h3>
 						<p className="muted">
-							Create and manage global transports. Configuration is editable as
-							JSON; secrets remain references only.
+							Create and manage global transports. Chat webhook presets help
+							configure common destinations; custom JSON remains available.
 						</p>
 					</div>
 					<div className="action-row">

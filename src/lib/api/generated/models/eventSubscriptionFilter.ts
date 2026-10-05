@@ -3,11 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { CollectionID } from './collectionID';
 import type { EventEntityId } from './eventEntityId';
 import type { PrincipalID } from './principalID';
+import type { TaskKind } from './taskKind';
 
 /**
  * Optional additional fan-out filter for an event subscription.
@@ -27,4 +28,5 @@ export interface EventSubscriptionFilter {
   initiator_user_ids?: PrincipalID[];
   related_collection_ids?: CollectionID[];
   request_ids?: string[];
+  task_kinds?: TaskKind[];
 }

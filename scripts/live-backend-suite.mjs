@@ -1,12 +1,13 @@
 import { credentialRequest } from "./live-credential-request.mjs";
 import { verifySchemaEvolution } from "./live-schema-suite.mjs";
 import { verifyTaskCancellation, verifyTaskDiscovery } from "./live-task-suite.mjs";
+import { webhookPresetConfig } from "../src/lib/webhook-presets.ts";
 
 const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
 const adminPassword = process.env.HUBUUM_LIVE_ADMIN_PASSWORD;
 const expectedServerVersion = process.env.HUBUUM_LIVE_EXPECT_SERVER_VERSION ??
-  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.16");
+  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.17");
 
 if (!adminPassword) {
   throw new Error("HUBUUM_LIVE_ADMIN_PASSWORD is required.");
@@ -194,7 +195,7 @@ async function main() {
       clientConfig.data.authentication.max_token_lifetime_hours >= defaultTokenLifetimeHours,
     "Client config is missing the effective maximum token lifetime.",
   );
-  pass("discovered public v0.0.16 pagination and authentication configuration");
+  pass("discovered public v0.0.17 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
   assert(typeof openapi.data.info?.version === "string", "Server OpenAPI omitted its version.");
@@ -300,7 +301,11 @@ async function main() {
   if (process.env.HUBUUM_LIVE_REQUIRE_SCHEMA_REPORTS !== "0") {
     assert(hasSchemaRepairReports, "This run requires saved schema diagnostics and HTML repair reports.");
   }
-  const backupVersion = hasSchemaEvolution ? 6 : 5;
+  const hasSystemSubscriptions = Boolean(openapi.data.paths?.["/api/v1/system-event-subscriptions"]);
+  if (expectedServerVersion === "0.0.17") {
+    assert(hasSystemSubscriptions, "This run requires the released system subscription contract.");
+  }
+  const backupVersion = hasSystemSubscriptions ? 7 : hasSchemaEvolution ? 6 : 5;
 
 
   const token = await loginAs(adminName, adminPassword);
@@ -358,7 +363,7 @@ async function main() {
         runningConfig.data.exports.database_statement_timeout_ms,
     "Admin config is missing the storage query budget or its compatibility alias.",
   );
-  pass("read redacted v0.0.16 admin runtime configuration");
+  pass("read redacted v0.0.17 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -1655,9 +1660,92 @@ async function main() {
   );
   pass("rejected invalid event subscription filter values");
 
+  let systemSubscription;
+  if (hasSystemSubscriptions) {
+    const previewEvents = await request("GET", "/api/v1/events", {
+      ...auth,
+      query: { collection_id: collection.data.id, entity_type: "object", limit: 1, include_total: false },
+    });
+    const previewEvent = previewEvents.data[0];
+    assert(previewEvent?.event_id, "A saved object event is required for webhook previews.");
+    for (const target of ["slack", "mattermost", "discord"]) {
+      const presetSink = await request("POST", "/api/v1/event-sinks", {
+        ...auth,
+        expected: 201,
+        body: {
+          name: `live_${target}_${suffix}`,
+          kind: "webhook",
+          config: webhookPresetConfig(target, "unresolved_preview_secret"),
+          delivery_policy: { min_interval_ms: 1000 },
+          enabled: false,
+        },
+      });
+      const presetSubscription = await request("POST", `/api/v1/collections/${collection.data.id}/event-subscriptions`, {
+        ...auth,
+        expected: 201,
+        body: {
+          name: `live_${target}_subscription_${suffix}`,
+          sink_id: presetSink.data.id,
+          entity_types: ["object"],
+          actions: ["created", "updated"],
+          routing: {},
+          enabled: false,
+        },
+      });
+      // Preview renders the real template without resolving secrets or sending messages.
+      const preview = await request("POST", `/api/v1/event-sinks/${presetSink.data.id}/preview`, {
+        ...auth,
+        body: { subscription_id: presetSubscription.data.id, event_id: previewEvent.event_id },
+      });
+      const message = target === "discord" ? preview.data.payload.content : preview.data.payload.text;
+      assert(typeof message === "string" && message.includes("[TEST]") && message.includes("Hubuum:"),
+        `${target} did not render a marked JSON message.`);
+      if (target === "discord") {
+        assert(message.length <= 2000, "Discord message exceeded the content limit.");
+        assert(preview.data.payload.allowed_mentions?.parse?.length === 0, "Discord preset must disable automatic mentions.");
+      }
+      await request("DELETE", `/api/v1/collections/${collection.data.id}/event-subscriptions/${presetSubscription.data.id}`, { ...auth, expected: 204 });
+      await request("DELETE", `/api/v1/event-sinks/${presetSink.data.id}`, { ...auth, expected: 204 });
+      pass(`validated and previewed the ${target} webhook preset without external delivery`);
+    }
+
+    systemSubscription = await request("POST", "/api/v1/system-event-subscriptions", {
+      ...auth,
+      expected: 201,
+      body: {
+        name: `live_system_subscription_${suffix}`,
+        description: "Verify released notification filters and health",
+        sink_id: sink.data.id,
+        enabled: true,
+        entity_types: ["task"],
+        actions: ["failed"],
+        filter: { task_kinds: ["backup"] },
+        routing: { url: "https://example.test/events" },
+      },
+    });
+    assert(systemSubscription.data.filter?.task_kinds?.includes("backup"),
+      "System subscription did not preserve task-kind filters.");
+    await request("GET", "/api/v1/system-event-subscriptions", {
+      token: limitedToken,
+      expected: 403,
+    });
+    pass("created an administrator-only system subscription with task-kind filters");
+  }
+
   const deliveryHealth = await request("GET", "/api/v1/event-deliveries/health", auth);
   assert(deliveryHealth.data.fanout, "Delivery health is missing fanout details.");
   assert(deliveryHealth.data.delivery, "Delivery health is missing delivery details.");
+  if (systemSubscription) {
+    const health = deliveryHealth.data.subscriptions?.find(
+      (entry) => entry.subscription_id === systemSubscription.data.id,
+    );
+    assert(health?.collection_id === null,
+      "System subscription health must return a null collection ID.");
+    await request("DELETE", `/api/v1/system-event-subscriptions/${systemSubscription.data.id}`, {
+      ...auth,
+      expected: 204,
+    });
+  }
   pass("read event delivery health");
 
   const deliveries = await request("GET", "/api/v1/event-deliveries", {

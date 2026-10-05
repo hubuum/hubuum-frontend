@@ -3,12 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { RemoteTargetID } from './remoteTargetID';
 import type { TaskDiscoveryTarget } from './taskDiscoveryTarget';
 
 export interface RemoteCallTaskDetails {
-  remote_target_id?: null | RemoteTargetID;
-  target?: null | TaskDiscoveryTarget;
+  remote_target_id?: RemoteTargetID | null;
+  target?: TaskDiscoveryTarget | null;
 }

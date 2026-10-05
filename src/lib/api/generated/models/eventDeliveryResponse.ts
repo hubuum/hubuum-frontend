@@ -3,12 +3,15 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
+import type { EventDeliveryPurpose } from './eventDeliveryPurpose';
 
 export interface EventDeliveryResponse {
   attempts: number;
   created_at: string;
+  /** @nullable */
+  deferred_reason?: string | null;
   event_id: number;
   id: number;
   /** @nullable */
@@ -16,6 +19,7 @@ export interface EventDeliveryResponse {
   /** @nullable */
   locked_until?: string | null;
   next_attempt_at: string;
+  purpose: EventDeliveryPurpose;
   status: string;
   subscription_id: number;
   updated_at: string;

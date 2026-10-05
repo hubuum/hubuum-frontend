@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { SchemaDiagnosticSnapshotResponse } from './schemaDiagnosticSnapshotResponse';
 import type { SchemaFailure } from './schemaFailure';
@@ -11,5 +11,5 @@ import type { SchemaFailure } from './schemaFailure';
 export interface SchemaImpactFindingResponse {
   object_id: number;
   reason: SchemaFailure;
-  snapshot?: null | SchemaDiagnosticSnapshotResponse;
+  snapshot?: SchemaDiagnosticSnapshotResponse | null;
 }

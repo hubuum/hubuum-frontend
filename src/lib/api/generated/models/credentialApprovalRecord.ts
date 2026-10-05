@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { PrincipalID } from './principalID';
 import type { RestoreJobID } from './restoreJobID';
@@ -19,7 +19,7 @@ export interface CredentialApprovalRecord {
   /** @nullable */
   invalidated_at?: string | null;
   operation: string;
-  restore_job_id?: null | RestoreJobID;
-  target_id?: null | PrincipalID;
+  restore_job_id?: RestoreJobID | null;
+  target_id?: PrincipalID | null;
   token_id: TokenID;
 }

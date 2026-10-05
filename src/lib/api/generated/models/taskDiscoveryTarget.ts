@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { CollectionID } from './collectionID';
 import type { HubuumClassID } from './hubuumClassID';
@@ -18,7 +18,7 @@ export type TaskDiscoveryTarget = {
   class_id: HubuumClassID;
   type: 'class';
 } | {
-  class_id?: null | HubuumClassID;
+  class_id?: HubuumClassID | null;
   object_id: HubuumObjectID;
   type: 'object';
 } | {

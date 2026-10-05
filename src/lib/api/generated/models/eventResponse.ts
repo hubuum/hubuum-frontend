@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { Provenance } from './provenance';
 import type { ResourceRevision } from './resourceRevision';
@@ -14,9 +14,9 @@ export interface EventResponse {
   /** @nullable */
   actor_user_id?: number | null;
   after?: unknown;
-  after_revision?: null | ResourceRevision;
+  after_revision?: ResourceRevision | null;
   before?: unknown;
-  before_revision?: null | ResourceRevision;
+  before_revision?: ResourceRevision | null;
   /** @nullable */
   collection_id?: number | null;
   /** @nullable */

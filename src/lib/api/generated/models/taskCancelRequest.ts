@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { TaskStatus } from './taskStatus';
 
@@ -11,7 +11,7 @@ import type { TaskStatus } from './taskStatus';
  * An idempotent stop request. The optional expected status protects queued-only withdrawals.
  */
 export interface TaskCancelRequest {
-  expected_status?: null | TaskStatus;
+  expected_status?: TaskStatus | null;
   /**
      * @maxLength 512
      * @nullable
