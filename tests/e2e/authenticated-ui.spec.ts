@@ -174,7 +174,7 @@ test.describe("authenticated workspace", () => {
 				.getByLabel("Name", { exact: true })
 				.fill(`e2e-subscription-${suffix}`);
 			await editor
-				.getByLabel("Event sink", { exact: true })
+				.getByRole("combobox", { name: "Event sink", exact: true })
 				.selectOption(String(sinkId));
 			await editor.getByRole("button", { name: "Continue to events" }).click();
 			await editor.getByRole("button", { name: "task", exact: true }).click();
