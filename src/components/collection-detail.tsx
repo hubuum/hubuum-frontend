@@ -12,16 +12,18 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
-import { EmptyState } from "@/components/empty-state";
-import { CollectionEventSubscriptionsPanel } from "@/components/collection-event-subscriptions-panel";
 import { CollectionDetailTracker } from "@/components/collection-detail-tracker";
+import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
+import { CollectionEventSinksPanel } from "@/components/collection-event-sinks-panel";
+import { CollectionEventSubscriptionsPanel } from "@/components/collection-event-subscriptions-panel";
+import { EmptyState } from "@/components/empty-state";
 import { GroupDirectoryLookup } from "@/components/group-directory-lookup";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
 import { ResourceActivityPanel } from "@/components/resource-activity-panel";
 import { TableExportMenu } from "@/components/table-export-menu";
+import { moveCollectionToParent } from "@/lib/api/collection-moves";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1CollectionsByCollectionId,
@@ -44,7 +46,6 @@ import type {
 	UpdateCollection,
 } from "@/lib/api/generated/models";
 import { Permissions as PermissionValues } from "@/lib/api/generated/models/permissions";
-import { moveCollectionToParent } from "@/lib/api/collection-moves";
 import {
 	fetchGroupDirectory,
 	fetchGroupsByIds,
@@ -799,6 +800,16 @@ export function CollectionDetail({
 				collectionId,
 				PermissionValues.DeleteCollection,
 			),
+	});
+	const readAuditGroupsQuery = useQuery({
+		queryKey: [
+			"collection",
+			collectionId,
+			"has-permission",
+			PermissionValues.ReadAudit,
+		],
+		queryFn: () =>
+			fetchGroupsWithPermission(collectionId, PermissionValues.ReadAudit),
 	});
 	const manageEventSubscriptionGroupsQuery = useQuery({
 		queryKey: [
@@ -1976,9 +1987,19 @@ export function CollectionDetail({
 					title="Collection audit and history"
 				/>
 
+				<CollectionEventSinksPanel
+					collectionId={collectionId}
+					canManage={canManageEventSubscriptions}
+					canExport={
+						canAdminister || userHasAnyGroup(readAuditGroupsQuery.data)
+					}
+				/>
 				<CollectionEventSubscriptionsPanel
 					collectionId={collectionId}
 					canManage={canManageEventSubscriptions}
+					canExport={
+						canAdminister || userHasAnyGroup(readAuditGroupsQuery.data)
+					}
 					isPermissionPending={checkingPermissionMembership}
 				/>
 

@@ -5,23 +5,21 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.17
  */
-import type { EventDeliveryPolicy } from './eventDeliveryPolicy';
 import type { EventSinkKind } from './eventSinkKind';
+import type { EventSinkRouting } from './eventSinkRouting';
 import type { ResourceRevision } from './resourceRevision';
 
-export interface EventSink {
+/**
+ * Safe destination discovery. Configuration, URLs and secret aliases are not
+ * part of the collection discovery contract.
+ */
+export interface CollectionEventSink {
   /** @nullable */
   collection_id?: number | null;
-  /** Transport settings. Webhooks support body_template, url_secret_ref, and response rules. */
-  config: unknown;
-  created_at: string;
-  delivery_policy?: EventDeliveryPolicy | null;
   enabled: boolean;
   id: number;
   kind: EventSinkKind;
   name: string;
   revision: ResourceRevision;
-  /** @nullable */
-  secret_ref?: string | null;
-  updated_at: string;
+  routing: EventSinkRouting;
 }

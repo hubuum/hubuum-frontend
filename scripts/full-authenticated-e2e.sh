@@ -100,7 +100,9 @@ VALKEY_URL="redis://127.0.0.1:${VALKEY_PORT}/0" \
 E2E_USERNAME="admin" \
 E2E_PASSWORD="${admin_password}" \
 E2E_IDENTITY_SCOPE="local" \
+E2E_COLLECTION_INTEGRATIONS="${HUBUUM_FULL_E2E_COLLECTION_INTEGRATIONS:-0}" \
   npx playwright test tests/e2e/authenticated-ui.spec.ts \
+    tests/e2e/collection-event-self-service.spec.ts \
     --project=chromium \
     --workers=1
 

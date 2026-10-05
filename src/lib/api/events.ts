@@ -1,6 +1,8 @@
-import { getApiErrorMessage } from "@/lib/api/errors";
 import { collectAllCursorPages } from "@/lib/api/cursor-pages";
+import { getApiErrorMessage } from "@/lib/api/errors";
+import { hubuumBffPath } from "@/lib/api/frontend";
 import {
+	deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId,
 	deleteApiV1EventSinksBySinkId,
 	getApiV1ClassesByClassIdByObjectIdEvents,
 	getApiV1ClassesByClassIdByObjectIdHistory,
@@ -9,33 +11,33 @@ import {
 	getApiV1ClassesByClassIdHistory,
 	getApiV1ClassesByClassIdHistoryAsOf,
 	getApiV1Collections,
-	getApiV1EventDeliveries,
-	getApiV1EventDeliveriesHealth,
-	getApiV1EventSinks,
-	getApiV1Events,
 	getApiV1CollectionsByCollectionIdEventSubscriptions,
 	getApiV1CollectionsByCollectionIdEvents,
 	getApiV1CollectionsByCollectionIdHistory,
 	getApiV1CollectionsByCollectionIdHistoryAsOf,
-	patchApiV1EventSinksBySinkId,
+	getApiV1EventDeliveries,
+	getApiV1EventDeliveriesHealth,
+	getApiV1EventSinks,
+	getApiV1Events,
 	patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId,
-	postApiV1EventSinks,
+	patchApiV1EventSinksBySinkId,
 	postApiV1CollectionsByCollectionIdEventSubscriptions,
-	deleteApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionId,
 	postApiV1EventDeliveriesByDeliveryIdDead,
 	postApiV1EventDeliveriesByDeliveryIdRetry,
+	postApiV1EventSinks,
 } from "@/lib/api/generated/client";
 import type {
 	Collection,
-	EventDeliveryResponse,
+	CollectionEventSink,
 	EventDeliveryHealthResponse,
+	EventDeliveryResponse,
 	EventResponse,
 	EventSink,
 	EventSubscription,
 	GetApiV1EventsParams,
+	HistoryResponseCollectionHistory,
 	HistoryResponseHubuumClassHistory,
 	HistoryResponseHubuumObjectHistory,
-	HistoryResponseCollectionHistory,
 	NewEventSink,
 	NewEventSubscription,
 	UpdateEventSink,
@@ -515,4 +517,84 @@ export async function markEventDeliveryDead(
 		"Failed to mark event delivery dead.",
 	);
 	return (response.data as { delivery: EventDeliveryResponse }).delivery;
+}
+
+export async function fetchCollectionEventSinks(
+	collectionId: number,
+): Promise<CollectionEventSink[]> {
+	return collectAllCursorPages(async (cursor) => {
+		const params = new URLSearchParams({
+			include_total: "false",
+			limit: "250",
+			sort: "name.asc,id.asc",
+		});
+		if (cursor) params.set("cursor", cursor);
+		const response = await fetch(
+			hubuumBffPath(
+				`/api/v1/collections/${collectionId}/event-sinks?${params}`,
+			),
+			{ credentials: "include" },
+		);
+		const data: unknown = await response.json().catch(() => null);
+		if (response.status === 404) {
+			throw new Error(
+				"Collection destinations require a server with collection sink support.",
+			);
+		}
+		assertStatus(
+			response.status,
+			data,
+			200,
+			"Collection destinations are unavailable. This feature requires a server with collection sink support.",
+		);
+		return {
+			items: data as CollectionEventSink[],
+			nextCursor: response.headers.get("x-next-cursor"),
+		};
+	});
+}
+
+export async function saveCollectionEventSink(
+	collectionId: number,
+	payload: NewEventSink | UpdateEventSink,
+	sinkId?: number,
+): Promise<CollectionEventSink> {
+	const response = await fetch(
+		hubuumBffPath(
+			`/api/v1/collections/${collectionId}/event-sinks${sinkId === undefined ? "" : `/${sinkId}`}`,
+		),
+		{
+			method: sinkId === undefined ? "POST" : "PATCH",
+			credentials: "include",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		},
+	);
+	const data: unknown = await response.json();
+	assertStatus(
+		response.status,
+		data,
+		sinkId === undefined ? 201 : 200,
+		"Failed to save the collection webhook.",
+	);
+	return data as CollectionEventSink;
+}
+
+export async function deleteCollectionEventSink(
+	collectionId: number,
+	sinkId: number,
+): Promise<void> {
+	const response = await fetch(
+		hubuumBffPath(`/api/v1/collections/${collectionId}/event-sinks/${sinkId}`),
+		{ method: "DELETE", credentials: "include" },
+	);
+	if (response.status !== 204) {
+		const data: unknown = await response.json();
+		throw new Error(
+			getApiErrorMessage(
+				data,
+				"Failed to delete the collection webhook. Remove its subscriptions first.",
+			),
+		);
+	}
 }

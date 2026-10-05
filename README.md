@@ -375,6 +375,11 @@ root initiator independently of the worker or system actor.
 
 ## Chat webhooks
 
+Collection managers with `ManageEventSubscription` and `ReadAudit` can create
+collection-owned webhook destinations and subscriptions on the collection page
+when connected to a server with collection sink support (newer than `v0.0.17`).
+Saved destination URLs are write-only in this view.
+
 Administrators can choose Slack, Mattermost, Discord, or Custom webhook when
 creating an event sink. The chat presets supply message templates, acknowledgement
 rules, retries, and delivery spacing while saving ordinary server webhooks.

@@ -360,3 +360,23 @@ See the [Server v0.0.12 upgrade notes](https://github.com/hubuum/hubuum/releases
 for the certified upgrade path, version 5 backups, resource limits, and optional
 split-role deployment. Older frontend releases assume synchronous restoration
 and should not confirm web restores against this server release.
+
+## Collection-owned event destinations
+
+The collection webhook editor now uses the collection-scoped destination contract
+included in `openapi.json`: `/api/v1/collections/{id}/event-sinks`. It requires the
+matching server update after `v0.0.17`; existing released images do not implement
+these endpoints. Test this workflow against a server built with that update.
+Global administrator sink setup remains available in **Admin → Events**.
+
+Subscription creation and editing require `ReadAudit` as well as
+`ManageEventSubscription`. Shared global sinks require a direct collection grant;
+the matching server migration backfills grants for existing subscriptions.
+New webhook configurations carrying bearer credentials or static headers must bind
+their destination in the sink. Collection-created webhooks always use a fixed URL.
+
+The full authenticated browser runner includes delegated collection-manager and
+shared-sink subscription coverage. Set `HUBUUM_FULL_E2E_COLLECTION_INTEGRATIONS=1`
+when selecting an updated backend image. Direct Playwright runs use
+`E2E_COLLECTION_INTEGRATIONS=1`. These two tests are explicitly skipped on the
+released v0.0.17 fixture; they must pass against the matching update before rollout.

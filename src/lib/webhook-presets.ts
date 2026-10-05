@@ -1,4 +1,7 @@
-import type { EventSink } from "@/lib/api/generated/models";
+import type {
+	CollectionEventSink,
+	EventSink,
+} from "@/lib/api/generated/models";
 
 export const WEBHOOK_TARGETS = [
 	"custom",
@@ -55,10 +58,40 @@ export function webhookUrlSecretRef(
 }
 
 export function webhookSubscriptionRouting(
-	sink: EventSink | undefined,
+	sink: EventSink | CollectionEventSink | undefined,
 	url: string,
 ): Record<string, string> {
-	if (webhookUrlSecretRef(sink)) return {};
+	if (webhookHasFixedDestination(sink)) return {};
 	if (!url.trim()) throw new Error("Webhook URL is required.");
 	return { url: url.trim() };
+}
+
+export function webhookHasFixedDestination(
+	sink: EventSink | CollectionEventSink | undefined,
+): boolean {
+	if (sink?.kind !== "webhook") return false;
+	if ("routing" in sink) return sink.routing === "fixed";
+	if (webhookUrlSecretRef(sink)) return true;
+	return Boolean(
+		sink.config &&
+			typeof sink.config === "object" &&
+			"destination_url" in sink.config &&
+			typeof sink.config.destination_url === "string",
+	);
+}
+
+export function collectionWebhookConfig(
+	target: WebhookTarget,
+	url: string,
+): Record<string, unknown> {
+	const destination = new URL(url.trim());
+	if (
+		destination.protocol !== "https:" ||
+		destination.username ||
+		destination.password
+	)
+		throw new Error("Use an HTTPS webhook URL without embedded credentials.");
+	if (target === "custom") return { destination_url: destination.href };
+	const { body_template, response } = webhookPresetConfig(target, "");
+	return { destination_url: destination.href, body_template, response };
 }

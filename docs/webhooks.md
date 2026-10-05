@@ -6,6 +6,30 @@ template, acknowledgement rules, retries, and one-second delivery spacing.
 The server stores an ordinary `webhook` sink; the target choice is only a console
 setup aid. These presets require Server `v0.0.17` or newer.
 
+## Collection self-service
+
+On a server with collection-owned sink support, a collection manager can open
+**Webhook destinations** on the collection page, choose **New webhook destination**,
+and enter an HTTPS destination URL. Slack, Mattermost, Discord and Custom webhook
+formats are available. This requires both `ManageEventSubscription` and `ReadAudit`
+on the collection. No server secret alias or global administrator access is needed.
+
+Choose that destination in **Event subscriptions** and select the events to send.
+The destination belongs to the collection, remains when its creator leaves, and
+is deleted with the collection. Other authorized managers can maintain it.
+Saved URLs are not returned by collection discovery; edits can supply a replacement
+URL and message format. Remove dependent subscriptions before deleting a destination.
+
+Administrators can also grant a shared sink to a collection through
+`PUT /api/v1/event-sinks/{sink_id}/collections/{collection_id}`. Collection discovery
+returns only owned and explicitly granted destinations, without sink configuration
+or credentials. Revoking the grant stops new deliveries; an already admitted
+network request may finish. Delivery diagnostics and retries remain in **Admin → Events**.
+
+These collection endpoints require the corresponding server update; `v0.0.17`
+does not provide them. The console reports that missing support instead of calling
+the administrator-only sink list from a delegated collection editor.
+
 ## Connect a destination
 
 1. Create an incoming webhook in your chat service and choose its channel.

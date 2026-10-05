@@ -168,6 +168,10 @@ test.describe("authenticated workspace", () => {
 	test("webhook subscription uses the sink destination and retains task-kind filters", async ({
 		page,
 	}) => {
+		test.skip(
+			process.env.E2E_COLLECTION_INTEGRATIONS !== "1",
+			"Requires the updated server's collection destination discovery.",
+		);
 		const suffix = Date.now();
 		const headers = { Origin: new URL(page.url()).origin };
 		const created = await page.request.post(`${bffPrefix}/api/v1/collections`, {
@@ -197,6 +201,11 @@ test.describe("authenticated workspace", () => {
 			);
 			expect(response.status()).toBe(201);
 			sinkId = (await response.json()).id;
+			const grant = await page.request.put(
+				`${bffPrefix}/api/v1/event-sinks/${sinkId}/collections/${collection.id}`,
+				{ headers },
+			);
+			expect(grant.status()).toBe(204);
 			await page.goto(`/collections/${collection.id}`);
 			await page.getByRole("button", { name: "New subscription" }).click();
 			const editor = page.locator("form").filter({

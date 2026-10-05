@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { EventSink } from "@/lib/api/generated/models";
+import type {
+	CollectionEventSink,
+	EventSink,
+} from "@/lib/api/generated/models";
 import {
+	collectionWebhookConfig,
+	webhookHasFixedDestination,
 	webhookPresetConfig,
 	webhookSubscriptionRouting,
 	webhookUrlSecretRef,
@@ -67,5 +72,40 @@ describe("webhook subscription destinations", () => {
 	);
 	it("does not apply webhook routing to other transports", () => {
 		expect(webhookUrlSecretRef({ ...sink, kind: "email" })).toBeNull();
+	});
+});
+
+describe("collection-owned webhook destinations", () => {
+	it.each(["custom", "slack", "mattermost", "discord"] as const)(
+		"binds %s to the user's destination without a server secret",
+		(target) => {
+			const config = collectionWebhookConfig(
+				target,
+				"https://example.test/hooks/private",
+			);
+			expect(config.destination_url).toBe("https://example.test/hooks/private");
+			expect(config).not.toHaveProperty("url_secret_ref");
+		},
+	);
+	it.each([
+		"http://example.test/hook",
+		"https://user:password@example.test/hook",
+	])("rejects unsafe URL %s", (url) => {
+		expect(() => collectionWebhookConfig("custom", url)).toThrow();
+	});
+	it("recognizes a fixed destination from safe scoped discovery", () => {
+		const sink: CollectionEventSink = {
+			id: 1,
+			name: "Chat",
+			kind: "webhook",
+			enabled: true,
+			collection_id: 2,
+			revision: 1,
+			routing: "fixed",
+		};
+		expect(webhookHasFixedDestination(sink)).toBe(true);
+		expect(
+			webhookSubscriptionRouting(sink, "https://example.test/override"),
+		).toEqual({});
 	});
 });
