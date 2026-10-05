@@ -614,6 +614,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chat-webhooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chat webhooks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#administrator-backup-and-restore" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -888,6 +899,33 @@
     
   
   Observability
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Chat webhooks
 
     
   </span>
@@ -1343,6 +1381,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Bookmarkable reports
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chat-webhooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chat webhooks
       </span>
     </span>
   </a>
@@ -1876,6 +1925,14 @@ it never injects console controls or response-time wrappers.</p>
 durable provenance. The console shows the immediate actor, root initiator, and
 originating task where available, and audit/subscription filters can match the
 root initiator independently of the worker or system actor.</p>
+<h2 id="chat-webhooks">Chat webhooks<a class="headerlink" href="#chat-webhooks" title="Permanent link">&para;</a></h2>
+<p>Administrators can choose Slack, Mattermost, Discord, or Custom webhook when
+creating an event sink. The chat presets supply message templates, acknowledgement
+rules, retries, and delivery spacing while saving ordinary server webhooks.
+Webhook URLs stay in the server's secret source; the console accepts the secret
+name. Collection subscriptions use that configured destination automatically.
+Existing sinks retain custom configuration and pacing when edited. See the
+<a href="../webhooks/">chat webhook guide</a> for setup and provider details.</p>
 <h2 id="administrator-backup-and-restore">Administrator backup and restore<a class="headerlink" href="#administrator-backup-and-restore" title="Permanent link">&para;</a></h2>
 <p>The admin-only Backup &amp; restore workspace creates server background tasks and
 downloads their portable JSON output before the configured retention deadline.
@@ -2031,10 +2088,13 @@ Hubuum Server. It does not install the backend or PostgreSQL:</p>
 <p>See <a href="../quickstart-compose/">the Compose quickstart</a> for host networking,
 updates, logs, and cleanup.</p>
 <h2 id="release-artifacts">Release artifacts<a class="headerlink" href="#release-artifacts" title="Permanent link">&para;</a></h2>
-<p>Current <code>main</code> development targets Hubuum Server <code>v0.0.16</code>.
-Hubuum Frontend <code>v0.0.18</code> adds task discovery and retained task details using the
-released Server <code>v0.0.16</code> contract. This baseline also requires fresh password
-approvals for credential management.
+<p>Current <code>main</code> development and Hubuum Frontend <code>v0.0.19</code> target the released
+Server <code>v0.0.17</code> contract, including nullable system-subscription health and
+backup format 7. Format 6 backups remain accepted by the server. Credential
+management continues to require fresh password approvals.
+Upgrading from Server <code>v0.0.16</code> requires a maintenance window: stop all writers,
+take a PostgreSQL snapshot, and migrate before starting matching <code>v0.0.17</code>
+processes. Binary-only rollback after the notification migration is unsupported.
 Run the server's separate migration workload before startup and deploy its
 restore executor before confirming web restores. The console polls queued
 restores through completion; keep the restore page open so its in-memory
@@ -2042,8 +2102,8 @@ capability remains available after existing sessions become invalid. See the
 <a href="../compatibility/">compatibility guide</a> for upgrade requirements.
 Releases provide:</p>
 <ul>
-<li><code>ghcr.io/hubuum/hubuum-frontend:v0.0.18</code> for Linux AMD64 and ARM64;</li>
-<li><code>oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.18</code>;</li>
+<li><code>ghcr.io/hubuum/hubuum-frontend:v0.0.19</code> for Linux AMD64 and ARM64;</li>
+<li><code>oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.19</code>;</li>
 <li>a digest-pinned Compose quickstart archive and SHA-256 checksums; and</li>
 <li>build provenance and an image SBOM through GHCR attestations.</li>
 </ul>
@@ -2082,7 +2142,7 @@ Compose validation, and Helm validation.</p>
 server image:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:live-backend
 </code></pre></div>
-<p>The script defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.16</code>, starts a
+<p>The script defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.17</code>, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 <code>/readyz</code>, resets the default <code>admin</code> password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
@@ -2096,7 +2156,7 @@ the test wrapper, then verifies completion and invalidation of the old token.
 Restore confirmation is skipped when targeting an externally supplied backend URL.</p>
 <p>Useful overrides:</p>
 <ul>
-<li><code>HUBUUM_LIVE_BACKEND_IMAGE</code>: backend image to test, defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.16</code></li>
+<li><code>HUBUUM_LIVE_BACKEND_IMAGE</code>: backend image to test, defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.17</code></li>
 <li><code>HUBUUM_LIVE_BACKEND_PORT</code>: host port for the live server, defaults to <code>9999</code></li>
 <li><code>HUBUUM_LIVE_POSTGRES_PORT</code>: host port for Postgres, defaults to <code>15432</code></li>
 <li><code>HUBUUM_LIVE_COMPOSE_PROJECT</code>: Compose project name, defaults to <code>hubuum-frontend-live-test</code></li>
@@ -2133,13 +2193,13 @@ releases publish a matching stable chart version. The chart defaults its image
 tag from <code>appVersion</code> and also accepts an immutable <code>image.digest</code>.</p>
 <p>Install from the published OCI chart:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>helm<span class="w"> </span>install<span class="w"> </span>hubuum<span class="w"> </span>oci://ghcr.io/hubuum/charts/hubuum-frontend<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.18<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.19<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>--set<span class="w"> </span>backend.baseUrl<span class="o">=</span>https://hubuum-api.example.com<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span>--set<span class="w"> </span>valkey.existingSecret.name<span class="o">=</span>hubuum-frontend-valkey
 </code></pre></div>
 <p>For OKD Routes, enable the chart route resource:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>hubuum<span class="w"> </span>oci://ghcr.io/hubuum/charts/hubuum-frontend<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.18<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.19<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span>--set<span class="w"> </span>backend.baseUrl<span class="o">=</span>https://hubuum-api.example.com<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span>--set<span class="w"> </span>route.enabled<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">  </span>--set<span class="w"> </span>route.host<span class="o">=</span>hubuum.example.com

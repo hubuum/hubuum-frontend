@@ -618,6 +618,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Chat webhooks
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../idempotent-operations/" class="md-nav__link">
         
   
@@ -1228,12 +1255,12 @@ backend version is intentionally raised.</p>
    Wait for its <code>release-readiness</code> job to succeed and confirm the listed head
    SHA is the commit that will be tagged.
 7. Check out that clean commit and run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>bash<span class="w"> </span>scripts/check-release-readiness.sh<span class="w"> </span>v0.0.18
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>bash<span class="w"> </span>scripts/check-release-readiness.sh<span class="w"> </span>v0.0.19
 </code></pre></div>
 <h2 id="publish">Publish<a class="headerlink" href="#publish" title="Permanent link">&para;</a></h2>
 <p>Create and push an annotated tag from the verified commit:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>tag<span class="w"> </span>-a<span class="w"> </span>v0.0.18<span class="w"> </span>-m<span class="w"> </span><span class="s2">"Hubuum Frontend v0.0.18"</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>v0.0.18
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>tag<span class="w"> </span>-a<span class="w"> </span>v0.0.19<span class="w"> </span>-m<span class="w"> </span><span class="s2">"Hubuum Frontend v0.0.19"</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>v0.0.19
 </code></pre></div>
 <p>The tag workflow rechecks dependency freshness and unresolved Dependabot pull
 requests, requires the successful pre-tag <strong>Release readiness</strong> run and main CI
