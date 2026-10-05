@@ -30,6 +30,11 @@ import {
 	EVENT_ENTITY_TYPES,
 } from "@/lib/event-options";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
+import {
+	webhookSubscriptionRouting,
+	webhookUrlSecretRef,
+} from "@/lib/webhook-presets";
+import { preserveTaskKindFilter } from "@/lib/event-subscription-filter";
 
 type CollectionEventSubscriptionsPanelProps = {
 	collectionId: number;
@@ -312,18 +317,16 @@ function buildFilter(
 
 function buildRouting(
 	form: SubscriptionFormState,
-	sinkKind: EventSinkKind | undefined,
+	sink: EventSink | undefined,
 ): unknown {
+	if (webhookUrlSecretRef(sink)) return {};
+	const sinkKind = sink?.kind;
 	if (form.routingMode === "json") {
 		return parseJsonObject(form.routingJson, "Routing");
 	}
 
 	if (sinkKind === "webhook") {
-		const url = form.url.trim();
-		if (!url) {
-			throw new Error("Webhook URL is required.");
-		}
-		return { url };
+		return webhookSubscriptionRouting(sink, form.url);
 	}
 
 	if (sinkKind === "email") {
@@ -383,7 +386,7 @@ function buildPayload(
 		entity_types: form.entityTypes,
 		filter: buildFilter(form, collectionId),
 		name,
-		routing: buildRouting(form, selectedSink?.kind),
+		routing: buildRouting(form, selectedSink),
 		sink_id: sinkId,
 	};
 }
@@ -414,7 +417,7 @@ function getStepError(
 			return null;
 		}
 		if (step === "routing") {
-			buildRouting(form, selectedSink?.kind);
+			buildRouting(form, selectedSink);
 			return null;
 		}
 
@@ -427,8 +430,11 @@ function getStepError(
 
 function formatRoutingSummary(
 	form: SubscriptionFormState,
-	sinkKind: EventSinkKind | undefined,
+	sink: EventSink | undefined,
 ): string {
+	if (webhookUrlSecretRef(sink))
+		return "Uses the sink’s configured destination";
+	const sinkKind = sink?.kind;
 	if (form.routingMode === "json") return "Advanced JSON routing";
 	if (sinkKind === "webhook") return form.url.trim() || "Webhook URL not set";
 	if (sinkKind === "email") {
@@ -474,6 +480,9 @@ function formatFilterSummary(
 	}
 	if (filter.correlation_ids?.length) {
 		parts.push(`correlations ${filter.correlation_ids.length}`);
+	}
+	if (filter.task_kinds?.length) {
+		parts.push(`task kinds ${filter.task_kinds.join(", ")}`);
 	}
 
 	return parts.join(" · ");
@@ -647,7 +656,13 @@ export function CollectionEventSubscriptionsPanel({
 
 		updateMutation.mutate({
 			subscriptionId: editingSubscriptionId,
-			payload,
+			payload: {
+				...payload,
+				filter: preserveTaskKindFilter(
+					payload.filter,
+					editingSubscription?.filter,
+				),
+			},
 		});
 	}
 
@@ -690,7 +705,12 @@ export function CollectionEventSubscriptionsPanel({
 	}));
 	let reviewFilterSummary = "No extra filters";
 	try {
-		reviewFilterSummary = formatFilterSummary(buildFilter(form, collectionId));
+		reviewFilterSummary = formatFilterSummary(
+			preserveTaskKindFilter(
+				buildFilter(form, collectionId),
+				editingSubscription?.filter,
+			),
+		);
 	} catch {
 		reviewFilterSummary = "Review invalid filter values";
 	}
@@ -1124,102 +1144,111 @@ export function CollectionEventSubscriptionsPanel({
 
 					{activeStep === "routing" ? (
 						<GuidedFlowPanel stepId="routing">
-							<div className="segmented-control">
-								<button
-									type="button"
-									className={
-										form.routingMode === "structured" ? "is-active" : ""
-									}
-									onClick={() => patchForm({ routingMode: "structured" })}
-									disabled={!selectedSink || selectedSink.kind === "amqp"}
-								>
-									Structured
-								</button>
-								<button
-									type="button"
-									className={form.routingMode === "json" ? "is-active" : ""}
-									onClick={() => patchForm({ routingMode: "json" })}
-								>
-									Advanced JSON
-								</button>
-							</div>
-							{form.routingMode === "structured" ? (
-								selectedSink?.kind === "webhook" ? (
-									<label className="control-field">
-										<span>Webhook URL</span>
-										<input
-											type="url"
-											value={form.url}
-											onChange={(event) =>
-												patchForm({ url: event.target.value })
-											}
-										/>
-									</label>
-								) : selectedSink?.kind === "email" ? (
-									<div className="form-grid">
-										<label className="control-field">
-											<span>Recipients</span>
-											<input
-												value={form.recipients}
-												onChange={(event) =>
-													patchForm({ recipients: event.target.value })
-												}
-												placeholder="Ops <ops@example.com>"
-											/>
-										</label>
-										<label className="control-field">
-											<span>CC</span>
-											<input
-												value={form.cc}
-												onChange={(event) =>
-													patchForm({ cc: event.target.value })
-												}
-											/>
-										</label>
-										<label className="control-field">
-											<span>BCC</span>
-											<input
-												value={form.bcc}
-												onChange={(event) =>
-													patchForm({ bcc: event.target.value })
-												}
-											/>
-										</label>
-									</div>
-								) : selectedSink?.kind === "valkey_stream" ? (
-									<label className="control-field">
-										<span>Stream</span>
-										<input
-											value={form.stream}
-											onChange={(event) =>
-												patchForm({ stream: event.target.value })
-											}
-											placeholder="hubuum:events"
-										/>
-									</label>
-								) : (
-									<div className="muted">
-										Use advanced JSON routing for this sink type.
-									</div>
-								)
+							{webhookUrlSecretRef(selectedSink) ? (
+								<p className="field-note">
+									Destination supplied by the sink’s webhook URL secret. No
+									subscription URL is needed.
+								</p>
 							) : (
-								<label className="control-field control-field--wide">
-									<span>Routing JSON</span>
-									<textarea
-										rows={8}
-										value={form.routingJson}
-										onChange={(event) =>
-											patchForm({ routingJson: event.target.value })
-										}
-									/>
-								</label>
+								<>
+									<div className="segmented-control">
+										<button
+											type="button"
+											className={
+												form.routingMode === "structured" ? "is-active" : ""
+											}
+											onClick={() => patchForm({ routingMode: "structured" })}
+											disabled={!selectedSink || selectedSink.kind === "amqp"}
+										>
+											Structured
+										</button>
+										<button
+											type="button"
+											className={form.routingMode === "json" ? "is-active" : ""}
+											onClick={() => patchForm({ routingMode: "json" })}
+										>
+											Advanced JSON
+										</button>
+									</div>
+									{form.routingMode === "structured" ? (
+										selectedSink?.kind === "webhook" ? (
+											<label className="control-field">
+												<span>Webhook URL</span>
+												<input
+													type="url"
+													value={form.url}
+													onChange={(event) =>
+														patchForm({ url: event.target.value })
+													}
+												/>
+											</label>
+										) : selectedSink?.kind === "email" ? (
+											<div className="form-grid">
+												<label className="control-field">
+													<span>Recipients</span>
+													<input
+														value={form.recipients}
+														onChange={(event) =>
+															patchForm({ recipients: event.target.value })
+														}
+														placeholder="Ops <ops@example.com>"
+													/>
+												</label>
+												<label className="control-field">
+													<span>CC</span>
+													<input
+														value={form.cc}
+														onChange={(event) =>
+															patchForm({ cc: event.target.value })
+														}
+													/>
+												</label>
+												<label className="control-field">
+													<span>BCC</span>
+													<input
+														value={form.bcc}
+														onChange={(event) =>
+															patchForm({ bcc: event.target.value })
+														}
+													/>
+												</label>
+											</div>
+										) : selectedSink?.kind === "valkey_stream" ? (
+											<label className="control-field">
+												<span>Stream</span>
+												<input
+													value={form.stream}
+													onChange={(event) =>
+														patchForm({ stream: event.target.value })
+													}
+													placeholder="hubuum:events"
+												/>
+											</label>
+										) : (
+											<div className="muted">
+												Use advanced JSON routing for this sink type.
+											</div>
+										)
+									) : (
+										<label className="control-field control-field--wide">
+											<span>Routing JSON</span>
+											<textarea
+												rows={8}
+												value={form.routingJson}
+												onChange={(event) =>
+													patchForm({ routingJson: event.target.value })
+												}
+											/>
+										</label>
+									)}
+								</>
 							)}
 							<GuidedFlowContinue
 								disabled={!routingReady}
 								nextLabel="Review"
 								onBack={() => setActiveStep("filters")}
 								onContinue={() => continueFrom("routing", "review")}
-								summary={formatRoutingSummary(form, selectedSink?.kind)}
+								summary={formatRoutingSummary(form, selectedSink)}
 								title={
 									routingReady
 										? "Routing ready"
@@ -1258,7 +1287,7 @@ export function CollectionEventSubscriptionsPanel({
 								</div>
 								<div>
 									<dt>Routing</dt>
-									<dd>{formatRoutingSummary(form, selectedSink?.kind)}</dd>
+									<dd>{formatRoutingSummary(form, selectedSink)}</dd>
 								</div>
 							</dl>
 							<div className="form-actions">

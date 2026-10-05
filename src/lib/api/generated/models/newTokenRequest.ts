@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { TokenScopeDetails } from './tokenScopeDetails';
 
@@ -19,5 +19,5 @@ export interface NewTokenRequest {
   expires_at?: string | null;
   /** @nullable */
   name?: string | null;
-  scope?: null | TokenScopeDetails;
+  scope?: TokenScopeDetails | null;
 }

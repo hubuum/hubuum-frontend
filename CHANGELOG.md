@@ -6,23 +6,46 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.19] - 2026-10-05
+
 ### Changed
 
+- Refresh application and development dependencies, container pins, and GitHub
+  Actions to the current release baseline; update Orval to `8.40.0` and
+  regenerate the client from the released Server `v0.0.17` contract.
 - Documentation uses the shared warm Hubuum theme from the ecosystem site's
   unversioned stylesheet, including retained release editions. Future styling
   updates no longer require changes or rebuilds in this repository.
 
+### Compatibility
+
+- Adopt Server `v0.0.17` and its immutable multi-architecture image. Generated
+  types include webhook notifications, system subscriptions, task-kind filters,
+  and nullable collection IDs in subscription delivery health.
+- Verify backup format 7 while retaining server validation of format 6 imports.
+  Upgrading from Server `v0.0.16` requires stopping all writers, taking a
+  PostgreSQL snapshot, and running the notification migration before starting
+  matching binaries. Binary-only rollback is unsupported; recovery requires
+  that snapshot and matching `v0.0.16` binaries. Optional Treetop deployments
+  must upgrade to protocol 0.1 and rebuild format 2 policy bundles.
+
 ### Added
 
+- Guided Slack, Mattermost, and Discord webhook setup with secret-backed URLs,
+  provider payload and acknowledgement defaults, rate-limit handling, and delivery
+  spacing. Presets save as ordinary webhooks and can be customized as JSON.
+- Collection subscriptions reuse sink-configured destinations and preserve
+  task-kind filters when edited. Existing sink configuration and delivery policies
+  survive edits without reapplying defaults.
 - A walkthrough using the shared Atlas example inventory, with classes, objects,
   relations, and permissions linked to the server-owned import and backup.
-
 - A searchable, versioned documentation site with shared Hubuum navigation,
   automatic GitHub Pages publishing, the latest release as its default,
   immutable release snapshots, and an explicit development edition.
 
 ### Fixed
 
+- Exclude generated documentation artifacts from application lint checks.
 - Documentation tables keep long environment-variable names readable, use wider
   reference layouts, and scroll within the table on small screens. Shared style
   fixes also reach retained release documentation.
@@ -700,7 +723,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.18...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.19...HEAD
+[0.0.19]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.18...v0.0.19
 [0.0.18]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.17...v0.0.18
 [0.0.17]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.16...v0.0.17
 [0.0.16]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.15...v0.0.16

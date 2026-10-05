@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { EventSinkID } from './eventSinkID';
 import type { EventSubscriptionFilter } from './eventSubscriptionFilter';
@@ -17,9 +17,9 @@ export interface UpdateEventSubscription {
   enabled?: boolean | null;
   /** @nullable */
   entity_types?: string[] | null;
-  filter?: null | EventSubscriptionFilter;
+  filter?: EventSubscriptionFilter | null;
   /** @nullable */
   name?: string | null;
   routing?: unknown;
-  sink_id?: null | EventSinkID;
+  sink_id?: EventSinkID | null;
 }

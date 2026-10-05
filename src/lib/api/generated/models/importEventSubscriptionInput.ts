@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { CollectionKey } from './collectionKey';
 import type { EventSinkKey } from './eventSinkKey';
@@ -12,10 +12,10 @@ import type { RestoreTimestamps } from './restoreTimestamps';
 
 export interface ImportEventSubscriptionInput {
   actions: string[];
-  collection_key?: null | CollectionKey;
+  collection_key?: CollectionKey | null;
   /** @nullable */
   collection_ref?: string | null;
-  condition?: null | ImportWriteCondition;
+  condition?: ImportWriteCondition | null;
   description: string;
   enabled: boolean;
   entity_types: string[];
@@ -24,8 +24,8 @@ export interface ImportEventSubscriptionInput {
   /** @nullable */
   ref?: string | null;
   routing?: unknown;
-  sink_key?: null | EventSinkKey;
+  sink_key?: EventSinkKey | null;
   /** @nullable */
   sink_ref?: string | null;
-  timestamps?: null | RestoreTimestamps;
+  timestamps?: RestoreTimestamps | null;
 }

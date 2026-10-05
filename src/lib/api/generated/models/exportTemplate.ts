@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ExportContentType } from './exportContentType';
 import type { ExportInclude } from './exportInclude';
@@ -20,18 +20,18 @@ export interface ExportTemplate {
   collection_id: number;
   content_type: ExportContentType;
   created_at: string;
-  default_limits?: null | ExportLimits;
-  default_missing_data_policy?: null | ExportMissingDataPolicy;
+  default_limits?: ExportLimits | null;
+  default_missing_data_policy?: ExportMissingDataPolicy | null;
   /** @nullable */
   default_query?: string | null;
   description: string;
   id: number;
-  include?: null | ExportInclude;
+  include?: ExportInclude | null;
   kind: ExportTemplateKind;
   name: string;
-  relation_context?: null | ExportRelationContext;
+  relation_context?: ExportRelationContext | null;
   revision: ResourceRevision;
-  scope_kind?: null | ExportScopeKind;
+  scope_kind?: ExportScopeKind | null;
   template: string;
   updated_at: string;
 }

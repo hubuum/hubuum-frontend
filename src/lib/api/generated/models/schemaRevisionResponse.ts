@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { HubuumClassID } from './hubuumClassID';
 import type { SchemaActivationPolicy } from './schemaActivationPolicy';
@@ -13,7 +13,7 @@ import type { SchemaRevisionStatus } from './schemaRevisionStatus';
 export interface SchemaRevisionResponse {
   /** @nullable */
   activated_at?: string | null;
-  activation_policy?: null | SchemaActivationPolicy;
+  activation_policy?: SchemaActivationPolicy | null;
   class_id: HubuumClassID;
   created_at: string;
   /** @nullable */

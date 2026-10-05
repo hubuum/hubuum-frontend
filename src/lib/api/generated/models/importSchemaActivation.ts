@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { SchemaActivationPolicy } from './schemaActivationPolicy';
 import type { SchemaRevision } from './schemaRevision';
@@ -14,7 +14,7 @@ import type { TaskID } from './taskID';
  */
 export interface ImportSchemaActivation {
   expected_active_revision: SchemaRevision;
-  impact_task_id?: null | TaskID;
+  impact_task_id?: TaskID | null;
   policy: SchemaActivationPolicy;
   revision: SchemaRevision;
 }

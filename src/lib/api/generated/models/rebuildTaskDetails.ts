@@ -3,12 +3,12 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { HubuumClassID } from './hubuumClassID';
 
 export interface RebuildTaskDetails {
-  class_id?: null | HubuumClassID;
+  class_id?: HubuumClassID | null;
   /** @nullable */
   computation_revision?: number | null;
 }

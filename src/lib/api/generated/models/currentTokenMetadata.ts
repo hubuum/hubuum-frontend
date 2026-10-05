@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ResourceRevision } from './resourceRevision';
 import type { TokenID } from './tokenID';
@@ -24,5 +24,5 @@ export interface CurrentTokenMetadata {
   /** @nullable */
   name?: string | null;
   revision: ResourceRevision;
-  scope?: null | TokenScopeDetails;
+  scope?: TokenScopeDetails | null;
 }

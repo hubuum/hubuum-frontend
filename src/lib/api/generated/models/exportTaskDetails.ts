@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { RetainedExportDetails } from './retainedExportDetails';
 
@@ -25,7 +25,7 @@ export interface ExportTaskDetails {
   query_duration_ms?: number | null;
   /** @nullable */
   render_duration_ms?: number | null;
-  retained?: null | RetainedExportDetails;
+  retained?: RetainedExportDetails | null;
   /** @nullable */
   template_name?: string | null;
   /** @nullable */

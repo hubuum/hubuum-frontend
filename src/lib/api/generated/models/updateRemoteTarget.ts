@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { CollectionID } from './collectionID';
 import type { RemoteAuthConfig } from './remoteAuthConfig';
@@ -13,18 +13,18 @@ import type { RemoteTargetSubjectType } from './remoteTargetSubjectType';
 export interface UpdateRemoteTarget {
   /** @nullable */
   allowed_subject_types?: RemoteTargetSubjectType[] | null;
-  auth_config?: null | RemoteAuthConfig;
+  auth_config?: RemoteAuthConfig | null;
   /** @nullable */
   body_template?: string | null;
   /** @nullable */
   class_id?: number | null;
-  collection_id?: null | CollectionID;
+  collection_id?: CollectionID | null;
   /** @nullable */
   description?: string | null;
   /** @nullable */
   enabled?: boolean | null;
   headers_template?: unknown;
-  method?: null | RemoteHttpMethod;
+  method?: RemoteHttpMethod | null;
   /** @nullable */
   name?: string | null;
   /** @nullable */

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ClassKey } from './classKey';
 import type { CollectionKey } from './collectionKey';
@@ -18,13 +18,13 @@ export interface ImportRemoteTargetInput {
   auth_config?: RemoteAuthConfig;
   /** @nullable */
   body_template?: string | null;
-  class_key?: null | ClassKey;
+  class_key?: ClassKey | null;
   /** @nullable */
   class_ref?: string | null;
-  collection_key?: null | CollectionKey;
+  collection_key?: CollectionKey | null;
   /** @nullable */
   collection_ref?: string | null;
-  condition?: null | ImportWriteCondition;
+  condition?: ImportWriteCondition | null;
   description: string;
   enabled: boolean;
   headers_template?: unknown;
@@ -33,6 +33,6 @@ export interface ImportRemoteTargetInput {
   /** @nullable */
   ref?: string | null;
   timeout_ms: number;
-  timestamps?: null | RestoreTimestamps;
+  timestamps?: RestoreTimestamps | null;
   url_template: string;
 }

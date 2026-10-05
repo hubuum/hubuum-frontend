@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
+| `main` (unreleased) | `v0.0.17` | `ghcr.io/hubuum/hubuum-server:v0.0.17` |
+| `v0.0.19` | `v0.0.17` | `ghcr.io/hubuum/hubuum-server:v0.0.17` |
 | `v0.0.18` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
 | `v0.0.17` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
 | `v0.0.16` | `v0.0.15` | `ghcr.io/hubuum/hubuum-server:v0.0.15` |
@@ -26,14 +27,50 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Frontend `v0.0.17`, `v0.0.18`, and unreleased `main` target
-Server `v0.0.16` at
+listed server tag. Frontend `v0.0.19` and unreleased `main` target
+Server `v0.0.17` at
+`sha256:cc0518167816bfddb38853b8b7217c4a347511318d51e1abca93ca418f31b302`.
+Frontend `v0.0.17` and `v0.0.18` retain Server `v0.0.16` at
 `sha256:37b3299edd845a0c2aa7772d7d68565233ac8c1802bc44be3fb4bbc6dfa8778e`.
 Frontend `v0.0.16` retains its Server `v0.0.15` target at
 `sha256:36af667dbc9e221a40448496d4a87e168c999d0834df4b69177345ff3d36e821`.
 Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
 A separate scheduled workflow follows the moving backend `:main` image.
+
+## Server v0.0.17
+
+The OpenAPI snapshot comes directly from the server's `v0.0.17` tag
+(commit `4a03d56b27f35af62175a80d09d36d0d41c4a663`). Both Linux AMD64 and ARM64
+image labels identify that commit. The regenerated client includes webhook
+preview/test endpoints, system event subscriptions, delivery policies and
+purpose, task-kind subscription filters, and nullable `collection_id` in
+subscription delivery health. The console offers Slack, Mattermost, and Discord
+setup presets as ordinary webhooks and reuses their secret-backed destinations in collection subscriptions.
+Existing custom sink settings, delivery policies, and task-kind filters survive
+edits. System subscriptions and notification preview/test endpoints are available
+in the generated client.
+
+Backups now use **format 7**. Server `v0.0.17` still accepts format 6 with legacy
+defaults, but older servers cannot restore format 7. The console forwards backup
+documents unchanged and leaves validation to the server.
+
+### Upgrade requirements
+
+The upgrade from Server `v0.0.16` requires a maintenance window. Stop all writers,
+including APIs, workers, and the restore executor, then take a PostgreSQL
+snapshot. Run `hubuum-admin --migrate` separately to apply
+`2026-10-01-000001_webhook_notifications` before starting matching `v0.0.17`
+server, administrator, template-worker, and restore-executor binaries.
+Binary-only rollback is unsupported after this migration: recover the snapshot
+with matching `v0.0.16` binaries, losing writes made after the snapshot.
+
+Optional Treetop deployments must upgrade Treetop REST and policy bundles to the
+0.1 protocol, migrate label targets, and rebuild and re-sign format 2 bundles
+before restarting Hubuum. External storage integrations must upgrade all eight
+SDK crates together to storage SDK 0.4 and implement the notification contracts.
+See the [Server v0.0.17 release notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.17)
+and [notification guide](https://github.com/hubuum/hubuum/blob/v0.0.17/docs/webhook_notifications.md).
 
 ## Server v0.0.16
 

@@ -3,19 +3,19 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { IdentityScopeKey } from './identityScopeKey';
 import type { ImportWriteCondition } from './importWriteCondition';
 import type { RestoreTimestamps } from './restoreTimestamps';
 
 export interface ImportGroupInput {
-  condition?: null | ImportWriteCondition;
+  condition?: ImportWriteCondition | null;
   description: string;
   /** @nullable */
   external_key?: string | null;
   groupname: string;
-  identity_scope_key?: null | IdentityScopeKey;
+  identity_scope_key?: IdentityScopeKey | null;
   /** @nullable */
   identity_scope_ref?: string | null;
   /** @nullable */
@@ -25,5 +25,5 @@ export interface ImportGroupInput {
   managed_by: string;
   /** @nullable */
   ref?: string | null;
-  timestamps?: null | RestoreTimestamps;
+  timestamps?: RestoreTimestamps | null;
 }

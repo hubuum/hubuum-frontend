@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { CollectionID } from './collectionID';
 
@@ -19,5 +19,5 @@ export interface NewCollectionWithAssignee {
   /** @minimum 1 */
   group_id: number;
   name: string;
-  parent_collection_id?: null | CollectionID;
+  parent_collection_id?: CollectionID | null;
 }

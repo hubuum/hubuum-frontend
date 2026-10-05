@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { BackupHistory } from './backupHistory';
 import type { BackupManifest } from './backupManifest';
@@ -13,7 +13,7 @@ export interface BackupDocument {
   backup_version: number;
   /** RFC 3339 creation instant in UTC. */
   created_at: string;
-  history?: null | BackupHistory;
+  history?: BackupHistory | null;
   manifest: BackupManifest;
   source_version: string;
   state: BackupState;

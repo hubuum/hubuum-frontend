@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { StructuredSearchExpression } from './structuredSearchExpression';
 import type { StructuredSearchSort } from './structuredSearchSort';
@@ -19,7 +19,7 @@ export interface StructuredSearchRequest {
      * @nullable
      */
   cursor?: string | null;
-  filter?: null | StructuredSearchExpression;
+  filter?: StructuredSearchExpression | null;
   /** Compute and return an exact authorized result count when true. */
   include_total?: boolean;
   /**

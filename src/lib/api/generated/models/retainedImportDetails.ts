@@ -3,18 +3,18 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ImportAtomicity } from './importAtomicity';
 import type { ImportCollisionPolicy } from './importCollisionPolicy';
 import type { ImportPermissionPolicy } from './importPermissionPolicy';
 
 export interface RetainedImportDetails {
-  atomicity?: null | ImportAtomicity;
-  collision_policy?: null | ImportCollisionPolicy;
+  atomicity?: ImportAtomicity | null;
+  collision_policy?: ImportCollisionPolicy | null;
   /** @nullable */
   dry_run?: boolean | null;
   /** @nullable */
   has_failed_items?: boolean | null;
-  permission_policy?: null | ImportPermissionPolicy;
+  permission_policy?: ImportPermissionPolicy | null;
 }

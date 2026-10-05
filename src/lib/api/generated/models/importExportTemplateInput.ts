@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ClassKey } from './classKey';
 import type { CollectionKey } from './collectionKey';
@@ -18,26 +18,26 @@ import type { ImportWriteCondition } from './importWriteCondition';
 import type { RestoreTimestamps } from './restoreTimestamps';
 
 export interface ImportExportTemplateInput {
-  class_key?: null | ClassKey;
+  class_key?: ClassKey | null;
   /** @nullable */
   class_ref?: string | null;
-  collection_key?: null | CollectionKey;
+  collection_key?: CollectionKey | null;
   /** @nullable */
   collection_ref?: string | null;
-  condition?: null | ImportWriteCondition;
+  condition?: ImportWriteCondition | null;
   content_type: ExportContentType;
-  default_limits?: null | ExportLimits;
-  default_missing_data_policy?: null | ExportMissingDataPolicy;
+  default_limits?: ExportLimits | null;
+  default_missing_data_policy?: ExportMissingDataPolicy | null;
   /** @nullable */
   default_query?: string | null;
   description: string;
-  include?: null | ExportInclude;
+  include?: ExportInclude | null;
   kind: ExportTemplateKind;
   name: string;
   /** @nullable */
   ref?: string | null;
-  relation_context?: null | ExportRelationContext;
-  scope_kind?: null | ExportScopeKind;
+  relation_context?: ExportRelationContext | null;
+  scope_kind?: ExportScopeKind | null;
   template: string;
-  timestamps?: null | RestoreTimestamps;
+  timestamps?: RestoreTimestamps | null;
 }

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { ExportIncludeRelatedDirection } from './exportIncludeRelatedDirection';
 import type { ExportIncludeRelatedSort } from './exportIncludeRelatedSort';
@@ -12,10 +12,10 @@ export interface ExportIncludeRelatedObject {
   class_id: number;
   /** @nullable */
   class_relation_id?: number | null;
-  direction?: null | ExportIncludeRelatedDirection;
+  direction?: ExportIncludeRelatedDirection | null;
   /** @nullable */
   limit?: number | null;
   /** @nullable */
   max_depth?: number | null;
-  sort?: null | ExportIncludeRelatedSort;
+  sort?: ExportIncludeRelatedSort | null;
 }

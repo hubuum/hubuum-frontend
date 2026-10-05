@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { TaskDetails } from './taskDetails';
 import type { TaskKind } from './taskKind';
@@ -20,7 +20,7 @@ export interface TaskResponse {
   /** @nullable */
   cancel_requested_by?: number | null;
   created_at: string;
-  details?: null | TaskDetails;
+  details?: TaskDetails | null;
   /** @nullable */
   execution_deadline_at?: string | null;
   /** @nullable */
@@ -29,7 +29,7 @@ export interface TaskResponse {
   kind: TaskKind;
   links: TaskLinks;
   progress: TaskProgress;
-  remote_side_effect_state?: null | TaskRemoteSideEffectState;
+  remote_side_effect_state?: TaskRemoteSideEffectState | null;
   /** @nullable */
   request_redacted_at?: string | null;
   /** @nullable */

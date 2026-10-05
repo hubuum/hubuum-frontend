@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
 import type { CollectionKey } from './collectionKey';
 import type { ImportSchemaActivation } from './importSchemaActivation';
@@ -11,17 +11,17 @@ import type { ImportWriteCondition } from './importWriteCondition';
 import type { RestoreTimestamps } from './restoreTimestamps';
 
 export interface ImportClassInput {
-  collection_key?: null | CollectionKey;
+  collection_key?: CollectionKey | null;
   /** @nullable */
   collection_ref?: string | null;
-  condition?: null | ImportWriteCondition;
+  condition?: ImportWriteCondition | null;
   description: string;
   json_schema?: unknown;
   name: string;
   /** @nullable */
   ref?: string | null;
-  schema_activation?: null | ImportSchemaActivation;
-  timestamps?: null | RestoreTimestamps;
+  schema_activation?: ImportSchemaActivation | null;
+  timestamps?: RestoreTimestamps | null;
   /** @nullable */
   validate_schema?: boolean | null;
 }

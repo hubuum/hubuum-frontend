@@ -3,15 +3,17 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.16
+ * OpenAPI spec version: 0.0.17
  */
+import type { EventDeliveryPolicy } from './eventDeliveryPolicy';
 import type { EventSinkKind } from './eventSinkKind';
 import type { ImportWriteCondition } from './importWriteCondition';
 import type { RestoreTimestamps } from './restoreTimestamps';
 
 export interface ImportEventSinkInput {
-  condition?: null | ImportWriteCondition;
+  condition?: ImportWriteCondition | null;
   config?: unknown;
+  delivery_policy?: EventDeliveryPolicy | null;
   enabled: boolean;
   kind: EventSinkKind;
   name: string;
@@ -19,5 +21,5 @@ export interface ImportEventSinkInput {
   ref?: string | null;
   /** @nullable */
   secret_ref?: string | null;
-  timestamps?: null | RestoreTimestamps;
+  timestamps?: RestoreTimestamps | null;
 }

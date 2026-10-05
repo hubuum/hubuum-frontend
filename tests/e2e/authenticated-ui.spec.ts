@@ -39,6 +39,215 @@ test.describe("authenticated workspace", () => {
 		await page.waitForURL("**/app");
 	});
 
+	for (const target of ["slack", "mattermost", "discord"] as const) {
+		test(`webhook ${target} setup creates a normal sink and preserves advanced edits`, async ({
+			page,
+		}) => {
+			const name = `e2e-${target}-${Date.now()}`;
+			let sinkId: number | undefined;
+			await page.goto("/admin/events");
+			await page
+				.getByRole("button", { name: "Create sink", exact: true })
+				.click();
+			const dialog = page.getByRole("dialog", { name: "Create event sink" });
+			await dialog.getByLabel("Name", { exact: true }).fill(name);
+			await dialog.getByLabel("Webhook target").selectOption(target);
+			await dialog.getByLabel("Webhook URL secret name").fill(`e2e_${target}`);
+			await dialog.getByLabel("Enabled", { exact: true }).uncheck();
+			if (target === "discord") await expect(dialog).toContainText("wait=true");
+			for (const width of [1440, 390]) {
+				await page.setViewportSize({ width, height: 900 });
+				expect(
+					(
+						await new AxeBuilder({ page })
+							.include('[role="dialog"]')
+							.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+							.analyze()
+					).violations,
+				).toEqual([]);
+				expect(
+					await page.evaluate(
+						() => document.documentElement.scrollWidth <= window.innerWidth,
+					),
+				).toBe(true);
+			}
+			const createdResponse = page.waitForResponse(
+				(response) =>
+					response.url().endsWith("/api/v1/event-sinks") &&
+					response.request().method() === "POST",
+			);
+			await dialog
+				.getByRole("button", { name: "Create sink", exact: true })
+				.click();
+			const response = await createdResponse;
+			expect(response.status()).toBe(201);
+			const sink = await response.json();
+			sinkId = sink.id;
+			try {
+				expect(sink).toMatchObject({
+					kind: "webhook",
+					enabled: false,
+					secret_ref: null,
+					config: { url_secret_ref: `e2e_${target}` },
+					delivery_policy: { min_interval_ms: 1000 },
+				});
+				expect(response.request().postDataJSON()).not.toHaveProperty("target");
+				await expect(dialog).not.toBeVisible();
+				await page
+					.getByRole("row")
+					.filter({ hasText: name })
+					.getByRole("button", { name: "Edit", exact: true })
+					.click();
+				const edit = page.getByRole("dialog", { name: "Edit event sink" });
+				await expect(edit.getByLabel("Webhook target")).toHaveValue("custom");
+				await edit.getByLabel("Webhook target").selectOption("slack");
+				const confirmation = page.getByRole("alertdialog", {
+					name: "Use Slack defaults?",
+				});
+				await confirmation
+					.getByRole("button", { name: "Cancel", exact: true })
+					.click();
+				await expect(edit.getByLabel("Webhook target")).toHaveValue("custom");
+				const updatedResponse = page.waitForResponse(
+					(result) =>
+						result.url().endsWith(`/api/v1/event-sinks/${sinkId}`) &&
+						result.request().method() === "PATCH",
+				);
+				await edit.getByLabel("Name", { exact: true }).fill(`${name}-edited`);
+				await edit.getByRole("button", { name: "Save sink" }).click();
+				const updated = await updatedResponse;
+				expect(updated.status()).toBe(200);
+				expect(await updated.json()).toMatchObject({
+					config: sink.config,
+					delivery_policy: sink.delivery_policy,
+				});
+			} finally {
+				if (sinkId !== undefined) {
+					const deleted = await page.request.delete(
+						`${bffPrefix}/api/v1/event-sinks/${sinkId}`,
+						{ headers: { Origin: new URL(page.url()).origin } },
+					);
+					expect(deleted.status()).toBe(204);
+				}
+			}
+		});
+	}
+
+	test("webhook subscription uses the sink destination and retains task-kind filters", async ({
+		page,
+	}) => {
+		const suffix = Date.now();
+		const headers = { Origin: new URL(page.url()).origin };
+		const created = await page.request.post(`${bffPrefix}/api/v1/collections`, {
+			headers,
+			data: {
+				name: `e2e-webhook-${suffix}`,
+				description: "Webhook routing test",
+				group_id: 1,
+			},
+		});
+		expect(created.status()).toBe(201);
+		const collection = await created.json();
+		let sinkId: number | undefined;
+		let subscriptionId: number | undefined;
+		try {
+			const response = await page.request.post(
+				`${bffPrefix}/api/v1/event-sinks`,
+				{
+					headers,
+					data: {
+						name: `e2e-webhook-sink-${suffix}`,
+						kind: "webhook",
+						config: { url_secret_ref: "e2e_chat" },
+						enabled: false,
+					},
+				},
+			);
+			expect(response.status()).toBe(201);
+			sinkId = (await response.json()).id;
+			await page.goto(`/collections/${collection.id}`);
+			await page.getByRole("button", { name: "New subscription" }).click();
+			const editor = page.locator("form").filter({
+				has: page.getByRole("heading", { name: "Create event subscription" }),
+			});
+			await editor
+				.getByLabel("Name", { exact: true })
+				.fill(`e2e-subscription-${suffix}`);
+			await editor
+				.getByLabel("Event sink", { exact: true })
+				.selectOption(String(sinkId));
+			await editor.getByRole("button", { name: "Continue to events" }).click();
+			await editor.getByRole("button", { name: "task", exact: true }).click();
+			await editor.getByRole("button", { name: "failed", exact: true }).click();
+			await editor.getByRole("button", { name: "Continue to filters" }).click();
+			await editor.getByRole("button", { name: "Continue to routing" }).click();
+			await expect(editor).toContainText("No subscription URL is needed");
+			await expect(
+				editor.getByLabel("Webhook URL", { exact: true }),
+			).toHaveCount(0);
+			await editor.getByRole("button", { name: "Continue to review" }).click();
+			const saved = page.waitForResponse(
+				(result) =>
+					result
+						.url()
+						.endsWith(`/collections/${collection.id}/event-subscriptions`) &&
+					result.request().method() === "POST",
+			);
+			await editor
+				.getByRole("button", { name: "Create subscription", exact: true })
+				.click();
+			const subscriptionResponse = await saved;
+			expect(subscriptionResponse.status()).toBe(201);
+			const subscription = await subscriptionResponse.json();
+			subscriptionId = subscription.id;
+			expect(subscription.routing).toEqual({});
+			const patched = await page.request.patch(
+				`${bffPrefix}/api/v1/collections/${collection.id}/event-subscriptions/${subscriptionId}`,
+				{ headers, data: { filter: { task_kinds: ["import"] } } },
+			);
+			expect(patched.status()).toBe(200);
+			await page.reload();
+			await page
+				.getByRole("row")
+				.filter({ hasText: `e2e-subscription-${suffix}` })
+				.getByRole("button", { name: "Edit", exact: true })
+				.click();
+			const editing = page.locator("form").filter({
+				has: page.getByRole("heading", { name: "Edit event subscription" }),
+			});
+			await editing
+				.getByLabel("Name", { exact: true })
+				.fill(`e2e-edited-${suffix}`);
+			await editing.getByRole("tab", { name: /Review/ }).click();
+			await expect(editing).toContainText("task kinds import");
+			const updated = page.waitForResponse(
+				(result) =>
+					result.url().endsWith(`/event-subscriptions/${subscriptionId}`) &&
+					result.request().method() === "PATCH",
+			);
+			await editing
+				.getByRole("button", { name: "Save subscription", exact: true })
+				.click();
+			expect((await (await updated).json()).filter.task_kinds).toEqual([
+				"import",
+			]);
+		} finally {
+			if (subscriptionId !== undefined)
+				await page.request.delete(
+					`${bffPrefix}/api/v1/collections/${collection.id}/event-subscriptions/${subscriptionId}`,
+					{ headers },
+				);
+			if (sinkId !== undefined)
+				await page.request.delete(`${bffPrefix}/api/v1/event-sinks/${sinkId}`, {
+					headers,
+				});
+			await page.request.delete(
+				`${bffPrefix}/api/v1/collections/${collection.id}`,
+				{ headers },
+			);
+		}
+	});
+
 	for (const terminalStatus of ["succeeded", "failed"] as const) {
 		test(`queued restore reaches ${terminalStatus} after session expiry`, async ({
 			page,
