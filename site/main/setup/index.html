@@ -1926,6 +1926,10 @@ durable provenance. The console shows the immediate actor, root initiator, and
 originating task where available, and audit/subscription filters can match the
 root initiator independently of the worker or system actor.</p>
 <h2 id="chat-webhooks">Chat webhooks<a class="headerlink" href="#chat-webhooks" title="Permanent link">&para;</a></h2>
+<p>Collection managers with <code>ManageEventSubscription</code> and <code>ReadAudit</code> can create
+collection-owned webhook destinations and subscriptions on the collection page
+when connected to a server with collection sink support (newer than <code>v0.0.17</code>).
+Saved destination URLs are write-only in this view.</p>
 <p>Administrators can choose Slack, Mattermost, Discord, or Custom webhook when
 creating an event sink. The chat presets supply message templates, acknowledgement
 rules, retries, and delivery spacing while saving ordinary server webhooks.

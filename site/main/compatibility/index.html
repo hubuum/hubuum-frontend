@@ -647,6 +647,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#collection-owned-event-destinations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Collection-owned event destinations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1252,6 +1263,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#collection-owned-event-destinations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Collection-owned event destinations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1688,6 +1710,22 @@ See the <a href="https://github.com/hubuum/hubuum/releases/tag/v0.0.12">Server v
 for the certified upgrade path, version 5 backups, resource limits, and optional
 split-role deployment. Older frontend releases assume synchronous restoration
 and should not confirm web restores against this server release.</p>
+<h2 id="collection-owned-event-destinations">Collection-owned event destinations<a class="headerlink" href="#collection-owned-event-destinations" title="Permanent link">&para;</a></h2>
+<p>The collection webhook editor now uses the collection-scoped destination contract
+included in <code>openapi.json</code>: <code>/api/v1/collections/{id}/event-sinks</code>. It requires the
+matching server update after <code>v0.0.17</code>; existing released images do not implement
+these endpoints. Test this workflow against a server built with that update.
+Global administrator sink setup remains available in <strong>Admin → Events</strong>.</p>
+<p>Subscription creation and editing require <code>ReadAudit</code> as well as
+<code>ManageEventSubscription</code>. Shared global sinks require a direct collection grant;
+the matching server migration backfills grants for existing subscriptions.
+New webhook configurations carrying bearer credentials or static headers must bind
+their destination in the sink. Collection-created webhooks always use a fixed URL.</p>
+<p>The full authenticated browser runner includes delegated collection-manager and
+shared-sink subscription coverage. Set <code>HUBUUM_FULL_E2E_COLLECTION_INTEGRATIONS=1</code>
+when selecting an updated backend image. Direct Playwright runs use
+<code>E2E_COLLECTION_INTEGRATIONS=1</code>. These two tests are explicitly skipped on the
+released v0.0.17 fixture; they must pass against the matching update before rollout.</p>
 
 
 
