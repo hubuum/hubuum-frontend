@@ -1345,21 +1345,21 @@ containers:</p>
 keeps it only in the child-process environment, and removes the containers and
 volumes afterward. Override the pinned compatibility image with
 <code>HUBUUM_AUTH_E2E_BACKEND_IMAGE</code> when testing another server build.</p>
-<p>The default test target is released Server <code>v0.0.17</code>. To focus on schemas and
+<p>The default test target is released Server <code>v0.0.18</code>. To focus on schemas and
 task cancellation:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:credential-fixtures
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>npm<span class="w"> </span>run<span class="w"> </span>test:live-backend
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>npm<span class="w"> </span>run<span class="w"> </span>test:e2e:authenticated<span class="w"> </span>--<span class="w"> </span>--grep<span class="w"> </span><span class="s1">'schema workspace|task cancellation'</span>
 </code></pre></div>
 <p>The contract run requires schema evolution, saved diagnostics and HTML reports,
-task cancellation, per-kind deadlines, and backup format 7. Browser checks cover
+task cancellation, per-kind deadlines, and backup format 8. Browser checks cover
 the guided schema flow, conflicts, reports, accessible pagination, cancellation
 acknowledgement, authorization failures, and mobile layout after a real login.
 CI pins the release digest listed in <code>docs/compatibility.md</code>. The scheduled
 backend-main workflow continues checking future server builds separately.</p>
 <p><code>npm run test:e2e:authenticated:full</code> runs the complete authenticated suite,
 then the live credential approval and restore checks on the same disposable
-stack. Release readiness requires both to pass against Server <code>v0.0.17</code>.
+stack. Release readiness requires both to pass against Server <code>v0.0.18</code>.
 Restore runs last because it replaces the database and invalidates tokens.
 When explicitly testing an older backend image, set
 <code>HUBUUM_FULL_E2E_CREDENTIAL_APPROVALS=legacy</code> to verify its original mutation flow.</p>
@@ -1392,7 +1392,7 @@ and update <code>.env.local</code> to match:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>VALKEY_URL=redis://127.0.0.1:6380/0
 </code></pre></div>
 <h3 id="forward-server-compatibility">Forward server compatibility<a class="headerlink" href="#forward-server-compatibility" title="Permanent link">&para;</a></h3>
-<p>The live contract suite defaults to the pinned Server <code>0.0.17</code> contract. Set
+<p>The live contract suite defaults to the pinned Server <code>0.0.18</code> contract. Set
 <code>HUBUUM_LIVE_EXPECT_SERVER_VERSION</code> when verifying a specific release candidate.
 The scheduled backend-main job sets <code>HUBUUM_LIVE_FORWARD_COMPATIBILITY=1</code> to
 exercise the complete contract across server version bumps; required release CI

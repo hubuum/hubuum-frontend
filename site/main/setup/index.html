@@ -1928,7 +1928,7 @@ root initiator independently of the worker or system actor.</p>
 <h2 id="chat-webhooks">Chat webhooks<a class="headerlink" href="#chat-webhooks" title="Permanent link">&para;</a></h2>
 <p>Collection managers with <code>ManageEventSubscription</code> and <code>ReadAudit</code> can create
 collection-owned webhook destinations and subscriptions on the collection page
-when connected to a server with collection sink support (newer than <code>v0.0.17</code>).
+when connected to a server with collection sink support (<code>v0.0.18</code> or newer).
 Saved destination URLs are write-only in this view.</p>
 <p>Administrators can choose Slack, Mattermost, Discord, or Custom webhook when
 creating an event sink. The chat presets supply message templates, acknowledgement
@@ -2092,13 +2092,16 @@ Hubuum Server. It does not install the backend or PostgreSQL:</p>
 <p>See <a href="../quickstart-compose/">the Compose quickstart</a> for host networking,
 updates, logs, and cleanup.</p>
 <h2 id="release-artifacts">Release artifacts<a class="headerlink" href="#release-artifacts" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.19">Hubuum Frontend v0.0.19</a>
+(2026-10-06) adds collection-owned webhook setup for delegated collection managers
+and guided administrator chat integrations.</p>
 <p>Current <code>main</code> development and Hubuum Frontend <code>v0.0.19</code> target the released
-Server <code>v0.0.17</code> contract, including nullable system-subscription health and
-backup format 7. Format 6 backups remain accepted by the server. Credential
+Server <code>v0.0.18</code> contract, including nullable system-subscription health and
+backup format 8. Formats 6 and 7 remain accepted by the server. Credential
 management continues to require fresh password approvals.
-Upgrading from Server <code>v0.0.16</code> requires a maintenance window: stop all writers,
-take a PostgreSQL snapshot, and migrate before starting matching <code>v0.0.17</code>
-processes. Binary-only rollback after the notification migration is unsupported.
+Upgrading from Server <code>v0.0.17</code> requires a maintenance window: stop all writers,
+take a PostgreSQL snapshot, and migrate before starting matching <code>v0.0.18</code>
+processes. Binary-only rollback after the collection-sink migration is unsupported.
 Run the server's separate migration workload before startup and deploy its
 restore executor before confirming web restores. The console polls queued
 restores through completion; keep the restore page open so its in-memory
@@ -2146,7 +2149,7 @@ Compose validation, and Helm validation.</p>
 server image:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:live-backend
 </code></pre></div>
-<p>The script defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.17</code>, starts a
+<p>The script defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.18</code>, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 <code>/readyz</code>, resets the default <code>admin</code> password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
@@ -2160,7 +2163,7 @@ the test wrapper, then verifies completion and invalidation of the old token.
 Restore confirmation is skipped when targeting an externally supplied backend URL.</p>
 <p>Useful overrides:</p>
 <ul>
-<li><code>HUBUUM_LIVE_BACKEND_IMAGE</code>: backend image to test, defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.17</code></li>
+<li><code>HUBUUM_LIVE_BACKEND_IMAGE</code>: backend image to test, defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.18</code></li>
 <li><code>HUBUUM_LIVE_BACKEND_PORT</code>: host port for the live server, defaults to <code>9999</code></li>
 <li><code>HUBUUM_LIVE_POSTGRES_PORT</code>: host port for Postgres, defaults to <code>15432</code></li>
 <li><code>HUBUUM_LIVE_COMPOSE_PROJECT</code>: Compose project name, defaults to <code>hubuum-frontend-live-test</code></li>

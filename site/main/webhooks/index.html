@@ -1140,7 +1140,7 @@
 <strong>Admin → Events → Create sink → Webhook target</strong>. Each setup supplies a message
 template, acknowledgement rules, retries, and one-second delivery spacing.
 The server stores an ordinary <code>webhook</code> sink; the target choice is only a console
-setup aid. These presets require Server <code>v0.0.17</code> or newer.</p>
+setup aid. These presets require Server <code>v0.0.18</code> or newer.</p>
 <h2 id="collection-self-service">Collection self-service<a class="headerlink" href="#collection-self-service" title="Permanent link">&para;</a></h2>
 <p>On a server with collection-owned sink support, a collection manager can open
 <strong>Webhook destinations</strong> on the collection page, choose <strong>New webhook destination</strong>,
@@ -1157,9 +1157,10 @@ URL and message format. Remove dependent subscriptions before deleting a destina
 returns only owned and explicitly granted destinations, without sink configuration
 or credentials. Revoking the grant stops new deliveries; an already admitted
 network request may finish. Delivery diagnostics and retries remain in <strong>Admin → Events</strong>.</p>
-<p>These collection endpoints require the corresponding server update; <code>v0.0.17</code>
-does not provide them. The console reports that missing support instead of calling
-the administrator-only sink list from a delegated collection editor.</p>
+<p>These collection endpoints are included in Server <code>v0.0.18</code>, the supported
+release target. Upgrade the server before deploying this frontend. The console
+reports missing support instead of calling the administrator-only sink list
+from a delegated collection editor.</p>
 <h2 id="connect-a-destination">Connect a destination<a class="headerlink" href="#connect-a-destination" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Create an incoming webhook in your chat service and choose its channel.</li>
@@ -1178,7 +1179,7 @@ the administrator-only sink list from a delegated collection editor.</p>
 </ol>
 <p>The server must run fan-out and delivery workers, and each delivery worker must
 resolve the same secret alias. The console does not provision external secrets
-or enable server workers. See the <a href="https://github.com/hubuum/hubuum/blob/v0.0.17/docs/webhook_notifications.md">server webhook setup guide</a>
+or enable server workers. See the <a href="https://github.com/hubuum/hubuum/blob/v0.0.18/docs/webhook_notifications.md">server webhook setup guide</a>
 for environment/file setup, private Mattermost destinations, system subscriptions,
 and preview/test-delivery commands. Saving a sink does not send a test message.</p>
 <table>
