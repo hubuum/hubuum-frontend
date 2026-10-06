@@ -15,6 +15,7 @@ import type {
   ClearRateLimitResponse,
   ClientConfig,
   Collection,
+  CollectionEventSink,
   CollectionPermissionSet,
   ComputedFieldDefinition,
   ComputedFieldDefinitionPatch,
@@ -6556,6 +6557,332 @@ export const getApiV1CollectionsByCollectionIdChildren = async (collectionId: nu
 
 
 
+export type getApiV1CollectionsByCollectionIdEventSinksResponse200 = {
+  data: CollectionEventSink[]
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdEventSinksResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1CollectionsByCollectionIdEventSinksResponseSuccess = (getApiV1CollectionsByCollectionIdEventSinksResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdEventSinksResponseError = (getApiV1CollectionsByCollectionIdEventSinksResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdEventSinksResponse = (getApiV1CollectionsByCollectionIdEventSinksResponseSuccess | getApiV1CollectionsByCollectionIdEventSinksResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdEventSinksUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-sinks`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/event-sinks.
+ * @summary Get Api V1 Collections By Collection Id Event Sinks
+ */
+export const getApiV1CollectionsByCollectionIdEventSinks = async (collectionId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdEventSinksResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdEventSinksUrl(collectionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdEventSinksResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdEventSinksResponse
+}
+
+
+
+export type postApiV1CollectionsByCollectionIdEventSinksResponse201 = {
+  data: CollectionEventSink
+  status: 201
+}
+
+export type postApiV1CollectionsByCollectionIdEventSinksResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1CollectionsByCollectionIdEventSinksResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1CollectionsByCollectionIdEventSinksResponseSuccess = (postApiV1CollectionsByCollectionIdEventSinksResponse201) & {
+  headers: Headers;
+};
+export type postApiV1CollectionsByCollectionIdEventSinksResponseError = (postApiV1CollectionsByCollectionIdEventSinksResponse400 | postApiV1CollectionsByCollectionIdEventSinksResponse403) & {
+  headers: Headers;
+};
+
+export type postApiV1CollectionsByCollectionIdEventSinksResponse = (postApiV1CollectionsByCollectionIdEventSinksResponseSuccess | postApiV1CollectionsByCollectionIdEventSinksResponseError)
+
+export const getPostApiV1CollectionsByCollectionIdEventSinksUrl = (collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-sinks`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/collections/{collection_id}/event-sinks.
+ * @summary Post Api V1 Collections By Collection Id Event Sinks
+ */
+export const postApiV1CollectionsByCollectionIdEventSinks = async (collectionId: number,
+    newEventSink: NewEventSink, options?: RequestInit): Promise<postApiV1CollectionsByCollectionIdEventSinksResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1CollectionsByCollectionIdEventSinksUrl(collectionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(newEventSink)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1CollectionsByCollectionIdEventSinksResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1CollectionsByCollectionIdEventSinksResponse
+}
+
+
+
+export type getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse200 = {
+  data: CollectionEventSink
+  status: 200
+}
+
+export type getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseSuccess = (getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseError = (getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse403 | getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse = (getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseSuccess | getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseError)
+
+export const getGetApiV1CollectionsByCollectionIdEventSinksBySinkIdUrl = (collectionId: number,
+    sinkId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-sinks/${sinkId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/collections/{collection_id}/event-sinks/{sink_id}.
+ * @summary Get Api V1 Collections By Collection Id Event Sinks By Sink Id
+ */
+export const getApiV1CollectionsByCollectionIdEventSinksBySinkId = async (collectionId: number,
+    sinkId: number, options?: RequestInit): Promise<getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse> => {
+
+  const res = await fetch(getGetApiV1CollectionsByCollectionIdEventSinksBySinkIdUrl(collectionId,sinkId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse
+}
+
+
+
+export type deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse412 = {
+  data: void
+  status: 412
+}
+
+export type deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseSuccess = (deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseError = (deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse403 | deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse404 | deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse412) & {
+  headers: Headers;
+};
+
+export type deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse = (deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseSuccess | deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseError)
+
+export const getDeleteApiV1CollectionsByCollectionIdEventSinksBySinkIdUrl = (collectionId: number,
+    sinkId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-sinks/${sinkId}`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/collections/{collection_id}/event-sinks/{sink_id}.
+ * @summary Delete Api V1 Collections By Collection Id Event Sinks By Sink Id
+ */
+export const deleteApiV1CollectionsByCollectionIdEventSinksBySinkId = async (collectionId: number,
+    sinkId: number, options?: RequestInit): Promise<deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1CollectionsByCollectionIdEventSinksBySinkIdUrl(collectionId,sinkId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deleteApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse
+}
+
+
+
+export type patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse200 = {
+  data: CollectionEventSink
+  status: 200
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse412 = {
+  data: void
+  status: 412
+}
+
+export type patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseSuccess = (patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseError = (patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse400 | patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse403 | patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse404 | patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse412) & {
+  headers: Headers;
+};
+
+export type patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse = (patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseSuccess | patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponseError)
+
+export const getPatchApiV1CollectionsByCollectionIdEventSinksBySinkIdUrl = (collectionId: number,
+    sinkId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/collections/${collectionId}/event-sinks/${sinkId}`
+}
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/collections/{collection_id}/event-sinks/{sink_id}.
+ * @summary Patch Api V1 Collections By Collection Id Event Sinks By Sink Id
+ */
+export const patchApiV1CollectionsByCollectionIdEventSinksBySinkId = async (collectionId: number,
+    sinkId: number,
+    updateEventSink: UpdateEventSink, options?: RequestInit): Promise<patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPatchApiV1CollectionsByCollectionIdEventSinksBySinkIdUrl(collectionId,sinkId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateEventSink)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse
+}
+
+
+
 export type getApiV1CollectionsByCollectionIdEventSubscriptionsResponse200 = {
   data: EventSubscription[]
   status: 200
@@ -8760,6 +9087,163 @@ const res = await fetch(getPatchApiV1EventSinksBySinkIdUrl(sinkId),
 
   const data: patchApiV1EventSinksBySinkIdResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1EventSinksBySinkIdResponse
+}
+
+
+
+export type getApiV1EventSinksBySinkIdCollectionsResponse200 = {
+  data: number[]
+  status: 200
+}
+
+export type getApiV1EventSinksBySinkIdCollectionsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1EventSinksBySinkIdCollectionsResponseSuccess = (getApiV1EventSinksBySinkIdCollectionsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1EventSinksBySinkIdCollectionsResponseError = (getApiV1EventSinksBySinkIdCollectionsResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1EventSinksBySinkIdCollectionsResponse = (getApiV1EventSinksBySinkIdCollectionsResponseSuccess | getApiV1EventSinksBySinkIdCollectionsResponseError)
+
+export const getGetApiV1EventSinksBySinkIdCollectionsUrl = (sinkId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks/${sinkId}/collections`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/event-sinks/{sink_id}/collections.
+ * @summary Get Api V1 Event Sinks By Sink Id Collections
+ */
+export const getApiV1EventSinksBySinkIdCollections = async (sinkId: number, options?: RequestInit): Promise<getApiV1EventSinksBySinkIdCollectionsResponse> => {
+
+  const res = await fetch(getGetApiV1EventSinksBySinkIdCollectionsUrl(sinkId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1EventSinksBySinkIdCollectionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1EventSinksBySinkIdCollectionsResponse
+}
+
+
+
+export type putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponseSuccess = (putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse204) & {
+  headers: Headers;
+};
+export type putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponseError = (putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse403) & {
+  headers: Headers;
+};
+
+export type putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse = (putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponseSuccess | putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponseError)
+
+export const getPutApiV1EventSinksBySinkIdCollectionsByCollectionIdUrl = (sinkId: number,
+    collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks/${sinkId}/collections/${collectionId}`
+}
+
+/**
+ * Auto-generated documentation for PUT /api/v1/event-sinks/{sink_id}/collections/{collection_id}.
+ * @summary Put Api V1 Event Sinks By Sink Id Collections By Collection Id
+ */
+export const putApiV1EventSinksBySinkIdCollectionsByCollectionId = async (sinkId: number,
+    collectionId: number, options?: RequestInit): Promise<putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse> => {
+
+  const res = await fetch(getPutApiV1EventSinksBySinkIdCollectionsByCollectionIdUrl(sinkId,collectionId),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as putApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse
+}
+
+
+
+export type deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponseSuccess = (deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponseError = (deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse403) & {
+  headers: Headers;
+};
+
+export type deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse = (deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponseSuccess | deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponseError)
+
+export const getDeleteApiV1EventSinksBySinkIdCollectionsByCollectionIdUrl = (sinkId: number,
+    collectionId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/event-sinks/${sinkId}/collections/${collectionId}`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/event-sinks/{sink_id}/collections/{collection_id}.
+ * @summary Delete Api V1 Event Sinks By Sink Id Collections By Collection Id
+ */
+export const deleteApiV1EventSinksBySinkIdCollectionsByCollectionId = async (sinkId: number,
+    collectionId: number, options?: RequestInit): Promise<deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1EventSinksBySinkIdCollectionsByCollectionIdUrl(sinkId,collectionId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deleteApiV1EventSinksBySinkIdCollectionsByCollectionIdResponse
 }
 
 

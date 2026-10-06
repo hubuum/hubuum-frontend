@@ -12,15 +12,15 @@ import { TableExportMenu } from "@/components/table-export-menu";
 import {
 	createCollectionEventSubscription,
 	deleteCollectionEventSubscription,
-	fetchEventSinks,
+	fetchCollectionEventSinks,
 	fetchCollectionEventSubscriptions,
 	updateCollectionEventSubscription,
 } from "@/lib/api/events";
 import type {
-	EventSink,
+	CollectionEventSink,
+	EventSinkKind,
 	EventSubscription,
 	EventSubscriptionFilter,
-	EventSinkKind,
 	NewEventSubscription,
 	UpdateEventSubscription,
 } from "@/lib/api/generated/models";
@@ -29,16 +29,17 @@ import {
 	EVENT_ACTOR_KINDS,
 	EVENT_ENTITY_TYPES,
 } from "@/lib/event-options";
+import { preserveTaskKindFilter } from "@/lib/event-subscription-filter";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 import {
+	webhookHasFixedDestination,
 	webhookSubscriptionRouting,
-	webhookUrlSecretRef,
 } from "@/lib/webhook-presets";
-import { preserveTaskKindFilter } from "@/lib/event-subscription-filter";
 
 type CollectionEventSubscriptionsPanelProps = {
 	collectionId: number;
 	canManage: boolean;
+	canExport: boolean;
 	isPermissionPending: boolean;
 };
 
@@ -182,7 +183,7 @@ function toggleListValue(values: string[], value: string): string[] {
 		: [...values, value];
 }
 
-function getSinkLabel(sink: EventSink): string {
+function getSinkLabel(sink: CollectionEventSink): string {
 	return `${sink.name} (#${sink.id}) · ${sink.kind}${sink.enabled ? "" : " · disabled"}`;
 }
 
@@ -317,9 +318,9 @@ function buildFilter(
 
 function buildRouting(
 	form: SubscriptionFormState,
-	sink: EventSink | undefined,
+	sink: CollectionEventSink | undefined,
 ): unknown {
-	if (webhookUrlSecretRef(sink)) return {};
+	if (webhookHasFixedDestination(sink)) return {};
 	const sinkKind = sink?.kind;
 	if (form.routingMode === "json") {
 		return parseJsonObject(form.routingJson, "Routing");
@@ -359,7 +360,7 @@ function buildRouting(
 function buildPayload(
 	form: SubscriptionFormState,
 	collectionId: number,
-	selectedSink: EventSink | undefined,
+	selectedSink: CollectionEventSink | undefined,
 ): NewEventSubscription {
 	const sinkId = Number.parseInt(form.sinkId, 10);
 	if (!Number.isFinite(sinkId) || sinkId < 1) {
@@ -395,7 +396,7 @@ function getStepError(
 	step: SubscriptionEditorStep,
 	form: SubscriptionFormState,
 	collectionId: number,
-	selectedSink: EventSink | undefined,
+	selectedSink: CollectionEventSink | undefined,
 ): string | null {
 	try {
 		if (step === "destination") {
@@ -430,9 +431,9 @@ function getStepError(
 
 function formatRoutingSummary(
 	form: SubscriptionFormState,
-	sink: EventSink | undefined,
+	sink: CollectionEventSink | undefined,
 ): string {
-	if (webhookUrlSecretRef(sink))
+	if (webhookHasFixedDestination(sink))
 		return "Uses the sink’s configured destination";
 	const sinkKind = sink?.kind;
 	if (form.routingMode === "json") return "Advanced JSON routing";
@@ -491,6 +492,7 @@ function formatFilterSummary(
 export function CollectionEventSubscriptionsPanel({
 	collectionId,
 	canManage,
+	canExport,
 	isPermissionPending,
 }: CollectionEventSubscriptionsPanelProps) {
 	const queryClient = useQueryClient();
@@ -509,8 +511,8 @@ export function CollectionEventSubscriptionsPanel({
 		enabled: canManage,
 	});
 	const sinksQuery = useQuery({
-		queryKey: ["event-sinks", "collection-subscriptions"],
-		queryFn: fetchEventSinks,
+		queryKey: ["collection-event-sinks", collectionId],
+		queryFn: () => fetchCollectionEventSinks(collectionId),
 		enabled: canManage,
 	});
 
@@ -613,6 +615,7 @@ export function CollectionEventSubscriptionsPanel({
 	}
 
 	function startEdit(subscription: EventSubscription) {
+		if (!canExport) return;
 		const sink = sinkLookup.get(subscription.sink_id);
 		setForm(subscriptionToForm(subscription, sink?.kind, collectionId));
 		setEditingSubscriptionId(subscription.id);
@@ -782,7 +785,7 @@ export function CollectionEventSubscriptionsPanel({
 							type="button"
 							className="secondary"
 							onClick={startCreate}
-							disabled={isEditorOpen || sinksQuery.isLoading}
+							disabled={!canExport || isEditorOpen || sinksQuery.isLoading}
 						>
 							New subscription
 						</button>
@@ -794,6 +797,12 @@ export function CollectionEventSubscriptionsPanel({
 				<div className="muted">
 					Checking whether you can manage event subscriptions...
 				</div>
+			) : null}
+			{canManage && !canExport ? (
+				<p className="muted">
+					Read audit permission is required to create or edit event
+					subscriptions.
+				</p>
 			) : null}
 			{!isPermissionPending && !canManage ? (
 				<div className="empty-state">
@@ -1144,7 +1153,7 @@ export function CollectionEventSubscriptionsPanel({
 
 					{activeStep === "routing" ? (
 						<GuidedFlowPanel stepId="routing">
-							{webhookUrlSecretRef(selectedSink) ? (
+							{webhookHasFixedDestination(selectedSink) ? (
 								<p className="field-note">
 									Destination supplied by the sink’s webhook URL secret. No
 									subscription URL is needed.
@@ -1360,7 +1369,7 @@ export function CollectionEventSubscriptionsPanel({
 														type="button"
 														className="ghost"
 														onClick={() => startEdit(subscription)}
-														disabled={actionPending}
+														disabled={!canExport || actionPending}
 													>
 														Edit
 													</button>

@@ -6,6 +6,21 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Collection managers can create and maintain collection-owned webhook destinations
+  with Slack, Mattermost, Discord or custom payload formats, then subscribe to
+  collection events without server administrator setup.
+- Collection destination discovery uses permitted metadata without returning saved
+  URLs or credentials. A delegated-manager browser test covers the complete setup.
+
+### Changed
+
+- **Breaking:** the collection subscription editor now requires the collection
+  sink API from the matching server update after `v0.0.17`. Upgrade the server before
+  using collection integrations. Creation and editing require both
+  `ManageEventSubscription` and `ReadAudit`; shared sinks require a collection grant.
+
 ## [0.0.19] - 2026-10-05
 
 ### Changed

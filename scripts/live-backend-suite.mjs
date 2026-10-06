@@ -1230,6 +1230,7 @@ async function main() {
       enabled: false,
       name: `live_sink_disabled_${suffix}`,
       secret_ref: "live-test-secret-ref",
+      config: { destination_url: "https://example.test/events" },
     },
   });
   assert(patchedSink.data.enabled === false, "Patched sink should be disabled.");
@@ -1257,6 +1258,11 @@ async function main() {
   const sinks = await request("GET", "/api/v1/event-sinks", auth);
   expectArray(sinks.data, "Event sinks");
   pass("listed event sinks");
+
+  // Older servers predate explicit sink grants; current servers require them.
+  await request("PUT", `/api/v1/event-sinks/${sink.data.id}/collections/${collection.data.id}`, {
+    ...auth, expected: [204, 404],
+  });
 
   const deliverySubscription = await request(
     "POST",
@@ -1296,6 +1302,10 @@ async function main() {
   });
   expectId(disabledSink.data, "Created disabled event sink");
   pass("created disabled event sink");
+
+  await request("PUT", `/api/v1/event-sinks/${disabledSink.data.id}/collections/${collection.data.id}`, {
+    ...auth, expected: [204, 404],
+  });
 
   const disabledSubscription = await request(
     "POST",

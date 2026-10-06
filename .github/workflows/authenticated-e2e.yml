@@ -19,6 +19,11 @@ on:
         description: Optional Hubuum Server image override
         required: false
         type: string
+      collection_integrations:
+        description: Require collection integration tests against the updated server
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -50,6 +55,7 @@ jobs:
       - name: Run complete authenticated suite
         env:
           HUBUUM_FULL_E2E_BACKEND_IMAGE: ${{ inputs.backend_image || env.COMPAT_BACKEND_IMAGE }}
+          HUBUUM_FULL_E2E_COLLECTION_INTEGRATIONS: ${{ inputs.collection_integrations && '1' || '0' }}
         run: npm run test:e2e:authenticated:full
       - name: Upload failure diagnostics
         if: failure()
