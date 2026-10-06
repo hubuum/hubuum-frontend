@@ -7,7 +7,7 @@ const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
 const adminPassword = process.env.HUBUUM_LIVE_ADMIN_PASSWORD;
 const expectedServerVersion = process.env.HUBUUM_LIVE_EXPECT_SERVER_VERSION ??
-  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.17");
+  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.18");
 
 if (!adminPassword) {
   throw new Error("HUBUUM_LIVE_ADMIN_PASSWORD is required.");
@@ -195,7 +195,7 @@ async function main() {
       clientConfig.data.authentication.max_token_lifetime_hours >= defaultTokenLifetimeHours,
     "Client config is missing the effective maximum token lifetime.",
   );
-  pass("discovered public v0.0.17 pagination and authentication configuration");
+  pass("discovered public v0.0.18 pagination and authentication configuration");
 
   const openapi = await request("GET", "/api-doc/openapi.json");
   assert(typeof openapi.data.info?.version === "string", "Server OpenAPI omitted its version.");
@@ -302,10 +302,14 @@ async function main() {
     assert(hasSchemaRepairReports, "This run requires saved schema diagnostics and HTML repair reports.");
   }
   const hasSystemSubscriptions = Boolean(openapi.data.paths?.["/api/v1/system-event-subscriptions"]);
-  if (expectedServerVersion === "0.0.17") {
+  if (expectedServerVersion === "0.0.18") {
     assert(hasSystemSubscriptions, "This run requires the released system subscription contract.");
   }
-  const backupVersion = hasSystemSubscriptions ? 7 : hasSchemaEvolution ? 6 : 5;
+  const hasCollectionSinks = Boolean(openapi.data.paths?.["/api/v1/collections/{collection_id}/event-sinks"]);
+  if (expectedServerVersion === "0.0.18") {
+    assert(hasCollectionSinks, "This run requires the released collection sink contract.");
+  }
+  const backupVersion = hasCollectionSinks ? 8 : hasSystemSubscriptions ? 7 : hasSchemaEvolution ? 6 : 5;
 
 
   const token = await loginAs(adminName, adminPassword);
@@ -363,7 +367,7 @@ async function main() {
         runningConfig.data.exports.database_statement_timeout_ms,
     "Admin config is missing the storage query budget or its compatibility alias.",
   );
-  pass("read redacted v0.0.17 admin runtime configuration");
+  pass("read redacted v0.0.18 admin runtime configuration");
 
   const group = await request("POST", "/api/v1/iam/groups", {
     ...auth,
@@ -1259,9 +1263,9 @@ async function main() {
   expectArray(sinks.data, "Event sinks");
   pass("listed event sinks");
 
-  // Older servers predate explicit sink grants; current servers require them.
+  // Shared sink use requires an explicit grant to this collection.
   await request("PUT", `/api/v1/event-sinks/${sink.data.id}/collections/${collection.data.id}`, {
-    ...auth, expected: [204, 404],
+    ...auth, expected: 204,
   });
 
   const deliverySubscription = await request(
@@ -1304,7 +1308,7 @@ async function main() {
   pass("created disabled event sink");
 
   await request("PUT", `/api/v1/event-sinks/${disabledSink.data.id}/collections/${collection.data.id}`, {
-    ...auth, expected: [204, 404],
+    ...auth, expected: 204,
   });
 
   const disabledSubscription = await request(
@@ -1689,6 +1693,9 @@ async function main() {
           delivery_policy: { min_interval_ms: 1000 },
           enabled: false,
         },
+      });
+      await request("PUT", `/api/v1/event-sinks/${presetSink.data.id}/collections/${collection.data.id}`, {
+        ...auth, expected: 204,
       });
       const presetSubscription = await request("POST", `/api/v1/collections/${collection.data.id}/event-subscriptions`, {
         ...auth,

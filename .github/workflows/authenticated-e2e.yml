@@ -19,11 +19,6 @@ on:
         description: Optional Hubuum Server image override
         required: false
         type: string
-      collection_integrations:
-        description: Require collection integration tests against the updated server
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -33,7 +28,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.17@sha256:cc0518167816bfddb38853b8b7217c4a347511318d51e1abca93ca418f31b302
+  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.18@sha256:5b54248f19171200dfa497174d385a48f90666a415cb31732797043d5e182fc4
 
 jobs:
   authenticated-browser:
@@ -55,7 +50,6 @@ jobs:
       - name: Run complete authenticated suite
         env:
           HUBUUM_FULL_E2E_BACKEND_IMAGE: ${{ inputs.backend_image || env.COMPAT_BACKEND_IMAGE }}
-          HUBUUM_FULL_E2E_COLLECTION_INTEGRATIONS: ${{ inputs.collection_integrations && '1' || '0' }}
         run: npm run test:e2e:authenticated:full
       - name: Upload failure diagnostics
         if: failure()

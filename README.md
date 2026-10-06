@@ -377,7 +377,7 @@ root initiator independently of the worker or system actor.
 
 Collection managers with `ManageEventSubscription` and `ReadAudit` can create
 collection-owned webhook destinations and subscriptions on the collection page
-when connected to a server with collection sink support (newer than `v0.0.17`).
+when connected to a server with collection sink support (`v0.0.18` or newer).
 Saved destination URLs are write-only in this view.
 
 Administrators can choose Slack, Mattermost, Discord, or Custom webhook when
@@ -594,13 +594,17 @@ updates, logs, and cleanup.
 
 ## Release artifacts
 
+[Hubuum Frontend v0.0.19](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.19)
+(2026-10-06) adds collection-owned webhook setup for delegated collection managers
+and guided administrator chat integrations.
+
 Current `main` development and Hubuum Frontend `v0.0.19` target the released
-Server `v0.0.17` contract, including nullable system-subscription health and
-backup format 7. Format 6 backups remain accepted by the server. Credential
+Server `v0.0.18` contract, including nullable system-subscription health and
+backup format 8. Formats 6 and 7 remain accepted by the server. Credential
 management continues to require fresh password approvals.
-Upgrading from Server `v0.0.16` requires a maintenance window: stop all writers,
-take a PostgreSQL snapshot, and migrate before starting matching `v0.0.17`
-processes. Binary-only rollback after the notification migration is unsupported.
+Upgrading from Server `v0.0.17` requires a maintenance window: stop all writers,
+take a PostgreSQL snapshot, and migrate before starting matching `v0.0.18`
+processes. Binary-only rollback after the collection-sink migration is unsupported.
 Run the server's separate migration workload before startup and deploy its
 restore executor before confirming web restores. The console polls queued
 restores through completion; keep the restore page open so its in-memory
@@ -664,7 +668,7 @@ server image:
 npm run test:live-backend
 ```
 
-The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.17`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.18`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
@@ -679,7 +683,7 @@ Restore confirmation is skipped when targeting an externally supplied backend UR
 
 Useful overrides:
 
-- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.17`
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.18`
 - `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
 - `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
 - `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`

@@ -8,6 +8,16 @@ const bffPrefix = "/_hubuum-bff/hubuum";
 const sessionExpiredMessage =
 	"Your session has expired. Sign in again to continue.";
 
+function waitForShellReady(page: Page) {
+	// The shell starts its task query after hydration. Register this wait before
+	// navigation so browser tests do not click server-rendered controls too early.
+	return page.waitForResponse(
+		(response) =>
+			new URL(response.url()).pathname === `${bffPrefix}/api/v1/tasks` &&
+			response.ok(),
+	);
+}
+
 async function revokeCurrentBackendToken(page: Page) {
 	const response = await page.request.post(`${bffPrefix}/api/v0/auth/logout`, {
 		headers: { Origin: new URL(page.url()).origin },
@@ -35,8 +45,10 @@ test.describe("authenticated workspace", () => {
 		}
 		await page.getByLabel("Username").fill(username ?? "");
 		await page.getByLabel("Password", { exact: true }).fill(password ?? "");
+		const shellReady = waitForShellReady(page);
 		await page.getByRole("button", { name: "Enter workspace" }).click();
 		await page.waitForURL("**/app");
+		await shellReady;
 	});
 
 	for (const target of ["slack", "mattermost", "discord"] as const) {
@@ -168,10 +180,6 @@ test.describe("authenticated workspace", () => {
 	test("webhook subscription uses the sink destination and retains task-kind filters", async ({
 		page,
 	}) => {
-		test.skip(
-			process.env.E2E_COLLECTION_INTEGRATIONS !== "1",
-			"Requires the updated server's collection destination discovery.",
-		);
 		const suffix = Date.now();
 		const headers = { Origin: new URL(page.url()).origin };
 		const created = await page.request.post(`${bffPrefix}/api/v1/collections`, {
@@ -419,7 +427,9 @@ test.describe("authenticated workspace", () => {
 
 	test("mobile search traps and restores focus", async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
+		const shellReady = waitForShellReady(page);
 		await page.reload();
+		await shellReady;
 		const trigger = page.getByRole("button", { name: "Search workspace" });
 		await trigger.click();
 		const dialog = page.getByRole("dialog", { name: "Search workspace" });

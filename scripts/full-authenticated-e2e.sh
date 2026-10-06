@@ -6,7 +6,7 @@ BACKEND_COMPOSE_FILE="${ROOT_DIR}/docker-compose.live-backend.yml"
 VALKEY_COMPOSE_FILE="${ROOT_DIR}/compose.dev.yml"
 BACKEND_PROJECT="${HUBUUM_FULL_E2E_BACKEND_PROJECT:-hubuum-frontend-full-e2e-backend}"
 VALKEY_PROJECT="${HUBUUM_FULL_E2E_VALKEY_PROJECT:-hubuum-frontend-full-e2e-valkey}"
-BACKEND_IMAGE="${HUBUUM_FULL_E2E_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.17@sha256:cc0518167816bfddb38853b8b7217c4a347511318d51e1abca93ca418f31b302}"
+BACKEND_IMAGE="${HUBUUM_FULL_E2E_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.18@sha256:5b54248f19171200dfa497174d385a48f90666a415cb31732797043d5e182fc4}"
 BACKEND_PORT="${HUBUUM_FULL_E2E_BACKEND_PORT:-19999}"
 VALKEY_PORT="${HUBUUM_FULL_E2E_VALKEY_PORT:-16379}"
 BASE_URL="http://127.0.0.1:${BACKEND_PORT}"
@@ -100,7 +100,6 @@ VALKEY_URL="redis://127.0.0.1:${VALKEY_PORT}/0" \
 E2E_USERNAME="admin" \
 E2E_PASSWORD="${admin_password}" \
 E2E_IDENTITY_SCOPE="local" \
-E2E_COLLECTION_INTEGRATIONS="${HUBUUM_FULL_E2E_COLLECTION_INTEGRATIONS:-0}" \
   npx playwright test tests/e2e/authenticated-ui.spec.ts \
     tests/e2e/collection-event-self-service.spec.ts \
     --project=chromium \

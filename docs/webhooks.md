@@ -4,7 +4,7 @@ Administrators can choose **Slack**, **Mattermost**, or **Discord** in
 **Admin → Events → Create sink → Webhook target**. Each setup supplies a message
 template, acknowledgement rules, retries, and one-second delivery spacing.
 The server stores an ordinary `webhook` sink; the target choice is only a console
-setup aid. These presets require Server `v0.0.17` or newer.
+setup aid. These presets require Server `v0.0.18` or newer.
 
 ## Collection self-service
 
@@ -26,9 +26,10 @@ returns only owned and explicitly granted destinations, without sink configurati
 or credentials. Revoking the grant stops new deliveries; an already admitted
 network request may finish. Delivery diagnostics and retries remain in **Admin → Events**.
 
-These collection endpoints require the corresponding server update; `v0.0.17`
-does not provide them. The console reports that missing support instead of calling
-the administrator-only sink list from a delegated collection editor.
+These collection endpoints are included in Server `v0.0.18`, the supported
+release target. Upgrade the server before deploying this frontend. The console
+reports missing support instead of calling the administrator-only sink list
+from a delegated collection editor.
 
 ## Connect a destination
 
@@ -48,7 +49,7 @@ the administrator-only sink list from a delegated collection editor.
 
 The server must run fan-out and delivery workers, and each delivery worker must
 resolve the same secret alias. The console does not provision external secrets
-or enable server workers. See the [server webhook setup guide](https://github.com/hubuum/hubuum/blob/v0.0.17/docs/webhook_notifications.md)
+or enable server workers. See the [server webhook setup guide](https://github.com/hubuum/hubuum/blob/v0.0.18/docs/webhook_notifications.md)
 for environment/file setup, private Mattermost destinations, system subscriptions,
 and preview/test-delivery commands. Saving a sink does not send a test message.
 
