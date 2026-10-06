@@ -6,66 +6,53 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.19] - 2026-10-06
+
 ### Added
 
 - Collection managers can create and maintain collection-owned webhook destinations
   with Slack, Mattermost, Discord or custom payload formats, then subscribe to
   collection events without server administrator setup.
-- Collection destination discovery uses permitted metadata without returning saved
-  URLs or credentials. A delegated-manager browser test covers the complete setup.
+- Collection discovery returns permitted metadata without saved URLs or credentials.
+  Required browser verification covers delegated setup and subscription editing.
+- Guided administrator chat webhook setup with secret-backed URLs, provider payload
+  and acknowledgement defaults, rate-limit handling, and delivery spacing.
+- A walkthrough using the shared Atlas example inventory, with classes, objects,
+  relations, and permissions linked to the server-owned import and backup.
+- A searchable, versioned documentation site with shared Hubuum navigation,
+  automatic GitHub Pages publishing, immutable release snapshots, and an explicit
+  development edition. Shared theme updates also reach retained release editions.
 
-### Changed
+### Compatibility
 
-- **Breaking:** the collection subscription editor now requires the collection
-  sink API from the matching server update after `v0.0.17`. Upgrade the server before
-  using collection integrations. Creation and editing require both
-  `ManageEventSubscription` and `ReadAudit`; shared sinks require a collection grant.
-
-## [0.0.19] - 2026-10-05
+- **Breaking:** target Server `v0.0.18` and its immutable released image. Upgrade
+  the server before using collection integrations. Creation and editing require
+  `ManageEventSubscription` and `ReadAudit`; shared sinks require direct grants.
+- Regenerate the client from the released 235-operation contract, including
+  collection sinks, grants, system subscriptions, and webhook preview/test APIs.
+- Verify backup format 8; formats 6 and 7 remain accepted by the server. Stop all
+  API, worker, and restore-executor writers, take a PostgreSQL snapshot, apply the
+  collection-sink migration, and start matching Server `v0.0.18` binaries.
+  Binary-only rollback is unsupported: restore the snapshot with matching old
+  binaries, losing later writes. Older servers cannot restore format 8.
+- Bind credential-bearing webhooks to a fixed destination. Collection-owned
+  integrations survive the creator losing access; related-collection deliveries
+  redact snapshots. See the compatibility guide for earlier upgrade requirements.
 
 ### Changed
 
 - Refresh application and development dependencies, container pins, and GitHub
-  Actions to the current release baseline; update Orval to `8.40.0` and
-  regenerate the client from the released Server `v0.0.17` contract.
-- Documentation uses the shared warm Hubuum theme from the ecosystem site's
-  unversioned stylesheet, including retained release editions. Future styling
-  updates no longer require changes or rebuilds in this repository.
-
-### Compatibility
-
-- Adopt Server `v0.0.17` and its immutable multi-architecture image. Generated
-  types include webhook notifications, system subscriptions, task-kind filters,
-  and nullable collection IDs in subscription delivery health.
-- Verify backup format 7 while retaining server validation of format 6 imports.
-  Upgrading from Server `v0.0.16` requires stopping all writers, taking a
-  PostgreSQL snapshot, and running the notification migration before starting
-  matching binaries. Binary-only rollback is unsupported; recovery requires
-  that snapshot and matching `v0.0.16` binaries. Optional Treetop deployments
-  must upgrade to protocol 0.1 and rebuild format 2 policy bundles.
-
-### Added
-
-- Guided Slack, Mattermost, and Discord webhook setup with secret-backed URLs,
-  provider payload and acknowledgement defaults, rate-limit handling, and delivery
-  spacing. Presets save as ordinary webhooks and can be customized as JSON.
-- Collection subscriptions reuse sink-configured destinations and preserve
-  task-kind filters when edited. Existing sink configuration and delivery policies
-  survive edits without reapplying defaults.
-- A walkthrough using the shared Atlas example inventory, with classes, objects,
-  relations, and permissions linked to the server-owned import and backup.
-- A searchable, versioned documentation site with shared Hubuum navigation,
-  automatic GitHub Pages publishing, the latest release as its default,
-  immutable release snapshots, and an explicit development edition.
+  Actions to the current release baseline, including Next.js 16.4.0. Validate their
+  combined set before release.
+- Keep Orval `8.40.0` pinned and use the shared Hubuum documentation theme.
 
 ### Fixed
 
-- Entering `null` in delivery policy JSON disables existing spacing instead of
-  silently preserving it.
+- Existing custom sink settings, delivery policies, and task-kind filters survive
+  edits. Entering `null` in delivery policy JSON disables existing spacing.
 - Exclude generated documentation artifacts from application lint checks.
-- Documentation tables keep long environment-variable names readable, use wider
-  reference layouts, and scroll within the table on small screens. Shared style
-  fixes also reach retained release documentation.
+- Documentation tables keep long names readable and scroll within the table on
+  small screens. Shared style fixes also reach retained release documentation.
 
 ## [0.0.18] - 2026-09-22
 

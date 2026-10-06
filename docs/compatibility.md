@@ -5,8 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.17` | `ghcr.io/hubuum/hubuum-server:v0.0.17` |
-| `v0.0.19` | `v0.0.17` | `ghcr.io/hubuum/hubuum-server:v0.0.17` |
+| `main` (unreleased) | `v0.0.18` | `ghcr.io/hubuum/hubuum-server:v0.0.18` |
+| `v0.0.19` | `v0.0.18` | `ghcr.io/hubuum/hubuum-server:v0.0.18` |
 | `v0.0.18` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
 | `v0.0.17` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
 | `v0.0.16` | `v0.0.15` | `ghcr.io/hubuum/hubuum-server:v0.0.15` |
@@ -28,8 +28,8 @@ should pin both components to explicit versions.
 
 Required pull-request and release checks use the immutable digest behind the
 listed server tag. Frontend `v0.0.19` and unreleased `main` target
-Server `v0.0.17` at
-`sha256:cc0518167816bfddb38853b8b7217c4a347511318d51e1abca93ca418f31b302`.
+Server `v0.0.18` at
+`sha256:5b54248f19171200dfa497174d385a48f90666a415cb31732797043d5e182fc4`.
 Frontend `v0.0.17` and `v0.0.18` retain Server `v0.0.16` at
 `sha256:37b3299edd845a0c2aa7772d7d68565233ac8c1802bc44be3fb4bbc6dfa8778e`.
 Frontend `v0.0.16` retains its Server `v0.0.15` target at
@@ -37,6 +37,39 @@ Frontend `v0.0.16` retains its Server `v0.0.15` target at
 Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
 A separate scheduled workflow follows the moving backend `:main` image.
+
+## Server v0.0.18
+
+Frontend v0.0.19 targets the released 235-operation contract, including collection
+sink discovery, owned-webhook CRUD, and direct administrator grants. The generated
+client and required contract/browser suites use this same release. Delegated
+collection setup and subscription editing run in the complete authenticated suite
+without a separate feature opt-in.
+
+The image was published from server commit
+`35fcf6696d4d564e2d89534db0c5194c14129d9f`; its digest, native Linux AMD64
+binary version, and OCI source/version labels were verified before testing.
+On 2026-10-06, the released image passed all 107 live contract checks and
+40 authenticated browser tests, followed by three credential-approval and full
+restore tests. The complete browser run passed without retries on Next.js 16.4.0.
+
+Upgrade the server first. Collection managers need `ManageEventSubscription` and
+`ReadAudit`; shared destinations need direct collection grants. Saved destinations
+and credentials remain write-only in collection discovery. Credential-bearing
+webhooks and static headers require fixed destinations. Integrations belong to the
+collection and survive their creator losing access; related-collection deliveries
+omit snapshots, and revocation is enforced before dispatch.
+
+Backups use format 8, preserving collection sink ownership and grants. Formats 6
+and 7 remain accepted, but older servers cannot restore format 8. Stop all API,
+worker, and restore-executor writers, take a PostgreSQL snapshot, apply
+`2026-10-05-000001_collection_event_sinks`, reconcile role grants, and start matching
+v0.0.18 binaries. Binary-only rollback is unsupported; restore that snapshot with
+matching v0.0.17 binaries, losing later writes. Earlier upgrades must also follow
+the historical requirements below.
+
+See the [server release notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.18)
+and [webhook guide](webhooks.md).
 
 ## Server v0.0.17
 
@@ -365,8 +398,8 @@ and should not confirm web restores against this server release.
 
 The collection webhook editor now uses the collection-scoped destination contract
 included in `openapi.json`: `/api/v1/collections/{id}/event-sinks`. It requires the
-matching server update after `v0.0.17`; existing released images do not implement
-these endpoints. Test this workflow against a server built with that update.
+released server `v0.0.18`, which implements these endpoints. The required
+browser suite uses the immutable image digest for this release.
 Global administrator sink setup remains available in **Admin → Events**.
 
 Subscription creation and editing require `ReadAudit` as well as
@@ -376,7 +409,5 @@ New webhook configurations carrying bearer credentials or static headers must bi
 their destination in the sink. Collection-created webhooks always use a fixed URL.
 
 The full authenticated browser runner includes delegated collection-manager and
-shared-sink subscription coverage. Set `HUBUUM_FULL_E2E_COLLECTION_INTEGRATIONS=1`
-when selecting an updated backend image. Direct Playwright runs use
-`E2E_COLLECTION_INTEGRATIONS=1`. These two tests are explicitly skipped on the
-released v0.0.17 fixture; they must pass against the matching update before rollout.
+shared-sink subscription coverage. Both workflows are mandatory against the
+pinned v0.0.18 fixture, without a separate feature opt-in.

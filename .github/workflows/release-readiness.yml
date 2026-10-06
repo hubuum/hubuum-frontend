@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.17@sha256:cc0518167816bfddb38853b8b7217c4a347511318d51e1abca93ca418f31b302
+  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.18@sha256:5b54248f19171200dfa497174d385a48f90666a415cb31732797043d5e182fc4
 
 jobs:
   dependency-gate:

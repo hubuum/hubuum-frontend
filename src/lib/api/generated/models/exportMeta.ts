@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.17
+ * OpenAPI spec version: 0.0.18
  */
 import type { ExportContentType } from './exportContentType';
 import type { ExportScope } from './exportScope';

@@ -9,7 +9,7 @@ test("delegated collection manager creates a webhook and subscription without gl
 	browser,
 }) => {
 	test.skip(
-		!process.env.E2E_PASSWORD || process.env.E2E_COLLECTION_INTEGRATIONS !== "1",
+		!process.env.E2E_PASSWORD,
 		"Requires a disposable server with collection sink support.",
 	);
 	await page.goto("/login");
