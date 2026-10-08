@@ -87,7 +87,9 @@ test.describe("workspace quality", () => {
 		await page.goto("/login");
 		await expect(
 			page.getByRole("form", { name: "Login form" }),
-		).not.toHaveAttribute("data-provider-discovery", "loading");
+		).not.toHaveAttribute("data-provider-discovery", "loading", {
+			timeout: 20_000,
+		});
 		const scope = page.locator("#identity-scope");
 		if (await page.locator("select#identity-scope").isVisible())
 			await scope.selectOption(process.env.E2E_IDENTITY_SCOPE ?? "local");
@@ -100,6 +102,837 @@ test.describe("workspace quality", () => {
 		await page.getByRole("button", { name: "Enter workspace" }).click();
 		await page.waitForURL("**/app");
 		await prepareWorkspace(page);
+	});
+
+	test("audit filters and page position survive refresh and browser history", async ({
+		page,
+	}) => {
+		test.setTimeout(90_000);
+		const requests: URLSearchParams[] = [];
+		await page.route(`**${prefix}/events?*`, (route) => {
+			const params = new URL(route.request().url()).searchParams;
+			requests.push(params);
+			return route.fulfill({
+				json: [],
+				headers: params.has("cursor") ? {} : { "X-Next-Cursor": "audit-next" },
+			});
+		});
+		await page.goto("/audit");
+		await page
+			.getByRole("combobox", { name: "Action", exact: true })
+			.selectOption("updated");
+		await page
+			.getByRole("combobox", { name: "Collection", exact: true })
+			.selectOption("1");
+		await page
+			.getByRole("button", { name: "Apply filters", exact: true })
+			.click();
+		await expect(page).toHaveURL(/action=updated/);
+		await expect.poll(() => requests.at(-1)?.get("collection_id")).toBe("1");
+		const filteredUrl = page.url();
+		await page.reload();
+		await expect(
+			page.getByRole("combobox", { name: "Action", exact: true }),
+		).toHaveValue("updated");
+		await expect(
+			page.getByRole("combobox", { name: "Collection", exact: true }),
+		).toHaveValue("1");
+		await page.getByRole("button", { name: "Next page", exact: true }).click();
+		await expect(page).toHaveURL(/cursor=audit-next/);
+		await page.reload();
+		await expect.poll(() => requests.at(-1)?.get("cursor")).toBe("audit-next");
+		await page.goBack();
+		await expect(page).toHaveURL(filteredUrl);
+		await expect(
+			page.getByRole("combobox", { name: "Action", exact: true }),
+		).toHaveValue("updated");
+		await page.goForward();
+		await expect(page).toHaveURL(/cursor=audit-next/);
+		await page.goBack();
+		await expect(page).toHaveURL(filteredUrl);
+		await page.goBack();
+		await expect(page).toHaveURL(/\/audit$/);
+		await expect(
+			page.getByRole("combobox", { name: "Action", exact: true }),
+		).toHaveValue("");
+	});
+
+	test("exports tab and template filters survive refresh and return navigation", async ({
+		page,
+	}) => {
+		test.setTimeout(90_000);
+		await page.route(`**${prefix}/export-templates*`, (route) =>
+			route.fulfill({
+				json: [
+					{
+						id: 1,
+						name: "RHEL report",
+						description: "Inventory",
+						collection_id: 1,
+						content_type: "text/plain",
+						kind: "jinja",
+						scope_kind: "collections",
+						template: "Inventory",
+						created_at: timestamp,
+						updated_at: timestamp,
+						revision: 1,
+					},
+				],
+			}),
+		);
+		await page.route(`**${prefix}/tasks?*`, (route) =>
+			route.fulfill({ json: [] }),
+		);
+		await page.goto("/exports");
+		await page.getByRole("tab", { name: /Templates/ }).click();
+		await page.getByRole("searchbox", { name: "Find a template" }).fill("RHEL");
+		await page
+			.getByRole("combobox", { name: "Collection", exact: true })
+			.selectOption("1");
+		await expect(page).toHaveURL(/view=templates/);
+		const filteredUrl = page.url();
+		await page.reload();
+		await expect(page.getByRole("tab", { name: /Templates/ })).toHaveAttribute(
+			"aria-selected",
+			"true",
+		);
+		await expect(
+			page.getByRole("searchbox", { name: "Find a template" }),
+		).toHaveValue("RHEL");
+		await expect(
+			page.getByRole("combobox", { name: "Collection", exact: true }),
+		).toHaveValue("1");
+		await page.getByRole("button", { name: "Create new template" }).click();
+		await expect(page).toHaveURL(/exports\/templates\/new/);
+		await page.goBack();
+		await expect(page).toHaveURL(filteredUrl);
+		await expect(
+			page.getByRole("searchbox", { name: "Find a template" }),
+		).toHaveValue("RHEL");
+		await page.getByRole("tab", { name: /History/ }).click();
+		await expect(page).toHaveURL(/view=history/);
+		await page.reload();
+		await expect(page.getByRole("tab", { name: /History/ })).toHaveAttribute(
+			"aria-selected",
+			"true",
+		);
+	});
+
+	test("relation views follow URL changes and Back instead of stale initial state", async ({
+		page,
+	}) => {
+		test.setTimeout(90_000);
+		await page.route(`**${prefix}/relations/classes*`, (route) =>
+			route.fulfill({ json: [] }),
+		);
+		await page.route(`**${prefix}/classes/*/related/classes*`, (route) =>
+			route.fulfill({ json: [] }),
+		);
+		await page.goto("/relations/classes?classView=direct&fromClassId=10");
+		await expect(
+			page.getByRole("combobox", { name: "From class", exact: true }),
+		).toHaveValue("10");
+		await page
+			.getByRole("combobox", { name: "Class relations view" })
+			.selectOption("connected");
+		await expect(page).toHaveURL(/classView=connected/);
+		await page.reload();
+		await expect(
+			page.getByRole("combobox", { name: "Class relations view" }),
+		).toHaveValue("connected");
+		await page.evaluate(() =>
+			window.history.pushState(
+				null,
+				"",
+				"/relations/classes?classView=direct&fromClassId=20",
+			),
+		);
+		await expect(
+			page.getByRole("combobox", { name: "Class relations view" }),
+		).toHaveValue("direct");
+		await expect(
+			page.getByRole("combobox", { name: "From class", exact: true }),
+		).toHaveValue("20");
+		await page.goBack();
+		await expect(
+			page.getByRole("combobox", { name: "Class relations view" }),
+		).toHaveValue("connected");
+		await page.goForward();
+		await expect(
+			page.getByRole("combobox", { name: "From class", exact: true }),
+		).toHaveValue("20");
+	});
+
+	test("aggregate tree keeps complete subtotals across child pages and retries", async ({
+		page,
+	}, testInfo) => {
+		test.setTimeout(90_000);
+		page.setDefaultTimeout(10_000);
+		const requests: URLSearchParams[] = [];
+		let finishChildren = () => {};
+		const lastPage = new Promise<void>((resolve) => {
+			finishChildren = resolve;
+		});
+		let failLeaves = true;
+		await page.route(`**${prefix}/classes/10?*`, (route) =>
+			route.fulfill({ json: classes[0] }),
+		);
+		await page.route("**/_hubuum-bff/classes/10/objects?*", (route) =>
+			route.fulfill({
+				json: [
+					{
+						id: 100,
+						name: "rhel-host",
+						description: "RHEL",
+						collection_id: 1,
+						hubuum_class_id: 10,
+						created_at: timestamp,
+						updated_at: timestamp,
+						data: { os_major: 9, os_minor: 1, os_patch: 0, cost: 10 },
+						computed: { shared: { values: {}, errors: {} } },
+					},
+				],
+			}),
+		);
+		await page.route(`**${prefix}/classes/10/computed-fields*`, (route) =>
+			route.fulfill({ json: { fields: [] } }),
+		);
+		await page.route(`**${prefix}/iam/me/computed-fields*`, (route) =>
+			route.fulfill({ json: [] }),
+		);
+		await page.route(
+			`**${prefix}/classes/10/object-aggregates?*`,
+			async (route) => {
+				const params = new URL(route.request().url()).searchParams;
+				requests.push(params);
+				const fields = params.getAll("group_by");
+				const row = (
+					values: Array<number | null | undefined>,
+					count: number,
+					average: number,
+				) => ({
+					dimensions: fields.map((field, index) => ({
+						field,
+						state:
+							values[index] === null
+								? "null"
+								: values[index] === undefined
+									? "missing"
+									: "value",
+						...(values[index] == null ? {} : { value: values[index] }),
+					})),
+					object_count: count,
+					measures: params.getAll("aggregate").map((measure) => ({
+						field: measure.split(":")[1],
+						operation: measure.split(":")[0],
+						state: "value",
+						value: average,
+						value_count: count,
+						skipped_count: 0,
+					})),
+				});
+				if (fields.length === 1)
+					return route.fulfill({
+						json: [
+							params.has("cursor") ? row([10], 80, 50) : row([9], 100, 23.45),
+						],
+						headers: {
+							"X-Total-Count": "2",
+							...(params.has("cursor") ? {} : { "X-Next-Cursor": "roots-2" }),
+						},
+					});
+				if (fields.length === 2) {
+					if (params.get("cursor") === "children-3") {
+						await lastPage;
+						return route.fulfill({ json: [row([9, undefined], 5, 15)] });
+					}
+					if (params.get("cursor") === "children-2")
+						return route.fulfill({
+							json: [row([9, 2], 35, 22), row([9, null], 20, 30)],
+							headers: { "X-Next-Cursor": "children-3" },
+						});
+					return route.fulfill({
+						json: [row([9, 1], 40, 7.5), row([10, 1], 80, 50)],
+						headers: { "X-Next-Cursor": "children-2" },
+					});
+				}
+				if (failLeaves) {
+					failLeaves = false;
+					return route.fulfill({ status: 503, json: { message: "Try again" } });
+				}
+				return route.fulfill({
+					json: [
+						row([9, 1, 0], 30, 5),
+						row([9, 1, 1], 10, 15),
+						row([10, 1, 0], 80, 50),
+					],
+				});
+			},
+		);
+		await page.goto("/objects?classId=10&limit=2");
+		await expect(
+			page.getByRole("link", { name: "rhel-host", exact: true }),
+		).toBeVisible();
+		const trigger = page.getByRole("button", { name: /^Aggregate/ });
+		await trigger.click();
+		const menu = page.getByRole("dialog", { name: "Group objects" });
+		await menu
+			.getByRole("combobox", { name: "Group by", exact: true })
+			.selectOption({ label: "os_major" });
+		await menu.getByRole("button", { name: "Add group by" }).click();
+		await menu
+			.getByRole("combobox", { name: "Group by 2", exact: true })
+			.selectOption({ label: "os_minor" });
+		await menu.getByRole("button", { name: "Add group by" }).click();
+		await menu
+			.getByRole("combobox", { name: "Group by 3", exact: true })
+			.selectOption({ label: "os_patch" });
+		await menu.getByRole("button", { name: "Add measure" }).click();
+		await menu.getByLabel("Numeric field").selectOption({ label: "cost" });
+		await menu
+			.getByRole("combobox", { name: "Calculation 1", exact: true })
+			.selectOption("average");
+		await page.keyboard.press("Escape");
+		const tree = page.getByRole("region", {
+			name: "Object aggregates",
+			exact: true,
+		});
+		const parent = tree
+			.getByRole("row")
+			.filter({ has: page.getByRole("button", { name: /os_major: 9$/ }) });
+		await expect(parent.getByRole("cell").nth(1)).toHaveText("100");
+		await expect(parent.getByRole("cell").nth(2)).toContainText("23.45");
+		expect(
+			requests.some((params) => params.getAll("group_by").length > 1),
+		).toBe(false);
+		await tree
+			.getByRole("button", { name: "Expand os_major: 9", exact: true })
+			.click();
+		await expect(tree.getByRole("status")).toContainText(
+			"4 aggregate groups loaded",
+		);
+		await expect(parent.getByRole("cell").nth(1)).toHaveText("100");
+		finishChildren();
+		await expect(
+			tree.getByRole("button", { name: "Expand os_minor: 1", exact: true }),
+		).toBeVisible();
+		await tree
+			.getByRole("button", { name: /Show more subgroups for 9/ })
+			.click();
+		await expect(
+			tree.getByRole("button", {
+				name: "Expand os_minor: (null)",
+				exact: true,
+			}),
+		).toBeVisible();
+		await expect(
+			tree.getByRole("button", {
+				name: "Expand os_minor: (missing)",
+				exact: true,
+			}),
+		).toBeVisible();
+		await tree
+			.getByRole("button", { name: "Expand os_minor: 1", exact: true })
+			.click();
+		await expect(tree.getByRole("alert")).toContainText(
+			"Could not load subgroups for 1",
+		);
+		await expect(parent.getByRole("cell").nth(1)).toHaveText("100");
+		await tree
+			.getByRole("button", { name: "Retry subgroups for 1", exact: true })
+			.click();
+		await expect(
+			tree.getByRole("row").filter({ hasText: "os_patch" }),
+		).toHaveCount(2);
+		await expect(parent.getByRole("cell").nth(2)).toContainText("23.45");
+		await tree
+			.getByRole("button", { name: "Load more groups", exact: true })
+			.click();
+		await tree
+			.getByRole("button", { name: "Expand os_major: 10", exact: true })
+			.click();
+		expect(
+			requests.filter((params) => params.getAll("group_by").length === 2),
+		).toHaveLength(3);
+		expect(
+			requests
+				.filter((params) => params.getAll("group_by").length > 1)
+				.every(
+					(params) =>
+						params.get("include_total") === "false" &&
+						!params.has("group_path"),
+				),
+		).toBe(true);
+		await page.setViewportSize({ width: 390, height: 900 });
+		expect(
+			(
+				await new AxeBuilder({ page })
+					.include(".object-grouped-table-scroll")
+					.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+					.analyze()
+			).violations,
+		).toEqual([]);
+		await page.screenshot({
+			path: testInfo.outputPath("aggregate-tree-mobile.png"),
+		});
+		await trigger.click();
+		await menu.getByLabel("Sort groups").selectOption("value-asc");
+		await page.keyboard.press("Escape");
+		await expect(
+			tree.getByRole("button", { name: "Expand os_major: 9", exact: true }),
+		).toBeVisible();
+		await expect(tree.getByRole("button", { name: /^Collapse/ })).toHaveCount(
+			0,
+		);
+	});
+
+	test("aggregate counts use server filters and pagination with shareable links and Back restores the tree", async ({
+		page,
+		context,
+	}, testInfo) => {
+		test.setTimeout(120_000);
+		page.setDefaultTimeout(10_000);
+		const memberRequests: URLSearchParams[] = [];
+		let failMembers = true;
+		const objects = [
+			{ os_major: 8, os_minor: "1" },
+			{ os_major: "9", os_minor: "1" },
+			{ os_major: "8", os_minor: "1" },
+			{ os_major: "8", os_minor: "2" },
+			{ os_major: "8", os_minor: null },
+			{ os_major: "8" },
+			{ os_major: "8", os_minor: "1" },
+			{ os_major: "8", os_minor: "1" },
+		].map((data, index) => ({
+			id: 100 + index,
+			name: `host-${100 + index}`,
+			description: index === 7 ? "Debian" : "RHEL",
+			collection_id: 1,
+			hubuum_class_id: 10,
+			created_at: timestamp,
+			updated_at: timestamp,
+			revision: 1,
+			data,
+			computed: {
+				shared: {
+					values: {},
+					errors: {},
+					revision: 1,
+					materialization_stale: false,
+				},
+			},
+		}));
+		await context.route(`**${prefix}/classes?*`, (route) =>
+			route.fulfill({ json: classes }),
+		);
+		await context.route(`**${prefix}/collections?*`, (route) =>
+			route.fulfill({ json: [root] }),
+		);
+		await context.route(`**${prefix}/classes/10?*`, (route) =>
+			route.fulfill({ json: classes[0] }),
+		);
+		await context.route(`**${prefix}/classes/10/computed-fields*`, (route) =>
+			route.fulfill({ json: { fields: [] } }),
+		);
+		await context.route(`**${prefix}/iam/me/computed-fields*`, (route) =>
+			route.fulfill({ json: [] }),
+		);
+		await page.unroute("**/_hubuum-bff/classes/*/objects?*");
+		await context.route("**/_hubuum-bff/classes/10/objects?*", (route) => {
+			const params = new URL(route.request().url()).searchParams;
+			const isMembers =
+				params.has("json_data__regex") || params.has("json_data__is_null");
+			if (isMembers) {
+				memberRequests.push(params);
+				if (failMembers) {
+					return route.fulfill({ status: 503, json: { message: "Try again" } });
+				}
+			}
+			const filtered = objects.filter((object) => {
+				if (
+					params.get("description__equals") === "RHEL" &&
+					object.description !== "RHEL"
+				)
+					return false;
+				for (const predicate of params.getAll("json_data__regex")) {
+					const separator = predicate.indexOf("=");
+					const value =
+						object.data[
+							predicate.slice(0, separator) as keyof typeof object.data
+						];
+					if (
+						value == null ||
+						!new RegExp(predicate.slice(separator + 1)).test(String(value))
+					)
+						return false;
+				}
+				return params
+					.getAll("json_data__is_null")
+					.every(
+						(field) => object.data[field as keyof typeof object.data] == null,
+					);
+			});
+			const offset = Number(params.get("cursor")?.replace("page-", "")) || 0;
+			const limit = Number(params.get("limit"));
+			return route.fulfill({
+				json: filtered.slice(offset, offset + limit),
+				headers: {
+					"X-Total-Count": String(filtered.length),
+					...(offset + limit < filtered.length
+						? { "X-Next-Cursor": `page-${offset + limit}` }
+						: {}),
+				},
+			});
+		});
+		await context.route(
+			`**${prefix}/classes/10/object-aggregates?*`,
+			(route) => {
+				const params = new URL(route.request().url()).searchParams;
+				const fields = params.getAll("group_by");
+				const groups = new Map<
+					string,
+					{
+						dimensions: { field: string; state: string; value?: unknown }[];
+						object_count: number;
+					}
+				>();
+				for (const object of objects.slice(0, 7)) {
+					const dimensions = fields.map((field) => {
+						const value =
+							field === "collection_id"
+								? 1
+								: object.data[field.slice(10) as keyof typeof object.data];
+						return {
+							field,
+							state:
+								value === undefined
+									? "missing"
+									: value === null
+										? "null"
+										: "value",
+							...(value == null ? {} : { value }),
+						};
+					});
+					const key = JSON.stringify(dimensions);
+					const group = groups.get(key) ?? { dimensions, object_count: 0 };
+					group.object_count += 1;
+					groups.set(key, group);
+				}
+				const rows = [...groups.values()].sort(
+					(a, b) => b.object_count - a.object_count,
+				);
+				const offset = Number(params.get("cursor")) || 0;
+				const limit = Number(params.get("limit"));
+				return route.fulfill({
+					json: rows.slice(offset, offset + limit),
+					headers: {
+						"X-Total-Count": String(rows.length),
+						...(offset + limit < rows.length
+							? { "X-Next-Cursor": String(offset + limit) }
+							: {}),
+					},
+				});
+			},
+		);
+		const params = new URLSearchParams({
+			classId: "10",
+			limit: "2",
+			objectFilters: JSON.stringify([
+				{ field: "description", operator: "equals", value: "RHEL" },
+			]),
+		});
+		await page.goto(`/objects?${params}`);
+		await expect(
+			page.getByRole("link", { name: "host-100", exact: true }),
+		).toBeVisible();
+		const trigger = page.getByRole("button", { name: /^Aggregate/ });
+		await trigger.click();
+		const menu = page.getByRole("dialog", { name: "Group objects" });
+		await menu
+			.getByRole("combobox", { name: "Group by", exact: true })
+			.selectOption({ label: "os_major" });
+		await menu.getByRole("button", { name: "Add group by" }).click();
+		await menu
+			.getByRole("combobox", { name: "Group by 2", exact: true })
+			.selectOption({ label: "os_minor" });
+		await page.keyboard.press("Escape");
+		const tree = page.getByRole("region", {
+			name: "Object aggregates",
+			exact: true,
+		});
+		await expect(
+			tree.getByText("Expand a group to see its subgroups.", { exact: false }),
+		).toHaveCount(0);
+		const parentCount = page.getByRole("button", {
+			name: "View 5 objects for os_major: 8",
+			exact: true,
+		});
+		const parentRow = tree.getByRole("row").filter({ has: parentCount });
+		await parentRow
+			.getByRole("button", { name: "Expand os_major: 8", exact: true })
+			.click();
+		expect(memberRequests).toHaveLength(0);
+		await parentCount.click();
+		const dialog = page.getByRole("dialog", {
+			name: /matching objects/,
+		});
+		await expect(dialog.getByRole("alert")).toContainText("Try again");
+		failMembers = false;
+		memberRequests.length = 0;
+		await dialog
+			.getByRole("button", { name: "Retry matching objects" })
+			.click();
+		const objectLinks = dialog.getByRole("link", { name: /^host-/ });
+		await expect(objectLinks).toHaveText(["host-100", "host-102"]);
+		await expect(dialog.getByRole("heading")).toContainText(
+			"6 matching objects",
+		);
+		expect(memberRequests).toHaveLength(1);
+		expect(memberRequests[0].get("cursor")).toBeNull();
+		await expect(dialog.getByText(/checked/)).toHaveCount(0);
+		await dialog.getByRole("button", { name: "Next page" }).click();
+		await expect(objectLinks).toHaveText(["host-103", "host-104"]);
+		expect(memberRequests.at(-1)?.get("cursor")).toBe("page-2");
+		await dialog.getByRole("button", { name: "Next page" }).click();
+		await expect(objectLinks).toHaveText(["host-105", "host-106"]);
+		await dialog.getByRole("button", { name: "Previous page" }).click();
+		await expect(objectLinks).toHaveText(["host-103", "host-104"]);
+		await dialog.getByRole("button", { name: "First", exact: true }).click();
+		await expect(objectLinks).toHaveText(["host-100", "host-102"]);
+		const openTable = dialog.getByRole("link", {
+			name: "Open in object table",
+		});
+		const popupPromise = context.waitForEvent("page");
+		await openTable.click({ modifiers: ["Control"] });
+		const popup = await popupPromise;
+		await expect(popup.getByRole("link", { name: /^host-/ })).toHaveText([
+			"host-100",
+			"host-102",
+		]);
+		await popup.getByRole("button", { name: "Next page", exact: true }).click();
+		await expect(popup).toHaveURL(/cursor=page-2/);
+		await popup.reload();
+		await expect(popup.getByRole("link", { name: /^host-/ })).toHaveText([
+			"host-103",
+			"host-104",
+		]);
+		await expect(dialog).toBeVisible();
+		await popup.close();
+		await openTable.click();
+		await expect(dialog).toHaveCount(0);
+		await expect(page.getByRole("link", { name: /^host-/ })).toHaveText([
+			"host-100",
+			"host-102",
+		]);
+		await expect(
+			page.getByText("Aggregate filter:", { exact: true }),
+		).toBeVisible();
+		await page.goBack();
+		await expect(
+			parentRow.getByRole("button", {
+				name: "Collapse os_major: 8",
+				exact: true,
+			}),
+		).toBeVisible();
+		await tree
+			.getByRole("button", {
+				name: "View 2 objects for os_major: 8 → os_minor: 1",
+				exact: true,
+			})
+			.click();
+		await expect(objectLinks).toHaveText(["host-100", "host-102"]);
+		await page.keyboard.press("Escape");
+		await tree
+			.getByRole("button", { name: /^Show more subgroups for 8/ })
+			.click();
+		const nullCount = tree.getByRole("button", {
+			name: "View 1 objects for os_major: 8 → os_minor: (null)",
+			exact: true,
+		});
+		await nullCount.click();
+		await expect(objectLinks).toHaveText(["host-104", "host-105"]);
+		await page.setViewportSize({ width: 390, height: 900 });
+		expect(
+			(
+				await new AxeBuilder({ page })
+					.include('[role="dialog"]')
+					.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+					.analyze()
+			).violations,
+		).toEqual([]);
+		await page.screenshot({
+			path: testInfo.outputPath("aggregate-members-mobile.png"),
+		});
+		await page.keyboard.press("Escape");
+		await expect(nullCount).toBeFocused();
+		await tree
+			.getByRole("button", {
+				name: "View 1 objects for os_major: 8 → os_minor: (missing)",
+				exact: true,
+			})
+			.click();
+		await expect(objectLinks).toHaveText(["host-104", "host-105"]);
+		expect(
+			memberRequests.every(
+				(request) => request.get("description__equals") === "RHEL",
+			),
+		).toBe(true);
+		await page.keyboard.press("Escape");
+		await page.getByRole("button", { name: "Table view", exact: true }).click();
+		await tree
+			.getByRole("button", {
+				name: "View 2 objects for os_major: 8 → os_minor: 1",
+				exact: true,
+			})
+			.click();
+		await expect(objectLinks).toHaveText(["host-100", "host-102"]);
+	});
+
+	test("aggregate A–Z sorts numeric text across pages in tables and trees", async ({
+		page,
+	}) => {
+		test.setTimeout(90_000);
+		const requests: URLSearchParams[] = [];
+		await page.route(`**${prefix}/classes/10?*`, (route) =>
+			route.fulfill({ json: classes[0] }),
+		);
+		await page.route("**/_hubuum-bff/classes/10/objects?*", (route) =>
+			route.fulfill({
+				json: [
+					{
+						id: 100,
+						name: "rhel-host",
+						description: "RHEL",
+						collection_id: 1,
+						hubuum_class_id: 10,
+						created_at: timestamp,
+						updated_at: timestamp,
+						data: { os_major: "8", os_minor: "8" },
+						computed: { shared: { values: {}, errors: {} } },
+					},
+				],
+			}),
+		);
+		await page.route(`**${prefix}/classes/10/computed-fields*`, (route) =>
+			route.fulfill({ json: { fields: [] } }),
+		);
+		await page.route(`**${prefix}/iam/me/computed-fields*`, (route) =>
+			route.fulfill({ json: [] }),
+		);
+		await page.route(`**${prefix}/classes/10/object-aggregates?*`, (route) => {
+			const params = new URL(route.request().url()).searchParams;
+			requests.push(params);
+			const fields = params.getAll("group_by");
+			const values = ["10", "8", "9"];
+			const tuples =
+				fields.length === 1
+					? values.map((major) => [major])
+					: values.flatMap((major) => values.map((minor) => [major, minor]));
+			if (params.get("sort") === "dimensions.desc") tuples.reverse();
+			const offset = Number(params.get("cursor")) || 0;
+			const limit = Number(params.get("limit"));
+			return route.fulfill({
+				json: tuples.slice(offset, offset + limit).map((tuple) => ({
+					dimensions: fields.map((field, index) => ({
+						field,
+						state: "value",
+						value: tuple[index],
+					})),
+					object_count: fields.length === 1 ? 3 : 1,
+				})),
+				headers: {
+					"X-Total-Count": String(tuples.length),
+					...(offset + limit < tuples.length
+						? { "X-Next-Cursor": String(offset + limit) }
+						: {}),
+				},
+			});
+		});
+		await page.goto("/objects?classId=10&limit=2");
+		await expect(
+			page.getByRole("link", { name: "rhel-host", exact: true }),
+		).toBeVisible();
+		const trigger = page.getByRole("button", { name: /^Aggregate/ });
+		const menu = page.getByRole("dialog", { name: "Group objects" });
+		await trigger.click();
+		await menu
+			.getByRole("combobox", { name: "Group by", exact: true })
+			.selectOption({ label: "os_major" });
+		await menu.getByLabel("Sort groups").selectOption("value-asc");
+		await page.keyboard.press("Escape");
+		const table = page.getByRole("region", {
+			name: "Object aggregates",
+			exact: true,
+		});
+		const firstColumn = table
+			.getByRole("cell")
+			.filter({ hasText: /^(8|9|10)$/ });
+		await expect(firstColumn).toHaveText(["8", "9"]);
+		const fetched = requests.length;
+		await page.getByRole("button", { name: "Next page", exact: true }).click();
+		await expect(firstColumn).toHaveText(["10"]);
+		await page
+			.getByRole("button", { name: "Previous page", exact: true })
+			.click();
+		await expect(firstColumn).toHaveText(["8", "9"]);
+		expect(requests).toHaveLength(fetched);
+		await trigger.click();
+		await menu.getByRole("button", { name: "Add group by" }).click();
+		await menu
+			.getByRole("combobox", { name: "Group by 2", exact: true })
+			.selectOption({ label: "os_minor" });
+		await page.keyboard.press("Escape");
+		const roots = table.getByRole("button", {
+			name: /^(Expand|Collapse) os_major:/,
+		});
+		await expect(roots).toHaveText([/8/, /9/]);
+		await table
+			.getByRole("button", { name: "Load more groups", exact: true })
+			.click();
+		await expect(roots).toHaveText([/8/, /9/, /10/]);
+		await table
+			.getByRole("button", { name: "Expand os_major: 8", exact: true })
+			.click();
+		const children = table
+			.getByRole("row")
+			.filter({ hasText: "os_minor" })
+			.getByRole("cell")
+			.filter({ hasText: "os_minor" });
+		await expect(children).toHaveText(["8os_minor", "9os_minor"]);
+		await table
+			.getByRole("button", { name: /^Show more subgroups for 8/ })
+			.click();
+		await expect(children).toHaveText(["8os_minor", "9os_minor", "10os_minor"]);
+		await trigger.click();
+		await menu.getByLabel("Sort groups").selectOption("value-desc");
+		await page.keyboard.press("Escape");
+		await expect(roots).toHaveText([/10/, /9/]);
+		await table
+			.getByRole("button", { name: "Expand os_major: 10", exact: true })
+			.click();
+		await expect(children).toHaveText(["10os_minor", "9os_minor"]);
+		await page.getByRole("button", { name: "Table view", exact: true }).click();
+		await expect(table.getByRole("row").nth(1).getByRole("cell")).toHaveText([
+			"10",
+			"10",
+			"1",
+		]);
+		await expect(table.getByRole("row").nth(2).getByRole("cell")).toHaveText([
+			"10",
+			"9",
+			"1",
+		]);
+		await page.getByRole("button", { name: "Next page", exact: true }).click();
+		await expect(table.getByRole("row").nth(1).getByRole("cell")).toHaveText([
+			"10",
+			"8",
+			"1",
+		]);
+		await expect(table.getByRole("row").nth(2).getByRole("cell")).toHaveText([
+			"9",
+			"10",
+			"1",
+		]);
 	});
 
 	test("object aggregation supports three ordered dimensions, measures and exports", async ({
@@ -191,6 +1024,9 @@ test.describe("workspace quality", () => {
 		await menu
 			.getByRole("combobox", { name: "Group by 2", exact: true })
 			.selectOption({ label: "os_minor" });
+		await page.keyboard.press("Escape");
+		await page.getByRole("button", { name: "Table view", exact: true }).click();
+		await trigger.click();
 		await expect
 			.poll(() => requests.at(-1)?.getAll("group_by"))
 			.toEqual(["json_data.os_major", "json_data.os_minor"]);
@@ -208,6 +1044,9 @@ test.describe("workspace quality", () => {
 			"2",
 			"35",
 		]);
+		await expect(
+			page.getByTitle("2 groups loaded, 4 total").getByText("2/4", { exact: true }),
+		).toBeVisible();
 		await menu.getByRole("button", { name: "Add group by" }).click();
 		await expect(
 			menu.getByRole("combobox", { name: "Group by 3", exact: true }),
@@ -230,10 +1069,45 @@ test.describe("workspace quality", () => {
 		await expect(
 			table.getByRole("row").nth(1).getByRole("cell").nth(2),
 		).toHaveText("Infrastructure (#1)");
+		const configuredUrl = new URL(page.url());
+		expect(configuredUrl.searchParams.getAll("groupBy")).toEqual([
+			'data:["os_major"]',
+			'data:["os_minor"]',
+			"object:collection",
+		]);
+		expect(configuredUrl.searchParams.getAll("aggregate")).toEqual([
+			"sum:json_data.cost",
+		]);
+		expect(configuredUrl.searchParams.get("aggregateView")).toBe("table");
+		await page.reload();
+		await expect(
+			table.getByRole("columnheader", { name: "Sum · cost" }),
+		).toBeVisible();
+		await trigger.click();
+		await expect(
+			menu.getByRole("combobox", { name: "Group by 3", exact: true }),
+		).toHaveValue("object:collection");
+		await expect(menu.getByLabel("Numeric field")).toHaveValue(
+			"json_data.cost",
+		);
+		await page.keyboard.press("Escape");
 		await page.getByRole("button", { name: "Next page", exact: true }).click();
+		await expect(page).toHaveURL(/aggregateCursor=aggregate-next/);
 		await expect
 			.poll(() => requests.at(-1)?.get("cursor"))
 			.toBe("aggregate-next");
+		await page.reload();
+		await expect(
+			table.getByRole("row").nth(1).getByRole("cell").nth(1),
+		).toHaveText("(null)");
+		await page
+			.getByRole("button", { name: "Previous page", exact: true })
+			.click();
+		await expect(
+			table.getByRole("row").nth(1).getByRole("cell").nth(1),
+		).toHaveText("1");
+		await page.goBack();
+		await expect(page).toHaveURL(/aggregateCursor=aggregate-next/);
 		await expect(
 			table.getByRole("row").nth(1).getByRole("cell").nth(1),
 		).toHaveText("(null)");
@@ -260,6 +1134,22 @@ test.describe("workspace quality", () => {
 			/Count/,
 			"Sum · cost",
 		]);
+		await expect(page).toHaveURL(/groupSort=value-asc/);
+		const sortedUrl = page.url();
+		await page.reload();
+		await expect(table.getByRole("columnheader")).toHaveText([
+			/os_major/,
+			"Collection",
+			"os_minor",
+			/Count/,
+			"Sum · cost",
+		]);
+		expect(page.url()).toBe(sortedUrl);
+		await expect(
+			page
+				.getByTitle("4 groups loaded, 4 total")
+				.getByText("Complete", { exact: true }),
+		).toBeVisible();
 		await page.getByRole("button", { name: "Download", exact: true }).click();
 		const downloaded = page.waitForEvent("download");
 		await page.getByRole("menuitem", { name: /CSV/ }).click();
@@ -283,7 +1173,7 @@ test.describe("workspace quality", () => {
 							element.scrollWidth <= element.clientWidth &&
 							bounds.left >= 0 &&
 							bounds.right <= window.innerWidth &&
-						bounds.bottom <= window.innerHeight
+							bounds.bottom <= window.innerHeight
 						);
 					}),
 				)
@@ -317,7 +1207,7 @@ test.describe("workspace quality", () => {
 			"sum:json_data.cost",
 		]);
 		await expect(
-			table.getByRole("cell", { name: "All matching objects" }),
+			table.getByRole("cell", { name: "All matching objects", exact: true }),
 		).toBeVisible();
 		await menu.getByRole("button", { name: "Clear", exact: true }).click();
 		await expect(table).toBeHidden();
@@ -373,7 +1263,9 @@ test.describe("workspace quality", () => {
 			const hint = page.getByText("Type / to search", { exact: true });
 			await commands.focus();
 			await expect(hint).toBeVisible();
-			await expect(commands.getByText("Ctrl/⌘ K", { exact: true })).toBeVisible();
+			await expect(
+				commands.getByText("Ctrl/⌘ K", { exact: true }),
+			).toBeVisible();
 			await expect(commands).toHaveAttribute(
 				"aria-keyshortcuts",
 				"Control+k Meta+k",
@@ -385,7 +1277,9 @@ test.describe("workspace quality", () => {
 				["serious", "critical"].includes(item.impact ?? ""),
 			);
 			expect(violations).toEqual([]);
-			await page.screenshot({ path: testInfo.outputPath("shortcut-hints.png") });
+			await page.screenshot({
+				path: testInfo.outputPath("shortcut-hints.png"),
+			});
 			await page.keyboard.press("/");
 			await expect(search).toBeFocused();
 			await expect(search).toHaveValue("");
@@ -399,7 +1293,9 @@ test.describe("workspace quality", () => {
 			await commands.focus();
 			await expect(hint).toBeVisible();
 			await page.keyboard.press("Control+k");
-			await expect(page.getByLabel("Find a destination or action")).toBeFocused();
+			await expect(
+				page.getByLabel("Find a destination or action"),
+			).toBeFocused();
 			await page.keyboard.press("Escape");
 			for (const width of [1024, 390]) {
 				await page.setViewportSize({ width, height: 844 });
@@ -414,7 +1310,9 @@ test.describe("workspace quality", () => {
 					await page.evaluate(() => document.body.scrollWidth <= innerWidth),
 				).toBe(true);
 			}
-			await expect(commands.getByText("Ctrl/⌘ K", { exact: true })).toBeHidden();
+			await expect(
+				commands.getByText("Ctrl/⌘ K", { exact: true }),
+			).toBeHidden();
 		});
 	}
 

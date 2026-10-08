@@ -5,6 +5,10 @@ import type {
 	ObjectAggregateRow,
 } from "@/lib/api/generated/models";
 import {
+	getObjectAggregatePathKey,
+	sortObjectAggregateRows,
+} from "@/lib/object-grouping";
+import {
 	appendObjectServerFilters,
 	type ObjectServerFilter,
 } from "@/lib/object-server-filters";
@@ -28,7 +32,7 @@ export type ObjectAggregateMeasure = {
 	operation: ObjectAggregateMeasureOperation;
 };
 
-type ObjectAggregateRequest = {
+export type ObjectAggregateRequest = {
 	classId: number;
 	groupBy: readonly string[];
 	measures?: readonly ObjectAggregateMeasure[];
@@ -36,6 +40,7 @@ type ObjectAggregateRequest = {
 	limit: number;
 	cursor?: string;
 	filters?: readonly ObjectServerFilter[];
+	includeTotal?: boolean;
 };
 
 function parsePositiveHeader(value: string | null): number | null {
@@ -65,10 +70,49 @@ export function buildObjectAggregateSearchParams(
 	}
 	params.set("sort", request.sort);
 	params.set("limit", String(request.limit));
-	params.set("include_total", "true");
+	params.set("include_total", String(request.includeTotal ?? true));
 	if (request.cursor) params.set("cursor", request.cursor);
 	appendObjectServerFilters(params, request.filters ?? []);
 	return params;
+}
+
+// ponytail: expanded depths and natural sorting load all aggregate pages.
+// Very large results can be slow; callers cache them before paging locally.
+export async function fetchAllObjectAggregates(
+	request: Omit<ObjectAggregateRequest, "cursor" | "includeTotal">,
+	signal?: AbortSignal,
+	onProgress?: (count: number) => void,
+): Promise<ObjectAggregateRow[]> {
+	const rows = new Map<string, ObjectAggregateRow>();
+	const cursors = new Set<string>();
+	let cursor: string | undefined;
+	do {
+		signal?.throwIfAborted();
+		const page = await fetchObjectAggregates(
+			{ ...request, cursor, includeTotal: false },
+			signal,
+		);
+		for (const row of page.rows) {
+			rows.set(getObjectAggregatePathKey(row.dimensions), row);
+		}
+		onProgress?.(rows.size);
+		cursor = page.nextCursor ?? undefined;
+		if (cursor) {
+			if (cursors.has(cursor)) {
+				throw new Error(
+					"The server repeated an aggregate cursor. Refresh to try again.",
+				);
+			}
+			cursors.add(cursor);
+		}
+	} while (cursor);
+	const result = [...rows.values()];
+	return request.sort === "dimensions.asc" || request.sort === "dimensions.desc"
+		? sortObjectAggregateRows(
+				result,
+				request.sort === "dimensions.asc" ? "asc" : "desc",
+			)
+		: result;
 }
 
 export async function fetchObjectAggregates(

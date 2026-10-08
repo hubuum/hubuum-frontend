@@ -18,7 +18,7 @@
 		"test": "vitest run",
 		"test:performance-budget": "node --test scripts/check-performance-budgets.test.mjs",
 		"test:release-dependencies": "node --test scripts/check-release-dependencies.test.mjs",
-		"test:dev-deps": "node --test scripts/dev-deps.test.mjs",
+		"test:dev-deps": "node --test scripts/dev-deps.test.mjs scripts/run.test.mjs",
 		"test:server-options": "node --test scripts/server-options.test.mjs",
 		"test:e2e": "playwright test",
 		"test:e2e:authenticated": "bash scripts/authenticated-e2e-test.sh",

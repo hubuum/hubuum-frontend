@@ -32,6 +32,16 @@ export const EMPTY_AUDIT_FILTER_DRAFT: AuditFilterDraft = {
 	occurredBefore: "",
 };
 
+export function parseAuditFilterParams(
+	params: Pick<URLSearchParams, "get">,
+): AuditFilterDraft {
+	const draft = { ...EMPTY_AUDIT_FILTER_DRAFT };
+	for (const field of Object.keys(draft) as AuditFilterField[]) {
+		draft[field] = params.get(field) ?? "";
+	}
+	return draft;
+}
+
 function parsePositiveInteger(value: string): number | undefined {
 	const trimmed = value.trim();
 	if (!trimmed) {

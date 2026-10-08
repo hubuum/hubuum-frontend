@@ -47,6 +47,35 @@ Restart Next.js after changing `.env.local`.
 
 ## Start
 
+For a foreground session against an existing backend, use the wrapper after
+`npm ci`:
+
+```sh
+BACKEND_BASE_URL=https://your-hubuum-server.example.com PORT=4444 ./run.sh
+```
+
+Open <http://127.0.0.1:4444> and sign in with your backend credentials. Use the
+backend base URL without `/api/v1`. The wrapper starts a private Valkey Compose
+project on an automatically assigned loopback port. Ctrl-C, termination, startup
+failure, or frontend exit stops its child processes and removes that project's
+container, network, and volumes. Existing development services and `.env.local`
+are left alone; installed dependencies, cached images, and Next.js build caches
+are retained.
+
+`PORT` defaults to 3000. Options are forwarded to the usual development launcher:
+
+```sh
+BACKEND_BASE_URL=https://your-hubuum-server.example.com ./run.sh --port 4444 --listen 127.0.0.1
+./run.sh --help
+```
+
+Docker or Podman with a Compose provider is required. `HUBUUM_CONTAINER_RUNTIME`
+selects the runtime, and `VALKEY_DEV_PORT` can request a specific local Valkey
+port. Stop any existing Next.js dev server in this checkout before using the
+wrapper; Next.js permits one development server per checkout.
+
+To manage the services separately, use the commands below.
+
 Start the Valkey session store and wait for it to become healthy:
 
 ```sh

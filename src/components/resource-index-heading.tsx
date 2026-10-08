@@ -8,6 +8,7 @@ import {
 } from "@/lib/create-events";
 
 type ResourceIndexHeadingProps = {
+	compactSummary?: readonly string[];
 	context?: ReactNode;
 	createLabel: string;
 	createSection: CreateSection;
@@ -24,6 +25,7 @@ function IconPlus() {
 }
 
 export function ResourceIndexHeading({
+	compactSummary,
 	context,
 	createLabel,
 	createSection,
@@ -43,9 +45,13 @@ export function ResourceIndexHeading({
 			<h2>{title}</h2>
 			{context}
 			{summary.length ? (
-				<span className="resource-index-summary" aria-live="polite">
+				<span
+					className="resource-index-summary"
+					aria-live="polite"
+					title={compactSummary ? summary.join(", ") : undefined}
+				>
 					<span className="sr-only">{summary.join(", ")}</span>
-					{summary.map((segment) => (
+					{(compactSummary ?? summary).map((segment) => (
 						<span
 							aria-hidden="true"
 							className="resource-index-summary-item"

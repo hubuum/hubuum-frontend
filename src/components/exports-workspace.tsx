@@ -7,7 +7,7 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
 	type FormEvent,
 	type KeyboardEvent,
@@ -104,6 +104,7 @@ import {
 } from "@/lib/report-query";
 import { SCOPE_QUERY_FIELDS } from "@/lib/report-scope-fields";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { updateViewQuery } from "@/lib/view-query";
 
 type QueryBuilderFilter = {
 	id: string;
@@ -225,19 +226,26 @@ function downloadReportResult(
 	URL.revokeObjectURL(url);
 }
 
-type ExportsWorkspaceProps = {
-	initialView?: ExportWorkspaceView;
-};
-
-export function ExportsWorkspace({
-	initialView = "run",
-}: ExportsWorkspaceProps) {
+export function ExportsWorkspace() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const queryClient = useQueryClient();
-	const [activeView, setActiveView] =
-		useState<ExportWorkspaceView>(initialView);
-	const [templateSearch, setTemplateSearch] = useState("");
-	const [templateCollectionFilter, setTemplateCollectionFilter] = useState("");
+	const view = searchParams.get("view");
+	const activeView: ExportWorkspaceView =
+		view === "one-off" || view === "templates" || view === "history"
+			? view
+			: "run";
+	const templateSearch = searchParams.get("templateSearch") ?? "";
+	const templateCollectionFilter = searchParams.get("templateCollection") ?? "";
+	function setActiveView(view: ExportWorkspaceView) {
+		updateViewQuery({ view });
+	}
+	function setTemplateSearch(value: string) {
+		updateViewQuery({ templateSearch: value || null });
+	}
+	function setTemplateCollectionFilter(value: string) {
+		updateViewQuery({ templateCollection: value || null });
+	}
 	const [defaultQueryTemplate, setDefaultQueryTemplate] =
 		useState<ReportTemplate | null>(null);
 	const [scopeKind, setScopeKind] = useState<ReportScopeKind>("collections");

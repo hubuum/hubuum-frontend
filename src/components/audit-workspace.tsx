@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import { AuditEntityLookup } from "@/components/audit-entity-lookup";
 import { AuditPrincipalLookup } from "@/components/audit-principal-lookup";
@@ -12,9 +13,9 @@ import {
 } from "@/lib/api/audit-actors";
 import { fetchAuditEntityDirectory } from "@/lib/api/audit-entities";
 import {
+	type EventRecord,
 	fetchAuditCollections,
 	fetchEventsPage,
-	type EventRecord,
 } from "@/lib/api/events";
 import type { Collection } from "@/lib/api/generated/models";
 import {
@@ -37,6 +38,7 @@ import {
 	clearAuditFilter,
 	EMPTY_AUDIT_FILTER_DRAFT,
 	getAuditDrilldownDraft,
+	parseAuditFilterParams,
 } from "@/lib/audit-filters";
 import {
 	buildCollectionHierarchy,
@@ -54,6 +56,7 @@ import {
 } from "@/lib/event-provenance";
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { updateViewQuery } from "@/lib/view-query";
 
 type ActiveAuditFilter = {
 	field: AuditFilterField;
@@ -255,17 +258,23 @@ function DrilldownButton({
 }
 
 export function AuditWorkspace() {
+	const searchParams = useSearchParams();
+	const cursor = searchParams.get("cursor") ?? "";
+	const appliedDraft = useMemo(
+		() => parseAuditFilterParams(searchParams),
+		[searchParams],
+	);
 	const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
 	const [entitySearch, setEntitySearch] = useState("");
 	const [actorSearch, setActorSearch] = useState("");
 	const [initiatorSearch, setInitiatorSearch] = useState("");
-	const [cursor, setCursor] = useState("");
-	const [draft, setDraft] = useState<AuditFilterDraft>(
-		EMPTY_AUDIT_FILTER_DRAFT,
-	);
-	const [appliedDraft, setAppliedDraft] = useState<AuditFilterDraft>(
-		EMPTY_AUDIT_FILTER_DRAFT,
-	);
+	const [draft, setDraft] = useState<AuditFilterDraft>(appliedDraft);
+	useEffect(() => {
+		setDraft(appliedDraft);
+		setEntitySearch("");
+		setActorSearch("");
+		setInitiatorSearch("");
+	}, [appliedDraft]);
 	const filters = useMemo(
 		() => buildAuditEventFilters(appliedDraft),
 		[appliedDraft],
@@ -467,9 +476,16 @@ export function AuditWorkspace() {
 	}
 
 	function applyDraft(nextDraft: AuditFilterDraft) {
-		setCursor("");
 		setDraft(nextDraft);
-		setAppliedDraft(nextDraft);
+		updateViewQuery(
+			{
+				...Object.fromEntries(
+					Object.entries(nextDraft).map(([key, value]) => [key, value || null]),
+				),
+				cursor: null,
+			},
+			"push",
+		);
 	}
 
 	function updateActorSearch(value: string) {
@@ -915,7 +931,7 @@ export function AuditWorkspace() {
 							type="button"
 							className="secondary"
 							disabled={!cursor || eventsQuery.isFetching}
-							onClick={() => setCursor("")}
+							onClick={() => updateViewQuery({ cursor: null }, "push")}
 						>
 							First page
 						</button>
@@ -923,7 +939,12 @@ export function AuditWorkspace() {
 							type="button"
 							className="secondary"
 							disabled={!eventsQuery.data?.nextCursor || eventsQuery.isFetching}
-							onClick={() => setCursor(eventsQuery.data?.nextCursor ?? "")}
+							onClick={() =>
+								updateViewQuery(
+									{ cursor: eventsQuery.data?.nextCursor ?? null },
+									"push",
+								)
+							}
 						>
 							Next page
 						</button>
