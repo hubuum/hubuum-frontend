@@ -18,6 +18,7 @@ export type ObjectGroup<Row> = {
 };
 
 export type ObjectAggregateDimension = {
+	field?: string;
 	state: "value" | "null" | "missing" | "unavailable";
 	value?: unknown;
 };
@@ -74,10 +75,18 @@ export function formatObjectGroupValue(value: unknown): string {
 
 export function formatObjectAggregateDimension(
 	dimension: ObjectAggregateDimension,
+	collectionNames?: ReadonlyMap<number, string>,
 ): string {
 	if (dimension.state === "null") return "(null)";
 	if (dimension.state === "missing") return "(missing)";
 	if (dimension.state === "unavailable") return "(unavailable)";
+	if (
+		dimension.field === "collection_id" &&
+		typeof dimension.value === "number"
+	) {
+		const name = collectionNames?.get(dimension.value);
+		return name ? `${name} (#${dimension.value})` : `#${dimension.value}`;
+	}
 	return formatObjectGroupValue(dimension.value);
 }
 

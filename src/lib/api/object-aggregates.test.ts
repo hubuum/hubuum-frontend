@@ -5,7 +5,11 @@ import { buildObjectAggregateSearchParams } from "@/lib/api/object-aggregates";
 describe("object aggregate requests", () => {
 	it("preserves ordered repeated dimensions and source filters", () => {
 		const params = buildObjectAggregateSearchParams({
-			groupBy: ["json_data.location,country", "computed.shared.lifecycle"],
+			groupBy: [
+				"json_data.location,country",
+				"json_data.os_minor",
+				"computed.shared.lifecycle",
+			],
 			sort: "object_count.desc",
 			limit: 50,
 			cursor: "next-page",
@@ -23,6 +27,7 @@ describe("object aggregate requests", () => {
 
 		expect(params.getAll("group_by")).toEqual([
 			"json_data.location,country",
+			"json_data.os_minor",
 			"computed.shared.lifecycle",
 		]);
 		expect(params.get("computed.shared.lifecycle__equals")).toBe("active");

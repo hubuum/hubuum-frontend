@@ -4966,6 +4966,26 @@ button.table-export-option {
 	gap: 0.7rem;
 	width: min(714px, calc(100vw - 34px));
 	padding: 0.85rem;
+	max-height: 75dvh;
+	overflow: auto;
+}
+
+.object-grouping-field-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: end;
+	gap: 0.5rem;
+}
+
+.object-grouping-field-actions {
+	display: flex;
+	gap: 0.3rem;
+}
+
+.object-grouping-field-actions button {
+	min-width: 2.75rem;
+	min-height: 2.75rem;
+	padding-inline: 0.5rem;
 }
 
 .object-grouping-menu-header {
@@ -11843,7 +11863,8 @@ button.atmosphere-option.is-selected {
 		align-self: flex-start;
 	}
 
-	.object-aggregate-measure-row {
+	.object-aggregate-measure-row,
+	.object-grouping-field-row {
 		grid-template-columns: 1fr;
 		align-items: stretch;
 	}

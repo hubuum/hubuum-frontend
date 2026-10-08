@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ObjectAggregateMeasureOperation } from "@/lib/api/generated/models";
 import type { ObjectAggregateMeasure } from "@/lib/api/object-aggregates";
 import type { ObjectGroupSort } from "@/lib/object-grouping";
@@ -35,11 +35,11 @@ export type ObjectAggregateMeasureSelection = ObjectAggregateMeasure & {
 
 type ObjectGroupingMenuProps = {
 	fields: readonly ObjectGroupingField[];
-	fieldId: string | null;
+	fieldIds: readonly string[];
 	measureFields: readonly ObjectAggregateMeasureField[];
 	measures: readonly ObjectAggregateMeasureSelection[];
 	sort: ObjectGroupSort;
-	onFieldChange: (fieldId: string | null) => void;
+	onFieldsChange: (fieldIds: string[]) => void;
 	onMeasuresChange: (measures: ObjectAggregateMeasureSelection[]) => void;
 	onSortChange: (sort: ObjectGroupSort) => void;
 	disabled?: boolean;
@@ -82,18 +82,19 @@ function IconGroup() {
 
 export function ObjectGroupingMenu({
 	fields,
-	fieldId,
+	fieldIds,
 	measureFields,
 	measures,
 	sort,
-	onFieldChange,
+	onFieldsChange,
 	onMeasuresChange,
 	onSortChange,
 	disabled = false,
 }: ObjectGroupingMenuProps) {
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const triggerRef = useRef<HTMLButtonElement | null>(null);
-	const fieldRef = useRef<HTMLSelectElement | null>(null);
+	const menuRef = useRef<HTMLDivElement | null>(null);
+	const fieldRefs = useRef<Array<HTMLSelectElement | null>>([]);
 	const [isOpen, setOpen] = useState(false);
 	const fieldsBySection = useMemo(
 		() =>
@@ -103,12 +104,28 @@ export function ObjectGroupingMenu({
 			})).filter((entry) => entry.fields.length > 0),
 		[fields],
 	);
-	const selectedField = fields.find((field) => field.id === fieldId) ?? null;
+	const selectedFields = fieldIds.flatMap((id) =>
+		fields.filter((field) => field.id === id),
+	);
+	const canConfigureMeasures = selectedFields.every((field) =>
+		Boolean(field.serverGroupBy),
+	);
 	const usesServerAggregation =
-		Boolean(selectedField?.serverGroupBy) || measures.length > 0;
-	const canConfigureMeasures =
-		selectedField === null || Boolean(selectedField.serverGroupBy);
-	const activeCount = (selectedField ? 1 : 0) + measures.length;
+		(selectedFields.length > 0 && canConfigureMeasures) || measures.length > 0;
+	const activeCount = selectedFields.length + measures.length;
+	const nextGroupField = fields.find(
+		(field) => field.serverGroupBy && !fieldIds.includes(field.id),
+	);
+
+	function moveGroup(index: number, offset: number) {
+		const nextFields = [...fieldIds];
+		const target = index + offset;
+		[nextFields[index], nextFields[target]] = [
+			nextFields[target],
+			nextFields[index],
+		];
+		onFieldsChange(nextFields);
+	}
 
 	function addMeasure() {
 		const field = measureFields[0];
@@ -137,9 +154,48 @@ export function ObjectGroupingMenu({
 	}
 
 	function clearAggregation() {
-		onFieldChange(null);
+		onFieldsChange([]);
 		onMeasuresChange([]);
+		window.setTimeout(() => fieldRefs.current[0]?.focus(), 0);
 	}
+
+	useLayoutEffect(() => {
+		if (!isOpen) return;
+		const root = rootRef.current;
+		const menu = menuRef.current;
+		if (!root || !menu) return;
+		const position = () => {
+			if (window.getComputedStyle(menu).position === "fixed") {
+				menu.style.removeProperty("left");
+				menu.style.removeProperty("right");
+				menu.style.maxHeight = `${Math.max(160, window.innerHeight - menu.getBoundingClientRect().top - 16)}px`;
+				return;
+			}
+			const anchor = root.getBoundingClientRect();
+			const bounds = menu.getBoundingClientRect();
+			const left = Math.max(
+				8,
+				Math.min(
+					anchor.right - bounds.width,
+					document.documentElement.clientWidth - bounds.width - 8,
+				),
+			);
+			menu.style.left = `${left - anchor.left}px`;
+			menu.style.right = "auto";
+			menu.style.maxHeight = `${Math.max(160, window.innerHeight - bounds.top - 16)}px`;
+		};
+		position();
+		const observer = new ResizeObserver(position);
+		observer.observe(root);
+		observer.observe(menu);
+		window.addEventListener("resize", position);
+		window.addEventListener("scroll", position, true);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener("resize", position);
+			window.removeEventListener("scroll", position, true);
+		};
+	}, [isOpen]);
 
 	useEffect(() => {
 		if (!isOpen) return;
@@ -163,7 +219,7 @@ export function ObjectGroupingMenu({
 			return;
 		}
 		setOpen(true);
-		window.setTimeout(() => fieldRef.current?.focus(), 0);
+		window.setTimeout(() => fieldRefs.current[0]?.focus(), 0);
 	}
 
 	return (
@@ -188,6 +244,7 @@ export function ObjectGroupingMenu({
 			</button>
 			{isOpen ? (
 				<div
+					ref={menuRef}
 					className="object-grouping-menu card"
 					role="dialog"
 					aria-label="Group objects"
@@ -198,7 +255,7 @@ export function ObjectGroupingMenu({
 							<p>
 								{usesServerAggregation
 									? "Counts and measures are permission-aware and calculated by the server."
-									: selectedField
+									: selectedFields.length > 0
 										? "Custom fallback fields are calculated from the current fetched page."
 										: "Choose a group or numeric measure across the full filtered class."}
 							</p>
@@ -213,25 +270,128 @@ export function ObjectGroupingMenu({
 							</button>
 						) : null}
 					</div>
-					<label className="control-field">
-						<span>Group by</span>
-						<select
-							ref={fieldRef}
-							value={selectedField?.id ?? ""}
-							onChange={(event) => onFieldChange(event.target.value || null)}
-						>
-							<option value="">No grouping</option>
-							{fieldsBySection.map((entry) => (
-								<optgroup key={entry.section} label={entry.section}>
-									{entry.fields.map((field) => (
-										<option key={field.id} value={field.id}>
-											{field.label}
-										</option>
-									))}
-								</optgroup>
-							))}
-						</select>
-					</label>
+					<div className="object-aggregate-measures">
+						<div className="object-aggregate-measures-header">
+							<div>
+								<strong>Grouping fields</strong>
+								<p>Optional · up to three fields, in order.</p>
+							</div>
+							<button
+								type="button"
+								className="ghost"
+								disabled={
+									!canConfigureMeasures ||
+									fieldIds.length >= 3 ||
+									!nextGroupField
+								}
+								onClick={() => {
+									if (nextGroupField) {
+										onFieldsChange([...fieldIds, nextGroupField.id]);
+										window.setTimeout(
+											() => fieldRefs.current[fieldIds.length]?.focus(),
+											0,
+										);
+									}
+								}}
+							>
+								Add group by
+							</button>
+						</div>
+						{(fieldIds.length ? fieldIds : [""]).map((fieldId, index) => {
+							const label = index === 0 ? "Group by" : `Group by ${index + 1}`;
+							return (
+								<div className="object-grouping-field-row" key={label}>
+									<label className="control-field">
+										<span>{label}</span>
+										<select
+											ref={(element) => {
+												fieldRefs.current[index] = element;
+											}}
+											value={fieldId}
+											onChange={(event) => {
+												const nextFields = [...fieldIds];
+												nextFields[index] = event.target.value;
+												onFieldsChange(nextFields.filter(Boolean));
+											}}
+										>
+											<option value="">
+												{fieldIds.length > 1
+													? "Remove grouping field"
+													: "No grouping"}
+											</option>
+											{fieldsBySection.map((entry) => (
+												<optgroup key={entry.section} label={entry.section}>
+													{entry.fields.map((field) => (
+														<option
+															key={field.id}
+															value={field.id}
+															disabled={
+																(field.id !== fieldId &&
+																	fieldIds.includes(field.id)) ||
+																(fieldIds.length > 1 && !field.serverGroupBy)
+															}
+														>
+															{field.label}
+														</option>
+													))}
+												</optgroup>
+											))}
+										</select>
+									</label>
+									{fieldId ? (
+										<div className="object-grouping-field-actions">
+											{fieldIds.length > 1 ? (
+												<>
+													<button
+														type="button"
+														className="ghost"
+														aria-label={`Move grouping field ${index + 1} up`}
+														disabled={index === 0}
+														onClick={() => moveGroup(index, -1)}
+													>
+														↑
+													</button>
+													<button
+														type="button"
+														className="ghost"
+														aria-label={`Move grouping field ${index + 1} down`}
+														disabled={index === fieldIds.length - 1}
+														onClick={() => moveGroup(index, 1)}
+													>
+														↓
+													</button>
+												</>
+											) : null}
+											<button
+												type="button"
+												className="ghost danger"
+												aria-label={`Remove grouping field ${index + 1}`}
+												onClick={() => {
+													onFieldsChange(
+														fieldIds.filter(
+															(_, fieldIndex) => fieldIndex !== index,
+														),
+													);
+													window.setTimeout(
+														() => fieldRefs.current[0]?.focus(),
+														0,
+													);
+												}}
+											>
+												Remove
+											</button>
+										</div>
+									) : null}
+								</div>
+							);
+						})}
+						{!canConfigureMeasures ? (
+							<p className="object-grouping-footnote">
+								Custom fallback fields support one grouping field on the loaded
+								page.
+							</p>
+						) : null}
+					</div>
 					<div className="object-aggregate-measures">
 						<div className="object-aggregate-measures-header">
 							<div>
@@ -261,10 +421,7 @@ export function ObjectGroupingMenu({
 							</p>
 						) : null}
 						{measures.map((measure, index) => (
-							<div
-								className="object-aggregate-measure-row"
-								key={measure.id}
-							>
+							<div className="object-aggregate-measure-row" key={measure.id}>
 								<label className="control-field">
 									<span>Calculation {index + 1}</span>
 									<select
@@ -332,7 +489,7 @@ export function ObjectGroupingMenu({
 						<span>Sort groups</span>
 						<select
 							value={sort}
-							disabled={!selectedField}
+							disabled={selectedFields.length === 0}
 							onChange={(event) =>
 								onSortChange(event.target.value as ObjectGroupSort)
 							}

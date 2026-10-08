@@ -97,4 +97,30 @@ describe("groupObjectRows", () => {
 			"Average · CPU load",
 		);
 	});
+
+	it("formats each ordered dimension, including collection names and absent values", () => {
+		const collections = new Map([[12, "Servers"]]);
+		const dimensions = [
+			{ field: "json_data.os_major", state: "value" as const, value: 9 },
+			{ field: "collection_id", state: "value" as const, value: 12 },
+			{ field: "json_data.os_minor", state: "missing" as const },
+		];
+		expect(
+			dimensions.map((dimension) =>
+				formatObjectAggregateDimension(dimension, collections),
+			),
+		).toEqual(["9", "Servers (#12)", "(missing)"]);
+		expect(
+			formatObjectAggregateDimension(
+				{ field: "collection_id", state: "value", value: 99 },
+				collections,
+			),
+		).toBe("#99");
+		expect(
+			formatObjectAggregateDimension(
+				{ field: "collection_id", state: "null" },
+				collections,
+			),
+		).toBe("(null)");
+	});
 });

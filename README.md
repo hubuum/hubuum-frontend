@@ -290,13 +290,16 @@ computed columns can sort the complete server result and the Server filters menu
 offers result-type-aware computed predicates, including null, numeric range,
 JSON containment, and negated matching.
 
-The objects workspace can group by an object, nested data, shared-computed, or
-personal-computed field through the server's permission-aware aggregate
-resource. Server filters run before aggregation, counts cover the complete
-matching class rather than the loaded object page, and aggregate rows have
-their own cursor pagination and exact total. Null, missing, and unavailable
+The objects workspace can group by up to three ordered object, nested data,
+shared-computed, or personal-computed fields through the server's permission-aware
+aggregate resource. Use **Aggregate → Add group by** to add dimensions; move
+them up or down to change their order. Results and table exports include one
+column per dimension and one count per combination, as a flat table rather than
+a tree with parent subtotals. Server filters run before aggregation, counts cover
+the complete matching class rather than the loaded object page, and aggregate rows
+have their own cursor pagination and exact total. Null, missing, and unavailable
 computed values remain distinct. Personal custom fallback fields still use a
-loaded-page grouping because their first-non-empty path expression is a console
+single loaded-page grouping because their first-non-empty path expression is a console
 display preference rather than a server field. With Server `v0.0.4`, the same
 workspace can add up to four ordered `sum`, `average`, `min`, or `max` measures
 over numeric JSON and computed fields, either per group or as one global

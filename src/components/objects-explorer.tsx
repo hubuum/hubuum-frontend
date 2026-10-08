@@ -248,7 +248,7 @@ type ResolvedObjectGroupingField = ObjectGroupingField & {
 
 type DisplayedAggregateGroup = {
 	id: string;
-	label: string;
+	dimensions: string[];
 	count: number;
 	measures?: Array<{
 		displayValue: string;
@@ -958,7 +958,7 @@ export function ObjectsExplorer() {
 		columnId: null,
 		direction: "asc",
 	});
-	const [groupFieldId, setGroupFieldId] = useState<string | null>(null);
+	const [groupFieldIds, setGroupFieldIds] = useState<string[]>([]);
 	const [groupSort, setGroupSort] = useState<ObjectGroupSort>("count-desc");
 	const [aggregateMeasures, setAggregateMeasures] = useState<
 		ObjectAggregateMeasureSelection[]
@@ -1039,7 +1039,7 @@ export function ObjectsExplorer() {
 	useEffect(() => {
 		if (groupingClassIdRef.current === selectedClassId) return;
 		groupingClassIdRef.current = selectedClassId;
-		setGroupFieldId(null);
+		setGroupFieldIds([]);
 		setAggregateMeasures([]);
 	}, [selectedClassId]);
 	const selectedClass = selectedClassQuery.data ?? undefined;
@@ -1522,21 +1522,23 @@ export function ObjectsExplorer() {
 					getValueAtDataPath(objectItem.data, column.path),
 			});
 		}
-		if (
-			groupFieldId?.startsWith("data:") &&
-			!fields.some((field) => field.id === groupFieldId)
-		) {
-			const path = parseDataPathId(groupFieldId.slice("data:".length));
-			if (path) {
-				fields.push({
-					id: groupFieldId,
-					label: formatDataPathLabel(path),
-					section: "Data fields",
-					serverGroupBy: toServerFilterDataPath(path)
-						? `json_data.${toServerFilterDataPath(path)?.join(",")}`
-						: undefined,
-					getValue: (objectItem) => getValueAtDataPath(objectItem.data, path),
-				});
+		for (const groupFieldId of groupFieldIds) {
+			if (
+				groupFieldId.startsWith("data:") &&
+				!fields.some((field) => field.id === groupFieldId)
+			) {
+				const path = parseDataPathId(groupFieldId.slice("data:".length));
+				if (path) {
+					fields.push({
+						id: groupFieldId,
+						label: formatDataPathLabel(path),
+						section: "Data fields",
+						serverGroupBy: toServerFilterDataPath(path)
+							? `json_data.${toServerFilterDataPath(path)?.join(",")}`
+							: undefined,
+						getValue: (objectItem) => getValueAtDataPath(objectItem.data, path),
+					});
+				}
 			}
 		}
 		for (const field of [...customDataFields].sort((left, right) =>
@@ -1568,7 +1570,7 @@ export function ObjectsExplorer() {
 		collectionNameById,
 		computedColumns,
 		customDataFields,
-		groupFieldId,
+		groupFieldIds,
 		sortedDataColumnCandidates,
 	]);
 	const columnMenuWidth = useMemo(() => {
@@ -1602,15 +1604,30 @@ export function ObjectsExplorer() {
 			),
 		[objects, searchTerm],
 	);
-	const activeGroupingField = useMemo(
-		() => groupingFields.find((field) => field.id === groupFieldId) ?? null,
-		[groupFieldId, groupingFields],
+	const activeGroupingFields = useMemo(
+		() =>
+			groupFieldIds.flatMap((id) =>
+				groupingFields.filter((field) => field.id === id),
+			),
+		[groupFieldIds, groupingFields],
 	);
-	const serverGroupingField = activeGroupingField?.serverGroupBy
-		? activeGroupingField
-		: null;
+	const activeGroupingField = activeGroupingFields[0] ?? null;
+	const serverGroupBy = activeGroupingFields.flatMap((field) =>
+		field.serverGroupBy ? [field.serverGroupBy] : [],
+	);
+	const groupingSignature = JSON.stringify(serverGroupBy);
+	const groupingLabel = activeGroupingFields
+		.map((field) => field.label)
+		.join(" → ");
+	const groupColumns = useMemo(
+		() =>
+			activeGroupingFields.length > 0
+				? activeGroupingFields.map(({ id, label }) => ({ id, label }))
+				: [{ id: "scope", label: "Scope" }],
+		[activeGroupingFields],
+	);
 	const serverAggregationActive =
-		serverGroupingField !== null || aggregateMeasures.length > 0;
+		serverGroupBy.length > 0 || aggregateMeasures.length > 0;
 	const aggregateMeasureSignature = aggregateMeasures
 		.map((measure) => `${measure.operation}:${measure.field}`)
 		.join("|");
@@ -1625,7 +1642,7 @@ export function ObjectsExplorer() {
 		queryKey: [
 			"object-aggregates",
 			parsedClassId,
-			serverGroupingField?.serverGroupBy,
+			groupingSignature,
 			aggregateMeasureSignature,
 			groupSort,
 			effectiveFetchLimit,
@@ -1636,9 +1653,7 @@ export function ObjectsExplorer() {
 			fetchObjectAggregates(
 				{
 					classId: parsedClassId ?? 0,
-					groupBy: serverGroupingField
-						? [serverGroupingField.serverGroupBy ?? "name"]
-						: [],
+					groupBy: serverGroupBy,
 					measures: aggregateMeasures,
 					sort: toObjectAggregateSort(groupSort),
 					limit: effectiveFetchLimit,
@@ -1649,7 +1664,7 @@ export function ObjectsExplorer() {
 			),
 		placeholderData: (previous, query) =>
 			query?.queryKey[1] === parsedClassId &&
-			query.queryKey[2] === serverGroupingField?.serverGroupBy &&
+			query.queryKey[2] === groupingSignature &&
 			query.queryKey[3] === aggregateMeasureSignature &&
 			query.queryKey[7] === serverFilterSignature
 				? previous
@@ -1666,28 +1681,20 @@ export function ObjectsExplorer() {
 		groupSort,
 		selectedClassId,
 		serverFilterSignature,
-		serverGroupingField?.serverGroupBy,
+		groupingSignature,
 	]);
 	const serverAggregateGroups = useMemo<DisplayedAggregateGroup[]>(
 		() =>
 			(objectAggregatesQuery.data?.rows ?? []).map((row) => {
-				const dimension = row.dimensions[0];
-				let label = dimension
-					? formatObjectAggregateDimension(dimension)
-					: "All matching objects";
-				if (
-					dimension?.field === "collection_id" &&
-					dimension.state === "value" &&
-					typeof dimension.value === "number"
-				) {
-					const collectionName = collectionNameById.get(dimension.value);
-					label = collectionName
-						? `${collectionName} (#${dimension.value})`
-						: `#${dimension.value}`;
-				}
+				const dimensions =
+					row.dimensions.length > 0
+						? row.dimensions.map((dimension) =>
+								formatObjectAggregateDimension(dimension, collectionNameById),
+							)
+						: ["All matching objects"];
 				return {
 					id: JSON.stringify(row.dimensions),
-					label,
+					dimensions,
 					count: row.object_count,
 					measures: (row.measures ?? []).map((measure, index) => ({
 						displayValue: formatObjectAggregateMeasure(measure),
@@ -1710,14 +1717,14 @@ export function ObjectsExplorer() {
 	);
 	const groupedObjects = useMemo(
 		() =>
-			activeGroupingField && !serverGroupingField
+			activeGroupingField && !serverAggregationActive
 				? groupObjectRows(
 						filteredObjects,
 						activeGroupingField.getValue,
 						groupSort,
-					)
+					).map((group) => ({ ...group, dimensions: [group.label] }))
 				: [],
-		[activeGroupingField, filteredObjects, groupSort, serverGroupingField],
+		[activeGroupingField, filteredObjects, groupSort, serverAggregationActive],
 	);
 	const displayedGroups: readonly DisplayedAggregateGroup[] =
 		serverAggregationActive ? serverAggregateGroups : groupedObjects;
@@ -1751,11 +1758,12 @@ export function ObjectsExplorer() {
 		TableExportView<DisplayedAggregateGroup>
 	>(() => {
 		const columns: TableExportColumn<DisplayedAggregateGroup>[] = [
-			{
-				key: "group",
-				label: activeGroupingField?.label ?? "Scope",
-				getValue: (group) => group.label,
-			},
+			...groupColumns.map((column, index) => ({
+				key: column.id,
+				label: column.label,
+				getValue: (group: DisplayedAggregateGroup) =>
+					group.dimensions[index] ?? "—",
+			})),
 			{
 				key: "count",
 				label: "Count",
@@ -1793,7 +1801,7 @@ export function ObjectsExplorer() {
 			rows: displayedGroups,
 		};
 	}, [
-		activeGroupingField?.label,
+		groupColumns,
 		aggregateMeasureFieldLabels,
 		aggregateMeasures,
 		displayedGroups,
@@ -1877,7 +1885,7 @@ export function ObjectsExplorer() {
 			objectsQuery.data ? "ready" : "pending",
 			filteredObjects.length > 0 ? "visible" : "hidden",
 			hasAggregateView
-				? `aggregate:${activeGroupingField?.id ?? "global"}:${aggregateMeasureSignature}`
+				? `aggregate:${JSON.stringify(groupFieldIds)}:${aggregateMeasureSignature}`
 				: "ungrouped",
 			...activeDataColumns.map((column) => column.id),
 			...activeComputedColumns.map((column) => column.id),
@@ -2431,9 +2439,9 @@ export function ObjectsExplorer() {
 		if (
 			nextMeasures.length > 0 &&
 			activeGroupingField &&
-			!serverGroupingField
+			!activeGroupingField.serverGroupBy
 		) {
-			setGroupFieldId(null);
+			setGroupFieldIds([]);
 		}
 		setAggregateMeasures(nextMeasures);
 		setAggregateCursor(null);
@@ -2446,22 +2454,23 @@ export function ObjectsExplorer() {
 		}
 	}
 
-	function setGroupingField(nextFieldId: string | null) {
-		const nextGroupingField =
-			groupingFields.find((field) => field.id === nextFieldId) ?? null;
-		setGroupFieldId(nextFieldId);
-		if (nextGroupingField && !nextGroupingField.serverGroupBy) {
+	function setGroupingFields(nextFieldIds: string[]) {
+		setGroupFieldIds(nextFieldIds);
+		const nextFields = nextFieldIds.flatMap((id) =>
+			groupingFields.filter((field) => field.id === id),
+		);
+		if (nextFields.some((field) => !field.serverGroupBy)) {
 			setAggregateMeasures([]);
 		}
 		setAggregateCursor(null);
 		setAggregateCursorHistory([]);
 		if (
-			nextGroupingField?.serverGroupBy &&
+			nextFields.some((field) => field.serverGroupBy) &&
 			(searchTerm || normalizeSearchTerm(searchInput))
 		) {
 			clearFilter();
 		}
-		if (nextFieldId) {
+		if (nextFieldIds.length > 0) {
 			setDataColumnSort({ columnId: null, direction: "asc" });
 			setSelectedObjectIds([]);
 		}
@@ -2825,7 +2834,7 @@ export function ObjectsExplorer() {
 					totalLabel: serverFilters.length ? "matches" : "total",
 					selected: selectedObjectIds.length,
 					details:
-						activeGroupingField && !serverGroupingField
+						activeGroupingField && !serverAggregationActive
 							? [
 									`${displayedGroups.length} group${displayedGroups.length === 1 ? "" : "s"}`,
 								]
@@ -3146,18 +3155,14 @@ export function ObjectsExplorer() {
 						</div>
 						<ObjectGroupingMenu
 							fields={groupingFields}
-							fieldId={groupFieldId}
+							fieldIds={groupFieldIds}
 							measureFields={aggregateMeasureFields}
 							measures={aggregateMeasures}
 							sort={groupSort}
-							onFieldChange={setGroupingField}
+							onFieldsChange={setGroupingFields}
 							onMeasuresChange={setAggregateMeasureSelection}
 							onSortChange={setAggregateSort}
-							disabled={
-								parsedClassId === null ||
-								objectsQuery.isFetching ||
-								objectAggregatesQuery.isFetching
-							}
+							disabled={parsedClassId === null}
 						/>
 						<ObjectServerFilterMenu
 							filters={serverFilters}
@@ -3265,8 +3270,8 @@ export function ObjectsExplorer() {
 						) : null}
 						{activeGroupingField ? (
 							<span>
-								<strong>Grouped by {activeGroupingField.label}</strong>{" "}
-								{serverGroupingField
+								<strong>Grouped by {groupingLabel}</strong>{" "}
+								{serverAggregationActive
 									? "across every object matching the server filters; counts are permission-aware and do not depend on the loaded object page."
 									: `across the ${filteredObjects.length} loaded row${filteredObjects.length === 1 ? "" : "s"}; custom-field counts update when you change page.`}
 							</span>
@@ -3369,22 +3374,37 @@ export function ObjectsExplorer() {
 						<table className="object-grouped-table">
 							<caption className="sr-only">
 								{activeGroupingField
-									? `Objects grouped by ${activeGroupingField.label}`
+									? `Objects grouped by ${groupingLabel}`
 									: "Global object measures"}
 							</caption>
 							<thead>
 								<tr>
-									<th aria-sort={getGroupedSortAria("value")}>
-										<button
-											type="button"
-											className="table-sort-button"
-											disabled={!activeGroupingField}
-											onClick={() => setGroupedColumnSort("value")}
+									{groupColumns.map((column, index) => (
+										<th
+											key={column.id}
+											aria-sort={
+												index === 0 ? getGroupedSortAria("value") : undefined
+											}
 										>
-											{activeGroupingField?.label ?? "Scope"}
-											{renderGroupedSortIndicator("value")}
-										</button>
-									</th>
+											{index === 0 && activeGroupingField ? (
+												<button
+													type="button"
+													className="table-sort-button"
+													title={
+														activeGroupingFields.length > 1
+															? "Sort by all grouping fields in order"
+															: undefined
+													}
+													onClick={() => setGroupedColumnSort("value")}
+												>
+													{column.label}
+													{renderGroupedSortIndicator("value")}
+												</button>
+											) : (
+												column.label
+											)}
+										</th>
+									))}
 									<th aria-sort={getGroupedSortAria("count")}>
 										<button
 											type="button"
@@ -3409,7 +3429,11 @@ export function ObjectsExplorer() {
 							<tbody>
 								{displayedGroups.map((group) => (
 									<tr key={group.id}>
-										<td title={group.label}>{group.label}</td>
+										{groupColumns.map((column, index) => (
+											<td key={column.id} title={group.dimensions[index]}>
+												{group.dimensions[index] ?? "—"}
+											</td>
+										))}
 										<td className="object-group-count">{group.count}</td>
 										{aggregateMeasures.map((measure, index) => {
 											const result = group.measures?.[index];

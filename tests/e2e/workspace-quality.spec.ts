@@ -102,6 +102,254 @@ test.describe("workspace quality", () => {
 		await prepareWorkspace(page);
 	});
 
+	test("object aggregation supports three ordered dimensions, measures and exports", async ({
+		page,
+	}, testInfo) => {
+		test.setTimeout(90_000);
+		page.setDefaultTimeout(10_000);
+		const requests: URLSearchParams[] = [];
+		await page.route(`**${prefix}/classes/10?*`, (route) =>
+			route.fulfill({ json: classes[0] }),
+		);
+		await page.route("**/_hubuum-bff/classes/10/objects?*", (route) =>
+			route.fulfill({
+				json: [
+					{
+						id: 100,
+						name: "rhel-host",
+						description: "RHEL",
+						collection_id: 1,
+						hubuum_class_id: 10,
+						created_at: timestamp,
+						updated_at: timestamp,
+						data: { os_major: 9, os_minor: 1, cost: 10 },
+						computed: { shared: { values: {}, errors: {} } },
+					},
+				],
+			}),
+		);
+		await page.route(`**${prefix}/classes/10/computed-fields*`, (route) =>
+			route.fulfill({ json: { fields: [] } }),
+		);
+		await page.route(`**${prefix}/iam/me/computed-fields*`, (route) =>
+			route.fulfill({ json: [] }),
+		);
+		await page.route(`**${prefix}/classes/10/object-aggregates?*`, (route) => {
+			const params = new URL(route.request().url()).searchParams;
+			requests.push(params);
+			const dimensions = params.getAll("group_by");
+			const minors = dimensions.includes("json_data.os_minor")
+				? params.has("cursor")
+					? [null, undefined]
+					: [1, 2]
+				: [1];
+			return route.fulfill({
+				json: minors.map((minor, index) => ({
+					dimensions: dimensions.map((field) => ({
+						field,
+						state:
+							field === "json_data.os_minor" && minor == null
+								? minor === null
+									? "null"
+									: "missing"
+								: "value",
+						value:
+							field === "json_data.os_major"
+								? 9
+								: field === "json_data.os_minor"
+									? minor
+									: field === "collection_id"
+										? 1
+										: "rhel-host",
+					})),
+					object_count: index === 0 ? 40 : 35,
+					measures: params.getAll("aggregate").map((measure) => ({
+						operation: measure.split(":")[0],
+						field: measure.split(":")[1],
+						state: "value",
+						value: 400,
+						value_count: 40,
+						skipped_count: 0,
+					})),
+				})),
+				headers: params.has("cursor")
+					? { "X-Total-Count": "4" }
+					: { "X-Next-Cursor": "aggregate-next", "X-Total-Count": "4" },
+			});
+		});
+		await page.goto("/objects?classId=10");
+		await expect(
+			page.getByRole("link", { name: "rhel-host", exact: true }),
+		).toBeVisible();
+		const trigger = page.getByRole("button", { name: /^Aggregate/ });
+		await trigger.click();
+		const menu = page.getByRole("dialog", { name: "Group objects" });
+		await menu
+			.getByRole("combobox", { name: "Group by", exact: true })
+			.selectOption({ label: "os_major" });
+		await menu.getByRole("button", { name: "Add group by" }).click();
+		await menu
+			.getByRole("combobox", { name: "Group by 2", exact: true })
+			.selectOption({ label: "os_minor" });
+		await expect
+			.poll(() => requests.at(-1)?.getAll("group_by"))
+			.toEqual(["json_data.os_major", "json_data.os_minor"]);
+		const table = page.getByRole("region", {
+			name: "Object aggregates",
+			exact: true,
+		});
+		await expect(table.getByRole("row").nth(1).getByRole("cell")).toHaveText([
+			"9",
+			"1",
+			"40",
+		]);
+		await expect(table.getByRole("row").nth(2).getByRole("cell")).toHaveText([
+			"9",
+			"2",
+			"35",
+		]);
+		await menu.getByRole("button", { name: "Add group by" }).click();
+		await expect(
+			menu.getByRole("combobox", { name: "Group by 3", exact: true }),
+		).toHaveValue("object:collection");
+		await expect(
+			menu.getByRole("button", { name: "Add group by" }),
+		).toBeDisabled();
+		await expect(
+			menu
+				.getByRole("combobox", { name: "Group by 3", exact: true })
+				.getByRole("option", { name: "os_major", exact: true }),
+		).toHaveJSProperty("disabled", true);
+		await menu.getByRole("button", { name: "Add measure" }).click();
+		await menu.getByLabel("Numeric field").selectOption({ label: "cost" });
+		await expect
+			.poll(() => requests.at(-1)?.getAll("aggregate"))
+			.toEqual(["sum:json_data.cost"]);
+		await page.keyboard.press("Escape");
+		await expect(trigger).toBeFocused();
+		await expect(
+			table.getByRole("row").nth(1).getByRole("cell").nth(2),
+		).toHaveText("Infrastructure (#1)");
+		await page.getByRole("button", { name: "Next page", exact: true }).click();
+		await expect
+			.poll(() => requests.at(-1)?.get("cursor"))
+			.toBe("aggregate-next");
+		await expect(
+			table.getByRole("row").nth(1).getByRole("cell").nth(1),
+		).toHaveText("(null)");
+		await expect(
+			table.getByRole("row").nth(2).getByRole("cell").nth(1),
+		).toHaveText("(missing)");
+		await trigger.click();
+		await menu
+			.getByRole("button", { name: "Move grouping field 3 up" })
+			.click();
+		await expect
+			.poll(() => requests.at(-1)?.getAll("group_by"))
+			.toEqual(["json_data.os_major", "collection_id", "json_data.os_minor"]);
+		expect(requests.at(-1)?.has("cursor")).toBe(false);
+		await menu.getByLabel("Sort groups").selectOption("value-asc");
+		await expect
+			.poll(() => requests.at(-1)?.get("sort"))
+			.toBe("dimensions.asc");
+		await page.keyboard.press("Escape");
+		await expect(table.getByRole("columnheader")).toHaveText([
+			/os_major/,
+			"Collection",
+			"os_minor",
+			/Count/,
+			"Sum · cost",
+		]);
+		await page.getByRole("button", { name: "Download", exact: true }).click();
+		const downloaded = page.waitForEvent("download");
+		await page.getByRole("menuitem", { name: /CSV/ }).click();
+		const stream = await (await downloaded).createReadStream();
+		const chunks = [];
+		for await (const chunk of stream) chunks.push(chunk);
+		const csv = Buffer.concat(chunks).toString("utf8");
+		expect(csv).toContain("os_major,Collection,os_minor,Count,Sum · cost");
+		expect(csv).toContain("9,Infrastructure (#1),1,40,400");
+		await trigger.click();
+		for (const width of [1440, 1280, 390]) {
+			await page.setViewportSize({ width, height: 900 });
+			await expect(
+				menu.getByRole("combobox", { name: "Group by 3", exact: true }),
+			).toBeVisible();
+			await expect
+				.poll(() =>
+					menu.evaluate((element) => {
+						const bounds = element.getBoundingClientRect();
+						return (
+							element.scrollWidth <= element.clientWidth &&
+							bounds.left >= 0 &&
+							bounds.right <= window.innerWidth &&
+						bounds.bottom <= window.innerHeight
+						);
+					}),
+				)
+				.toBe(true);
+			expect(
+				(
+					await new AxeBuilder({ page })
+						.include('[role="dialog"]')
+						.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+						.analyze()
+				).violations,
+			).toEqual([]);
+			await page.screenshot({
+				path: testInfo.outputPath(`aggregation-${width}.png`),
+			});
+		}
+		await menu.getByRole("button", { name: "Remove grouping field 2" }).click();
+		await expect(
+			menu.getByRole("combobox", { name: "Group by", exact: true }),
+		).toBeFocused();
+		await expect(
+			menu.getByRole("combobox", { name: "Group by 2", exact: true }),
+		).toHaveValue('data:["os_minor"]');
+		await expect(
+			menu.getByRole("button", { name: "Add group by" }),
+		).toBeEnabled();
+		await menu.getByRole("button", { name: "Remove grouping field 2" }).click();
+		await menu.getByRole("button", { name: "Remove grouping field 1" }).click();
+		await expect.poll(() => requests.at(-1)?.getAll("group_by")).toEqual([]);
+		expect(requests.at(-1)?.getAll("aggregate")).toEqual([
+			"sum:json_data.cost",
+		]);
+		await expect(
+			table.getByRole("cell", { name: "All matching objects" }),
+		).toBeVisible();
+		await menu.getByRole("button", { name: "Clear", exact: true }).click();
+		await expect(table).toBeHidden();
+		await page.keyboard.press("Escape");
+		await page.getByRole("button", { name: /^Columns/ }).click();
+		const columns = page.getByRole("dialog", { name: "Object columns" });
+		await columns.getByText("Create a custom field", { exact: true }).click();
+		await columns.getByLabel("Label", { exact: true }).fill("OS fallback");
+		await columns
+			.getByLabel("Paths", { exact: true })
+			.fill("os_major|os_minor");
+		await columns.getByRole("button", { name: "Add custom field" }).click();
+		await page.keyboard.press("Escape");
+		await trigger.click();
+		await menu
+			.getByRole("combobox", { name: "Group by", exact: true })
+			.selectOption({ label: "OS fallback" });
+		await expect(
+			menu.getByRole("button", { name: "Add group by" }),
+		).toBeDisabled();
+		await expect(
+			menu.getByRole("button", { name: "Add measure" }),
+		).toBeDisabled();
+		const localTable = page.getByRole("region", {
+			name: "Grouped objects",
+			exact: true,
+		});
+		await expect(
+			localTable.getByRole("row").nth(1).getByRole("cell"),
+		).toHaveText(["9", "1", "rhel-host"]);
+	});
+
 	for (const theme of ["light", "dark"] as const) {
 		test(`search shortcut hints follow focus and input in ${theme} mode`, async ({
 			page,
