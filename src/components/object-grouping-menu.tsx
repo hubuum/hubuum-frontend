@@ -39,9 +39,11 @@ type ObjectGroupingMenuProps = {
 	measureFields: readonly ObjectAggregateMeasureField[];
 	measures: readonly ObjectAggregateMeasureSelection[];
 	sort: ObjectGroupSort;
+	layout: "tree" | "table";
 	onFieldsChange: (fieldIds: string[]) => void;
 	onMeasuresChange: (measures: ObjectAggregateMeasureSelection[]) => void;
 	onSortChange: (sort: ObjectGroupSort) => void;
+	onLayoutChange: (layout: "tree" | "table") => void;
 	disabled?: boolean;
 };
 
@@ -86,9 +88,11 @@ export function ObjectGroupingMenu({
 	measureFields,
 	measures,
 	sort,
+	layout,
 	onFieldsChange,
 	onMeasuresChange,
 	onSortChange,
+	onLayoutChange,
 	disabled = false,
 }: ObjectGroupingMenuProps) {
 	const rootRef = useRef<HTMLDivElement | null>(null);
@@ -270,6 +274,31 @@ export function ObjectGroupingMenu({
 							</button>
 						) : null}
 					</div>
+					{selectedFields.filter((field) => field.serverGroupBy).length > 1 ? (
+						<div className="control-field object-grouping-view">
+							<span>View</span>
+							<fieldset className="segmented-control" aria-label="Aggregate view">
+								<button
+									type="button"
+									className={layout === "tree" ? "is-active" : undefined}
+									aria-label="Tree view"
+									aria-pressed={layout === "tree"}
+									onClick={() => onLayoutChange("tree")}
+								>
+									Tree
+								</button>
+								<button
+									type="button"
+									className={layout === "table" ? "is-active" : undefined}
+									aria-label="Table view"
+									aria-pressed={layout === "table"}
+									onClick={() => onLayoutChange("table")}
+								>
+									Table
+								</button>
+							</fieldset>
+						</div>
+					) : null}
 					<div className="object-aggregate-measures">
 						<div className="object-aggregate-measures-header">
 							<div>

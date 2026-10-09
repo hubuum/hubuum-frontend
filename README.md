@@ -301,6 +301,7 @@ shared-computed, or personal-computed fields through the server's permission-awa
 aggregate resource. Use **Aggregate → Add group by** to add dimensions; move
 them up or down to change their order. Multiple dimensions default to an expandable
 tree with complete parent subtotals and numeric measures supplied by the server.
+Use **Aggregate → View** to switch between **Tree** and **Table**.
 Top-level groups load in pages when sorting by count. A–Z and Z–A use natural
 numeric ordering (8, 9, 10), including numeric text and version labels. These
 sorts load all aggregate pages before sorting and paging locally, in both tree

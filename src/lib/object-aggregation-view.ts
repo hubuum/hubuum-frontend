@@ -62,10 +62,12 @@ export function parseObjectAggregationView(
 		sort === "count-asc" || sort === "value-asc" || sort === "value-desc"
 			? sort
 			: "count-desc";
+	const aggregateLayout: "tree" | "table" =
+		params.get("aggregateView") === "table" ? "table" : "tree";
 	return {
 		groupFieldIds,
 		aggregateMeasures,
 		groupSort,
-		aggregateLayout: params.get("aggregateView") === "table" ? "table" : "tree",
+		aggregateLayout,
 	};
 }

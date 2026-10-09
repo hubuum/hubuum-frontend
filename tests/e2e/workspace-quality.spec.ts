@@ -778,7 +778,9 @@ test.describe("workspace quality", () => {
 			),
 		).toBe(true);
 		await page.keyboard.press("Escape");
-		await page.getByRole("button", { name: "Table view", exact: true }).click();
+		await trigger.click();
+		await menu.getByRole("button", { name: "Table view", exact: true }).click();
+		await page.keyboard.press("Escape");
 		await tree
 			.getByRole("button", {
 				name: "View 2 objects for os_major: 8 → os_minor: 1",
@@ -911,7 +913,9 @@ test.describe("workspace quality", () => {
 			.getByRole("button", { name: "Expand os_major: 10", exact: true })
 			.click();
 		await expect(children).toHaveText(["10os_minor", "9os_minor"]);
-		await page.getByRole("button", { name: "Table view", exact: true }).click();
+		await trigger.click();
+		await menu.getByRole("button", { name: "Table view", exact: true }).click();
+		await page.keyboard.press("Escape");
 		await expect(table.getByRole("row").nth(1).getByRole("cell")).toHaveText([
 			"10",
 			"10",
@@ -1024,9 +1028,17 @@ test.describe("workspace quality", () => {
 		await menu
 			.getByRole("combobox", { name: "Group by 2", exact: true })
 			.selectOption({ label: "os_minor" });
-		await page.keyboard.press("Escape");
-		await page.getByRole("button", { name: "Table view", exact: true }).click();
-		await trigger.click();
+		const view = menu.getByRole("group", { name: "Aggregate view" });
+		const treeView = view.getByRole("button", { name: "Tree view" });
+		const tableView = view.getByRole("button", { name: "Table view" });
+		await expect(treeView).toHaveAttribute("aria-pressed", "true");
+		await tableView.click();
+		await expect(tableView).toHaveAttribute("aria-pressed", "true");
+		await treeView.focus();
+		await page.keyboard.press("Space");
+		await expect(treeView).toHaveAttribute("aria-pressed", "true");
+		expect(new URL(page.url()).searchParams.has("aggregateView")).toBe(false);
+		await tableView.click();
 		await expect
 			.poll(() => requests.at(-1)?.getAll("group_by"))
 			.toEqual(["json_data.os_major", "json_data.os_minor"]);
@@ -1066,6 +1078,7 @@ test.describe("workspace quality", () => {
 			.toEqual(["sum:json_data.cost"]);
 		await page.keyboard.press("Escape");
 		await expect(trigger).toBeFocused();
+		await expect(page.getByRole("group", { name: "Aggregate view" })).toHaveCount(0);
 		await expect(
 			table.getByRole("row").nth(1).getByRole("cell").nth(2),
 		).toHaveText("Infrastructure (#1)");
@@ -1090,6 +1103,7 @@ test.describe("workspace quality", () => {
 		await expect(menu.getByLabel("Numeric field")).toHaveValue(
 			"json_data.cost",
 		);
+		await expect(tableView).toHaveAttribute("aria-pressed", "true");
 		await page.keyboard.press("Escape");
 		await page.getByRole("button", { name: "Next page", exact: true }).click();
 		await expect(page).toHaveURL(/aggregateCursor=aggregate-next/);
@@ -1201,6 +1215,7 @@ test.describe("workspace quality", () => {
 			menu.getByRole("button", { name: "Add group by" }),
 		).toBeEnabled();
 		await menu.getByRole("button", { name: "Remove grouping field 2" }).click();
+		await expect(view).toHaveCount(0);
 		await menu.getByRole("button", { name: "Remove grouping field 1" }).click();
 		await expect.poll(() => requests.at(-1)?.getAll("group_by")).toEqual([]);
 		expect(requests.at(-1)?.getAll("aggregate")).toEqual([

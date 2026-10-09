@@ -5011,6 +5011,12 @@ button.table-export-option {
 	gap: 0.3rem;
 }
 
+.object-grouping-menu .object-grouping-view {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+
 .object-aggregate-measures {
 	display: grid;
 	gap: 0.6rem;

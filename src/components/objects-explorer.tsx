@@ -3173,9 +3173,11 @@ export function ObjectsExplorer() {
 							measureFields={aggregateMeasureFields}
 							measures={aggregateMeasures}
 							sort={groupSort}
+							layout={aggregateLayout}
 							onFieldsChange={setGroupingFields}
 							onMeasuresChange={setAggregateMeasureSelection}
 							onSortChange={setAggregateSort}
+							onLayoutChange={setAggregateLayout}
 							disabled={
 								parsedClassId === null || aggregateMemberFilter !== null
 							}
@@ -3187,33 +3189,6 @@ export function ObjectsExplorer() {
 							onChange={updateServerFilters}
 							disabled={parsedClassId === null}
 						/>
-						{serverGroupBy.length > 1 && aggregateMemberFilter === null ? (
-							<fieldset
-								className="segmented-control"
-								aria-label="Aggregate view"
-							>
-								<button
-									type="button"
-									className={
-										aggregateLayout === "tree" ? "is-active" : undefined
-									}
-									aria-pressed={aggregateLayout === "tree"}
-									onClick={() => setAggregateLayout("tree")}
-								>
-									Tree view
-								</button>
-								<button
-									type="button"
-									className={
-										aggregateLayout === "table" ? "is-active" : undefined
-									}
-									aria-pressed={aggregateLayout === "table"}
-									onClick={() => setAggregateLayout("table")}
-								>
-									Table view
-								</button>
-							</fieldset>
-						) : null}
 						<div className="object-export-search-tools">
 							{treeAggregationVisible ? null : hasAggregateView ? (
 								<TableExportMenu
