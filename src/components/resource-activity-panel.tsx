@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { EventDetailsModal } from "@/components/event-details-modal";
 import { HistoryDetailsModal } from "@/components/history-details-modal";
@@ -15,6 +17,7 @@ import {
 	type ResourceEventScope,
 } from "@/lib/api/events";
 import { formatEventActor, formatEventInitiator } from "@/lib/event-provenance";
+import { resourceHistoryHref } from "@/lib/resource-history";
 
 type ResourceActivityPanelProps = {
 	scope: ResourceEventScope;
@@ -88,6 +91,14 @@ export function ResourceActivityPanel({
 	scope,
 	title,
 }: ResourceActivityPanelProps) {
+	const router = useRouter();
+	function openHistory(record: HistoryRecord) {
+		if (scope.type === "collection") setSelectedHistory(record);
+		else
+			router.push(
+				resourceHistoryHref(scope, record.valid_from, record.history_id),
+			);
+	}
 	const stableScopeKey = useMemo(() => scopeKey(scope), [scope]);
 	const [eventCursor, setEventCursor] = useState("");
 	const [historyCursor, setHistoryCursor] = useState("");
@@ -129,6 +140,10 @@ export function ResourceActivityPanel({
 		event.preventDefault();
 		const normalized = normalizeAsOfInput(asOfInput);
 		if (!normalized) {
+			return;
+		}
+		if (scope.type !== "collection") {
+			router.push(resourceHistoryHref(scope, normalized));
 			return;
 		}
 
@@ -229,9 +244,10 @@ export function ResourceActivityPanel({
 	};
 
 	return (
-		<section className="stack detail-content-section">
+		<section className="stack detail-content-section" id="resource-activity">
 			<EventDetailsModal
 				event={selectedEvent}
+				historyScope={scope.type === "collection" ? undefined : scope}
 				onClose={() => setSelectedEvent(null)}
 				navigation={
 					selectedEventIndex >= 0
@@ -388,6 +404,11 @@ export function ResourceActivityPanel({
 					<div className="panel-header">
 						<div>
 							<strong>Version history</strong>
+							{scope.type !== "collection" ? (
+								<Link className="link-chip" href={resourceHistoryHref(scope)}>
+									Browse history
+								</Link>
+							) : null}
 							<p className="muted">Stored state changes for this resource.</p>
 						</div>
 						<div className="action-row">
@@ -455,14 +476,14 @@ export function ResourceActivityPanel({
 											key={record.history_id}
 											className="activity-detail-row"
 											tabIndex={0}
-											onClick={() => setSelectedHistory(record)}
+											onClick={() => openHistory(record)}
 											onKeyDown={(keyboardEvent) => {
 												if (
 													keyboardEvent.key === "Enter" ||
 													keyboardEvent.key === " "
 												) {
 													keyboardEvent.preventDefault();
-													setSelectedHistory(record);
+													openHistory(record);
 												}
 											}}
 											aria-label={`View details for history version ${record.history_id}`}

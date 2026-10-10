@@ -1,0 +1,539 @@
+.browser {
+	min-width: 0;
+}
+.heading {
+	flex-wrap: wrap;
+	align-items: baseline;
+}
+.historyTitle {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.7rem;
+}
+.versionRange {
+	color: var(--muted);
+	font-size: 0.78rem;
+	font-weight: 400;
+	letter-spacing: normal;
+	line-height: 1.6;
+}
+.historyExplorer {
+	display: grid;
+	grid-template-columns: 170px minmax(0, 1fr);
+	gap: 2rem;
+	align-items: start;
+}
+.timeline {
+	position: relative;
+	align-self: stretch;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	color: var(--muted);
+}
+.timelineHeading,
+.timelineFooter {
+	padding: 0.65rem 0.5rem;
+	font-size: 0.72rem;
+}
+.timelineHeading {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	align-items: flex-start;
+}
+.timelineHeading strong {
+	color: var(--ink);
+	font-size: 0.9rem;
+}
+.timelineFooter p {
+	margin: 0.45rem 0;
+}
+.timelineFooter button {
+	font: inherit;
+	padding: 0.4rem 0;
+	min-height: 44px;
+	text-align: left;
+}
+.timelineWindow {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	container-type: size;
+}
+.timelineCursor {
+	position: absolute;
+	pointer-events: none;
+	inset: calc(50% - 36px) 0;
+	border: 1px solid var(--accent);
+	border-radius: 10px;
+	background: var(--accent-soft);
+}
+.timelineCursor::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 100%;
+	width: 1.8rem;
+	border-top: 1px solid var(--accent);
+}
+.timelineViewport {
+	position: absolute;
+	inset: 0;
+	overflow-y: auto;
+	overflow-anchor: none;
+	scrollbar-width: thin;
+	scrollbar-color: var(--line) transparent;
+}
+.timelineEntries {
+	list-style: none;
+	margin: 0;
+	padding: calc(50cqh - 40px) 0;
+}
+.timelineEntries li {
+	position: relative;
+	margin: 0;
+	height: 80px;
+}
+.timelineEntries li::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 17px;
+	border-left: 1px solid var(--line);
+}
+.timelineEntry {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: center;
+	gap: 0.2rem;
+	position: relative;
+	width: 100%;
+	height: 80px;
+	padding: 0.5rem 0.4rem 0.5rem 2.1rem;
+	background: transparent;
+	border: 0;
+	border-radius: 10px;
+	box-shadow: none;
+	color: var(--muted);
+	font-size: 0.86rem;
+	font-weight: 500;
+	text-align: left;
+}
+.timelineEntry:hover,
+.timelineEntry:focus-visible {
+	background: var(--accent-soft);
+	color: var(--ink);
+}
+.timelineEntry[aria-current="step"] {
+	color: var(--accent-strong);
+	font-weight: 700;
+}
+.timelineEntry small {
+	font-size: 0.68rem;
+}
+.timelineDot {
+	position: absolute;
+	top: calc(50% - 4px);
+	left: 13px;
+	width: 9px;
+	height: 9px;
+	border: 2px solid var(--muted);
+	border-radius: 50%;
+	background: var(--card);
+}
+.timelineEntry[aria-current="step"] .timelineDot {
+	background: var(--accent);
+	border-color: var(--accent);
+	box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.fanStage {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+}
+.fanSide {
+	min-width: 0;
+}
+.fanCards {
+	position: relative;
+	height: calc(68px + 4.95rem);
+	pointer-events: none;
+}
+.fanCard {
+	--offset: calc(var(--title-step) * 1.65rem + var(--tail-step) * 1.2px);
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	inset-inline: calc(1% + var(--depth) * 1.15%);
+	height: 48px;
+	padding: 0.45rem 0.8rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--card);
+	color: var(--muted);
+	font-size: 0.72rem;
+	line-height: 1.35;
+	text-align: center;
+	box-shadow: 0 2px 3px rgb(0 0 0 / 6%);
+	overflow: hidden;
+	transition: inset-inline 220ms ease;
+}
+.fanSide[data-direction="newer"] .fanCard {
+	bottom: var(--offset);
+}
+.fanSide[data-direction="older"] .fanCard {
+	top: var(--offset);
+}
+.fanSide[data-direction="older"] .fanCard[data-nearest="false"] {
+	justify-content: flex-end;
+}
+.fanCard > span {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.fanSummary {
+	font-size: 0.65rem;
+}
+.selectedSnapshot {
+	position: relative;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	box-shadow: var(--shadow);
+	max-height: clamp(340px, 50vh, 640px);
+	overflow: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--line) var(--card);
+	background: var(--card);
+	animation: revealSnapshot 180ms ease-out;
+}
+.selectedSnapshot:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 3px;
+}
+.snapshot {
+	--snapshot-padding: 1.4rem;
+	position: relative;
+	padding: var(--snapshot-padding);
+	margin: 0;
+}
+.snapshot::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	inset-inline: var(--snapshot-padding);
+	height: 2px;
+	background: var(--accent);
+}
+.snapshotHeading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.35rem 1rem;
+}
+.snapshotHeading h2 {
+	font-size: 1.25rem;
+	font-weight: 500;
+}
+.snapshotHeading p {
+	margin: 0.35rem 0 0;
+	font-size: 0.78rem;
+}
+.snapshotHeading .restore,
+.toolbar .jump {
+	background: transparent;
+	box-shadow: none;
+	font-weight: 500;
+	min-height: 44px;
+}
+.snapshotHeading .restore {
+	color: var(--accent-strong);
+	font-size: 0.78rem;
+	padding: 0.5rem 0;
+}
+.snapshotHeading .restore:hover,
+.toolbar .jump:hover {
+	text-decoration: underline;
+}
+.fanCaption {
+	margin: 0.25rem 0;
+	font-size: 0.72rem;
+	color: var(--muted);
+}
+@keyframes revealSnapshot {
+	from {
+		transform: translateY(4px);
+	}
+	to {
+		transform: translateY(0);
+	}
+}
+.toolbar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	min-width: 0;
+	margin: 0;
+	padding: 0.7rem 0;
+	border: 0;
+	border-block: 1px solid var(--line);
+}
+.comparisonBaseline {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	min-width: 0;
+	color: var(--muted);
+	font-size: 0.78rem;
+}
+.comparisonBaseline select {
+	min-width: 0;
+	max-width: 100%;
+}
+.toolbar button,
+.toolbar select {
+	font-size: 0.83rem;
+	min-height: 44px;
+}
+.toolbar button {
+	background: var(--card);
+	border: 1px solid var(--line);
+	color: var(--ink);
+	font-weight: 500;
+}
+.toolbar .pin {
+	width: 44px;
+	background: transparent;
+	border-color: transparent;
+}
+.toolbar .pin[aria-pressed="true"] {
+	background: var(--accent-soft);
+	color: var(--accent-strong);
+}
+.toolbar .jump {
+	margin-left: auto;
+	border-color: transparent;
+	color: var(--muted);
+	padding-inline: 0.5rem;
+}
+.baseline {
+	padding: 0.8rem 0;
+	color: var(--muted);
+	font-size: 0.8rem;
+	border-bottom: 1px solid var(--line);
+}
+.fields {
+	margin: 0;
+}
+.field {
+	display: grid;
+	grid-template-columns: minmax(140px, 0.7fr) minmax(0, 1.3fr);
+	gap: 1rem;
+	padding: 0.8rem;
+	border-bottom: 1px solid var(--line);
+	overflow-wrap: anywhere;
+}
+.field dt {
+	font-size: 0.85rem;
+}
+.field dd {
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.65rem;
+	white-space: pre-wrap;
+}
+.field[data-kind="changed"],
+.field[data-kind="added"] {
+	background: color-mix(in oklab, var(--accent-soft) 65%, var(--card));
+}
+.field[data-kind="removed"] {
+	background: var(--danger-soft);
+}
+.changeBadge {
+	margin-left: 0.5rem;
+	text-transform: capitalize;
+}
+.changeBadge[data-kind="removed"] {
+	color: var(--danger);
+	background: var(--danger-soft);
+}
+.changeBadge[data-kind="added"],
+.changeBadge[data-kind="changed"] {
+	color: var(--accent-strong);
+	background: var(--accent-soft);
+}
+.json {
+	margin-top: 1.2rem;
+}
+.json summary,
+.provenance summary {
+	padding: 0.5rem 0;
+}
+.json > div {
+	margin-top: 1rem;
+}
+.note {
+	color: var(--muted);
+	font-size: 0.8rem;
+	margin: 0.75rem 0;
+}
+.provenance {
+	overflow-wrap: anywhere;
+}
+.comparison {
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	overflow: hidden;
+}
+.comparisonHeading,
+.comparisonValues {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.comparisonHeading {
+	background: var(--field-bg);
+	font-size: 0.8rem;
+}
+.comparisonHeading > *,
+.comparisonValues > * {
+	padding: 0.8rem;
+	overflow-wrap: anywhere;
+	min-width: 0;
+}
+.comparisonHeading > :last-child,
+.comparisonValues > :last-child {
+	border-left: 1px solid var(--line);
+}
+.comparisonRow {
+	border-top: 1px solid var(--line);
+}
+.changePath {
+	padding: 0.65rem 0.8rem 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem;
+	font-size: 0.8rem;
+	overflow-wrap: anywhere;
+}
+.value {
+	margin: 0;
+	font: inherit;
+	font-family: var(--font-mono), monospace;
+	font-size: 0.82rem;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	background: transparent;
+}
+.comparison .note,
+.empty {
+	padding: 0.8rem;
+}
+.refreshNotice {
+	padding: 0.8rem;
+	background: var(--accent-soft);
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+}
+.restoreDialog {
+	max-width: 960px;
+	width: min(960px, calc(100vw - 2rem));
+}
+.restoreChoices {
+	min-width: 0;
+	margin: 0;
+	padding: 1rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	max-height: 45vh;
+	overflow-y: auto;
+}
+.choice {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.45rem 0;
+	min-height: 44px;
+	overflow-wrap: anywhere;
+}
+.choice input[type="checkbox"] {
+	width: 1.15rem;
+	height: 1.15rem;
+	flex-shrink: 0;
+}
+.toolbar .choice {
+	font-size: 0.83rem;
+}
+@media (max-width: 650px) {
+	.snapshot {
+		--snapshot-padding: 0.9rem;
+	}
+	.field {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.35rem;
+		padding: 0.7rem 0.4rem;
+	}
+	.historyExplorer {
+		grid-template-columns: 76px minmax(0, 1fr);
+		gap: 0.75rem;
+	}
+	.timelineEntry {
+		font-size: 0.72rem;
+		padding-left: 1.15rem;
+	}
+	.timelineEntry small {
+		font-size: 0.6rem;
+	}
+	.timelineDot {
+		left: 3px;
+		width: 7px;
+		height: 7px;
+	}
+	.timelineEntries li::before {
+		left: 6px;
+	}
+	.timelineCursor::after {
+		width: 0.65rem;
+	}
+	.timelineYear {
+		display: none;
+	}
+	.fanCard {
+		font-size: 0.6rem;
+		padding-inline: 0.4rem;
+	}
+	.comparisonHeading > *,
+	.comparisonValues > * {
+		padding: 0.6rem;
+	}
+	.comparisonBaseline {
+		flex-basis: 100%;
+	}
+	.comparisonBaseline select {
+		flex: 1;
+	}
+	.toolbar .jump {
+		margin-left: 0;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.fanStage,
+	.fanCard,
+	.selectedSnapshot {
+		animation: none;
+		transition: none;
+	}
+}

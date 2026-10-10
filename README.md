@@ -59,6 +59,7 @@ tasks, and manage authorized workflows. See the [browser guide](docs/user-guide.
 | <span id="object-data-columns"></span>Object data columns | [Guide](docs/user-guide.md#object-data-columns) |
 | <span id="bookmarkable-reports"></span>Bookmarkable reports | [Guide](docs/user-guide.md#bookmarkable-reports) |
 | <span id="chat-webhooks"></span>Chat webhooks | [Guide](docs/user-guide.md#chat-webhooks) |
+| <span id="historical-snapshots-and-object-restoration"></span>Historical snapshots and object restoration | [Guide](docs/user-guide.md#historical-snapshots-and-object-restoration) |
 | <span id="administrator-backup-and-restore"></span>Administrator backup and restore | [Guide](docs/user-guide.md#administrator-backup-and-restore) |
 | <span id="collection-hierarchy"></span>Collection hierarchy | [Guide](docs/user-guide.md#collection-hierarchy) |
 | <span id="security-audit-gate"></span>Security audit gate | [Guide](docs/development.md#security-audit-gate) |

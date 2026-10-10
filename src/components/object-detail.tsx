@@ -79,6 +79,7 @@ import {
 	takeUnrequestedRelatedObjectPathContextIds,
 } from "@/lib/object-relation-summary";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
+import { resourceHistoryHref } from "@/lib/resource-history";
 import {
 	directoryLookupStatus,
 	useDirectorySearch,
@@ -1825,6 +1826,12 @@ export function ObjectDetail({
 						</span>
 					</div>
 					<div className="object-record-actions">
+						<Link
+							className="link-chip"
+							href={resourceHistoryHref({ type: "object", classId, objectId })}
+						>
+							Browse history
+						</Link>
 						<div className="object-record-times">
 							<span>
 								Created{" "}
