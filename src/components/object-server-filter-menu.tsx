@@ -2,25 +2,26 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
-	getObjectServerFilterIdentity,
-	getObjectServerFilterLabel,
-	MAX_OBJECT_COMPUTED_FILTERS,
-	MAX_OBJECT_SERVER_FILTERS,
-	normalizeObjectServerFilter,
-	resolveObjectServerFilterRelativeDates,
-	type ObjectServerFilterDataType,
-	type ObjectServerFilter,
-	type ObjectServerFilterBaseOperator,
-	type ObjectServerFilterOperator,
-} from "@/lib/object-server-filters";
+	getObjectServerFilterEditorDataFields,
+	getObjectServerFilterEditorDraft,
+	replaceObjectServerFilter,
+} from "@/lib/object-server-filter-editor";
 import type {
 	ServerFilterComputedField,
 	ServerFilterDataField,
 } from "@/lib/object-server-filter-fields";
 import {
-	getObjectServerFilterEditorDraft,
-	replaceObjectServerFilter,
-} from "@/lib/object-server-filter-editor";
+	getObjectServerFilterIdentity,
+	getObjectServerFilterLabel,
+	MAX_OBJECT_COMPUTED_FILTERS,
+	MAX_OBJECT_SERVER_FILTERS,
+	normalizeObjectServerFilter,
+	type ObjectServerFilter,
+	type ObjectServerFilterBaseOperator,
+	type ObjectServerFilterDataType,
+	type ObjectServerFilterOperator,
+	resolveObjectServerFilterRelativeDates,
+} from "@/lib/object-server-filters";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 export type {
@@ -192,7 +193,7 @@ function IconServerFilter() {
 
 export function ObjectServerFilterMenu({
 	filters,
-	dataFields,
+	dataFields: discoveredDataFields,
 	computedFields,
 	onChange,
 	disabled = false,
@@ -220,6 +221,10 @@ export function ObjectServerFilterMenu({
 	const [dataTypeOverrides, setDataTypeOverrides] = useState<
 		Record<string, SelectableDataType>
 	>({});
+	const dataFields = useMemo(
+		() => getObjectServerFilterEditorDataFields(discoveredDataFields, filters),
+		[discoveredDataFields, filters],
+	);
 	const dataFieldById = useMemo(
 		() => new Map(dataFields.map((item) => [item.id, item])),
 		[dataFields],
@@ -804,7 +809,7 @@ export function ObjectServerFilterMenu({
 									aria-label="Server filter value"
 									type={
 										(isNumberField || operator === "array_length") &&
-										!["in", "between"].includes(operator)
+										!["in", "between", "regex"].includes(operator)
 											? "number"
 											: "text"
 									}
