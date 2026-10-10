@@ -316,17 +316,21 @@ Ordered grouping fields (`groupBy`), measures (`aggregate`), group sort
 (`groupSort`), tree/table layout (`aggregateView`), and aggregate table cursor
 (`aggregateCursor`) are stored in the URL. Refresh and copied links restore the
 configuration; control edits replace the current history entry and pagination
-adds an entry. Class changes clear the old class's aggregation settings.
+adds an entry. Copied aggregate cursor links keep a **First** action even when
+the previous cursor is unknown. Class changes clear the old class's aggregation
+settings.
 Click a count to open matching objects in a dialog without collapsing the tree.
 The dialog's **Open in object table** link preserves the full group path and source
-filters in the URL, supports new tabs and reloads, and lets Back return to the tree.
+filters as editable Server filters (`objectFilters`) in the URL, opens an ungrouped
+object table, supports new tabs and reloads, and lets Back return to the tree.
 Matching uses server filters and cursor pagination, fetching only the requested
 object page. Numeric values and their text equivalents match together; JSON null
 and missing share the server null filter, as do null and unavailable computed
 values. The dialog header shows the filtered total and a table-icon link. Groups
 containing whole JSON objects or arrays cannot be converted to a server filter
-and show an explanation instead of scanning objects. Closing the dialog cancels
-its pending request.
+and have a disabled count with an explanation. The same applies when combining
+source filters and group conditions would exceed two computed filters or eight
+total filters. Closing the dialog cancels its pending request.
 Server filters run before aggregation, counts cover the complete matching class
 rather than the loaded object page, and aggregate rows
 have their own cursor pagination and exact total. Null, missing, and unavailable

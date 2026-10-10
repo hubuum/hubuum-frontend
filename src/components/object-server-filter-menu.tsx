@@ -66,6 +66,7 @@ const STRING_OPERATORS: OperatorOption[] = [
 	{ value: "equals", label: "equals" },
 	{ value: "istartswith", label: "starts with" },
 	{ value: "iendswith", label: "ends with" },
+	{ value: "regex", label: "matches regular expression" },
 ];
 
 const NUMBER_OPERATORS: OperatorOption[] = [
@@ -79,7 +80,6 @@ const NUMBER_OPERATORS: OperatorOption[] = [
 const DATA_STRING_OPERATORS: OperatorOption[] = [
 	...STRING_OPERATORS,
 	{ value: "like", label: "matches SQL pattern" },
-	{ value: "regex", label: "matches regular expression" },
 	{ value: "in", label: "is one of (comma-separated)" },
 	{ value: "is_null", label: "is missing or null" },
 ];
@@ -130,7 +130,6 @@ const DATA_OBJECT_OPERATORS: OperatorOption[] = [
 const COMPUTED_STRING_OPERATORS: OperatorOption[] = [
 	...STRING_OPERATORS,
 	{ value: "like", label: "matches SQL pattern" },
-	{ value: "regex", label: "matches regular expression" },
 	{ value: "in", label: "is one of (comma-separated)" },
 	{ value: "is_null", label: "is unavailable or null" },
 ];
@@ -253,9 +252,12 @@ export function ObjectServerFilterMenu({
 		field === "created_at" ||
 		field === "updated_at" ||
 		selectedDataType === "date";
-	const operatorOptions = useMemo(() => {
+	const operatorOptions = useMemo<OperatorOption[]>(() => {
 		if (selectedDataType) {
-			return getDataOperatorOptions(selectedDataType);
+			const options = getDataOperatorOptions(selectedDataType);
+			return options.some((option) => option.value === "regex")
+				? options
+				: [...options, { value: "regex", label: "matches regular expression" }];
 		}
 		if (!selectedComputedField) {
 			if (isDateField) return OBJECT_DATE_OPERATORS;
@@ -282,7 +284,7 @@ export function ObjectServerFilterMenu({
 	const expectsBooleanValue =
 		!expectsNoValue &&
 		(operator === "is_null" ||
-			selectedDataType === "boolean" ||
+			(selectedDataType === "boolean" && operator !== "regex") ||
 			selectedComputedField?.resultType === "boolean");
 	const computedFilterCount = filters.filter(
 		(filter) => filter.field === "computed",

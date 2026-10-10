@@ -87,6 +87,7 @@ const STRING_OPERATORS = new Set<ObjectServerFilterOperator>([
 	"istartswith",
 	"endswith",
 	"iendswith",
+	"regex",
 ]);
 const NUMBER_OPERATORS = new Set<ObjectServerFilterOperator>([
 	"equals",
@@ -749,6 +750,7 @@ export function getObjectServerFilterIdentity(
 		filter.computedScope,
 		filter.computedKey,
 		filter.operator,
+		filter.value,
 	].join(":");
 }
 

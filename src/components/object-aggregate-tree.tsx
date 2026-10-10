@@ -1,7 +1,11 @@
 "use client";
 
-import { useInfiniteQuery, useQueries } from "@tanstack/react-query";
-import { Fragment, type ReactNode, useState } from "react";
+import {
+	useInfiniteQuery,
+	useQueries,
+	useQueryClient,
+} from "@tanstack/react-query";
+import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 import { ObjectAggregateCount } from "@/components/object-aggregate-count";
 import type { ObjectAggregateRow } from "@/lib/api/generated/models";
 import {
@@ -24,18 +28,42 @@ type ObjectAggregateTreeProps = {
 	collectionNames: ReadonlyMap<number, string>;
 };
 
+type TreeViewState = {
+	expanded: Map<string, number>;
+	visibleChildren: Record<string, number>;
+	visibleRoots: number;
+};
+
 export function ObjectAggregateTree({
 	request,
 	fieldLabels,
 	measureLabels,
 	collectionNames,
 }: ObjectAggregateTreeProps) {
-	const [expanded, setExpanded] = useState(new Map<string, number>());
+	const queryClient = useQueryClient();
+	const viewKey = useMemo(
+		() => ["object-aggregates", request.classId, "tree-view", request],
+		[request],
+	);
+	const cachedView = queryClient.getQueryData<TreeViewState>(viewKey);
+	const [expanded, setExpanded] = useState(
+		() => cachedView?.expanded ?? new Map<string, number>(),
+	);
 	const [visibleChildren, setVisibleChildren] = useState<
 		Record<string, number>
-	>({});
+	>(() => cachedView?.visibleChildren ?? {});
 	const [progress, setProgress] = useState<Record<number, number>>({});
-	const [visibleRoots, setVisibleRoots] = useState(request.limit);
+	const [visibleRoots, setVisibleRoots] = useState(
+		cachedView?.visibleRoots ?? request.limit,
+	);
+	useEffect(() => {
+		// Keep expansion and visible rows when Back returns from an ungrouped table.
+		queryClient.setQueryData<TreeViewState>(viewKey, {
+			expanded,
+			visibleChildren,
+			visibleRoots,
+		});
+	}, [queryClient, viewKey, expanded, visibleChildren, visibleRoots]);
 	const naturalSort =
 		request.sort === "dimensions.asc" || request.sort === "dimensions.desc";
 	const rootRequest = { ...request, groupBy: request.groupBy.slice(0, 1) };

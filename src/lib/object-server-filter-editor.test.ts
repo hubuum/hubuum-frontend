@@ -4,7 +4,10 @@ import {
 	getObjectServerFilterEditorDraft,
 	replaceObjectServerFilter,
 } from "@/lib/object-server-filter-editor";
-import type { ObjectServerFilter } from "@/lib/object-server-filters";
+import {
+	getObjectServerFilterIdentity,
+	type ObjectServerFilter,
+} from "@/lib/object-server-filters";
 
 describe("object server filter editing", () => {
 	const dataFields = [
@@ -70,7 +73,7 @@ describe("object server filter editing", () => {
 		).toBe("computed:shared:risk");
 	});
 
-	it("replaces the edited filter in place and removes a duplicate identity", () => {
+	it("replaces only the edited predicate, preserving other conditions on the same field", () => {
 		const filters: ObjectServerFilter[] = [
 			{ field: "name", operator: "icontains", value: "edge" },
 			{ field: "description", operator: "icontains", value: "active" },
@@ -80,12 +83,13 @@ describe("object server filter editing", () => {
 		expect(
 			replaceObjectServerFilter(
 				filters,
-				"name::::icontains",
+				getObjectServerFilterIdentity(filters[0]),
 				{ field: "name", operator: "equals", value: "replacement" },
 			),
 		).toEqual([
 			{ field: "name", operator: "equals", value: "replacement" },
 			{ field: "description", operator: "icontains", value: "active" },
+			{ field: "name", operator: "equals", value: "existing" },
 		]);
 	});
 });
