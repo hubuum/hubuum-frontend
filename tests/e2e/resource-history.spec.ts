@@ -1,5 +1,9 @@
+import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
+
+// The non-admin regression creates a disposable credential; keep it out of artifacts.
+test.use({ trace: "off", screenshot: "off", video: "off" });
 
 const prefix = "/_hubuum-bff/hubuum/api/v1/classes/3";
 const objectPath = "/objects/3/12/history";
@@ -37,6 +41,7 @@ async function prepare(
 	page: Page,
 	options: {
 		conflict?: boolean;
+		restoreDenied?: boolean;
 		deleted?: boolean;
 		unavailable?: boolean;
 		classHistory?: boolean;
@@ -106,6 +111,11 @@ async function prepare(
 				return route.fulfill({
 					status: 412,
 					json: { message: "Precondition failed" },
+				});
+			if (options.restoreDenied)
+				return route.fulfill({
+					status: 403,
+					json: { message: "Object update permission denied" },
 				});
 			state.live = {
 				...state.live,
@@ -461,6 +471,107 @@ test.describe("resource history", () => {
 				],
 			},
 		]);
+		await expectSelected(page, 102);
+	});
+
+	test.describe("non-admin restoration", () => {
+		test("can review restoration without collection permission provenance", async ({
+			page,
+			browser,
+		}) => {
+			const origin = new URL(page.url()).origin;
+			const username = `history-review-${randomUUID()}`;
+			const password = randomUUID();
+			const created = await page.request.post(
+				"/_hubuum-bff/credential-mutations",
+				{
+					headers: { Origin: origin },
+					data: {
+						password: process.env.E2E_PASSWORD,
+						path: "/api/v1/iam/users",
+						method: "POST",
+						body: { name: username, password },
+					},
+				},
+			);
+			expect(created.status()).toBe(201);
+			const user = await created.json();
+			const context = await browser.newContext({ baseURL: origin });
+			try {
+				const login = await context.request.post("/_hubuum-bff/auth/login", {
+					headers: { Origin: origin },
+					data: { username, password, identity_scope: "local" },
+				});
+				expect(login.status()).toBe(200);
+				const adminProbe = await context.request.get(
+					"/_hubuum-bff/hubuum/api/v0/meta/db",
+				);
+				expect(adminProbe.status()).toBe(403);
+				const reader = await context.newPage();
+				await prepare(reader);
+				let provenanceRequests = 0;
+				await reader.route(
+					"**/collections/*/permissions/effective/principal/*",
+					(route) => {
+						provenanceRequests++;
+						return route.fulfill({
+							status: 501,
+							json: { message: "Permission provenance is unavailable" },
+						});
+					},
+				);
+				await selectHistorical(reader);
+				await reader.getByRole("button", { name: "Restore to live…" }).click();
+				const dialog = reader.getByRole("dialog");
+				await dialog
+					.getByRole("checkbox", { name: "Entire data document" })
+					.check();
+				await dialog
+					.getByRole("button", { name: /Review \d+ changes/ })
+					.click();
+				await expect(
+					dialog.getByRole("heading", { name: "Review changes" }),
+				).toBeVisible();
+				expect(provenanceRequests).toBe(0);
+			} finally {
+				await context.close();
+				const removed = await page.request.delete(
+					`/_hubuum-bff/hubuum/api/v1/iam/users/${user.id}`,
+					{
+						headers: { Origin: origin },
+					},
+				);
+				expect(removed.status()).toBe(204);
+			}
+		});
+	});
+
+	test("server-denied restores keep live data unchanged and require a new review", async ({
+		page,
+	}) => {
+		const state = await prepare(page, { restoreDenied: true });
+		const liveData = structuredClone(state.live.data);
+		await selectHistorical(page);
+		await page.getByRole("button", { name: "Restore to live…" }).click();
+		const dialog = page.getByRole("dialog");
+		await dialog
+			.getByRole("checkbox", { name: "Entire data document" })
+			.check();
+		await dialog.getByRole("button", { name: /Review \d+ changes/ }).click();
+		const restore = dialog.getByRole("button", {
+			name: "Restore entire data document to live",
+		});
+		await restore.click();
+		await expect(dialog.getByRole("alert")).toContainText(
+			"Object update permission denied",
+		);
+		await expect(restore).toBeDisabled();
+		expect(state.writes).toHaveLength(1);
+		expect(state.live.data).toEqual(liveData);
+		await expect(
+			page.getByText(/Historical values restored as a new audited update/),
+		).toHaveCount(0);
+		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
 		await expectSelected(page, 102);
 	});
 

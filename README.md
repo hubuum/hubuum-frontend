@@ -465,9 +465,11 @@ comparison** is chosen when an update is detected.
 **Restore to live** currently restores object data only: selected keys, exact
 subtrees, or the entire data document. Arrays are restored as whole values.
 Restoring a subtree also removes keys absent in the historical source. A fresh
-live fetch and effective update permission check precede a required review of
-the proposed changes. The atomic data PATCH guards the complete reviewed data
-with a JSON Patch test and, when provided, a strong ETag via `If-Match`.
+live fetch precedes a required review of the proposed changes. The server checks
+object update permission when applying the restore; collection grant provenance
+is not required, including on Treetop deployments. The atomic data PATCH guards
+the complete reviewed data with a JSON Patch test and, when provided, a strong
+ETag via `If-Match`.
 Conflicts require a fresh review; writes are never retried automatically.
 The server applies its current schema validation and creates a new audited
 update. Existing audit/history records are unchanged. The current API cannot

@@ -4,7 +4,6 @@ import {
 	fetchResourceHistoryPage,
 } from "@/lib/api/events";
 import {
-	canRestoreObject,
 	fetchHistoryLiveResource,
 	restoreObjectSnapshot,
 } from "@/lib/api/resource-history";
@@ -106,21 +105,6 @@ describe("history API boundary", () => {
 		expect(JSON.parse(fetch.mock.calls[0][1].body)[0].op).toBe("test");
 		await restoreObjectSnapshot(scope, reviewed, object.data, []);
 		expect(fetch).toHaveBeenCalledTimes(1);
-	});
-	it("checks effective principal permissions, including inherited grants", async () => {
-		const fetch = vi
-			.fn()
-			.mockResolvedValueOnce(new Response('{"principal":{"principal_id":7}}'))
-			.mockResolvedValueOnce(
-				new Response(
-					'[{"inherited":true,"permission":{"has_update_object":true}}]',
-				),
-			);
-		vi.stubGlobal("fetch", fetch);
-		expect(await canRestoreObject(4, false)).toBe(true);
-		expect(fetch.mock.calls[1][0]).toContain(
-			"/permissions/effective/principal/7",
-		);
 	});
 	it.each([403, 422])(
 		"reports permission/validation failures (%i) without retries",

@@ -2,8 +2,6 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1ClassesByClassId,
 	getApiV1ClassesByClassIdByObjectId,
-	getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalId,
-	getApiV1IamMe,
 	patchApiV1ClassesByClassIdByObjectIdData,
 } from "@/lib/api/generated/client";
 import type { HubuumObject } from "@/lib/api/generated/models";
@@ -68,27 +66,6 @@ export async function fetchHistoryLiveResource(
 	};
 }
 
-export async function canRestoreObject(
-	collectionId: number,
-	isAdmin: boolean,
-): Promise<boolean> {
-	if (isAdmin) return true;
-	const me = await getApiV1IamMe({ credentials: "include" });
-	if (me.status !== 200)
-		throw new Error("Unable to check current update permission.");
-	const permissions =
-		await getApiV1CollectionsByCollectionIdPermissionsEffectivePrincipalByPrincipalId(
-			collectionId,
-			me.data.principal.principal_id,
-			{ credentials: "include" },
-		);
-	if (permissions.status !== 200)
-		throw new Error("Unable to check current update permission.");
-	return permissions.data.some(
-		(entry) => entry.permission.has_update_object === true,
-	);
-}
-
 export async function restoreObjectSnapshot(
 	scope: Extract<HistoryScope, { type: "object" }>,
 	reviewed: LiveHistoryResource,
@@ -106,6 +83,8 @@ export async function restoreObjectSnapshot(
 	if (plan.patch.length === 0) return reviewed.object;
 	const etag =
 		reviewed.etag && !reviewed.etag.startsWith("W/") ? reviewed.etag : null;
+	// The PATCH authorizes UpdateObject on every permission backend. Collection
+	// grant provenance is optional and cannot determine object update access.
 	const response = await patchApiV1ClassesByClassIdByObjectIdData(
 		scope.classId,
 		scope.objectId,

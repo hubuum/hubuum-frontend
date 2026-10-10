@@ -6,7 +6,6 @@ import { CreateModal } from "@/components/create-modal";
 import { HistoryComparison } from "@/components/history-comparison";
 import type { HistoryRecord } from "@/lib/api/events";
 import {
-	canRestoreObject,
 	fetchHistoryLiveResource,
 	restoreObjectSnapshot,
 } from "@/lib/api/resource-history";
@@ -20,13 +19,11 @@ import styles from "@/components/resource-history.module.css";
 export function ObjectHistoryRestore({
 	scope,
 	source,
-	isAdmin,
 	onClose,
 	onRestored,
 }: {
 	scope: Extract<HistoryScope, { type: "object" }>;
 	source: HistoryRecord & { data: unknown };
-	isAdmin: boolean;
 	onClose: () => void;
 	onRestored: () => void;
 }) {
@@ -44,17 +41,7 @@ export function ObjectHistoryRestore({
 			scope.objectId,
 			source.history_id,
 		],
-		queryFn: async () => {
-			const live = await fetchHistoryLiveResource(scope);
-			if (
-				!live.object ||
-				!(await canRestoreObject(live.object.collection_id, isAdmin))
-			)
-				throw new Error(
-					"You do not have permission to update this live object.",
-				);
-			return live;
-		},
+		queryFn: () => fetchHistoryLiveResource(scope),
 		staleTime: 0,
 		gcTime: 0,
 		refetchOnWindowFocus: false,
@@ -131,7 +118,7 @@ export function ObjectHistoryRestore({
 					restored as whole values.
 				</p>
 				{review.isFetching ? (
-					<p role="status">Loading current data and permissions…</p>
+					<p role="status">Loading current data…</p>
 				) : null}
 				{review.isError ? (
 					<p role="alert" className="error-banner">

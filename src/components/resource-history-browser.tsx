@@ -109,10 +109,8 @@ function SnapshotPresentation({
 
 export function ResourceHistoryBrowser({
 	scope,
-	isAdmin = false,
 }: {
 	scope: HistoryScope;
-	isAdmin?: boolean;
 }) {
 	const search = useSearchParams();
 	const pathname = usePathname();
@@ -619,7 +617,6 @@ export function ResourceHistoryBrowser({
 					key={restoring.history_id}
 					scope={scope}
 					source={restoring}
-					isAdmin={isAdmin}
 					onClose={() => setRestoring(null)}
 					onRestored={() => {
 						setRestoring(null);
