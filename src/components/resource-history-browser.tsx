@@ -327,12 +327,33 @@ export function ResourceHistoryBrowser({
 		>
 			<header className="panel-header">
 				<div>
-					<p className={styles.eyebrow}>
-						{scope.type === "object" ? "Object" : "Class definition"} history
-					</p>
-					<h1>
+					<h1 className={styles.historyTitle}>
 						{selected?.name ??
 							`${scope.type === "object" ? `Object #${scope.objectId}` : `Class #${scope.classId}`}`}
+						{selected ? (
+							<small className={styles.versionRange}>
+								[ {deleted ? "Deletion marker · " : null}
+								<time dateTime={selected.valid_from}>
+									{historyTime(selected.valid_from)} UTC
+								</time>
+								{!deleted ? (
+									<>
+										{" → "}
+										{selected.valid_to ? (
+											<>
+												<time dateTime={selected.valid_to}>
+													{historyTime(selected.valid_to)} UTC
+												</time>{" "}
+												(exclusive)
+											</>
+										) : (
+											"no known end"
+										)}
+									</>
+								) : null}{" "}
+								]
+							</small>
+						) : null}
 					</h1>
 				</div>
 				<div className="action-row">
@@ -394,18 +415,6 @@ export function ResourceHistoryBrowser({
 			) : null}
 			{selected ? (
 				<>
-					<div className={styles.historicalBanner} role="status">
-						<strong>
-							{deleted ? "Deletion marker" : "Historical snapshot"} ·{" "}
-							{historyTime(at || selected.valid_from)} UTC
-						</strong>
-						<span className="status-pill">Read-only</span>
-						<p>
-							{deleted
-								? "The resource has no active version after this deletion."
-								: `Effective from ${historyTime(selected.valid_from)} UTC ${selected.valid_to ? `until ${historyTime(selected.valid_to)} UTC (exclusive)` : "· no known end"}`}
-						</p>
-					</div>
 					<HistoryStackNavigation
 						records={records}
 						selected={selected}

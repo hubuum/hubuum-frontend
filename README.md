@@ -432,10 +432,20 @@ Existing sinks retain custom configuration and pacing when edited. See the
 Object and class detail pages expose **Browse history**, with direct links from
 history rows and audit event details. The dedicated routes are
 `/objects/{classId}/{objectId}/history` and `/classes/{classId}/history`.
-Layered snapshots support earlier/later buttons, arrow keys, a version selector,
-and mouse/trackpad gestures over the labelled navigation strip. Scrolling the
-snapshot or JSON content keeps its normal behavior. Older entries load on demand.
+A deep snapshot fan follows a scrollable timeline on the left that matches the
+height of the card stack: newer versions above, older below. Counts above and
+below the timeline show how many loaded versions are newer and older than the
+selected snapshot. Separate fans frame the snapshot in the same direction.
+The nearest four previews on each side show centered titles, with a change
+summary on the closest preview; the selected snapshot scrolls within its own
+reading area so both directions remain visible.
+Mouse/trackpad scrolling, touch scrolling, date markers, and
+Up/Down keys select a snapshot; Home/End move within the loaded range. The
+selected marker stays aligned with the timeline cursor. Older entries load as
+you approach the end, with a manual loading fallback. Scrolling snapshot or JSON
+content keeps its normal behavior.
 
+The heading shows the resource name followed by its effective date range.
 **Jump to date** resolves the active version using the server's as-of endpoint.
 Links preserve the original timestamp precision and stored version ID; the
 effective interval excludes its end. Deleted, inaccessible, and unavailable

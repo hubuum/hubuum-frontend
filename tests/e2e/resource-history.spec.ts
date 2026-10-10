@@ -40,6 +40,7 @@ async function prepare(
 		deleted?: boolean;
 		unavailable?: boolean;
 		classHistory?: boolean;
+		many?: boolean;
 	} = {},
 ) {
 	const state = {
@@ -51,14 +52,28 @@ async function prepare(
 		writes: [] as { body: unknown; etag: string | undefined }[],
 		asOf: [] as string[],
 	};
+	const source = options.many
+		? Array.from({ length: 60 }, (_, index) => ({
+				...records[0],
+				history_id: 1000 + index,
+				revision: index + 1,
+				valid_from: new Date(Date.UTC(2026, 7, 1, index)).toISOString(),
+				valid_to:
+					index < 59
+						? new Date(Date.UTC(2026, 7, 1, index + 1)).toISOString()
+						: null,
+				data: { network: { mtu: 1500 + index }, stable: true },
+			})).reverse()
+		: records;
+	const pageSize = options.many ? 25 : 2;
 	const history = options.classHistory
-		? records.map(({ data: _data, hubuum_class_id: _classId, ...record }) => ({
+		? source.map(({ data: _data, hubuum_class_id: _classId, ...record }) => ({
 				...record,
 				id: 3,
 				validate_schema: true,
 				json_schema: { type: "object" },
 			}))
-		: records.map((record) => structuredClone(record));
+		: source.map((record) => structuredClone(record));
 	if (options.deleted) history[0] = { ...history[0], op: "DELETE" };
 	await page.route(`**${prefix}**`, async (route) => {
 		const request = route.request();
@@ -72,15 +87,16 @@ async function prepare(
 					: { json: history[1] },
 			);
 		}
-		if (url.pathname.endsWith("/history"))
+		if (url.pathname.endsWith("/history")) {
+			const offset = Number(url.searchParams.get("cursor") ?? 0);
 			return route.fulfill({
-				json: url.searchParams.has("cursor")
-					? [history[2]]
-					: history.slice(0, 2),
-				headers: url.searchParams.has("cursor")
-					? {}
-					: { "X-Next-Cursor": "older" },
+				json: history.slice(offset, offset + pageSize),
+				headers:
+					offset + pageSize < history.length
+						? { "X-Next-Cursor": String(offset + pageSize) }
+						: {},
 			});
+		}
 		if (request.method() === "PATCH") {
 			state.writes.push({
 				body: request.postDataJSON(),
@@ -105,13 +121,24 @@ async function prepare(
 	return state;
 }
 
+function versionMarker(page: Page, id: number) {
+	return page
+		.getByRole("navigation", { name: "History timeline" })
+		.getByRole("button", { name: new RegExp(`^View version #${id} ·`) });
+}
+
+async function expectSelected(page: Page, id: number) {
+	await expect(versionMarker(page, id)).toHaveAttribute("aria-current", "step");
+	await expect(
+		page.getByText(`Stored version #${id} ·`, { exact: false }),
+	).toBeVisible();
+}
+
 async function selectHistorical(page: Page) {
 	await page.goto(
 		`${objectPath}?at=${encodeURIComponent(instants[1])}&version=102`,
 	);
-	await expect(
-		page.getByRole("combobox", { name: "Select a stored version" }),
-	).toHaveValue("102");
+	await expectSelected(page, 102);
 }
 
 test("history routes require a server-side session", async ({ page }) => {
@@ -145,64 +172,159 @@ test.describe("resource history", () => {
 		await page.waitForURL("**/app");
 	});
 
-	test("glides between exact stored versions, keeps pinning in the URL and loads older history", async ({
+	test("timeline scrolling, markers and keys preserve exact versions and pinned comparisons", async ({
 		page,
 	}) => {
 		await prepare(page);
 		await page.goto(objectPath);
-		const selector = page.getByRole("combobox", {
-			name: "Select a stored version",
-		});
-		await expect(selector).toHaveValue("103");
-		await page.getByRole("group", { name: /Snapshot navigation/ }).hover();
-		await page.mouse.wheel(0, 100);
-		await expect(selector).toHaveValue("102");
+		await expectSelected(page, 103);
+		const titlebar = page.locator("header.topbar");
+		await expect(titlebar).toBeVisible();
+		await expect(titlebar.getByRole("heading")).toHaveCount(0);
+		await expect(page.getByRole("heading", { level: 1 })).toContainText(
+			"no known end",
+		);
+		await expect(page.getByText("Object history", { exact: true })).toHaveCount(
+			0,
+		);
+		await expect(page.getByText("Read-only", { exact: true })).toHaveCount(0);
+		await expect(
+			page.getByText(/^(?:Newer ↑|Older ↓|↑ Newer|↓ Older)$/),
+		).toHaveCount(0);
+		await expect(
+			page.getByRole("button", { name: /Earlier|Later/ }),
+		).toHaveCount(0);
+		await expect(
+			page.getByRole("combobox", { name: "Select a stored version" }),
+		).toHaveCount(0);
+		await versionMarker(page, 103).hover();
+		await page.mouse.wheel(0, 80);
+		await expectSelected(page, 102);
 		expect(new URL(page.url()).searchParams.get("at")).toBe(instants[1]);
-		await page.getByRole("button", { name: "Later →" }).focus();
-		await page.keyboard.press("ArrowRight");
-		await expect(selector).toHaveValue("103");
-		await page.keyboard.press("ArrowLeft");
-		await expect(selector).toHaveValue("102");
+		const heading = page.getByRole("heading", { level: 1 });
+		await expect(heading).toContainText("→");
+		await expect(heading).toContainText("(exclusive)");
+		await expect(heading.locator("time").first()).toHaveAttribute(
+			"datetime",
+			instants[1],
+		);
+		await expect(heading.locator("time").last()).toHaveAttribute(
+			"datetime",
+			instants[2],
+		);
+		await versionMarker(page, 102).focus();
+		await page.keyboard.press("ArrowUp");
+		await expectSelected(page, 103);
+		await page.keyboard.press("ArrowDown");
+		await expectSelected(page, 102);
 		await page.getByRole("button", { name: "Pin as baseline" }).click();
-		await page.getByRole("button", { name: "Later →" }).click();
-		await expect(selector).toHaveValue("103");
+		await versionMarker(page, 103).click();
+		await expectSelected(page, 103);
 		await page.reload();
 		await expect(page.getByLabel("Compare with")).toHaveValue("pinned");
 		await page.getByRole("button", { name: "Compare snapshots" }).click();
 		await expect(
 			page.getByRole("region", { name: "Snapshot comparison" }),
 		).toContainText("/data/network/mtu");
-		await page.getByRole("button", { name: "Load older" }).click();
-		await selector.selectOption("101");
-		await expect(
-			page.getByRole("button", { name: "← Earlier" }),
-		).toBeDisabled();
+		await versionMarker(page, 103).focus();
+		await page.keyboard.press("ArrowDown");
+		await expect(versionMarker(page, 101)).toBeAttached();
+		await page.keyboard.press("End");
+		await expectSelected(page, 101);
 		await page.goBack();
-		await expect(selector).toHaveValue("103");
+		await expectSelected(page, 102);
 		await page.getByRole("region", { name: "Snapshot comparison" }).hover();
 		await page.mouse.wheel(0, 200);
-		await expect(selector).toHaveValue("103");
+		await expectSelected(page, 102);
 	});
 
-	test("continuous scrolling advances through multiple entries", async ({
+	test("a deep fan follows continuous timeline scrolling and loads older pages automatically", async ({
 		page,
 	}) => {
-		await prepare(page);
+		await prepare(page, { many: true });
 		await page.goto(objectPath);
-		await page.getByRole("button", { name: "Load older" }).click();
-		await expect(page.getByRole("button", { name: "Load older" })).toHaveCount(
-			0,
-		);
-		await page.clock.install();
-		await page.getByRole("group", { name: /Snapshot navigation/ }).hover();
-		for (let tick = 0; tick < 7; tick++) {
-			await page.mouse.wheel(0, 50);
-			await page.clock.runFor(50);
-		}
-		await page.clock.runFor(200);
+		await expectSelected(page, 1059);
+		const timeline = page.getByRole("navigation", { name: "History timeline" });
+		await expect(timeline.getByText("0 newer", { exact: true })).toBeVisible();
+		await expect(timeline.getByText("24 older", { exact: true })).toBeVisible();
 		await expect(
-			page.getByRole("combobox", { name: "Select a stored version" }),
-		).toHaveValue("101");
+			page.getByRole("img", {
+				name: "Older snapshot fan, 24 older versions loaded",
+			}),
+		).toBeVisible();
+		await versionMarker(page, 1059).hover();
+		for (let tick = 0; tick < 6; tick++) {
+			await page.mouse.wheel(0, 80);
+		}
+		await expectSelected(page, 1053);
+		await expect(timeline.getByText("6 newer", { exact: true })).toBeVisible();
+		await expect(timeline.getByText("18 older", { exact: true })).toBeVisible();
+		const newerFan = page.getByRole("img", {
+			name: "Newer snapshot fan, 6 newer versions loaded",
+		});
+		const olderFan = page.getByRole("img", {
+			name: "Older snapshot fan, 18 older versions loaded",
+		});
+		await expect(newerFan).toBeVisible();
+		await expect(olderFan).toBeVisible();
+		await expect(newerFan.locator("time")).toHaveCount(4);
+		await expect(olderFan.locator("time")).toHaveCount(4);
+		const newerBounds = await newerFan.boundingBox();
+		const olderBounds = await olderFan.boundingBox();
+		const timelineBounds = await page
+			.getByRole("navigation", { name: "History timeline" })
+			.boundingBox();
+		const selectedPanel = page.getByRole("region", {
+			name: "Selected snapshot",
+			exact: true,
+		});
+		const selectedBounds = await selectedPanel.boundingBox();
+		if (!newerBounds || !selectedBounds || !olderBounds || !timelineBounds)
+			throw new Error(
+				"Both history directions and the selected snapshot must be visible",
+			);
+		expect(newerBounds.y + newerBounds.height).toBeLessThan(selectedBounds.y);
+		expect(selectedBounds.y + selectedBounds.height).toBeLessThan(
+			olderBounds.y,
+		);
+		expect(timelineBounds.height).toBeGreaterThanOrEqual(
+			olderBounds.y + olderBounds.height - newerBounds.y,
+		);
+		await selectedPanel.focus();
+		await page.keyboard.press("End");
+		await expect
+			.poll(() => selectedPanel.evaluate((element) => element.scrollTop))
+			.toBeGreaterThan(0);
+		await page.keyboard.press("Home");
+		await expectSelected(page, 1053);
+		await versionMarker(page, 1053).focus();
+		await page.keyboard.press("End");
+		await expectSelected(page, 1035);
+		await expect(versionMarker(page, 1010)).toBeAttached();
+		await expect(timeline.getByText("25 older", { exact: true })).toBeVisible();
+		await page.keyboard.press("ArrowDown");
+		await expectSelected(page, 1034);
+		await page.keyboard.press("Home");
+		await expectSelected(page, 1059);
+		for (let step = 1; step <= 6; step++) {
+			await page.keyboard.press("ArrowDown");
+			await expectSelected(page, 1059 - step);
+		}
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.emulateMedia({ reducedMotion: "reduce" });
+		await expectSelected(page, 1053);
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth <= window.innerWidth,
+			),
+		).toBe(true);
+		expect(
+			(
+				await new AxeBuilder({ page })
+					.include('section[aria-label="Object history"]')
+					.analyze()
+			).violations,
+		).toEqual([]);
 	});
 
 	test("live comparison stays on the captured revision until explicitly refreshed", async ({
@@ -281,9 +403,7 @@ test.describe("resource history", () => {
 				],
 			},
 		]);
-		await expect(
-			page.getByRole("combobox", { name: "Select a stored version" }),
-		).toHaveValue("102");
+		await expectSelected(page, 102);
 	});
 
 	test("conflicts require a new review and never retry automatically", async ({
@@ -350,9 +470,7 @@ test.describe("resource history", () => {
 			.getByLabel("Date and time (UTC)")
 			.fill("2026-09-25T12:00:00.123");
 		await page.getByRole("button", { name: "View at time" }).click();
-		await expect(
-			page.getByRole("combobox", { name: "Select a stored version" }),
-		).toHaveValue("102");
+		await expectSelected(page, 102);
 		expect(state.asOf).toContain("2026-09-25T12:00:00.123Z");
 		await page.goto(
 			`${objectPath}?at=${encodeURIComponent(instants[1])}&version=999`,
@@ -390,7 +508,7 @@ test.describe("resource history", () => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.emulateMedia({ reducedMotion: "reduce" });
 		await selectHistorical(page);
-		await page.getByRole("button", { name: "Load older" }).click();
+		await expect(versionMarker(page, 101)).toBeAttached();
 		await page.getByRole("button", { name: "Compare snapshots" }).click();
 		for (const theme of ["light", "dark"]) {
 			await page.evaluate(
