@@ -104,6 +104,43 @@ test.describe("workspace quality", () => {
 		await prepareWorkspace(page);
 	});
 
+	test("audit filters wait for hydration before accepting changes", async ({
+		page,
+	}) => {
+		let releaseScripts = () => {};
+		const scripts = new Promise<void>((resolve) => {
+			releaseScripts = resolve;
+		});
+		await page.route(/\/_next\/static\/.*\.js(?:\?.*)?$/, async (route) => {
+			await scripts;
+			await route.continue();
+		});
+		try {
+			await page.goto("/audit", { waitUntil: "commit" });
+			const form = page.getByRole("form", { name: "Audit filters" });
+			await expect(
+				form.getByRole("combobox", { name: "Action", exact: true }),
+			).toBeDisabled();
+			await expect(
+				form.getByRole("button", { name: "Apply filters", exact: true }),
+			).toBeDisabled();
+			await expect(form).toHaveAttribute("aria-busy", "true");
+		} finally {
+			releaseScripts();
+		}
+
+		await expect(
+			page.getByRole("form", { name: "Audit filters" }),
+		).toHaveAttribute("aria-busy", "false");
+		await page
+			.getByRole("combobox", { name: "Action", exact: true })
+			.selectOption("updated");
+		await page
+			.getByRole("button", { name: "Apply filters", exact: true })
+			.click();
+		await expect(page).toHaveURL(/action=updated/);
+	});
+
 	test("audit filters and page position survive refresh and browser history", async ({
 		page,
 	}) => {
