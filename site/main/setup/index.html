@@ -1811,6 +1811,11 @@ button, and link behavior.</p>
 short typing pause; formatting runs only when requested. Error notifications and
 notifications containing actions persist until dismissed. Ordinary notifications
 pause while hovered or focused.</p>
+<p>View URLs also preserve applied Audit filters and its page cursor, Exports tabs
+and template-library filters, and Relations view/filter/depth controls. Browser
+Back and Forward restore these controls from the URL. Shared client-side query
+updates use Next.js's native History integration, preserving unrelated parameters
+and anchors without requesting a new server-rendered page for each control edit.</p>
 <h2 id="object-data-columns">Object data columns<a class="headerlink" href="#object-data-columns" title="Permanent link">&para;</a></h2>
 <p>The objects workspace can promote fields from each object's JSON <code>data</code> blob
 into table columns. Candidate fields are discovered from the selected class
@@ -1851,13 +1856,42 @@ and stale shared materializations remain visible. With Hubuum Server <code>v0.0.
 computed columns can sort the complete server result and the Server filters menu
 offers result-type-aware computed predicates, including null, numeric range,
 JSON containment, and negated matching.</p>
-<p>The objects workspace can group by an object, nested data, shared-computed, or
-personal-computed field through the server's permission-aware aggregate
-resource. Server filters run before aggregation, counts cover the complete
-matching class rather than the loaded object page, and aggregate rows have
-their own cursor pagination and exact total. Null, missing, and unavailable
+<p>The objects workspace can group by up to three ordered object, nested data,
+shared-computed, or personal-computed fields through the server's permission-aware
+aggregate resource. Use <strong>Aggregate → Add group by</strong> to add dimensions; move
+them up or down to change their order. Multiple dimensions default to an expandable
+tree with complete parent subtotals and numeric measures supplied by the server.
+Use <strong>Aggregate → View</strong> to switch between <strong>Tree</strong> and <strong>Table</strong>.
+Top-level groups load in pages when sorting by count. A–Z and Z–A use natural
+numeric ordering (8, 9, 10), including numeric text and version labels. These
+sorts load all aggregate pages before sorting and paging locally, in both tree
+and table views, so values stay correctly ordered across page boundaries.
+Expanding a level follows all of its aggregate
+pages and caches the results across parents; children are matched by their exact
+dimension values and states, then shown in batches. This needs no server changes,
+but high-cardinality levels can take multiple requests to load. Loading progress
+and retry controls appear inside the expanded branch. Table view retains one
+column per dimension and one count per combination, including flat table exports.
+Ordered grouping fields (<code>groupBy</code>), measures (<code>aggregate</code>), group sort
+(<code>groupSort</code>), tree/table layout (<code>aggregateView</code>), and aggregate table cursor
+(<code>aggregateCursor</code>) are stored in the URL. Refresh and copied links restore the
+configuration; control edits replace the current history entry and pagination
+adds an entry. Class changes clear the old class's aggregation settings.
+Click a count to open matching objects in a dialog without collapsing the tree.
+The dialog's <strong>Open in object table</strong> link preserves the full group path and source
+filters in the URL, supports new tabs and reloads, and lets Back return to the tree.
+Matching uses server filters and cursor pagination, fetching only the requested
+object page. Numeric values and their text equivalents match together; JSON null
+and missing share the server null filter, as do null and unavailable computed
+values. The dialog header shows the filtered total and a table-icon link. Groups
+containing whole JSON objects or arrays cannot be converted to a server filter
+and show an explanation instead of scanning objects. Closing the dialog cancels
+its pending request.
+Server filters run before aggregation, counts cover the complete matching class
+rather than the loaded object page, and aggregate rows
+have their own cursor pagination and exact total. Null, missing, and unavailable
 computed values remain distinct. Personal custom fallback fields still use a
-loaded-page grouping because their first-non-empty path expression is a console
+single loaded-page grouping because their first-non-empty path expression is a console
 display preference rather than a server field. With Server <code>v0.0.4</code>, the same
 workspace can add up to four ordered <code>sum</code>, <code>average</code>, <code>min</code>, or <code>max</code> measures
 over numeric JSON and computed fields, either per group or as one global
@@ -2033,8 +2067,15 @@ collection overrides when multiple visible collections share the selected name.<
 <code>npm run dev:sandbox -- --pr 411</code> and choose a <code>corpus-admin</code> password at the
 prompt. The <a href="../local-sandbox/">sandbox guide</a> covers tags, commit SHAs, PRs,
 and <a href="../local-sandbox/#set-or-reset-user-passwords">resetting user passwords</a>.</p>
-<p>To use an existing backend instead, create an environment file:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env.local
+<p>To use an existing backend in one foreground session:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">BACKEND_BASE_URL</span><span class="o">=</span>https://your-hubuum-server.example.com<span class="w"> </span><span class="nv">PORT</span><span class="o">=</span><span class="m">4444</span><span class="w"> </span>./run.sh
+</code></pre></div>
+<p>The wrapper starts a private, temporary Valkey instance and removes its services
+on Ctrl-C or exit. It accepts the same options as <code>npm run dev</code>, including
+<code>--port</code> and <code>--listen</code>. See <a href="../development/#start">local development</a>.</p>
+<p>To manage the frontend and Valkey separately, create an environment file if you
+do not already have one:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env.local
 </code></pre></div>
 <p>Set the required environment variables:</p>
 <ul>
@@ -2043,16 +2084,16 @@ and <a href="../local-sandbox/#set-or-reset-user-passwords">resetting user passw
   local development dependency</li>
 </ul>
 <p>Start the Valkey development dependency:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev:deps
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev:deps
 </code></pre></div>
 <p>Run the development server:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev
 </code></pre></div>
 <p>Open <code>http://127.0.0.1:3000</code>.</p>
 <p>Both <code>npm run dev</code> and <code>npm start</code> accept <code>--port</code> and <code>--listen</code> after npm's
 <code>--</code> separator. Local commands default to <code>127.0.0.1:3000</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev<span class="w"> </span>--<span class="w"> </span>--port<span class="w"> </span><span class="m">4000</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>npm<span class="w"> </span>start<span class="w"> </span>--<span class="w"> </span>--port<span class="w"> </span><span class="m">4000</span><span class="w"> </span>--listen<span class="w"> </span><span class="s1">'*'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev<span class="w"> </span>--<span class="w"> </span>--port<span class="w"> </span><span class="m">4000</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>npm<span class="w"> </span>start<span class="w"> </span>--<span class="w"> </span>--port<span class="w"> </span><span class="m">4000</span><span class="w"> </span>--listen<span class="w"> </span><span class="s1">'*'</span>
 </code></pre></div>
 <p>Quote <code>'*'</code> to listen on all IPv4 interfaces. A specific hostname, IPv4 address,
 or IPv6 address is also accepted (for example, <code>--listen ::1</code> or <code>--listen ::</code>).
@@ -2071,23 +2112,23 @@ individual choices and a Random choice. Compose mounts that directory
 read-only. Helm deployments can provide the same runtime directory through
 <code>loginBackgrounds.existingClaim</code>.</p>
 <p>Stop the development dependency when finished:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev:deps:down
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev:deps:down
 </code></pre></div>
 <p>See <a href="../development/">local development</a> for backend URL examples,
 dependency lifecycle details, and alternate Valkey ports. In particular,
 <code>BACKEND_BASE_URL</code> must be reachable from the host process running Next.js.</p>
 <p>For production-style local runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nv">BACKEND_BASE_URL</span><span class="o">=</span>http://localhost:7070<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nv">VALKEY_URL</span><span class="o">=</span>redis://127.0.0.1:6379/0<span class="w"> </span>npm<span class="w"> </span>run<span class="w"> </span>build
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nv">BACKEND_BASE_URL</span><span class="o">=</span>http://localhost:7070<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nv">VALKEY_URL</span><span class="o">=</span>redis://127.0.0.1:6379/0<span class="w"> </span>npm<span class="w"> </span>start
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nv">BACKEND_BASE_URL</span><span class="o">=</span>http://localhost:7070<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nv">VALKEY_URL</span><span class="o">=</span>redis://127.0.0.1:6379/0<span class="w"> </span>npm<span class="w"> </span>run<span class="w"> </span>build
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nv">BACKEND_BASE_URL</span><span class="o">=</span>http://localhost:7070<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span><span class="nv">VALKEY_URL</span><span class="o">=</span>redis://127.0.0.1:6379/0<span class="w"> </span>npm<span class="w"> </span>start
 </code></pre></div>
 <h3 id="container-quickstart">Container quickstart<a class="headerlink" href="#container-quickstart" title="Permanent link">&para;</a></h3>
 <p>The release Compose quickstart runs the frontend and Valkey against an existing
 Hubuum Server. It does not install the backend or PostgreSQL:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>cp<span class="w"> </span>.env.quickstart.example<span class="w"> </span>.env.quickstart
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># Edit BACKEND_BASE_URL in .env.quickstart.</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>up<span class="w"> </span>-d
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cp<span class="w"> </span>.env.quickstart.example<span class="w"> </span>.env.quickstart
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># Edit BACKEND_BASE_URL in .env.quickstart.</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>up<span class="w"> </span>-d
 </code></pre></div>
 <p>See <a href="../quickstart-compose/">the Compose quickstart</a> for host networking,
 updates, logs, and cleanup.</p>
@@ -2129,7 +2170,7 @@ changes append <code>-dirty</code>. Without a reachable release tag, Git reports
 ID. Without Git metadata, builds show the package version with <code>+unknown</code>.</p>
 <p><code>NEXT_PUBLIC_APP_VERSION</code> can override the build identity. Container contexts
 exclude <code>.git</code>, so pass the identity from the host checkout:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>docker<span class="w"> </span>build<span class="w"> </span>--build-arg<span class="w"> </span><span class="nv">APP_VERSION</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>node<span class="w"> </span>scripts/print-application-version.mjs<span class="k">)</span><span class="s2">"</span><span class="w"> </span>.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>docker<span class="w"> </span>build<span class="w"> </span>--build-arg<span class="w"> </span><span class="nv">APP_VERSION</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>node<span class="w"> </span>scripts/print-application-version.mjs<span class="k">)</span><span class="s2">"</span><span class="w"> </span>.
 </code></pre></div>
 <p>CI fetches release tags and history before resolving this value. Release images
 continue to embed their exact release tag. The version is fixed at build time.</p>
@@ -2138,7 +2179,7 @@ continue to embed their exact release tag. The version is fixed at build time.</
 version or digest instead of using the moving <code>main</code> tag.</p>
 <h2 id="security-audit-gate">Security audit gate<a class="headerlink" href="#security-audit-gate" title="Permanent link">&para;</a></h2>
 <p>Run a production-only dependency audit:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>npm<span class="w"> </span>run<span class="w"> </span>audit:prod
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>npm<span class="w"> </span>run<span class="w"> </span>audit:prod
 </code></pre></div>
 <p>This checks runtime dependencies only (<code>npm audit --omit=dev</code>), so lint/codegen dev-tool advisories do not block deploys.
 The CI workflow runs this gate together with lint, typecheck, unit tests,
@@ -2147,7 +2188,7 @@ Compose validation, and Helm validation.</p>
 <h2 id="live-backend-contract-tests">Live backend contract tests<a class="headerlink" href="#live-backend-contract-tests" title="Permanent link">&para;</a></h2>
 <p>Run the frontend's live backend contract suite against the latest published
 server image:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:live-backend
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:live-backend
 </code></pre></div>
 <p>The script defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.18</code>, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
@@ -2172,7 +2213,7 @@ Restore confirmation is skipped when targeting an externally supplied backend UR
 <h2 id="openapi-generation">OpenAPI generation<a class="headerlink" href="#openapi-generation" title="Permanent link">&para;</a></h2>
 <p><code>openapi.json</code> is in repo root.</p>
 <p>Generate typed clients:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>npm<span class="w"> </span>run<span class="w"> </span>gen:api
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>npm<span class="w"> </span>run<span class="w"> </span>gen:api
 </code></pre></div>
 <p>Generated output goes to <code>src/lib/api/generated</code>.
 The generator runs via <code>npx orval@8.39.0</code>, so network access is required when generating.</p>
@@ -2190,7 +2231,7 @@ The generator runs via <code>npx orval@8.39.0</code>, so network access is requi
 <h2 id="container-and-helm-publishing">Container and Helm publishing<a class="headerlink" href="#container-and-helm-publishing" title="Permanent link">&para;</a></h2>
 <p>After all required checks pass, commits to <code>main</code> publish a moving container
 image:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>ghcr.io/hubuum/hubuum-frontend:main
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ghcr.io/hubuum/hubuum-frontend:main
 </code></pre></div>
 <p>The workflow also publishes an immutable full-SHA tag for each commit.
 Both tags are multi-architecture images for <code>linux/amd64</code> and <code>linux/arm64</code>.</p>
@@ -2199,17 +2240,17 @@ an OCI chart with a unique prerelease chart version per <code>main</code> build.
 releases publish a matching stable chart version. The chart defaults its image
 tag from <code>appVersion</code> and also accepts an immutable <code>image.digest</code>.</p>
 <p>Install from the published OCI chart:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>helm<span class="w"> </span>install<span class="w"> </span>hubuum<span class="w"> </span>oci://ghcr.io/hubuum/charts/hubuum-frontend<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.19<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>--set<span class="w"> </span>backend.baseUrl<span class="o">=</span>https://hubuum-api.example.com<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span>--set<span class="w"> </span>valkey.existingSecret.name<span class="o">=</span>hubuum-frontend-valkey
-</code></pre></div>
-<p>For OKD Routes, enable the chart route resource:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>hubuum<span class="w"> </span>oci://ghcr.io/hubuum/charts/hubuum-frontend<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>helm<span class="w"> </span>install<span class="w"> </span>hubuum<span class="w"> </span>oci://ghcr.io/hubuum/charts/hubuum-frontend<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.19<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span>--set<span class="w"> </span>backend.baseUrl<span class="o">=</span>https://hubuum-api.example.com<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span>--set<span class="w"> </span>route.enabled<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">  </span>--set<span class="w"> </span>route.host<span class="o">=</span>hubuum.example.com
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">  </span>--set<span class="w"> </span>valkey.existingSecret.name<span class="o">=</span>hubuum-frontend-valkey
+</code></pre></div>
+<p>For OKD Routes, enable the chart route resource:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>hubuum<span class="w"> </span>oci://ghcr.io/hubuum/charts/hubuum-frontend<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.19<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">  </span>--set<span class="w"> </span>backend.baseUrl<span class="o">=</span>https://hubuum-api.example.com<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">  </span>--set<span class="w"> </span>route.enabled<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">  </span>--set<span class="w"> </span>route.host<span class="o">=</span>hubuum.example.com
 </code></pre></div>
 <h2 id="important-caveat">Important caveat<a class="headerlink" href="#important-caveat" title="Permanent link">&para;</a></h2>
 <p>The current Hubuum OpenAPI spec has many list endpoints that return arrays without explicit pagination/filter query params. For large datasets, frontend UX and backend load will benefit from adding pagination, filtering, and sort parameters to those endpoints.</p>

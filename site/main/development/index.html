@@ -1270,8 +1270,28 @@ will not resolve from <code>npm run dev</code>. A remote HTTPS Hubuum Server URL
 when it is reachable from the development machine.</p>
 <p>Restart Next.js after changing <code>.env.local</code>.</p>
 <h2 id="start">Start<a class="headerlink" href="#start" title="Permanent link">&para;</a></h2>
+<p>For a foreground session against an existing backend, use the wrapper after
+<code>npm ci</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">BACKEND_BASE_URL</span><span class="o">=</span>https://your-hubuum-server.example.com<span class="w"> </span><span class="nv">PORT</span><span class="o">=</span><span class="m">4444</span><span class="w"> </span>./run.sh
+</code></pre></div>
+<p>Open <a href="http://127.0.0.1:4444">http://127.0.0.1:4444</a> and sign in with your backend credentials. Use the
+backend base URL without <code>/api/v1</code>. The wrapper starts a private Valkey Compose
+project on an automatically assigned loopback port. Ctrl-C, termination, startup
+failure, or frontend exit stops its child processes and removes that project's
+container, network, and volumes. Existing development services and <code>.env.local</code>
+are left alone; installed dependencies, cached images, and Next.js build caches
+are retained.</p>
+<p><code>PORT</code> defaults to 3000. Options are forwarded to the usual development launcher:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">BACKEND_BASE_URL</span><span class="o">=</span>https://your-hubuum-server.example.com<span class="w"> </span>./run.sh<span class="w"> </span>--port<span class="w"> </span><span class="m">4444</span><span class="w"> </span>--listen<span class="w"> </span><span class="m">127</span>.0.0.1
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./run.sh<span class="w"> </span>--help
+</code></pre></div>
+<p>Docker or Podman with a Compose provider is required. <code>HUBUUM_CONTAINER_RUNTIME</code>
+selects the runtime, and <code>VALKEY_DEV_PORT</code> can request a specific local Valkey
+port. Stop any existing Next.js dev server in this checkout before using the
+wrapper; Next.js permits one development server per checkout.</p>
+<p>To manage the services separately, use the commands below.</p>
 <p>Start the Valkey session store and wait for it to become healthy:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev:deps
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev:deps
 </code></pre></div>
 <p>The launcher waits for Valkey to answer <code>PING</code>; it does not require Compose's
 Docker-specific <code>--wait</code> option. It uses <code>docker</code> when available (including the
@@ -1281,17 +1301,17 @@ setting for <code>npm run dev:deps:down</code>. <code>HUBUUM_VALKEY_PROJECT</cod
 isolated Compose project. Writable Valkey directories remain temporary memory
 mounts with persistence disabled.</p>
 <p>Then start Next.js:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev
 </code></pre></div>
 <p>Open <a href="http://127.0.0.1:3000">http://127.0.0.1:3000</a>. Authenticated use requires both the configured
 Hubuum Server and Valkey; <code>/readyz</code> reports whether both dependencies are ready.</p>
 <p>Local development and production launchers default to <code>127.0.0.1:3000</code> to avoid
 differences in IPv4/IPv6 resolution of <code>localhost</code>. Choose
 another port or listen address with npm's <code>--</code> argument separator:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev<span class="w"> </span>--<span class="w"> </span>--port<span class="w"> </span><span class="m">4000</span><span class="w"> </span>--listen<span class="w"> </span><span class="m">127</span>.0.0.1
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>npm<span class="w"> </span>run<span class="w"> </span>dev<span class="w"> </span>--<span class="w"> </span>--port<span class="o">=</span><span class="m">4000</span><span class="w"> </span>--listen<span class="o">=</span><span class="s1">'*'</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># After npm run build:</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>npm<span class="w"> </span>start<span class="w"> </span>--<span class="w"> </span>--port<span class="w"> </span><span class="m">4000</span><span class="w"> </span>--listen<span class="w"> </span>localhost
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev<span class="w"> </span>--<span class="w"> </span>--port<span class="w"> </span><span class="m">4000</span><span class="w"> </span>--listen<span class="w"> </span><span class="m">127</span>.0.0.1
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>npm<span class="w"> </span>run<span class="w"> </span>dev<span class="w"> </span>--<span class="w"> </span>--port<span class="o">=</span><span class="m">4000</span><span class="w"> </span>--listen<span class="o">=</span><span class="s1">'*'</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1"># After npm run build:</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>npm<span class="w"> </span>start<span class="w"> </span>--<span class="w"> </span>--port<span class="w"> </span><span class="m">4000</span><span class="w"> </span>--listen<span class="w"> </span>localhost
 </code></pre></div>
 <p><code>--listen '*'</code> binds all IPv4 interfaces; quote the asterisk so the shell does
 not expand it into filenames. IPv6 addresses such as <code>::1</code> (loopback) or <code>::</code>
@@ -1311,17 +1331,17 @@ choice.</p>
 <h2 id="stop">Stop<a class="headerlink" href="#stop" title="Permanent link">&para;</a></h2>
 <p>Stop Next.js with <code>Ctrl-C</code>, then remove the development Valkey container and
 network:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev:deps:down
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>npm<span class="w"> </span>run<span class="w"> </span>dev:deps:down
 </code></pre></div>
 <p>The development Valkey data is intentionally ephemeral, so stopping it signs
 out existing local sessions.</p>
 <h2 id="browser-quality-checks">Browser quality checks<a class="headerlink" href="#browser-quality-checks" title="Permanent link">&para;</a></h2>
 <p>Install the browser used by the end-to-end suite once:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>npx<span class="w"> </span>playwright<span class="w"> </span>install<span class="w"> </span>chromium
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>npx<span class="w"> </span>playwright<span class="w"> </span>install<span class="w"> </span>chromium
 </code></pre></div>
 <p>Run the public accessibility, contrast, and responsive-layout checks without
 backend credentials:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:e2e:public
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:e2e:public
 </code></pre></div>
 <p>Pixel comparisons run separately in CI so an intentional or accidental visual
 change does not hide the functional results. Both CI and baseline updates use
@@ -1329,7 +1349,7 @@ the same digest-pinned Playwright 1.63.0 Noble <code>linux/amd64</code> image, b
 Chromium, and the fixed <code>v0.0.0+visual</code> display version. Docker is required to
 refresh intentional baselines (Apple-silicon hosts run the image through Docker
 emulation):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:e2e:update
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:e2e:update
 </code></pre></div>
 <p>Review every changed PNG under <code>tests/e2e/__screenshots__/</code> before committing
 it. Do not update baselines with host-installed browsers because their font and
@@ -1339,7 +1359,7 @@ antialiasing; the other viewports retain the stricter 1% tolerance.</p>
 <p>Run login, session, logout, keyboard interaction, resource-picker, accessibility,
 and authenticated screenshot checks against disposable Hubuum Server and Valkey
 containers:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:e2e:authenticated
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:e2e:authenticated
 </code></pre></div>
 <p>The command resets the disposable <code>admin</code> password immediately before the test,
 keeps it only in the child-process environment, and removes the containers and
@@ -1347,9 +1367,9 @@ volumes afterward. Override the pinned compatibility image with
 <code>HUBUUM_AUTH_E2E_BACKEND_IMAGE</code> when testing another server build.</p>
 <p>The default test target is released Server <code>v0.0.18</code>. To focus on schemas and
 task cancellation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:credential-fixtures
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>npm<span class="w"> </span>run<span class="w"> </span>test:live-backend
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>npm<span class="w"> </span>run<span class="w"> </span>test:e2e:authenticated<span class="w"> </span>--<span class="w"> </span>--grep<span class="w"> </span><span class="s1">'schema workspace|task cancellation'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:credential-fixtures
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>npm<span class="w"> </span>run<span class="w"> </span>test:live-backend
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>npm<span class="w"> </span>run<span class="w"> </span>test:e2e:authenticated<span class="w"> </span>--<span class="w"> </span>--grep<span class="w"> </span><span class="s1">'schema workspace|task cancellation'</span>
 </code></pre></div>
 <p>The contract run requires schema evolution, saved diagnostics and HTML reports,
 task cancellation, per-kind deadlines, and backup format 8. Browser checks cover
@@ -1378,7 +1398,7 @@ disposable backend and an already running frontend. Set <code>PLAYWRIGHT_BASE_UR
 container's <code>hubuum-admin --reset-password admin</code> immediately before each run.
 Set <code>E2E_CREDENTIAL_APPROVALS=required</code> for Server <code>v0.0.16</code> or newer, or <code>legacy</code>
 for a server without it, then run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>npx<span class="w"> </span>playwright<span class="w"> </span><span class="nb">test</span><span class="w"> </span>tests/e2e/credential-approvals-live.spec.ts<span class="w"> </span>--workers<span class="o">=</span><span class="m">1</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>npx<span class="w"> </span>playwright<span class="w"> </span><span class="nb">test</span><span class="w"> </span>tests/e2e/credential-approvals-live.spec.ts<span class="w"> </span>--workers<span class="o">=</span><span class="m">1</span>
 </code></pre></div>
 <p>These checks create credentials and imports. On a fully disposable stack only,
 <code>E2E_CREDENTIAL_RESTORE=1</code> also verifies backup, approved restore confirmation,
@@ -1387,9 +1407,9 @@ disable traces, screenshots, and video so secrets are not recorded in artifacts.
 <h2 id="use-another-valkey-port">Use another Valkey port<a class="headerlink" href="#use-another-valkey-port" title="Permanent link">&para;</a></h2>
 <p>If port 6379 is already occupied, start the dependency on another loopback port
 and update <code>.env.local</code> to match:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">VALKEY_DEV_PORT</span><span class="o">=</span><span class="m">6380</span><span class="w"> </span>npm<span class="w"> </span>run<span class="w"> </span>dev:deps
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nv">VALKEY_DEV_PORT</span><span class="o">=</span><span class="m">6380</span><span class="w"> </span>npm<span class="w"> </span>run<span class="w"> </span>dev:deps
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>VALKEY_URL=redis://127.0.0.1:6380/0
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>VALKEY_URL=redis://127.0.0.1:6380/0
 </code></pre></div>
 <h3 id="forward-server-compatibility">Forward server compatibility<a class="headerlink" href="#forward-server-compatibility" title="Permanent link">&para;</a></h3>
 <p>The live contract suite defaults to the pinned Server <code>0.0.18</code> contract. Set
