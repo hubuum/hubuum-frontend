@@ -427,6 +427,57 @@ name. Collection subscriptions use that configured destination automatically.
 Existing sinks retain custom configuration and pacing when edited. See the
 [chat webhook guide](docs/webhooks.md) for setup and provider details.
 
+## Historical snapshots and object restoration
+
+Object and class detail pages expose **Browse history**, with direct links from
+history rows and audit event details. The dedicated routes are
+`/objects/{classId}/{objectId}/history` and `/classes/{classId}/history`.
+A deep snapshot fan follows a scrollable timeline on the left that matches the
+height of the card stack: newer versions above, older below. Counts above and
+below the timeline show how many loaded versions are newer and older than the
+selected snapshot. Separate fans frame the snapshot in the same direction.
+The nearest four previews on each side show centered titles, with a change
+summary on the closest preview; the selected snapshot scrolls within its own
+reading area so both directions remain visible.
+Mouse/trackpad scrolling, touch scrolling, date markers, and
+Up/Down keys select a snapshot; Home/End move within the loaded range. The
+selected marker stays aligned with the timeline cursor. Older entries load as
+you approach the end, with a manual loading fallback. Scrolling snapshot or JSON
+content keeps its normal behavior.
+
+The heading shows the resource name followed by its effective date range.
+**Jump to date** resolves the active version using the server's as-of endpoint.
+Links preserve the original timestamp precision and stored version ID; the
+effective interval excludes its end. Deleted, inaccessible, and unavailable
+history is shown explicitly. Historical views are read-only and do not substitute
+current relationships, computed values, class definitions, or collection labels.
+Class history covers the definition, not its historical object population.
+
+Inline highlights and expanded comparisons share **Previous visible**, **Live**,
+and **Pinned version** baselines. Comparison controls and the compact pin action
+sit in a shared ribbon to the left of **Jump to date**, above the snapshot stack.
+The selected card leads with its timestamp and stored version, with a fine accent
+line and restrained depth around the neighboring snapshots.
+Pinning and selection survive URL navigation and reload. Live comparisons keep
+the captured revision until **Refresh
+comparison** is chosen when an update is detected.
+
+**Restore to live** currently restores object data only: selected keys, exact
+subtrees, or the entire data document. Arrays are restored as whole values.
+Restoring a subtree also removes keys absent in the historical source. A fresh
+live fetch precedes a required review of the proposed changes. The server checks
+object update permission when applying the restore; collection grant provenance
+is not required, including on Treetop deployments. The atomic data PATCH guards
+the complete reviewed data with a JSON Patch test and, when provided, a strong
+ETag via `If-Match`.
+Conflicts require a fresh review; writes are never retried automatically.
+The server applies its current schema validation and creates a new audited
+update. Existing audit/history records are unchanged. The current API cannot
+record the source snapshot as restore provenance. This flow does not restore
+deleted objects, object metadata, relationships, or computed definitions.
+Class-definition restoration is tracked separately in
+[issue #145](https://github.com/hubuum/hubuum-frontend/issues/145).
+
 ## Administrator backup and restore
 
 The admin-only Backup & restore workspace creates server background tasks and

@@ -1458,47 +1458,6 @@ button.sidebar-link-button {
 	gap: 0.6rem;
 }
 
-/* Query container for the create-button label collapse. flex:1 1 auto gives
-   topbar-left a layout-determined width (the space left after the search/user
-   cluster) so inline-size containment doesn't collapse it, and so its width
-   reflects available space — narrower on select-heavy routes. */
-.topbar-left {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	min-width: 0;
-	flex: 1 1 auto;
-	container-type: inline-size;
-	container-name: topbar;
-}
-
-.topbar-title-row {
-	display: flex;
-	align-items: center;
-	gap: 0.45rem;
-	min-width: 0;
-	flex-wrap: wrap;
-}
-
-.topbar-heading {
-	margin: 0;
-	font-weight: 700;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.topbar-divider {
-	color: var(--muted);
-	font-weight: 600;
-}
-
-.topbar-context-label {
-	color: var(--muted);
-	font-size: 0.9rem;
-	font-weight: 600;
-}
-
 .resource-index-heading {
 	display: flex;
 	align-items: center;
@@ -1561,18 +1520,6 @@ button.sidebar-link-button {
 	.fab--create {
 		display: none;
 	}
-}
-
-.topbar-inline-select {
-	--single-line-control-height: 2.42rem;
-	border: 1px solid var(--line);
-	border-radius: 10px;
-	padding: 0.35rem 0.55rem;
-	font-size: 0.92rem;
-	font-weight: 600;
-	width: auto;
-	min-width: 0;
-	max-width: min(320px, 44vw);
 }
 
 .topbar-right {
@@ -1682,21 +1629,6 @@ button.sidebar-link-button {
 
 .create-button-text {
 	white-space: nowrap;
-}
-
-/* Collapse the header create label when the topbar-left region is tight.
-   Container is .topbar-left (the heading + context-selects + create cluster), so
-   this fires earlier on select-heavy routes (/objects, /relations/objects) than on
-   plain list routes. The extended FAB remains the always-labeled affordance.
-   Threshold is a starting point — tune against /objects and /relations/objects at
-   1280/1366/1440px in a real browser. */
-@container topbar (max-width: 640px) {
-	.create-button-text {
-		display: none;
-	}
-	.create-button {
-		padding: 0.4rem 0.5rem;
-	}
 }
 
 .mobile-only {
@@ -10317,21 +10249,6 @@ button.sidebar-link-button:hover {
 	backdrop-filter: blur(18px) saturate(1.2);
 }
 
-.topbar-title-row {
-	gap: 0.55rem;
-}
-
-.topbar-heading {
-	min-width: 0;
-	font-size: 1.02rem;
-	letter-spacing: -0.025em;
-}
-
-.topbar-inline-select {
-	border-radius: 999px;
-	background: var(--bg-highlight);
-}
-
 .topbar-search-input {
 	height: 2.42rem;
 	border-radius: 999px;
@@ -11165,10 +11082,6 @@ button.atmosphere-option.is-selected {
 		flex-wrap: nowrap;
 	}
 
-	.topbar-left {
-		min-width: 0;
-	}
-
 	.topbar-right {
 		width: auto;
 		min-width: auto;
@@ -11272,14 +11185,6 @@ button.atmosphere-option.is-selected {
 		min-height: 0;
 	}
 
-	.topbar-title-row {
-		column-gap: 0.35rem;
-	}
-
-	.topbar-inline-select {
-		max-width: min(9rem, 36vw);
-	}
-
 	.task-menu,
 	.user-menu {
 		position: fixed;
@@ -11366,10 +11271,6 @@ button.atmosphere-option.is-selected {
 }
 
 /* ---------- Knowledge workbench ---------- */
-
-.topbar-heading {
-	margin: 0;
-}
 
 .workspace-dashboard {
 	display: grid;

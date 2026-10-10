@@ -645,13 +645,6 @@ html[data-design-variant="v6"] .topbar.card {
 	backdrop-filter: blur(22px) saturate(1.05);
 }
 
-html[data-design-variant="v6"] .topbar-heading {
-	font-family: var(--font-reading);
-	font-size: 1.02rem;
-	font-weight: 620;
-	letter-spacing: -0.025em;
-}
-
 html[data-design-variant="v6"] .content {
 	gap: 1.15rem;
 	padding: 0.35rem 0 3rem;
@@ -825,14 +818,12 @@ html[data-design-variant="v6"]
 	html[data-design-variant="v6"] .topbar.card {
 		display: grid;
 		grid-template-columns: auto minmax(0, 1fr) auto;
-		grid-template-areas:
-			"identity navigation utilities"
-			"context context context";
+		grid-template-areas: "identity navigation utilities";
 		column-gap: clamp(0.45rem, 1vw, 0.85rem);
 		row-gap: 0.5rem;
 		top: clamp(0.7rem, 1.25vw, 1.15rem);
 		z-index: 80;
-		padding: 0.52rem 0.65rem 0.58rem;
+		padding: 0.52rem 0.65rem;
 		border-color: var(--atmosphere-line);
 		background: linear-gradient(
 			112deg,
@@ -842,16 +833,6 @@ html[data-design-variant="v6"]
 		box-shadow:
 			inset 0 1px 0 color-mix(in srgb, #fff 48%, transparent),
 			0 12px 38px color-mix(in srgb, var(--stillwater-haze) 12%, transparent);
-	}
-
-	html[data-design-variant="v6"] .topbar.card.topbar--resource-index {
-		grid-template-areas: "identity navigation utilities";
-		padding-bottom: 0.52rem;
-	}
-
-	html[data-design-variant="v6"] .topbar.card.topbar--compact {
-		grid-template-areas: "identity navigation utilities";
-		padding-bottom: 0.52rem;
 	}
 
 	html[data-design-variant="v6"] .topology-topbar-identity {
@@ -1043,53 +1024,12 @@ html[data-design-variant="v6"]
 		max-width: 22rem;
 	}
 
-	html[data-design-variant="v6"] .topbar-left {
-		grid-area: context;
-		width: 100%;
-		padding: 0.52rem 0.14rem 0;
-		border-top: 1px solid
-			color-mix(in srgb, var(--secondary-accent) 24%, var(--line));
-	}
-
-	html[data-design-variant="v6"] .topbar-title-row {
-		width: 100%;
-		flex: 1 1 auto;
-		column-gap: 0.5rem;
-		row-gap: 0.35rem;
-	}
-
-	html[data-design-variant="v6"] .topbar-heading {
-		color: var(--ink);
-		font-family: var(--font-reading);
-		font-size: 0.96rem;
-		font-weight: 650;
-	}
-
-	html[data-design-variant="v6"] .topbar-context-label,
-	html[data-design-variant="v6"] .topbar-divider {
-		color: var(--secondary-accent-strong);
-	}
-
 	html[data-design-variant="v6"] .resource-index-summary {
 		color: var(--muted);
 	}
 
 	html[data-design-variant="v6"] .resource-index-summary-item::before {
 		color: color-mix(in srgb, var(--secondary-accent) 58%, transparent);
-	}
-
-	html[data-design-variant="v6"] .topbar-inline-select {
-		max-width: min(30rem, 58vw);
-		border-color: color-mix(in srgb, var(--secondary-accent) 28%, var(--line));
-		background: color-mix(
-			in srgb,
-			var(--secondary-accent-soft) 34%,
-			var(--field-bg)
-		);
-	}
-
-	html[data-design-variant="v6"] .topbar-title-row .create-button {
-		margin-left: auto;
 	}
 }
 
@@ -1106,14 +1046,6 @@ html[data-design-variant="v6"]
 @media (min-width: 901px) and (max-width: 1120px) {
 	html[data-design-variant="v6"] .topbar.card {
 		grid-template-columns: minmax(0, 1fr) auto;
-		grid-template-areas:
-			"identity utilities"
-			"navigation navigation"
-			"context context";
-	}
-
-	html[data-design-variant="v6"] .topbar.card.topbar--resource-index,
-	html[data-design-variant="v6"] .topbar.card.topbar--compact {
 		grid-template-areas:
 			"identity utilities"
 			"navigation navigation";

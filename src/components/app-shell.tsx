@@ -76,7 +76,6 @@ import {
 	toastForTransition,
 } from "@/lib/task-notifications";
 import { useToast } from "@/lib/toast-context";
-import { usesCompactTopbar } from "@/lib/topbar-visibility";
 import { useDialogAccessibility } from "@/lib/use-dialog-accessibility";
 import {
 	hasActiveEscapeCancel,
@@ -702,7 +701,6 @@ export function AppShell({
 		[appPathname],
 	);
 	const isSearchRoute = appPathname.startsWith("/search");
-	const hasCompactTopbar = usesCompactTopbar(appPathname);
 	const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 	const sidebarRef = useRef<HTMLElement | null>(null);
@@ -1850,44 +1848,21 @@ export function AppShell({
 				</div>
 
 				<div className="app-main">
-					<header
-						className={`topbar card${createSection ? " topbar--resource-index" : ""}${hasCompactTopbar ? " topbar--compact" : ""}`}
-					>
+					<header className="topbar card">
 						<div className="topology-topbar-identity">
 							<BrandMark compact href="/app" />
 						</div>
 
-						{createSection || hasCompactTopbar ? (
-							<button
-								type="button"
-								className="ghost icon-button mobile-only"
-								onClick={() => setMobileSidebarOpen(true)}
-								aria-label="Open navigation"
-								aria-controls="mobile-navigation"
-								aria-expanded={isMobileSidebarOpen}
-							>
-								<IconMenu />
-							</button>
-						) : (
-							<div className="topbar-left">
-								<button
-									type="button"
-									className="ghost icon-button mobile-only"
-									onClick={() => setMobileSidebarOpen(true)}
-									aria-label="Open navigation"
-									aria-controls="mobile-navigation"
-									aria-expanded={isMobileSidebarOpen}
-								>
-									<IconMenu />
-								</button>
-
-								<div className="topbar-title-row">
-									<h1 className="topbar-heading">
-										{detailTitle ?? sectionLabel}
-									</h1>
-								</div>
-							</div>
-						)}
+						<button
+							type="button"
+							className="ghost icon-button mobile-only"
+							onClick={() => setMobileSidebarOpen(true)}
+							aria-label="Open navigation"
+							aria-controls="mobile-navigation"
+							aria-expanded={isMobileSidebarOpen}
+						>
+							<IconMenu />
+						</button>
 
 						{renderTopologyNavigation("topbar", "topology-navigation--topbar")}
 

@@ -67,6 +67,7 @@ export type HistoryListOptions = {
 	cursor?: string;
 	limit?: number;
 	sort?: string;
+	include_total?: boolean;
 };
 
 function parseCountHeader(value: string | null): number | null {
@@ -204,6 +205,7 @@ export async function fetchResourceHistoryPage(
 		limit: options.limit ?? 25,
 		sort: options.sort ?? "-history_id",
 		cursor: options.cursor,
+		include_total: options.include_total ?? false,
 	};
 
 	if (scope.type === "collection") {
