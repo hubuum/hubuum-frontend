@@ -328,9 +328,9 @@ object page. Numeric values and their text equivalents match together; JSON null
 and missing share the server null filter, as do null and unavailable computed
 values. The dialog header shows the filtered total and a table-icon link. Groups
 containing whole JSON objects or arrays cannot be converted to a server filter
-and have a disabled count with an explanation. The same applies when combining
-source filters and group conditions would exceed two computed filters or eight
-total filters. Closing the dialog cancels its pending request.
+and have a disabled count with an inline explanation. The same applies when
+combining source filters and group conditions would exceed two computed filters
+or eight total filters. Closing the dialog cancels its pending request.
 Server filters run before aggregation, counts cover the complete matching class
 rather than the loaded object page, and aggregate rows
 have their own cursor pagination and exact total. Null, missing, and unavailable

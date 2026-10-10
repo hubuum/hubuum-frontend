@@ -909,6 +909,97 @@ test.describe("workspace quality", () => {
 		await expect(objectLinks).toHaveText(["host-100", "host-102"]);
 	});
 
+	test.describe("unavailable aggregate counts", () => {
+		test.use({ hasTouch: true });
+		test("show recovery guidance without hover in tree and table views", async ({
+			page,
+		}) => {
+			test.setTimeout(90_000);
+			await page.setViewportSize({ width: 390, height: 900 });
+			await page.route(`**${prefix}/classes/10?*`, (route) =>
+				route.fulfill({ json: classes[0] }),
+			);
+			await page.route(`**${prefix}/classes/10/computed-fields*`, (route) =>
+				route.fulfill({ json: { fields: [] } }),
+			);
+			await page.route(`**${prefix}/iam/me/computed-fields*`, (route) =>
+				route.fulfill({ json: [] }),
+			);
+			await page.route(
+				`**${prefix}/classes/10/object-aggregates?*`,
+				(route) => {
+					const fields = new URL(route.request().url()).searchParams.getAll(
+						"group_by",
+					);
+					return route.fulfill({
+						json: [
+							{
+								dimensions: fields.map((field) => ({
+									field,
+									state: "value",
+									value:
+										field === "json_data.payload" ? { host: "api" } : "api",
+								})),
+								object_count: 5,
+							},
+						],
+						headers: { "X-Total-Count": "1" },
+					});
+				},
+			);
+			for (const scenario of [
+				{
+					groupBy: ['data:["payload"]', "object:name"],
+					filters: [],
+					reason:
+						"Groups containing JSON objects or arrays cannot be opened with a server filter. Group by a field inside the value instead.",
+				},
+				{
+					groupBy: ["object:name", "object:description"],
+					filters: Array.from({ length: 8 }, (_, index) => ({
+						field: "description",
+						operator: "contains",
+						value: `source ${index}`,
+					})),
+					reason:
+						"This group needs more than 8 server filters. Remove a source filter or grouping field to open its objects.",
+				},
+			]) {
+				for (const layout of ["tree", "table"]) {
+					const params = new URLSearchParams({
+						classId: "10",
+						aggregateView: layout,
+						objectFilters: JSON.stringify(scenario.filters),
+					});
+					for (const field of scenario.groupBy) params.append("groupBy", field);
+					await page.goto(`/objects?${params}`);
+					const count = page.getByRole("button", {
+						name: /^View 5 objects for/,
+					});
+					await expect(count).toBeDisabled();
+					await expect(count).toHaveAccessibleDescription(scenario.reason);
+					const explanation = page.getByText(scenario.reason, { exact: true });
+					await explanation.scrollIntoViewIfNeeded();
+					await page.keyboard.press("Tab");
+					await expect(explanation).toBeVisible();
+					await explanation.tap();
+					await expect(explanation).toBeVisible();
+					await expect(
+						page.getByRole("dialog", { name: /matching objects/ }),
+					).toHaveCount(0);
+				}
+			}
+			expect(
+				(
+					await new AxeBuilder({ page })
+						.include(".object-grouped-table-scroll")
+						.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+						.analyze()
+				).violations,
+			).toEqual([]);
+		});
+	});
+
 	test("aggregate A–Z sorts numeric text across pages in tables and trees", async ({
 		page,
 	}) => {

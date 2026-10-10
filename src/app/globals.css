@@ -5382,6 +5382,16 @@ button.object-aggregate-count {
 	text-underline-offset: 0.15em;
 }
 
+.object-aggregate-unavailable {
+	display: block;
+	min-width: 12rem;
+	max-width: 20rem;
+	color: var(--muted);
+	font-weight: normal;
+	text-align: start;
+	white-space: normal;
+}
+
 .object-aggregate-tree-label {
 	display: flex;
 	align-items: center;

@@ -220,28 +220,66 @@ describe("aggregate server filters", () => {
 	});
 });
 
-it("disables drill-down before offering a request over the combined computed limit", () => {
-	const markup = renderToStaticMarkup(
-		createElement(ObjectAggregateCount, {
-			request: {
-				classId: 12,
-				limit: 50,
-				filters: [
-					computedFilter,
-					{ ...computedFilter, computedKey: "enabled" },
-				],
-			},
-			row: {
-				object_count: 5,
-				dimensions: [
-					{ field: "computed.shared.version", state: "value", value: "9" },
-				],
-			},
-			fieldLabels: ["Version"],
-			collectionNames: new Map(),
-		}),
-	);
-	expect(markup).toContain('disabled=""');
-	expect(markup).toContain("more than two computed filters");
-	expect(markup).not.toContain("href=");
-});
+it.each([
+	{
+		name: "whole JSON objects",
+		field: "json_data.payload",
+		value: { host: "api" },
+		filters: [],
+		reason:
+			"Groups containing JSON objects or arrays cannot be opened with a server filter. Group by a field inside the value instead.",
+	},
+	{
+		name: "whole JSON arrays",
+		field: "json_data.payload",
+		value: ["api"],
+		filters: [],
+		reason:
+			"Groups containing JSON objects or arrays cannot be opened with a server filter. Group by a field inside the value instead.",
+	},
+	{
+		name: "computed filter overflow",
+		field: "computed.shared.version",
+		value: "9",
+		filters: [computedFilter, { ...computedFilter, computedKey: "enabled" }],
+		reason:
+			"This group needs more than two computed filters. Remove a computed source filter or grouping field to open its objects.",
+	},
+	{
+		name: "total filter overflow",
+		field: "name",
+		value: "api",
+		filters: Array.from({ length: 8 }, (_, index) => ({
+			...sourceFilter,
+			value: `source ${index}`,
+		})),
+		reason:
+			"This group needs more than 8 server filters. Remove a source filter or grouping field to open its objects.",
+	},
+])(
+	"explains $name inline while blocking drill-down",
+	({ field, value, filters, reason }) => {
+		const markup = renderToStaticMarkup(
+			createElement(ObjectAggregateCount, {
+				request: {
+					classId: 12,
+					limit: 50,
+					filters,
+				},
+				row: {
+					object_count: 5,
+					dimensions: [{ field, state: "value", value }],
+				},
+				fieldLabels: ["Version"],
+				collectionNames: new Map(),
+			}),
+		);
+		expect(markup).toContain('disabled=""');
+		const descriptionId = markup.match(/aria-describedby="([^"]+)"/)?.[1];
+		expect(descriptionId).toBeDefined();
+		expect(markup).toContain(
+			`<small id="${descriptionId}" class="object-aggregate-unavailable">${reason}</small>`,
+		);
+		expect(markup).not.toContain("href=");
+	},
+);

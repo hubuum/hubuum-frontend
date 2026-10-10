@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { CreateModal } from "@/components/create-modal";
 import { TablePagination } from "@/components/table-pagination";
@@ -157,6 +157,7 @@ export function ObjectAggregateCount({
 	collectionNames,
 }: ObjectAggregateCountProps) {
 	const [open, setOpen] = useState(false);
+	const unavailableReasonId = useId();
 	let filters = request.filters ?? [];
 	let unavailableReason: string | undefined;
 	try {
@@ -183,13 +184,21 @@ export function ObjectAggregateCount({
 				type="button"
 				className="object-aggregate-count"
 				aria-haspopup="dialog"
-				aria-label={`View ${row.object_count} objects for ${label}${unavailableReason ? `. ${unavailableReason}` : ""}`}
+				aria-label={`View ${row.object_count} objects for ${label}`}
+				aria-describedby={unavailableReason ? unavailableReasonId : undefined}
 				disabled={Boolean(unavailableReason)}
-				title={unavailableReason}
 				onClick={() => setOpen(true)}
 			>
 				{row.object_count}
 			</button>
+			{unavailableReason ? (
+				<small
+					id={unavailableReasonId}
+					className="object-aggregate-unavailable"
+				>
+					{unavailableReason}
+				</small>
+			) : null}
 			{open && !unavailableReason
 				? createPortal(
 						<ObjectAggregateObjectsDialog
