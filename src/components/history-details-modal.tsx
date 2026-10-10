@@ -8,6 +8,7 @@ import {
 } from "@/components/create-modal";
 import { JsonViewer } from "@/components/json-viewer";
 import type { HistoryRecord } from "@/lib/api/events";
+import { resourceHistoryHref } from "@/lib/resource-history";
 import {
 	formatEventActor,
 	formatEventInitiator,
@@ -64,6 +65,24 @@ export function HistoryDetailsModal({
 	navigation,
 }: HistoryDetailsModalProps) {
 	const taskId = record ? getProvenanceTaskId(record) : null;
+	const historyHref =
+		record && "hubuum_class_id" in record
+			? resourceHistoryHref(
+					{
+						type: "object",
+						classId: record.hubuum_class_id,
+						objectId: record.id,
+					},
+					record.valid_from,
+					record.history_id,
+				)
+			: record && "validate_schema" in record
+				? resourceHistoryHref(
+						{ type: "class", classId: record.id },
+						record.valid_from,
+						record.history_id,
+					)
+				: null;
 
 	return (
 		<CreateModal
@@ -77,6 +96,11 @@ export function HistoryDetailsModal({
 			{record ? (
 				<div className="stack">
 					<p>{record.name}</p>
+					{historyHref ? (
+						<Link className="link-chip" href={historyHref} onClick={onClose}>
+							Browse this snapshot
+						</Link>
+					) : null}
 
 					<dl className="event-detail-grid">
 						<div>

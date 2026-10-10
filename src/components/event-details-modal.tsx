@@ -14,11 +14,13 @@ import {
 	getProvenanceTaskId,
 } from "@/lib/event-provenance";
 import { buildJsonDifference, formatJsonDifference } from "@/lib/json-diff";
+import { eventHistoryHref, type HistoryScope } from "@/lib/resource-history";
 
 type EventDetailsModalProps = {
 	event: EventRecord | null;
 	onClose: () => void;
 	navigation?: ModalRecordNavigation;
+	historyScope?: HistoryScope;
 };
 
 function formatTimestamp(value: string): string {
@@ -98,8 +100,10 @@ export function EventDetailsModal({
 	event,
 	onClose,
 	navigation,
+	historyScope,
 }: EventDetailsModalProps) {
 	const taskId = event ? getProvenanceTaskId(event) : null;
+	const historyHref = event ? eventHistoryHref(event, historyScope) : null;
 
 	return (
 		<CreateModal
@@ -111,6 +115,11 @@ export function EventDetailsModal({
 			{event ? (
 				<div className="stack">
 					<p>{event.summary}</p>
+					{historyHref ? (
+						<Link className="link-chip" href={historyHref} onClick={onClose}>
+							Browse history at this event
+						</Link>
+					) : null}
 
 					<dl className="event-detail-grid">
 						<div>

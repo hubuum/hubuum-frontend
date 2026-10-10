@@ -1,0 +1,294 @@
+.browser {
+	min-width: 0;
+}
+.eyebrow {
+	color: var(--muted);
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	margin-bottom: 0.4rem;
+}
+.historicalBanner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem 1rem;
+	padding: 1rem 1.2rem;
+	background: var(--accent-soft);
+	border-left: 3px solid var(--accent);
+	border-radius: 0 12px 12px 0;
+}
+.historicalBanner p {
+	flex-basis: 100%;
+	margin: 0;
+	font-size: 0.85rem;
+}
+.historicalBanner > span {
+	margin-left: auto;
+}
+.navigator {
+	min-width: 0;
+	margin: 0 0 1.4rem;
+	padding: 1rem;
+	background: var(--bg-highlight);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+.navigator p {
+	margin: 0.65rem 0 0;
+	font-size: 0.78rem;
+}
+.navigator button {
+	flex-shrink: 0;
+}
+.versionSelect {
+	flex: 1;
+	min-width: 180px;
+	max-width: 100%;
+}
+.versionSelect select {
+	width: 100%;
+	max-width: 100%;
+}
+.layers {
+	position: relative;
+	padding-top: 5.5rem;
+}
+.layer {
+	position: absolute;
+	top: 0;
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.8rem 1rem 2rem;
+	border: 1px solid var(--line);
+	border-radius: 14px 14px 0 0;
+	background: var(--card);
+	color: var(--ink);
+	font-size: 0.78rem;
+	box-shadow: var(--shadow);
+	overflow: hidden;
+}
+.layer span {
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+}
+.farLayer {
+	top: 0;
+	left: 3rem;
+	right: 3rem;
+}
+.nearLayer {
+	top: 2.7rem;
+	left: 1.5rem;
+	right: 1.5rem;
+	background: var(--field-bg);
+}
+.snapshot {
+	position: relative;
+	padding: 1.3rem;
+	background: var(--card);
+	box-shadow: var(--shadow-float);
+	transform: translateY(var(--history-glide, 0));
+	transition: transform 150ms ease-out;
+}
+.compareControls {
+	display: flex;
+	align-items: end;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	padding-top: 1rem;
+}
+.compareControls > label:first-child {
+	min-width: 170px;
+	display: grid;
+	gap: 0.3rem;
+	font-size: 0.83rem;
+}
+.baseline {
+	padding: 0.8rem 0;
+	color: var(--muted);
+	font-size: 0.8rem;
+	border-bottom: 1px solid var(--line);
+}
+.fields {
+	margin: 0;
+}
+.field {
+	display: grid;
+	grid-template-columns: minmax(140px, 0.7fr) minmax(0, 1.3fr);
+	gap: 1rem;
+	padding: 0.8rem;
+	border-bottom: 1px solid var(--line);
+	overflow-wrap: anywhere;
+}
+.field dt {
+	font-size: 0.85rem;
+}
+.field dd {
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.65rem;
+	white-space: pre-wrap;
+}
+.field[data-kind="changed"],
+.field[data-kind="added"] {
+	background: color-mix(in oklab, var(--accent-soft) 65%, var(--card));
+}
+.field[data-kind="removed"] {
+	background: var(--danger-soft);
+}
+.changeBadge {
+	margin-left: 0.5rem;
+	text-transform: capitalize;
+}
+.changeBadge[data-kind="removed"] {
+	color: var(--danger);
+	background: var(--danger-soft);
+}
+.changeBadge[data-kind="added"],
+.changeBadge[data-kind="changed"] {
+	color: var(--accent-strong);
+	background: var(--accent-soft);
+}
+.json {
+	margin-top: 1.2rem;
+}
+.json summary,
+.provenance summary {
+	padding: 0.5rem 0;
+}
+.json > div {
+	margin-top: 1rem;
+}
+.note {
+	color: var(--muted);
+	font-size: 0.8rem;
+	margin: 0.75rem 0;
+}
+.provenance {
+	overflow-wrap: anywhere;
+}
+.comparison {
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	overflow: hidden;
+}
+.comparisonHeading,
+.comparisonValues {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.comparisonHeading {
+	background: var(--field-bg);
+	font-size: 0.8rem;
+}
+.comparisonHeading > *,
+.comparisonValues > * {
+	padding: 0.8rem;
+	overflow-wrap: anywhere;
+	min-width: 0;
+}
+.comparisonHeading > :last-child,
+.comparisonValues > :last-child {
+	border-left: 1px solid var(--line);
+}
+.comparisonRow {
+	border-top: 1px solid var(--line);
+}
+.changePath {
+	padding: 0.65rem 0.8rem 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem;
+	font-size: 0.8rem;
+	overflow-wrap: anywhere;
+}
+.value {
+	margin: 0;
+	font: inherit;
+	font-family: var(--font-mono), monospace;
+	font-size: 0.82rem;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	background: transparent;
+}
+.comparison .note,
+.empty {
+	padding: 0.8rem;
+}
+.refreshNotice {
+	padding: 0.8rem;
+	background: var(--accent-soft);
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+}
+.restoreDialog {
+	max-width: 960px;
+	width: min(960px, calc(100vw - 2rem));
+}
+.restoreChoices {
+	min-width: 0;
+	margin: 0;
+	padding: 1rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	max-height: 45vh;
+	overflow-y: auto;
+}
+.choice {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.45rem 0;
+	min-height: 44px;
+	overflow-wrap: anywhere;
+}
+.choice input[type="checkbox"] {
+	width: 1.15rem;
+	height: 1.15rem;
+	flex-shrink: 0;
+}
+@media (max-width: 650px) {
+	.snapshot {
+		padding: 0.9rem;
+	}
+	.field {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.35rem;
+		padding: 0.7rem 0.4rem;
+	}
+	.farLayer {
+		left: 1.1rem;
+		right: 1.1rem;
+	}
+	.nearLayer {
+		left: 0.55rem;
+		right: 0.55rem;
+	}
+	.layer {
+		padding: 0.7rem 0.5rem 2rem;
+	}
+	.layer span {
+		display: none;
+	}
+	.comparisonHeading > *,
+	.comparisonValues > * {
+		padding: 0.6rem;
+	}
+	.compareControls > button {
+		flex: 1 1 auto;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.snapshot {
+		transition: none;
+		transform: none;
+	}
+}

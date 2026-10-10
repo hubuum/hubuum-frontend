@@ -427,6 +427,41 @@ name. Collection subscriptions use that configured destination automatically.
 Existing sinks retain custom configuration and pacing when edited. See the
 [chat webhook guide](docs/webhooks.md) for setup and provider details.
 
+## Historical snapshots and object restoration
+
+Object and class detail pages expose **Browse history**, with direct links from
+history rows and audit event details. The dedicated routes are
+`/objects/{classId}/{objectId}/history` and `/classes/{classId}/history`.
+Layered snapshots support earlier/later buttons, arrow keys, a version selector,
+and mouse/trackpad gestures over the labelled navigation strip. Scrolling the
+snapshot or JSON content keeps its normal behavior. Older entries load on demand.
+
+**Jump to date** resolves the active version using the server's as-of endpoint.
+Links preserve the original timestamp precision and stored version ID; the
+effective interval excludes its end. Deleted, inaccessible, and unavailable
+history is shown explicitly. Historical views are read-only and do not substitute
+current relationships, computed values, class definitions, or collection labels.
+Class history covers the definition, not its historical object population.
+
+Inline highlights and expanded comparisons share **Previous visible**, **Live**,
+and **Pinned version** baselines. Pinning and selection survive URL navigation
+and reload. Live comparisons keep the captured revision until **Refresh
+comparison** is chosen when an update is detected.
+
+**Restore to live** currently restores object data only: selected keys, exact
+subtrees, or the entire data document. Arrays are restored as whole values.
+Restoring a subtree also removes keys absent in the historical source. A fresh
+live fetch and effective update permission check precede a required review of
+the proposed changes. The atomic data PATCH guards the complete reviewed data
+with a JSON Patch test and, when provided, a strong ETag via `If-Match`.
+Conflicts require a fresh review; writes are never retried automatically.
+The server applies its current schema validation and creates a new audited
+update. Existing audit/history records are unchanged. The current API cannot
+record the source snapshot as restore provenance. This flow does not restore
+deleted objects, object metadata, relationships, or computed definitions.
+Class-definition restoration is tracked separately in
+[issue #145](https://github.com/hubuum/hubuum-frontend/issues/145).
+
 ## Administrator backup and restore
 
 The admin-only Backup & restore workspace creates server background tasks and
