@@ -10,10 +10,35 @@ Server or PostgreSQL; point it at an existing Hubuum Server instance.
 
 ## Start
 
-Copy the example environment and set `BACKEND_BASE_URL`:
+Download `hubuum-frontend-v0.0.19-compose.tar.gz` and `SHA256SUMS` from
+[release v0.0.19](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.19).
+The archive contains Compose configuration and its environment template, with
+the frontend image pinned to a digest. In the download directory, verify and
+extract it (on macOS, use `shasum -a 256 -c SHA256SUMS`):
+
+```sh
+sha256sum -c SHA256SUMS
+tar -xzf hubuum-frontend-v0.0.19-compose.tar.gz
+cd hubuum-frontend-v0.0.19-compose
+```
+
+If you are reading this file inside the extracted archive, start here:
 
 ```sh
 cp .env.quickstart.example .env.quickstart
+mkdir -p login-backgrounds
+```
+
+Edit `.env.quickstart` and set `BACKEND_BASE_URL` to your server's API origin.
+For Docker Desktop, a server on the host is normally reachable at
+`http://host.docker.internal:8080`. On Linux Docker Engine, add
+`extra_hosts: ["host.docker.internal:host-gateway"]` to the frontend service or
+use a routable host address. Podman commonly exposes the host as
+`host.containers.internal`. Container loopback is not the host's loopback.
+
+Start the stack:
+
+```sh
 docker compose --env-file .env.quickstart -f compose.quickstart.yml up -d
 ```
 
@@ -23,17 +48,10 @@ Open <http://localhost:3000>. Check dependency readiness with:
 curl --fail http://localhost:3000/readyz
 ```
 
-The quickstart mounts `./login-backgrounds` read-only into the frontend. Put
-private AVIF, JPEG, PNG, or WebP files there before starting Compose. To keep
-the artwork elsewhere, set `LOGIN_BACKGROUNDS_HOST_DIR` in `.env.quickstart` to
-that host directory. The images remain outside the container image and source
-repository.
-
-For Docker Desktop, a server running directly on the host is normally
-reachable as `http://host.docker.internal:8080`. On Linux Docker Engine, add
-`extra_hosts: ["host.docker.internal:host-gateway"]` to the frontend service or
-use a routable host address. Podman commonly exposes the host as
-`host.containers.internal`.
+Both the page and readiness probe should be reachable before you sign in with
+a Hubuum account. Frontend v0.0.19 targets server v0.0.18; review
+[compatibility](https://hubuum.github.io/hubuum-frontend/v0.0.19/compatibility/)
+before using a different server.
 
 ## Manage the quickstart
 
@@ -50,6 +68,10 @@ out all stored sessions.
 This quickstart binds the frontend to loopback and does not configure TLS. Use
 the Helm chart or the Hubuum Server single-host installer for production.
 
-For Helm deployments, store the private images on a read-only PVC and set
-`loginBackgrounds.existingClaim` to its name. The chart mounts that claim at
-`/app/login-backgrounds` without copying the images into the application image.
+## Optional login backgrounds
+
+Put AVIF, JPEG, PNG, or WebP files in `login-backgrounds/` before starting the
+stack. To use another directory, set `LOGIN_BACKGROUNDS_HOST_DIR` in
+`.env.quickstart`. Compose mounts it read-only; the files stay outside the image.
+For Helm, use `loginBackgrounds.existingClaim` to mount a read-only PVC at
+`/app/login-backgrounds`.

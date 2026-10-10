@@ -6,6 +6,10 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Added complete Compose download instructions and separated setup, configuration, browser workflows, and architecture guides.
+
 ## [0.0.19] - 2026-10-06
 
 ### Added
