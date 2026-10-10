@@ -271,8 +271,8 @@ export function ResourceHistoryBrowser({
 	const deleted = selected ? isDeletedVersion(selected) : false;
 	const taskId = selected ? getProvenanceTaskId(selected) : null;
 	const compareControls = (
-		<div className={styles.compareControls}>
-			<label>
+		<>
+			<label className={styles.comparisonBaseline}>
 				<span>Compare with</span>
 				<select
 					value={comparisonMode}
@@ -288,7 +288,12 @@ export function ResourceHistoryBrowser({
 			{selected && !deleted ? (
 				<button
 					type="button"
-					className="secondary"
+					className={`icon-button ${styles.pin}`}
+					aria-label="Pin as baseline"
+					title="Pin selected version as baseline"
+					aria-pressed={
+						pinId === selected.history_id && pinAt === selected.valid_from
+					}
 					onClick={() =>
 						updateUrl({
 							pin: String(selected.history_id),
@@ -297,7 +302,12 @@ export function ResourceHistoryBrowser({
 						})
 					}
 				>
-					Pin as baseline
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path
+							d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2zm-6 2H7.83L9 12.83V4h6v8.83L16.17 14z"
+							fill="currentColor"
+						/>
+					</svg>
 				</button>
 			) : null}
 			<button
@@ -318,14 +328,14 @@ export function ResourceHistoryBrowser({
 					Only changes
 				</label>
 			) : null}
-		</div>
+		</>
 	);
 	return (
 		<section
 			className={`stack ${styles.browser}`}
 			aria-label={`${scope.type === "object" ? "Object" : "Class definition"} history`}
 		>
-			<header className="panel-header">
+			<header className={`panel-header ${styles.heading}`}>
 				<div>
 					<h1 className={styles.historyTitle}>
 						{selected?.name ??
@@ -357,13 +367,6 @@ export function ResourceHistoryBrowser({
 					</h1>
 				</div>
 				<div className="action-row">
-					<button
-						type="button"
-						className="secondary"
-						onClick={() => setJumpOpen(true)}
-					>
-						Jump to date
-					</button>
 					<Link className="link-chip" href={resourceHref(scope)}>
 						Back to live
 					</Link>
@@ -375,6 +378,19 @@ export function ResourceHistoryBrowser({
 					</Link>
 				</div>
 			</header>
+			<fieldset
+				className={styles.toolbar}
+				aria-label="History comparison and navigation"
+			>
+				{selected && !deleted ? compareControls : null}
+				<button
+					type="button"
+					className={styles.jump}
+					onClick={() => setJumpOpen(true)}
+				>
+					Jump to date
+				</button>
+			</fieldset>
 			{success ? (
 				<p role="status" className="success-banner">
 					{success}
@@ -428,10 +444,14 @@ export function ResourceHistoryBrowser({
 						}
 						loadingOlder={history.isFetchingNextPage}
 					>
-						<article className={`card ${styles.snapshot}`}>
-							<header className="panel-header">
+						<article className={styles.snapshot}>
+							<header className={styles.snapshotHeading}>
 								<div>
-									<h2>{selected.name}</h2>
+									<h2>
+										<time dateTime={selected.valid_from}>
+											{historyTime(selected.valid_from)} UTC
+										</time>
+									</h2>
 									<p className="muted">
 										Stored version #{selected.history_id} · {selected.op}
 									</p>
@@ -439,7 +459,7 @@ export function ResourceHistoryBrowser({
 								{scope.type === "object" && "data" in selected && !deleted ? (
 									<button
 										type="button"
-										className="secondary"
+										className={styles.restore}
 										onClick={() => {
 											updateUrl({ compare: "live" });
 											setRestoring(selected);
@@ -451,7 +471,6 @@ export function ResourceHistoryBrowser({
 							</header>
 							{!deleted ? (
 								<>
-									{compareControls}
 									<p className={styles.baseline}>{baselineLabel}</p>
 									{comparisonMode === "live" && live.isError ? (
 										<p className="error-banner" role="alert">

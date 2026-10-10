@@ -454,8 +454,12 @@ current relationships, computed values, class definitions, or collection labels.
 Class history covers the definition, not its historical object population.
 
 Inline highlights and expanded comparisons share **Previous visible**, **Live**,
-and **Pinned version** baselines. Pinning and selection survive URL navigation
-and reload. Live comparisons keep the captured revision until **Refresh
+and **Pinned version** baselines. Comparison controls and the compact pin action
+sit in a shared ribbon to the left of **Jump to date**, above the snapshot stack.
+The selected card leads with its timestamp and stored version, with a fine accent
+line and restrained depth around the neighboring snapshots.
+Pinning and selection survive URL navigation and reload. Live comparisons keep
+the captured revision until **Refresh
 comparison** is chosen when an update is detected.
 
 **Restore to live** currently restores object data only: selected keys, exact

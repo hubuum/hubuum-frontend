@@ -53,6 +53,7 @@ export function HistoryStackNavigation({
 	children: React.ReactNode;
 }) {
 	const timelineRef = useRef<HTMLDivElement>(null);
+	const timelineHeight = useRef(0);
 	const scrollFrame = useRef<number | null>(null);
 	const scrollSelection = useRef<number | null>(null);
 	const requestedPage = useRef<number | null>(null);
@@ -75,11 +76,25 @@ export function HistoryStackNavigation({
 
 	useEffect(() => {
 		if (index < 0 || !timelineRef.current) return;
+		const viewport = timelineRef.current;
+		timelineHeight.current = viewport.clientHeight;
+		const observer = new ResizeObserver(() => {
+			if (viewport.clientHeight === timelineHeight.current) return;
+			timelineHeight.current = viewport.clientHeight;
+			if (scrollFrame.current !== null) {
+				cancelAnimationFrame(scrollFrame.current);
+				scrollFrame.current = null;
+			}
+			scrollSelection.current = null;
+			viewport.scrollTop = index * TIMELINE_STEP;
+		});
+		observer.observe(viewport);
 		if (scrollSelection.current === selected.history_id) {
 			scrollSelection.current = null;
-			return;
+		} else {
+			viewport.scrollTop = index * TIMELINE_STEP;
 		}
-		timelineRef.current.scrollTop = index * TIMELINE_STEP;
+		return () => observer.disconnect();
 	}, [index, selected.history_id]);
 	useEffect(
 		() => () => {
@@ -103,7 +118,14 @@ export function HistoryStackNavigation({
 		if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current);
 		scrollFrame.current = requestAnimationFrame(() => {
 			scrollFrame.current = null;
-			const top = timelineRef.current?.scrollTop ?? 0;
+			const viewport = timelineRef.current;
+			if (!viewport) return;
+			// Resizing changes the centering padding; it is not timeline travel.
+			if (index >= 0 && viewport.clientHeight !== timelineHeight.current) {
+				viewport.scrollTop = index * TIMELINE_STEP;
+				return;
+			}
+			const top = viewport.scrollTop;
 			const position = Math.max(
 				0,
 				Math.min(records.length - 1, Math.round(top / TIMELINE_STEP)),
@@ -221,6 +243,12 @@ export function HistoryStackNavigation({
 						className={styles.timelineViewport}
 						ref={timelineRef}
 						onScroll={followScroll}
+						onScrollEnd={(event) => {
+							// CSS snapping also fires on resize, so center only after scrolling.
+							const viewport = event.currentTarget;
+							viewport.scrollTop =
+								Math.round(viewport.scrollTop / TIMELINE_STEP) * TIMELINE_STEP;
+						}}
 					>
 						<ol className={styles.timelineEntries}>
 							{records.map((record) => (

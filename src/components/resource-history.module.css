@@ -1,6 +1,10 @@
 .browser {
 	min-width: 0;
 }
+.heading {
+	flex-wrap: wrap;
+	align-items: baseline;
+}
 .historyTitle {
 	display: flex;
 	align-items: baseline;
@@ -78,7 +82,7 @@
 	position: absolute;
 	inset: 0;
 	overflow-y: auto;
-	scroll-snap-type: y mandatory;
+	overflow-anchor: none;
 	scrollbar-width: thin;
 	scrollbar-color: var(--line) transparent;
 }
@@ -91,7 +95,6 @@
 	position: relative;
 	margin: 0;
 	height: 80px;
-	scroll-snap-align: center;
 }
 .timelineEntries li::before {
 	content: "";
@@ -158,11 +161,11 @@
 }
 .fanCards {
 	position: relative;
-	height: calc(88px + 4.95rem);
+	height: calc(68px + 4.95rem);
 	pointer-events: none;
 }
 .fanCard {
-	--offset: calc(var(--title-step) * 1.65rem + var(--tail-step) * 2.5px);
+	--offset: calc(var(--title-step) * 1.65rem + var(--tail-step) * 1.2px);
 	position: absolute;
 	display: flex;
 	flex-direction: column;
@@ -177,14 +180,12 @@
 	font-size: 0.72rem;
 	line-height: 1.35;
 	text-align: center;
-	box-shadow: 0 2px 5px rgb(0 0 0 / 6%);
+	box-shadow: 0 2px 3px rgb(0 0 0 / 6%);
 	overflow: hidden;
 	transition: inset-inline 220ms ease;
 }
 .fanSide[data-direction="newer"] .fanCard {
 	bottom: var(--offset);
-	background: color-mix(in oklab, var(--card) 88%, var(--accent-soft));
-	border-color: color-mix(in oklab, var(--accent) 35%, var(--line));
 }
 .fanSide[data-direction="older"] .fanCard {
 	top: var(--offset);
@@ -203,9 +204,9 @@
 }
 .selectedSnapshot {
 	position: relative;
-	border: 1px solid var(--accent);
-	border-radius: 16px;
-	box-shadow: var(--shadow-float);
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	box-shadow: var(--shadow);
 	max-height: clamp(340px, 50vh, 640px);
 	overflow: auto;
 	scrollbar-width: thin;
@@ -218,12 +219,49 @@
 	outline-offset: 3px;
 }
 .snapshot {
+	--snapshot-padding: 1.4rem;
 	position: relative;
-	padding: 1.3rem;
+	padding: var(--snapshot-padding);
 	margin: 0;
-	border: 0;
-	background: var(--card);
+}
+.snapshot::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	inset-inline: var(--snapshot-padding);
+	height: 2px;
+	background: var(--accent);
+}
+.snapshotHeading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.35rem 1rem;
+}
+.snapshotHeading h2 {
+	font-size: 1.25rem;
+	font-weight: 500;
+}
+.snapshotHeading p {
+	margin: 0.35rem 0 0;
+	font-size: 0.78rem;
+}
+.snapshotHeading .restore,
+.toolbar .jump {
+	background: transparent;
 	box-shadow: none;
+	font-weight: 500;
+	min-height: 44px;
+}
+.snapshotHeading .restore {
+	color: var(--accent-strong);
+	font-size: 0.78rem;
+	padding: 0.5rem 0;
+}
+.snapshotHeading .restore:hover,
+.toolbar .jump:hover {
+	text-decoration: underline;
 }
 .fanCaption {
 	margin: 0.25rem 0;
@@ -238,18 +276,54 @@
 		transform: translateY(0);
 	}
 }
-.compareControls {
+.toolbar {
 	display: flex;
-	align-items: end;
+	align-items: center;
 	flex-wrap: wrap;
 	gap: 0.6rem;
-	padding-top: 1rem;
+	min-width: 0;
+	margin: 0;
+	padding: 0.7rem 0;
+	border: 0;
+	border-block: 1px solid var(--line);
 }
-.compareControls > label:first-child {
-	min-width: 170px;
-	display: grid;
-	gap: 0.3rem;
+.comparisonBaseline {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	min-width: 0;
+	color: var(--muted);
+	font-size: 0.78rem;
+}
+.comparisonBaseline select {
+	min-width: 0;
+	max-width: 100%;
+}
+.toolbar button,
+.toolbar select {
 	font-size: 0.83rem;
+	min-height: 44px;
+}
+.toolbar button {
+	background: var(--card);
+	border: 1px solid var(--line);
+	color: var(--ink);
+	font-weight: 500;
+}
+.toolbar .pin {
+	width: 44px;
+	background: transparent;
+	border-color: transparent;
+}
+.toolbar .pin[aria-pressed="true"] {
+	background: var(--accent-soft);
+	color: var(--accent-strong);
+}
+.toolbar .jump {
+	margin-left: auto;
+	border-color: transparent;
+	color: var(--muted);
+	padding-inline: 0.5rem;
 }
 .baseline {
 	padding: 0.8rem 0;
@@ -400,9 +474,12 @@
 	height: 1.15rem;
 	flex-shrink: 0;
 }
+.toolbar .choice {
+	font-size: 0.83rem;
+}
 @media (max-width: 650px) {
 	.snapshot {
-		padding: 0.9rem;
+		--snapshot-padding: 0.9rem;
 	}
 	.field {
 		grid-template-columns: minmax(0, 1fr);
@@ -442,8 +519,14 @@
 	.comparisonValues > * {
 		padding: 0.6rem;
 	}
-	.compareControls > button {
-		flex: 1 1 auto;
+	.comparisonBaseline {
+		flex-basis: 100%;
+	}
+	.comparisonBaseline select {
+		flex: 1;
+	}
+	.toolbar .jump {
+		margin-left: 0;
 	}
 }
 @media (prefers-reduced-motion: reduce) {

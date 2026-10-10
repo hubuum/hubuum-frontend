@@ -172,6 +172,57 @@ test.describe("resource history", () => {
 		await page.waitForURL("**/app");
 	});
 
+	test("quiet ribbon keeps comparison controls above the timestamp-led snapshot", async ({
+		page,
+	}) => {
+		await prepare(page);
+		await selectHistorical(page);
+		const ribbon = page.getByRole("group", {
+			name: "History comparison and navigation",
+		});
+		const snapshot = page.getByRole("region", {
+			name: "Selected snapshot",
+			exact: true,
+		});
+		const baseline = ribbon.getByRole("combobox", { name: "Compare with" });
+		const pin = ribbon.getByRole("button", { name: "Pin as baseline" });
+		const compare = ribbon.getByRole("button", { name: "Compare snapshots" });
+		await expect(baseline).toHaveValue("previous");
+		await expect(snapshot.getByRole("combobox")).toHaveCount(0);
+		await expect(snapshot.getByRole("heading", { level: 2 })).not.toContainText(
+			base.name,
+		);
+		await expect(
+			snapshot.getByRole("heading", { level: 2 }).locator("time"),
+		).toHaveAttribute("datetime", instants[1]);
+		const ribbonBounds = await ribbon.boundingBox();
+		const snapshotBounds = await snapshot.boundingBox();
+		const compareBounds = await compare.boundingBox();
+		const jumpBounds = await ribbon
+			.getByRole("button", { name: "Jump to date" })
+			.boundingBox();
+		if (!ribbonBounds || !snapshotBounds || !compareBounds || !jumpBounds)
+			throw new Error("The ribbon, snapshot and navigation must be visible");
+		expect(ribbonBounds.y + ribbonBounds.height).toBeLessThan(snapshotBounds.y);
+		expect(compareBounds.x + compareBounds.width).toBeLessThan(jumpBounds.x);
+		await pin.click();
+		await expect(pin).toHaveAttribute("aria-pressed", "true");
+		await expect(baseline).toHaveValue("pinned");
+		await versionMarker(page, 103).click();
+		await expectSelected(page, 103);
+		await expect(pin).toHaveAttribute("aria-pressed", "false");
+		await compare.click();
+		await expect(ribbon.getByLabel("Only changes")).toBeChecked();
+		await ribbon.getByLabel("Only changes").uncheck();
+		await expect(
+			snapshot.getByText("Unchanged", { exact: true }).first(),
+		).toBeVisible();
+		await ribbon.getByRole("button", { name: "Close comparison" }).click();
+		await expect(
+			snapshot.getByText("Snapshot JSON", { exact: true }),
+		).toBeVisible();
+	});
+
 	test("timeline scrolling, markers and keys preserve exact versions and pinned comparisons", async ({
 		page,
 	}) => {
@@ -240,7 +291,7 @@ test.describe("resource history", () => {
 
 	test("a deep fan follows continuous timeline scrolling and loads older pages automatically", async ({
 		page,
-	}) => {
+	}, testInfo) => {
 		await prepare(page, { many: true });
 		await page.goto(objectPath);
 		await expectSelected(page, 1059);
@@ -253,8 +304,9 @@ test.describe("resource history", () => {
 			}),
 		).toBeVisible();
 		await versionMarker(page, 1059).hover();
-		for (let tick = 0; tick < 6; tick++) {
+		for (let tick = 1; tick <= 6; tick++) {
 			await page.mouse.wheel(0, 80);
+			await expectSelected(page, 1059 - tick);
 		}
 		await expectSelected(page, 1053);
 		await expect(timeline.getByText("6 newer", { exact: true })).toBeVisible();
@@ -290,6 +342,12 @@ test.describe("resource history", () => {
 		expect(timelineBounds.height).toBeGreaterThanOrEqual(
 			olderBounds.y + olderBounds.height - newerBounds.y,
 		);
+		const screenshotPath = testInfo.outputPath("quiet-ribbon-stack.png");
+		await page.screenshot({ path: screenshotPath });
+		await testInfo.attach("quiet-ribbon-stack", {
+			path: screenshotPath,
+			contentType: "image/png",
+		});
 		await selectedPanel.focus();
 		await page.keyboard.press("End");
 		await expect
@@ -446,11 +504,17 @@ test.describe("resource history", () => {
 		const state = await prepare(page, { unavailable: true, deleted: true });
 		const exact = "2026-09-25T08:42:13.830218Z";
 		await page.goto(`${objectPath}?at=${encodeURIComponent(exact)}`);
-		await expect(page.getByRole("alert")).toContainText("Snapshot unavailable");
+		await expect(
+			page.getByRole("region", { name: "Object history" }).getByRole("alert"),
+		).toContainText("Snapshot unavailable");
 		expect(state.asOf).toContain(exact);
 		await expect(
 			page.getByRole("button", { name: "Restore to live…" }),
 		).toHaveCount(0);
+		await expect(page.getByLabel("Compare with")).toHaveCount(0);
+		await expect(
+			page.getByRole("button", { name: "Jump to date" }),
+		).toBeVisible();
 		await page
 			.getByRole("button", { name: "Show latest visible entry" })
 			.click();
@@ -458,6 +522,7 @@ test.describe("resource history", () => {
 		await expect(
 			page.getByRole("button", { name: "Restore to live…" }),
 		).toHaveCount(0);
+		await expect(page.getByLabel("Compare with")).toHaveCount(0);
 	});
 
 	test("date jumps resolve the effective interval and inconsistent version links show an error", async ({
@@ -475,7 +540,9 @@ test.describe("resource history", () => {
 		await page.goto(
 			`${objectPath}?at=${encodeURIComponent(instants[1])}&version=999`,
 		);
-		await expect(page.getByRole("alert")).toContainText("does not match");
+		await expect(
+			page.getByRole("region", { name: "Object history" }).getByRole("alert"),
+		).toContainText("does not match");
 		await expect(
 			page.getByRole("button", { name: "Restore to live…" }),
 		).toHaveCount(0);
@@ -503,28 +570,76 @@ test.describe("resource history", () => {
 
 	test("snapshot and restore layouts remain accessible on mobile and in dark mode", async ({
 		page,
-	}) => {
+	}, testInfo) => {
 		await prepare(page);
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.emulateMedia({ reducedMotion: "reduce" });
 		await selectHistorical(page);
 		await expect(versionMarker(page, 101)).toBeAttached();
 		await page.getByRole("button", { name: "Compare snapshots" }).click();
-		for (const theme of ["light", "dark"]) {
-			await page.evaluate(
-				(value) => document.documentElement.setAttribute("data-theme", value),
-				theme,
-			);
-			expect(
-				await page.evaluate(
-					() => document.documentElement.scrollWidth <= window.innerWidth,
-				),
-			).toBe(true);
-			const report = await new AxeBuilder({ page })
-				.include('section[aria-label="Object history"]')
-				.analyze();
-			expect(report.violations).toEqual([]);
+		for (const width of [320, 390, 736, 1024]) {
+			await page.setViewportSize({ width, height: 844 });
+			for (const theme of ["light", "dark"]) {
+				await page
+					.getByRole("button", { name: /Open account menu for/ })
+					.click();
+				await page
+					.getByRole("button", {
+						name: theme === "dark" ? "Dark" : "Light",
+						exact: true,
+					})
+					.click();
+				await page.keyboard.press("Escape");
+				await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+				await page.evaluate(async () => {
+					await new Promise<void>((resolve) =>
+						requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+					);
+					await Promise.all(
+						document
+							.getAnimations()
+							.map((animation) => animation.finished.catch(() => undefined)),
+					);
+				});
+				await expectSelected(page, 102);
+				await expect
+					.poll(() =>
+						versionMarker(page, 102).evaluate((button) => {
+							const viewport = button.closest("ol")?.parentElement;
+							if (!viewport)
+								throw new Error("The timeline viewport must be present");
+							const marker = button.getBoundingClientRect();
+							const bounds = viewport.getBoundingClientRect();
+							return Math.abs(
+								marker.y + marker.height / 2 - bounds.y - bounds.height / 2,
+							);
+						}),
+					)
+					.toBeLessThan(2);
+				expect(
+					await page.evaluate(
+						() => document.documentElement.scrollWidth <= window.innerWidth,
+					),
+				).toBe(true);
+				await expect(page.getByLabel("Compare with")).toBeVisible();
+				await expect(
+					page.getByRole("button", { name: "Jump to date" }),
+				).toBeVisible();
+				const report = await new AxeBuilder({ page })
+					.include('section[aria-label="Object history"]')
+					.analyze();
+				expect(report.violations).toEqual([]);
+				const screenshotPath = testInfo.outputPath(
+					`quiet-ribbon-${width}-${theme}.png`,
+				);
+				await page.screenshot({ path: screenshotPath });
+				await testInfo.attach(`quiet-ribbon-${width}-${theme}`, {
+					path: screenshotPath,
+					contentType: "image/png",
+				});
+			}
 		}
+		await page.setViewportSize({ width: 320, height: 844 });
 		await page.getByRole("button", { name: "Restore to live…" }).click();
 		await page.getByRole("checkbox", { name: "Entire data document" }).check();
 		await page.getByRole("button", { name: /Review \d+ changes/ }).click();

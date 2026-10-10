@@ -2,9 +2,9 @@
 
 These proposals refine the implemented history browser in issues
 [#143](https://github.com/hubuum/hubuum-frontend/issues/143) and
-[#144](https://github.com/hubuum/hubuum-frontend/issues/144). No proposal has been
-selected or applied to the application yet. Class restoration remains a separate
-follow-up in [#145](https://github.com/hubuum/hubuum-frontend/issues/145).
+[#144](https://github.com/hubuum/hubuum-frontend/issues/144). **Quiet ribbon** is
+the selected treatment, now applied to the application. Class restoration remains
+a separate follow-up in [#145](https://github.com/hubuum/hubuum-frontend/issues/145).
 
 Open [preview.html](preview.html) locally in a browser to switch concepts, scroll
 the timeline, pin a baseline, change comparison modes, and jump to a date. The
@@ -21,7 +21,7 @@ centered version titles above and below the selected snapshot.
 
 ## Quiet ribbon
 
-Recommended starting point: a simple toolbar across the page, restrained depth,
+Selected treatment: a simple toolbar across the page, restrained depth,
 and one fine accent line on the selected card. This keeps controls accessible
 while giving the snapshot most of the visual emphasis.
 
@@ -43,18 +43,17 @@ with less emphasis on physical depth.
 
 ![Open folio proposal](open-folio.png)
 
-## Continue from here
+## Implementation
 
-Choose a concept, or combine Quiet ribbon's toolbar with Floating dock's stack.
-Then apply the agreed treatment to `src/components/resource-history-browser.tsx`,
+Quiet ribbon is implemented in `src/components/resource-history-browser.tsx`,
 `src/components/history-stack-navigation.tsx`, and
-`src/components/resource-history.module.css`, retaining the existing comparison,
-restore, URL, keyboard, and pagination behavior.
+`src/components/resource-history.module.css`. Comparison controls share a
+page-wide ribbon to the left of **Jump to date**. The selected card leads with
+its timestamp and version, with a compact pin control in the ribbon, a quieter
+restore action, neutral neighboring sheets, and a fine accent line. The existing
+comparison, restore, URL, keyboard, and pagination behavior is retained.
 
-The application currently retains its comparison controls inside the selected
-card. Moving them and changing their emphasis are the next implementation step.
-The draft pull request records the implementation's verification and remaining
-backend validation.
+Floating dock and Open folio remain design alternatives in the standalone preview.
 
 The previews were checked at 320, 736, and 1024 pixels in light and dark themes.
 Local interactions for wheel/keyboard navigation, Previous/Live/Pinned baselines,
