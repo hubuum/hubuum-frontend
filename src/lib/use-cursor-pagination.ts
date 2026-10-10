@@ -2,35 +2,37 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+	type CursorTrail,
 	extendCursorTrail,
 	hasPreviousCursorInTrail,
 	normalizeCursorPageLimit,
 	parseCursorTrail,
 	previousCursorFromTrail,
-	type CursorTrail,
 } from "@/lib/cursor-pagination";
 
 type UseCursorPaginationOptions = {
 	defaultLimit?: number;
+	cursorKey?: string;
 };
 
 export function useCursorPagination({
 	defaultLimit = 100,
+	cursorKey = "cursor",
 }: UseCursorPaginationOptions = {}) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 
-	const cursor = searchParams.get("cursor") ?? undefined;
+	const cursor = searchParams.get(cursorKey) ?? undefined;
 	const limit = normalizeCursorPageLimit(
 		searchParams.get("limit"),
 		defaultLimit,
 	);
 	const historyStorageKey = useMemo(() => {
 		const params = new URLSearchParams(searchParams.toString());
-		params.delete("cursor");
-		return `hubuum.cursor-trail:v1:${pathname}?${params.toString()}`;
-	}, [pathname, searchParams]);
+		params.delete(cursorKey);
+		return `hubuum.cursor-trail:v1:${cursorKey === "cursor" ? "" : `${cursorKey}:`}${pathname}?${params.toString()}`;
+	}, [cursorKey, pathname, searchParams]);
 	const [cursorTrail, setCursorTrail] = useState<CursorTrail>([]);
 	const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(
 		null,
@@ -75,10 +77,10 @@ export function useCursorPagination({
 				extendCursorTrail(current, cursor, nextCursor),
 			);
 			const params = new URLSearchParams(searchParams.toString());
-			params.set("cursor", nextCursor);
+			params.set(cursorKey, nextCursor);
 			router.push(`${pathname}?${params.toString()}`, { scroll: false });
 		},
-		[cursor, pathname, router, searchParams],
+		[cursor, cursorKey, pathname, router, searchParams],
 	);
 
 	const goToPrevPage = useCallback(
@@ -94,15 +96,16 @@ export function useCursorPagination({
 			);
 			const params = new URLSearchParams(searchParams.toString());
 			if (targetCursor) {
-				params.set("cursor", targetCursor);
+				params.set(cursorKey, targetCursor);
 			} else {
-				params.delete("cursor");
+				params.delete(cursorKey);
 			}
 			router.push(`${pathname}?${params.toString()}`, { scroll: false });
 		},
 		[
 			activeCursorTrail,
 			cursor,
+			cursorKey,
 			hasPrevPage,
 			pathname,
 			router,
@@ -112,9 +115,9 @@ export function useCursorPagination({
 
 	const goToFirstPage = useCallback(() => {
 		const params = new URLSearchParams(searchParams.toString());
-		params.delete("cursor");
+		params.delete(cursorKey);
 		router.push(`${pathname}?${params.toString()}`, { scroll: false });
-	}, [pathname, router, searchParams]);
+	}, [cursorKey, pathname, router, searchParams]);
 
 	const setLimit = useCallback(
 		(newLimit: number) => {
@@ -123,10 +126,10 @@ export function useCursorPagination({
 				"limit",
 				String(normalizeCursorPageLimit(String(newLimit), defaultLimit)),
 			);
-			params.delete("cursor"); // Reset to first page when changing limit
+			params.delete(cursorKey); // Reset to first page when changing limit
 			router.push(`${pathname}?${params.toString()}`, { scroll: false });
 		},
-		[defaultLimit, pathname, router, searchParams],
+		[cursorKey, defaultLimit, pathname, router, searchParams],
 	);
 
 	return {

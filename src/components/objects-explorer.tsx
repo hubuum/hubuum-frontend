@@ -16,6 +16,8 @@ import {
 import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { CreateModal } from "@/components/create-modal";
 import { EmptyState } from "@/components/empty-state";
+import { ObjectAggregateCount } from "@/components/object-aggregate-count";
+import { ObjectAggregateTree } from "@/components/object-aggregate-tree";
 import {
 	type ObjectAggregateMeasureField,
 	type ObjectAggregateMeasureSelection,
@@ -33,24 +35,27 @@ import {
 	CLASS_OBJECT_SAMPLES_STALE_TIME,
 	classObjectSamplesQueryKey,
 	fetchClassObjectSamples,
+	fetchObjectsByClass,
 } from "@/lib/api/class-objects";
 import { fetchClientPaginationConfig } from "@/lib/api/client-config";
 import {
 	fetchPersonalComputedFields,
 	fetchSharedComputedFields,
 } from "@/lib/api/computed-fields";
-import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
-import {
-	fetchObjectAggregates,
-	type ObjectAggregateSort,
-} from "@/lib/api/object-aggregates";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { deleteApiV1ClassesByClassIdByObjectId } from "@/lib/api/generated/client";
 import type {
 	Collection,
 	ComputedFieldErrorResponse,
 	HubuumObjectComputedResponse,
 	NewHubuumObject,
+	ObjectAggregateRow,
 } from "@/lib/api/generated/models";
+import {
+	fetchAllObjectAggregates,
+	fetchObjectAggregates,
+	type ObjectAggregateSort,
+} from "@/lib/api/object-aggregates";
 import {
 	fetchClassesByIds,
 	fetchCollectionDirectory,
@@ -65,6 +70,14 @@ import {
 	SELECTION_STATE_EVENT,
 } from "@/lib/create-events";
 import { getDataColumnHeadings } from "@/lib/data-column-headings";
+import {
+	OBJECT_AGGREGATE_FILTER_QUERY_KEY,
+	parseObjectAggregateFilter,
+} from "@/lib/object-aggregate-filter";
+import {
+	OBJECT_AGGREGATION_QUERY_KEYS,
+	parseObjectAggregationView,
+} from "@/lib/object-aggregation-view";
 import { buildObjectCreateDataModel } from "@/lib/object-create-data";
 import {
 	getObjectCreateLabel,
@@ -83,7 +96,6 @@ import {
 	resolveObjectServerFilterDataFields,
 } from "@/lib/object-server-filter-fields";
 import {
-	appendObjectServerFilters,
 	OBJECT_SERVER_FILTERS_QUERY_KEY,
 	type ObjectComputedResultType,
 	type ObjectServerFilter,
@@ -117,6 +129,7 @@ import {
 	writeUserSetting,
 } from "@/lib/user-settings-client";
 import { PORTABLE_USER_SETTING_KEYS } from "@/lib/user-settings-types";
+import { updateViewQuery, type ViewQueryPatch } from "@/lib/view-query";
 
 const ObjectCreateDataEditor = dynamic(
 	() =>
@@ -248,8 +261,9 @@ type ResolvedObjectGroupingField = ObjectGroupingField & {
 
 type DisplayedAggregateGroup = {
 	id: string;
-	label: string;
+	dimensions: string[];
 	count: number;
+	aggregate?: ObjectAggregateRow;
 	measures?: Array<{
 		displayValue: string;
 		key: string;
@@ -260,8 +274,6 @@ type DisplayedAggregateGroup = {
 	}>;
 	rows?: HubuumObjectComputedResponse[];
 };
-
-const FIRST_AGGREGATE_PAGE = "__first_aggregate_page__";
 
 function toObjectAggregateSort(sort: ObjectGroupSort): ObjectAggregateSort {
 	if (sort === "count-asc") return "object_count.asc";
@@ -281,59 +293,6 @@ async function parseJsonPayload(response: Response): Promise<unknown> {
 	} catch {
 		return null;
 	}
-}
-
-type ObjectsPageData = {
-	objects: HubuumObjectComputedResponse[];
-	nextCursor: string | null;
-	prevCursor: string | null;
-	totalCount: number | null;
-};
-
-async function fetchObjectsByClass(
-	classId: number,
-	limit: number,
-	cursor?: string,
-	sort?: string,
-	serverFilters: readonly ObjectServerFilter[] = [],
-	signal?: AbortSignal,
-): Promise<ObjectsPageData> {
-	const params = new URLSearchParams();
-	params.set("limit", String(resolveServerPageLimit(limit)));
-	params.set("include", "computed");
-	if (cursor) params.set("cursor", cursor);
-	if (sort) params.set("sort", sort);
-	appendObjectServerFilters(params, serverFilters);
-
-	const response = await fetch(
-		`/_hubuum-bff/classes/${classId}/objects?${params.toString()}`,
-		{
-			credentials: "include",
-			signal,
-		},
-	);
-	const payload = await parseJsonPayload(response);
-
-	if (response.status !== 200) {
-		throw new Error(getApiErrorMessage(payload, "Failed to load objects."));
-	}
-
-	const nextCursor = response.headers.get("X-Next-Cursor");
-	const prevCursor = response.headers.get("X-Prev-Cursor");
-	const totalCountHeader = response.headers.get("X-Total-Count");
-	const totalCount = totalCountHeader
-		? Number.parseInt(totalCountHeader, 10)
-		: null;
-
-	return {
-		objects: expectArrayPayload<HubuumObjectComputedResponse>(
-			payload,
-			"class objects",
-		),
-		nextCursor,
-		prevCursor,
-		totalCount: Number.isFinite(totalCount) ? totalCount : null,
-	};
 }
 
 function getDataSearchText(data: unknown): string {
@@ -923,7 +882,6 @@ export function ObjectsExplorer() {
 	const columnPickerRef = useRef<HTMLDivElement | null>(null);
 	const createModalInitializedClassRef = useRef<number | null>(null);
 	const selectedClassId = searchParams.get("classId") ?? "";
-	const groupingClassIdRef = useRef(selectedClassId);
 	const [collectionId, setCollectionId] = useState("");
 	const [collectionSelection, setCollectionSelection] =
 		useState<Collection | null>(null);
@@ -958,15 +916,12 @@ export function ObjectsExplorer() {
 		columnId: null,
 		direction: "asc",
 	});
-	const [groupFieldId, setGroupFieldId] = useState<string | null>(null);
-	const [groupSort, setGroupSort] = useState<ObjectGroupSort>("count-desc");
-	const [aggregateMeasures, setAggregateMeasures] = useState<
-		ObjectAggregateMeasureSelection[]
-	>([]);
-	const [aggregateCursor, setAggregateCursor] = useState<string | null>(null);
-	const [aggregateCursorHistory, setAggregateCursorHistory] = useState<
-		string[]
-	>([]);
+	const { groupFieldIds, groupSort, aggregateLayout, aggregateMeasures } =
+		useMemo(() => parseObjectAggregationView(searchParams), [searchParams]);
+	const aggregatePagination = useCursorPagination({
+		cursorKey: "aggregateCursor",
+	});
+	const aggregateCursor = aggregatePagination.cursor;
 	const [searchInput, setSearchInput] = useState(
 		searchParams.get("search") ?? "",
 	);
@@ -998,6 +953,21 @@ export function ObjectsExplorer() {
 		() => serializeObjectServerFilters(serverFilters),
 		[serverFilters],
 	);
+	const aggregateMemberFilter = searchParams.get(
+		OBJECT_AGGREGATE_FILTER_QUERY_KEY,
+	);
+	const aggregateMemberLabel = useMemo(() => {
+		if (aggregateMemberFilter === null) return "";
+		try {
+			return (
+				parseObjectAggregateFilter(aggregateMemberFilter)
+					.map((dimension) => formatObjectAggregateDimension(dimension))
+					.join(" → ") || "All matching objects"
+			);
+		} catch {
+			return "Invalid aggregate filter";
+		}
+	}, [aggregateMemberFilter]);
 
 	const { showToast } = useToast();
 
@@ -1036,12 +1006,6 @@ export function ObjectsExplorer() {
 		setSearchInput(searchParams.get("search") ?? "");
 	}, [searchParams]);
 
-	useEffect(() => {
-		if (groupingClassIdRef.current === selectedClassId) return;
-		groupingClassIdRef.current = selectedClassId;
-		setGroupFieldId(null);
-		setAggregateMeasures([]);
-	}, [selectedClassId]);
 	const selectedClass = selectedClassQuery.data ?? undefined;
 	const createObjectLabel = getObjectCreateLabel(selectedClass?.name);
 	const createObjectDialogLabel = getObjectCreationLabel(selectedClass?.name);
@@ -1099,8 +1063,9 @@ export function ObjectsExplorer() {
 			effectiveFetchLimit,
 			getSortParam(),
 			serverFilterSignature,
+			aggregateMemberFilter,
 		],
-		queryFn: async ({ signal }) =>
+		queryFn: ({ signal }) =>
 			fetchObjectsByClass(
 				parsedClassId ?? 0,
 				effectiveFetchLimit,
@@ -1108,10 +1073,14 @@ export function ObjectsExplorer() {
 				getSortParam(),
 				serverFilters,
 				signal,
+				aggregateMemberFilter === null
+					? []
+					: parseObjectAggregateFilter(aggregateMemberFilter),
 			),
 		placeholderData: (previous, query) =>
 			query?.queryKey[1] === parsedClassId &&
-			query?.queryKey[5] === serverFilterSignature
+			query?.queryKey[5] === serverFilterSignature &&
+			query?.queryKey[6] === aggregateMemberFilter
 				? previous
 				: undefined,
 		enabled: parsedClassId !== null,
@@ -1155,6 +1124,7 @@ export function ObjectsExplorer() {
 	}, [collectionSelection, selectedClass, visibleCollectionsQuery.data]);
 	const activePageCanSeedObjectSamples =
 		pagination.cursor === undefined &&
+		aggregateMemberFilter === null &&
 		serverFilters.length === 0 &&
 		!objectsQuery.isPlaceholderData;
 	const objectSamplesQuery = useQuery({
@@ -1522,21 +1492,23 @@ export function ObjectsExplorer() {
 					getValueAtDataPath(objectItem.data, column.path),
 			});
 		}
-		if (
-			groupFieldId?.startsWith("data:") &&
-			!fields.some((field) => field.id === groupFieldId)
-		) {
-			const path = parseDataPathId(groupFieldId.slice("data:".length));
-			if (path) {
-				fields.push({
-					id: groupFieldId,
-					label: formatDataPathLabel(path),
-					section: "Data fields",
-					serverGroupBy: toServerFilterDataPath(path)
-						? `json_data.${toServerFilterDataPath(path)?.join(",")}`
-						: undefined,
-					getValue: (objectItem) => getValueAtDataPath(objectItem.data, path),
-				});
+		for (const groupFieldId of groupFieldIds) {
+			if (
+				groupFieldId.startsWith("data:") &&
+				!fields.some((field) => field.id === groupFieldId)
+			) {
+				const path = parseDataPathId(groupFieldId.slice("data:".length));
+				if (path) {
+					fields.push({
+						id: groupFieldId,
+						label: formatDataPathLabel(path),
+						section: "Data fields",
+						serverGroupBy: toServerFilterDataPath(path)
+							? `json_data.${toServerFilterDataPath(path)?.join(",")}`
+							: undefined,
+						getValue: (objectItem) => getValueAtDataPath(objectItem.data, path),
+					});
+				}
 			}
 		}
 		for (const field of [...customDataFields].sort((left, right) =>
@@ -1568,7 +1540,7 @@ export function ObjectsExplorer() {
 		collectionNameById,
 		computedColumns,
 		customDataFields,
-		groupFieldId,
+		groupFieldIds,
 		sortedDataColumnCandidates,
 	]);
 	const columnMenuWidth = useMemo(() => {
@@ -1602,15 +1574,37 @@ export function ObjectsExplorer() {
 			),
 		[objects, searchTerm],
 	);
-	const activeGroupingField = useMemo(
-		() => groupingFields.find((field) => field.id === groupFieldId) ?? null,
-		[groupFieldId, groupingFields],
+	const activeGroupingFields = useMemo(
+		() =>
+			groupFieldIds.flatMap((id) =>
+				groupingFields.filter((field) => field.id === id),
+			),
+		[groupFieldIds, groupingFields],
 	);
-	const serverGroupingField = activeGroupingField?.serverGroupBy
-		? activeGroupingField
-		: null;
+	const activeGroupingField = activeGroupingFields[0] ?? null;
+	const serverGroupBy = activeGroupingFields.flatMap((field) =>
+		field.serverGroupBy ? [field.serverGroupBy] : [],
+	);
+	const groupingSignature = JSON.stringify(serverGroupBy);
+	const groupingLabel = activeGroupingFields
+		.map((field) => field.label)
+		.join(" → ");
+	const groupColumns = useMemo(
+		() =>
+			activeGroupingFields.length > 0
+				? activeGroupingFields.map(({ id, label }) => ({ id, label }))
+				: [{ id: "scope", label: "Scope" }],
+		[activeGroupingFields],
+	);
 	const serverAggregationActive =
-		serverGroupingField !== null || aggregateMeasures.length > 0;
+		aggregateMemberFilter === null &&
+		(serverGroupBy.length > 0 || aggregateMeasures.length > 0);
+	const treeAggregationActive =
+		parsedClassId !== null &&
+		serverGroupBy.length > 1 &&
+		aggregateLayout === "tree";
+	const treeAggregationVisible =
+		treeAggregationActive && aggregateMemberFilter === null;
 	const aggregateMeasureSignature = aggregateMeasures
 		.map((measure) => `${measure.operation}:${measure.field}`)
 		.join("|");
@@ -1621,73 +1615,83 @@ export function ObjectsExplorer() {
 			),
 		[aggregateMeasureFields],
 	);
+	const naturalAggregateSort =
+		groupSort === "value-asc" || groupSort === "value-desc";
 	const objectAggregatesQuery = useQuery({
 		queryKey: [
 			"object-aggregates",
 			parsedClassId,
-			serverGroupingField?.serverGroupBy,
+			groupingSignature,
 			aggregateMeasureSignature,
 			groupSort,
 			effectiveFetchLimit,
-			aggregateCursor,
+			naturalAggregateSort ? null : aggregateCursor,
 			serverFilterSignature,
 		],
-		queryFn: ({ signal }) =>
-			fetchObjectAggregates(
-				{
-					classId: parsedClassId ?? 0,
-					groupBy: serverGroupingField
-						? [serverGroupingField.serverGroupBy ?? "name"]
-						: [],
-					measures: aggregateMeasures,
-					sort: toObjectAggregateSort(groupSort),
-					limit: effectiveFetchLimit,
-					cursor: aggregateCursor ?? undefined,
-					filters: serverFilters,
-				},
-				signal,
-			),
+		queryFn: async ({ signal }) => {
+			const request = {
+				classId: parsedClassId ?? 0,
+				groupBy: serverGroupBy,
+				measures: aggregateMeasures,
+				sort: toObjectAggregateSort(groupSort),
+				limit: effectiveFetchLimit,
+				filters: serverFilters,
+			};
+			if (!naturalAggregateSort) {
+				return fetchObjectAggregates(
+					{ ...request, cursor: aggregateCursor ?? undefined },
+					signal,
+				);
+			}
+			const rows = await fetchAllObjectAggregates(request, signal);
+			return {
+				rows,
+				nextCursor: null,
+				prevCursor: null,
+				totalCount: rows.length,
+				pageLimit: effectiveFetchLimit,
+			};
+		},
+		select: (data) => {
+			if (!naturalAggregateSort) return data;
+			// Natural order spans server pages; paginate the complete cached result.
+			const offset = Number(aggregateCursor) || 0;
+			const end = offset + effectiveFetchLimit;
+			return {
+				...data,
+				rows: data.rows.slice(offset, end),
+				nextCursor: end < data.rows.length ? String(end) : null,
+				prevCursor:
+					offset > 0 ? String(Math.max(0, offset - effectiveFetchLimit)) : null,
+			};
+		},
 		placeholderData: (previous, query) =>
 			query?.queryKey[1] === parsedClassId &&
-			query.queryKey[2] === serverGroupingField?.serverGroupBy &&
+			query.queryKey[2] === groupingSignature &&
 			query.queryKey[3] === aggregateMeasureSignature &&
+			query.queryKey[4] === groupSort &&
+			query.queryKey[5] === effectiveFetchLimit &&
 			query.queryKey[7] === serverFilterSignature
 				? previous
 				: undefined,
-		enabled: parsedClassId !== null && serverAggregationActive,
+		enabled:
+			parsedClassId !== null &&
+			serverAggregationActive &&
+			!treeAggregationActive,
 	});
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset aggregate pagination whenever its request scope changes.
-	useEffect(() => {
-		setAggregateCursor(null);
-		setAggregateCursorHistory([]);
-	}, [
-		effectiveFetchLimit,
-		aggregateMeasureSignature,
-		groupSort,
-		selectedClassId,
-		serverFilterSignature,
-		serverGroupingField?.serverGroupBy,
-	]);
 	const serverAggregateGroups = useMemo<DisplayedAggregateGroup[]>(
 		() =>
 			(objectAggregatesQuery.data?.rows ?? []).map((row) => {
-				const dimension = row.dimensions[0];
-				let label = dimension
-					? formatObjectAggregateDimension(dimension)
-					: "All matching objects";
-				if (
-					dimension?.field === "collection_id" &&
-					dimension.state === "value" &&
-					typeof dimension.value === "number"
-				) {
-					const collectionName = collectionNameById.get(dimension.value);
-					label = collectionName
-						? `${collectionName} (#${dimension.value})`
-						: `#${dimension.value}`;
-				}
+				const dimensions =
+					row.dimensions.length > 0
+						? row.dimensions.map((dimension) =>
+								formatObjectAggregateDimension(dimension, collectionNameById),
+							)
+						: ["All matching objects"];
 				return {
 					id: JSON.stringify(row.dimensions),
-					label,
+					aggregate: row,
+					dimensions,
 					count: row.object_count,
 					measures: (row.measures ?? []).map((measure, index) => ({
 						displayValue: formatObjectAggregateMeasure(measure),
@@ -1710,19 +1714,20 @@ export function ObjectsExplorer() {
 	);
 	const groupedObjects = useMemo(
 		() =>
-			activeGroupingField && !serverGroupingField
+			activeGroupingField && !serverAggregationActive
 				? groupObjectRows(
 						filteredObjects,
 						activeGroupingField.getValue,
 						groupSort,
-					)
+					).map((group) => ({ ...group, dimensions: [group.label] }))
 				: [],
-		[activeGroupingField, filteredObjects, groupSort, serverGroupingField],
+		[activeGroupingField, filteredObjects, groupSort, serverAggregationActive],
 	);
 	const displayedGroups: readonly DisplayedAggregateGroup[] =
 		serverAggregationActive ? serverAggregateGroups : groupedObjects;
 	const hasAggregateView =
-		activeGroupingField !== null || aggregateMeasures.length > 0;
+		aggregateMemberFilter === null &&
+		(activeGroupingField !== null || aggregateMeasures.length > 0);
 	const displayedObjects = useMemo(() => {
 		if (!dataColumnSort.columnId) {
 			return filteredObjects;
@@ -1751,11 +1756,12 @@ export function ObjectsExplorer() {
 		TableExportView<DisplayedAggregateGroup>
 	>(() => {
 		const columns: TableExportColumn<DisplayedAggregateGroup>[] = [
-			{
-				key: "group",
-				label: activeGroupingField?.label ?? "Scope",
-				getValue: (group) => group.label,
-			},
+			...groupColumns.map((column, index) => ({
+				key: column.id,
+				label: column.label,
+				getValue: (group: DisplayedAggregateGroup) =>
+					group.dimensions[index] ?? "—",
+			})),
 			{
 				key: "count",
 				label: "Count",
@@ -1793,7 +1799,7 @@ export function ObjectsExplorer() {
 			rows: displayedGroups,
 		};
 	}, [
-		activeGroupingField?.label,
+		groupColumns,
 		aggregateMeasureFieldLabels,
 		aggregateMeasures,
 		displayedGroups,
@@ -1877,7 +1883,7 @@ export function ObjectsExplorer() {
 			objectsQuery.data ? "ready" : "pending",
 			filteredObjects.length > 0 ? "visible" : "hidden",
 			hasAggregateView
-				? `aggregate:${activeGroupingField?.id ?? "global"}:${aggregateMeasureSignature}`
+				? `aggregate:${JSON.stringify(groupFieldIds)}:${aggregateMeasureSignature}`
 				: "ungrouped",
 			...activeDataColumns.map((column) => column.id),
 			...activeComputedColumns.map((column) => column.id),
@@ -2366,38 +2372,24 @@ export function ObjectsExplorer() {
 		});
 	}
 
+	function updateAggregation(patch: ViewQueryPatch) {
+		updateViewQuery({ ...patch, aggregateCursor: null });
+	}
+
 	function setGroupedColumnSort(column: "value" | "count") {
-		setGroupSort((current) => {
-			if (column === "value") {
-				return current === "value-asc" ? "value-desc" : "value-asc";
-			}
-			return current === "count-desc" ? "count-asc" : "count-desc";
-		});
-		setAggregateCursor(null);
-		setAggregateCursorHistory([]);
+		setAggregateSort(
+			column === "value"
+				? groupSort === "value-asc"
+					? "value-desc"
+					: "value-asc"
+				: groupSort === "count-desc"
+					? "count-asc"
+					: "count-desc",
+		);
 	}
 
-	function goToNextAggregatePage(nextCursor: string) {
-		setAggregateCursorHistory((current) => [
-			...current,
-			aggregateCursor ?? FIRST_AGGREGATE_PAGE,
-		]);
-		setAggregateCursor(nextCursor);
-	}
-
-	function goToPreviousAggregatePage(prevCursor?: string) {
-		const previousEntry = aggregateCursorHistory.at(-1);
-		const targetCursor =
-			previousEntry === FIRST_AGGREGATE_PAGE
-				? null
-				: (previousEntry ?? prevCursor ?? null);
-		setAggregateCursorHistory((current) => current.slice(0, -1));
-		setAggregateCursor(targetCursor);
-	}
-
-	function goToFirstAggregatePage() {
-		setAggregateCursorHistory([]);
-		setAggregateCursor(null);
+	function setAggregateLayout(layout: "tree" | "table") {
+		updateAggregation({ aggregateView: layout === "tree" ? null : layout });
 	}
 
 	function renderGroupedSortIndicator(column: "value" | "count") {
@@ -2420,48 +2412,43 @@ export function ObjectsExplorer() {
 	}
 
 	function setAggregateSort(nextSort: ObjectGroupSort) {
-		setGroupSort(nextSort);
-		setAggregateCursor(null);
-		setAggregateCursorHistory([]);
+		updateAggregation({
+			groupSort: nextSort === "count-desc" ? null : nextSort,
+		});
 	}
 
 	function setAggregateMeasureSelection(
 		nextMeasures: ObjectAggregateMeasureSelection[],
 	) {
-		if (
-			nextMeasures.length > 0 &&
-			activeGroupingField &&
-			!serverGroupingField
-		) {
-			setGroupFieldId(null);
+		const patch: ViewQueryPatch = {
+			aggregate: nextMeasures.map(
+				(measure) => `${measure.operation}:${measure.field}`,
+			),
+		};
+		if (nextMeasures.length > 0) {
+			if (activeGroupingField && !activeGroupingField.serverGroupBy)
+				patch.groupBy = null;
+			patch.search = null;
+			patch.cursor = null;
+			setSearchInput("");
 		}
-		setAggregateMeasures(nextMeasures);
-		setAggregateCursor(null);
-		setAggregateCursorHistory([]);
-		if (
-			nextMeasures.length > 0 &&
-			(searchTerm || normalizeSearchTerm(searchInput))
-		) {
-			clearFilter();
-		}
+		updateAggregation(patch);
 	}
 
-	function setGroupingField(nextFieldId: string | null) {
-		const nextGroupingField =
-			groupingFields.find((field) => field.id === nextFieldId) ?? null;
-		setGroupFieldId(nextFieldId);
-		if (nextGroupingField && !nextGroupingField.serverGroupBy) {
-			setAggregateMeasures([]);
+	function setGroupingFields(nextFieldIds: string[]) {
+		const nextFields = nextFieldIds.flatMap((id) =>
+			groupingFields.filter((field) => field.id === id),
+		);
+		const patch: ViewQueryPatch = { groupBy: nextFieldIds };
+		if (nextFields.some((field) => !field.serverGroupBy))
+			patch.aggregate = null;
+		if (nextFields.some((field) => field.serverGroupBy)) {
+			patch.search = null;
+			patch.cursor = null;
+			setSearchInput("");
 		}
-		setAggregateCursor(null);
-		setAggregateCursorHistory([]);
-		if (
-			nextGroupingField?.serverGroupBy &&
-			(searchTerm || normalizeSearchTerm(searchInput))
-		) {
-			clearFilter();
-		}
-		if (nextFieldId) {
+		updateAggregation(patch);
+		if (nextFieldIds.length > 0) {
 			setDataColumnSort({ columnId: null, direction: "asc" });
 			setSelectedObjectIds([]);
 		}
@@ -2551,6 +2538,8 @@ export function ObjectsExplorer() {
 		params.delete("cursor");
 		params.delete("search");
 		params.delete(OBJECT_SERVER_FILTERS_QUERY_KEY);
+		params.delete(OBJECT_AGGREGATE_FILTER_QUERY_KEY);
+		for (const key of OBJECT_AGGREGATION_QUERY_KEYS) params.delete(key);
 
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
@@ -2567,8 +2556,6 @@ export function ObjectsExplorer() {
 	}
 
 	function updateServerFilters(nextFilters: ObjectServerFilter[]) {
-		setAggregateCursor(null);
-		setAggregateCursorHistory([]);
 		const params = new URLSearchParams(searchParams.toString());
 		if (nextFilters.length > 0) {
 			params.set(
@@ -2579,8 +2566,16 @@ export function ObjectsExplorer() {
 			params.delete(OBJECT_SERVER_FILTERS_QUERY_KEY);
 		}
 		params.delete("cursor");
+		params.delete("aggregateCursor");
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
+	}
+
+	function clearAggregateMemberFilter() {
+		const params = new URLSearchParams(searchParams.toString());
+		params.delete(OBJECT_AGGREGATE_FILTER_QUERY_KEY);
+		params.delete("cursor");
+		router.push(`${pathname}?${params.toString()}`);
 	}
 
 	function toggleDataColumn(key: string, checked: boolean) {
@@ -2804,36 +2799,50 @@ export function ObjectsExplorer() {
 		);
 	}
 
-	const resourceSummary = serverAggregationActive
-		? objectAggregatesQuery.data
-			? buildResourceSummary({
-					loaded: serverAggregateGroups.length,
-					loadedNoun: serverAggregateGroups.length === 1 ? "group" : "groups",
-					total: objectAggregatesQuery.data.totalCount,
-					selected: selectedObjectIds.length,
-				})
-			: parsedClassId
-				? buildResourceSummary({ status: "Loading…" })
-				: buildResourceSummary({ status: "No class selected" })
-		: objectsQuery.data
-			? buildResourceSummary({
-					compactLoadedTotal: true,
-					shown: searchTerm ? filteredObjects.length : null,
-					shownLabel: "shown on page",
-					loaded: objects.length,
-					total: pageData?.totalCount,
-					totalLabel: serverFilters.length ? "matches" : "total",
-					selected: selectedObjectIds.length,
-					details:
-						activeGroupingField && !serverGroupingField
-							? [
-									`${displayedGroups.length} group${displayedGroups.length === 1 ? "" : "s"}`,
-								]
-							: [],
-				})
-			: parsedClassId
-				? buildResourceSummary({ status: "Loading…" })
-				: buildResourceSummary({ status: "No class selected" });
+	const aggregateTotal = objectAggregatesQuery.data?.totalCount;
+	const compactResourceSummary =
+		serverAggregationActive && !treeAggregationVisible && aggregateTotal != null
+			? [
+					serverAggregateGroups.length === aggregateTotal
+						? "Complete"
+						: `${serverAggregateGroups.length}/${aggregateTotal}`,
+					...buildResourceSummary({ selected: selectedObjectIds.length }),
+				]
+			: undefined;
+	const resourceSummary = treeAggregationVisible
+		? buildResourceSummary({ status: "Grouped tree" })
+		: serverAggregationActive
+			? objectAggregatesQuery.data
+				? buildResourceSummary({
+						loaded: serverAggregateGroups.length,
+						loadedNoun: serverAggregateGroups.length === 1 ? "group" : "groups",
+						total: objectAggregatesQuery.data.totalCount,
+						selected: selectedObjectIds.length,
+					})
+				: parsedClassId
+					? buildResourceSummary({ status: "Loading…" })
+					: buildResourceSummary({ status: "No class selected" })
+			: objectsQuery.data
+				? buildResourceSummary({
+						compactLoadedTotal: true,
+						shown: searchTerm ? filteredObjects.length : null,
+						shownLabel: "shown on page",
+						loaded: objects.length,
+						total: pageData?.totalCount,
+						totalLabel: serverFilters.length ? "matches" : "total",
+						selected: selectedObjectIds.length,
+						details:
+							hasAggregateView &&
+							activeGroupingField &&
+							!serverAggregationActive
+								? [
+										`${displayedGroups.length} group${displayedGroups.length === 1 ? "" : "s"}`,
+									]
+								: [],
+					})
+				: parsedClassId
+					? buildResourceSummary({ status: "Loading…" })
+					: buildResourceSummary({ status: "No class selected" });
 
 	return (
 		<div className="stack">
@@ -2853,14 +2862,19 @@ export function ObjectsExplorer() {
 			) : null}
 
 			<div className="card table-wrap resource-index objects-resource-index">
-				<TableQueryStatus
-					query={serverAggregationActive ? objectAggregatesQuery : objectsQuery}
-				/>
+				{!treeAggregationVisible ? (
+					<TableQueryStatus
+						query={
+							serverAggregationActive ? objectAggregatesQuery : objectsQuery
+						}
+					/>
+				) : null}
 				<TableQueryStatus query={selectedClassQuery} />
 				<div className="table-header">
 					<ResourceIndexHeading
 						title="Objects"
 						summary={resourceSummary}
+						compactSummary={compactResourceSummary}
 						createSection="objects"
 						createLabel={createObjectLabel}
 						context={
@@ -2891,7 +2905,16 @@ export function ObjectsExplorer() {
 											pagination.limit === option.value ? "is-active" : ""
 										}
 										aria-pressed={pagination.limit === option.value}
-										onClick={() => pagination.setLimit(option.value)}
+										onClick={() => {
+											updateViewQuery(
+												{
+													limit: String(option.value),
+													cursor: null,
+													aggregateCursor: null,
+												},
+												"push",
+											);
+										}}
 										title={`${option.label} objects per server request`}
 									>
 										{option.label}
@@ -3146,17 +3169,17 @@ export function ObjectsExplorer() {
 						</div>
 						<ObjectGroupingMenu
 							fields={groupingFields}
-							fieldId={groupFieldId}
+							fieldIds={groupFieldIds}
 							measureFields={aggregateMeasureFields}
 							measures={aggregateMeasures}
 							sort={groupSort}
-							onFieldChange={setGroupingField}
+							layout={aggregateLayout}
+							onFieldsChange={setGroupingFields}
 							onMeasuresChange={setAggregateMeasureSelection}
 							onSortChange={setAggregateSort}
+							onLayoutChange={setAggregateLayout}
 							disabled={
-								parsedClassId === null ||
-								objectsQuery.isFetching ||
-								objectAggregatesQuery.isFetching
+								parsedClassId === null || aggregateMemberFilter !== null
 							}
 						/>
 						<ObjectServerFilterMenu
@@ -3167,7 +3190,7 @@ export function ObjectsExplorer() {
 							disabled={parsedClassId === null}
 						/>
 						<div className="object-export-search-tools">
-							{hasAggregateView ? (
+							{treeAggregationVisible ? null : hasAggregateView ? (
 								<TableExportMenu
 									view={groupedExportView}
 									disabled={
@@ -3263,15 +3286,15 @@ export function ObjectsExplorer() {
 								standard columns sort the full server result.
 							</span>
 						) : null}
-						{activeGroupingField ? (
+						{hasAggregateView && activeGroupingField ? (
 							<span>
-								<strong>Grouped by {activeGroupingField.label}</strong>{" "}
-								{serverGroupingField
+								<strong>Grouped by {groupingLabel}</strong>{" "}
+								{serverAggregationActive
 									? "across every object matching the server filters; counts are permission-aware and do not depend on the loaded object page."
 									: `across the ${filteredObjects.length} loaded row${filteredObjects.length === 1 ? "" : "s"}; custom-field counts update when you change page.`}
 							</span>
 						) : null}
-						{aggregateMeasures.length > 0 ? (
+						{hasAggregateView && aggregateMeasures.length > 0 ? (
 							<span>
 								<strong>
 									{aggregateMeasures.length} numeric measure
@@ -3283,9 +3306,52 @@ export function ObjectsExplorer() {
 					</div>
 				) : null}
 
+				{aggregateMemberFilter !== null ? (
+					<div className="table-scope-note">
+						<span>
+							<strong>Aggregate filter:</strong> {aggregateMemberLabel}
+						</span>
+						<button
+							type="button"
+							className="ghost"
+							onClick={clearAggregateMemberFilter}
+						>
+							Clear aggregate filter
+						</button>
+						{objectsQuery.isFetching ? (
+							<span role="status">Loading matching objects…</span>
+						) : null}
+					</div>
+				) : null}
+				{treeAggregationActive && parsedClassId !== null ? (
+					<div hidden={!treeAggregationVisible}>
+						<ObjectAggregateTree
+							key={JSON.stringify([
+								parsedClassId,
+								serverGroupBy,
+								aggregateMeasureSignature,
+								groupSort,
+								effectiveFetchLimit,
+								serverFilterSignature,
+							])}
+							request={{
+								classId: parsedClassId,
+								groupBy: serverGroupBy,
+								measures: aggregateMeasures,
+								sort: toObjectAggregateSort(groupSort),
+								limit: effectiveFetchLimit,
+								filters: serverFilters,
+							}}
+							fieldLabels={activeGroupingFields.map((field) => field.label)}
+							measureLabels={aggregateMeasureFieldLabels}
+							collectionNames={collectionNameById}
+						/>
+					</div>
+				) : null}
 				{parsedClassId === null ? (
 					<div className="muted">Select a class to load its objects.</div>
-				) : serverAggregationActive && objectAggregatesQuery.isLoading ? (
+				) : treeAggregationVisible ? null : serverAggregationActive &&
+					objectAggregatesQuery.isLoading ? (
 					<div>Loading object aggregates...</div>
 				) : serverAggregationActive &&
 					objectAggregatesQuery.isError &&
@@ -3328,21 +3394,29 @@ export function ObjectsExplorer() {
 						title={
 							searchTerm
 								? `No loaded objects match "${searchTerm}".`
-								: serverFilters.length > 0
-									? "No objects match the server filters."
-									: "No objects available in the selected class."
+								: aggregateMemberFilter !== null
+									? "No objects match the aggregate filter."
+									: serverFilters.length > 0
+										? "No objects match the server filters."
+										: "No objects available in the selected class."
 						}
 						description={
 							searchTerm
 								? "Clear Find on page to return to the current server result."
-								: serverFilters.length > 0
-									? "Change or clear the server filters to broaden the class query."
-									: "Create an object to start populating this class."
+								: aggregateMemberFilter !== null
+									? "Clear the aggregate filter to return to the original query."
+									: serverFilters.length > 0
+										? "Change or clear the server filters to broaden the class query."
+										: "Create an object to start populating this class."
 						}
 						action={
 							searchTerm ? (
 								<button type="button" onClick={clearFilter}>
 									Clear Find on page
+								</button>
+							) : aggregateMemberFilter !== null ? (
+								<button type="button" onClick={clearAggregateMemberFilter}>
+									Clear aggregate filter
 								</button>
 							) : serverFilters.length > 0 ? (
 								<button type="button" onClick={() => updateServerFilters([])}>
@@ -3369,22 +3443,37 @@ export function ObjectsExplorer() {
 						<table className="object-grouped-table">
 							<caption className="sr-only">
 								{activeGroupingField
-									? `Objects grouped by ${activeGroupingField.label}`
+									? `Objects grouped by ${groupingLabel}`
 									: "Global object measures"}
 							</caption>
 							<thead>
 								<tr>
-									<th aria-sort={getGroupedSortAria("value")}>
-										<button
-											type="button"
-											className="table-sort-button"
-											disabled={!activeGroupingField}
-											onClick={() => setGroupedColumnSort("value")}
+									{groupColumns.map((column, index) => (
+										<th
+											key={column.id}
+											aria-sort={
+												index === 0 ? getGroupedSortAria("value") : undefined
+											}
 										>
-											{activeGroupingField?.label ?? "Scope"}
-											{renderGroupedSortIndicator("value")}
-										</button>
-									</th>
+											{index === 0 && activeGroupingField ? (
+												<button
+													type="button"
+													className="table-sort-button"
+													title={
+														activeGroupingFields.length > 1
+															? "Sort by all grouping fields in order"
+															: undefined
+													}
+													onClick={() => setGroupedColumnSort("value")}
+												>
+													{column.label}
+													{renderGroupedSortIndicator("value")}
+												</button>
+											) : (
+												column.label
+											)}
+										</th>
+									))}
 									<th aria-sort={getGroupedSortAria("count")}>
 										<button
 											type="button"
@@ -3409,8 +3498,29 @@ export function ObjectsExplorer() {
 							<tbody>
 								{displayedGroups.map((group) => (
 									<tr key={group.id}>
-										<td title={group.label}>{group.label}</td>
-										<td className="object-group-count">{group.count}</td>
+										{groupColumns.map((column, index) => (
+											<td key={column.id} title={group.dimensions[index]}>
+												{group.dimensions[index] ?? "—"}
+											</td>
+										))}
+										<td className="object-group-count">
+											{group.aggregate && parsedClassId !== null ? (
+												<ObjectAggregateCount
+													request={{
+														classId: parsedClassId,
+														filters: serverFilters,
+														limit: effectiveFetchLimit,
+													}}
+													row={group.aggregate}
+													fieldLabels={groupColumns.map(
+														(column) => column.label,
+													)}
+													collectionNames={collectionNameById}
+												/>
+											) : (
+												group.count
+											)}
+										</td>
 										{aggregateMeasures.map((measure, index) => {
 											const result = group.measures?.[index];
 											return (
@@ -3782,9 +3892,10 @@ export function ObjectsExplorer() {
 						</section>
 					</>
 				)}
-				{serverAggregationActive && objectAggregatesQuery.data ? (
+				{treeAggregationVisible ? null : serverAggregationActive &&
+					objectAggregatesQuery.data ? (
 					objectAggregatesQuery.data.nextCursor ||
-					aggregateCursorHistory.length > 0 ||
+					aggregatePagination.hasPrevPage ||
 					objectAggregatesQuery.data.prevCursor ? (
 						<TablePagination
 							busy={
@@ -3794,19 +3905,19 @@ export function ObjectsExplorer() {
 							}
 							hasNextPage={Boolean(objectAggregatesQuery.data.nextCursor)}
 							hasPrevPage={
-								aggregateCursorHistory.length > 0 ||
+								aggregatePagination.hasPrevPage ||
 								Boolean(objectAggregatesQuery.data.prevCursor)
 							}
 							onNextPage={() => {
 								const nextCursor = objectAggregatesQuery.data?.nextCursor;
-								if (nextCursor) goToNextAggregatePage(nextCursor);
+								if (nextCursor) aggregatePagination.goToNextPage(nextCursor);
 							}}
 							onPrevPage={() =>
-								goToPreviousAggregatePage(
+								aggregatePagination.goToPrevPage(
 									objectAggregatesQuery.data?.prevCursor ?? undefined,
 								)
 							}
-							onFirstPage={goToFirstAggregatePage}
+							onFirstPage={aggregatePagination.goToFirstPage}
 							currentCount={serverAggregateGroups.length}
 							totalCount={objectAggregatesQuery.data.totalCount}
 						/>

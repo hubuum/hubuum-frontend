@@ -1,6 +1,16 @@
 import { expectArrayPayload, getApiErrorMessage } from "@/lib/api/errors";
 import { frontendApiPath } from "@/lib/api/frontend";
-import type { HubuumObject } from "@/lib/api/generated/models";
+import type {
+	HubuumObject,
+	HubuumObjectComputedResponse,
+	ObjectAggregateDimensionValue,
+} from "@/lib/api/generated/models";
+import { appendObjectAggregateFilters } from "@/lib/object-aggregate-filter";
+import {
+	appendObjectServerFilters,
+	type ObjectServerFilter,
+} from "@/lib/object-server-filters";
+import { resolveServerPageLimit } from "@/lib/server-page-limit";
 
 export const CLASS_OBJECT_SAMPLES_STALE_TIME = 5 * 60_000;
 export const CLASS_OBJECT_SAMPLES_GC_TIME = 30 * 60_000;
@@ -29,4 +39,59 @@ export async function fetchClassObjectSamples(
 		);
 	}
 	return expectArrayPayload<HubuumObject>(payload, "class object samples");
+}
+
+export type ObjectsPageData = {
+	objects: HubuumObjectComputedResponse[];
+	nextCursor: string | null;
+	prevCursor: string | null;
+	totalCount: number | null;
+};
+
+export async function fetchObjectsByClass(
+	classId: number,
+	limit: number,
+	cursor?: string,
+	sort?: string,
+	serverFilters: readonly ObjectServerFilter[] = [],
+	signal?: AbortSignal,
+	dimensions: readonly ObjectAggregateDimensionValue[] = [],
+): Promise<ObjectsPageData> {
+	const params = new URLSearchParams();
+	params.set("limit", String(resolveServerPageLimit(limit)));
+	params.set("include", "computed");
+	if (cursor) params.set("cursor", cursor);
+	if (sort) params.set("sort", sort);
+	appendObjectServerFilters(params, serverFilters);
+	appendObjectAggregateFilters(params, dimensions);
+
+	const response = await fetch(
+		`${frontendApiPath(`/classes/${classId}/objects`)}?${params.toString()}`,
+		{
+			credentials: "include",
+			signal,
+		},
+	);
+	const payload: unknown = await response.json().catch(() => null);
+
+	if (response.status !== 200) {
+		throw new Error(getApiErrorMessage(payload, "Failed to load objects."));
+	}
+
+	const nextCursor = response.headers.get("X-Next-Cursor");
+	const prevCursor = response.headers.get("X-Prev-Cursor");
+	const totalCountHeader = response.headers.get("X-Total-Count");
+	const totalCount = totalCountHeader
+		? Number.parseInt(totalCountHeader, 10)
+		: null;
+
+	return {
+		objects: expectArrayPayload<HubuumObjectComputedResponse>(
+			payload,
+			"class objects",
+		),
+		nextCursor,
+		prevCursor,
+		totalCount: Number.isFinite(totalCount) ? totalCount : null,
+	};
 }

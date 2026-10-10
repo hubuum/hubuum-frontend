@@ -19,7 +19,6 @@ import {
 	fetchClassRelations,
 	fetchRelatedClassPaths,
 } from "@/lib/api/class-relations";
-import { useConfirm } from "@/lib/confirm-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	deleteApiV1RelationsClassesByRelationId,
@@ -44,6 +43,7 @@ import {
 	fetchCollectionsByIds,
 } from "@/lib/api/resource-directory";
 import { filterClassRelations } from "@/lib/class-relation-filters";
+import { useConfirm } from "@/lib/confirm-context";
 import {
 	DESELECT_ALL_EVENT,
 	OPEN_CREATE_EVENT,
@@ -60,6 +60,7 @@ import { buildResourceSummary } from "@/lib/resource-summary";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useResizableTable } from "@/lib/use-resizable-table";
 import { useShiftSelect } from "@/lib/use-shift-select";
+import { updateViewQuery } from "@/lib/view-query";
 
 function _IconSearch() {
 	return (
@@ -184,24 +185,18 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 
 	const sourceClassId = searchParams.get("classId") ?? "";
 	const sourceObjectId = searchParams.get("objectId") ?? "";
-	const initialClassView = searchParams.get("classView");
-	const initialObjectView = searchParams.get("objectView");
-	const initialFromClassFilterId = searchParams.get("fromClassId") ?? "";
-	const initialToClassFilterId = searchParams.get("toClassId") ?? "";
-
-	const [classRelationsView, setClassRelationsView] =
-		useState<ClassRelationsView>(
-			initialClassView === "connected" || initialClassView === "transitive"
-				? "connected"
-				: "direct",
-		);
-	const [objectRelationsView, setObjectRelationsView] =
-		useState<ObjectRelationsView>(
-			initialObjectView === "direct" ? "direct" : "reachable",
-		);
-	const [reachabilityDepth, setReachabilityDepth] = useState(() =>
-		normalizeRelatedObjectDepthLimit(searchParams.get("depth")),
+	const classView = searchParams.get("classView");
+	const classRelationsView: ClassRelationsView =
+		classView === "connected" || classView === "transitive"
+			? "connected"
+			: "direct";
+	const objectRelationsView: ObjectRelationsView =
+		searchParams.get("objectView") === "direct" ? "direct" : "reachable";
+	const reachabilityDepth = normalizeRelatedObjectDepthLimit(
+		searchParams.get("depth"),
 	);
+	const fromClassFilterId = searchParams.get("fromClassId") ?? "";
+	const toClassFilterId = searchParams.get("toClassId") ?? "";
 	const [classRelationSourceClassId, setClassRelationSourceClassId] =
 		useState(sourceClassId);
 	const [classRelationTargetClassId, setClassRelationTargetClassId] =
@@ -210,15 +205,11 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		useState("");
 	const [objectRelationTargetObjectId, setObjectRelationTargetObjectId] =
 		useState("");
-	const [objectRelationTargetObjectSearch, setObjectRelationTargetObjectSearch] =
-		useState("");
+	const [
+		objectRelationTargetObjectSearch,
+		setObjectRelationTargetObjectSearch,
+	] = useState("");
 	const [sourceObjectSearch, setSourceObjectSearch] = useState("");
-	const [fromClassFilterId, setFromClassFilterId] = useState(
-		initialFromClassFilterId,
-	);
-	const [toClassFilterId, setToClassFilterId] = useState(
-		initialToClassFilterId,
-	);
 
 	const [classRelationError, setClassRelationError] = useState<string | null>(
 		null,
@@ -569,11 +560,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		return Array.from(ids).sort((left, right) => left - right);
 	}, [connectedClasses, relatedObjects, selectedSourceObject, targetObjects]);
 	const referencedCollectionsQuery = useQuery({
-		queryKey: [
-			"collections",
-			"relations-explorer",
-			referencedCollectionIds,
-		],
+		queryKey: ["collections", "relations-explorer", referencedCollectionIds],
 		queryFn: async () => fetchCollectionsByIds(referencedCollectionIds),
 		enabled: referencedCollectionIds.length > 0,
 	});
@@ -651,68 +638,6 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 		);
 
 	useEffect(() => {
-		if (!pathname) {
-			return;
-		}
-
-		const params = new URLSearchParams(window.location.search);
-		if (
-			resolvedSourceClassId &&
-			(!isClassMode || classRelationsView === "connected")
-		) {
-			params.set("classId", resolvedSourceClassId);
-		} else {
-			params.delete("classId");
-		}
-
-		if (isClassMode) {
-			params.set("classView", classRelationsView);
-			if (fromClassFilterId) {
-				params.set("fromClassId", fromClassFilterId);
-			} else {
-				params.delete("fromClassId");
-			}
-			if (toClassFilterId) {
-				params.set("toClassId", toClassFilterId);
-			} else {
-				params.delete("toClassId");
-			}
-			params.delete("objectView");
-			params.delete("objectId");
-			params.delete("depth");
-		} else if (isObjectMode) {
-			params.set("objectView", objectRelationsView);
-			params.set("depth", String(reachabilityDepth));
-			params.delete("classView");
-			if (resolvedSourceObjectId) {
-				params.set("objectId", resolvedSourceObjectId);
-			} else {
-				params.delete("objectId");
-			}
-			params.delete("fromClassId");
-			params.delete("toClassId");
-		}
-
-		const nextQuery = params.toString();
-		const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
-		const currentUrl = `${window.location.pathname}${window.location.search}`;
-		if (nextUrl !== currentUrl) {
-			window.history.replaceState(window.history.state, "", nextUrl);
-		}
-	}, [
-		classRelationsView,
-		fromClassFilterId,
-		isClassMode,
-		isObjectMode,
-		objectRelationsView,
-		pathname,
-		reachabilityDepth,
-		resolvedSourceClassId,
-		resolvedSourceObjectId,
-		toClassFilterId,
-	]);
-
-	useEffect(() => {
 		if (!classes.length) {
 			return;
 		}
@@ -721,13 +646,13 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 			parsedFromClassFilterId !== null &&
 			!classes.some((classItem) => classItem.id === parsedFromClassFilterId)
 		) {
-			setFromClassFilterId("");
+			updateViewQuery({ fromClassId: null });
 		}
 		if (
 			parsedToClassFilterId !== null &&
 			!classes.some((classItem) => classItem.id === parsedToClassFilterId)
 		) {
-			setToClassFilterId("");
+			updateViewQuery({ toClassId: null });
 		}
 	}, [classes, parsedFromClassFilterId, parsedToClassFilterId]);
 
@@ -1520,12 +1445,22 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 	function onClassRelationsViewChange(event: ChangeEvent<HTMLSelectElement>) {
 		const nextView =
 			event.target.value === "connected" ? "connected" : "direct";
-		setClassRelationsView(nextView);
+		updateViewQuery({
+			classView: nextView,
+			classId: nextView === "connected" ? resolvedSourceClassId || null : null,
+			cursor: null,
+		});
 	}
 
 	function onObjectRelationsViewChange(event: ChangeEvent<HTMLSelectElement>) {
 		const nextView = event.target.value === "direct" ? "direct" : "reachable";
-		setObjectRelationsView(nextView);
+		updateViewQuery({
+			objectView: nextView,
+			classId: resolvedSourceClassId || null,
+			objectId: resolvedSourceObjectId || null,
+			depth: String(reachabilityDepth),
+			cursor: null,
+		});
 	}
 
 	function onContextClassChange(event: ChangeEvent<HTMLSelectElement>) {
@@ -1936,7 +1871,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 								<span>From class</span>
 								<select
 									value={fromClassFilterId}
-									onChange={(event) => setFromClassFilterId(event.target.value)}
+									onChange={(event) =>
+										updateViewQuery({ fromClassId: event.target.value || null })
+									}
 								>
 									<option value="">All classes</option>
 									{classes.map((classItem) => (
@@ -1950,7 +1887,9 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 								<span>To class</span>
 								<select
 									value={toClassFilterId}
-									onChange={(event) => setToClassFilterId(event.target.value)}
+									onChange={(event) =>
+										updateViewQuery({ toClassId: event.target.value || null })
+									}
 								>
 									<option value="">All classes</option>
 									{classes.map((classItem) => (
@@ -1965,8 +1904,7 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 									type="button"
 									className="ghost"
 									onClick={() => {
-										setFromClassFilterId("");
-										setToClassFilterId("");
+										updateViewQuery({ fromClassId: null, toClassId: null });
 									}}
 								>
 									Clear filters
@@ -2203,9 +2141,11 @@ export function RelationsExplorer({ mode }: RelationsExplorerProps) {
 										aria-label="Reachability depth"
 										value={reachabilityDepth}
 										onChange={(event) =>
-											setReachabilityDepth(
-												normalizeRelatedObjectDepthLimit(event.target.value),
-											)
+											updateViewQuery({
+												depth: String(
+													normalizeRelatedObjectDepthLimit(event.target.value),
+												),
+											})
 										}
 									>
 										{Array.from(

@@ -244,6 +244,12 @@ short typing pause; formatting runs only when requested. Error notifications and
 notifications containing actions persist until dismissed. Ordinary notifications
 pause while hovered or focused.
 
+View URLs also preserve applied Audit filters and its page cursor, Exports tabs
+and template-library filters, and Relations view/filter/depth controls. Browser
+Back and Forward restore these controls from the URL. Shared client-side query
+updates use Next.js's native History integration, preserving unrelated parameters
+and anchors without requesting a new server-rendered page for each control edit.
+
 ## Object data columns
 
 The objects workspace can promote fields from each object's JSON `data` blob
@@ -290,13 +296,42 @@ computed columns can sort the complete server result and the Server filters menu
 offers result-type-aware computed predicates, including null, numeric range,
 JSON containment, and negated matching.
 
-The objects workspace can group by an object, nested data, shared-computed, or
-personal-computed field through the server's permission-aware aggregate
-resource. Server filters run before aggregation, counts cover the complete
-matching class rather than the loaded object page, and aggregate rows have
-their own cursor pagination and exact total. Null, missing, and unavailable
+The objects workspace can group by up to three ordered object, nested data,
+shared-computed, or personal-computed fields through the server's permission-aware
+aggregate resource. Use **Aggregate → Add group by** to add dimensions; move
+them up or down to change their order. Multiple dimensions default to an expandable
+tree with complete parent subtotals and numeric measures supplied by the server.
+Use **Aggregate → View** to switch between **Tree** and **Table**.
+Top-level groups load in pages when sorting by count. A–Z and Z–A use natural
+numeric ordering (8, 9, 10), including numeric text and version labels. These
+sorts load all aggregate pages before sorting and paging locally, in both tree
+and table views, so values stay correctly ordered across page boundaries.
+Expanding a level follows all of its aggregate
+pages and caches the results across parents; children are matched by their exact
+dimension values and states, then shown in batches. This needs no server changes,
+but high-cardinality levels can take multiple requests to load. Loading progress
+and retry controls appear inside the expanded branch. Table view retains one
+column per dimension and one count per combination, including flat table exports.
+Ordered grouping fields (`groupBy`), measures (`aggregate`), group sort
+(`groupSort`), tree/table layout (`aggregateView`), and aggregate table cursor
+(`aggregateCursor`) are stored in the URL. Refresh and copied links restore the
+configuration; control edits replace the current history entry and pagination
+adds an entry. Class changes clear the old class's aggregation settings.
+Click a count to open matching objects in a dialog without collapsing the tree.
+The dialog's **Open in object table** link preserves the full group path and source
+filters in the URL, supports new tabs and reloads, and lets Back return to the tree.
+Matching uses server filters and cursor pagination, fetching only the requested
+object page. Numeric values and their text equivalents match together; JSON null
+and missing share the server null filter, as do null and unavailable computed
+values. The dialog header shows the filtered total and a table-icon link. Groups
+containing whole JSON objects or arrays cannot be converted to a server filter
+and show an explanation instead of scanning objects. Closing the dialog cancels
+its pending request.
+Server filters run before aggregation, counts cover the complete matching class
+rather than the loaded object page, and aggregate rows
+have their own cursor pagination and exact total. Null, missing, and unavailable
 computed values remain distinct. Personal custom fallback fields still use a
-loaded-page grouping because their first-non-empty path expression is a console
+single loaded-page grouping because their first-non-empty path expression is a console
 display preference rather than a server field. With Server `v0.0.4`, the same
 workspace can add up to four ordered `sum`, `average`, `min`, or `max` measures
 over numeric JSON and computed fields, either per group or as one global
@@ -507,7 +542,18 @@ To run against a disposable local server with 3,000 test objects, use
 prompt. The [sandbox guide](docs/local-sandbox.md) covers tags, commit SHAs, PRs,
 and [resetting user passwords](docs/local-sandbox.md#set-or-reset-user-passwords).
 
-To use an existing backend instead, create an environment file:
+To use an existing backend in one foreground session:
+
+```sh
+BACKEND_BASE_URL=https://your-hubuum-server.example.com PORT=4444 ./run.sh
+```
+
+The wrapper starts a private, temporary Valkey instance and removes its services
+on Ctrl-C or exit. It accepts the same options as `npm run dev`, including
+`--port` and `--listen`. See [local development](docs/development.md#start).
+
+To manage the frontend and Valkey separately, create an environment file if you
+do not already have one:
 
 ```bash
 cp .env.example .env.local

@@ -1,7 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+	FormEvent,
+	type ReactNode,
+	useEffect,
+	useMemo,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { AuditEntityLookup } from "@/components/audit-entity-lookup";
 import { AuditPrincipalLookup } from "@/components/audit-principal-lookup";
 import { EventDetailsModal } from "@/components/event-details-modal";
@@ -12,9 +20,9 @@ import {
 } from "@/lib/api/audit-actors";
 import { fetchAuditEntityDirectory } from "@/lib/api/audit-entities";
 import {
+	type EventRecord,
 	fetchAuditCollections,
 	fetchEventsPage,
-	type EventRecord,
 } from "@/lib/api/events";
 import type { Collection } from "@/lib/api/generated/models";
 import {
@@ -37,6 +45,7 @@ import {
 	clearAuditFilter,
 	EMPTY_AUDIT_FILTER_DRAFT,
 	getAuditDrilldownDraft,
+	parseAuditFilterParams,
 } from "@/lib/audit-filters";
 import {
 	buildCollectionHierarchy,
@@ -54,11 +63,16 @@ import {
 } from "@/lib/event-provenance";
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { updateViewQuery } from "@/lib/view-query";
 
 type ActiveAuditFilter = {
 	field: AuditFilterField;
 	label: string;
 };
+
+const subscribe = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 function formatTimestamp(value: string | null | undefined): string {
 	if (!value) {
@@ -255,17 +269,25 @@ function DrilldownButton({
 }
 
 export function AuditWorkspace() {
+	// Do not accept edits before hydration attaches the controlled input handlers.
+	const ready = useSyncExternalStore(subscribe, clientReady, serverReady);
+	const searchParams = useSearchParams();
+	const cursor = searchParams.get("cursor") ?? "";
+	const appliedDraft = useMemo(
+		() => parseAuditFilterParams(searchParams),
+		[searchParams],
+	);
 	const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
 	const [entitySearch, setEntitySearch] = useState("");
 	const [actorSearch, setActorSearch] = useState("");
 	const [initiatorSearch, setInitiatorSearch] = useState("");
-	const [cursor, setCursor] = useState("");
-	const [draft, setDraft] = useState<AuditFilterDraft>(
-		EMPTY_AUDIT_FILTER_DRAFT,
-	);
-	const [appliedDraft, setAppliedDraft] = useState<AuditFilterDraft>(
-		EMPTY_AUDIT_FILTER_DRAFT,
-	);
+	const [draft, setDraft] = useState<AuditFilterDraft>(appliedDraft);
+	useEffect(() => {
+		setDraft(appliedDraft);
+		setEntitySearch("");
+		setActorSearch("");
+		setInitiatorSearch("");
+	}, [appliedDraft]);
 	const filters = useMemo(
 		() => buildAuditEventFilters(appliedDraft),
 		[appliedDraft],
@@ -467,9 +489,16 @@ export function AuditWorkspace() {
 	}
 
 	function applyDraft(nextDraft: AuditFilterDraft) {
-		setCursor("");
 		setDraft(nextDraft);
-		setAppliedDraft(nextDraft);
+		updateViewQuery(
+			{
+				...Object.fromEntries(
+					Object.entries(nextDraft).map(([key, value]) => [key, value || null]),
+				),
+				cursor: null,
+			},
+			"push",
+		);
 	}
 
 	function updateActorSearch(value: string) {
@@ -591,8 +620,13 @@ export function AuditWorkspace() {
 					</span>
 				</div>
 
-				<form className="audit-filter-form" onSubmit={onFilterSubmit}>
-					<fieldset className="audit-filter-group">
+				<form
+					className="audit-filter-form"
+					aria-label="Audit filters"
+					aria-busy={!ready}
+					onSubmit={onFilterSubmit}
+				>
+					<fieldset className="audit-filter-group" disabled={!ready}>
 						<legend>What happened</legend>
 						<div className="audit-filter-fields">
 							<label className="control-field">
@@ -676,7 +710,7 @@ export function AuditWorkspace() {
 						</div>
 					</fieldset>
 
-					<fieldset className="audit-filter-group">
+					<fieldset className="audit-filter-group" disabled={!ready}>
 						<legend>Who</legend>
 						<div className="audit-filter-fields">
 							<label className="control-field">
@@ -797,7 +831,10 @@ export function AuditWorkspace() {
 						</div>
 					</fieldset>
 
-					<fieldset className="audit-filter-group audit-filter-group--wide">
+					<fieldset
+						className="audit-filter-group audit-filter-group--wide"
+						disabled={!ready}
+					>
 						<legend>Where and when</legend>
 						<div className="audit-filter-fields audit-filter-fields--scope">
 							<label className="control-field audit-collection-field">
@@ -851,8 +888,15 @@ export function AuditWorkspace() {
 					</fieldset>
 
 					<div className="audit-filter-actions">
-						<button type="submit">Apply filters</button>
-						<button type="button" className="ghost" onClick={clearFilters}>
+						<button type="submit" disabled={!ready}>
+							Apply filters
+						</button>
+						<button
+							type="button"
+							className="ghost"
+							disabled={!ready}
+							onClick={clearFilters}
+						>
 							Clear all
 						</button>
 					</div>
@@ -915,7 +959,7 @@ export function AuditWorkspace() {
 							type="button"
 							className="secondary"
 							disabled={!cursor || eventsQuery.isFetching}
-							onClick={() => setCursor("")}
+							onClick={() => updateViewQuery({ cursor: null }, "push")}
 						>
 							First page
 						</button>
@@ -923,7 +967,12 @@ export function AuditWorkspace() {
 							type="button"
 							className="secondary"
 							disabled={!eventsQuery.data?.nextCursor || eventsQuery.isFetching}
-							onClick={() => setCursor(eventsQuery.data?.nextCursor ?? "")}
+							onClick={() =>
+								updateViewQuery(
+									{ cursor: eventsQuery.data?.nextCursor ?? null },
+									"push",
+								)
+							}
 						>
 							Next page
 						</button>

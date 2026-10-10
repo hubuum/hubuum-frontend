@@ -6,6 +6,7 @@ import {
 	clearAuditFilter,
 	EMPTY_AUDIT_FILTER_DRAFT,
 	getAuditDrilldownDraft,
+	parseAuditFilterParams,
 } from "@/lib/audit-filters";
 
 function eventRecord(overrides: Partial<EventRecord> = {}): EventRecord {
@@ -38,6 +39,21 @@ function eventRecord(overrides: Partial<EventRecord> = {}): EventRecord {
 }
 
 describe("audit filters", () => {
+	it("restores only audit fields from a shared URL", () => {
+		const draft = parseAuditFilterParams(
+			new URLSearchParams(
+				"entityType=object&action=updated&actorUserId=23&occurredAfter=2026-08-01&cursor=next&unknown=x",
+			),
+		);
+		expect(draft).toEqual({
+			...EMPTY_AUDIT_FILTER_DRAFT,
+			entityType: "object",
+			action: "updated",
+			actorUserId: "23",
+			occurredAfter: "2026-08-01",
+		});
+		expect(buildAuditEventFilters(draft).actor_user_id).toBe(23);
+	});
 	it("builds backend filters from a form draft", () => {
 		expect(
 			buildAuditEventFilters({

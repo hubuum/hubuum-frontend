@@ -111,3 +111,17 @@ test("stops the selected project without running readiness probes", async () => 
 		"--remove-orphans",
 	]);
 });
+
+test("discovers the selected project's published Valkey port", async () => {
+	const setup = await fixture();
+	await run("bash", [script, "port"], setup);
+	const calls = await setup.calls();
+	assert.equal(calls.length, 1);
+	assert.deepEqual(calls[0].slice(-5), [
+		"-p",
+		"isolated-test-project",
+		"port",
+		"valkey",
+		"6379",
+	]);
+});

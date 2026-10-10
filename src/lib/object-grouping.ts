@@ -1,6 +1,7 @@
 import type {
 	ObjectAggregateMeasureOperation,
 	ObjectAggregateMeasureValue,
+	ObjectAggregateRow,
 } from "@/lib/api/generated/models";
 
 export type ObjectGroupSort =
@@ -18,6 +19,7 @@ export type ObjectGroup<Row> = {
 };
 
 export type ObjectAggregateDimension = {
+	field?: string;
 	state: "value" | "null" | "missing" | "unavailable";
 	value?: unknown;
 };
@@ -34,6 +36,51 @@ function stableJsonValue(value: unknown): unknown {
 		);
 	}
 	return value;
+}
+
+export function getObjectAggregatePathKey(
+	dimensions: readonly ObjectAggregateDimension[],
+): string {
+	return JSON.stringify(stableJsonValue(dimensions));
+}
+
+export function indexObjectAggregateChildren(
+	rows: readonly ObjectAggregateRow[],
+): Map<string, ObjectAggregateRow[]> {
+	const children = new Map<string, ObjectAggregateRow[]>();
+	for (const row of rows) {
+		const key = getObjectAggregatePathKey(row.dimensions.slice(0, -1));
+		const siblings = children.get(key);
+		if (siblings) siblings.push(row);
+		else children.set(key, [row]);
+	}
+	return children;
+}
+
+export function sortObjectAggregateRows(
+	rows: readonly ObjectAggregateRow[],
+	direction: "asc" | "desc",
+): ObjectAggregateRow[] {
+	const stateOrder = { value: 0, null: 1, missing: 2, unavailable: 3 };
+	return [...rows].sort((left, right) => {
+		for (let index = 0; index < left.dimensions.length; index += 1) {
+			const a = left.dimensions[index];
+			const b = right.dimensions[index];
+			if (!b) return 1;
+			const stateComparison = stateOrder[a.state] - stateOrder[b.state];
+			if (stateComparison) return stateComparison;
+			if (a.state !== "value") continue;
+			const comparison =
+				typeof a.value === "number" && typeof b.value === "number"
+					? a.value - b.value
+					: compareGroupLabels(
+							formatObjectGroupValue(a.value),
+							formatObjectGroupValue(b.value),
+						);
+			if (comparison) return direction === "asc" ? comparison : -comparison;
+		}
+		return left.dimensions.length - right.dimensions.length;
+	});
 }
 
 function serializeGroupValue(value: unknown): string {
@@ -74,10 +121,18 @@ export function formatObjectGroupValue(value: unknown): string {
 
 export function formatObjectAggregateDimension(
 	dimension: ObjectAggregateDimension,
+	collectionNames?: ReadonlyMap<number, string>,
 ): string {
 	if (dimension.state === "null") return "(null)";
 	if (dimension.state === "missing") return "(missing)";
 	if (dimension.state === "unavailable") return "(unavailable)";
+	if (
+		dimension.field === "collection_id" &&
+		typeof dimension.value === "number"
+	) {
+		const name = collectionNames?.get(dimension.value);
+		return name ? `${name} (#${dimension.value})` : `#${dimension.value}`;
+	}
 	return formatObjectGroupValue(dimension.value);
 }
 
@@ -104,13 +159,15 @@ export function formatObjectAggregateMeasureLabel(
 	return `${operationLabel} · ${fieldLabel}`;
 }
 
+const groupCollator = new Intl.Collator(undefined, {
+	numeric: true,
+	sensitivity: "base",
+});
+
 function compareGroupLabels(left: string, right: string): number {
 	if (left === "(empty)" && right !== "(empty)") return 1;
 	if (right === "(empty)" && left !== "(empty)") return -1;
-	return left.localeCompare(right, undefined, {
-		numeric: true,
-		sensitivity: "base",
-	});
+	return groupCollator.compare(left, right);
 }
 
 export function groupObjectRows<Row>(

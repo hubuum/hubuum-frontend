@@ -11,7 +11,8 @@ services:
       - /data:size=32m,mode=1777
       - /tmp:size=16m,mode=1777
     ports:
-      - "127.0.0.1:${VALKEY_DEV_PORT:-6379}:6379"
+      # An explicitly empty port lets Docker/Podman allocate a free port.
+      - "127.0.0.1:${VALKEY_DEV_PORT-6379}:6379"
     cap_drop:
       - ALL
     security_opt:

@@ -19,6 +19,9 @@ if [[ -n "${HUBUUM_VALKEY_PROJECT:-}" ]]; then
 fi
 
 case "$action" in
+  port)
+    exec "${compose[@]}" port valkey 6379
+    ;;
   down)
     exec "${compose[@]}" down "$@"
     ;;
@@ -26,7 +29,7 @@ case "$action" in
     "${compose[@]}" up -d "$@"
     ;;
   *)
-    echo "Usage: $0 [up|down] [compose action options]" >&2
+    echo "Usage: $0 [up|down|port] [compose action options]" >&2
     exit 2
     ;;
 esac
