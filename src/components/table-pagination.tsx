@@ -10,6 +10,7 @@ import {
 type TablePaginationProps = {
 	hasNextPage: boolean;
 	hasPrevPage: boolean;
+	canGoFirst?: boolean;
 	onNextPage: () => void;
 	onPrevPage: () => void;
 	onFirstPage: () => void;
@@ -21,6 +22,7 @@ type TablePaginationProps = {
 export function TablePagination({
 	hasNextPage,
 	hasPrevPage,
+	canGoFirst = hasPrevPage,
 	onNextPage,
 	onPrevPage,
 	onFirstPage,
@@ -34,7 +36,7 @@ export function TablePagination({
 		return registerPaginationShortcut(paginationId, {
 			canGoNext: () => hasNextPage && !busy,
 			canGoPrev: () => hasPrevPage && !busy,
-			canGoFirst: () => hasPrevPage && !busy,
+			canGoFirst: () => canGoFirst && !busy,
 			onNextPage,
 			onPrevPage,
 			onFirstPage,
@@ -44,12 +46,13 @@ export function TablePagination({
 		busy,
 		hasNextPage,
 		hasPrevPage,
+		canGoFirst,
 		onNextPage,
 		onPrevPage,
 		onFirstPage,
 	]);
 
-	if (!hasNextPage && !hasPrevPage) {
+	if (!hasNextPage && !hasPrevPage && !canGoFirst) {
 		return null;
 	}
 
@@ -93,7 +96,7 @@ export function TablePagination({
 				) : null}
 			</div>
 			<div className="table-pagination-controls">
-				{hasPrevPage ? (
+				{canGoFirst ? (
 					<button
 						type="button"
 						className="ghost"

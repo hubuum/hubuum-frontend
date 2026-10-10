@@ -24,9 +24,11 @@ it("fetches only the requested filtered page and leaves pagination to the caller
 		2,
 		"current-page",
 		"-name",
-		[{ field: "description", operator: "equals", value: "RHEL" }],
+		[
+			{ field: "description", operator: "equals", value: "RHEL" },
+			{ field: "json_data", operator: "regex", value: "^9$", path: ["major"] },
+		],
 		signal,
-		[{ field: "json_data.major", state: "value", value: "9" }],
 	);
 	expect(fetch).toHaveBeenCalledTimes(1);
 	expect(page).toEqual({
@@ -58,11 +60,4 @@ it("reports request failures and never fetches unfiltered objects as a fallback"
 	vi.stubGlobal("fetch", fetch);
 	await expect(fetchObjectsByClass(12, 2)).rejects.toThrow("Unavailable");
 	expect(fetch).toHaveBeenCalledTimes(1);
-	fetch.mockClear();
-	await expect(
-		fetchObjectsByClass(12, 2, undefined, undefined, [], undefined, [
-			{ field: "json_data.value", state: "value", value: { a: 1 } },
-		]),
-	).rejects.toThrow("cannot be opened with a server filter");
-	expect(fetch).not.toHaveBeenCalled();
 });

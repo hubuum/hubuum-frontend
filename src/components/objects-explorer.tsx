@@ -71,10 +71,6 @@ import {
 } from "@/lib/create-events";
 import { getDataColumnHeadings } from "@/lib/data-column-headings";
 import {
-	OBJECT_AGGREGATE_FILTER_QUERY_KEY,
-	parseObjectAggregateFilter,
-} from "@/lib/object-aggregate-filter";
-import {
 	OBJECT_AGGREGATION_QUERY_KEYS,
 	parseObjectAggregationView,
 } from "@/lib/object-aggregation-view";
@@ -953,21 +949,6 @@ export function ObjectsExplorer() {
 		() => serializeObjectServerFilters(serverFilters),
 		[serverFilters],
 	);
-	const aggregateMemberFilter = searchParams.get(
-		OBJECT_AGGREGATE_FILTER_QUERY_KEY,
-	);
-	const aggregateMemberLabel = useMemo(() => {
-		if (aggregateMemberFilter === null) return "";
-		try {
-			return (
-				parseObjectAggregateFilter(aggregateMemberFilter)
-					.map((dimension) => formatObjectAggregateDimension(dimension))
-					.join(" → ") || "All matching objects"
-			);
-		} catch {
-			return "Invalid aggregate filter";
-		}
-	}, [aggregateMemberFilter]);
 
 	const { showToast } = useToast();
 
@@ -1063,7 +1044,6 @@ export function ObjectsExplorer() {
 			effectiveFetchLimit,
 			getSortParam(),
 			serverFilterSignature,
-			aggregateMemberFilter,
 		],
 		queryFn: ({ signal }) =>
 			fetchObjectsByClass(
@@ -1073,14 +1053,10 @@ export function ObjectsExplorer() {
 				getSortParam(),
 				serverFilters,
 				signal,
-				aggregateMemberFilter === null
-					? []
-					: parseObjectAggregateFilter(aggregateMemberFilter),
 			),
 		placeholderData: (previous, query) =>
 			query?.queryKey[1] === parsedClassId &&
-			query?.queryKey[5] === serverFilterSignature &&
-			query?.queryKey[6] === aggregateMemberFilter
+			query?.queryKey[5] === serverFilterSignature
 				? previous
 				: undefined,
 		enabled: parsedClassId !== null,
@@ -1124,7 +1100,6 @@ export function ObjectsExplorer() {
 	}, [collectionSelection, selectedClass, visibleCollectionsQuery.data]);
 	const activePageCanSeedObjectSamples =
 		pagination.cursor === undefined &&
-		aggregateMemberFilter === null &&
 		serverFilters.length === 0 &&
 		!objectsQuery.isPlaceholderData;
 	const objectSamplesQuery = useQuery({
@@ -1597,14 +1572,11 @@ export function ObjectsExplorer() {
 		[activeGroupingFields],
 	);
 	const serverAggregationActive =
-		aggregateMemberFilter === null &&
-		(serverGroupBy.length > 0 || aggregateMeasures.length > 0);
+		serverGroupBy.length > 0 || aggregateMeasures.length > 0;
 	const treeAggregationActive =
 		parsedClassId !== null &&
 		serverGroupBy.length > 1 &&
 		aggregateLayout === "tree";
-	const treeAggregationVisible =
-		treeAggregationActive && aggregateMemberFilter === null;
 	const aggregateMeasureSignature = aggregateMeasures
 		.map((measure) => `${measure.operation}:${measure.field}`)
 		.join("|");
@@ -1726,8 +1698,7 @@ export function ObjectsExplorer() {
 	const displayedGroups: readonly DisplayedAggregateGroup[] =
 		serverAggregationActive ? serverAggregateGroups : groupedObjects;
 	const hasAggregateView =
-		aggregateMemberFilter === null &&
-		(activeGroupingField !== null || aggregateMeasures.length > 0);
+		activeGroupingField !== null || aggregateMeasures.length > 0;
 	const displayedObjects = useMemo(() => {
 		if (!dataColumnSort.columnId) {
 			return filteredObjects;
@@ -2538,7 +2509,6 @@ export function ObjectsExplorer() {
 		params.delete("cursor");
 		params.delete("search");
 		params.delete(OBJECT_SERVER_FILTERS_QUERY_KEY);
-		params.delete(OBJECT_AGGREGATE_FILTER_QUERY_KEY);
 		for (const key of OBJECT_AGGREGATION_QUERY_KEYS) params.delete(key);
 
 		const query = params.toString();
@@ -2569,13 +2539,6 @@ export function ObjectsExplorer() {
 		params.delete("aggregateCursor");
 		const query = params.toString();
 		router.push(query ? `${pathname}?${query}` : pathname);
-	}
-
-	function clearAggregateMemberFilter() {
-		const params = new URLSearchParams(searchParams.toString());
-		params.delete(OBJECT_AGGREGATE_FILTER_QUERY_KEY);
-		params.delete("cursor");
-		router.push(`${pathname}?${params.toString()}`);
 	}
 
 	function toggleDataColumn(key: string, checked: boolean) {
@@ -2801,7 +2764,7 @@ export function ObjectsExplorer() {
 
 	const aggregateTotal = objectAggregatesQuery.data?.totalCount;
 	const compactResourceSummary =
-		serverAggregationActive && !treeAggregationVisible && aggregateTotal != null
+		serverAggregationActive && !treeAggregationActive && aggregateTotal != null
 			? [
 					serverAggregateGroups.length === aggregateTotal
 						? "Complete"
@@ -2809,7 +2772,7 @@ export function ObjectsExplorer() {
 					...buildResourceSummary({ selected: selectedObjectIds.length }),
 				]
 			: undefined;
-	const resourceSummary = treeAggregationVisible
+	const resourceSummary = treeAggregationActive
 		? buildResourceSummary({ status: "Grouped tree" })
 		: serverAggregationActive
 			? objectAggregatesQuery.data
@@ -2862,7 +2825,7 @@ export function ObjectsExplorer() {
 			) : null}
 
 			<div className="card table-wrap resource-index objects-resource-index">
-				{!treeAggregationVisible ? (
+				{!treeAggregationActive ? (
 					<TableQueryStatus
 						query={
 							serverAggregationActive ? objectAggregatesQuery : objectsQuery
@@ -3178,9 +3141,7 @@ export function ObjectsExplorer() {
 							onMeasuresChange={setAggregateMeasureSelection}
 							onSortChange={setAggregateSort}
 							onLayoutChange={setAggregateLayout}
-							disabled={
-								parsedClassId === null || aggregateMemberFilter !== null
-							}
+							disabled={parsedClassId === null}
 						/>
 						<ObjectServerFilterMenu
 							filters={serverFilters}
@@ -3190,7 +3151,7 @@ export function ObjectsExplorer() {
 							disabled={parsedClassId === null}
 						/>
 						<div className="object-export-search-tools">
-							{treeAggregationVisible ? null : hasAggregateView ? (
+							{treeAggregationActive ? null : hasAggregateView ? (
 								<TableExportMenu
 									view={groupedExportView}
 									disabled={
@@ -3306,51 +3267,32 @@ export function ObjectsExplorer() {
 					</div>
 				) : null}
 
-				{aggregateMemberFilter !== null ? (
-					<div className="table-scope-note">
-						<span>
-							<strong>Aggregate filter:</strong> {aggregateMemberLabel}
-						</span>
-						<button
-							type="button"
-							className="ghost"
-							onClick={clearAggregateMemberFilter}
-						>
-							Clear aggregate filter
-						</button>
-						{objectsQuery.isFetching ? (
-							<span role="status">Loading matching objects…</span>
-						) : null}
-					</div>
-				) : null}
 				{treeAggregationActive && parsedClassId !== null ? (
-					<div hidden={!treeAggregationVisible}>
-						<ObjectAggregateTree
-							key={JSON.stringify([
-								parsedClassId,
-								serverGroupBy,
-								aggregateMeasureSignature,
-								groupSort,
-								effectiveFetchLimit,
-								serverFilterSignature,
-							])}
-							request={{
-								classId: parsedClassId,
-								groupBy: serverGroupBy,
-								measures: aggregateMeasures,
-								sort: toObjectAggregateSort(groupSort),
-								limit: effectiveFetchLimit,
-								filters: serverFilters,
-							}}
-							fieldLabels={activeGroupingFields.map((field) => field.label)}
-							measureLabels={aggregateMeasureFieldLabels}
-							collectionNames={collectionNameById}
-						/>
-					</div>
+					<ObjectAggregateTree
+						key={JSON.stringify([
+							parsedClassId,
+							serverGroupBy,
+							aggregateMeasureSignature,
+							groupSort,
+							effectiveFetchLimit,
+							serverFilterSignature,
+						])}
+						request={{
+							classId: parsedClassId,
+							groupBy: serverGroupBy,
+							measures: aggregateMeasures,
+							sort: toObjectAggregateSort(groupSort),
+							limit: effectiveFetchLimit,
+							filters: serverFilters,
+						}}
+						fieldLabels={activeGroupingFields.map((field) => field.label)}
+						measureLabels={aggregateMeasureFieldLabels}
+						collectionNames={collectionNameById}
+					/>
 				) : null}
 				{parsedClassId === null ? (
 					<div className="muted">Select a class to load its objects.</div>
-				) : treeAggregationVisible ? null : serverAggregationActive &&
+				) : treeAggregationActive ? null : serverAggregationActive &&
 					objectAggregatesQuery.isLoading ? (
 					<div>Loading object aggregates...</div>
 				) : serverAggregationActive &&
@@ -3394,29 +3336,21 @@ export function ObjectsExplorer() {
 						title={
 							searchTerm
 								? `No loaded objects match "${searchTerm}".`
-								: aggregateMemberFilter !== null
-									? "No objects match the aggregate filter."
-									: serverFilters.length > 0
-										? "No objects match the server filters."
-										: "No objects available in the selected class."
+								: serverFilters.length > 0
+									? "No objects match the server filters."
+									: "No objects available in the selected class."
 						}
 						description={
 							searchTerm
 								? "Clear Find on page to return to the current server result."
-								: aggregateMemberFilter !== null
-									? "Clear the aggregate filter to return to the original query."
-									: serverFilters.length > 0
-										? "Change or clear the server filters to broaden the class query."
-										: "Create an object to start populating this class."
+								: serverFilters.length > 0
+									? "Change or clear the server filters to broaden the class query."
+									: "Create an object to start populating this class."
 						}
 						action={
 							searchTerm ? (
 								<button type="button" onClick={clearFilter}>
 									Clear Find on page
-								</button>
-							) : aggregateMemberFilter !== null ? (
-								<button type="button" onClick={clearAggregateMemberFilter}>
-									Clear aggregate filter
 								</button>
 							) : serverFilters.length > 0 ? (
 								<button type="button" onClick={() => updateServerFilters([])}>
@@ -3892,9 +3826,10 @@ export function ObjectsExplorer() {
 						</section>
 					</>
 				)}
-				{treeAggregationVisible ? null : serverAggregationActive &&
+				{treeAggregationActive ? null : serverAggregationActive &&
 					objectAggregatesQuery.data ? (
 					objectAggregatesQuery.data.nextCursor ||
+					aggregateCursor ||
 					aggregatePagination.hasPrevPage ||
 					objectAggregatesQuery.data.prevCursor ? (
 						<TablePagination
@@ -3917,6 +3852,7 @@ export function ObjectsExplorer() {
 									objectAggregatesQuery.data?.prevCursor ?? undefined,
 								)
 							}
+							canGoFirst={Boolean(aggregateCursor)}
 							onFirstPage={aggregatePagination.goToFirstPage}
 							currentCount={serverAggregateGroups.length}
 							totalCount={objectAggregatesQuery.data.totalCount}

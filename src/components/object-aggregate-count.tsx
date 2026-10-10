@@ -2,15 +2,17 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { CreateModal } from "@/components/create-modal";
 import { TablePagination } from "@/components/table-pagination";
 import { fetchObjectsByClass } from "@/lib/api/class-objects";
 import type { ObjectAggregateRow } from "@/lib/api/generated/models";
 import type { ObjectAggregateRequest } from "@/lib/api/object-aggregates";
-import { buildObjectAggregateObjectsHref } from "@/lib/object-aggregate-filter";
+import {
+	buildObjectAggregateObjectsHref,
+	getObjectAggregateMemberFilters,
+} from "@/lib/object-aggregate-filter";
 import { formatObjectAggregateDimension } from "@/lib/object-grouping";
 
 type ObjectAggregateCountProps = {
@@ -29,7 +31,6 @@ function ObjectAggregateObjectsDialog({
 	label: string;
 	onClose: () => void;
 }) {
-	const viewParams = useSearchParams();
 	const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
 	const cursor = cursors.at(-1);
 	const members = useQuery({
@@ -49,7 +50,6 @@ function ObjectAggregateObjectsDialog({
 				"id.asc",
 				request.filters,
 				signal,
-				row.dimensions,
 			),
 		retry: false,
 	});
@@ -67,10 +67,8 @@ function ObjectAggregateObjectsDialog({
 						className="ghost icon-button"
 						href={buildObjectAggregateObjectsHref(
 							request.classId,
-							row.dimensions,
 							request.filters ?? [],
 							request.limit,
-							viewParams,
 						)}
 						aria-label="Open in object table"
 						title="Open in object table"
@@ -159,9 +157,18 @@ export function ObjectAggregateCount({
 	collectionNames,
 }: ObjectAggregateCountProps) {
 	const [open, setOpen] = useState(false);
+	const unavailableReasonId = useId();
+	let filters = request.filters ?? [];
+	let unavailableReason: string | undefined;
+	try {
+		filters = getObjectAggregateMemberFilters(row.dimensions, filters);
+	} catch (error) {
+		unavailableReason =
+			error instanceof Error ? error.message : "Unable to filter this group.";
+	}
 	const memberRequest = {
 		classId: request.classId,
-		filters: request.filters,
+		filters,
 		limit: request.limit,
 	};
 	const label =
@@ -178,11 +185,21 @@ export function ObjectAggregateCount({
 				className="object-aggregate-count"
 				aria-haspopup="dialog"
 				aria-label={`View ${row.object_count} objects for ${label}`}
+				aria-describedby={unavailableReason ? unavailableReasonId : undefined}
+				disabled={Boolean(unavailableReason)}
 				onClick={() => setOpen(true)}
 			>
 				{row.object_count}
 			</button>
-			{open
+			{unavailableReason ? (
+				<small
+					id={unavailableReasonId}
+					className="object-aggregate-unavailable"
+				>
+					{unavailableReason}
+				</small>
+			) : null}
+			{open && !unavailableReason
 				? createPortal(
 						<ObjectAggregateObjectsDialog
 							request={memberRequest}

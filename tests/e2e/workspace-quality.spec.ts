@@ -531,6 +531,13 @@ test.describe("workspace quality", () => {
 		page.setDefaultTimeout(10_000);
 		const memberRequests: URLSearchParams[] = [];
 		let failMembers = true;
+		const aggregateClass = {
+			...classes[0],
+			json_schema: {
+				type: "object",
+				properties: { os_major: { type: "number" } },
+			},
+		};
 		const objects = [
 			{ os_major: 8, os_minor: "1" },
 			{ os_major: "9", os_minor: "1" },
@@ -560,13 +567,13 @@ test.describe("workspace quality", () => {
 			},
 		}));
 		await context.route(`**${prefix}/classes?*`, (route) =>
-			route.fulfill({ json: classes }),
+			route.fulfill({ json: [aggregateClass, ...classes.slice(1)] }),
 		);
 		await context.route(`**${prefix}/collections?*`, (route) =>
 			route.fulfill({ json: [root] }),
 		);
 		await context.route(`**${prefix}/classes/10?*`, (route) =>
-			route.fulfill({ json: classes[0] }),
+			route.fulfill({ json: aggregateClass }),
 		);
 		await context.route(`**${prefix}/classes/10/computed-fields*`, (route) =>
 			route.fulfill({ json: { fields: [] } }),
@@ -739,6 +746,23 @@ test.describe("workspace quality", () => {
 		const openTable = dialog.getByRole("link", {
 			name: "Open in object table",
 		});
+		const tableUrl = new URL(
+			(await openTable.getAttribute("href")) ?? "",
+			page.url(),
+		);
+		expect(tableUrl.searchParams.has("objectAggregate")).toBe(false);
+		expect(tableUrl.searchParams.has("groupBy")).toBe(false);
+		expect(
+			JSON.parse(tableUrl.searchParams.get("objectFilters") ?? "[]"),
+		).toEqual([
+			{ field: "description", operator: "equals", value: "RHEL" },
+			{
+				field: "json_data",
+				operator: "regex",
+				value: "^8$",
+				path: ["os_major"],
+			},
+		]);
 		const popupPromise = context.waitForEvent("page");
 		await openTable.click({ modifiers: ["Control"] });
 		const popup = await popupPromise;
@@ -753,6 +777,64 @@ test.describe("workspace quality", () => {
 			"host-103",
 			"host-104",
 		]);
+		await popup.getByRole("button", { name: /^Server filters/ }).click();
+		const filtersMenu = popup.getByRole("dialog", { name: "Server filters" });
+		await filtersMenu
+			.getByRole("button", { name: "Edit os_major filter" })
+			.click();
+		await expect(filtersMenu.getByLabel("Server filter operator")).toHaveValue(
+			"regex",
+		);
+		await expect(
+			filtersMenu.getByRole("radio", { name: "Number", exact: true }),
+		).toBeChecked();
+		await expect(filtersMenu.getByLabel("Server filter value")).toHaveValue(
+			"^8$",
+		);
+		await expect(filtersMenu.getByLabel("Server filter value")).toHaveAttribute(
+			"type",
+			"text",
+		);
+		await filtersMenu.getByLabel("Server filter value").fill("^9$");
+		await filtersMenu.getByRole("button", { name: "Save changes" }).click();
+		await popup.keyboard.press("Escape");
+		await expect(popup.getByRole("link", { name: /^host-/ })).toHaveText([
+			"host-101",
+		]);
+		const missingFieldFilters = [
+			{ field: "description", operator: "equals", value: "RHEL" },
+			{
+				field: "json_data",
+				operator: "regex",
+				path: ["unseen"],
+				value: "^old$",
+			},
+		];
+		await popup.goto(
+			`/objects?${new URLSearchParams({
+				classId: "10",
+				objectFilters: JSON.stringify(missingFieldFilters),
+			})}`,
+		);
+		await popup.getByRole("button", { name: /^Server filters/ }).click();
+		await filtersMenu
+			.getByRole("button", { name: "Edit unseen filter" })
+			.click();
+		await expect(filtersMenu.getByLabel("Server filter value")).toHaveValue(
+			"^old$",
+		);
+		await filtersMenu.getByLabel("Server filter value").fill("^new$");
+		await filtersMenu.getByRole("button", { name: "Save changes" }).click();
+		await expect
+			.poll(() =>
+				JSON.parse(
+					new URL(popup.url()).searchParams.get("objectFilters") ?? "[]",
+				),
+			)
+			.toEqual([
+				missingFieldFilters[0],
+				{ ...missingFieldFilters[1], value: "^new$" },
+			]);
 		await expect(dialog).toBeVisible();
 		await popup.close();
 		await openTable.click();
@@ -762,7 +844,7 @@ test.describe("workspace quality", () => {
 			"host-102",
 		]);
 		await expect(
-			page.getByText("Aggregate filter:", { exact: true }),
+			page.getByText("2 server filters", { exact: true }),
 		).toBeVisible();
 		await page.goBack();
 		await expect(
@@ -825,6 +907,97 @@ test.describe("workspace quality", () => {
 			})
 			.click();
 		await expect(objectLinks).toHaveText(["host-100", "host-102"]);
+	});
+
+	test.describe("unavailable aggregate counts", () => {
+		test.use({ hasTouch: true });
+		test("show recovery guidance without hover in tree and table views", async ({
+			page,
+		}) => {
+			test.setTimeout(90_000);
+			await page.setViewportSize({ width: 390, height: 900 });
+			await page.route(`**${prefix}/classes/10?*`, (route) =>
+				route.fulfill({ json: classes[0] }),
+			);
+			await page.route(`**${prefix}/classes/10/computed-fields*`, (route) =>
+				route.fulfill({ json: { fields: [] } }),
+			);
+			await page.route(`**${prefix}/iam/me/computed-fields*`, (route) =>
+				route.fulfill({ json: [] }),
+			);
+			await page.route(
+				`**${prefix}/classes/10/object-aggregates?*`,
+				(route) => {
+					const fields = new URL(route.request().url()).searchParams.getAll(
+						"group_by",
+					);
+					return route.fulfill({
+						json: [
+							{
+								dimensions: fields.map((field) => ({
+									field,
+									state: "value",
+									value:
+										field === "json_data.payload" ? { host: "api" } : "api",
+								})),
+								object_count: 5,
+							},
+						],
+						headers: { "X-Total-Count": "1" },
+					});
+				},
+			);
+			for (const scenario of [
+				{
+					groupBy: ['data:["payload"]', "object:name"],
+					filters: [],
+					reason:
+						"Groups containing JSON objects or arrays cannot be opened with a server filter. Group by a field inside the value instead.",
+				},
+				{
+					groupBy: ["object:name", "object:description"],
+					filters: Array.from({ length: 8 }, (_, index) => ({
+						field: "description",
+						operator: "contains",
+						value: `source ${index}`,
+					})),
+					reason:
+						"This group needs more than 8 server filters. Remove a source filter or grouping field to open its objects.",
+				},
+			]) {
+				for (const layout of ["tree", "table"]) {
+					const params = new URLSearchParams({
+						classId: "10",
+						aggregateView: layout,
+						objectFilters: JSON.stringify(scenario.filters),
+					});
+					for (const field of scenario.groupBy) params.append("groupBy", field);
+					await page.goto(`/objects?${params}`);
+					const count = page.getByRole("button", {
+						name: /^View 5 objects for/,
+					});
+					await expect(count).toBeDisabled();
+					await expect(count).toHaveAccessibleDescription(scenario.reason);
+					const explanation = page.getByText(scenario.reason, { exact: true });
+					await explanation.scrollIntoViewIfNeeded();
+					await page.keyboard.press("Tab");
+					await expect(explanation).toBeVisible();
+					await explanation.tap();
+					await expect(explanation).toBeVisible();
+					await expect(
+						page.getByRole("dialog", { name: /matching objects/ }),
+					).toHaveCount(0);
+				}
+			}
+			expect(
+				(
+					await new AxeBuilder({ page })
+						.include(".object-grouped-table-scroll")
+						.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+						.analyze()
+				).violations,
+			).toEqual([]);
+		});
 	});
 
 	test("aggregate A–Z sorts numeric text across pages in tables and trees", async ({
@@ -1094,7 +1267,9 @@ test.describe("workspace quality", () => {
 			"35",
 		]);
 		await expect(
-			page.getByTitle("2 groups loaded, 4 total").getByText("2/4", { exact: true }),
+			page
+				.getByTitle("2 groups loaded, 4 total")
+				.getByText("2/4", { exact: true }),
 		).toBeVisible();
 		await menu.getByRole("button", { name: "Add group by" }).click();
 		await expect(
@@ -1115,7 +1290,9 @@ test.describe("workspace quality", () => {
 			.toEqual(["sum:json_data.cost"]);
 		await page.keyboard.press("Escape");
 		await expect(trigger).toBeFocused();
-		await expect(page.getByRole("group", { name: "Aggregate view" })).toHaveCount(0);
+		await expect(
+			page.getByRole("group", { name: "Aggregate view" }),
+		).toHaveCount(0);
 		await expect(
 			table.getByRole("row").nth(1).getByRole("cell").nth(2),
 		).toHaveText("Infrastructure (#1)");
@@ -1165,6 +1342,16 @@ test.describe("workspace quality", () => {
 		await expect(
 			table.getByRole("row").nth(2).getByRole("cell").nth(1),
 		).toHaveText("(missing)");
+		await page.evaluate(() => sessionStorage.clear());
+		await page.reload();
+		await expect(
+			page.getByRole("button", { name: "Previous page", exact: true }),
+		).toHaveCount(0);
+		await page.getByRole("button", { name: "First", exact: true }).click();
+		await expect(page).not.toHaveURL(/aggregateCursor=/);
+		await expect(
+			table.getByRole("row").nth(1).getByRole("cell").nth(1),
+		).toHaveText("1");
 		await trigger.click();
 		await menu
 			.getByRole("button", { name: "Move grouping field 3 up" })

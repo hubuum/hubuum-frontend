@@ -2,25 +2,26 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
-	getObjectServerFilterIdentity,
-	getObjectServerFilterLabel,
-	MAX_OBJECT_COMPUTED_FILTERS,
-	MAX_OBJECT_SERVER_FILTERS,
-	normalizeObjectServerFilter,
-	resolveObjectServerFilterRelativeDates,
-	type ObjectServerFilterDataType,
-	type ObjectServerFilter,
-	type ObjectServerFilterBaseOperator,
-	type ObjectServerFilterOperator,
-} from "@/lib/object-server-filters";
+	getObjectServerFilterEditorDataFields,
+	getObjectServerFilterEditorDraft,
+	replaceObjectServerFilter,
+} from "@/lib/object-server-filter-editor";
 import type {
 	ServerFilterComputedField,
 	ServerFilterDataField,
 } from "@/lib/object-server-filter-fields";
 import {
-	getObjectServerFilterEditorDraft,
-	replaceObjectServerFilter,
-} from "@/lib/object-server-filter-editor";
+	getObjectServerFilterIdentity,
+	getObjectServerFilterLabel,
+	MAX_OBJECT_COMPUTED_FILTERS,
+	MAX_OBJECT_SERVER_FILTERS,
+	normalizeObjectServerFilter,
+	type ObjectServerFilter,
+	type ObjectServerFilterBaseOperator,
+	type ObjectServerFilterDataType,
+	type ObjectServerFilterOperator,
+	resolveObjectServerFilterRelativeDates,
+} from "@/lib/object-server-filters";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 
 export type {
@@ -66,6 +67,7 @@ const STRING_OPERATORS: OperatorOption[] = [
 	{ value: "equals", label: "equals" },
 	{ value: "istartswith", label: "starts with" },
 	{ value: "iendswith", label: "ends with" },
+	{ value: "regex", label: "matches regular expression" },
 ];
 
 const NUMBER_OPERATORS: OperatorOption[] = [
@@ -79,7 +81,6 @@ const NUMBER_OPERATORS: OperatorOption[] = [
 const DATA_STRING_OPERATORS: OperatorOption[] = [
 	...STRING_OPERATORS,
 	{ value: "like", label: "matches SQL pattern" },
-	{ value: "regex", label: "matches regular expression" },
 	{ value: "in", label: "is one of (comma-separated)" },
 	{ value: "is_null", label: "is missing or null" },
 ];
@@ -130,7 +131,6 @@ const DATA_OBJECT_OPERATORS: OperatorOption[] = [
 const COMPUTED_STRING_OPERATORS: OperatorOption[] = [
 	...STRING_OPERATORS,
 	{ value: "like", label: "matches SQL pattern" },
-	{ value: "regex", label: "matches regular expression" },
 	{ value: "in", label: "is one of (comma-separated)" },
 	{ value: "is_null", label: "is unavailable or null" },
 ];
@@ -193,7 +193,7 @@ function IconServerFilter() {
 
 export function ObjectServerFilterMenu({
 	filters,
-	dataFields,
+	dataFields: discoveredDataFields,
 	computedFields,
 	onChange,
 	disabled = false,
@@ -221,6 +221,10 @@ export function ObjectServerFilterMenu({
 	const [dataTypeOverrides, setDataTypeOverrides] = useState<
 		Record<string, SelectableDataType>
 	>({});
+	const dataFields = useMemo(
+		() => getObjectServerFilterEditorDataFields(discoveredDataFields, filters),
+		[discoveredDataFields, filters],
+	);
 	const dataFieldById = useMemo(
 		() => new Map(dataFields.map((item) => [item.id, item])),
 		[dataFields],
@@ -253,9 +257,12 @@ export function ObjectServerFilterMenu({
 		field === "created_at" ||
 		field === "updated_at" ||
 		selectedDataType === "date";
-	const operatorOptions = useMemo(() => {
+	const operatorOptions = useMemo<OperatorOption[]>(() => {
 		if (selectedDataType) {
-			return getDataOperatorOptions(selectedDataType);
+			const options = getDataOperatorOptions(selectedDataType);
+			return options.some((option) => option.value === "regex")
+				? options
+				: [...options, { value: "regex", label: "matches regular expression" }];
 		}
 		if (!selectedComputedField) {
 			if (isDateField) return OBJECT_DATE_OPERATORS;
@@ -282,7 +289,7 @@ export function ObjectServerFilterMenu({
 	const expectsBooleanValue =
 		!expectsNoValue &&
 		(operator === "is_null" ||
-			selectedDataType === "boolean" ||
+			(selectedDataType === "boolean" && operator !== "regex") ||
 			selectedComputedField?.resultType === "boolean");
 	const computedFilterCount = filters.filter(
 		(filter) => filter.field === "computed",
@@ -802,7 +809,7 @@ export function ObjectServerFilterMenu({
 									aria-label="Server filter value"
 									type={
 										(isNumberField || operator === "array_length") &&
-										!["in", "between"].includes(operator)
+										!["in", "between", "regex"].includes(operator)
 											? "number"
 											: "text"
 									}

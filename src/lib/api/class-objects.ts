@@ -3,9 +3,7 @@ import { frontendApiPath } from "@/lib/api/frontend";
 import type {
 	HubuumObject,
 	HubuumObjectComputedResponse,
-	ObjectAggregateDimensionValue,
 } from "@/lib/api/generated/models";
-import { appendObjectAggregateFilters } from "@/lib/object-aggregate-filter";
 import {
 	appendObjectServerFilters,
 	type ObjectServerFilter,
@@ -55,7 +53,6 @@ export async function fetchObjectsByClass(
 	sort?: string,
 	serverFilters: readonly ObjectServerFilter[] = [],
 	signal?: AbortSignal,
-	dimensions: readonly ObjectAggregateDimensionValue[] = [],
 ): Promise<ObjectsPageData> {
 	const params = new URLSearchParams();
 	params.set("limit", String(resolveServerPageLimit(limit)));
@@ -63,7 +60,6 @@ export async function fetchObjectsByClass(
 	if (cursor) params.set("cursor", cursor);
 	if (sort) params.set("sort", sort);
 	appendObjectServerFilters(params, serverFilters);
-	appendObjectAggregateFilters(params, dimensions);
 
 	const response = await fetch(
 		`${frontendApiPath(`/classes/${classId}/objects`)}?${params.toString()}`,

@@ -4,6 +4,8 @@ import type {
 } from "@/lib/object-server-filter-fields";
 import {
 	getObjectServerFilterIdentity,
+	getObjectServerFilterLabel,
+	isServerFilterableDataPath,
 	type ObjectServerFilter,
 	type ObjectServerFilterBaseOperator,
 } from "@/lib/object-server-filters";
@@ -15,6 +17,33 @@ export type ObjectServerFilterEditorDraft = {
 	value: string;
 };
 
+export function getObjectServerFilterEditorDataFields(
+	dataFields: readonly ServerFilterDataField[],
+	filters: readonly ObjectServerFilter[],
+): ServerFilterDataField[] {
+	const fields = new Map(
+		dataFields.map((field) => [JSON.stringify(field.path), field]),
+	);
+	for (const filter of filters) {
+		if (
+			filter.field !== "json_data" ||
+			!filter.path ||
+			!isServerFilterableDataPath(filter.path)
+		)
+			continue;
+		const id = JSON.stringify(filter.path);
+		if (!fields.has(id)) {
+			fields.set(id, {
+				id,
+				label: getObjectServerFilterLabel(filter),
+				path: filter.path,
+				dataType: "unknown",
+			});
+		}
+	}
+	return [...fields.values()];
+}
+
 export function getObjectServerFilterEditorDraft(
 	filter: ObjectServerFilter,
 	dataFields: readonly ServerFilterDataField[],
@@ -23,16 +52,14 @@ export function getObjectServerFilterEditorDraft(
 	let field: string;
 	if (filter.field === "json_data") {
 		const dataField = dataFields.find(
-			(item) =>
-				JSON.stringify(item.path) === JSON.stringify(filter.path ?? []),
+			(item) => JSON.stringify(item.path) === JSON.stringify(filter.path ?? []),
 		);
 		if (!dataField) return null;
 		field = `data:${dataField.id}`;
 	} else if (filter.field === "computed") {
 		const computedField = computedFields.find(
 			(item) =>
-				item.scope === filter.computedScope &&
-				item.key === filter.computedKey,
+				item.scope === filter.computedScope && item.key === filter.computedKey,
 		);
 		if (!computedField) return null;
 		field = `computed:${computedField.id}`;
