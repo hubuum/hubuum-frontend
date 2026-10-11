@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://hubuum.github.io/hubuum-frontend/main/quickstart-compose/">
+        <link rel="canonical" href="https://hubuum.github.io/hubuum-frontend/main/deployment/">
       
       
-        <link rel="prev" href="../deployment/">
+        <link rel="prev" href="../configuration/">
       
       
-        <link rel="next" href="../observability/">
+        <link rel="next" href="../quickstart-compose/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Compose quick start - Hubuum web frontend</title>
+        <title>Helm and OKD deployment - Hubuum web frontend</title>
       
     
     
@@ -79,7 +79,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#frontend-compose-quickstart" class="md-skip">
+        <a href="#deploy-the-frontend" class="md-skip">
           Skip to content
         </a>
       
@@ -148,7 +148,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Compose quick start
+              Helm and OKD deployment
             
           </span>
         </div>
@@ -701,33 +701,6 @@
                   
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../deployment/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Helm and OKD deployment
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
     
   
   
@@ -747,7 +720,7 @@
   <span class="md-ellipsis">
     
   
-  Compose quick start
+  Helm and OKD deployment
 
     
   </span>
@@ -764,7 +737,7 @@
   <span class="md-ellipsis">
     
   
-  Compose quick start
+  Helm and OKD deployment
 
     
   </span>
@@ -790,10 +763,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#requirements" class="md-nav__link">
+  <a href="#deployment-notes-okd" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Requirements
+        Deployment notes (OKD)
       </span>
     </span>
   </a>
@@ -801,32 +774,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#start" class="md-nav__link">
+  <a href="#container-and-helm-publishing" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Start
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#manage-the-quickstart" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Manage the quickstart
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-login-backgrounds" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Optional login backgrounds
+        Container and Helm publishing
       </span>
     </span>
   </a>
@@ -837,6 +788,33 @@
   
 </nav>
       
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-compose/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Compose quick start
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1301,10 +1279,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#requirements" class="md-nav__link">
+  <a href="#deployment-notes-okd" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Requirements
+        Deployment notes (OKD)
       </span>
     </span>
   </a>
@@ -1312,32 +1290,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#start" class="md-nav__link">
+  <a href="#container-and-helm-publishing" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Start
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#manage-the-quickstart" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Manage the quickstart
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-login-backgrounds" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Optional login backgrounds
+        Container and Helm publishing
       </span>
     </span>
   </a>
@@ -1365,7 +1321,7 @@
                 
                   
   
-    <a href="https://github.com/hubuum/hubuum-frontend/edit/main/docs/quickstart-compose.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/hubuum/hubuum-frontend/edit/main/docs/deployment.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -1373,60 +1329,46 @@
   
 
 
-<h1 id="frontend-compose-quickstart">Frontend Compose quickstart<a class="headerlink" href="#frontend-compose-quickstart" title="Permanent link">&para;</a></h1>
-<p>This quickstart runs Hubuum Frontend and Valkey. It does not install Hubuum
-Server or PostgreSQL; point it at an existing Hubuum Server instance.</p>
-<h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
+<h1 id="deploy-the-frontend">Deploy the frontend<a class="headerlink" href="#deploy-the-frontend" title="Permanent link">&para;</a></h1>
+<p>Use the <a href="../quickstart-compose/">Compose quick start</a> for evaluation against an
+existing server. The <a href="https://hubuum.github.io/hubuum/v0.0.18/deployment/">server single-host installer</a>
+provisions a complete stack. For Kubernetes and OKD, use the Helm instructions
+below and review <a href="../configuration/">configuration</a>.</p>
+<h2 id="deployment-notes-okd">Deployment notes (OKD)<a class="headerlink" href="#deployment-notes-okd" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Docker Compose 2.20 or newer, or a compatible Podman Compose installation.</li>
-<li>A Hubuum Server URL reachable from inside the frontend container.</li>
+<li>Every replica requires <code>VALKEY_URL</code> from a Secret so opaque sessions remain
+  available across Next.js runtimes, restarts, and pods.</li>
+<li>Use <code>/healthz</code> for liveness and <code>/readyz</code> for dependency-aware readiness.</li>
+<li>Frontend-owned BFF routes live under <code>/_hubuum-bff/...</code>; <code>/api/v0/...</code>
+  and <code>/api/v1/...</code> remain available for direct backend routing at the edge.</li>
+<li>Keep Valkey private to the application network and enable persistence or
+  replication according to the deployment's session-availability needs.</li>
+<li>TLS terminate at ingress; keep secure cookies enabled in production.</li>
 </ul>
-<h2 id="start">Start<a class="headerlink" href="#start" title="Permanent link">&para;</a></h2>
-<p>Download <code>hubuum-frontend-v0.0.19-compose.tar.gz</code> and <code>SHA256SUMS</code> from
-<a href="https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.19">release v0.0.19</a>.
-The archive contains Compose configuration and its environment template, with
-the frontend image pinned to a digest. In the download directory, verify and
-extract it (on macOS, use <code>shasum -a 256 -c SHA256SUMS</code>):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sha256sum<span class="w"> </span>-c<span class="w"> </span>SHA256SUMS
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>tar<span class="w"> </span>-xzf<span class="w"> </span>hubuum-frontend-v0.0.19-compose.tar.gz
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">cd</span><span class="w"> </span>hubuum-frontend-v0.0.19-compose
+<h2 id="container-and-helm-publishing">Container and Helm publishing<a class="headerlink" href="#container-and-helm-publishing" title="Permanent link">&para;</a></h2>
+<p>After all required checks pass, commits to <code>main</code> publish a moving container
+image:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ghcr.io/hubuum/hubuum-frontend:main
 </code></pre></div>
-<p>If you are reading this file inside the extracted archive, start here:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>cp<span class="w"> </span>.env.quickstart.example<span class="w"> </span>.env.quickstart
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>login-backgrounds
+<p>The workflow also publishes an immutable full-SHA tag for each commit.
+Both tags are multi-architecture images for <code>linux/amd64</code> and <code>linux/arm64</code>.</p>
+<p>The Helm chart lives in <code>charts/hubuum-frontend</code> and is published to GHCR as
+an OCI chart with a unique prerelease chart version per <code>main</code> build. Tagged
+releases publish a matching stable chart version. The chart defaults its image
+tag from <code>appVersion</code> and also accepts an immutable <code>image.digest</code>.</p>
+<p>Install from the published OCI chart:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>helm<span class="w"> </span>install<span class="w"> </span>hubuum<span class="w"> </span>oci://ghcr.io/hubuum/charts/hubuum-frontend<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.19<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>--set<span class="w"> </span>backend.baseUrl<span class="o">=</span>https://hubuum-api.example.com<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span>--set<span class="w"> </span>valkey.existingSecret.name<span class="o">=</span>hubuum-frontend-valkey
 </code></pre></div>
-<p>Edit <code>.env.quickstart</code> and set <code>BACKEND_BASE_URL</code> to your server's API origin.
-For Docker Desktop, a server on the host is normally reachable at
-<code>http://host.docker.internal:8080</code>. On Linux Docker Engine, add
-<code>extra_hosts: ["host.docker.internal:host-gateway"]</code> to the frontend service or
-use a routable host address. Podman commonly exposes the host as
-<code>host.containers.internal</code>. Container loopback is not the host's loopback.</p>
-<p>Start the stack:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>up<span class="w"> </span>-d
+<p>For OKD Routes, enable the chart route resource:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>hubuum<span class="w"> </span>oci://ghcr.io/hubuum/charts/hubuum-frontend<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.0.19<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--set<span class="w"> </span>backend.baseUrl<span class="o">=</span>https://hubuum-api.example.com<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--set<span class="w"> </span>route.enabled<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--set<span class="w"> </span>route.host<span class="o">=</span>hubuum.example.com
 </code></pre></div>
-<p>Open <a href="http://localhost:3000">http://localhost:3000</a>. Check dependency readiness with:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>--fail<span class="w"> </span>http://localhost:3000/readyz
-</code></pre></div>
-<p>Both the page and readiness probe should be reachable before you sign in with
-a Hubuum account. Frontend v0.0.19 targets server v0.0.18; review
-<a href="https://hubuum.github.io/hubuum-frontend/v0.0.19/compatibility/">compatibility</a>
-before using a different server.</p>
-<h2 id="manage-the-quickstart">Manage the quickstart<a class="headerlink" href="#manage-the-quickstart" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>frontend
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>pull
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>up<span class="w"> </span>-d
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>down
-</code></pre></div>
-<p>Use <code>down -v</code> only when you also want to remove the Valkey data volume and sign
-out all stored sessions.</p>
-<p>This quickstart binds the frontend to loopback and does not configure TLS. Use
-the Helm chart or the Hubuum Server single-host installer for production.</p>
-<h2 id="optional-login-backgrounds">Optional login backgrounds<a class="headerlink" href="#optional-login-backgrounds" title="Permanent link">&para;</a></h2>
-<p>Put AVIF, JPEG, PNG, or WebP files in <code>login-backgrounds/</code> before starting the
-stack. To use another directory, set <code>LOGIN_BACKGROUNDS_HOST_DIR</code> in
-<code>.env.quickstart</code>. Compose mounts it read-only; the files stay outside the image.
-For Helm, use <code>loginBackgrounds.existingClaim</code> to mount a read-only PVC at
-<code>/app/login-backgrounds</code>.</p>
 
 
 
@@ -1464,7 +1406,7 @@ For Helm, use <code>loginBackgrounds.existingClaim</code> to mount a read-only P
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../deployment/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Helm and OKD deployment">
+          <a href="../configuration/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Configuration">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1474,20 +1416,20 @@ For Helm, use <code>loginBackgrounds.existingClaim</code> to mount a read-only P
                 Previous
               </span>
               <div class="md-ellipsis">
-                Helm and OKD deployment
+                Configuration
               </div>
             </div>
           </a>
         
         
           
-          <a href="../observability/" class="md-footer__link md-footer__link--next" aria-label="Next: Observability">
+          <a href="../quickstart-compose/" class="md-footer__link md-footer__link--next" aria-label="Next: Compose quick start">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Observability
+                Compose quick start
               </div>
             </div>
             <div class="md-footer__button md-icon">
