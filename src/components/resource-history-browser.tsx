@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { ClassHistoryRestore } from "@/components/class-history-restore";
 import { HistoryComparison } from "@/components/history-comparison";
 import {
 	HistoryStackNavigation,
@@ -454,7 +455,7 @@ export function ResourceHistoryBrowser({
 										Stored version #{selected.history_id} · {selected.op}
 									</p>
 								</div>
-								{scope.type === "object" && "data" in selected && !deleted ? (
+								{!deleted ? (
 									<button
 										type="button"
 										className={styles.restore}
@@ -622,6 +623,20 @@ export function ResourceHistoryBrowser({
 						setRestoring(null);
 						setSuccess(
 							"Historical values restored as a new audited update. You are still viewing the source snapshot.",
+						);
+					}}
+				/>
+			) : null}
+			{restoring && "validate_schema" in restoring && scope.type === "class" ? (
+				<ClassHistoryRestore
+					key={restoring.history_id}
+					scope={scope}
+					source={restoring}
+					onClose={() => setRestoring(null)}
+					onRestored={() => {
+						setRestoring(null);
+						setSuccess(
+							"Historical class fields restored as a new audited update. You are still viewing the source snapshot.",
 						);
 					}}
 				/>

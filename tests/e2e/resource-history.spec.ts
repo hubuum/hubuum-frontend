@@ -45,6 +45,9 @@ async function prepare(
 		deleted?: boolean;
 		unavailable?: boolean;
 		classHistory?: boolean;
+		missingClassEtag?: boolean;
+		missingCollection?: boolean;
+		classRestoreStatus?: number;
 		many?: boolean;
 	} = {},
 ) {
@@ -53,6 +56,15 @@ async function prepare(
 			...base,
 			revision: 4,
 			data: { network: { mtu: 9000, added: true }, stable: true },
+		},
+		liveClass: {
+			id: 3,
+			name: "Live class",
+			description: "Current description",
+			collection_id: 4,
+			revision: 4,
+			validate_schema: false,
+			json_schema: { type: "object" },
 		},
 		writes: [] as { body: unknown; etag: string | undefined }[],
 		asOf: [] as string[],
@@ -75,10 +87,15 @@ async function prepare(
 		? source.map(({ data: _data, hubuum_class_id: _classId, ...record }) => ({
 				...record,
 				id: 3,
+				collection_id: options.missingCollection ? 99 : 4,
 				validate_schema: true,
 				json_schema: { type: "object" },
 			}))
 		: source.map((record) => structuredClone(record));
+	if (options.missingCollection)
+		await page.route("**/api/v1/collections/99", (route) =>
+			route.fulfill({ status: 404, json: { message: "Deleted collection" } }),
+		);
 	if (options.deleted) history[0] = { ...history[0], op: "DELETE" };
 	await page.route(`**${prefix}**`, async (route) => {
 		const request = route.request();
@@ -117,15 +134,31 @@ async function prepare(
 					status: 403,
 					json: { message: "Object update permission denied" },
 				});
-			state.live = {
-				...state.live,
-				revision: state.live.revision + 1,
-				data: request.postDataJSON()[1].value,
-			};
+			if (options.classHistory) {
+				if (options.classRestoreStatus)
+					return route.fulfill({
+						status: options.classRestoreStatus,
+						json: { message: "Class restore rejected" },
+					});
+				state.liveClass = {
+					...state.liveClass,
+					...request.postDataJSON(),
+					revision: state.liveClass.revision + 1,
+				};
+			} else
+				state.live = {
+					...state.live,
+					revision: state.live.revision + 1,
+					data: request.postDataJSON()[1].value,
+				};
 		}
 		return route.fulfill({
-			json: options.classHistory ? { ...history[0], revision: 4 } : state.live,
-			headers: { ETag: `"object:12:${state.live.revision}"` },
+			json: options.classHistory ? state.liveClass : state.live,
+			headers: options.classHistory
+				? options.missingClassEtag
+					? {}
+					: { ETag: `"class:3:${state.liveClass.revision}"` }
+				: { ETag: `"object:12:${state.live.revision}"` },
 		});
 	});
 	return state;
@@ -659,7 +692,7 @@ test.describe("resource history", () => {
 		).toHaveCount(0);
 	});
 
-	test("class snapshots are read-only and clearly exclude historical object populations", async ({
+	test("class snapshots clearly exclude historical object populations", async ({
 		page,
 	}) => {
 		await prepare(page, { classHistory: true });
@@ -672,11 +705,176 @@ test.describe("resource history", () => {
 		).toBeVisible();
 		await expect(
 			page.getByRole("button", { name: "Restore to live…" }),
-		).toHaveCount(0);
+		).toBeVisible();
 		await page.getByLabel("Compare with").selectOption("live");
 		await expect(
 			page.getByText("Live · revision 4", { exact: true }),
 		).toBeVisible();
+	});
+
+	test("class restoration reviews fresh metadata, cancels, and applies one conditional update", async ({
+		page,
+	}) => {
+		const state = await prepare(page, { classHistory: true });
+		await page.goto(
+			`/classes/3/history?at=${encodeURIComponent(instants[1])}&version=102`,
+		);
+		const trigger = page.getByRole("button", { name: "Restore to live…" });
+		await trigger.click();
+		const dialog = page.getByRole("dialog", {
+			name: "Restore historical class fields",
+		});
+		await expect(
+			dialog.getByRole("checkbox", { name: "Schema and validation (blocked)" }),
+		).toBeDisabled();
+		await dialog.getByRole("checkbox", { name: "name", exact: true }).check();
+		await dialog
+			.getByRole("checkbox", { name: "description", exact: true })
+			.check();
+		state.liveClass.revision = 5;
+		await dialog
+			.getByRole("button", { name: "Review selected fields" })
+			.click();
+		await expect(
+			dialog.getByRole("heading", { name: "Review changes" }),
+		).toBeFocused();
+		await expect(dialog).toContainText("Live revision: 5");
+		await expect(dialog).toContainText("Current live");
+		await expect(dialog).toContainText("Proposed result");
+		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+		expect(state.writes).toHaveLength(0);
+		await expect(trigger).toBeFocused();
+		await trigger.click();
+		await dialog.getByRole("checkbox", { name: "name", exact: true }).check();
+		await dialog
+			.getByRole("checkbox", { name: "description", exact: true })
+			.check();
+		await dialog
+			.getByRole("button", { name: "Review selected fields" })
+			.click();
+		await dialog
+			.getByRole("button", { name: "Restore 2 selected class fields" })
+			.click();
+		await expect(
+			page.getByText(
+				/Historical class fields restored as a new audited update/,
+			),
+		).toBeVisible();
+		expect(state.writes).toEqual([
+			{
+				etag: '"class:3:5"',
+				body: { name: base.name, description: base.description },
+			},
+		]);
+		expect(state.liveClass.validate_schema).toBe(false);
+		await expectSelected(page, 102);
+	});
+
+	for (const status of [403, 404, 412, 422]) {
+		test(`class restoration requires a fresh review after ${status}`, async ({
+			page,
+		}) => {
+			const state = await prepare(page, {
+				classHistory: true,
+				classRestoreStatus: status,
+			});
+			const before = structuredClone(state.liveClass);
+			await page.goto("/classes/3/history");
+			await page.getByRole("button", { name: "Restore to live…" }).click();
+			const dialog = page.getByRole("dialog", {
+				name: "Restore historical class fields",
+			});
+			await dialog.getByRole("checkbox", { name: "name", exact: true }).check();
+			await dialog
+				.getByRole("button", { name: "Review selected fields" })
+				.click();
+			await dialog
+				.getByRole("button", { name: "Restore 1 selected class fields" })
+				.click();
+			await expect(dialog.getByRole("alert")).toContainText(
+				"Fetch a fresh review",
+			);
+			await expect(
+				dialog.getByRole("button", { name: "Restore 1 selected class fields" }),
+			).toHaveCount(0);
+			expect(state.writes).toHaveLength(1);
+			expect(state.liveClass).toEqual(before);
+		});
+	}
+
+	for (const blocked of ["validator", "collection"] as const) {
+		test(`class review blocks missing ${blocked} without writing any fields`, async ({
+			page,
+		}) => {
+			const state = await prepare(page, {
+				classHistory: true,
+				missingClassEtag: blocked === "validator",
+				missingCollection: blocked === "collection",
+			});
+			await page.goto("/classes/3/history");
+			await page.getByRole("button", { name: "Restore to live…" }).click();
+			const dialog = page.getByRole("dialog", {
+				name: "Restore historical class fields",
+			});
+			await dialog.getByRole("checkbox", { name: "name", exact: true }).check();
+			await dialog
+				.getByRole("checkbox", { name: "collection_id", exact: true })
+				.check();
+			await dialog
+				.getByRole("button", { name: "Review selected fields" })
+				.click();
+			await expect(dialog.getByRole("alert")).toContainText(
+				blocked === "validator"
+					? "strong revision validator"
+					: "historical collection is deleted",
+			);
+			expect(state.writes).toHaveLength(0);
+		});
+	}
+
+	test("class restore no-ops remain accessible on mobile in both themes", async ({
+		page,
+	}) => {
+		const state = await prepare(page, { classHistory: true });
+		state.liveClass.name = base.name;
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.emulateMedia({ reducedMotion: "reduce" });
+		await page.goto("/classes/3/history");
+		for (const theme of ["light", "dark"]) {
+			await page.getByRole("button", { name: /Open account menu for/ }).click();
+			await page
+				.getByRole("button", {
+					name: theme === "dark" ? "Dark" : "Light",
+					exact: true,
+				})
+				.click();
+			await page.keyboard.press("Escape");
+			const trigger = page.getByRole("button", { name: "Restore to live…" });
+			await trigger.click();
+			const dialog = page.getByRole("dialog", {
+				name: "Restore historical class fields",
+			});
+			await dialog.getByRole("checkbox", { name: "name", exact: true }).check();
+			await dialog
+				.getByRole("button", { name: "Review selected fields" })
+				.click();
+			await expect(dialog).toContainText("No update is needed");
+			await expect(
+				dialog.getByRole("button", { name: "Restore 1 selected class fields" }),
+			).toBeDisabled();
+			expect(
+				(await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+					.violations,
+			).toEqual([]);
+			expect(
+				await page.evaluate(
+					() => document.documentElement.scrollWidth <= window.innerWidth,
+				),
+			).toBe(true);
+			await page.keyboard.press("Escape");
+			await expect(trigger).toBeFocused();
+		}
+		expect(state.writes).toHaveLength(0);
 	});
 
 	test("snapshot and restore layouts remain accessible on mobile and in dark mode", async ({

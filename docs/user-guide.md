@@ -326,7 +326,7 @@ Pinning and selection survive URL navigation and reload. Live comparisons keep
 the captured revision until **Refresh
 comparison** is chosen when an update is detected.
 
-**Restore to live** currently restores object data only: selected keys, exact
+**Restore to live** on objects restores selected keys, exact
 subtrees, or the entire data document. Arrays are restored as whole values.
 Restoring a subtree also removes keys absent in the historical source. A fresh
 live fetch precedes a required review of the proposed changes. The server checks
@@ -339,8 +339,22 @@ The server applies its current schema validation and creates a new audited
 update. Existing audit/history records are unchanged. The current API cannot
 record the source snapshot as restore provenance. This flow does not restore
 deleted objects, object metadata, relationships, or computed definitions.
-Class-definition restoration is tracked separately in
-[issue #145](https://github.com/hubuum/hubuum-frontend/issues/145).
+
+On classes, **Restore to live** supports selected names, descriptions, and
+collection assignments. A fresh live read and explicit review show the current
+values and proposed result. Collection moves check that the historical collection
+is available. The server checks current update and destination permissions when
+applying all selected fields together, using a required strong ETag. Missing
+validators or collections block review; conflicts, permission errors, and other
+failures require a fresh review and never retry automatically. Matching values
+perform no write. The source snapshot remains selected after success.
+
+Schema and validation restoration remain disabled: populated classes require
+staged analysis and activation, which cannot be combined atomically with metadata
+restoration through the existing endpoints. Class restoration never restores its
+historical object population. Atomic schema restoration, restore-source audit
+provenance, and further historical context are tracked in
+[blocked follow-up #149](https://github.com/hubuum/hubuum-frontend/issues/149).
 
 ## Administrator backup and restore
 
