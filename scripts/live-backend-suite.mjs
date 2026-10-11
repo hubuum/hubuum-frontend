@@ -1,3 +1,4 @@
+import { verifyHistoryRestores } from "./live-history-suite.mjs";
 import { credentialRequest } from "./live-credential-request.mjs";
 import { verifySchemaEvolution } from "./live-schema-suite.mjs";
 import { verifyTaskCancellation, verifyTaskDiscovery } from "./live-task-suite.mjs";
@@ -833,6 +834,9 @@ async function main() {
     "Name-addressed JSON Patch did not persist.",
   );
   pass("applied guarded RFC 6902 object-data patches by ID and name");
+
+  await verifyHistoryRestores({ request, auth, classId: hubuumClass.data.id, objectId: hubuumObject.data.id });
+  pass("verified exact history lookup, guarded restoration, atomic conflicts, and normal audit/history production");
 
   const computedQuery = await request(
     "GET",
