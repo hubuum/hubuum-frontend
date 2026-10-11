@@ -258,3 +258,108 @@ exercise the complete contract across server version bumps; required release CI
 retains its exact version check. Credential fixtures obtain approval only after
 `reauthentication_required`, preserving the bearer, body, expiry precision, and
 request guards. Older servers need no approval endpoint.
+
+## Security audit gate
+
+Run a production-only dependency audit:
+
+```bash
+npm run audit:prod
+```
+
+This checks runtime dependencies only (`npm audit --omit=dev`), so lint/codegen dev-tool advisories do not block deploys.
+The CI workflow runs this gate together with lint, typecheck, unit tests,
+backend compatibility tests, a production build, container smoke tests,
+Compose validation, and Helm validation.
+
+## Live backend contract tests
+
+Run the frontend's live backend contract suite against the latest published
+server image:
+
+```bash
+npm run test:live-backend
+```
+
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.18`, starts a
+disposable Hubuum server and Postgres database through Docker Compose, waits for
+`/readyz`, resets the default `admin` password inside the container, exercises
+the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
+redacted admin configuration, backup staging and isolated asynchronous restoration, shared and personal
+computed fields, events/audit, history/as-of, event sink, subscription, delivery
+lifecycle, public token-lifetime discovery, authoritative token expiry,
+client pagination discovery, by-name routes, object aggregation, computed
+querying, JSON Patch, and pagination APIs directly, and tears the stack down.
+The final check confirms a restore only against the disposable stack owned by
+the test wrapper, then verifies completion and invalidation of the old token.
+Restore confirmation is skipped when targeting an externally supplied backend URL.
+
+Useful overrides:
+
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.18`
+- `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
+- `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
+- `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`
+- `HUBUUM_LIVE_KEEP_STACK=1`: leave the containers running for debugging
+
+## OpenAPI generation
+
+`openapi.json` is in repo root.
+
+Generate typed clients:
+
+```bash
+npm run gen:api
+```
+
+Generated output goes to `src/lib/api/generated`.
+The generator runs via `npx orval@8.39.0`, so network access is required when generating.
+
+## Documentation-only CI
+
+Pull requests and pushes containing only prose or documentation-site inputs run
+Markdown lint and documentation validation without the application test/build
+matrix. Unknown files, source changes, executable examples, and declared
+test/build inputs retain application CI. Mixed changes run both kinds of checks.
+
+`scripts/ci-policy.py` owns the allowlist and exceptions. Update its regression
+tests whenever a document becomes a build, test, or packaging input; direct
+literal Rust includes are checked automatically. Run the policy tests with
+`python3 scripts/test-ci-policy.py`.
+
+The `validate` check is the aggregate CI gate: classification failures,
+failed checks, and unexpectedly skipped required jobs fail it. Keep that check
+required in branch protection. Add the `ci:full` pull-request label or dispatch
+the CI workflow manually to request complete validation. Release validation
+and separately scheduled checks retain their existing coverage.
+
+## Build identity
+
+The **About Hubuum** page (`/about`) shows the frontend version and the connected
+server's reported version. Open it from the account menu, the navigation version,
+or **Go to…**. It is available to all signed-in users. Server discovery reads the
+running server's public `/api-doc/openapi.json` on the frontend server; it does
+not use admin metadata or the bundled API contract. If discovery fails, About
+still shows the frontend version and marks the server version unavailable.
+Older servers may report only their package release number.
+
+The frontend version also appears in the navigation, on the login page, and in
+`/healthz` and `/readyz` responses. Local and CI builds use
+`git describe --tags --match 'v[0-9]*' --always --dirty`: a clean release is
+`v0.0.13`; 16 commits after it is `v0.0.13-16-g256d59b`; uncommitted tracked
+changes append `-dirty`. Without a reachable release tag, Git reports the commit
+ID. Without Git metadata, builds show the package version with `+unknown`.
+
+`NEXT_PUBLIC_APP_VERSION` can override the build identity. Container contexts
+exclude `.git`, so pass the identity from the host checkout:
+
+```sh
+docker build --build-arg APP_VERSION="$(node scripts/print-application-version.mjs)" .
+```
+
+CI fetches release tags and history before resolving this value. Release images
+continue to embed their exact release tag. The version is fixed at build time.
+
+See [compatibility](compatibility.md) and the
+[maintainer release guide](releasing.md). Release deployments should pin a
+version or digest instead of using the moving `main` tag.

@@ -13,7 +13,10 @@ nav = [
     { "Installation and configuration" = "setup.md" },
     { "Server compatibility" = "compatibility.md" },
   ] },
+  { "Use the frontend" = [{ "Browser guide" = "user-guide.md" }] },
   { "Deploy and operate" = [
+    { "Configuration" = "configuration.md" },
+    { "Helm and OKD deployment" = "deployment.md" },
     { "Compose quick start" = "quickstart-compose.md" },
     { "Observability" = "observability.md" },
     { "Chat webhooks" = "webhooks.md" },
@@ -21,6 +24,8 @@ nav = [
     { "Performance budgets" = "performance-budgets.md" },
   ] },
   { "Contributing" = [
+    { "Compatibility evidence" = "compatibility-evidence.md" },
+    { "Architecture" = "architecture.md" },
     { "Development setup" = "development.md" },
     { "Local sandbox" = "local-sandbox.md" },
     { "Sandbox design" = "local-sandbox-design.md" },
