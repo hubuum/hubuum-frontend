@@ -1031,6 +1031,7 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 			/>
 
 			<ResourceActivityPanel
+				resourceName={classData.name}
 				scope={{ type: "class", classId }}
 				title="Class audit and history"
 			/>

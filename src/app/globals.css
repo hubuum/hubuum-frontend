@@ -4446,6 +4446,28 @@ table {
 	color: var(--ink);
 }
 
+.audit-match-control {
+	flex-wrap: wrap;
+	max-width: 100%;
+	min-width: 0;
+	margin: 0;
+}
+
+.history-name-groups {
+	display: grid;
+	gap: 0.6rem;
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.history-name-groups li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem;
+}
+
 .relation-create-grid {
 	display: grid;
 	gap: 0.8rem;
@@ -8913,6 +8935,10 @@ button.audit-drilldown-button {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.audit-entity-cell button.audit-drilldown-button {
+	margin-block: 0;
 }
 
 button.audit-drilldown-button:hover,

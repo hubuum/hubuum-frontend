@@ -224,6 +224,345 @@ test.describe("resource history", () => {
 		await page.waitForURL("**/app");
 	});
 
+	test("live resource audit names span deletion, recreation and renames through the BFF", async ({
+		page,
+	}, testInfo) => {
+		const api = "/_hubuum-bff/hubuum/api/v1";
+		const headers = { Origin: new URL(page.url()).origin };
+		const suffix = randomUUID();
+		const name = `name-history-${suffix}`;
+		const groupsResponse = await page.request.get(
+			`${api}/iam/groups?limit=1&include_total=false`,
+		);
+		expect(groupsResponse.status()).toBe(200);
+		const groups: { id: number }[] = await groupsResponse.json();
+		const collectionResponse = await page.request.post(`${api}/collections`, {
+			headers,
+			data: { name, description: "Name history test", group_id: groups[0].id },
+		});
+		expect(collectionResponse.status()).toBe(201);
+		const collection: { id: number } = await collectionResponse.json();
+		let classId: number | undefined;
+		const liveIds = new Set<number>();
+		try {
+			const classResponse = await page.request.post(`${api}/classes`, {
+				headers,
+				data: {
+					name,
+					description: "Name history test",
+					collection_id: collection.id,
+					validate_schema: false,
+				},
+			});
+			expect(classResponse.status()).toBe(201);
+			classId = ((await classResponse.json()) as { id: number }).id;
+			const create = async () => {
+				const response = await page.request.post(
+					`/_hubuum-bff/classes/${classId}/objects`,
+					{
+						headers,
+						data: {
+							name,
+							description: "Name history test",
+							collection_id: collection.id,
+							hubuum_class_id: classId,
+							data: {},
+						},
+					},
+				);
+				expect(response.status()).toBe(201);
+				const object: { id: number } = await response.json();
+				liveIds.add(object.id);
+				return object.id;
+			};
+			const deletedId = await create();
+			expect(
+				(
+					await page.request.delete(`${api}/classes/${classId}/${deletedId}`, {
+						headers,
+					})
+				).status(),
+			).toBe(204);
+			liveIds.delete(deletedId);
+			const renamedId = await create();
+			expect(
+				(
+					await page.request.patch(`${api}/classes/${classId}/${renamedId}`, {
+						headers,
+						data: { name: `${name}-renamed` },
+					})
+				).status(),
+			).toBe(200);
+			const currentId = await create();
+			await page.goto(`/objects/${classId}/${currentId}`);
+			const activity = page.locator("#resource-activity");
+			const rows = activity.getByRole("row", {
+				name: /^View details for audit event/,
+			});
+			await expect(rows).toHaveCount(1);
+			await activity
+				.getByRole("button", { name: "Recorded name", exact: true })
+				.click();
+			await expect(rows).toHaveCount(4);
+			await expect(
+				rows.filter({ hasText: `object #${deletedId}` }),
+			).toHaveCount(2);
+			await expect(rows.filter({ hasText: `${name}-renamed` })).toHaveCount(0);
+			await activity
+				.getByRole("link", { name: "Browse history", exact: true })
+				.click();
+			const matches = page.getByRole("list", { name: "Matching history IDs" });
+			await expect(matches.getByRole("listitem")).toHaveCount(3);
+			await page.screenshot({
+				path: testInfo.outputPath("name-history-groups.png"),
+				fullPage: true,
+			});
+			await matches
+				.getByRole("link", {
+					name: `Object #${deletedId} · Class #${classId}`,
+					exact: true,
+				})
+				.click();
+			await expect(page.getByText(/Deletion marker/)).toBeVisible();
+			await expect(
+				page.getByRole("button", { name: "Restore to live…" }),
+			).toHaveCount(0);
+			await page.goto(
+				`/audit?${new URLSearchParams({ entityMatch: "name", entityName: name, entityType: "object", occurredAfter: "2000-01-01", occurredBefore: "2099-01-01" })}`,
+			);
+			await expect(
+				page.getByRole("row", { name: /^View details for event/ }),
+			).toHaveCount(4);
+		} finally {
+			for (const id of liveIds)
+				await page.request.delete(`${api}/classes/${classId}/${id}`, {
+					headers,
+				});
+			if (classId)
+				await page.request.delete(`${api}/classes/${classId}`, { headers });
+			await page.request.delete(`${api}/collections/${collection.id}`, {
+				headers,
+			});
+		}
+	});
+
+	test("name discovery paginates grouped IDs and resets comparisons before restoring the selected ID", async ({
+		page,
+	}) => {
+		const original = await prepare(page);
+		const replacement = {
+			...base,
+			id: 27,
+			hubuum_class_id: 8,
+			revision: 9,
+			data: { network: { mtu: 7777 }, stable: true },
+		};
+		const replacementHistory = records.map((record) => ({
+			...record,
+			id: 27,
+			hubuum_class_id: 8,
+			history_id: record.history_id + 100,
+		}));
+		const writes: string[] = [];
+		await page.route(/\/api\/v1\/classes\/8\/27(?:\/|\?|$)/, async (route) => {
+			const url = new URL(route.request().url());
+			if (url.pathname.endsWith("/history"))
+				return route.fulfill({ json: replacementHistory });
+			if (route.request().method() === "PATCH") writes.push(url.pathname);
+			return route.fulfill({
+				json: replacement,
+				headers: { ETag: '"object:27:9"' },
+			});
+		});
+		const event = (id: number, entityId: number, classId?: number) => ({
+			id,
+			event_id: `event-${id}`,
+			entity_type: "object",
+			entity_id: entityId,
+			entity_name: base.name,
+			action: "deleted",
+			actor_kind: "user",
+			occurred_at: instants[1],
+			summary: "Deleted",
+			provenance: { actor: {} },
+			metadata: {},
+			schema_version: 1,
+			before: classId ? { hubuum_class_id: classId } : undefined,
+		});
+		const requests: Record<string, unknown>[] = [];
+		await page.route("**/_hubuum-bff/hubuum/api/v1/search", async (route) => {
+			const body = route.request().postDataJSON();
+			requests.push(body);
+			await route.fulfill({
+				json: {
+					kind: "audit_event",
+					results: (body.cursor
+						? [event(2, 27, 8), event(1, 57)]
+						: [event(4, 12, 3), event(3, 27)]
+					).map((resource) => ({ kind: "audit_event", resource })),
+					next: body.cursor ? null : "older",
+					total: null,
+				},
+			});
+		});
+		await selectHistorical(page);
+		await page.getByRole("button", { name: "Pin as baseline" }).click();
+		await page.getByLabel("Compare with").selectOption("live");
+		await expect(
+			page.getByText("Live · revision 4", { exact: true }),
+		).toBeVisible();
+		await page
+			.getByRole("button", { name: "Recorded name", exact: true })
+			.click();
+		const groups = page.getByRole("list", { name: "Matching history IDs" });
+		await expect(
+			groups.getByText("Object #27 · Class ID unavailable in loaded events"),
+		).toBeVisible();
+		await page
+			.getByRole("button", { name: "Load more matching events" })
+			.click();
+		await expect(groups.getByRole("listitem")).toHaveCount(3);
+		await expect(groups.getByText("2 matching events loaded")).toBeVisible();
+		expect(requests[1]).toMatchObject({
+			cursor: "older",
+			include_total: false,
+		});
+		expect(JSON.stringify(requests[1])).not.toContain('"entity_id"');
+		await groups
+			.getByRole("link", { name: "Object #27 · Class #8", exact: true })
+			.click();
+		await expect(page).toHaveURL(/\/objects\/8\/27\/history\?/);
+		await expectSelected(page, 203);
+		expect(new URL(page.url()).searchParams.get("historyName")).toBe(base.name);
+		expect(new URL(page.url()).searchParams.has("pin")).toBe(false);
+		await expect(page.getByLabel("Compare with")).toHaveValue("previous");
+		await page.getByLabel("Compare with").selectOption("live");
+		await expect(
+			page.getByText("Live · revision 9", { exact: true }),
+		).toBeVisible();
+		await page.getByRole("button", { name: "Restore to live…" }).click();
+		const dialog = page.getByRole("dialog");
+		await expect(dialog).toContainText("Restore target: object #27 · class #8");
+		await dialog
+			.getByRole("checkbox", { name: "Entire data document" })
+			.check();
+		await dialog.getByRole("button", { name: /Review \d+ changes/ }).click();
+		await dialog
+			.getByRole("button", { name: "Restore entire data document to live" })
+			.click();
+		await expect(page.getByText(/Historical values restored/)).toBeVisible();
+		expect(writes).toEqual(["/_hubuum-bff/hubuum/api/v1/classes/8/27/data"]);
+		expect(original.writes).toEqual([]);
+		await page.reload();
+		await expectSelected(page, 203);
+		await expect(
+			page.getByRole("button", { name: "Recorded name", exact: true }),
+		).toHaveAttribute("aria-pressed", "true");
+		await page.setViewportSize({ width: 320, height: 844 });
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth <= innerWidth,
+			),
+		).toBe(true);
+		expect(
+			(
+				await new AxeBuilder({ page })
+					.include('section[aria-label="History scope"]')
+					.analyze()
+			).violations,
+		).toEqual([]);
+	});
+
+	test("audit name filters preserve scope, reset cursors and drill back into an ID", async ({
+		page,
+	}) => {
+		const item = {
+			id: 1,
+			event_id: "named-event",
+			entity_type: "object",
+			entity_id: 27,
+			entity_name: "retired-server",
+			collection_id: 4,
+			action: "deleted",
+			actor_kind: "user",
+			occurred_at: instants[1],
+			summary: "Deleted object",
+			provenance: { actor: {} },
+			metadata: {},
+			schema_version: 1,
+		};
+		await page.route("**/_hubuum-bff/hubuum/api/v1/events?**", (route) =>
+			route.fulfill({ json: [item] }),
+		);
+		await page.route(/\/api\/v1\/collections(?:\?|$)/, (route) =>
+			route.fulfill({ json: [{ id: 4, name: "Production" }] }),
+		);
+		const searches: Record<string, unknown>[] = [];
+		await page.route("**/_hubuum-bff/hubuum/api/v1/search", (route) => {
+			const request = route.request().postDataJSON();
+			searches.push(request);
+			return route.fulfill({
+				json: {
+					kind: "audit_event",
+					results: [{ kind: "audit_event", resource: item }],
+					next: request.cursor ? null : "next",
+					total: 2,
+				},
+			});
+		});
+		await page.goto(
+			"/audit?entityType=object&entityId=12&collectionId=4&action=deleted&cursor=stale",
+		);
+		await page
+			.getByRole("button", { name: "Recorded name", exact: true })
+			.click();
+		await page.getByLabel("Exact recorded name").fill("retired-server");
+		await page.getByRole("button", { name: "Apply filters" }).click();
+		await expect(
+			page.getByRole("button", {
+				name: "Show events recorded as retired-server",
+			}),
+		).toBeVisible();
+		const nameBounds = await page
+			.getByRole("button", { name: "Show events recorded as retired-server" })
+			.boundingBox();
+		const idBounds = await page
+			.getByRole("button", { name: /Drill down to entity/ })
+			.boundingBox();
+		if (!nameBounds || !idBounds)
+			throw new Error("Both entity drilldowns must be visible");
+		expect(nameBounds.y + nameBounds.height).toBeLessThanOrEqual(idBounds.y);
+		await expect.poll(() => searches.length).toBe(1);
+		expect(new URL(page.url()).searchParams.has("cursor")).toBe(false);
+		const request = JSON.stringify(searches[0]);
+		expect(request).toContain('"entity_name"');
+		expect(request).toContain('"collection_id"');
+		expect(request).toContain('"action"');
+		expect(request).not.toContain('"entity_id"');
+		await page.getByRole("button", { name: "Next page", exact: true }).click();
+		await expect.poll(() => searches.at(-1)?.cursor).toBe("next");
+		await page.reload();
+		await expect(page.getByLabel("Exact recorded name")).toHaveValue(
+			"retired-server",
+		);
+		await page.getByRole("button", { name: /Drill down to entity/ }).click();
+		await expect(page.getByLabel("Entity ID", { exact: true })).toHaveValue(
+			"27",
+		);
+		await expect(
+			page.getByRole("button", { name: "Entity ID", exact: true }),
+		).toHaveAttribute("aria-pressed", "true");
+		await page.goBack();
+		await expect(page.getByLabel("Exact recorded name")).toHaveValue(
+			"retired-server",
+		);
+		await page.setViewportSize({ width: 320, height: 844 });
+		expect(
+			(await new AxeBuilder({ page }).include(".audit-filter-card").analyze())
+				.violations,
+		).toEqual([]);
+	});
+
 	test("quiet ribbon keeps comparison controls above the timestamp-led snapshot", async ({
 		page,
 	}) => {

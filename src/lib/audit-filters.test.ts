@@ -71,6 +71,7 @@ describe("audit filters", () => {
 			actor_user_id: 23,
 			collection_id: 8,
 			entity_id: undefined,
+			entity_name: undefined,
 			entity_type: "object",
 			initiator_user_id: undefined,
 			limit: 50,

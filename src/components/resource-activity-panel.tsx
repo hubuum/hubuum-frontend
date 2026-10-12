@@ -2,26 +2,29 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import { AuditMatchControl } from "@/components/audit-match-control";
 import { EventDetailsModal } from "@/components/event-details-modal";
 import { HistoryDetailsModal } from "@/components/history-details-modal";
 import { JsonViewer } from "@/components/json-viewer";
 import { TableExportMenu } from "@/components/table-export-menu";
 import {
+	type EventRecord,
 	fetchResourceEventsPage,
 	fetchResourceHistoryAsOf,
 	fetchResourceHistoryPage,
-	type EventRecord,
 	type HistoryRecord,
 	type ResourceEventScope,
 } from "@/lib/api/events";
 import { formatEventActor, formatEventInitiator } from "@/lib/event-provenance";
-import { resourceHistoryHref } from "@/lib/resource-history";
+import { namedHistoryHref, resourceHistoryHref } from "@/lib/resource-history";
+import { updateViewQuery } from "@/lib/view-query";
 
 type ResourceActivityPanelProps = {
 	scope: ResourceEventScope;
 	title: string;
+	resourceName: string;
 };
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -90,6 +93,7 @@ function getSnapshotValue(record: HistoryRecord): unknown {
 export function ResourceActivityPanel({
 	scope,
 	title,
+	resourceName,
 }: ResourceActivityPanelProps) {
 	const router = useRouter();
 	function openHistory(record: HistoryRecord) {
@@ -100,7 +104,13 @@ export function ResourceActivityPanel({
 			);
 	}
 	const stableScopeKey = useMemo(() => scopeKey(scope), [scope]);
-	const [eventCursor, setEventCursor] = useState("");
+	const search = useSearchParams();
+	const eventMatch = search.get("auditMatch") === "name" ? "name" : "id";
+	const eventName = search.get("auditName") ?? resourceName;
+	const eventCursor = search.get("auditCursor") ?? "";
+	function setEventCursor(cursor: string) {
+		updateViewQuery({ auditCursor: cursor || null }, "push");
+	}
 	const [historyCursor, setHistoryCursor] = useState("");
 	const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
 	const [selectedHistory, setSelectedHistory] = useState<HistoryRecord | null>(
@@ -110,9 +120,16 @@ export function ResourceActivityPanel({
 	const [asOfTimestamp, setAsOfTimestamp] = useState("");
 
 	const eventsQuery = useQuery({
-		queryKey: ["resource-events", stableScopeKey, eventCursor],
+		queryKey: [
+			"resource-events",
+			stableScopeKey,
+			eventMatch,
+			eventName,
+			eventCursor,
+		],
 		queryFn: () =>
 			fetchResourceEventsPage(scope, {
+				entity_name: eventMatch === "name" ? eventName : undefined,
 				cursor: eventCursor || undefined,
 				limit: 20,
 				sort: "-occurred_at,-id",
@@ -155,10 +172,16 @@ export function ResourceActivityPanel({
 		? events.findIndex((event) => event.id === selectedEvent.id)
 		: -1;
 	const eventExportView = {
-		id: `${stableScopeKey}-audit-events`,
+		id: `${stableScopeKey}-audit-events-${eventMatch}`,
 		fileName: `${stableScopeKey}-audit-events`,
 		sheetName: "Audit events",
 		columns: [
+			{
+				key: "entity",
+				label: "Recorded entity",
+				getValue: (event: EventRecord) =>
+					`${event.entity_name ?? ""} · ${event.entity_type} #${event.entity_id ?? "n/a"}`,
+			},
 			{
 				key: "time",
 				label: "Time",
@@ -302,9 +325,31 @@ export function ResourceActivityPanel({
 					<div className="panel-header">
 						<div>
 							<strong>Recent audit events</strong>
+							<AuditMatchControl
+								mode={eventMatch}
+								nameDisabled={!resourceName}
+								onChange={(mode) => {
+									setSelectedEvent(null);
+									updateViewQuery(
+										{
+											auditMatch: mode === "name" ? mode : null,
+											auditName: mode === "name" ? eventName : null,
+											auditCursor: null,
+										},
+										"push",
+									);
+								}}
+							/>
+							{eventMatch === "name" ? (
+								<p className="muted">
+									Events recorded as “{eventName}” across IDs and all visible
+									collections. Includes deleted and recreated entities; events
+									under other names are excluded.
+								</p>
+							) : null}
 							<p className="muted">
 								{eventsQuery.data?.totalCount == null
-									? "Newest visible events for this resource."
+									? "Newest visible matching events."
 									: `${eventsQuery.data.totalCount} visible matching events.`}
 							</p>
 						</div>
@@ -359,6 +404,7 @@ export function ResourceActivityPanel({
 								<thead>
 									<tr>
 										<th>Time</th>
+										<th>Recorded entity</th>
 										<th>Action</th>
 										<th>Actor</th>
 										<th>Initiator</th>
@@ -386,6 +432,10 @@ export function ResourceActivityPanel({
 										>
 											<td>{formatTimestamp(event.occurred_at)}</td>
 											<td>
+												{event.entity_name ?? "Unnamed"} · {event.entity_type} #
+												{event.entity_id ?? "n/a"}
+											</td>
+											<td>
 												{event.entity_type}.{event.action}
 											</td>
 											<td>{formatEventActor(event)}</td>
@@ -405,7 +455,14 @@ export function ResourceActivityPanel({
 						<div>
 							<strong>Version history</strong>
 							{scope.type !== "collection" ? (
-								<Link className="link-chip" href={resourceHistoryHref(scope)}>
+								<Link
+									className="link-chip"
+									href={
+										eventMatch === "name"
+											? namedHistoryHref(scope, eventName)
+											: resourceHistoryHref(scope)
+									}
+								>
 									Browse history
 								</Link>
 							) : null}
