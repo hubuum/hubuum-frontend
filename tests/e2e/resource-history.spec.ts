@@ -47,6 +47,7 @@ async function prepare(
 		classHistory?: boolean;
 		missingClassEtag?: boolean;
 		missingCollection?: boolean;
+		collectionReadDenied?: boolean;
 		classRestoreStatus?: number;
 		many?: boolean;
 	} = {},
@@ -87,14 +88,22 @@ async function prepare(
 		? source.map(({ data: _data, hubuum_class_id: _classId, ...record }) => ({
 				...record,
 				id: 3,
-				collection_id: options.missingCollection ? 99 : 4,
+				collection_id:
+					options.missingCollection || options.collectionReadDenied ? 99 : 4,
 				validate_schema: true,
 				json_schema: { type: "object" },
 			}))
 		: source.map((record) => structuredClone(record));
-	if (options.missingCollection)
+	if (options.missingCollection || options.collectionReadDenied)
 		await page.route("**/api/v1/collections/99", (route) =>
-			route.fulfill({ status: 404, json: { message: "Deleted collection" } }),
+			route.fulfill({
+				status: options.missingCollection ? 404 : 403,
+				json: {
+					message: options.missingCollection
+						? "Deleted collection"
+						: "ReadCollection denied",
+				},
+			}),
 		);
 	if (options.deleted) history[0] = { ...history[0], op: "DELETE" };
 	await page.route(`**${prefix}**`, async (route) => {
@@ -770,6 +779,48 @@ test.describe("resource history", () => {
 		await expectSelected(page, 102);
 	});
 
+	test("class restoration can move to a collection without ReadCollection", async ({
+		page,
+	}) => {
+		const state = await prepare(page, {
+			classHistory: true,
+			collectionReadDenied: true,
+		});
+		await page.goto(
+			`/classes/3/history?at=${encodeURIComponent(instants[1])}&version=102`,
+		);
+		await page.getByRole("button", { name: "Restore to live…" }).click();
+		const dialog = page.getByRole("dialog", {
+			name: "Restore historical class fields",
+		});
+		await dialog.getByRole("checkbox", { name: "name", exact: true }).check();
+		await dialog
+			.getByRole("checkbox", { name: "collection_id", exact: true })
+			.check();
+		await dialog
+			.getByRole("button", { name: "Review selected fields" })
+			.click();
+		await expect(
+			dialog.getByRole("heading", { name: "Review changes" }),
+		).toBeFocused();
+		await expect(dialog).toContainText("collection_id");
+		await expect(dialog).toContainText("99");
+		expect(state.writes).toHaveLength(0);
+		await dialog
+			.getByRole("button", { name: "Restore 2 selected class fields" })
+			.click();
+		await expect(
+			page.getByText(
+				/Historical class fields restored as a new audited update/,
+			),
+		).toBeVisible();
+		expect(state.writes).toEqual([
+			{ etag: '"class:3:4"', body: { name: base.name, collection_id: 99 } },
+		]);
+		expect(state.liveClass.collection_id).toBe(99);
+		await expectSelected(page, 102);
+	});
+
 	for (const status of [403, 404, 412, 422]) {
 		test(`class restoration requires a fresh review after ${status}`, async ({
 			page,
@@ -777,6 +828,7 @@ test.describe("resource history", () => {
 			const state = await prepare(page, {
 				classHistory: true,
 				classRestoreStatus: status,
+				collectionReadDenied: status === 403,
 			});
 			const before = structuredClone(state.liveClass);
 			await page.goto("/classes/3/history");
@@ -785,17 +837,20 @@ test.describe("resource history", () => {
 				name: "Restore historical class fields",
 			});
 			await dialog.getByRole("checkbox", { name: "name", exact: true }).check();
+			if (status === 403)
+				await dialog
+					.getByRole("checkbox", { name: "collection_id", exact: true })
+					.check();
+			const confirmLabel = `Restore ${status === 403 ? 2 : 1} selected class fields`;
 			await dialog
 				.getByRole("button", { name: "Review selected fields" })
 				.click();
-			await dialog
-				.getByRole("button", { name: "Restore 1 selected class fields" })
-				.click();
+			await dialog.getByRole("button", { name: confirmLabel }).click();
 			await expect(dialog.getByRole("alert")).toContainText(
 				"Fetch a fresh review",
 			);
 			await expect(
-				dialog.getByRole("button", { name: "Restore 1 selected class fields" }),
+				dialog.getByRole("button", { name: confirmLabel }),
 			).toHaveCount(0);
 			expect(state.writes).toHaveLength(1);
 			expect(state.liveClass).toEqual(before);

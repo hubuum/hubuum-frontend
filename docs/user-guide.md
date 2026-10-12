@@ -342,12 +342,13 @@ deleted objects, object metadata, relationships, or computed definitions.
 
 On classes, **Restore to live** supports selected names, descriptions, and
 collection assignments. A fresh live read and explicit review show the current
-values and proposed result. Collection moves check that the historical collection
-is available. The server checks current update and destination permissions when
-applying all selected fields together, using a required strong ETag. Missing
-validators or collections block review; conflicts, permission errors, and other
-failures require a fresh review and never retry automatically. Matching values
-perform no write. The source snapshot remains selected after success.
+values and proposed result. Collection moves check for a missing historical
+collection, but do not require permission to read its metadata. If that read is
+denied, review can continue; the server checks current update and destination
+permissions when applying all selected fields together, using a required strong
+ETag. Missing validators or collections block review; conflicts, permission errors,
+and other failures require a fresh review and never retry automatically. Matching
+values perform no write. The source snapshot remains selected after success.
 
 Schema and validation restoration remain disabled: populated classes require
 staged analysis and activation, which cannot be combined atomically with metadata

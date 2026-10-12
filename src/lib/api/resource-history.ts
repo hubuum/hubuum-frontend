@@ -114,7 +114,9 @@ export async function reviewClassRestore(
 				cache: "no-store",
 			},
 		);
-		if (target.status !== 200)
+		// ReadCollection is separate from the CreateClass permission needed to
+		// move here. Let PATCH check move access when collection reads are denied.
+		if (![200, 403].includes(target.status))
 			throw new Error(
 				"The historical collection is deleted or inaccessible. No fields will be restored.",
 			);

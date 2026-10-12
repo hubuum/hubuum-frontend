@@ -68,13 +68,11 @@ describe("class history restoration", () => {
 		).toThrow("source snapshot");
 	});
 	it("captures a fresh class and validator without requiring grant provenance", async () => {
-		const fetch = vi
-			.fn()
-			.mockResolvedValue(
-				new Response(JSON.stringify(live), {
-					headers: { etag: reviewed.etag },
-				}),
-			);
+		const fetch = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify(live), {
+				headers: { etag: reviewed.etag },
+			}),
+		);
 		vi.stubGlobal("fetch", fetch);
 		expect(
 			await fetchHistoryLiveResource({ type: "class", classId: 3 }),
@@ -99,19 +97,47 @@ describe("class history restoration", () => {
 			expect(fetch).not.toHaveBeenCalled();
 		},
 	);
-	it("checks the selected destination and blocks the whole review when unavailable", async () => {
-		const fetch = vi
-			.fn()
-			.mockResolvedValue(new Response("{}", { status: 404 }));
-		vi.stubGlobal("fetch", fetch);
-		await expect(
-			reviewClassRestore(3, reviewed, source, ["name", "collection_id"]),
-		).rejects.toThrow("No fields will be restored");
-		expect(fetch.mock.calls[0][0]).toBe(
-			"/_hubuum-bff/hubuum/api/v1/collections/5",
-		);
-		expect(fetch).toHaveBeenCalledTimes(1);
-	});
+	it.each([401, 404, 500])(
+		"blocks review on destination lookup errors other than read denial (%i)",
+		async (status) => {
+			const fetch = vi.fn().mockResolvedValue(new Response("{}", { status }));
+			vi.stubGlobal("fetch", fetch);
+			await expect(
+				reviewClassRestore(3, reviewed, source, ["name", "collection_id"]),
+			).rejects.toThrow("No fields will be restored");
+			expect(fetch.mock.calls[0][0]).toBe(
+				"/_hubuum-bff/hubuum/api/v1/collections/5",
+			);
+			expect(fetch).toHaveBeenCalledTimes(1);
+		},
+	);
+	it.each([200, 403])(
+		"allows review without ReadCollection and leaves write authorization to PATCH (%i)",
+		async (writeStatus) => {
+			const fetch = vi
+				.fn()
+				.mockResolvedValueOnce(
+					new Response('{"message":"ReadCollection denied"}', { status: 403 }),
+				)
+				.mockResolvedValueOnce(
+					new Response(JSON.stringify(live), { status: writeStatus }),
+				);
+			vi.stubGlobal("fetch", fetch);
+			const fields = ["name", "collection_id"];
+			const plan = await reviewClassRestore(3, reviewed, source, fields);
+			expect(plan.patch).toEqual({ name: "Historical", collection_id: 5 });
+			expect(fetch).toHaveBeenCalledTimes(1);
+			const restore = restoreClassSnapshot(3, reviewed, source, fields);
+			if (writeStatus === 200) await expect(restore).resolves.toBeUndefined();
+			else await expect(restore).rejects.toThrow();
+			expect(fetch).toHaveBeenCalledTimes(2);
+			const [url, request] = fetch.mock.calls[1];
+			expect(url).toBe("/_hubuum-bff/hubuum/api/v1/classes/3");
+			expect(request.method).toBe("PATCH");
+			expect(request.headers["If-Match"]).toBe(reviewed.etag);
+			expect(JSON.parse(request.body)).toEqual(plan.patch);
+		},
+	);
 	it("checks available destinations without making a write during review", async () => {
 		const fetch = vi.fn().mockResolvedValue(new Response('{"id":5}'));
 		vi.stubGlobal("fetch", fetch);
