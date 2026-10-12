@@ -683,11 +683,13 @@ test.describe("resource history", () => {
 	}) => {
 		const state = await prepare(page);
 		await page.goto(objectPath);
+		await expectSelected(page, 103);
 		await page.getByRole("button", { name: "Jump to date" }).click();
-		await page
+		const dialog = page.getByRole("dialog", { name: "Jump to date" });
+		await dialog
 			.getByLabel("Date and time (UTC)")
 			.fill("2026-09-25T12:00:00.123");
-		await page.getByRole("button", { name: "View at time" }).click();
+		await dialog.getByRole("button", { name: "View at time" }).click();
 		await expectSelected(page, 102);
 		expect(state.asOf).toContain("2026-09-25T12:00:00.123Z");
 		await page.goto(
@@ -711,7 +713,9 @@ test.describe("resource history", () => {
 		).toBeVisible();
 		await expect(
 			page.getByText(/Class definition history does not include/),
-		).toBeVisible();
+		).toContainText(
+			"Class restoration supports names, descriptions, and collection assignments.",
+		);
 		await expect(
 			page.getByRole("button", { name: "Restore to live…" }),
 		).toBeVisible();
@@ -895,15 +899,18 @@ test.describe("resource history", () => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.emulateMedia({ reducedMotion: "reduce" });
 		await page.goto("/classes/3/history");
+		await expectSelected(page, 103);
 		for (const theme of ["light", "dark"]) {
 			await page.getByRole("button", { name: /Open account menu for/ }).click();
 			await page
+				.getByRole("region", { name: "User menu" })
 				.getByRole("button", {
 					name: theme === "dark" ? "Dark" : "Light",
 					exact: true,
 				})
 				.click();
 			await page.keyboard.press("Escape");
+			await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
 			const trigger = page.getByRole("button", { name: "Restore to live…" });
 			await trigger.click();
 			const dialog = page.getByRole("dialog", {

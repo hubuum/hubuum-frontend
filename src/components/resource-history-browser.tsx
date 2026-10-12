@@ -534,7 +534,7 @@ export function ResourceHistoryBrowser({
 					<p className={styles.note}>
 						Only authorized snapshots are shown; history may be incomplete.{" "}
 						{scope.type === "class"
-							? "Class definition history does not include the historical object population. Class restoration is not yet available."
+							? "Class definition history does not include the historical object population. Class restoration supports names, descriptions, and collection assignments."
 							: "Historical class definitions, relationships, and computed values are unavailable here."}{" "}
 						Collection and class IDs come from the snapshot; current labels are
 						not substituted.
