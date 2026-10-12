@@ -3,6 +3,11 @@ import type {
 	HistoryRecord,
 	ResourceEventScope,
 } from "@/lib/api/events";
+import type {
+	HubuumClass,
+	HubuumClassHistory,
+	UpdateHubuumClass,
+} from "@/lib/api/generated/models";
 import {
 	buildObjectDataPatchPlan,
 	buildWholeObjectDataReplacePatch,
@@ -10,6 +15,47 @@ import {
 } from "@/lib/api/object-data-patch";
 
 export type HistoryScope = Exclude<ResourceEventScope, { type: "collection" }>;
+
+export const CLASS_RESTORE_FIELDS = [
+	"name",
+	"description",
+	"collection_id",
+] as const;
+
+export function buildClassRestore(
+	live: HubuumClass,
+	source: HubuumClassHistory,
+	selected: readonly string[],
+) {
+	if (live.id !== source.id || isDeletedVersion(source))
+		throw new Error("The source snapshot does not match a restorable class.");
+	if (
+		selected.some(
+			(field) => !CLASS_RESTORE_FIELDS.some((allowed) => allowed === field),
+		)
+	)
+		throw new Error(
+			"Schema and validation restoration require additional server support.",
+		);
+	const patch: UpdateHubuumClass = {};
+	for (const field of CLASS_RESTORE_FIELDS) {
+		if (!selected.includes(field)) continue;
+		if (field === "collection_id") patch.collection_id = source.collection_id;
+		else patch[field] = source[field];
+	}
+	const before = {
+		name: live.name,
+		description: live.description,
+		collection_id: live.collection_id,
+	};
+	const proposed = { ...before, ...patch };
+	return {
+		before,
+		proposed,
+		patch,
+		changes: compareSnapshots(before, proposed),
+	};
+}
 
 export function resourceHref(scope: HistoryScope): string {
 	return scope.type === "object"
@@ -67,7 +113,7 @@ export function eventHistoryHref(
 	return null;
 }
 
-export function isDeletedVersion(record: HistoryRecord): boolean {
+export function isDeletedVersion(record: Pick<HistoryRecord, "op">): boolean {
 	return /^(d|delete|deleted)$/i.test(record.op);
 }
 

@@ -2,14 +2,25 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	getApiV1ClassesByClassId,
 	getApiV1ClassesByClassIdByObjectId,
+	getApiV1CollectionsByCollectionId,
+	patchApiV1ClassesByClassId,
 	patchApiV1ClassesByClassIdByObjectIdData,
 } from "@/lib/api/generated/client";
-import type { HubuumObject } from "@/lib/api/generated/models";
-import { buildObjectRestore, type HistoryScope } from "@/lib/resource-history";
+import type {
+	HubuumClass,
+	HubuumClassHistory,
+	HubuumObject,
+} from "@/lib/api/generated/models";
+import {
+	buildClassRestore,
+	buildObjectRestore,
+	type HistoryScope,
+} from "@/lib/resource-history";
 
 export type LiveHistoryResource = {
 	fields: Record<string, unknown>;
 	object?: HubuumObject;
+	classDefinition?: HubuumClass;
 	etag: string | null;
 	revision: number;
 };
@@ -32,6 +43,7 @@ export async function fetchHistoryLiveResource(
 		const { name, description, collection_id, validate_schema, json_schema } =
 			response.data;
 		return {
+			classDefinition: response.data,
 			fields: {
 				name,
 				description,
@@ -64,6 +76,79 @@ export async function fetchHistoryLiveResource(
 		etag: response.headers.get("ETag"),
 		revision: object.revision,
 	};
+}
+
+function classRestorePlan(
+	classId: number,
+	reviewed: LiveHistoryResource,
+	source: HubuumClassHistory,
+	fields: readonly string[],
+) {
+	if (!reviewed.classDefinition || reviewed.classDefinition.id !== classId)
+		throw new Error("The reviewed class does not match the restore target.");
+	if (!reviewed.etag || !/^"[^"\r\n]+"$/.test(reviewed.etag))
+		throw new Error(
+			"This server did not provide a strong revision validator. Class restoration is unavailable.",
+		);
+	return {
+		...buildClassRestore(reviewed.classDefinition, source, fields),
+		etag: reviewed.etag,
+	};
+}
+
+export async function reviewClassRestore(
+	classId: number,
+	reviewed: LiveHistoryResource,
+	source: HubuumClassHistory,
+	fields: readonly string[],
+) {
+	const plan = classRestorePlan(classId, reviewed, source, fields);
+	if (
+		plan.patch.collection_id != null &&
+		plan.patch.collection_id !== reviewed.classDefinition?.collection_id
+	) {
+		const target = await getApiV1CollectionsByCollectionId(
+			plan.patch.collection_id,
+			{
+				credentials: "include",
+				cache: "no-store",
+			},
+		);
+		// ReadCollection is separate from the CreateClass permission needed to
+		// move here. Let PATCH check move access when collection reads are denied.
+		if (![200, 403].includes(target.status))
+			throw new Error(
+				"The historical collection is deleted or inaccessible. No fields will be restored.",
+			);
+	}
+	return plan;
+}
+
+export async function restoreClassSnapshot(
+	classId: number,
+	reviewed: LiveHistoryResource,
+	source: HubuumClassHistory,
+	fields: readonly string[],
+): Promise<void> {
+	const plan = classRestorePlan(classId, reviewed, source, fields);
+	if (!plan.changes.length) return;
+	// The conditional PATCH checks current update and destination permissions on
+	// every permission backend; optional collection grant provenance cannot.
+	const response = await patchApiV1ClassesByClassId(classId, plan.patch, {
+		credentials: "include",
+		headers: { "If-Match": plan.etag },
+	});
+	if (response.status === 412)
+		throw new Error(
+			"The class changed after review. Nothing was restored. Refresh and review again.",
+		);
+	if (response.status !== 200)
+		throw new Error(
+			getApiErrorMessage(
+				response.data,
+				"Class restoration failed. Refresh and review again.",
+			),
+		);
 }
 
 export async function restoreObjectSnapshot(
