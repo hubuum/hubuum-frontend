@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { ClassHistoryRestore } from "@/components/class-history-restore";
 import { HistoryComparison } from "@/components/history-comparison";
+import { HistoryContext } from "@/components/history-context";
 import { HistoryNameBrowser } from "@/components/history-name-browser";
 import {
 	HistoryStackNavigation,
@@ -538,10 +539,13 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 						Only authorized snapshots are shown; history may be incomplete.{" "}
 						{scope.type === "class"
 							? "Class definition history does not include the historical object population. Class restoration supports names, descriptions, and collection assignments."
-							: "Historical class definitions, relationships, and computed values are unavailable here."}{" "}
+							: "Historical relationships and computed values are unavailable here."}{" "}
 						Collection and class IDs come from the snapshot; current labels are
 						not substituted.
 					</p>
+					{!deleted && "collection_id" in selected ? (
+						<HistoryContext record={selected} at={at || selected.valid_from} />
+					) : null}
 					<details className={styles.provenance}>
 						<summary>Version details and provenance</summary>
 						<dl className="event-detail-grid">

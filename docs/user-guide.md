@@ -340,6 +340,13 @@ history is shown explicitly. Historical views are read-only and do not substitut
 current relationships, computed values, class definitions, or collection labels.
 Class history covers the definition, not its historical object population.
 
+Expand **Historical class and collection context** to load the collection name
+at the selected time and, for objects, the historical class name, schema, and
+validation setting. Lookups use the IDs stored in the snapshot and the exact
+selected timestamp, including dates within a snapshot's effective interval.
+Missing, deleted, inaccessible, or out-of-interval context is labeled unavailable
+without replacing it with live values or blocking browsing and restoration.
+
 Inline highlights and expanded comparisons share **Previous visible**, **Live**,
 and **Pinned version** baselines. Comparison controls and the compact pin action
 sit in a shared ribbon to the left of **Jump to date**, above the snapshot stack.

@@ -523,6 +523,9 @@ test.describe("resource history", () => {
 				name: "Show events recorded as retired-server",
 			}),
 		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: /Drill down to entity/ }),
+		).toBeVisible();
 		const nameBounds = await page
 			.getByRole("button", { name: "Show events recorded as retired-server" })
 			.boundingBox();
@@ -561,6 +564,170 @@ test.describe("resource history", () => {
 			(await new AxeBuilder({ page }).include(".audit-filter-card").analyze())
 				.violations,
 		).toEqual([]);
+	});
+
+	test("historical context uses stored IDs and the selected instant, then follows navigation", async ({
+		page,
+	}) => {
+		await prepare(page);
+		const snapshots = records.map((record) => ({
+			...record,
+			hubuum_class_id: 7,
+			collection_id: 8,
+		}));
+		await page.route(`**${prefix}/12/history?**`, (route) =>
+			route.fulfill({ json: snapshots }),
+		);
+		const requests: string[] = [];
+		await page.route(
+			/\/api\/v1\/(classes\/7|collections\/8)\/history\/as-of\?/,
+			(route) => {
+				const url = new URL(route.request().url());
+				requests.push(url.pathname + url.search);
+				const isClass = url.pathname.includes("/classes/");
+				const later = url.searchParams.get("at") === instants[2];
+				return route.fulfill({
+					json: {
+						id: isClass ? 7 : 8,
+						history_id: later ? 72 : 71,
+						revision: 1,
+						name: `${later ? "Later" : "Historical"} ${isClass ? "class" : "collection"}`,
+						description: "",
+						created_at: instants[0],
+						updated_at: instants[0],
+						op: "UPDATE",
+						valid_from: instants[0],
+						valid_to: null,
+						...(isClass
+							? {
+									collection_id: 8,
+									validate_schema: true,
+									json_schema: {
+										title: later ? "Later schema" : "Historical schema",
+										type: "object",
+									},
+								}
+							: {}),
+					},
+				});
+			},
+		);
+		const at = "2026-09-25T12:00:00.123456Z";
+		await page.goto(`${objectPath}?at=${encodeURIComponent(at)}&version=102`);
+		await expectSelected(page, 102);
+		expect(requests).toHaveLength(0);
+		await page
+			.getByText("Historical class and collection context", { exact: true })
+			.click();
+		const context = page.getByRole("region", {
+			name: "Historical context",
+			exact: true,
+		});
+		await expect(context).toContainText("Historical class (#7)");
+		await expect(context).toContainText("Historical collection (#8)");
+		expect(requests).toHaveLength(2);
+		for (const request of requests)
+			expect(new URL(request, "http://localhost").searchParams.get("at")).toBe(
+				at,
+			);
+		await context
+			.getByText("Class schema at this time", { exact: true })
+			.click();
+		await expect(context).toContainText("Historical schema");
+		await expect(context).toContainText("Enabled");
+		await page.setViewportSize({ width: 390, height: 844 });
+		expect(
+			(
+				await new AxeBuilder({ page })
+					.include('[aria-label="Historical context"]')
+					.analyze()
+			).violations,
+		).toEqual([]);
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth <= window.innerWidth,
+			),
+		).toBe(true);
+		await versionMarker(page, 103).click();
+		await expect(context).toContainText("Later class (#7)");
+		await expect(context).toContainText("Later schema");
+		await expect(context).not.toContainText("Historical schema");
+		await page.goBack();
+		await expect(context).toContainText("Historical schema");
+	});
+
+	test("unavailable historical context does not block object restoration", async ({
+		page,
+	}) => {
+		const state = await prepare(page);
+		await page.route(`**${prefix}/history/as-of?**`, (route) =>
+			route.fulfill({ status: 403, json: { message: "Denied" } }),
+		);
+		await page.route("**/api/v1/collections/4/history/as-of?**", (route) =>
+			route.fulfill({ status: 404, json: { message: "Unavailable" } }),
+		);
+		await selectHistorical(page);
+		await page
+			.getByText("Historical class and collection context", { exact: true })
+			.click();
+		const context = page.getByRole("region", {
+			name: "Historical context",
+			exact: true,
+		});
+		await expect(context).toContainText("Historical class unavailable (#3)");
+		await expect(context).toContainText(
+			"Historical collection unavailable (#4)",
+		);
+		await expect(
+			context.getByText("Class schema at this time", { exact: true }),
+		).toHaveCount(0);
+		await page.getByRole("button", { name: "Restore to live…" }).click();
+		const dialog = page.getByRole("dialog");
+		await dialog
+			.getByRole("checkbox", { name: "Entire data document" })
+			.check();
+		await dialog.getByRole("button", { name: /Review \d+ changes/ }).click();
+		await expect(
+			dialog.getByRole("button", {
+				name: "Restore entire data document to live",
+			}),
+		).toBeEnabled();
+		expect(state.writes).toHaveLength(0);
+	});
+
+	test("class history loads collection context without refetching its own definition", async ({
+		page,
+	}) => {
+		await prepare(page, { classHistory: true });
+		const classLookups: string[] = [];
+		await page.route(`**${prefix}/history/as-of?**`, (route) => {
+			classLookups.push(route.request().url());
+			return route.fulfill({ status: 404, json: {} });
+		});
+		await page.route("**/api/v1/collections/4/history/as-of?**", (route) =>
+			route.fulfill({
+				json: {
+					id: 4,
+					history_id: 41,
+					name: "Historical collection",
+					op: "UPDATE",
+					valid_from: instants[0],
+					valid_to: null,
+				},
+			}),
+		);
+		await page.goto(
+			`/classes/3/history?at=${encodeURIComponent(instants[1])}&version=102`,
+		);
+		await expectSelected(page, 102);
+		classLookups.length = 0;
+		await page
+			.getByText("Historical class and collection context", { exact: true })
+			.click();
+		await expect(
+			page.getByRole("region", { name: "Historical context", exact: true }),
+		).toContainText("Historical collection (#4)");
+		expect(classLookups).toHaveLength(0);
 	});
 
 	test("quiet ribbon keeps comparison controls above the timestamp-led snapshot", async ({

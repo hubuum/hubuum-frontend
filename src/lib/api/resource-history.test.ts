@@ -4,6 +4,7 @@ import {
 	fetchResourceHistoryPage,
 } from "@/lib/api/events";
 import {
+	fetchHistoricalContext,
 	fetchHistoryLiveResource,
 	restoreObjectSnapshot,
 } from "@/lib/api/resource-history";
@@ -23,6 +24,95 @@ const object: HubuumObject = {
 };
 const reviewed = { object, fields: {}, etag: '"object:12:5"', revision: 5 };
 afterEach(() => vi.unstubAllGlobals());
+
+describe("historical class and collection context", () => {
+	const at = "2026-09-24T08:42:13.830219Z";
+	const collection = {
+		id: 4,
+		history_id: 41,
+		name: "Historical collection",
+		op: "UPDATE",
+		valid_from: "2026-09-24T08:42:13.830218Z",
+		valid_to: "2026-09-24T08:42:13.830220Z",
+	};
+	const classSnapshot = {
+		...collection,
+		id: 3,
+		collection_id: 4,
+		validate_schema: true,
+		json_schema: { type: "object" },
+	};
+	it.each([
+		{
+			scope: { type: "class", classId: 3 } as const,
+			record: classSnapshot,
+			path: "classes/3",
+		},
+		{
+			scope: { type: "collection", collectionId: 4 } as const,
+			record: collection,
+			path: "collections/4",
+		},
+	])(
+		"fetches $path at the exact selected time through the BFF",
+		async ({ scope, record, path }) => {
+			const fetch = vi
+				.fn()
+				.mockResolvedValue(new Response(JSON.stringify(record)));
+			vi.stubGlobal("fetch", fetch);
+			expect(await fetchHistoricalContext(scope, at)).toEqual(record);
+			const [url, options] = fetch.mock.calls[0];
+			const request = new URL(url, "http://localhost");
+			expect(request.pathname).toBe(
+				`/_hubuum-bff/hubuum/api/v1/${path}/history/as-of`,
+			);
+			expect(request.searchParams.get("at")).toBe(at);
+			expect(options.credentials).toBe("include");
+		},
+	);
+	it.each([
+		{ ...classSnapshot, id: 99 },
+		{ ...collection, id: 3 },
+		{ ...classSnapshot, op: "DELETE" },
+		{ ...classSnapshot, valid_from: "2026-09-24T08:42:13.830220Z" },
+		{ ...classSnapshot, valid_to: at },
+	])(
+		"rejects mismatched, deleted and out-of-interval class context",
+		async (record) => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn().mockResolvedValue(new Response(JSON.stringify(record))),
+			);
+			await expect(
+				fetchHistoricalContext({ type: "class", classId: 3 }, at),
+			).rejects.toThrow("unavailable");
+		},
+	);
+	it("rejects a class returned for a collection with the same ID", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockResolvedValue(
+					new Response(JSON.stringify({ ...classSnapshot, id: 4 })),
+				),
+		);
+		await expect(
+			fetchHistoricalContext({ type: "collection", collectionId: 4 }, at),
+		).rejects.toThrow("unavailable");
+	});
+	it.each([403, 404])(
+		"does not fall back to live data after a %i response",
+		async (status) => {
+			const fetch = vi.fn().mockResolvedValue(new Response("{}", { status }));
+			vi.stubGlobal("fetch", fetch);
+			await expect(
+				fetchHistoricalContext({ type: "collection", collectionId: 4 }, at),
+			).rejects.toThrow();
+			expect(fetch).toHaveBeenCalledTimes(1);
+		},
+	);
+});
 
 describe("history API boundary", () => {
 	it("uses the BFF, requests no total and retains exact as-of timestamps", async () => {
