@@ -8,7 +8,7 @@ import type {
 	ExportTemplateRunRequest,
 	TaskStatus,
 } from "@/lib/api/generated/models";
-import { enhanceReportHtmlStream } from "@/lib/report-html";
+import { buildReportHtml } from "@/lib/report-html";
 import { parseReportMaxAge } from "@/lib/report-max-age";
 import type { ReportResultStatus } from "@/lib/report-result-status";
 import { protectPrivateResponse } from "@/lib/security-policy";
@@ -281,7 +281,7 @@ async function readTaskResponse(
 	return task;
 }
 
-function rawOutputResponse(upstream: Response): Response {
+async function rawOutputResponse(upstream: Response): Promise<Response> {
 	const contentType =
 		upstream.headers.get("content-type") ?? "application/octet-stream";
 	const headers = new Headers({
@@ -301,10 +301,12 @@ function rawOutputResponse(upstream: Response): Response {
 	}
 
 	const isHtml = contentType.split(";")[0].trim().toLowerCase() === "text/html";
+	// The inspected string and the browser must use the same HTML encoding.
+	if (isHtml) headers.set("Content-Type", "text/html;charset=utf-8");
 	protectPrivateResponse(headers, { sortableReport: isHtml });
 
 	return new Response(
-		isHtml ? enhanceReportHtmlStream(upstream.body) : upstream.body,
+		isHtml ? buildReportHtml(await upstream.text()) : upstream.body,
 		{
 			status: 200,
 			headers,

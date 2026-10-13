@@ -18,14 +18,20 @@ const inventory = `<table data-sortable aria-label="Inventory">
 <tr><td>host9</td><td>B9</td><td>Linux</td><td data-sort-value="invalid">Unknown</td><td data-sort-value="">Unknown</td></tr>
 </tbody><tfoot><tr><td colspan="5">3 hosts</td></tr></tfoot></table>`;
 
-async function openReport(page: Page, html: string, preview = false) {
+async function openReport(
+	page: Page,
+	html: string,
+	{ preview = false, allowScripts = true } = {},
+) {
+	const policy = preview
+		? buildContentSecurityPolicy("test-parent-nonce", false)
+		: SORTABLE_REPORT_SANDBOX_POLICY;
 	await page.route("**/report-table-fixture", (route) =>
 		route.fulfill({
 			contentType: "text/html;charset=utf-8",
 			headers: {
-				"Content-Security-Policy": preview
-					? buildContentSecurityPolicy("test-parent-nonce", false)
-					: SORTABLE_REPORT_SANDBOX_POLICY,
+				"Content-Security-Policy":
+					policy + (allowScripts ? "" : ", script-src 'none'"),
 			},
 			body: preview
 				? `<!doctype html><html><head><title>Preview</title></head><body>${renderToStaticMarkup(createElement("iframe", { sandbox: "allow-scripts", srcDoc: buildReportHtml(html), title: "Report preview" }))}</body></html>`
@@ -40,7 +46,7 @@ for (const preview of [false, true]) {
 	test(`sorts every column under the ${preview ? "preview" : "standalone"} CSP`, async ({
 		page,
 	}) => {
-		const report = await openReport(page, inventory, preview);
+		const report = await openReport(page, inventory, { preview });
 		const table = report.getByRole("table", { name: "Inventory" });
 		const names = table.locator("tbody tr td:first-child");
 		await expect(names).toHaveText(["host10", "host2", "host9"]);
@@ -99,7 +105,7 @@ ${inventory}
 <button onclick="document.body.dataset.executed = 'yes'">Untrusted handler</button>
 <a href="javascript:document.body.dataset.executed='yes'">Untrusted link</a>
 </body></html>`,
-			preview,
+			{ preview },
 		);
 		await report.getByRole("button", { name: "Name", exact: true }).click();
 		await expect(report.locator("tbody tr td:first-child")).toHaveText([
@@ -141,6 +147,46 @@ ${inventory}
 			parent: true,
 			network: true,
 		});
+	});
+}
+
+for (const javaScriptEnabled of [true, false]) {
+	test.describe(`automatic redirects with browser scripts ${javaScriptEnabled ? "enabled" : "disabled"}`, () => {
+		test.use({ javaScriptEnabled });
+		for (const preview of [false, true]) {
+			test(`blocks refresh in ${preview ? "previews" : "standalone reports"} even when CSP blocks the helper`, async ({
+				page,
+			}) => {
+				const redirects: string[] = [];
+				await page.route("**/report-table-redirect*", (route) => {
+					redirects.push(route.request().url());
+					return route.fulfill({
+						contentType: "text/html",
+						body: "Redirected",
+					});
+				});
+				const report = await openReport(
+					page,
+					`<p>Blåbær 🔒</p>
+<meta http-equiv=refresh http-equiv=refresh content="0;url=/report-table-redirect?plain">
+<meta HTTP-EQUIV="REF&#82;ESH" content="0;url=/report-table-redirect?encoded">
+<noscript><meta http-equiv=refresh content="0;url=/report-table-redirect?noscript"></noscript>
+${inventory}`,
+					{ preview, allowScripts: false },
+				);
+				await page.waitForLoadState("networkidle");
+				expect(redirects).toEqual([]);
+				await expect(
+					report.getByRole("table", { name: "Inventory" }),
+				).toBeVisible();
+				await expect(
+					report.locator('meta[http-equiv="refresh" i]'),
+				).toHaveCount(0);
+				await expect(
+					report.getByRole("button", { name: "Name", exact: true }),
+				).toHaveCount(0);
+			});
+		}
 	});
 }
 

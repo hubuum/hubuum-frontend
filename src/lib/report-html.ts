@@ -102,20 +102,48 @@ table[data-sortable] button[data-hubuum-sort-button]:focus-visible { outline: 2p
 </style><script>${REPORT_TABLE_SORT_SCRIPT}</script><meta http-equiv="Content-Security-Policy" content="script-src 'none'">`;
 
 export function buildReportHtml(html: string): string {
-	return REPORT_HTML_PREFIX + html;
+	const source = REPORT_HTML_PREFIX + html;
+	// HTML attribute names cannot contain character references.
+	if (!html.toLowerCase().includes("http-equiv")) return source;
+	const insertions = new Set<number>();
+	// allow-scripts also enables declarative redirects. Disable them before the
+	// browser sees the document, even when CSP or browser settings block our helper.
+	// Both parsing modes matter because noscript can contain active metadata.
+	for (const scriptingEnabled of [true, false]) {
+		const nodes: DefaultTreeAdapterTypes.Node[] = [
+			parse(source, { scriptingEnabled, sourceCodeLocationInfo: true }),
+		];
+		while (nodes.length) {
+			const node = nodes.pop();
+			if (!node) continue;
+			if ("childNodes" in node) {
+				for (const child of node.childNodes) nodes.push(child);
+			}
+			if ("content" in node) nodes.push(node.content);
+			if (
+				"tagName" in node &&
+				node.tagName === "meta" &&
+				node.attrs.some(
+					(attribute) =>
+						attribute.name === "http-equiv" &&
+						attribute.value.trim().toLowerCase() === "refresh",
+				)
+			) {
+				const start = node.sourceCodeLocation?.startOffset;
+				if (start !== undefined) insertions.add(start + "<meta".length);
+			}
+		}
+	}
+	const parts: string[] = [];
+	let position = 0;
+	for (const offset of [...insertions].sort((a, b) => a - b)) {
+		parts.push(source.slice(position, offset));
+		// The first attribute wins, including when the input has duplicate attributes.
+		// Inserting instead of deleting markup preserves its parsing context.
+		parts.push(' http-equiv="x-hubuum-disabled-refresh"');
+		position = offset;
+	}
+	parts.push(source.slice(position));
+	return parts.join("");
 }
-
-export function enhanceReportHtmlStream(
-	body: ReadableStream<Uint8Array> | null,
-): ReadableStream<Uint8Array> {
-	const prefix = new TextEncoder().encode(REPORT_HTML_PREFIX);
-	const transform = new TransformStream<Uint8Array, Uint8Array>({
-		start(controller) {
-			controller.enqueue(prefix);
-		},
-		transform(chunk, controller) {
-			controller.enqueue(chunk);
-		},
-	});
-	return (body ?? new Blob([]).stream()).pipeThrough(transform);
-}
+import { type DefaultTreeAdapterTypes, parse } from "parse5";
