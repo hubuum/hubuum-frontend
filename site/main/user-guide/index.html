@@ -16,7 +16,7 @@
         <link rel="prev" href="../compatibility/">
       
       
-        <link rel="next" href="../configuration/">
+        <link rel="next" href="../sortable-report-tables/">
       
       
         
@@ -752,6 +752,33 @@
   
 </nav>
       
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sortable-report-tables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sortable report tables
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1681,11 +1708,14 @@ reuses that task while its backend output remains available; otherwise it
 starts a new template export, waits for the task to finish, and remembers the
 replacement. Concurrent requests for the same report join one generation
 through a short Valkey lock instead of submitting duplicate tasks.</p>
-<p>The backend output body is streamed with its original content type. The
-response is not wrapped in console markup or parsed/reformatted, so saving the
-browser page saves the generated template result itself. HTML report responses
-receive a script-disabled sandbox policy because they are served from the
-console origin.</p>
+<p>The backend output body is streamed with its original content type. HTML report
+responses prepend a trusted table sorter and its styles and content policy;
+the backend markup follows without parsing or reformatting. Reports remain
+isolated from the console's origin, and template scripts cannot execute.
+Add <code>data-sortable</code> to opt a table into clickable, keyboard-accessible sorting.
+See <a href="../sortable-report-tables/">sortable report tables</a> for a complete template,
+date and numeric values, grouping, and output behavior. Other content types and
+direct server-output downloads retain their original bytes.</p>
 <p>Report responses include <code>Server-Timing</code> metrics for session access, template
 revision lookup, report-cache access, task validation or submission, output
 time to first byte, and total server time to response headers. Body transfer
@@ -1725,8 +1755,8 @@ standard-page mode where authors edit only the body. The frontend stores that
 body inside a deterministic full HTML template with title and viewport
 metadata, print styling, responsive typography, and readable alternating table
 rows. Advanced authors can instead own the complete HTML document. In both
-modes the raw report route still streams the exact generated backend output;
-it never injects console controls or response-time wrappers.</p>
+modes the report route streams the generated backend markup after the shared
+HTML sorting helper; it does not add console navigation or a surrounding app layout.</p>
 <p>Server <code>v0.0.4</code> audit events, resource history, and task lifecycle events carry
 durable provenance. The console shows the immediate actor, root initiator, and
 originating task where available, and audit/subscription filters can match the
@@ -1944,13 +1974,13 @@ collection overrides when multiple visible collections share the selected name.<
         
         
           
-          <a href="../configuration/" class="md-footer__link md-footer__link--next" aria-label="Next: Configuration">
+          <a href="../sortable-report-tables/" class="md-footer__link md-footer__link--next" aria-label="Next: Sortable report tables">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Configuration
+                Sortable report tables
               </div>
             </div>
             <div class="md-footer__button md-icon">
