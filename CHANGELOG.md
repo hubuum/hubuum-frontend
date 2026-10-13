@@ -23,6 +23,11 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   BFF for browser requests). Other output formats retain their original bytes.
 - Added complete Compose download instructions and separated setup, configuration, browser workflows, and architecture guides.
 
+### Fixed
+
+- Keep report refresh and report sign-in redirects on the browser's current origin,
+  preventing redirects to an internal bind address such as `0.0.0.0:3000` behind a proxy.
+
 ## [0.0.19] - 2026-10-06
 
 ### Added

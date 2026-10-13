@@ -72,13 +72,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
 			const value = request.nextUrl.searchParams.get(name);
 			if (
 				value !== null &&
-				(name !== "max_age" ||
-					requestedFreshness.maxAgeMilliseconds !== 0)
+				(name !== "max_age" || requestedFreshness.maxAgeMilliseconds !== 0)
 			) {
 				reportUrl.searchParams.set(name, value);
 			}
 		}
-		return finishResponse(NextResponse.redirect(reportUrl, 303));
+		// Keep the browser's origin; request.url may contain the server's bind address.
+		return finishResponse(
+			new NextResponse(null, {
+				status: 303,
+				headers: { Location: `${reportUrl.pathname}${reportUrl.search}` },
+			}),
+		);
 	} catch (error) {
 		return finishResponse(
 			await rawReportErrorResponse(error, request, auth.session),
