@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.18
+ * OpenAPI spec version: 0.0.19
  */
 import type { AuthenticationConfig } from './authenticationConfig';
 import type { BackupConfig } from './backupConfig';
@@ -13,6 +13,7 @@ import type { ExportConfig } from './exportConfig';
 import type { NetworkConfig } from './networkConfig';
 import type { PaginationConfig } from './paginationConfig';
 import type { PermissionConfig } from './permissionConfig';
+import type { QueryObservationConfig } from './queryObservationConfig';
 import type { RemoteCallConfig } from './remoteCallConfig';
 import type { RestoreConfig } from './restoreConfig';
 import type { SchemaValidationConfig } from './schemaValidationConfig';
@@ -30,6 +31,7 @@ export interface RunningConfig {
   network: NetworkConfig;
   pagination: PaginationConfig;
   permissions: PermissionConfig;
+  query_observations: QueryObservationConfig;
   remote_calls: RemoteCallConfig;
   restores: RestoreConfig;
   schema_validation: SchemaValidationConfig;

@@ -4,17 +4,17 @@ The browser interface for Hubuum: browse inventory, manage relationships, run
 reports, and administer access. Server-side sessions keep Hubuum bearer tokens
 out of the browser.
 
-Frontend **v0.0.19**, released **2026-10-06**, targets Hubuum Server **v0.0.18**.
+Frontend **v0.0.20**, released **2026-10-14**, targets Hubuum Server **v0.0.19**.
 Read [compatibility](docs/compatibility.md) before pairing other releases.
 
-[Documentation](https://hubuum.github.io/hubuum-frontend/) · [Releases](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.19) · [Hubuum ecosystem](https://hubuum.github.io/)
+[Documentation](https://hubuum.github.io/hubuum-frontend/) · [Releases](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.20) · [Hubuum ecosystem](https://hubuum.github.io/)
 
 ## Quick start
 
 Download the versioned Compose archive and follow the complete
 [Compose quick start](docs/quickstart-compose.md). It runs the frontend and
 Valkey against an existing Hubuum server. For a complete server/frontend stack,
-use the [single-host installer](https://hubuum.github.io/hubuum/v0.0.18/deployment/).
+use the [single-host installer](https://hubuum.github.io/hubuum/v0.0.19/deployment/).
 
 Developers should use [local development](docs/development.md); browser users
 should start with [Atlas](docs/example-dataset.md) and the
@@ -30,16 +30,21 @@ See [runtime settings, proxy routing, and login backgrounds](docs/configuration.
 
 ## Release artifacts
 
-Release v0.0.19 provides Linux AMD64/ARM64 images, a Helm chart, and a
+Release v0.0.20 provides Linux AMD64/ARM64 images, a Helm chart, and a
 checksum-protected Compose archive pinned to the image digest. The image is
-`ghcr.io/hubuum/hubuum-frontend:v0.0.19`; the Helm chart is
-`oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.19`.
+`ghcr.io/hubuum/hubuum-frontend:v0.0.20`; the Helm chart is
+`oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.20`.
 See [deployment](docs/deployment.md) and [release evidence](docs/compatibility.md).
 
 ## Features
 
 Browse classes and objects, edit data, follow relations, build reports, track
 tasks, and manage authorized workflows. See the [browser guide](docs/user-guide.md).
+
+This release adds aggregate trees and editable drill-downs, layered history
+browsing with guarded object and class metadata restoration, and accessible
+sorting in HTML reports. It also fixes report redirects behind reverse proxies
+and blocks automatic redirects embedded in report HTML.
 
 <!-- markdownlint-disable-next-line MD033 -->
 <span id="what-is-scaffolded"></span>
@@ -68,6 +73,6 @@ tasks, and manage authorized workflows. See the [browser guide](docs/user-guide.
 | <span id="documentation-only-ci"></span>Documentation-only CI | [Guide](docs/development.md#documentation-only-ci) |
 | <span id="deployment-notes-okd"></span>Deployment notes (OKD) | [Guide](docs/deployment.md#deployment-notes-okd) |
 | <span id="container-and-helm-publishing"></span>Container and Helm publishing | [Guide](docs/deployment.md#container-and-helm-publishing) |
-| <span id="important-caveat"></span>Query support | [Server query reference](https://hubuum.github.io/hubuum/v0.0.18/querying/) |
+| <span id="important-caveat"></span>Query support | [Server query reference](https://hubuum.github.io/hubuum/v0.0.19/querying/) |
 
 <!-- markdownlint-enable MD033 -->

@@ -6,8 +6,19 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.20] - 2026-10-14
+
 ### Added
 
+- Aggregate trees with multiple grouping fields, editable object drill-downs,
+  shareable workspace views, and preserved navigation and tree state.
+- Layered object and class history browsing with exact version links, timeline
+  navigation, and previous, live, and pinned comparisons. Audit search supports
+  recorded names and shows historical class and collection context.
+- Guarded restoration of selected historical object data and class metadata,
+  with explicit review and conditional writes. Class schema and validation
+  restoration, historical relationships, and historical computed values remain
+  unavailable pending server support.
 - HTML report tables can opt into accessible column sorting with `data-sortable`,
   including natural text order, numbers, dates, and explicit cell sort values.
   Report pages and previews run only the frontend's hash-authorized sorter while
@@ -17,12 +28,31 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Refresh application and development dependencies, the pinned Orval generator
+  to 8.42.0, and GitHub Actions together.
 - **Breaking output behavior:** frontend HTML report URLs now buffer and inspect
   HTML, disable automatic refresh redirects, and prepend the trusted sorting
   helper instead of streaming byte-identical stored HTML. Consumers that need
   the original stream must use `/api/v1/exports/{task_id}/output` (through the
   BFF for browser requests). Other output formats retain their original bytes.
 - Added complete Compose download instructions and separated setup, configuration, browser workflows, and architecture guides.
+
+### Compatibility
+
+- **Breaking supported-server change:** target Server `v0.0.19` and its released
+  image. Upgrade the server first. The regenerated client includes query usage
+  and successful-login subject filters from the final server contract.
+- Server connections use HTTP/1.1, including over TLS. Native HTTP/2 is disabled
+  to exclude the affected `h2` dependency; reverse proxies can still offer
+  HTTP/2 to clients while using HTTP/1.1 upstream.
+- Server backups now use format 9; formats 6, 7, and 8 remain readable. Upgrade
+  API, worker, and restore-executor processes together and retain a pre-upgrade
+  backup. Older servers cannot restore format 9 or read the new authentication
+  event catalog entry; rollback requires compatible readers or a pre-upgrade
+  backup. Apply query usage migrations and reconcile database role grants.
+- Replace empty or whitespace-only local account names with nonblank accounts
+  and reassign group memberships before the server upgrade. Correct externally
+  managed names at the identity provider. Upgrade strict event consumers first.
 
 ### Fixed
 

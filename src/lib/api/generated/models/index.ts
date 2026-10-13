@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.18
+ * OpenAPI spec version: 0.0.19
  */
 
 export * from './addOperation';
@@ -63,6 +63,7 @@ export * from './credentialOperation';
 export * from './currentTokenMetadata';
 export * from './databaseConfig';
 export * from './dbStateResponse';
+export * from './deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdParams';
 export * from './effectiveGroupPermission';
 export * from './eventConfig';
 export * from './eventDeliveryHealthResponse';
@@ -84,6 +85,7 @@ export * from './eventSinkID';
 export * from './eventSinkKey';
 export * from './eventSinkKind';
 export * from './eventSinkRouting';
+export * from './eventSubject';
 export * from './eventSubscription';
 export * from './eventSubscriptionDeliveryHealth';
 export * from './eventSubscriptionFilter';
@@ -293,6 +295,25 @@ export * from './probeResponse';
 export * from './provenance';
 export * from './provenanceActor';
 export * from './provenancePrincipal';
+export * from './queryObservationConfig';
+export * from './queryObservationSettings';
+export * from './queryObservationSnapshot';
+export * from './queryPatternObservation';
+export * from './queryUsageAdapterProgress';
+export * from './queryUsageAnalysisRequest';
+export * from './queryUsageAnalysisResponse';
+export * from './queryUsageAnalysisStatus';
+export * from './queryUsageAssessment';
+export * from './queryUsageCompatibility';
+export * from './queryUsageCreateRequest';
+export * from './queryUsageOperation';
+export * from './queryUsagePatternSchema';
+export * from './queryUsageReplaceRequest';
+export * from './queryUsageResource';
+export * from './queryUsageResourceOwnership';
+export * from './queryUsageResponse';
+export * from './queryUsageSuggestion';
+export * from './queryUsageValueType';
 export * from './rebuildTaskDetails';
 export * from './relatedClassGraph';
 export * from './relatedObjectGraph';
@@ -313,6 +334,7 @@ export * from './remoteTargetSubjectType';
 export * from './removeOperation';
 export * from './renewTokenRequest';
 export * from './replaceOperation';
+export * from './resourceID';
 export * from './resourceRevision';
 export * from './restoreConfig';
 export * from './restoreConfirmRequest';

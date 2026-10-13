@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.18
+ * OpenAPI spec version: 0.0.19
  */
 
 export interface RestoreValidationSummary {

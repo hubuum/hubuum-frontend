@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.18
+ * OpenAPI spec version: 0.0.19
  */
 import type { CollectionID } from './collectionID';
 import type { EventEntityId } from './eventEntityId';
@@ -28,5 +28,14 @@ export interface EventSubscriptionFilter {
   initiator_user_ids?: PrincipalID[];
   related_collection_ids?: CollectionID[];
   request_ids?: string[];
+  /** Match identity scope names from the immutable event-time subject. */
+  subject_identity_scopes?: string[];
+  /**
+     * Require the recorded administrator status. Missing subject context never matches.
+     * @nullable
+     */
+  subject_is_admin?: boolean | null;
+  /** Match affected principal IDs from the immutable event-time subject. */
+  subject_principal_ids?: PrincipalID[];
   task_kinds?: TaskKind[];
 }

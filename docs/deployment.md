@@ -1,7 +1,7 @@
 # Deploy the frontend
 
 Use the [Compose quick start](quickstart-compose.md) for evaluation against an
-existing server. The [server single-host installer](https://hubuum.github.io/hubuum/v0.0.18/deployment/)
+existing server. The [server single-host installer](https://hubuum.github.io/hubuum/v0.0.19/deployment/)
 provisions a complete stack. For Kubernetes and OKD, use the Helm instructions
 below and review [configuration](configuration.md).
 
@@ -37,7 +37,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.19 \
+  --version 0.0.20 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -46,7 +46,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.19 \
+  --version 0.0.20 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com

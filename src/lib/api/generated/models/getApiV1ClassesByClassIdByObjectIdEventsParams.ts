@@ -3,10 +3,14 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.18
+ * OpenAPI spec version: 0.0.19
  */
 
 export type GetApiV1ClassesByClassIdByObjectIdEventsParams = {
+/**
+ * Include object relation events touching this object; defaults to false
+ */
+include_relations?: boolean;
 /**
  * Optional action filter
  */

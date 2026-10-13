@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.18
+ * OpenAPI spec version: 0.0.19
  */
 import type { Provenance } from './provenance';
 import type { ResourceRevision } from './resourceRevision';
@@ -28,6 +28,10 @@ export interface EventResponse {
   entity_type: string;
   event_id: string;
   id: number;
+  /**
+     * Event-specific metadata. Authentication events include an immutable
+     * `subject` object described by the EventSubject schema.
+     */
   metadata: unknown;
   occurred_at: string;
   provenance: Provenance;

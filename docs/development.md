@@ -157,7 +157,7 @@ npm run test:e2e:public
 
 Pixel comparisons run separately in CI so an intentional or accidental visual
 change does not hide the functional results. Both CI and baseline updates use
-the same digest-pinned Playwright 1.63.0 Noble `linux/amd64` image, bundled
+the same digest-pinned Playwright 1.64.0 Noble `linux/amd64` image, bundled
 Chromium, and the fixed `v0.0.0+visual` display version. Docker is required to
 refresh intentional baselines (Apple-silicon hosts run the image through Docker
 emulation):
@@ -185,7 +185,7 @@ keeps it only in the child-process environment, and removes the containers and
 volumes afterward. Override the pinned compatibility image with
 `HUBUUM_AUTH_E2E_BACKEND_IMAGE` when testing another server build.
 
-The default test target is released Server `v0.0.18`. To focus on schemas and
+The default test target is released Server `v0.0.19`. To focus on schemas and
 task cancellation:
 
 ```sh
@@ -203,7 +203,7 @@ backend-main workflow continues checking future server builds separately.
 
 `npm run test:e2e:authenticated:full` runs the complete authenticated suite,
 then the live credential approval and restore checks on the same disposable
-stack. Release readiness requires both to pass against Server `v0.0.18`.
+stack. Release readiness requires both to pass against Server `v0.0.19`.
 Restore runs last because it replaces the database and invalidates tokens.
 When explicitly testing an older backend image, set
 `HUBUUM_FULL_E2E_CREDENTIAL_APPROVALS=legacy` to verify its original mutation flow.
@@ -251,7 +251,7 @@ VALKEY_URL=redis://127.0.0.1:6380/0
 
 ### Forward server compatibility
 
-The live contract suite defaults to the pinned Server `0.0.18` contract. Set
+The live contract suite defaults to the pinned Server `0.0.19` contract. Set
 `HUBUUM_LIVE_EXPECT_SERVER_VERSION` when verifying a specific release candidate.
 The scheduled backend-main job sets `HUBUUM_LIVE_FORWARD_COMPATIBILITY=1` to
 exercise the complete contract across server version bumps; required release CI
@@ -281,7 +281,7 @@ server image:
 npm run test:live-backend
 ```
 
-The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.18`, starts a
+The script defaults to `ghcr.io/hubuum/hubuum-server:v0.0.19`, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 `/readyz`, resets the default `admin` password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
@@ -296,7 +296,7 @@ Restore confirmation is skipped when targeting an externally supplied backend UR
 
 Useful overrides:
 
-- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.18`
+- `HUBUUM_LIVE_BACKEND_IMAGE`: backend image to test, defaults to `ghcr.io/hubuum/hubuum-server:v0.0.19`
 - `HUBUUM_LIVE_BACKEND_PORT`: host port for the live server, defaults to `9999`
 - `HUBUUM_LIVE_POSTGRES_PORT`: host port for Postgres, defaults to `15432`
 - `HUBUUM_LIVE_COMPOSE_PROJECT`: Compose project name, defaults to `hubuum-frontend-live-test`
