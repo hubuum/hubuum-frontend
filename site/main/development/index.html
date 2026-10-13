@@ -1698,7 +1698,7 @@ backend credentials:</p>
 </code></pre></div>
 <p>Pixel comparisons run separately in CI so an intentional or accidental visual
 change does not hide the functional results. Both CI and baseline updates use
-the same digest-pinned Playwright 1.63.0 Noble <code>linux/amd64</code> image, bundled
+the same digest-pinned Playwright 1.64.0 Noble <code>linux/amd64</code> image, bundled
 Chromium, and the fixed <code>v0.0.0+visual</code> display version. Docker is required to
 refresh intentional baselines (Apple-silicon hosts run the image through Docker
 emulation):</p>
@@ -1718,7 +1718,7 @@ containers:</p>
 keeps it only in the child-process environment, and removes the containers and
 volumes afterward. Override the pinned compatibility image with
 <code>HUBUUM_AUTH_E2E_BACKEND_IMAGE</code> when testing another server build.</p>
-<p>The default test target is released Server <code>v0.0.18</code>. To focus on schemas and
+<p>The default test target is released Server <code>v0.0.19</code>. To focus on schemas and
 task cancellation:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:credential-fixtures
 <a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>npm<span class="w"> </span>run<span class="w"> </span>test:live-backend
@@ -1732,7 +1732,7 @@ CI pins the release digest listed in <code>docs/compatibility.md</code>. The sch
 backend-main workflow continues checking future server builds separately.</p>
 <p><code>npm run test:e2e:authenticated:full</code> runs the complete authenticated suite,
 then the live credential approval and restore checks on the same disposable
-stack. Release readiness requires both to pass against Server <code>v0.0.18</code>.
+stack. Release readiness requires both to pass against Server <code>v0.0.19</code>.
 Restore runs last because it replaces the database and invalidates tokens.
 When explicitly testing an older backend image, set
 <code>HUBUUM_FULL_E2E_CREDENTIAL_APPROVALS=legacy</code> to verify its original mutation flow.</p>
@@ -1765,7 +1765,7 @@ and update <code>.env.local</code> to match:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>VALKEY_URL=redis://127.0.0.1:6380/0
 </code></pre></div>
 <h3 id="forward-server-compatibility">Forward server compatibility<a class="headerlink" href="#forward-server-compatibility" title="Permanent link">&para;</a></h3>
-<p>The live contract suite defaults to the pinned Server <code>0.0.18</code> contract. Set
+<p>The live contract suite defaults to the pinned Server <code>0.0.19</code> contract. Set
 <code>HUBUUM_LIVE_EXPECT_SERVER_VERSION</code> when verifying a specific release candidate.
 The scheduled backend-main job sets <code>HUBUUM_LIVE_FORWARD_COMPATIBILITY=1</code> to
 exercise the complete contract across server version bumps; required release CI
@@ -1785,7 +1785,7 @@ Compose validation, and Helm validation.</p>
 server image:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:live-backend
 </code></pre></div>
-<p>The script defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.18</code>, starts a
+<p>The script defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.19</code>, starts a
 disposable Hubuum server and Postgres database through Docker Compose, waits for
 <code>/readyz</code>, resets the default <code>admin</code> password inside the container, exercises
 the auth, scoped and unscoped token mint/use/list/revoke lifecycles, permission,
@@ -1799,7 +1799,7 @@ the test wrapper, then verifies completion and invalidation of the old token.
 Restore confirmation is skipped when targeting an externally supplied backend URL.</p>
 <p>Useful overrides:</p>
 <ul>
-<li><code>HUBUUM_LIVE_BACKEND_IMAGE</code>: backend image to test, defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.18</code></li>
+<li><code>HUBUUM_LIVE_BACKEND_IMAGE</code>: backend image to test, defaults to <code>ghcr.io/hubuum/hubuum-server:v0.0.19</code></li>
 <li><code>HUBUUM_LIVE_BACKEND_PORT</code>: host port for the live server, defaults to <code>9999</code></li>
 <li><code>HUBUUM_LIVE_POSTGRES_PORT</code>: host port for Postgres, defaults to <code>15432</code></li>
 <li><code>HUBUUM_LIVE_COMPOSE_PROJECT</code>: Compose project name, defaults to <code>hubuum-frontend-live-test</code></li>

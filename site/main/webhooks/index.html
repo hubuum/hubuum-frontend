@@ -1400,7 +1400,7 @@ URL and message format. Remove dependent subscriptions before deleting a destina
 returns only owned and explicitly granted destinations, without sink configuration
 or credentials. Revoking the grant stops new deliveries; an already admitted
 network request may finish. Delivery diagnostics and retries remain in <strong>Admin → Events</strong>.</p>
-<p>These collection endpoints are included in Server <code>v0.0.18</code>, the supported
+<p>These collection endpoints are included in Server <code>v0.0.19</code>, the supported
 release target. Upgrade the server before deploying this frontend. The console
 reports missing support instead of calling the administrator-only sink list
 from a delegated collection editor.</p>
@@ -1422,7 +1422,7 @@ from a delegated collection editor.</p>
 </ol>
 <p>The server must run fan-out and delivery workers, and each delivery worker must
 resolve the same secret alias. The console does not provision external secrets
-or enable server workers. See the <a href="https://github.com/hubuum/hubuum/blob/v0.0.18/docs/webhook_notifications.md">server webhook setup guide</a>
+or enable server workers. See the <a href="https://github.com/hubuum/hubuum/blob/v0.0.19/docs/webhook_notifications.md">server webhook setup guide</a>
 for environment/file setup, private Mattermost destinations, system subscriptions,
 and preview/test-delivery commands. Saving a sink does not send a test message.</p>
 <table>

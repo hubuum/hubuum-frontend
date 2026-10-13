@@ -1409,14 +1409,14 @@ Server or PostgreSQL; point it at an existing Hubuum Server instance.</p>
 <li>A Hubuum Server URL reachable from inside the frontend container.</li>
 </ul>
 <h2 id="start">Start<a class="headerlink" href="#start" title="Permanent link">&para;</a></h2>
-<p>Download <code>hubuum-frontend-v0.0.19-compose.tar.gz</code> and <code>SHA256SUMS</code> from
-<a href="https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.19">release v0.0.19</a>.
+<p>Download <code>hubuum-frontend-v0.0.20-compose.tar.gz</code> and <code>SHA256SUMS</code> from
+<a href="https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.20">release v0.0.20</a>.
 The archive contains Compose configuration and its environment template, with
 the frontend image pinned to a digest. In the download directory, verify and
 extract it (on macOS, use <code>shasum -a 256 -c SHA256SUMS</code>):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sha256sum<span class="w"> </span>-c<span class="w"> </span>SHA256SUMS
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>tar<span class="w"> </span>-xzf<span class="w"> </span>hubuum-frontend-v0.0.19-compose.tar.gz
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">cd</span><span class="w"> </span>hubuum-frontend-v0.0.19-compose
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>tar<span class="w"> </span>-xzf<span class="w"> </span>hubuum-frontend-v0.0.20-compose.tar.gz
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">cd</span><span class="w"> </span>hubuum-frontend-v0.0.20-compose
 </code></pre></div>
 <p>If you are reading this file inside the extracted archive, start here:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>cp<span class="w"> </span>.env.quickstart.example<span class="w"> </span>.env.quickstart
@@ -1435,8 +1435,8 @@ use a routable host address. Podman commonly exposes the host as
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>--fail<span class="w"> </span>http://localhost:3000/readyz
 </code></pre></div>
 <p>Both the page and readiness probe should be reachable before you sign in with
-a Hubuum account. Frontend v0.0.19 targets server v0.0.18; review
-<a href="https://hubuum.github.io/hubuum-frontend/v0.0.19/compatibility/">compatibility</a>
+a Hubuum account. Frontend v0.0.20 targets server v0.0.19; review
+<a href="https://hubuum.github.io/hubuum-frontend/v0.0.20/compatibility/">compatibility</a>
 before using a different server.</p>
 <h2 id="manage-the-quickstart">Manage the quickstart<a class="headerlink" href="#manage-the-quickstart" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>frontend

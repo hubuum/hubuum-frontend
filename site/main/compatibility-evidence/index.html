@@ -1011,6 +1011,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#server-v0019" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Server v0.0.19
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#server-v0018" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1412,6 +1423,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#server-v0019" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Server v0.0.19
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#server-v0018" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1582,8 +1604,13 @@ should pin both components to explicit versions.</p>
 <tbody>
 <tr>
 <td><code>main</code> (unreleased)</td>
-<td><code>v0.0.18</code></td>
-<td><code>ghcr.io/hubuum/hubuum-server:v0.0.18</code></td>
+<td><code>v0.0.19</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.19</code></td>
+</tr>
+<tr>
+<td><code>v0.0.20</code></td>
+<td><code>v0.0.19</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.19</code></td>
 </tr>
 <tr>
 <td><code>v0.0.19</code></td>
@@ -1683,7 +1710,10 @@ should pin both components to explicit versions.</p>
 </tbody>
 </table>
 <p>Required pull-request and release checks use the immutable digest behind the
-listed server tag. Frontend <code>v0.0.19</code> and unreleased <code>main</code> target
+listed server tag. Frontend <code>v0.0.20</code> and unreleased <code>main</code> target
+Server <code>v0.0.19</code> at
+<code>sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225</code>.
+Frontend <code>v0.0.19</code> targets
 Server <code>v0.0.18</code> at
 <code>sha256:5b54248f19171200dfa497174d385a48f90666a415cb31732797043d5e182fc4</code>.
 Frontend <code>v0.0.17</code> and <code>v0.0.18</code> retain Server <code>v0.0.16</code> at
@@ -1693,6 +1723,29 @@ Frontend <code>v0.0.16</code> retains its Server <code>v0.0.15</code> target at
 Frontend <code>v0.0.15</code> retains its Server <code>v0.0.14</code> target at
 <code>sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594</code>.
 A separate scheduled workflow follows the moving backend <code>:main</code> image.</p>
+<h2 id="server-v0019">Server v0.0.19<a class="headerlink" href="#server-v0019" title="Permanent link">&para;</a></h2>
+<p>Frontend v0.0.20 targets the 240-operation contract from server commit
+<code>59faad2641620e457d5b0d9d7e112ee395b151ff</code>. The generated client includes query
+usage management and successful-login subject filters. Required live contract
+checks cover this baseline, including the format-9 backup contract.</p>
+<p>The published image's Linux AMD64 and ARM64 labels match that commit, and all
+release tags resolve to the pinned digest above. On 2026-10-14, the released image
+passed all 107 live contract checks. Runtime checks of both Rustls and OpenSSL
+negotiated HTTP/1.1, returned healthy responses, and did not negotiate HTTP/2.
+The complete authenticated browser suite passed all 40 tests, followed by three
+credential-approval and full restore tests, without retries on Next.js 16.4.0.</p>
+<p>Upgrade the server first. Replace blank principal names and upgrade strict event
+readers before enabling successful-login events. Apply query usage migrations,
+reconcile database role grants, and upgrade all API, worker, and restore processes
+together. Formats 6–8 remain readable, but older servers cannot restore format 9
+or read the new authentication event entry. Retain a pre-upgrade backup and
+matching binaries for recovery, and follow earlier offline migration requirements
+when upgrading across those releases.</p>
+<p>Direct server connections use HTTP/1.1, including TLS. Native HTTP/2 is disabled
+and the affected <code>h2</code> dependency is excluded. Reverse proxies can still offer
+HTTP/2 to clients while connecting to the server over HTTP/1.1.</p>
+<p>See the <a href="https://github.com/hubuum/hubuum/releases/tag/v0.0.19">server release notes</a>
+and <a href="../compatibility/#before-upgrading">current upgrade requirements</a>.</p>
 <h2 id="server-v0018">Server v0.0.18<a class="headerlink" href="#server-v0018" title="Permanent link">&para;</a></h2>
 <p>Frontend v0.0.19 targets the released 235-operation contract, including collection
 sink discovery, owned-webhook CRUD, and direct administrator grants. The generated
