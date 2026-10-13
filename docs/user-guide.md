@@ -220,9 +220,8 @@ starts a new template export, waits for the task to finish, and remembers the
 replacement. Concurrent requests for the same report join one generation
 through a short Valkey lock instead of submitting duplicate tasks.
 
-The backend output body is streamed with its original content type. HTML report
-responses prepend a trusted table sorter and its styles and content policy;
-the backend markup follows without parsing or reformatting. Reports remain
+HTML report responses disable automatic refresh redirects and add a trusted
+table sorter with its styles and content policy. Reports remain
 isolated from the console's origin, and template scripts cannot execute.
 Add `data-sortable` to opt a table into clickable, keyboard-accessible sorting.
 See [sortable report tables](sortable-report-tables.md) for a complete template,
@@ -237,7 +236,7 @@ and browser rendering happen after those measurements and are not included.
 Bookmark URLs can supply the supported template-run overrides through `query`,
 `object_id`, `missing_data_policy`, `max_items`, and `max_output_bytes` query
 parameters. Related-object templates require `object_id`. Existing stored task
-outputs use `/reports/runs/{task_id}` and are streamed through the same raw
+outputs use `/reports/runs/{task_id}` and are served through the same report
 response boundary. `HEAD` requests never generate reports, and frontend links
 disable Next.js prefetching so merely rendering or hovering a link cannot start
 a task. An optional `max_age` parameter limits how old a completed task may be:
@@ -271,8 +270,8 @@ standard-page mode where authors edit only the body. The frontend stores that
 body inside a deterministic full HTML template with title and viewport
 metadata, print styling, responsive typography, and readable alternating table
 rows. Advanced authors can instead own the complete HTML document. In both
-modes the report route streams the generated backend markup after the shared
-HTML sorting helper; it does not add console navigation or a surrounding app layout.
+modes the report route applies the shared HTML sorting helper and redirect
+protection; it does not add console navigation or a surrounding app layout.
 
 Server `v0.0.4` audit events, resource history, and task lifecycle events carry
 durable provenance. The console shows the immediate actor, root initiator, and

@@ -38,6 +38,16 @@ blocks all subsequent scripts, including external requests carrying the helper's
 integrity hash. The iframe allows scripts but never same-origin access. Generic
 proxy output, XHTML, and SVG remain script-disabled. Export warning and
 truncation headers remain visible to the UI.
+
+The sandbox's `allow-scripts` token also enables declarative refresh redirects.
+HTML reports are therefore buffered and inspected before they reach a browser.
+An HTML parser locates refresh metadata in both scripting modes, including
+`noscript` content, and inserts an inert first `http-equiv` attribute. This keeps
+the surrounding markup intact and prevents duplicate attributes from restoring
+the redirect. The browser receives UTF-8, matching the inspected text. Protection
+works even if a stricter CSP or browser setting blocks the sorting helper.
+Other output formats continue streaming unchanged.
+
 Schema repair HTML may open object links in new tabs that do not inherit the
 report sandbox; the report itself remains script-disabled and isolated.
 

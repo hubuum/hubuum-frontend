@@ -199,6 +199,29 @@ describe("raw template reports", () => {
 		expect(response.headers.get("Content-Security-Policy")).toBeNull();
 	});
 
+	it.each(["text/html;charset=iso-2022-jp", "TEXT/HTML; charset=windows-1252"])(
+		"serves inspected HTML as UTF-8 regardless of the upstream charset: %s",
+		async (contentType) => {
+			const source = "<p>Blåbær 🔒</p>";
+			const response = await getStoredRawReport({
+				correlationId: "encoding-check",
+				taskId: 19,
+				token: "secret-token",
+				dependencies: {
+					backendFetch: vi.fn().mockResolvedValue(
+						new Response(source, {
+							headers: { "Content-Type": contentType },
+						}),
+					),
+				},
+			});
+			expect(response.headers.get("Content-Type")).toBe(
+				"text/html;charset=utf-8",
+			);
+			await expect(response.text()).resolves.toBe(buildReportHtml(source));
+		},
+	);
+
 	it("stops after a failed task instead of repeatedly regenerating", async () => {
 		const backendFetch = vi
 			.fn()

@@ -116,8 +116,9 @@ for template context, relations, and missing-data behavior.
 - Unmarked tables retain their existing behavior. Sorting is not saved across
   reloads, bookmarks, or new report runs. Printing uses the current row order.
 
-The frontend adds its sorter to HTML served through `/reports/{template_id}`
-and `/reports/runs/{task_id}` and to its embedded previews. CSV, JSON, plain text,
+The frontend adds its sorter and disables automatic refresh redirects in HTML
+served through `/reports/{template_id}`, `/reports/runs/{task_id}`, and embedded
+previews. HTML is buffered for this inspection and served as UTF-8. CSV, JSON, plain text,
 and the original server output remain unchanged. A direct API download contains
 the original HTML without the frontend's helper. For byte-identical stored HTML,
 use `/api/v1/exports/{task_id}/output`, or
@@ -129,7 +130,9 @@ must supply their own sorting support if needed.
 
 Report pages and previews permit only the frontend's exact, hash-authorized
 sorter. Template scripts, event handlers such as `onclick`, external JavaScript,
-network connections, and access to the console's origin remain blocked. Adding
+scripted network connections, and access to the console's origin remain blocked.
+Automatic `meta refresh` redirects are disabled before rendering, even when a
+browser setting or a stricter CSP prevents the trusted sorter from running. Adding
 `data-sortable` does not grant a template permission to run code.
 
 If controls are absent, check the table structure and frontend version. A

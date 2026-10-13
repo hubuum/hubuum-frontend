@@ -17,14 +17,17 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- **Breaking output behavior:** frontend HTML report URLs now prepend the trusted
-  sorting helper instead of returning byte-identical stored HTML. Consumers that
-  need the original bytes must use `/api/v1/exports/{task_id}/output` (through the
+- **Breaking output behavior:** frontend HTML report URLs now buffer and inspect
+  HTML, disable automatic refresh redirects, and prepend the trusted sorting
+  helper instead of streaming byte-identical stored HTML. Consumers that need
+  the original stream must use `/api/v1/exports/{task_id}/output` (through the
   BFF for browser requests). Other output formats retain their original bytes.
 - Added complete Compose download instructions and separated setup, configuration, browser workflows, and architecture guides.
 
 ### Fixed
 
+- Block automatic refresh redirects in sortable HTML reports and previews,
+  including when JavaScript is disabled or CSP blocks the trusted sorting helper.
 - Keep report refresh and report sign-in redirects on the browser's current origin,
   preventing redirects to an internal bind address such as `0.0.0.0:3000` behind a proxy.
 
