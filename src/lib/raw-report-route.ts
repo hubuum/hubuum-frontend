@@ -25,9 +25,11 @@ function loginRedirect(request: NextRequest): NextResponse {
 	const returnPath = normalizeReturnPath(
 		`${request.nextUrl.pathname}${request.nextUrl.search}`,
 	);
-	const loginUrl = new URL("/login", request.url);
-	loginUrl.searchParams.set("next", returnPath);
-	return NextResponse.redirect(loginUrl);
+	const loginQuery = new URLSearchParams({ next: returnPath });
+	return new NextResponse(null, {
+		status: 307,
+		headers: { Location: `/login?${loginQuery}` },
+	});
 }
 
 export async function requireRawReportSession(
