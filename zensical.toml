@@ -13,7 +13,10 @@ nav = [
     { "Installation and configuration" = "setup.md" },
     { "Server compatibility" = "compatibility.md" },
   ] },
-  { "Use the frontend" = [{ "Browser guide" = "user-guide.md" }] },
+  { "Use the frontend" = [
+    { "Browser guide" = "user-guide.md" },
+    { "Sortable report tables" = "sortable-report-tables.md" },
+  ] },
   { "Deploy and operate" = [
     { "Configuration" = "configuration.md" },
     { "Helm and OKD deployment" = "deployment.md" },

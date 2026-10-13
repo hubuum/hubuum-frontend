@@ -25,6 +25,7 @@ import {
 	type ServerFilterComputedField,
 	type ServerFilterDataField,
 } from "@/components/object-server-filter-menu";
+import { ReportHtmlPreview } from "@/components/report-html-preview";
 import { ReportDefaultQueryModal } from "@/components/report-default-query-modal";
 import { ReportTemplateCard } from "@/components/report-template-card";
 import { TableExportMenu } from "@/components/table-export-menu";
@@ -2123,10 +2124,8 @@ export function ExportsWorkspace() {
 
 										{lastResult.contentType === "text/html" &&
 										lastResultView.showInlineHtmlPreview ? (
-											<iframe
-												className="html-preview"
-												sandbox=""
-												srcDoc={lastResultView.fullText}
+											<ReportHtmlPreview
+												html={lastResultView.fullText}
 												title="Export HTML preview"
 											/>
 										) : null}

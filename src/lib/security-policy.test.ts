@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+	REPORT_TABLE_SORT_HASH,
+	SORTABLE_REPORT_SANDBOX_POLICY,
+} from "@/lib/report-html";
+import {
 	buildContentSecurityPolicy,
 	protectPrivateResponse,
 	REPORT_SANDBOX_POLICY,
@@ -7,6 +11,34 @@ import {
 } from "@/lib/security-policy";
 
 describe("response security", () => {
+	it("permits only the trusted sorter in enhanced HTML reports", () => {
+		const headers = new Headers({ "Content-Type": "text/html;charset=utf-8" });
+		protectPrivateResponse(headers, { sortableReport: true });
+		expect(headers.get("Content-Security-Policy")).toBe(
+			SORTABLE_REPORT_SANDBOX_POLICY,
+		);
+		expect(SORTABLE_REPORT_SANDBOX_POLICY).toContain(
+			`script-src '${REPORT_TABLE_SORT_HASH}'`,
+		);
+		expect(SORTABLE_REPORT_SANDBOX_POLICY).toContain("sandbox allow-scripts;");
+		expect(SORTABLE_REPORT_SANDBOX_POLICY).not.toMatch(
+			/allow-same-origin|allow-forms|allow-popups|unsafe-eval/,
+		);
+		expect(buildContentSecurityPolicy("preview", false)).toContain(
+			`'${REPORT_TABLE_SORT_HASH}'`,
+		);
+	});
+
+	it.each(["application/xhtml+xml", "image/svg+xml"])(
+		"does not enable the sorter for %s",
+		(contentType) => {
+			const headers = new Headers({ "Content-Type": contentType });
+			protectPrivateResponse(headers, { sortableReport: true });
+			expect(headers.get("Content-Security-Policy")).toBe(
+				REPORT_SANDBOX_POLICY,
+			);
+		},
+	);
 	it("allows schema repair object links to open the console while isolating the report", () => {
 		const headers = new Headers({ "Content-Type": "text/html" });
 		protectPrivateResponse(headers, { schemaRepairReport: true });

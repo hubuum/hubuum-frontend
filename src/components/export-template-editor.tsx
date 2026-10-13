@@ -12,6 +12,7 @@ import {
 } from "@/components/guided-flow";
 import { IncludeRows } from "@/components/include-rows";
 import { ObjectDirectoryLookup } from "@/components/object-directory-lookup";
+import { ReportHtmlPreview } from "@/components/report-html-preview";
 import { ReportQueryBuilder } from "@/components/report-query-builder";
 import { TemplateCodeEditor } from "@/components/template-code-editor";
 import {
@@ -1735,11 +1736,9 @@ export function ExportTemplateEditor({
 									) : null}
 								</div>
 								{testResult.contentType === "text/html" ? (
-									<iframe
-										className="html-preview"
+									<ReportHtmlPreview
+										html={testText}
 										title="Rendered template test"
-										sandbox=""
-										srcDoc={testText}
 									/>
 								) : (
 									<pre className="response-preview template-test-output">
