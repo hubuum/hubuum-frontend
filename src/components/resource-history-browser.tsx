@@ -7,22 +7,25 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { ClassHistoryRestore } from "@/components/class-history-restore";
 import { HistoryComparison } from "@/components/history-comparison";
+import { HistoryContext } from "@/components/history-context";
+import { HistoryNameBrowser } from "@/components/history-name-browser";
 import {
 	HistoryStackNavigation,
 	historyTime,
 } from "@/components/history-stack-navigation";
 import { JsonViewer } from "@/components/json-viewer";
 import { ObjectHistoryRestore } from "@/components/object-history-restore";
+import styles from "@/components/resource-history.module.css";
 import {
 	fetchResourceHistoryAsOf,
 	fetchResourceHistoryPage,
 	type HistoryRecord,
 } from "@/lib/api/events";
+import { toObjectDataJsonPointer } from "@/lib/api/object-data-patch";
 import {
 	fetchHistoryLiveResource,
 	type LiveHistoryResource,
 } from "@/lib/api/resource-history";
-import { toObjectDataJsonPointer } from "@/lib/api/object-data-patch";
 import {
 	formatEventActor,
 	formatEventInitiator,
@@ -31,14 +34,13 @@ import {
 import { flattenObjectPropertyEntries } from "@/lib/object-property-entries";
 import {
 	compareSnapshots,
+	type HistoryScope,
 	historyInstant,
 	isDeletedVersion,
 	resourceHref,
 	snapshotFields,
 	versionContains,
-	type HistoryScope,
 } from "@/lib/resource-history";
-import styles from "@/components/resource-history.module.css";
 
 function SnapshotPresentation({
 	record,
@@ -108,11 +110,7 @@ function SnapshotPresentation({
 	);
 }
 
-export function ResourceHistoryBrowser({
-	scope,
-}: {
-	scope: HistoryScope;
-}) {
+export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 	const search = useSearchParams();
 	const pathname = usePathname();
 	const at = search.get("at") ?? "";
@@ -377,6 +375,11 @@ export function ResourceHistoryBrowser({
 					</Link>
 				</div>
 			</header>
+			<HistoryNameBrowser
+				key={`${search.get("historyMatch")}:${search.get("historyName")}`}
+				scope={scope}
+				name={selected?.name}
+			/>
 			<fieldset
 				className={styles.toolbar}
 				aria-label="History comparison and navigation"
@@ -452,7 +455,8 @@ export function ResourceHistoryBrowser({
 										</time>
 									</h2>
 									<p className="muted">
-										Stored version #{selected.history_id} · {selected.op}
+										Stored version #{selected.history_id} · {selected.op} ·{" "}
+										{scope.type} #{selected.id}
 									</p>
 								</div>
 								{!deleted ? (
@@ -535,10 +539,13 @@ export function ResourceHistoryBrowser({
 						Only authorized snapshots are shown; history may be incomplete.{" "}
 						{scope.type === "class"
 							? "Class definition history does not include the historical object population. Class restoration supports names, descriptions, and collection assignments."
-							: "Historical class definitions, relationships, and computed values are unavailable here."}{" "}
+							: "Historical relationships and computed values are unavailable here."}{" "}
 						Collection and class IDs come from the snapshot; current labels are
 						not substituted.
 					</p>
+					{!deleted && "collection_id" in selected ? (
+						<HistoryContext record={selected} at={at || selected.valid_from} />
+					) : null}
 					<details className={styles.provenance}>
 						<summary>Version details and provenance</summary>
 						<dl className="event-detail-grid">

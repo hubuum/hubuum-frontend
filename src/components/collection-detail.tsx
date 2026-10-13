@@ -1983,6 +1983,7 @@ export function CollectionDetail({
 				/>
 
 				<ResourceActivityPanel
+					resourceName={collectionData.name}
 					scope={{ type: "collection", collectionId }}
 					title="Collection audit and history"
 				/>

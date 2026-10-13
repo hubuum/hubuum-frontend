@@ -11,6 +11,7 @@ import {
 	useSyncExternalStore,
 } from "react";
 import { AuditEntityLookup } from "@/components/audit-entity-lookup";
+import { AuditMatchControl } from "@/components/audit-match-control";
 import { AuditPrincipalLookup } from "@/components/audit-principal-lookup";
 import { EventDetailsModal } from "@/components/event-details-modal";
 import { TableExportMenu } from "@/components/table-export-menu";
@@ -198,8 +199,14 @@ function getActiveAuditFilters(
 			label: `Entity · ${draft.entityType}`,
 		});
 	}
-	if (draft.entityId) {
+	if (draft.entityMatch !== "name" && draft.entityId) {
 		filters.push({ field: "entityId", label: `Entity ID · ${draft.entityId}` });
+	}
+	if (draft.entityMatch === "name" && draft.entityName) {
+		filters.push({
+			field: "entityName",
+			label: `Recorded name · ${draft.entityName}`,
+		});
 	}
 	if (draft.action) {
 		filters.push({ field: "action", label: `Action · ${draft.action}` });
@@ -337,13 +344,13 @@ export function AuditWorkspace() {
 			entitySearch,
 			entityDirectoryQuery.data?.candidates ?? [],
 		);
-		if (!candidate) return;
+		if (!candidate || draft.entityMatch === "name") return;
 
 		setDraft((current) => {
 			const entityId = String(candidate.id);
 			return current.entityId === entityId ? current : { ...current, entityId };
 		});
-	}, [entityDirectoryQuery.data?.candidates, entitySearch]);
+	}, [entityDirectoryQuery.data?.candidates, entitySearch, draft.entityMatch]);
 	const actorDirectoryKind = isAuditActorDirectoryKind(draft.actorKind)
 		? draft.actorKind
 		: null;
@@ -628,6 +635,28 @@ export function AuditWorkspace() {
 				>
 					<fieldset className="audit-filter-group" disabled={!ready}>
 						<legend>What happened</legend>
+						<AuditMatchControl
+							mode={draft.entityMatch}
+							onChange={(entityMatch) => {
+								const candidate = entityDirectoryQuery.data?.candidates.find(
+									(item) => String(item.id) === draft.entityId,
+								);
+								const event = events.find(
+									(item) =>
+										String(item.entity_id) === draft.entityId &&
+										item.entity_type === draft.entityType,
+								);
+								setDraft((current) => ({
+									...current,
+									entityMatch,
+									entityName:
+										current.entityName ||
+										candidate?.name ||
+										event?.entity_name ||
+										"",
+								}));
+							}}
+						/>
 						<div className="audit-filter-fields">
 							<label className="control-field">
 								<span>Entity type</span>
@@ -646,53 +675,71 @@ export function AuditWorkspace() {
 									))}
 								</select>
 							</label>
-							<div className="control-field">
-								<label htmlFor="audit-entity-id">Entity ID</label>
-								<div className="directory-id-lookup-control">
+							{draft.entityMatch === "name" ? (
+								<label className="control-field">
+									<span>Exact recorded name</span>
 									<input
-										id="audit-entity-id"
-										type="number"
-										min="1"
-										step="1"
-										value={draft.entityId}
-										onChange={(event) => {
-											setEntitySearch("");
-											patchDraft("entityId", event.target.value);
-										}}
-										placeholder="Any ID"
-									/>
-									<AuditEntityLookup
-										disabled={!entityDirectoryKind}
-										disabledHint="Choose a searchable entity type first"
-										value={entitySearch}
-										candidates={entityCandidateOptions}
-										onChange={updateEntitySearch}
-										onSelect={(candidate) => {
-											setEntitySearch(candidate.inputValue);
-											patchDraft("entityId", String(candidate.id));
-										}}
-										placeholder={
-											entityDirectoryKind
-												? `Search ${entityDirectoryKind.replaceAll("_", " ")} names`
-												: "Search entity names"
-										}
-										helperText={
-											entitySearchTerm.length < 2
-												? "Type at least two characters, or enter an exact Entity ID."
-												: entityDirectoryQuery.isLoading || !entitySearchIsReady
-													? "Searching entities visible to your account…"
-													: entityDirectoryQuery.isError
-														? "Entity lookup is unavailable for your account; enter an exact Entity ID."
-														: entityDirectoryQuery.data?.isPartial
-															? "More than 50 entities match; type more to narrow the results."
-															: entityDirectoryQuery.data?.candidates.length ===
-																	0
-																? "No matching entities are visible to your account."
-																: "Choose a unique entity to fill Entity ID."
+										required
+										value={draft.entityName}
+										onChange={(event) =>
+											patchDraft("entityName", event.target.value)
 										}
 									/>
+									<small className="muted">
+										Includes deleted and recreated entities. Events recorded
+										under other names are excluded.
+									</small>
+								</label>
+							) : (
+								<div className="control-field">
+									<label htmlFor="audit-entity-id">Entity ID</label>
+									<div className="directory-id-lookup-control">
+										<input
+											id="audit-entity-id"
+											type="number"
+											min="1"
+											step="1"
+											value={draft.entityId}
+											onChange={(event) => {
+												setEntitySearch("");
+												patchDraft("entityId", event.target.value);
+											}}
+											placeholder="Any ID"
+										/>
+										<AuditEntityLookup
+											disabled={!entityDirectoryKind}
+											disabledHint="Choose a searchable entity type first"
+											value={entitySearch}
+											candidates={entityCandidateOptions}
+											onChange={updateEntitySearch}
+											onSelect={(candidate) => {
+												setEntitySearch(candidate.inputValue);
+												patchDraft("entityId", String(candidate.id));
+											}}
+											placeholder={
+												entityDirectoryKind
+													? `Search ${entityDirectoryKind.replaceAll("_", " ")} names`
+													: "Search entity names"
+											}
+											helperText={
+												entitySearchTerm.length < 2
+													? "Type at least two characters, or enter an exact Entity ID."
+													: entityDirectoryQuery.isLoading ||
+															!entitySearchIsReady
+														? "Searching entities visible to your account…"
+														: entityDirectoryQuery.isError
+															? "Entity lookup is unavailable for your account; enter an exact Entity ID."
+															: entityDirectoryQuery.data?.isPartial
+																? "More than 50 entities match; type more to narrow the results."
+																: entityDirectoryQuery.data?.candidates
+																			.length === 0
+																	? "No matching entities are visible to your account."
+																	: "Choose a unique entity to fill Entity ID."
+											}
+										/>
+									</div>
 								</div>
-							</div>
+							)}
 							<label className="control-field">
 								<span>Action</span>
 								<select
@@ -1046,14 +1093,25 @@ export function AuditWorkspace() {
 											<td className="audit-time-cell">
 												{formatTimestamp(event.occurred_at)}
 											</td>
-											<td className="audit-value-cell">
+											<td className="audit-value-cell audit-entity-cell">
+												{event.entity_name ? (
+													<DrilldownButton
+														ariaLabel={`Show events recorded as ${event.entity_name}`}
+														onDrilldown={() => drillInto(event, "entityName")}
+														title="Find events recorded under this name across IDs"
+													>
+														<span className="audit-cell-primary">
+															{event.entity_name}
+														</span>
+													</DrilldownButton>
+												) : null}
 												<DrilldownButton
 													ariaLabel={`Drill down to entity ${formatEntity(event)}`}
 													onDrilldown={() => drillInto(event, "entity")}
 													title={`${formatEntityReference(event)} · Add this entity to the active filters`}
 												>
-													<span className="audit-cell-primary">
-														{event.entity_name || formatEntityReference(event)}
+													<span className="muted">
+														{formatEntityReference(event)}
 													</span>
 												</DrilldownButton>
 											</td>
@@ -1084,7 +1142,9 @@ export function AuditWorkspace() {
 														{initiator}
 													</DrilldownButton>
 												) : (
-													<span className="audit-static-value">{initiator}</span>
+													<span className="audit-static-value">
+														{initiator}
+													</span>
 												)}
 											</td>
 											<td className="audit-value-cell">

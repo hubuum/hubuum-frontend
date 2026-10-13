@@ -2743,6 +2743,7 @@ export function ObjectDetail({
 			/>
 
 			<ResourceActivityPanel
+				resourceName={objectData.name}
 				scope={{ type: "object", classId, objectId }}
 				title="Object audit and history"
 			/>
