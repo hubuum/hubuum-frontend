@@ -1,3 +1,5 @@
+import { type DefaultTreeAdapterTypes, parse } from "parse5";
+
 // Keep this source literal: the CSP hash must cover the exact bytes sent to the
 // browser, independently of server/client bundling. The hash is checked in tests.
 export const REPORT_TABLE_SORT_SCRIPT = String.raw`(() => {
@@ -146,4 +148,3 @@ export function buildReportHtml(html: string): string {
 	parts.push(source.slice(position));
 	return parts.join("");
 }
-import { type DefaultTreeAdapterTypes, parse } from "parse5";
