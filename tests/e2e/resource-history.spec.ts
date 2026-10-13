@@ -518,6 +518,7 @@ test.describe("resource history", () => {
 			.click();
 		await page.getByLabel("Exact recorded name").fill("retired-server");
 		await page.getByRole("button", { name: "Apply filters" }).click();
+		await expect.poll(() => searches.length).toBe(1);
 		await expect(
 			page.getByRole("button", {
 				name: "Show events recorded as retired-server",
@@ -526,16 +527,21 @@ test.describe("resource history", () => {
 		await expect(
 			page.getByRole("button", { name: /Drill down to entity/ }),
 		).toBeVisible();
-		const nameBounds = await page
-			.getByRole("button", { name: "Show events recorded as retired-server" })
-			.boundingBox();
-		const idBounds = await page
-			.getByRole("button", { name: /Drill down to entity/ })
-			.boundingBox();
-		if (!nameBounds || !idBounds)
-			throw new Error("Both entity drilldowns must be visible");
-		expect(nameBounds.y + nameBounds.height).toBeLessThanOrEqual(idBounds.y);
-		await expect.poll(() => searches.length).toBe(1);
+		await expect
+			.poll(async () => {
+				const nameBounds = await page
+					.getByRole("button", {
+						name: "Show events recorded as retired-server",
+					})
+					.boundingBox();
+				const idBounds = await page
+					.getByRole("button", { name: /Drill down to entity/ })
+					.boundingBox();
+				return nameBounds && idBounds
+					? nameBounds.y + nameBounds.height <= idBounds.y
+					: false;
+			})
+			.toBe(true);
 		expect(new URL(page.url()).searchParams.has("cursor")).toBe(false);
 		const request = JSON.stringify(searches[0]);
 		expect(request).toContain('"entity_name"');
