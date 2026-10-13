@@ -6,6 +6,8 @@ export type AuditFilterDraft = {
 	actorUserId: string;
 	collectionId: string;
 	entityId: string;
+	entityName: string;
+	entityMatch: string;
 	entityType: string;
 	initiatorUserId: string;
 	occurredAfter: string;
@@ -18,6 +20,7 @@ export type AuditDrilldownDimension =
 	| "actor"
 	| "collection"
 	| "entity"
+	| "entityName"
 	| "initiator";
 
 export const EMPTY_AUDIT_FILTER_DRAFT: AuditFilterDraft = {
@@ -26,6 +29,8 @@ export const EMPTY_AUDIT_FILTER_DRAFT: AuditFilterDraft = {
 	actorUserId: "",
 	collectionId: "",
 	entityId: "",
+	entityName: "",
+	entityMatch: "id",
 	entityType: "",
 	initiatorUserId: "",
 	occurredAfter: "",
@@ -37,8 +42,9 @@ export function parseAuditFilterParams(
 ): AuditFilterDraft {
 	const draft = { ...EMPTY_AUDIT_FILTER_DRAFT };
 	for (const field of Object.keys(draft) as AuditFilterField[]) {
-		draft[field] = params.get(field) ?? "";
+		draft[field] = params.get(field) ?? draft[field];
 	}
+	draft.entityMatch = draft.entityMatch === "name" ? "name" : "id";
 	return draft;
 }
 
@@ -60,7 +66,11 @@ export function buildAuditEventFilters(
 		actor_kind: draft.actorKind.trim() || undefined,
 		actor_user_id: parsePositiveInteger(draft.actorUserId),
 		collection_id: parsePositiveInteger(draft.collectionId),
-		entity_id: parsePositiveInteger(draft.entityId),
+		entity_id:
+			draft.entityMatch === "name"
+				? undefined
+				: parsePositiveInteger(draft.entityId),
+		entity_name: draft.entityMatch === "name" ? draft.entityName : undefined,
 		entity_type: draft.entityType.trim() || undefined,
 		initiator_user_id: parsePositiveInteger(draft.initiatorUserId),
 		limit: 50,
@@ -74,6 +84,8 @@ export function clearAuditFilter(
 	draft: AuditFilterDraft,
 	field: AuditFilterField,
 ): AuditFilterDraft {
+	if (field === "entityName")
+		return { ...draft, entityName: "", entityId: "", entityMatch: "id" };
 	return { ...draft, [field]: "" };
 }
 
@@ -92,9 +104,12 @@ export function getAuditDrilldownDraft(
 			: { ...draft, collectionId: String(event.collection_id) };
 	}
 
-	if (dimension === "entity") {
+	if (dimension === "entityName" && !event.entity_name) return null;
+	if (dimension === "entity" || dimension === "entityName") {
 		return {
 			...draft,
+			entityMatch: dimension === "entityName" ? "name" : "id",
+			entityName: event.entity_name ?? "",
 			entityId: event.entity_id == null ? "" : String(event.entity_id),
 			entityType: event.entity_type,
 		};

@@ -101,9 +101,11 @@ export function ClassHistoryRestore({
 		>
 			<div className="stack">
 				<p>
-					Source: <strong>{source.name}</strong> · version #{source.history_id}{" "}
-					· <time dateTime={source.valid_from}>{source.valid_from}</time>
+					Source: <strong>{source.name}</strong> · class #{source.id} · version
+					#{source.history_id} ·{" "}
+					<time dateTime={source.valid_from}>{source.valid_from}</time>
 				</p>
+				<p>Restore target: class #{scope.classId}</p>
 				<p>
 					Restore selected names, descriptions, and collection assignments as a
 					new audited update. Objects, relationships, and computed values are

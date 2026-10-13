@@ -296,6 +296,26 @@ Existing sinks retain custom configuration and pacing when edited. See the
 
 ## Historical snapshots and object restoration
 
+Audit filters and resource audit panels offer **Entity ID** and **Recorded name**
+matching. ID mode follows one entity through renames. Name mode matches the exact
+name stored on each event, across IDs, including deleted and recreated entities.
+A rename is recorded under the new name, so it will not appear under the old name.
+The global audit view preserves actor, action, date, and collection filters when
+switching modes; resource name searches span all visible collections. The mode
+and name are shareable in the URL. Select a name or ID in the global audit table
+to drill into that scope. All results remain subject to ReadAudit permissions.
+
+**Browse history** also offers recorded-name discovery. Matching audit events are
+grouped by entity ID; **Load more matching events** discovers older matches and
+adds to those groups. Discovery is limited by audit visibility and retention, and
+does not promise every object that ever used a name. If an object's class ID is
+missing from the loaded events, it remains listed without a history link.
+Selecting a group opens that ID's full visible snapshot history, including other
+historical names, while retaining the name search. Snapshot selection, pinned
+comparisons, and captured live comparisons reset when changing IDs. Comparisons,
+date jumps, and restores always belong to the selected ID; a deleted object's
+values are never automatically restored into a replacement with the same name.
+
 Object and class detail pages expose **Browse history**, with direct links from
 history rows and audit event details. The dedicated routes are
 `/objects/{classId}/{objectId}/history` and `/classes/{classId}/history`.
@@ -319,6 +339,13 @@ effective interval excludes its end. Deleted, inaccessible, and unavailable
 history is shown explicitly. Historical views are read-only and do not substitute
 current relationships, computed values, class definitions, or collection labels.
 Class history covers the definition, not its historical object population.
+
+Expand **Historical class and collection context** to load the collection name
+at the selected time and, for objects, the historical class name, schema, and
+validation setting. Lookups use the IDs stored in the snapshot and the exact
+selected timestamp, including dates within a snapshot's effective interval.
+Missing, deleted, inaccessible, or out-of-interval context is labeled unavailable
+without replacing it with live values or blocking browsing and restoration.
 
 Inline highlights and expanded comparisons share **Previous visible**, **Live**,
 and **Pinned version** baselines. Comparison controls and the compact pin action

@@ -78,10 +78,10 @@ export function isJsonRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-export function eventHistoryHref(
+export function eventHistoryScope(
 	event: EventRecord,
 	scope?: HistoryScope,
-): string | null {
+): HistoryScope | null {
 	if (!event.entity_id) return null;
 	if (
 		scope &&
@@ -89,28 +89,68 @@ export function eventHistoryHref(
 		event.entity_id ===
 			(scope.type === "object" ? scope.objectId : scope.classId)
 	) {
-		return resourceHistoryHref(scope, event.occurred_at);
+		return scope;
 	}
 	if (event.entity_type === "class") {
-		return resourceHistoryHref(
-			{ type: "class", classId: event.entity_id },
-			event.occurred_at,
-		);
+		return { type: "class", classId: event.entity_id };
 	}
 	if (event.entity_type !== "object") return null;
 	for (const state of [event.after, event.before]) {
-		if (isJsonRecord(state) && typeof state.hubuum_class_id === "number") {
-			return resourceHistoryHref(
-				{
-					type: "object",
-					classId: state.hubuum_class_id,
-					objectId: event.entity_id,
-				},
-				event.occurred_at,
-			);
+		if (
+			isJsonRecord(state) &&
+			typeof state.hubuum_class_id === "number" &&
+			Number.isSafeInteger(state.hubuum_class_id) &&
+			state.hubuum_class_id > 0
+		) {
+			return {
+				type: "object",
+				classId: state.hubuum_class_id,
+				objectId: event.entity_id,
+			};
 		}
 	}
 	return null;
+}
+
+export function eventHistoryHref(
+	event: EventRecord,
+	scope?: HistoryScope,
+): string | null {
+	const target = eventHistoryScope(event, scope);
+	return target ? resourceHistoryHref(target, event.occurred_at) : null;
+}
+
+export function groupHistoryEvents(
+	events: readonly EventRecord[],
+	scope: HistoryScope,
+) {
+	const groups = new Map<
+		number,
+		{ id: number; scope: HistoryScope | null; eventCount: number }
+	>();
+	const seen = new Set<number>();
+	for (const event of events) {
+		if (
+			event.entity_type !== scope.type ||
+			event.entity_id == null ||
+			seen.has(event.id)
+		)
+			continue;
+		seen.add(event.id);
+		const group = groups.get(event.entity_id) ?? {
+			id: event.entity_id,
+			scope: null,
+			eventCount: 0,
+		};
+		group.scope ??= eventHistoryScope(event, scope);
+		group.eventCount++;
+		groups.set(group.id, group);
+	}
+	return [...groups.values()];
+}
+
+export function namedHistoryHref(scope: HistoryScope, name: string): string {
+	return `${resourceHistoryHref(scope)}?${new URLSearchParams({ historyMatch: "name", historyName: name })}`;
 }
 
 export function isDeletedVersion(record: Pick<HistoryRecord, "op">): boolean {

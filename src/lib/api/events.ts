@@ -25,6 +25,7 @@ import {
 	postApiV1EventDeliveriesByDeliveryIdDead,
 	postApiV1EventDeliveriesByDeliveryIdRetry,
 	postApiV1EventSinks,
+	postApiV1Search,
 } from "@/lib/api/generated/client";
 import type {
 	Collection,
@@ -43,6 +44,7 @@ import type {
 	UpdateEventSink,
 	UpdateEventSubscription,
 } from "@/lib/api/generated/models";
+import { buildAuditNameSearch } from "@/lib/audit-name-search";
 
 export type EventRecord = EventResponse;
 export type HistoryRecord =
@@ -61,7 +63,7 @@ export type ResourceEventScope =
 	| { type: "class"; classId: number }
 	| { type: "object"; classId: number; objectId: number };
 
-export type EventListOptions = GetApiV1EventsParams;
+export type EventListOptions = GetApiV1EventsParams & { entity_name?: string };
 
 export type HistoryListOptions = {
 	cursor?: string;
@@ -101,6 +103,31 @@ function assertStatus(
 export async function fetchEventsPage(
 	options: EventListOptions = {},
 ): Promise<PageResult<EventRecord>> {
+	if (options.entity_name !== undefined) {
+		const response = await postApiV1Search(buildAuditNameSearch(options), {
+			credentials: "include",
+		});
+		if (response.status !== 200)
+			throw new Error(
+				getApiErrorMessage(
+					response.data,
+					"Recorded-name audit search is unavailable.",
+				),
+			);
+		if (
+			response.data.kind !== "audit_event" ||
+			response.data.results.some((item) => item.kind !== "audit_event")
+		) {
+			throw new Error("Unexpected response to audit search.");
+		}
+		return {
+			items: response.data.results.flatMap((item) =>
+				item.kind === "audit_event" ? [item.resource] : [],
+			),
+			nextCursor: response.data.next ?? null,
+			totalCount: response.data.total ?? null,
+		};
+	}
 	const response = await getApiV1Events(
 		{
 			limit: options.limit ?? 50,
@@ -146,6 +173,9 @@ export async function fetchResourceEventsPage(
 		"entity_type" | "entity_id" | "collection_id"
 	> = {},
 ): Promise<PageResult<EventRecord>> {
+	if (options.entity_name !== undefined) {
+		return fetchEventsPage({ ...options, entity_type: scope.type });
+	}
 	const params = {
 		limit: options.limit ?? 25,
 		sort: options.sort ?? "-occurred_at,-id",

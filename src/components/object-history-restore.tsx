@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { HistoryComparison } from "@/components/history-comparison";
+import styles from "@/components/resource-history.module.css";
 import type { HistoryRecord } from "@/lib/api/events";
 import {
 	fetchHistoryLiveResource,
@@ -14,7 +15,6 @@ import {
 	type HistoryScope,
 	restoreChoices,
 } from "@/lib/resource-history";
-import styles from "@/components/resource-history.module.css";
 
 export function ObjectHistoryRestore({
 	scope,
@@ -64,6 +64,14 @@ export function ObjectHistoryRestore({
 	);
 	const mutation = useMutation({
 		mutationFn: async () => {
+			if (
+				source.id !== scope.objectId ||
+				!("hubuum_class_id" in source) ||
+				source.hubuum_class_id !== scope.classId
+			)
+				throw new Error(
+					"The source snapshot does not match the restore target.",
+				);
 			if (!review.data || !reviewing || !plan?.changes.length)
 				throw new Error("Review the current changes before restoring.");
 			return restoreObjectSnapshot(scope, review.data, source.data, paths);
@@ -109,17 +117,19 @@ export function ObjectHistoryRestore({
 		>
 			<div className="stack">
 				<p>
-					Source: <strong>{source.name}</strong> · version #{source.history_id}{" "}
-					· <time dateTime={source.valid_from}>{source.valid_from}</time>
+					Source: <strong>{source.name}</strong> · object #{source.id} · version
+					#{source.history_id} ·{" "}
+					<time dateTime={source.valid_from}>{source.valid_from}</time>
+				</p>
+				<p>
+					Restore target: object #{scope.objectId} · class #{scope.classId}
 				</p>
 				<p className="muted">
 					This creates a new update to the live object's data. Restoring a
 					subtree also removes keys that were absent in the source. Arrays are
 					restored as whole values.
 				</p>
-				{review.isFetching ? (
-					<p role="status">Loading current data…</p>
-				) : null}
+				{review.isFetching ? <p role="status">Loading current data…</p> : null}
 				{review.isError ? (
 					<p role="alert" className="error-banner">
 						{review.error.message}

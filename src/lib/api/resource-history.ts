@@ -1,5 +1,9 @@
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
+	fetchResourceHistoryAsOf,
+	type ResourceEventScope,
+} from "@/lib/api/events";
+import {
 	getApiV1ClassesByClassId,
 	getApiV1ClassesByClassIdByObjectId,
 	getApiV1CollectionsByCollectionId,
@@ -15,7 +19,23 @@ import {
 	buildClassRestore,
 	buildObjectRestore,
 	type HistoryScope,
+	versionContains,
 } from "@/lib/resource-history";
+
+export async function fetchHistoricalContext(
+	scope: Exclude<ResourceEventScope, { type: "object" }>,
+	at: string,
+) {
+	const record = await fetchResourceHistoryAsOf(scope, at);
+	const id = scope.type === "class" ? scope.classId : scope.collectionId;
+	const matchesType =
+		scope.type === "class"
+			? "validate_schema" in record
+			: !("collection_id" in record);
+	if (record.id !== id || !matchesType || !versionContains(record, at))
+		throw new Error("Historical context is unavailable at this time.");
+	return record;
+}
 
 export type LiveHistoryResource = {
 	fields: Record<string, unknown>;
