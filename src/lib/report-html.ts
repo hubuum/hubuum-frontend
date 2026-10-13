@@ -92,12 +92,14 @@ export const SORTABLE_REPORT_SANDBOX_POLICY = `sandbox allow-scripts; ${REPORT_H
 
 // Prepend trusted content before any template markup can change parsing context.
 // The leading doctype keeps both full documents and HTML fragments in standards mode.
+// After the helper registers its listener, forbid further scripts. Hash sources
+// alone also permit external requests carrying matching integrity metadata.
 export const REPORT_HTML_PREFIX = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${REPORT_HTML_CONTENT_POLICY}"><style>
 table[data-sortable] button[data-hubuum-sort-button] { background: transparent; border: 0; color: inherit; cursor: pointer; font: inherit; font-weight: inherit; padding: .25em; text-align: inherit; }
 table[data-sortable] button[data-hubuum-sort-button]:hover { text-decoration: underline; }
 table[data-sortable] button[data-hubuum-sort-button]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 @media print { table[data-sortable] button[data-hubuum-sort-button] span[aria-hidden] { display: none; } }
-</style><script>${REPORT_TABLE_SORT_SCRIPT}</script>`;
+</style><script>${REPORT_TABLE_SORT_SCRIPT}</script><meta http-equiv="Content-Security-Policy" content="script-src 'none'">`;
 
 export function buildReportHtml(html: string): string {
 	return REPORT_HTML_PREFIX + html;

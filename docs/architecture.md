@@ -33,7 +33,9 @@ sandboxed without same-origin privileges. HTML report routes and embedded export
 previews prepend one application-owned table sorter, allowed by its exact CSP
 hash; no template values enter that script. Preview documents also receive a
 restrictive meta CSP before any template markup, and the parent policy permits
-the same hash. The iframe allows scripts but never same-origin access. Generic
+the same hash. After the helper registers its listener, a second meta policy
+blocks all subsequent scripts, including external requests carrying the helper's
+integrity hash. The iframe allows scripts but never same-origin access. Generic
 proxy output, XHTML, and SVG remain script-disabled. Export warning and
 truncation headers remain visible to the UI.
 Schema repair HTML may open object links in new tabs that do not inherit the

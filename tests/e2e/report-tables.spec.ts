@@ -3,6 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
 	buildReportHtml,
+	REPORT_TABLE_SORT_HASH,
 	SORTABLE_REPORT_SANDBOX_POLICY,
 } from "../../src/lib/report-html";
 import { buildContentSecurityPolicy } from "../../src/lib/security-policy";
@@ -77,8 +78,13 @@ for (const preview of [false, true]) {
 		page,
 	}) => {
 		const blockedScripts: string[] = [];
+		const fetchedScripts: string[] = [];
+		await page.route("**/untrusted-report.js*", (route) => {
+			fetchedScripts.push(route.request().url());
+			return route.fulfill({ contentType: "text/javascript", body: "" });
+		});
 		page.on("requestfailed", (request) => {
-			if (request.url().endsWith("/untrusted-report.js")) {
+			if (request.url().includes("/untrusted-report.js")) {
 				blockedScripts.push(request.failure()?.errorText ?? "");
 			}
 		});
@@ -89,6 +95,7 @@ ${inventory}
 <script>document.body.dataset.executed = "yes"</script>
 <script nonce="test-parent-nonce">document.body.dataset.executed = "yes"</script>
 <script src="/untrusted-report.js"></script>
+<script src="/untrusted-report.js?report-data=private" integrity="${REPORT_TABLE_SORT_HASH}" crossorigin="anonymous"></script>
 <button onclick="document.body.dataset.executed = 'yes'">Untrusted handler</button>
 <a href="javascript:document.body.dataset.executed='yes'">Untrusted link</a>
 </body></html>`,
@@ -103,7 +110,11 @@ ${inventory}
 		await report.getByRole("button", { name: "Untrusted handler" }).click();
 		await report.getByRole("link", { name: "Untrusted link" }).click();
 		await expect(report.locator("body")).not.toHaveAttribute("data-executed");
-		expect(blockedScripts).toEqual([expect.stringMatching(/csp/i)]);
+		expect(fetchedScripts).toEqual([]);
+		expect(blockedScripts).toEqual([
+			expect.stringMatching(/csp/i),
+			expect.stringMatching(/csp/i),
+		]);
 		const access = await report.locator("html").evaluate(async () => {
 			const denied = (read: () => unknown) => {
 				try {
