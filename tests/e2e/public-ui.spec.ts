@@ -39,6 +39,33 @@ async function prepareLogin(
 	});
 }
 
+test.describe("report redirects", () => {
+	for (const path of [
+		"/reports/7?object_id=42",
+		"/reports/7/refresh?max_age=15m",
+		"/reports/runs/42",
+	]) {
+		test(`keeps sign-in for ${path} on the browser origin`, async ({
+			page,
+			request,
+		}) => {
+			const response = await request.get(path, {
+				maxRedirects: 0,
+				headers: {
+					"x-forwarded-host": "console.example",
+					"x-forwarded-proto": "https",
+				},
+			});
+			const loginPath = `/login?${new URLSearchParams({ next: path })}`;
+			expect(response.status()).toBe(307);
+			expect(response.headers().location).toBe(loginPath);
+
+			await prepareLogin(page, "light", path);
+			await expect(page).toHaveURL(new URL(loginPath, response.url()).href);
+		});
+	}
+});
+
 test.describe("public accessibility", () => {
 	test("a sole provider is implicit and password visibility is controllable", async ({
 		page,

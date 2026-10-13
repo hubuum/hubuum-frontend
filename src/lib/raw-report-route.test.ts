@@ -33,32 +33,41 @@ describe("raw report route boundary", () => {
 		vi.clearAllMocks();
 	});
 
-	it("redirects unauthenticated bookmarks back through login", async () => {
-		mocks.getSessionFromRequest.mockResolvedValue(null);
-		const request = new NextRequest("http://localhost/reports/7?object_id=42");
+	it.each(["http://localhost", "https://0.0.0.0:3000"])(
+		"redirects unauthenticated bookmarks through local login from %s",
+		async (origin) => {
+			mocks.getSessionFromRequest.mockResolvedValue(null);
+			const request = new NextRequest(`${origin}/reports/7?object_id=42`);
 
-		const response = await requireRawReportSession(request);
+			const response = await requireRawReportSession(request);
 
-		expect(response).toBeInstanceOf(Response);
-		expect((response as Response).status).toBe(307);
-		expect((response as Response).headers.get("Location")).toBe(
-			"http://localhost/login?next=%2Freports%2F7%3Fobject_id%3D42",
-		);
-	});
+			expect(response).toBeInstanceOf(Response);
+			expect((response as Response).status).toBe(307);
+			expect((response as Response).headers.get("Location")).toBe(
+				"/login?next=%2Freports%2F7%3Fobject_id%3D42",
+			);
+		},
+	);
 
-	it("clears an invalid backend session before returning to login", async () => {
-		const request = new NextRequest("http://localhost/reports/7");
+	it.each(["http://localhost", "https://0.0.0.0:3000"])(
+		"clears an invalid backend session before local login from %s",
+		async (origin) => {
+			const request = new NextRequest(`${origin}/reports/7`);
 
-		const response = await rawReportErrorResponse(
-			new RawReportError("Unauthorized", 401),
-			request,
-			session,
-		);
+			const response = await rawReportErrorResponse(
+				new RawReportError("Unauthorized", 401),
+				request,
+				session,
+			);
 
-		expect(mocks.destroySession).toHaveBeenCalledWith("session-id");
-		expect(mocks.clearSessionCookie).toHaveBeenCalledWith(response, request);
-		expect(response.status).toBe(307);
-	});
+			expect(mocks.destroySession).toHaveBeenCalledWith("session-id");
+			expect(mocks.clearSessionCookie).toHaveBeenCalledWith(response, request);
+			expect(response.status).toBe(307);
+			expect(response.headers.get("Location")).toBe(
+				"/login?next=%2Freports%2F7",
+			);
+		},
+	);
 
 	it("rejects HEAD without starting report generation", () => {
 		const response = rawReportHeadResponse();
