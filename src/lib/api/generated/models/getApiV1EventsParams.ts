@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.18
+ * OpenAPI spec version: 0.0.19
  */
 
 export type GetApiV1EventsParams = {
@@ -15,6 +15,10 @@ entity_type?: string;
  * Optional event entity id filter
  */
 entity_id?: number;
+/**
+ * Include direct relation events for a class or object entity_type and entity_id; defaults to false
+ */
+include_relations?: boolean;
 /**
  * Optional action filter
  */

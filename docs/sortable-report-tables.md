@@ -5,7 +5,7 @@ sort its columns. The frontend supplies the sorting controls in report pages,
 stored-run pages, template-test previews, and inline export previews. No
 JavaScript, script hosting, or administrator CSP changes are needed in the template.
 
-This feature is available in the development edition after frontend `v0.0.19`.
+This feature is available in frontend `v0.0.20` and newer.
 Upgrade the frontend to a version containing this feature; no server API or
 database upgrade is required for an already supported server.
 
@@ -102,7 +102,7 @@ strict missing-data policy:
 {% endif %}
 ```
 
-See the server's [export template guide](https://hubuum.github.io/hubuum/v0.0.18/export_template_guide/)
+See the server's [export template guide](https://hubuum.github.io/hubuum/v0.0.19/export_template_guide/)
 for template context, relations, and missing-data behavior.
 
 ## Supported layouts and output

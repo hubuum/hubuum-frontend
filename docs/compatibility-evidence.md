@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.18` | `ghcr.io/hubuum/hubuum-server:v0.0.18` |
+| `main` (unreleased) | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
+| `v0.0.20` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.19` | `v0.0.18` | `ghcr.io/hubuum/hubuum-server:v0.0.18` |
 | `v0.0.18` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
 | `v0.0.17` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
@@ -27,7 +28,10 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Frontend `v0.0.19` and unreleased `main` target
+listed server tag. Frontend `v0.0.20` and unreleased `main` target
+Server `v0.0.19` at
+`sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225`.
+Frontend `v0.0.19` targets
 Server `v0.0.18` at
 `sha256:5b54248f19171200dfa497174d385a48f90666a415cb31732797043d5e182fc4`.
 Frontend `v0.0.17` and `v0.0.18` retain Server `v0.0.16` at
@@ -37,6 +41,35 @@ Frontend `v0.0.16` retains its Server `v0.0.15` target at
 Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
 A separate scheduled workflow follows the moving backend `:main` image.
+
+## Server v0.0.19
+
+Frontend v0.0.20 targets the 240-operation contract from server commit
+`59faad2641620e457d5b0d9d7e112ee395b151ff`. The generated client includes query
+usage management and successful-login subject filters. Required live contract
+checks cover this baseline, including the format-9 backup contract.
+
+The published image's Linux AMD64 and ARM64 labels match that commit, and all
+release tags resolve to the pinned digest above. On 2026-10-14, the released image
+passed all 107 live contract checks. Runtime checks of both Rustls and OpenSSL
+negotiated HTTP/1.1, returned healthy responses, and did not negotiate HTTP/2.
+The complete authenticated browser suite passed all 40 tests, followed by three
+credential-approval and full restore tests, without retries on Next.js 16.4.0.
+
+Upgrade the server first. Replace blank principal names and upgrade strict event
+readers before enabling successful-login events. Apply query usage migrations,
+reconcile database role grants, and upgrade all API, worker, and restore processes
+together. Formats 6–8 remain readable, but older servers cannot restore format 9
+or read the new authentication event entry. Retain a pre-upgrade backup and
+matching binaries for recovery, and follow earlier offline migration requirements
+when upgrading across those releases.
+
+Direct server connections use HTTP/1.1, including TLS. Native HTTP/2 is disabled
+and the affected `h2` dependency is excluded. Reverse proxies can still offer
+HTTP/2 to clients while connecting to the server over HTTP/1.1.
+
+See the [server release notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.19)
+and [current upgrade requirements](compatibility.md#before-upgrading).
 
 ## Server v0.0.18
 

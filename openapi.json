@@ -7,7 +7,7 @@
       "name": "MIT",
       "identifier": "MIT"
     },
-    "version": "0.0.18"
+    "version": "0.0.19"
   },
   "servers": [
     {
@@ -4137,6 +4137,15 @@
             }
           },
           {
+            "name": "include_relations",
+            "in": "query",
+            "description": "Include class relation events touching this class; defaults to false",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "action",
             "in": "query",
             "description": "Optional action filter",
@@ -5122,6 +5131,435 @@
           },
           "404": {
             "description": "Class not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/query-usage": {
+      "get": {
+        "tags": [
+          "query usage"
+        ],
+        "summary": "Get Api V1 Classes By Class Id Query Usage",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/query-usage.",
+        "operationId": "getApiV1ClassesByClassIdQueryUsage",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HubuumClassID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Class-scoped advisory query usage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QueryUsageResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid declaration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Class permission required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Class or declaration not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision, duplicate declaration or class limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "query usage"
+        ],
+        "summary": "Post Api V1 Classes By Class Id Query Usage",
+        "description": "Auto-generated documentation for POST /api/v1/classes/{class_id}/query-usage.",
+        "operationId": "postApiV1ClassesByClassIdQueryUsage",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HubuumClassID"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryUsageCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Class-scoped advisory query usage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryUsageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid declaration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Class permission required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Class or declaration not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision, duplicate declaration or class limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/query-usage/analysis": {
+      "post": {
+        "tags": [
+          "query usage"
+        ],
+        "summary": "Post Api V1 Classes By Class Id Query Usage Analysis",
+        "description": "Auto-generated documentation for POST /api/v1/classes/{class_id}/query-usage/analysis.",
+        "operationId": "postApiV1ClassesByClassIdQueryUsageAnalysis",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HubuumClassID"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryUsageAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Read-only administrative review; availability and evidence are explicit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryUsageAnalysisResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or excessive proposed patterns",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unscoped administrator and class read access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Class not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/query-usage/{declaration_id}": {
+      "put": {
+        "tags": [
+          "query usage"
+        ],
+        "summary": "Put Api V1 Classes By Class Id Query Usage By Declaration Id",
+        "description": "Auto-generated documentation for PUT /api/v1/classes/{class_id}/query-usage/{declaration_id}.",
+        "operationId": "putApiV1ClassesByClassIdQueryUsageByDeclarationId",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HubuumClassID"
+            }
+          },
+          {
+            "name": "declaration_id",
+            "in": "path",
+            "description": "Declaration ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ResourceID"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryUsageReplaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Class-scoped advisory query usage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryUsageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid declaration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Class permission required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Class or declaration not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision, duplicate declaration or class limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "query usage"
+        ],
+        "summary": "Delete Api V1 Classes By Class Id Query Usage By Declaration Id",
+        "description": "Auto-generated documentation for DELETE /api/v1/classes/{class_id}/query-usage/{declaration_id}.",
+        "operationId": "deleteApiV1ClassesByClassIdQueryUsageByDeclarationId",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HubuumClassID"
+            }
+          },
+          {
+            "name": "declaration_id",
+            "in": "path",
+            "description": "Declaration ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ResourceID"
+            }
+          },
+          {
+            "name": "expected_revision",
+            "in": "query",
+            "description": "Current declaration revision",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ResourceRevision"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Class-scoped advisory query usage"
+          },
+          "400": {
+            "description": "Invalid declaration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Class permission required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Class or declaration not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision, duplicate declaration or class limit",
             "content": {
               "application/json": {
                 "schema": {
@@ -7663,6 +8101,15 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          },
+          {
+            "name": "include_relations",
+            "in": "query",
+            "description": "Include object relation events touching this object; defaults to false",
+            "required": false,
+            "schema": {
+              "type": "boolean"
             }
           },
           {
@@ -12468,6 +12915,15 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          },
+          {
+            "name": "include_relations",
+            "in": "query",
+            "description": "Include direct relation events for a class or object entity_type and entity_id; defaults to false",
+            "required": false,
+            "schema": {
+              "type": "boolean"
             }
           },
           {
@@ -24402,7 +24858,9 @@
             "type": "integer",
             "format": "int64"
           },
-          "metadata": {},
+          "metadata": {
+            "description": "Event-specific metadata. Authentication events include an immutable\n`subject` object described by the EventSubject schema."
+          },
           "occurred_at": {
             "type": "string",
             "format": "date-time"
@@ -24571,6 +25029,38 @@
           "valkey_stream",
           "amqp"
         ]
+      },
+      "EventSubject": {
+        "type": "object",
+        "description": "Immutable event-time identity and authorization snapshot in `metadata.subject`.\nThis is the affected principal, independently of the operation's actor.",
+        "required": [
+          "principal_id",
+          "name",
+          "kind",
+          "identity_scope",
+          "authentication_provider_kind",
+          "is_admin"
+        ],
+        "properties": {
+          "authentication_provider_kind": {
+            "type": "string"
+          },
+          "identity_scope": {
+            "type": "string"
+          },
+          "is_admin": {
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PrincipalKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "principal_id": {
+            "$ref": "#/components/schemas/PrincipalID"
+          }
+        }
       },
       "EventSubscription": {
         "type": "object",
@@ -24757,6 +25247,27 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "subject_identity_scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Match identity scope names from the immutable event-time subject."
+          },
+          "subject_is_admin": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Require the recorded administrator status. Missing subject context never matches."
+          },
+          "subject_principal_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrincipalID"
+            },
+            "description": "Match affected principal IDs from the immutable event-time subject."
           },
           "task_kinds": {
             "type": "array",
@@ -31158,6 +31669,509 @@
           }
         }
       },
+      "QueryObservationConfig": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "sample_every",
+          "max_patterns",
+          "max_patterns_per_class",
+          "retention_seconds",
+          "max_predicates_per_query"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "max_patterns": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_patterns_per_class": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_predicates_per_query": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "retention_seconds": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "sample_every": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "QueryObservationSettings": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "sample_every",
+          "max_patterns",
+          "max_patterns_per_class",
+          "retention_seconds",
+          "max_predicates_per_query"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "max_patterns": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_patterns_per_class": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_predicates_per_query": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "retention_seconds": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "sample_every": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "QueryObservationSnapshot": {
+        "type": "object",
+        "required": [
+          "source",
+          "settings",
+          "process_started_at",
+          "captured_at",
+          "patterns",
+          "capacity_drops"
+        ],
+        "properties": {
+          "capacity_drops": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "patterns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryPatternObservation"
+            }
+          },
+          "process_started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/QueryObservationSettings"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      },
+      "QueryPatternObservation": {
+        "type": "object",
+        "required": [
+          "pattern",
+          "sampled_queries",
+          "first_observed_at",
+          "last_observed_at",
+          "whole_query_duration_micros"
+        ],
+        "properties": {
+          "first_observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pattern": {
+            "$ref": "#/components/schemas/QueryUsagePatternSchema"
+          },
+          "sampled_queries": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "whole_query_duration_micros": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Whole storage request duration, not the cost of this predicate.",
+            "minimum": 0
+          }
+        }
+      },
+      "QueryUsageAdapterProgress": {
+        "type": "object",
+        "description": "Backend-owned operational facts; state names are not portable promises.",
+        "required": [
+          "reference",
+          "state",
+          "declaration_owners",
+          "updated_at"
+        ],
+        "properties": {
+          "declaration_owners": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "QueryUsageAnalysisRequest": {
+        "type": "object",
+        "properties": {
+          "proposed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryUsagePatternSchema"
+            },
+            "description": "Up to 32 hypothetical patterns. Analysis never records or adopts them.",
+            "maxItems": 32
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryUsageAnalysisResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "assessed_at",
+          "observations",
+          "assessments",
+          "suggestions",
+          "limitations"
+        ],
+        "properties": {
+          "assessed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assessments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryUsageAssessment"
+            }
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "observations": {
+            "$ref": "#/components/schemas/QueryObservationSnapshot"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QueryUsageAnalysisStatus"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryUsageSuggestion"
+            }
+          }
+        }
+      },
+      "QueryUsageAnalysisStatus": {
+        "type": "string",
+        "enum": [
+          "unavailable",
+          "insufficient_evidence",
+          "complete"
+        ]
+      },
+      "QueryUsageAssessment": {
+        "type": "object",
+        "required": [
+          "pattern",
+          "schema_compatibility",
+          "can_prepare",
+          "resources",
+          "rationale"
+        ],
+        "properties": {
+          "adapter_progress": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QueryUsageAdapterProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_prepare": {
+            "type": "boolean"
+          },
+          "declaration_id": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ResourceID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pattern": {
+            "$ref": "#/components/schemas/QueryUsagePatternSchema"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryUsageResource"
+            }
+          },
+          "schema_compatibility": {
+            "$ref": "#/components/schemas/QueryUsageCompatibility"
+          }
+        }
+      },
+      "QueryUsageCompatibility": {
+        "type": "string",
+        "enum": [
+          "compatible",
+          "incompatible",
+          "unknown"
+        ]
+      },
+      "QueryUsageCreateRequest": {
+        "type": "object",
+        "required": [
+          "pattern"
+        ],
+        "properties": {
+          "pattern": {
+            "$ref": "#/components/schemas/QueryUsagePatternSchema"
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryUsageOperation": {
+        "type": "string",
+        "enum": [
+          "equals",
+          "gt",
+          "gte",
+          "lt",
+          "lte",
+          "between"
+        ]
+      },
+      "QueryUsagePatternSchema": {
+        "type": "object",
+        "description": "Schema for the validated storage pattern accepted at the HTTP boundary.",
+        "required": [
+          "path",
+          "value_type",
+          "operations"
+        ],
+        "properties": {
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryUsageOperation"
+            },
+            "description": "One to six operations; string and boolean support equals only."
+          },
+          "path": {
+            "type": "string",
+            "description": "Comma-separated JSON path; at most 512 bytes and 32 segments."
+          },
+          "value_type": {
+            "$ref": "#/components/schemas/QueryUsageValueType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryUsageReplaceRequest": {
+        "type": "object",
+        "required": [
+          "pattern",
+          "expected_revision"
+        ],
+        "properties": {
+          "expected_revision": {
+            "$ref": "#/components/schemas/ResourceRevision"
+          },
+          "pattern": {
+            "$ref": "#/components/schemas/QueryUsagePatternSchema"
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryUsageResource": {
+        "type": "object",
+        "required": [
+          "reference",
+          "ownership",
+          "bytes",
+          "cleanup_eligible_if_removed"
+        ],
+        "properties": {
+          "bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "cleanup_eligible_if_removed": {
+            "type": "boolean"
+          },
+          "declaration_owners": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "native_scan_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "ownership": {
+            "$ref": "#/components/schemas/QueryUsageResourceOwnership"
+          },
+          "reference": {
+            "type": "string"
+          }
+        }
+      },
+      "QueryUsageResourceOwnership": {
+        "type": "string",
+        "enum": [
+          "independently_managed",
+          "declaration_managed"
+        ]
+      },
+      "QueryUsageResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "class_id",
+          "pattern",
+          "revision",
+          "created_at",
+          "updated_at",
+          "schema_compatibility"
+        ],
+        "properties": {
+          "class_id": {
+            "$ref": "#/components/schemas/HubuumClassID"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PrincipalID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "$ref": "#/components/schemas/ResourceID"
+          },
+          "pattern": {
+            "$ref": "#/components/schemas/QueryUsagePatternSchema"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/ResourceRevision"
+          },
+          "schema_compatibility": {
+            "$ref": "#/components/schemas/QueryUsageCompatibility",
+            "description": "Advisory assessment against the current class schema. Never affects validation."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PrincipalID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "QueryUsageSuggestion": {
+        "type": "object",
+        "required": [
+          "proposed",
+          "observations",
+          "rationale"
+        ],
+        "properties": {
+          "observations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryPatternObservation"
+            }
+          },
+          "proposed": {
+            "$ref": "#/components/schemas/QueryUsagePatternSchema"
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      },
+      "QueryUsageValueType": {
+        "type": "string",
+        "enum": [
+          "string",
+          "numeric",
+          "boolean"
+        ]
+      },
       "RebuildTaskDetails": {
         "type": "object",
         "properties": {
@@ -31826,6 +32840,12 @@
           }
         }
       },
+      "ResourceID": {
+        "type": "integer",
+        "format": "int32",
+        "description": "Validated positive resource id.",
+        "minimum": 1
+      },
       "ResourceRevision": {
         "type": "integer",
         "format": "int64",
@@ -32168,6 +33188,7 @@
         "type": "object",
         "required": [
           "schema_validation",
+          "query_observations",
           "server",
           "database",
           "tasks",
@@ -32207,6 +33228,9 @@
           },
           "permissions": {
             "$ref": "#/components/schemas/PermissionConfig"
+          },
+          "query_observations": {
+            "$ref": "#/components/schemas/QueryObservationConfig"
           },
           "remote_calls": {
             "$ref": "#/components/schemas/RemoteCallConfig"

@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.18` | `ghcr.io/hubuum/hubuum-server:v0.0.18` |
+| `main` (unreleased) | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
+| `v0.0.20` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.19` | `v0.0.18` | `ghcr.io/hubuum/hubuum-server:v0.0.18` |
 | `v0.0.18` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
 | `v0.0.17` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
@@ -27,13 +28,29 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required checks use the immutable server image for the selected release.
-For v0.0.19, it is
-`ghcr.io/hubuum/hubuum-server@sha256:5b54248f19171200dfa497174d385a48f90666a415cb31732797043d5e182fc4`.
+For Frontend v0.0.20 and Server v0.0.19, it is
+`ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225`.
 Scheduled tests against server `main` do not change a release's declared target.
 
 ## Before upgrading
 
-Frontend v0.0.19 targets server v0.0.18. Deploy that server before using delegated
+Frontend v0.0.20 targets server v0.0.19. Deploy that server before upgrading the
+frontend. Replace blank local account names with nonblank accounts and transfer
+group memberships; correct externally managed names in the identity provider.
+Upgrade strict event readers to accept successful-login events before enabling
+the new server. Older servers cannot read the new event catalog entry.
+
+The server uses HTTP/1.1 for direct connections, including TLS. Configure reverse
+proxies to use HTTP/1.1 upstream; they can continue offering HTTP/2 to clients.
+
+Backups now use format 9; formats 6, 7, and 8 remain readable. Apply query usage
+migrations and reconcile role grants. Upgrade every API, worker, and restore
+executor together, and retain a pre-upgrade backup and matching binaries for
+recovery. Older servers cannot restore format 9. See the
+[server release notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.19)
+and [backup compatibility](https://hubuum.github.io/hubuum/v0.0.19/backup-restore/).
+
+Server v0.0.18 or newer is required for delegated
 webhook setup. Collection managers need `ManageEventSubscription` and `ReadAudit`;
 shared sinks also need direct collection grants. Follow the
 [browser guide](user-guide.md) for credential prompts, schema repair, and restore
@@ -50,6 +67,11 @@ migration commands from an older client release.
 
 [Detailed evidence and historical migrations](compatibility-evidence.md) retain tested
 image identities, dates, suite results, and earlier compatibility limits.
+
+## Server v0.0.19
+
+See [server v0.0.19](compatibility-evidence.md#server-v0019) for the release contract
+and verification evidence.
 
 ## Server v0.0.18
 

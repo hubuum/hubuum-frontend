@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.18
+ * OpenAPI spec version: 0.0.19
  */
 import type {
   ApiErrorResponse,
@@ -30,6 +30,7 @@ import type {
   CredentialApprovalRequest,
   CredentialApprovalResponse,
   DbStateResponse,
+  DeleteApiV1ClassesByClassIdQueryUsageByDeclarationIdParams,
   EffectiveGroupPermission,
   EventDeliveryHealthResponse,
   EventDeliveryResponse,
@@ -158,12 +159,18 @@ import type {
   PrincipalTokenMetadata,
   PrincipalTokenPointResponse,
   ProbeResponse,
+  QueryUsageAnalysisRequest,
+  QueryUsageAnalysisResponse,
+  QueryUsageCreateRequest,
+  QueryUsageReplaceRequest,
+  QueryUsageResponse,
   RelatedClassGraph,
   RelatedObjectGraph,
   ReleaseRateLimitResponse,
   RemoteTarget,
   RemoteTargetInvokeRequest,
   RenewTokenRequest,
+  ResourceID,
   RestoreConfirmRequest,
   RestoreStageResponse,
   RunningConfig,
@@ -4016,6 +4023,389 @@ export const getApiV1ClassesByClassIdPermissions = async (classId: number,
 
   const data: getApiV1ClassesByClassIdPermissionsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdPermissionsResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdQueryUsageResponse200 = {
+  data: QueryUsageResponse[]
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdQueryUsageResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdQueryUsageResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByClassIdQueryUsageResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdQueryUsageResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type getApiV1ClassesByClassIdQueryUsageResponseSuccess = (getApiV1ClassesByClassIdQueryUsageResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdQueryUsageResponseError = (getApiV1ClassesByClassIdQueryUsageResponse400 | getApiV1ClassesByClassIdQueryUsageResponse403 | getApiV1ClassesByClassIdQueryUsageResponse404 | getApiV1ClassesByClassIdQueryUsageResponse409) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdQueryUsageResponse = (getApiV1ClassesByClassIdQueryUsageResponseSuccess | getApiV1ClassesByClassIdQueryUsageResponseError)
+
+export const getGetApiV1ClassesByClassIdQueryUsageUrl = (classId: HubuumClassID,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/query-usage`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/query-usage.
+ * @summary Get Api V1 Classes By Class Id Query Usage
+ */
+export const getApiV1ClassesByClassIdQueryUsage = async (classId: HubuumClassID, options?: RequestInit): Promise<getApiV1ClassesByClassIdQueryUsageResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdQueryUsageUrl(classId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdQueryUsageResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdQueryUsageResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdQueryUsageResponse201 = {
+  data: QueryUsageResponse
+  status: 201
+}
+
+export type postApiV1ClassesByClassIdQueryUsageResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByClassIdQueryUsageResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByClassIdQueryUsageResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1ClassesByClassIdQueryUsageResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ClassesByClassIdQueryUsageResponseSuccess = (postApiV1ClassesByClassIdQueryUsageResponse201) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdQueryUsageResponseError = (postApiV1ClassesByClassIdQueryUsageResponse400 | postApiV1ClassesByClassIdQueryUsageResponse403 | postApiV1ClassesByClassIdQueryUsageResponse404 | postApiV1ClassesByClassIdQueryUsageResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdQueryUsageResponse = (postApiV1ClassesByClassIdQueryUsageResponseSuccess | postApiV1ClassesByClassIdQueryUsageResponseError)
+
+export const getPostApiV1ClassesByClassIdQueryUsageUrl = (classId: HubuumClassID,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/query-usage`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/query-usage.
+ * @summary Post Api V1 Classes By Class Id Query Usage
+ */
+export const postApiV1ClassesByClassIdQueryUsage = async (classId: HubuumClassID,
+    queryUsageCreateRequest: QueryUsageCreateRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdQueryUsageResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1ClassesByClassIdQueryUsageUrl(classId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(queryUsageCreateRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdQueryUsageResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdQueryUsageResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdQueryUsageAnalysisResponse200 = {
+  data: QueryUsageAnalysisResponse
+  status: 200
+}
+
+export type postApiV1ClassesByClassIdQueryUsageAnalysisResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByClassIdQueryUsageAnalysisResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByClassIdQueryUsageAnalysisResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1ClassesByClassIdQueryUsageAnalysisResponseSuccess = (postApiV1ClassesByClassIdQueryUsageAnalysisResponse200) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdQueryUsageAnalysisResponseError = (postApiV1ClassesByClassIdQueryUsageAnalysisResponse400 | postApiV1ClassesByClassIdQueryUsageAnalysisResponse403 | postApiV1ClassesByClassIdQueryUsageAnalysisResponse404) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdQueryUsageAnalysisResponse = (postApiV1ClassesByClassIdQueryUsageAnalysisResponseSuccess | postApiV1ClassesByClassIdQueryUsageAnalysisResponseError)
+
+export const getPostApiV1ClassesByClassIdQueryUsageAnalysisUrl = (classId: HubuumClassID,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/query-usage/analysis`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/query-usage/analysis.
+ * @summary Post Api V1 Classes By Class Id Query Usage Analysis
+ */
+export const postApiV1ClassesByClassIdQueryUsageAnalysis = async (classId: HubuumClassID,
+    queryUsageAnalysisRequest: QueryUsageAnalysisRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdQueryUsageAnalysisResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1ClassesByClassIdQueryUsageAnalysisUrl(classId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(queryUsageAnalysisRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdQueryUsageAnalysisResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdQueryUsageAnalysisResponse
+}
+
+
+
+export type putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse200 = {
+  data: QueryUsageResponse
+  status: 200
+}
+
+export type putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponseSuccess = (putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse200) & {
+  headers: Headers;
+};
+export type putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponseError = (putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse400 | putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse403 | putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse404 | putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse409) & {
+  headers: Headers;
+};
+
+export type putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse = (putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponseSuccess | putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponseError)
+
+export const getPutApiV1ClassesByClassIdQueryUsageByDeclarationIdUrl = (classId: HubuumClassID,
+    declarationId: ResourceID,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/query-usage/${declarationId}`
+}
+
+/**
+ * Auto-generated documentation for PUT /api/v1/classes/{class_id}/query-usage/{declaration_id}.
+ * @summary Put Api V1 Classes By Class Id Query Usage By Declaration Id
+ */
+export const putApiV1ClassesByClassIdQueryUsageByDeclarationId = async (classId: HubuumClassID,
+    declarationId: ResourceID,
+    queryUsageReplaceRequest: QueryUsageReplaceRequest, options?: RequestInit): Promise<putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPutApiV1ClassesByClassIdQueryUsageByDeclarationIdUrl(classId,declarationId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(queryUsageReplaceRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse
+}
+
+
+
+export type deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponseSuccess = (deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse204) & {
+  headers: Headers;
+};
+export type deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponseError = (deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse400 | deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse403 | deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse404 | deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse409) & {
+  headers: Headers;
+};
+
+export type deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse = (deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponseSuccess | deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponseError)
+
+export const getDeleteApiV1ClassesByClassIdQueryUsageByDeclarationIdUrl = (classId: HubuumClassID,
+    declarationId: ResourceID,
+    params: DeleteApiV1ClassesByClassIdQueryUsageByDeclarationIdParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/query-usage/${declarationId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/query-usage/${declarationId}`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/classes/{class_id}/query-usage/{declaration_id}.
+ * @summary Delete Api V1 Classes By Class Id Query Usage By Declaration Id
+ */
+export const deleteApiV1ClassesByClassIdQueryUsageByDeclarationId = async (classId: HubuumClassID,
+    declarationId: ResourceID,
+    params: DeleteApiV1ClassesByClassIdQueryUsageByDeclarationIdParams, options?: RequestInit): Promise<deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse> => {
+
+  const res = await fetch(getDeleteApiV1ClassesByClassIdQueryUsageByDeclarationIdUrl(classId,declarationId,params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse
 }
 
 
