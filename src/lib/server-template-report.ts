@@ -8,6 +8,7 @@ import type {
 	ExportTemplateRunRequest,
 	TaskStatus,
 } from "@/lib/api/generated/models";
+import { enhanceReportHtmlStream } from "@/lib/report-html";
 import { parseReportMaxAge } from "@/lib/report-max-age";
 import type { ReportResultStatus } from "@/lib/report-result-status";
 import { protectPrivateResponse } from "@/lib/security-policy";
@@ -299,12 +300,16 @@ function rawOutputResponse(upstream: Response): Response {
 		headers.set("X-Hubuum-Export-Truncated", truncated);
 	}
 
-	protectPrivateResponse(headers);
+	const isHtml = contentType.split(";")[0].trim().toLowerCase() === "text/html";
+	protectPrivateResponse(headers, { sortableReport: isHtml });
 
-	return new Response(upstream.body, {
-		status: 200,
-		headers,
-	});
+	return new Response(
+		isHtml ? enhanceReportHtmlStream(upstream.body) : upstream.body,
+		{
+			status: 200,
+			headers,
+		},
+	);
 }
 
 function createRuntime(dependencies: ReportDependencies): ReportRuntime {

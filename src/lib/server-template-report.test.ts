@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { buildReportHtml } from "@/lib/report-html";
 
 import {
 	getBookmarkableTemplateReportStatus,
@@ -124,7 +125,7 @@ describe("bookmarkable report requests", () => {
 });
 
 describe("raw template reports", () => {
-	it("submits, polls, and returns the exact backend output body", async () => {
+	it("submits, polls, and enhances HTML without changing the backend markup", async () => {
 		const backendFetch = vi
 			.fn()
 			.mockResolvedValueOnce(task(17, "queued", null, 202))
@@ -166,7 +167,9 @@ describe("raw template reports", () => {
 				method: "GET",
 			}),
 		);
-		await expect(response.text()).resolves.toBe("<h1>Inventory</h1>\n");
+		await expect(response.text()).resolves.toBe(
+			buildReportHtml("<h1>Inventory</h1>\n"),
+		);
 		expect(response.headers.get("Content-Type")).toBe(
 			"text/html;charset=utf-8",
 		);

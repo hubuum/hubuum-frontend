@@ -6,8 +6,21 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- HTML report tables can opt into accessible column sorting with `data-sortable`,
+  including natural text order, numbers, dates, and explicit cell sort values.
+  Report pages and previews run only the frontend's hash-authorized sorter while
+  preserving report isolation and blocking template scripts. The website guide
+  includes template examples and supported layouts. No server upgrade is required
+  for supported deployments; original API downloads are unchanged.
+
 ### Changed
 
+- **Breaking output behavior:** frontend HTML report URLs now prepend the trusted
+  sorting helper instead of returning byte-identical stored HTML. Consumers that
+  need the original bytes must use `/api/v1/exports/{task_id}/output` (through the
+  BFF for browser requests). Other output formats retain their original bytes.
 - Added complete Compose download instructions and separated setup, configuration, browser workflows, and architecture guides.
 
 ### Fixed

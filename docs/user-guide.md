@@ -220,11 +220,14 @@ starts a new template export, waits for the task to finish, and remembers the
 replacement. Concurrent requests for the same report join one generation
 through a short Valkey lock instead of submitting duplicate tasks.
 
-The backend output body is streamed with its original content type. The
-response is not wrapped in console markup or parsed/reformatted, so saving the
-browser page saves the generated template result itself. HTML report responses
-receive a script-disabled sandbox policy because they are served from the
-console origin.
+The backend output body is streamed with its original content type. HTML report
+responses prepend a trusted table sorter and its styles and content policy;
+the backend markup follows without parsing or reformatting. Reports remain
+isolated from the console's origin, and template scripts cannot execute.
+Add `data-sortable` to opt a table into clickable, keyboard-accessible sorting.
+See [sortable report tables](sortable-report-tables.md) for a complete template,
+date and numeric values, grouping, and output behavior. Other content types and
+direct server-output downloads retain their original bytes.
 
 Report responses include `Server-Timing` metrics for session access, template
 revision lookup, report-cache access, task validation or submission, output
@@ -268,8 +271,8 @@ standard-page mode where authors edit only the body. The frontend stores that
 body inside a deterministic full HTML template with title and viewport
 metadata, print styling, responsive typography, and readable alternating table
 rows. Advanced authors can instead own the complete HTML document. In both
-modes the raw report route still streams the exact generated backend output;
-it never injects console controls or response-time wrappers.
+modes the report route streams the generated backend markup after the shared
+HTML sorting helper; it does not add console navigation or a surrounding app layout.
 
 Server `v0.0.4` audit events, resource history, and task lifecycle events carry
 durable provenance. The console shows the immediate actor, root initiator, and

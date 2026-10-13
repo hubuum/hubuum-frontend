@@ -1,3 +1,8 @@
+import {
+	REPORT_TABLE_SORT_HASH,
+	SORTABLE_REPORT_SANDBOX_POLICY,
+} from "@/lib/report-html";
+
 export const CSP_NONCE_HEADER = "x-hubuum-nonce";
 export const PRIVATE_CACHE_CONTROL = "private, no-store";
 export const REPORT_SANDBOX_POLICY =
@@ -13,7 +18,7 @@ export function buildContentSecurityPolicy(
 ): string {
 	return [
 		"default-src 'self'",
-		`script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ""}`,
+		`script-src 'self' '${REPORT_TABLE_SORT_HASH}' 'nonce-${nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ""}`,
 		// CodeMirror and resizable controls generate styles at runtime.
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: blob:",
@@ -28,7 +33,7 @@ export function buildContentSecurityPolicy(
 
 export function protectPrivateResponse(
 	headers: Headers,
-	options: { schemaRepairReport?: boolean } = {},
+	options: { schemaRepairReport?: boolean; sortableReport?: boolean } = {},
 ): void {
 	headers.set("Cache-Control", PRIVATE_CACHE_CONTROL);
 	headers.set("X-Content-Type-Options", "nosniff");
@@ -47,7 +52,9 @@ export function protectPrivateResponse(
 			"Content-Security-Policy",
 			options.schemaRepairReport
 				? SCHEMA_REPORT_SANDBOX_POLICY
-				: REPORT_SANDBOX_POLICY,
+				: options.sortableReport && contentType === "text/html"
+					? SORTABLE_REPORT_SANDBOX_POLICY
+					: REPORT_SANDBOX_POLICY,
 		);
 		headers.set("Referrer-Policy", "no-referrer");
 	}
