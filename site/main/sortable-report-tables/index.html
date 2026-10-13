@@ -1535,8 +1535,9 @@ for template context, relations, and missing-data behavior.</p>
 <li>Unmarked tables retain their existing behavior. Sorting is not saved across
   reloads, bookmarks, or new report runs. Printing uses the current row order.</li>
 </ul>
-<p>The frontend adds its sorter to HTML served through <code>/reports/{template_id}</code>
-and <code>/reports/runs/{task_id}</code> and to its embedded previews. CSV, JSON, plain text,
+<p>The frontend adds its sorter and disables automatic refresh redirects in HTML
+served through <code>/reports/{template_id}</code>, <code>/reports/runs/{task_id}</code>, and embedded
+previews. HTML is buffered for this inspection and served as UTF-8. CSV, JSON, plain text,
 and the original server output remain unchanged. A direct API download contains
 the original HTML without the frontend's helper. For byte-identical stored HTML,
 use <code>/api/v1/exports/{task_id}/output</code>, or
@@ -1546,7 +1547,9 @@ must supply their own sorting support if needed.</p>
 <h2 id="script-restrictions">Script restrictions<a class="headerlink" href="#script-restrictions" title="Permanent link">&para;</a></h2>
 <p>Report pages and previews permit only the frontend's exact, hash-authorized
 sorter. Template scripts, event handlers such as <code>onclick</code>, external JavaScript,
-network connections, and access to the console's origin remain blocked. Adding
+scripted network connections, and access to the console's origin remain blocked.
+Automatic <code>meta refresh</code> redirects are disabled before rendering, even when a
+browser setting or a stricter CSP prevents the trusted sorter from running. Adding
 <code>data-sortable</code> does not grant a template permission to run code.</p>
 <p>If controls are absent, check the table structure and frontend version. A
 deployment proxy can impose an additional, stricter CSP that blocks the trusted

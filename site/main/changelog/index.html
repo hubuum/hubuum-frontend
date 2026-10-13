@@ -3701,14 +3701,17 @@
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Breaking output behavior:</strong> frontend HTML report URLs now prepend the trusted
-  sorting helper instead of returning byte-identical stored HTML. Consumers that
-  need the original bytes must use <code>/api/v1/exports/{task_id}/output</code> (through the
+<li><strong>Breaking output behavior:</strong> frontend HTML report URLs now buffer and inspect
+  HTML, disable automatic refresh redirects, and prepend the trusted sorting
+  helper instead of streaming byte-identical stored HTML. Consumers that need
+  the original stream must use <code>/api/v1/exports/{task_id}/output</code> (through the
   BFF for browser requests). Other output formats retain their original bytes.</li>
 <li>Added complete Compose download instructions and separated setup, configuration, browser workflows, and architecture guides.</li>
 </ul>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
+<li>Block automatic refresh redirects in sortable HTML reports and previews,
+  including when JavaScript is disabled or CSP blocks the trusted sorting helper.</li>
 <li>Keep report refresh and report sign-in redirects on the browser's current origin,
   preventing redirects to an internal bind address such as <code>0.0.0.0:3000</code> behind a proxy.</li>
 </ul>

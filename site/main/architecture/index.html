@@ -1412,8 +1412,16 @@ the same hash. After the helper registers its listener, a second meta policy
 blocks all subsequent scripts, including external requests carrying the helper's
 integrity hash. The iframe allows scripts but never same-origin access. Generic
 proxy output, XHTML, and SVG remain script-disabled. Export warning and
-truncation headers remain visible to the UI.
-Schema repair HTML may open object links in new tabs that do not inherit the
+truncation headers remain visible to the UI.</p>
+<p>The sandbox's <code>allow-scripts</code> token also enables declarative refresh redirects.
+HTML reports are therefore buffered and inspected before they reach a browser.
+An HTML parser locates refresh metadata in both scripting modes, including
+<code>noscript</code> content, and inserts an inert first <code>http-equiv</code> attribute. This keeps
+the surrounding markup intact and prevents duplicate attributes from restoring
+the redirect. The browser receives UTF-8, matching the inspected text. Protection
+works even if a stricter CSP or browser setting blocks the sorting helper.
+Other output formats continue streaming unchanged.</p>
+<p>Schema repair HTML may open object links in new tabs that do not inherit the
 report sandbox; the report itself remains script-disabled and isolated.</p>
 <p>Sign-out waits briefly for pending preference saves, then always attempts to end
 the session. A failed sign-out keeps the workspace visible with a persistent error
