@@ -32,6 +32,40 @@ For Frontend v0.0.20 and Server v0.0.19, it is
 `ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225`.
 Scheduled tests against server `main` do not change a release's declared target.
 
+## Advanced search capabilities
+
+The builder uses version 1 of `POST /api/v1/search`, available in the supported
+Server v0.0.19 contract. Its explicit target/field/operator matrix and limits are
+documented in the [server search reference](https://github.com/hubuum/hubuum/blob/main/docs/search_api.md).
+Unknown targets, predicates, bookmark versions and server errors never cause
+an unfiltered fallback. The regular `GET /api/v1/search` page stays available.
+
+Related-resource inspection requires the optional `POST /api/v1/search/hydrate`
+capability introduced after Server v0.0.19. It is requested lazily through the
+BFF, independently of root search. Its version 1 body has `root_class_id`,
+`root_object_id`, an exact `class: { id }`, `depth` (1–10), and `limit` (1–50
+visible paths). The response has the same bounds and root ID, `target_class_id`,
+deduplicated `objects` and `relations`, `paths` containing `object_ids` and
+`relation_ids`, and an explicit `truncated` flag. No hydration cursor exists.
+The companion server implementation is [hubuum/hubuum#468](https://github.com/hubuum/hubuum/pull/468).
+
+The scope is all visible related endpoints in that class/depth, not objects
+satisfying a selected search predicate. Every path vertex and edge is authorized
+by the server. Class/collection names are fetched separately through their
+authorized endpoints and cached by ID. The frontend checks response identity,
+path integrity and bounds, and binds in-memory inspection state to the executed
+query, root page and object. It never fetches every result's relations eagerly.
+
+On `404`/`405`, inspection reports that hydration is unavailable on this server;
+the root result table remains usable. Other validation, authorization, work-limit
+and changed-resource errors remain visible and require explicit retry. There is
+no fallback to unbounded legacy relation endpoints. Root sorting, pagination and
+totals use the original structured request with no hydration property.
+
+See the [advanced-search guide](advanced-search.md) for grouping and Oslo-site
+examples. The optional capability does not change the release compatibility
+baseline above.
+
 ## Before upgrading
 
 Frontend v0.0.20 targets server v0.0.19. Deploy that server before upgrading the

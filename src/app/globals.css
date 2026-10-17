@@ -1118,6 +1118,69 @@ main {
 	gap: 1.2rem;
 }
 
+.advanced-search,
+.advanced-search .stack {
+	min-width: 0;
+}
+
+.advanced-group {
+	min-width: 0;
+	margin: 0;
+	padding: 1rem;
+	border: 1px solid var(--line);
+	border-left: 3px solid var(--accent);
+	border-radius: 8px;
+	background: var(--card);
+}
+
+.advanced-negated {
+	border-left-color: var(--danger);
+}
+
+.advanced-form {
+	min-width: 0;
+	border: 0;
+	padding: 0;
+	margin: 0;
+}
+
+.advanced-controls,
+.advanced-value {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	gap: 0.75rem;
+}
+
+.advanced-controls > label,
+.advanced-value > label,
+.advanced-value > .resource-picker {
+	flex: 1 1 12rem;
+	min-width: 0;
+}
+
+.advanced-search label:not(.checkbox-label) {
+	display: grid;
+	gap: 0.4rem;
+}
+
+.advanced-search pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	max-height: 25rem;
+	overflow: auto;
+}
+
+@media (max-width: 600px) {
+	.advanced-group {
+		padding: 0.6rem;
+	}
+
+	.advanced-group .advanced-group {
+		margin-inline: -0.3rem;
+	}
+}
+
 .grid {
 	display: grid;
 	gap: 1rem;

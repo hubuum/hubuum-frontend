@@ -182,6 +182,8 @@ import type {
   SchemaRevisionResponse,
   SchemaStageRequest,
   SchemaWorkResponse,
+  SearchHydrationRequest,
+  SearchHydrationResponse,
   ServiceAccountPointResponse,
   ServiceAccountResponse,
   StructuredSearchRequest,
@@ -16702,6 +16704,91 @@ export const getReadyz = async ( options?: RequestInit): Promise<getReadyzRespon
 
   const data: getReadyzResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getReadyzResponse
+}
+
+
+
+export type postApiV1SearchHydrateResponse200 = {
+  data: SearchHydrationResponse
+  status: 200
+}
+
+export type postApiV1SearchHydrateResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1SearchHydrateResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1SearchHydrateResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1SearchHydrateResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1SearchHydrateResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1SearchHydrateResponseSuccess = (postApiV1SearchHydrateResponse200) & {
+  headers: Headers;
+};
+export type postApiV1SearchHydrateResponseError = (postApiV1SearchHydrateResponse400 | postApiV1SearchHydrateResponse401 | postApiV1SearchHydrateResponse403 | postApiV1SearchHydrateResponse404 | postApiV1SearchHydrateResponse409) & {
+  headers: Headers;
+};
+
+export type postApiV1SearchHydrateResponse = (postApiV1SearchHydrateResponseSuccess | postApiV1SearchHydrateResponseError)
+
+export const getPostApiV1SearchHydrateUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/search/hydrate`
+}
+
+/**
+ * Lazy bounded visible neighborhood for one root object. Scope is all visible related endpoints in the selected class, not evidence for a search predicate. Does not execute or change root search results or cursors. Returns unique objects/relations and up to limit visible paths, with a truncation flag; no hydration pagination.
+ * @summary Post Api V1 Search Hydrate
+ */
+export const postApiV1SearchHydrate = async (searchHydrationRequest: SearchHydrationRequest, options?: RequestInit): Promise<postApiV1SearchHydrateResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1SearchHydrateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(searchHydrationRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1SearchHydrateResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1SearchHydrateResponse
 }
 
 

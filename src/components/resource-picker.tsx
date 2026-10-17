@@ -20,6 +20,7 @@ export function ResourcePicker({
 	buttonRef,
 	buttonId,
 	emptyLabel,
+	showIdentity = false,
 }: {
 	kind: ResourceOptionKind;
 	value: string;
@@ -28,6 +29,7 @@ export function ResourcePicker({
 	disabled?: boolean;
 	selectedName?: string;
 	emptyLabel?: string;
+	showIdentity?: boolean;
 	buttonId?: string;
 	buttonRef?: RefObject<HTMLButtonElement | null>;
 }) {
@@ -39,6 +41,7 @@ export function ResourcePicker({
 		queryKey: ["resource-option", kind, value],
 		queryFn: ({ signal }) => fetchResourceOption(kind, value, signal),
 		enabled: !!value && !selectedName,
+		staleTime: 60_000,
 	});
 	const result = useInfiniteQuery({
 		queryKey: ["resource-options", kind, search],
@@ -47,6 +50,7 @@ export function ResourcePicker({
 		initialPageParam: undefined as string | undefined,
 		getNextPageParam: (page) => page.nextCursor ?? undefined,
 		enabled: open,
+		staleTime: 60_000,
 	});
 	const options = useMemo(() => {
 		const items =
@@ -63,10 +67,16 @@ export function ResourcePicker({
 			}),
 		);
 	}, [query, search, result.data]);
-	const selectionLabel =
+	const selectionName =
 		selectedName ??
 		selected.data?.name ??
 		(value ? `#${value}` : (emptyLabel ?? `Select ${kind}`));
+	const selectionLabel =
+		showIdentity && value
+			? selectedName || selected.data?.name
+				? `${selectionName} (#${value})`
+				: `#${value}${selected.isError ? " (name unavailable)" : ""}`
+			: selectionName;
 	return (
 		<div className="resource-picker">
 			<DirectoryLookupPopover
