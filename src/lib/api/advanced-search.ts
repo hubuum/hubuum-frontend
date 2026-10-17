@@ -40,6 +40,10 @@ export async function fetchAdvancedSearch(
 				!Number.isSafeInteger(item.resource.id) ||
 				!("name" in item.resource) ||
 				typeof item.resource.name !== "string" ||
+				!("description" in item.resource) ||
+				typeof item.resource.description !== "string" ||
+				!("updated_at" in item.resource) ||
+				typeof item.resource.updated_at !== "string" ||
 				(item.kind === "class" &&
 					(!item.resource.collection ||
 						!Number.isSafeInteger(item.resource.collection.id) ||
