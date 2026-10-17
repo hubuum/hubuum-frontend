@@ -52,6 +52,12 @@ requires **Run search**; it never restores an old cursor. Unknown versions or
 unsupported state produce an error with the original saved state available for
 inspection. Names in pickers are resolved again against current permissions.
 
+Bookmark URLs are limited to 4 KiB after encoding the path and query, separately
+from the API request limit. Larger queries can still run, but the bookmark link
+is replaced with an explanation and running clears the saved query from the
+address. Refreshing then opens an empty builder. Shorten values or remove
+conditions to enable bookmarking again.
+
 Results include resource detail links and authorized class/collection context.
 Cursor pagination belongs to the executed query; rerunning resets it. Exact
 totals are requested for this table, while resource lookups skip totals.

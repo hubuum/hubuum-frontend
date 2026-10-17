@@ -151,6 +151,18 @@ export function AdvancedSearchWorkspace({
 	} catch (error) {
 		validation = error instanceof Error ? error.message : "Invalid query";
 	}
+	let bookmarkUrl: string | undefined;
+	let bookmarkError: string | undefined;
+	if (request) {
+		try {
+			bookmarkUrl = advancedSearchUrl(draft);
+		} catch (error) {
+			bookmarkError =
+				error instanceof Error
+					? error.message
+					: "This query cannot be bookmarked.";
+		}
+	}
 	const search = useQuery({
 		queryKey: ["advanced-search", executed, cursor],
 		queryFn: ({ signal }) => {
@@ -198,7 +210,11 @@ export function AdvancedSearchWorkspace({
 							request,
 							sequence: (executed?.sequence ?? 0) + 1,
 						});
-						window.history.replaceState(null, "", advancedSearchUrl(draft));
+						window.history.replaceState(
+							null,
+							"",
+							bookmarkUrl ?? "/search/advanced",
+						);
 					}}
 				>
 					<fieldset className="stack advanced-form" disabled={!ready}>
@@ -467,12 +483,13 @@ export function AdvancedSearchWorkspace({
 							<button type="submit" disabled={!request}>
 								Run search
 							</button>
-							{request && (
-								<Link href={advancedSearchUrl(draft)} prefetch={false}>
+							{bookmarkUrl && (
+								<Link href={bookmarkUrl} prefetch={false}>
 									Bookmark this query
 								</Link>
 							)}
 						</div>
+						{bookmarkError && <p role="status">{bookmarkError}</p>}
 					</fieldset>
 				</form>
 			)}

@@ -487,5 +487,12 @@ export function restoreAdvancedSearch(raw: string): SearchDraft {
 }
 
 export function advancedSearchUrl(draft: SearchDraft): string {
-	return `/search/advanced?${new URLSearchParams({ query: JSON.stringify(draft) })}`;
+	const url = `/search/advanced?${new URLSearchParams({ query: JSON.stringify(draft) })}`;
+	// The encoded URL is ASCII. Leave header room for cookies, a same-origin
+	// Referer containing another query, and framework headers.
+	if (url.length > 4 * 1024)
+		throw new Error(
+			"This query is too large to bookmark. You can still run it, but refreshing will clear it. Shorten values or remove conditions to enable bookmarking.",
+		);
+	return url;
 }

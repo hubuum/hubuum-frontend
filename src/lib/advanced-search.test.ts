@@ -91,6 +91,30 @@ describe("advanced search", () => {
 			buildAdvancedSearch(restoreAdvancedSearch(saved ?? "")).filter,
 		).toEqual(expected);
 	});
+	it("bounds the encoded bookmark URL independently of API request size", () => {
+		const draft = query(condition("name", "contains", ""));
+		if (draft.filter.kind !== "field") throw new Error("Expected a field");
+		const valueLength = 4 * 1024 - advancedSearchUrl(draft).length;
+		draft.filter.condition.values = ["x".repeat(valueLength)];
+		const url = advancedSearchUrl(draft);
+		expect(url.length).toBe(4 * 1024);
+		expect(
+			restoreAdvancedSearch(
+				new URL(url, "http://localhost").searchParams.get("query") ?? "",
+			),
+		).toEqual(draft);
+		draft.filter.condition.values[0] += "x";
+		expect(() => buildAdvancedSearch(draft)).not.toThrow();
+		expect(() => advancedSearchUrl(draft)).toThrow("too large to bookmark");
+	});
+	it.each(["x".repeat(17_000), "&".repeat(2_000), "😀".repeat(500)])(
+		"rejects oversized bookmarks after URL encoding while allowing the search",
+		(value) => {
+			const draft = query(condition("name", "contains", value));
+			expect(() => buildAdvancedSearch(draft)).not.toThrow();
+			expect(() => advancedSearchUrl(draft)).toThrow("too large to bookmark");
+		},
+	);
 	it("serializes collection alternatives as numeric IDs", () => {
 		expect(
 			buildAdvancedSearch(query(condition("collection_id", "in", "42", "73")))

@@ -265,6 +265,108 @@ test.describe("advanced search builder", () => {
 		expect(requests[3]).toEqual(requests[0]);
 	});
 
+	for (const target of ["class", "object"] as const)
+		test(`keeps both JSON range bounds when changing value type for ${target} searches`, async ({
+			page,
+		}) => {
+			const requests = await fixtures(page);
+			await page.goto("/search/advanced");
+			await page
+				.getByRole("combobox", { name: "Search", exact: true })
+				.selectOption(target);
+			await page
+				.getByRole("combobox", { name: "Field", exact: true })
+				.selectOption(target === "class" ? "json_schema" : "json_data");
+			await page.getByLabel("JSON path").fill("range");
+			await page
+				.getByRole("combobox", { name: "Operator", exact: true })
+				.selectOption("between");
+			await page.getByLabel("Lower bound").fill("a");
+			await page.getByLabel("Upper bound").fill("z");
+			for (const [valueType, lower, upper, expected] of [
+				["number", "1", "10", [1, 10]],
+				[
+					"date",
+					"2026-01-01T12:00",
+					"2026-01-02T12:00",
+					["2026-01-01T12:00:00Z", "2026-01-02T12:00:00Z"],
+				],
+			] as const) {
+				await page
+					.getByRole("combobox", { name: "Value type", exact: true })
+					.selectOption(valueType);
+				await expect(page.getByLabel("Lower bound")).toHaveValue("");
+				await expect(page.getByLabel("Upper bound")).toHaveValue("");
+				await page.getByLabel("Lower bound").fill(lower);
+				await page.getByLabel("Upper bound").fill(upper);
+				const count = requests.length;
+				await page
+					.getByRole("button", { name: "Run search", exact: true })
+					.click();
+				await expect.poll(() => requests.length).toBe(count + 1);
+				expect(requests[count].filter).toEqual({
+					op: "field",
+					predicate: {
+						field: target === "class" ? "json_schema" : "json_data",
+						operator: "between",
+						path: "range",
+						value: expected,
+					},
+				});
+			}
+		});
+
+	test("runs oversized queries without a bookmark and safely refreshes", async ({
+		page,
+	}) => {
+		const requests = await fixtures(page);
+		await page.goto("/search/advanced");
+		const value = page.getByLabel("Value", { exact: true });
+		const run = page.getByRole("button", { name: "Run search", exact: true });
+		const bookmark = page.getByRole("link", { name: "Bookmark this query" });
+		const notice = page
+			.getByRole("status")
+			.filter({ hasText: "too large to bookmark" });
+		await value.fill("server");
+		await run.click();
+		await expect.poll(() => requests.length).toBe(1);
+		await expect(page).toHaveURL(/\?query=/);
+
+		const largeValue = "x".repeat(17_000);
+		await value.fill(largeValue);
+		await expect(bookmark).toHaveCount(0);
+		await expect(notice).toContainText("refreshing will clear it");
+		await expect(run).toBeEnabled();
+		await run.click();
+		await expect.poll(() => requests.length).toBe(2);
+		expect(requests[1].filter).toEqual({
+			op: "field",
+			predicate: { field: "name", operator: "icontains", value: largeValue },
+		});
+		await expect(page).toHaveURL(/\/search\/advanced$/);
+		await expect(value).toHaveValue(largeValue);
+		await expect(notice).toBeVisible();
+		const response = await page.reload();
+		expect(response?.status()).toBe(200);
+		await expect(value).toHaveValue("");
+		await expect(
+			page.getByRole("region", { name: "Search results" }),
+		).toHaveCount(0);
+		expect(requests).toHaveLength(2);
+
+		await value.fill(largeValue);
+		await expect(notice).toBeVisible();
+		await value.fill("router");
+		await expect(bookmark).toBeVisible();
+		await expect(notice).toHaveCount(0);
+		await run.click();
+		await expect.poll(() => requests.length).toBe(3);
+		await expect(page).toHaveURL(/\?query=/);
+		await page.reload();
+		await expect(value).toHaveValue("router");
+		expect(requests).toHaveLength(3);
+	});
+
 	for (const target of ["collection", "class", "object"] as const)
 		test(`executes ${target} searches and validates incompatible changes`, async ({
 			page,

@@ -126,7 +126,8 @@ export function SearchConditionEditor({
 											...condition,
 											valueType: event.target
 												.value as SearchCondition["valueType"],
-											values: [""],
+											values:
+												condition.operator === "between" ? ["", ""] : [""],
 										})
 									}
 								>
