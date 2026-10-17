@@ -564,6 +564,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#advanced-search-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Advanced search capabilities
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#before-upgrading" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -745,6 +756,33 @@
     
   
   Browser guide
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced-search/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Advanced search
 
     
   </span>
@@ -1383,6 +1421,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#advanced-search-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Advanced search capabilities
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#before-upgrading" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1633,6 +1682,34 @@ should pin both components to explicit versions.</p>
 For Frontend v0.0.20 and Server v0.0.19, it is
 <code>ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225</code>.
 Scheduled tests against server <code>main</code> do not change a release's declared target.</p>
+<h2 id="advanced-search-capabilities">Advanced search capabilities<a class="headerlink" href="#advanced-search-capabilities" title="Permanent link">&para;</a></h2>
+<p>The builder uses version 1 of <code>POST /api/v1/search</code>, available in the supported
+Server v0.0.19 contract. Its explicit target/field/operator matrix and limits are
+documented in the <a href="https://github.com/hubuum/hubuum/blob/main/docs/search_api.md">server search reference</a>.
+Unknown targets, predicates, bookmark versions and server errors never cause
+an unfiltered fallback. The regular <code>GET /api/v1/search</code> page stays available.</p>
+<p>Related-resource inspection requires the optional <code>POST /api/v1/search/hydrate</code>
+capability introduced after Server v0.0.19. It is requested lazily through the
+BFF, independently of root search. Its version 1 body has <code>root_class_id</code>,
+<code>root_object_id</code>, an exact <code>class: { id }</code>, <code>depth</code> (1–10), and <code>limit</code> (1–50
+visible paths). The response has the same bounds and root ID, <code>target_class_id</code>,
+deduplicated <code>objects</code> and <code>relations</code>, <code>paths</code> containing <code>object_ids</code> and
+<code>relation_ids</code>, and an explicit <code>truncated</code> flag. No hydration cursor exists.
+The companion server implementation is <a href="https://github.com/hubuum/hubuum/pull/468">hubuum/hubuum#468</a>.</p>
+<p>The scope is all visible related endpoints in that class/depth, not objects
+satisfying a selected search predicate. Every path vertex and edge is authorized
+by the server. Class/collection names are fetched separately through their
+authorized endpoints and cached by ID. The frontend checks response identity,
+path integrity and bounds, and binds in-memory inspection state to the executed
+query, root page and object. It never fetches every result's relations eagerly.</p>
+<p>On <code>404</code>/<code>405</code>, inspection reports that hydration is unavailable on this server;
+the root result table remains usable. Other validation, authorization, work-limit
+and changed-resource errors remain visible and require explicit retry. There is
+no fallback to unbounded legacy relation endpoints. Root sorting, pagination and
+totals use the original structured request with no hydration property.</p>
+<p>See the <a href="../advanced-search/">advanced-search guide</a> for grouping and Oslo-site
+examples. The optional capability does not change the release compatibility
+baseline above.</p>
 <h2 id="before-upgrading">Before upgrading<a class="headerlink" href="#before-upgrading" title="Permanent link">&para;</a></h2>
 <p>Frontend v0.0.20 targets server v0.0.19. Deploy that server before upgrading the
 frontend. Replace blank local account names with nonblank accounts and transfer
