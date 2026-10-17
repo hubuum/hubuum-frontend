@@ -6,6 +6,14 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Visual advanced search for collections, classes and objects, with nested
+  AND/OR/NOT groups, resource pickers, related-object conditions, cursor paging
+  and versioned bookmarks. Optional related-resource inspection displays bounded
+  visible paths and relation metadata when the server provides search hydration;
+  advanced search remains usable on Server v0.0.19 without that capability.
+
 ## [0.0.20] - 2026-10-14
 
 ### Added

@@ -3,6 +3,10 @@
 Sign in to your organization’s frontend with an account authorized for the
 resources you need. Start with [Atlas](example-dataset.md) for a shared example.
 
+Use [advanced search](advanced-search.md) for boolean groups, typed resource
+filters, related-object conditions, bookmarkable queries and optional related
+resource inspection.
+
 ## Credential operations
 
 Servers enforcing fresh authentication for credential management trigger a

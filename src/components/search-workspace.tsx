@@ -834,6 +834,7 @@ export function SearchWorkspace() {
 			<section className="stack search-page">
 				<header className="stack search-page-header">
 					<h2>Unified search</h2>
+					<Link href="/search/advanced">Advanced search</Link>
 					<p className="muted search-summary">
 						Use the top bar to search across collections, classes, and objects.
 					</p>
@@ -852,6 +853,7 @@ export function SearchWorkspace() {
 		<section className="stack search-page">
 			<header className="stack search-page-header">
 				<h2>Results for "{searchQuery}"</h2>
+				<Link href="/search/advanced">Advanced search</Link>
 				<p className="muted search-summary">
 					{totalLoadedResults} loaded across {selectedGroups.length} kind
 					{selectedGroups.length === 1 ? "" : "s"}. Up to{" "}

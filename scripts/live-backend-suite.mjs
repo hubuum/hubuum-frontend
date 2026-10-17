@@ -1,4 +1,5 @@
 import { verifyHistoryRestores } from "./live-history-suite.mjs";
+import { verifyAdvancedSearch } from "./live-advanced-search-suite.mjs";
 import { credentialRequest } from "./live-credential-request.mjs";
 import { verifySchemaEvolution } from "./live-schema-suite.mjs";
 import { verifyTaskCancellation, verifyTaskDiscovery } from "./live-task-suite.mjs";
@@ -893,6 +894,11 @@ async function main() {
   expectArray(nameAggregates.data, "Name-addressed object aggregates");
   assert(nameAggregates.data.length === 2, "Name-addressed aggregation should return two name groups.");
   pass("queried permission-aware object aggregates by ID and name");
+
+  await verifyAdvancedSearch({ request, auth, collection: collection.data, peerCollection: peerCollection.data,
+    hubuumClass: hubuumClass.data, objects: [hubuumObject.data, secondObject.data],
+    hasHydration: Boolean(openapi.data.paths?.["/api/v1/search/hydrate"]?.post) });
+  pass("executed structured search targets, grouped collection alternatives, NOT, cursor paging, related filters and hydration capability");
 
   const classByNameReadPaths = ["permissions", "related/classes", "related/relations", "related/graph"];
   for (const suffixPath of classByNameReadPaths) {

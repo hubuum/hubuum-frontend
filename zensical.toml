@@ -15,6 +15,7 @@ nav = [
   ] },
   { "Use the frontend" = [
     { "Browser guide" = "user-guide.md" },
+    { "Advanced search" = "advanced-search.md" },
     { "Sortable report tables" = "sortable-report-tables.md" },
   ] },
   { "Deploy and operate" = [
