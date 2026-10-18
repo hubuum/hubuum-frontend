@@ -144,3 +144,34 @@ describe("audit filters", () => {
 		).toBeNull();
 	});
 });
+
+it("includes relations only for an explicitly selected class or object identity", () => {
+	const draft = {
+		...EMPTY_AUDIT_FILTER_DRAFT,
+		entityType: "object",
+		entityId: "42",
+		includeRelations: "true",
+	};
+	expect(buildAuditEventFilters(draft).include_relations).toBe(true);
+	for (const patch of [
+		{ entityMatch: "name" },
+		{ entityType: "collection" },
+		{ entityId: "42x" },
+		{ entityId: "" },
+		{ includeRelations: "false" },
+	])
+		expect(
+			buildAuditEventFilters({ ...draft, ...patch }).include_relations,
+		).toBeUndefined();
+	expect(
+		parseAuditFilterParams(new URLSearchParams("includeRelations=true"))
+			.includeRelations,
+	).toBe("true");
+});
+
+it("restores legacy template bookmarks using the server event catalog name", () => {
+	expect(
+		parseAuditFilterParams(new URLSearchParams("entityType=template"))
+			.entityType,
+	).toBe("export_template");
+});

@@ -20,7 +20,7 @@ describe("audit entity options", () => {
 		expect(isAuditEntityDirectoryKind("collection")).toBe(true);
 		expect(isAuditEntityDirectoryKind("object")).toBe(true);
 		expect(isAuditEntityDirectoryKind("remote_target")).toBe(true);
-		expect(isAuditEntityDirectoryKind("template")).toBe(true);
+		expect(isAuditEntityDirectoryKind("export_template")).toBe(true);
 		expect(isAuditEntityDirectoryKind("task")).toBe(false);
 	});
 

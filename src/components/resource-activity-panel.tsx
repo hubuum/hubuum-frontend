@@ -108,6 +108,10 @@ export function ResourceActivityPanel({
 	const eventMatch = search.get("auditMatch") === "name" ? "name" : "id";
 	const eventName = search.get("auditName") ?? resourceName;
 	const eventCursor = search.get("auditCursor") ?? "";
+	const includeRelations =
+		scope.type !== "collection" &&
+		eventMatch !== "name" &&
+		search.get("auditRelations") === "true";
 	function setEventCursor(cursor: string) {
 		updateViewQuery({ auditCursor: cursor || null }, "push");
 	}
@@ -126,10 +130,12 @@ export function ResourceActivityPanel({
 			eventMatch,
 			eventName,
 			eventCursor,
+			includeRelations,
 		],
 		queryFn: () =>
 			fetchResourceEventsPage(scope, {
 				entity_name: eventMatch === "name" ? eventName : undefined,
+				...(includeRelations ? { include_relations: true } : {}),
 				cursor: eventCursor || undefined,
 				limit: 20,
 				sort: "-occurred_at,-id",
@@ -325,6 +331,25 @@ export function ResourceActivityPanel({
 					<div className="panel-header">
 						<div>
 							<strong>Recent audit events</strong>
+							{scope.type !== "collection" ? (
+								<label className="control-check">
+									<input
+										type="checkbox"
+										disabled={eventMatch === "name"}
+										checked={includeRelations}
+										onChange={(event) =>
+											updateViewQuery(
+												{
+													auditRelations: event.target.checked ? "true" : null,
+													auditCursor: null,
+												},
+												"push",
+											)
+										}
+									/>
+									<span>Include direct relation activity</span>
+								</label>
+							) : null}
 							<AuditMatchControl
 								mode={eventMatch}
 								nameDisabled={!resourceName}

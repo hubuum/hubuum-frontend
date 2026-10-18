@@ -6,6 +6,7 @@ import {
 	CreateModal,
 	type ModalRecordNavigation,
 } from "@/components/create-modal";
+import { eventSubject } from "@/lib/event-subject";
 import { JsonViewer } from "@/components/json-viewer";
 import type { EventRecord } from "@/lib/api/events";
 import {
@@ -102,6 +103,7 @@ export function EventDetailsModal({
 	navigation,
 	historyScope,
 }: EventDetailsModalProps) {
+	const subject = event ? eventSubject(event.metadata) : null;
 	const taskId = event ? getProvenanceTaskId(event) : null;
 	const historyHref = event ? eventHistoryHref(event, historyScope) : null;
 
@@ -115,6 +117,32 @@ export function EventDetailsModal({
 			{event ? (
 				<div className="stack">
 					<p>{event.summary}</p>
+					{subject ? (
+						<section className="card stack" aria-label="Event-time subject">
+							<h4>Identity at event time</h4>
+							<p>
+								{subject.name} (#{subject.principal_id}) · {subject.kind}
+							</p>
+							<dl className="event-detail-grid">
+								<div>
+									<dt>Identity scope</dt>
+									<dd>{subject.identity_scope}</dd>
+								</div>
+								<div>
+									<dt>Authentication provider</dt>
+									<dd>{subject.authentication_provider_kind}</dd>
+								</div>
+								<div>
+									<dt>Administrator at event time</dt>
+									<dd>{subject.is_admin ? "Yes" : "No"}</dd>
+								</div>
+							</dl>
+							<p className="muted">
+								This recorded identity does not change when the account or its
+								permissions change.
+							</p>
+						</section>
+					) : null}
 					{historyHref ? (
 						<Link className="link-chip" href={historyHref} onClick={onClose}>
 							Browse history at this event
