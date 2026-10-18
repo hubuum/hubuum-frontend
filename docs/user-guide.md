@@ -297,6 +297,19 @@ name. Collection subscriptions use that configured destination automatically.
 Existing sinks retain custom configuration and pacing when edited. See the
 [chat webhook guide](webhooks.md) for setup and provider details.
 
+## Relation activity and login subjects
+
+Select a class or object by ID in Audit, or open its activity panel, and enable
+**Include direct relation activity** to include relation changes at either
+endpoint, including deleted relations. Recorded-name searches retain their
+name-based scope. The selection is preserved in the page URL.
+
+Authentication event details show the affected principal's identity scope,
+authentication provider, and administrator status at the time of login. The
+recorded subject remains unchanged when the account is later renamed or its
+permissions change. System notification setup is described in the
+[webhook guide](webhooks.md#system-events-and-delivery-checks).
+
 ## Historical snapshots and object restoration
 
 Audit filters and resource audit panels offer **Entity ID** and **Recorded name**
@@ -519,16 +532,3 @@ Collection names are unique among siblings, not globally. UI selectors prefer
 path-aware labels where the API uses collection IDs. Import overrides still use
 the backend's name-based `CollectionKey`, so the frontend blocks existing
 collection overrides when multiple visible collections share the selected name.
-
-### Relation activity and login subjects
-
-Select a class or object by ID in Audit, or open its activity panel, and enable
-**Include direct relation activity** to include relation changes at either
-endpoint, including deleted relations. Recorded-name searches retain their
-name-based scope. The selection is preserved in the page URL.
-
-Authentication event details show the affected principal's identity scope,
-authentication provider, and administrator status at the time of login. The
-recorded subject remains unchanged when the account is later renamed or its
-permissions change. System notification setup is described in the
-[webhook guide](webhooks.md#system-events-and-delivery-checks).
