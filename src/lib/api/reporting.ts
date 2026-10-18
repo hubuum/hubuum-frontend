@@ -186,10 +186,11 @@ export async function getReportTemplate(
 
 export async function listReportTemplateHistory(
 	templateId: number,
-): Promise<ReportTemplateHistory[]> {
+	cursor?: string,
+): Promise<{ items: ReportTemplateHistory[]; nextCursor: string | null }> {
 	const response = await getApiV1ExportTemplatesByTemplateIdHistory(
 		templateId,
-		{ include_total: false, limit: 50, sort: "-history_id" },
+		{ cursor, include_total: false, limit: 50, sort: "-history_id" },
 		{ credentials: "include" },
 	);
 
@@ -199,7 +200,10 @@ export async function listReportTemplateHistory(
 		);
 	}
 
-	return response.data;
+	return {
+		items: response.data,
+		nextCursor: response.headers.get("X-Next-Cursor"),
+	};
 }
 
 export async function createReportTemplate(

@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { RevokeUserTokens } from "@/components/revoke-user-tokens";
 import { TokenCreationModal } from "@/components/token-creation-modal";
 import { TokenList } from "@/components/token-list";
 import {
@@ -55,6 +56,14 @@ export function PrincipalTokenManager({
 
 	return (
 		<div className="stack">
+			{targetKind === "human" &&
+			targetPrincipalId != null &&
+			actor?.principal.kind === "human" ? (
+				<RevokeUserTokens
+					userId={targetPrincipalId}
+					self={actor.principal.principal_id === targetPrincipalId}
+				/>
+			) : null}
 			{targetPrincipalId != null ? (
 				<TokenCreationModal
 					initialValues={cloneInitialValues}

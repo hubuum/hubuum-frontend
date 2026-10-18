@@ -7,7 +7,16 @@ import type {
 	StructuredSearchRequest,
 } from "@/lib/api/generated/models";
 
-export type SearchTarget = "collection" | "class" | "object";
+export const SEARCH_TARGETS = [
+	"collection",
+	"class",
+	"object",
+	"audit_event",
+	"user",
+	"group",
+	"service_account",
+] as const;
+export type SearchTarget = (typeof SEARCH_TARGETS)[number];
 type ValueKind =
 	| "text"
 	| "integer"
@@ -21,11 +30,23 @@ type FieldConfig = {
 	type: ValueKind;
 	targets: readonly SearchTarget[];
 };
-const all = ["collection", "class", "object"] as const;
+const all = [
+	"collection",
+	"class",
+	"object",
+	"user",
+	"group",
+	"service_account",
+] as const;
 export const SEARCH_FIELDS: readonly FieldConfig[] = [
-	{ field: "id", label: "ID", type: "integer", targets: all },
+	{ field: "id", label: "ID", type: "integer", targets: SEARCH_TARGETS },
 	{ field: "name", label: "Name", type: "text", targets: all },
-	{ field: "description", label: "Description", type: "text", targets: all },
+	{
+		field: "description",
+		label: "Description",
+		type: "text",
+		targets: ["collection", "class", "object", "group", "service_account"],
+	},
 	{ field: "created_at", label: "Created", type: "date", targets: all },
 	{ field: "updated_at", label: "Updated", type: "date", targets: all },
 	{ field: "revision", label: "Revision", type: "integer", targets: all },
@@ -33,7 +54,7 @@ export const SEARCH_FIELDS: readonly FieldConfig[] = [
 		field: "collection_id",
 		label: "Collection",
 		type: "collection",
-		targets: ["class", "object"],
+		targets: ["class", "object", "audit_event"],
 	},
 	{
 		field: "validate_schema",
@@ -48,6 +69,116 @@ export const SEARCH_FIELDS: readonly FieldConfig[] = [
 		targets: ["class"],
 	},
 	{ field: "json_data", label: "JSON data", type: "json", targets: ["object"] },
+	{
+		field: "identity_scope",
+		label: "Identity scope",
+		type: "text",
+		targets: ["user", "group", "service_account"],
+	},
+	{
+		field: "proper_name",
+		label: "Display name",
+		type: "text",
+		targets: ["user"],
+	},
+	{ field: "email", label: "Email", type: "text", targets: ["user"] },
+	{
+		field: "occurred_at",
+		label: "Occurred at",
+		type: "date",
+		targets: ["audit_event"],
+	},
+	{
+		field: "entity_type",
+		label: "Entity type",
+		type: "text",
+		targets: ["audit_event"],
+	},
+	{
+		field: "entity_id",
+		label: "Entity ID",
+		type: "integer",
+		targets: ["audit_event"],
+	},
+	{
+		field: "entity_name",
+		label: "Entity name",
+		type: "text",
+		targets: ["audit_event"],
+	},
+	{ field: "action", label: "Action", type: "text", targets: ["audit_event"] },
+	{
+		field: "actor_kind",
+		label: "Actor kind",
+		type: "text",
+		targets: ["audit_event"],
+	},
+	{
+		field: "actor_user_id",
+		label: "Actor principal ID",
+		type: "integer",
+		targets: ["audit_event"],
+	},
+	{
+		field: "initiator_user_id",
+		label: "Initiator principal ID",
+		type: "integer",
+		targets: ["audit_event"],
+	},
+	{
+		field: "summary",
+		label: "Summary",
+		type: "text",
+		targets: ["audit_event"],
+	},
+	{
+		field: "metadata",
+		label: "Metadata",
+		type: "json",
+		targets: ["audit_event"],
+	},
+	{
+		field: "managed_by",
+		label: "Managed by",
+		type: "text",
+		targets: ["group"],
+	},
+	{
+		field: "external_key",
+		label: "External key",
+		type: "text",
+		targets: ["group"],
+	},
+	{
+		field: "last_sync_attempted_at",
+		label: "Last sync attempt",
+		type: "date",
+		targets: ["group"],
+	},
+	{
+		field: "last_sync_success_at",
+		label: "Last successful sync",
+		type: "date",
+		targets: ["group"],
+	},
+	{
+		field: "owner_group_id",
+		label: "Owner group ID",
+		type: "integer",
+		targets: ["service_account"],
+	},
+	{
+		field: "created_by",
+		label: "Created by principal ID",
+		type: "integer",
+		targets: ["service_account"],
+	},
+	{
+		field: "disabled_at",
+		label: "Disabled at",
+		type: "date",
+		targets: ["service_account"],
+	},
 ];
 const textOperators: StructuredSearchOperator[] = [
 	"equals",
@@ -111,8 +242,26 @@ export function fieldsFor(target: SearchTarget) {
 	return SEARCH_FIELDS.filter((field) => field.targets.includes(target));
 }
 export function sortsFor(target: SearchTarget) {
+	const permitted =
+		target === "audit_event"
+			? ["id", "occurred_at"]
+			: target === "group"
+				? ["id", "name", "description", "created_at", "updated_at", "revision"]
+				: target === "service_account"
+					? [
+							"id",
+							"name",
+							"identity_scope",
+							"created_at",
+							"updated_at",
+							"revision",
+						]
+					: undefined;
 	return fieldsFor(target).filter(
-		(field) => field.type !== "json" && field.type !== "boolean",
+		(field) =>
+			field.type !== "json" &&
+			field.type !== "boolean" &&
+			(!permitted || permitted.includes(field.field)),
 	);
 }
 
@@ -161,7 +310,7 @@ const nodeSchema: z.ZodType<SearchNode> = z.lazy(() =>
 );
 export const searchDraftSchema = z.strictObject({
 	version: z.literal(1),
-	target: z.enum(["collection", "class", "object"]),
+	target: z.enum(SEARCH_TARGETS),
 	classId: z.string(),
 	filter: nodeSchema,
 	sort: z

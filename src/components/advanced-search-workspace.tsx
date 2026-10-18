@@ -1,8 +1,10 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useProgressiveSearch } from "@/lib/use-progressive-search";
+import { streamAdvancedSearch } from "@/lib/api/search-stream";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
+import { EventDetailsModal } from "@/components/event-details-modal";
 import { SearchNodeEditor } from "@/components/advanced-search-builder";
 import { ResourcePicker } from "@/components/resource-picker";
 import { TablePagination } from "@/components/table-pagination";
@@ -18,6 +20,7 @@ import {
 import { fetchAdvancedSearch } from "@/lib/api/advanced-search";
 import type {
 	StructuredSearchRequest,
+	StructuredSearchResponse,
 	StructuredSearchResult,
 } from "@/lib/api/generated/models";
 import { SearchResourceContext } from "@/components/search-resource-context";
@@ -37,12 +40,64 @@ function SearchResultRow({
 	);
 	const inspecting = inspection === "open";
 	const inspectionId = useId();
+	if (result.kind === "audit_event")
+		return (
+			<>
+				<tr>
+					<td>
+						<button
+							type="button"
+							className="ghost"
+							onClick={() => setInspection("open")}
+						>
+							Inspect event #{result.resource.id}
+						</button>
+						<EventDetailsModal
+							event={inspecting ? result.resource : null}
+							onClose={() => setInspection("closed")}
+						/>
+					</td>
+					<td>
+						{result.resource.entity_type} · {result.resource.action}
+					</td>
+					<td>{result.resource.summary}</td>
+					<td>{result.resource.occurred_at}</td>
+				</tr>
+			</>
+		);
 	if (
-		result.kind !== "object" &&
-		result.kind !== "class" &&
-		result.kind !== "collection"
-	)
-		return null;
+		result.kind === "user" ||
+		result.kind === "group" ||
+		result.kind === "service_account"
+	) {
+		const resource = result.resource;
+		const name =
+			result.kind === "group"
+				? result.resource.groupname
+				: result.resource.name;
+		const catalog =
+			result.kind === "user"
+				? "users"
+				: result.kind === "group"
+					? "groups"
+					: "service-accounts";
+		return (
+			<tr>
+				<td>
+					<Link href={`/admin/${catalog}/${resource.id}`}>
+						{name} (#{resource.id})
+					</Link>
+				</td>
+				<td>{resource.identity_scope}</td>
+				<td>
+					{result.kind === "user"
+						? (result.resource.proper_name ?? "—")
+						: result.resource.description || "—"}
+				</td>
+				<td>{resource.updated_at}</td>
+			</tr>
+		);
+	}
 	const resource = result.resource;
 	const href =
 		result.kind === "object"
@@ -137,10 +192,12 @@ export function AdvancedSearchWorkspace({
 	useEffect(() => setReady(true), []);
 	const [initial] = useState(() => initialState(savedQuery));
 	const [draft, setDraft] = useState(initial.draft);
+	const [streaming, setStreaming] = useState(false);
 	const [executed, setExecuted] = useState<{
 		draft: SearchDraft;
 		request: StructuredSearchRequest;
 		sequence: number;
+		streaming: boolean;
 	} | null>(null);
 	const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
 	const cursor = cursors[cursors.length - 1];
@@ -163,15 +220,20 @@ export function AdvancedSearchWorkspace({
 					: "This query cannot be bookmarked.";
 		}
 	}
-	const search = useQuery({
+	const search = useProgressiveSearch<StructuredSearchResponse>({
 		queryKey: ["advanced-search", executed, cursor],
-		queryFn: ({ signal }) => {
-			if (!executed) throw new Error("Run a search first.");
-			return fetchAdvancedSearch({ ...executed.request, cursor }, signal);
-		},
 		enabled: executed !== null,
-		retry: false,
-		refetchOnWindowFocus: false,
+		streaming: executed?.streaming ?? false,
+		fetcher: (signal, onProgress) => {
+			if (!executed) throw new Error("Run a search first.");
+			return onProgress
+				? streamAdvancedSearch(
+						{ ...executed.request, cursor },
+						onProgress,
+						signal,
+					)
+				: fetchAdvancedSearch({ ...executed.request, cursor }, signal);
+		},
 	});
 	const edited =
 		executed && JSON.stringify(executed.draft) !== JSON.stringify(draft);
@@ -209,6 +271,7 @@ export function AdvancedSearchWorkspace({
 							draft: structuredClone(draft),
 							request,
 							sequence: (executed?.sequence ?? 0) + 1,
+							streaming,
 						});
 						window.history.replaceState(
 							null,
@@ -235,6 +298,10 @@ export function AdvancedSearchWorkspace({
 									<option value="collection">Collections</option>
 									<option value="class">Classes</option>
 									<option value="object">Objects</option>
+									<option value="audit_event">Audit events</option>
+									<option value="user">Users (admin)</option>
+									<option value="group">Groups</option>
+									<option value="service_account">Service accounts</option>
 								</select>
 							</label>
 							{(draft.target === "object" || draft.classId) && (
@@ -480,6 +547,14 @@ export function AdvancedSearchWorkspace({
 							</details>
 						)}
 						<div className="advanced-controls">
+							<label className="checkbox-label">
+								<input
+									type="checkbox"
+									checked={streaming}
+									onChange={(event) => setStreaming(event.target.checked)}
+								/>
+								Stream results
+							</label>
 							<button type="submit" disabled={!request}>
 								Run search
 							</button>
@@ -509,7 +584,26 @@ export function AdvancedSearchWorkspace({
 						<summary>Executed query</summary>
 						<pre>{JSON.stringify(executed.request, null, 2)}</pre>
 					</details>
-					{search.isFetching && <p role="status">Searching…</p>}
+					{search.isFetching && (
+						<p role="status">
+							{executed.streaming
+								? "Receiving results… This page is incomplete."
+								: "Searching…"}
+						</p>
+					)}
+					{executed.streaming && search.isFetching ? (
+						<button type="button" className="secondary" onClick={search.cancel}>
+							Cancel search
+						</button>
+					) : null}
+					{search.cancelled ? (
+						<div role="status">
+							<p>Search cancelled. Received results are incomplete.</p>
+							<button type="button" onClick={() => void search.refetch()}>
+								Restart search
+							</button>
+						</div>
+					) : null}
 					{search.error && (
 						<div className="error-banner" role="alert">
 							{search.error.message}
@@ -522,7 +616,7 @@ export function AdvancedSearchWorkspace({
 							</button>
 						</div>
 					)}
-					{search.data && !search.isError && (
+					{search.data && (
 						<>
 							<p>
 								{search.data.total != null
@@ -540,7 +634,7 @@ export function AdvancedSearchWorkspace({
 												<th scope="col">Name and ID</th>
 												<th scope="col">Context</th>
 												<th scope="col">Description</th>
-												<th scope="col">Updated</th>
+												<th scope="col">Updated / occurred</th>
 												{executed.draft.hydration && (
 													<th scope="col">Related resources</th>
 												)}
@@ -564,7 +658,9 @@ export function AdvancedSearchWorkspace({
 						</>
 					)}
 					<TablePagination
-						hasNextPage={!!search.data?.next && !search.isError}
+						hasNextPage={
+							!!search.data?.next && !search.isError && !search.incomplete
+						}
 						hasPrevPage={cursors.length > 1}
 						onNextPage={() => {
 							if (search.data?.next) setCursors([...cursors, search.data.next]);

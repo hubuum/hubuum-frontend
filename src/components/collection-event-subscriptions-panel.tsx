@@ -14,12 +14,14 @@ import {
 	deleteCollectionEventSubscription,
 	fetchCollectionEventSinks,
 	fetchCollectionEventSubscriptions,
+	fetchEventSinks,
 	updateCollectionEventSubscription,
 } from "@/lib/api/events";
 import type {
 	CollectionEventSink,
 	EventSinkKind,
-	EventSubscription,
+	SystemEventSubscription,
+	EventSink,
 	EventSubscriptionFilter,
 	NewEventSubscription,
 	UpdateEventSubscription,
@@ -29,7 +31,18 @@ import {
 	EVENT_ACTOR_KINDS,
 	EVENT_ENTITY_TYPES,
 } from "@/lib/event-options";
-import { preserveTaskKindFilter } from "@/lib/event-subscription-filter";
+import {
+	mergeSubscriptionFilters,
+	subscriptionSubjectIds,
+} from "@/lib/event-subscription-filter";
+import { TaskKind } from "@/lib/api/generated/models";
+import {
+	createSystemEventSubscription,
+	deleteSystemEventSubscription,
+	fetchSystemEventSubscriptions,
+	updateSystemEventSubscription,
+} from "@/lib/api/system-events";
+import { useConfirm } from "@/lib/confirm-context";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
 import {
 	webhookHasFixedDestination,
@@ -37,7 +50,7 @@ import {
 } from "@/lib/webhook-presets";
 
 type CollectionEventSubscriptionsPanelProps = {
-	collectionId: number;
+	collectionId?: number;
 	canManage: boolean;
 	canExport: boolean;
 	isPermissionPending: boolean;
@@ -62,6 +75,10 @@ type SubscriptionFormState = {
 	recipients: string;
 	relatedCollectionIds: string;
 	requestIds: string;
+	taskKinds: TaskKind[];
+	subjectPrincipalIds: string;
+	subjectIdentityScopes: string;
+	subjectIsAdmin: string;
 	routingJson: string;
 	routingMode: "structured" | "json";
 	sinkId: string;
@@ -98,6 +115,10 @@ const EMPTY_FORM: SubscriptionFormState = {
 	recipients: "",
 	relatedCollectionIds: "",
 	requestIds: "",
+	taskKinds: [],
+	subjectPrincipalIds: "",
+	subjectIdentityScopes: "",
+	subjectIsAdmin: "",
 	routingJson: "{}",
 	routingMode: "structured",
 	sinkId: "",
@@ -183,7 +204,7 @@ function toggleListValue(values: string[], value: string): string[] {
 		: [...values, value];
 }
 
-function getSinkLabel(sink: CollectionEventSink): string {
+function getSinkLabel(sink: CollectionEventSink | EventSink): string {
 	return `${sink.name} (#${sink.id}) · ${sink.kind}${sink.enabled ? "" : " · disabled"}`;
 }
 
@@ -225,13 +246,14 @@ function routingToFormFields(
 }
 
 function subscriptionToForm(
-	subscription: EventSubscription,
+	subscription: SystemEventSubscription,
 	sinkKind: EventSinkKind | undefined,
-	collectionId: number,
+	collectionId: number | undefined,
 ): SubscriptionFormState {
 	const filter = subscription.filter ?? {};
 	const collectionIds = filter.collection_ids ?? [];
-	const includeCurrentCollection = collectionIds.includes(collectionId);
+	const includeCurrentCollection =
+		collectionId !== undefined && collectionIds.includes(collectionId);
 	const otherCollectionIds = collectionIds.filter((id) => id !== collectionId);
 	return {
 		...EMPTY_FORM,
@@ -252,15 +274,22 @@ function subscriptionToForm(
 		relatedCollectionIds: (filter.related_collection_ids ?? []).join(", "),
 		requestIds: (filter.request_ids ?? []).join(", "),
 		sinkId: String(subscription.sink_id),
+		taskKinds: filter.task_kinds ?? [],
+		subjectPrincipalIds: (filter.subject_principal_ids ?? []).join(", "),
+		subjectIdentityScopes: (filter.subject_identity_scopes ?? []).join(", "),
+		subjectIsAdmin:
+			filter.subject_is_admin == null ? "" : String(filter.subject_is_admin),
 	};
 }
 
 function buildFilter(
 	form: SubscriptionFormState,
-	collectionId: number,
+	collectionId: number | undefined,
 ): EventSubscriptionFilter | undefined {
 	const collectionIds = mergeUniqueNumbers(
-		form.includeCurrentCollection ? [collectionId] : undefined,
+		form.includeCurrentCollection && collectionId !== undefined
+			? [collectionId]
+			: undefined,
 		parseNumberTokens(form.collectionIds, "Collection filters"),
 	);
 	const filter: EventSubscriptionFilter = {};
@@ -313,12 +342,19 @@ function buildFilter(
 		filter.correlation_ids = correlationIds;
 	}
 
+	if (form.taskKinds.length) filter.task_kinds = form.taskKinds;
+	const subjectIds = subscriptionSubjectIds(form.subjectPrincipalIds);
+	if (subjectIds) filter.subject_principal_ids = subjectIds;
+	const scopes = optionalStringTokens(form.subjectIdentityScopes);
+	if (scopes) filter.subject_identity_scopes = scopes;
+	if (form.subjectIsAdmin)
+		filter.subject_is_admin = form.subjectIsAdmin === "true";
 	return Object.keys(filter).length > 0 ? filter : undefined;
 }
 
 function buildRouting(
 	form: SubscriptionFormState,
-	sink: CollectionEventSink | undefined,
+	sink: CollectionEventSink | EventSink | undefined,
 ): unknown {
 	if (webhookHasFixedDestination(sink)) return {};
 	const sinkKind = sink?.kind;
@@ -359,8 +395,8 @@ function buildRouting(
 
 function buildPayload(
 	form: SubscriptionFormState,
-	collectionId: number,
-	selectedSink: CollectionEventSink | undefined,
+	collectionId: number | undefined,
+	selectedSink: CollectionEventSink | EventSink | undefined,
 ): NewEventSubscription {
 	const sinkId = Number.parseInt(form.sinkId, 10);
 	if (!Number.isFinite(sinkId) || sinkId < 1) {
@@ -395,8 +431,8 @@ function buildPayload(
 function getStepError(
 	step: SubscriptionEditorStep,
 	form: SubscriptionFormState,
-	collectionId: number,
-	selectedSink: CollectionEventSink | undefined,
+	collectionId: number | undefined,
+	selectedSink: CollectionEventSink | EventSink | undefined,
 ): string | null {
 	try {
 		if (step === "destination") {
@@ -431,7 +467,7 @@ function getStepError(
 
 function formatRoutingSummary(
 	form: SubscriptionFormState,
-	sink: CollectionEventSink | undefined,
+	sink: CollectionEventSink | EventSink | undefined,
 ): string {
 	if (webhookHasFixedDestination(sink))
 		return "Uses the sink’s configured destination";
@@ -482,6 +518,12 @@ function formatFilterSummary(
 	if (filter.correlation_ids?.length) {
 		parts.push(`correlations ${filter.correlation_ids.length}`);
 	}
+	if (filter.subject_principal_ids?.length)
+		parts.push(`subjects ${filter.subject_principal_ids.join(", ")}`);
+	if (filter.subject_identity_scopes?.length)
+		parts.push(`scopes ${filter.subject_identity_scopes.join(", ")}`);
+	if (filter.subject_is_admin != null)
+		parts.push(`subject admin: ${filter.subject_is_admin ? "yes" : "no"}`);
 	if (filter.task_kinds?.length) {
 		parts.push(`task kinds ${filter.task_kinds.join(", ")}`);
 	}
@@ -496,6 +538,7 @@ export function CollectionEventSubscriptionsPanel({
 	isPermissionPending,
 }: CollectionEventSubscriptionsPanelProps) {
 	const queryClient = useQueryClient();
+	const confirm = useConfirm();
 	const [isEditorOpen, setEditorOpen] = useState(false);
 	const [editingSubscriptionId, setEditingSubscriptionId] = useState<
 		number | null
@@ -507,12 +550,21 @@ export function CollectionEventSubscriptionsPanel({
 
 	const subscriptionsQuery = useQuery({
 		queryKey: ["collection-event-subscriptions", collectionId],
-		queryFn: () => fetchCollectionEventSubscriptions(collectionId),
+		queryFn: () =>
+			collectionId === undefined
+				? fetchSystemEventSubscriptions()
+				: fetchCollectionEventSubscriptions(collectionId),
 		enabled: canManage,
 	});
-	const sinksQuery = useQuery({
-		queryKey: ["collection-event-sinks", collectionId],
-		queryFn: () => fetchCollectionEventSinks(collectionId),
+	const sinksQuery = useQuery<(CollectionEventSink | EventSink)[]>({
+		queryKey:
+			collectionId === undefined
+				? ["event-sinks", "list"]
+				: ["collection-event-sinks", collectionId],
+		queryFn: () =>
+			collectionId === undefined
+				? fetchEventSinks()
+				: fetchCollectionEventSinks(collectionId),
 		enabled: canManage,
 	});
 
@@ -524,7 +576,9 @@ export function CollectionEventSubscriptionsPanel({
 
 	const createMutation = useMutation({
 		mutationFn: (payload: NewEventSubscription) =>
-			createCollectionEventSubscription(collectionId, payload),
+			collectionId === undefined
+				? createSystemEventSubscription(payload)
+				: createCollectionEventSubscription(collectionId, payload),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: ["collection-event-subscriptions", collectionId],
@@ -550,7 +604,13 @@ export function CollectionEventSubscriptionsPanel({
 			subscriptionId: number;
 			payload: UpdateEventSubscription;
 		}) =>
-			updateCollectionEventSubscription(collectionId, subscriptionId, payload),
+			collectionId === undefined
+				? updateSystemEventSubscription(subscriptionId, payload)
+				: updateCollectionEventSubscription(
+						collectionId,
+						subscriptionId,
+						payload,
+					),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: ["collection-event-subscriptions", collectionId],
@@ -570,7 +630,9 @@ export function CollectionEventSubscriptionsPanel({
 
 	const deleteMutation = useMutation({
 		mutationFn: (subscriptionId: number) =>
-			deleteCollectionEventSubscription(collectionId, subscriptionId),
+			collectionId === undefined
+				? deleteSystemEventSubscription(subscriptionId)
+				: deleteCollectionEventSubscription(collectionId, subscriptionId),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: ["collection-event-subscriptions", collectionId],
@@ -614,7 +676,7 @@ export function CollectionEventSubscriptionsPanel({
 		setEditorOpen(true);
 	}
 
-	function startEdit(subscription: EventSubscription) {
+	function startEdit(subscription: SystemEventSubscription) {
 		if (!canExport) return;
 		const sink = sinkLookup.get(subscription.sink_id);
 		setForm(subscriptionToForm(subscription, sink?.kind, collectionId));
@@ -661,7 +723,7 @@ export function CollectionEventSubscriptionsPanel({
 			subscriptionId: editingSubscriptionId,
 			payload: {
 				...payload,
-				filter: preserveTaskKindFilter(
+				filter: mergeSubscriptionFilters(
 					payload.filter,
 					editingSubscription?.filter,
 				),
@@ -669,8 +731,16 @@ export function CollectionEventSubscriptionsPanel({
 		});
 	}
 
-	function onDelete(subscription: EventSubscription) {
-		if (!window.confirm(`Delete event subscription "${subscription.name}"?`)) {
+	async function onDelete(subscription: SystemEventSubscription) {
+		if (
+			!(await confirm({
+				title: `Delete event subscription "${subscription.name}"?`,
+				description:
+					"Future events will no longer be delivered through this subscription.",
+				confirmLabel: "Delete subscription",
+				tone: "danger",
+			}))
+		) {
 			return;
 		}
 
@@ -709,7 +779,7 @@ export function CollectionEventSubscriptionsPanel({
 	let reviewFilterSummary = "No extra filters";
 	try {
 		reviewFilterSummary = formatFilterSummary(
-			preserveTaskKindFilter(
+			mergeSubscriptionFilters(
 				buildFilter(form, collectionId),
 				editingSubscription?.filter,
 			),
@@ -725,13 +795,13 @@ export function CollectionEventSubscriptionsPanel({
 			{
 				key: "name",
 				label: "Name",
-				getValue: (subscription: EventSubscription) =>
+				getValue: (subscription: SystemEventSubscription) =>
 					`${subscription.name} (#${subscription.id})`,
 			},
 			{
 				key: "sink",
 				label: "Sink",
-				getValue: (subscription: EventSubscription) => {
+				getValue: (subscription: SystemEventSubscription) => {
 					const sink = sinkLookup.get(subscription.sink_id);
 					return sink ? getSinkLabel(sink) : `#${subscription.sink_id}`;
 				},
@@ -739,25 +809,25 @@ export function CollectionEventSubscriptionsPanel({
 			{
 				key: "match",
 				label: "Match",
-				getValue: (subscription: EventSubscription) =>
+				getValue: (subscription: SystemEventSubscription) =>
 					`${subscription.entity_types.join(", ")} · ${subscription.actions.join(", ")}`,
 			},
 			{
 				key: "filters",
 				label: "Filters",
-				getValue: (subscription: EventSubscription) =>
+				getValue: (subscription: SystemEventSubscription) =>
 					formatFilterSummary(subscription.filter),
 			},
 			{
 				key: "enabled",
 				label: "Enabled",
-				getValue: (subscription: EventSubscription) =>
+				getValue: (subscription: SystemEventSubscription) =>
 					subscription.enabled ? "yes" : "no",
 			},
 			{
 				key: "updated",
 				label: "Updated",
-				getValue: (subscription: EventSubscription) =>
+				getValue: (subscription: SystemEventSubscription) =>
 					formatTimestamp(subscription.updated_at),
 			},
 		],
@@ -768,10 +838,15 @@ export function CollectionEventSubscriptionsPanel({
 		<article className="card stack panel-card">
 			<div className="panel-header">
 				<div className="stack action-card-header">
-					<h3>Event subscriptions</h3>
+					<h3>
+						{collectionId === undefined
+							? "System event subscriptions"
+							: "Event subscriptions"}
+					</h3>
 					<p className="muted">
-						Collection-scoped rules that fan matching audit events out to a
-						configured sink.
+						{collectionId === undefined
+							? "Administrator-managed rules for system-wide events, including successful logins and background tasks."
+							: "Collection-scoped rules that fan matching audit events out to a configured sink."}
 					</p>
 				</div>
 				<div className="action-row">
@@ -1024,7 +1099,11 @@ export function CollectionEventSubscriptionsPanel({
 								<label className="checkbox-row">
 									<input
 										type="checkbox"
-										checked={form.includeCurrentCollection}
+										disabled={collectionId === undefined}
+										checked={
+											collectionId !== undefined &&
+											form.includeCurrentCollection
+										}
 										onChange={(event) =>
 											patchForm({
 												includeCurrentCollection: event.target.checked,
@@ -1112,6 +1191,71 @@ export function CollectionEventSubscriptionsPanel({
 									/>
 								</label>
 							</div>
+							<fieldset className="stack">
+								<legend>Task and login subject filters</legend>
+								<p className="muted">
+									Subject filters use identity and administrator status recorded
+									when the event occurred. Missing subject context does not
+									match.
+								</p>
+								<div className="form-grid">
+									<label className="control-field">
+										<span>Subject principal IDs</span>
+										<input
+											value={form.subjectPrincipalIds}
+											onChange={(event) =>
+												patchForm({ subjectPrincipalIds: event.target.value })
+											}
+										/>
+									</label>
+									<label className="control-field">
+										<span>Subject identity scopes</span>
+										<input
+											value={form.subjectIdentityScopes}
+											onChange={(event) =>
+												patchForm({ subjectIdentityScopes: event.target.value })
+											}
+										/>
+										<small>Comma-separated exact scope names.</small>
+									</label>
+									<label className="control-field">
+										<span>Subject administrator status</span>
+										<select
+											value={form.subjectIsAdmin}
+											onChange={(event) =>
+												patchForm({ subjectIsAdmin: event.target.value })
+											}
+										>
+											<option value="">Any</option>
+											<option value="true">Administrator</option>
+											<option value="false">Not administrator</option>
+										</select>
+									</label>
+								</div>
+								<fieldset>
+									<legend>Task kinds</legend>
+									<div className="action-row">
+										{Object.values(TaskKind).map((kind) => (
+											<label className="control-check" key={kind}>
+												<input
+													type="checkbox"
+													checked={form.taskKinds.includes(kind)}
+													onChange={(event) =>
+														patchForm({
+															taskKinds: event.target.checked
+																? [...form.taskKinds, kind]
+																: form.taskKinds.filter(
+																		(value) => value !== kind,
+																	),
+														})
+													}
+												/>
+												<span>{kind.replaceAll("_", " ")}</span>
+											</label>
+										))}
+									</div>
+								</fieldset>
+							</fieldset>
 							<section className="permission-section">
 								<h4 className="permission-section-title">Actor kinds</h4>
 								<div className="permission-chip-list permission-chip-list--editor">

@@ -43,6 +43,7 @@ import {
 	type AuditFilterDraft,
 	type AuditFilterField,
 	buildAuditEventFilters,
+	canIncludeAuditRelations,
 	clearAuditFilter,
 	EMPTY_AUDIT_FILTER_DRAFT,
 	getAuditDrilldownDraft,
@@ -193,6 +194,11 @@ function getActiveAuditFilters(
 	collectionsById: ReadonlyMap<number, Collection>,
 ): ActiveAuditFilter[] {
 	const filters: ActiveAuditFilter[] = [];
+	if (draft.includeRelations === "true" && canIncludeAuditRelations(draft))
+		filters.push({
+			field: "includeRelations",
+			label: "Include direct relation activity",
+		});
 	if (draft.entityType) {
 		filters.push({
 			field: "entityType",
@@ -934,6 +940,27 @@ export function AuditWorkspace() {
 						</div>
 					</fieldset>
 
+					<label className="control-check">
+						<input
+							type="checkbox"
+							checked={
+								draft.includeRelations === "true" &&
+								canIncludeAuditRelations(draft)
+							}
+							disabled={!canIncludeAuditRelations(draft)}
+							onChange={(event) =>
+								patchDraft(
+									"includeRelations",
+									event.target.checked ? "true" : "",
+								)
+							}
+						/>
+						<span>Include direct relation activity</span>
+					</label>
+					<p className="muted">
+						Relation activity is available when selecting a class or object by
+						ID.
+					</p>
 					<div className="audit-filter-actions">
 						<button type="submit" disabled={!ready}>
 							Apply filters

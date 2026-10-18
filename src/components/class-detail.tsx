@@ -565,6 +565,9 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 							<Link className="link-chip" href={objectNameHistoryHref(classId)}>
 								Object history by name
 							</Link>
+							<Link className="link-chip" href={`/classes/${classId}/graph`}>
+								Neighborhood graph
+							</Link>
 							<Link
 								className="link-chip"
 								href={`/objects?create=1&classId=${classId}`}

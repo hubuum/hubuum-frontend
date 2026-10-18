@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ClassDirectoryLookup } from "@/components/class-directory-lookup";
 import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
@@ -1086,6 +1087,7 @@ export function AdminRemoteTargetsTable() {
 										<td>{formatTimestamp(target.updated_at)}</td>
 										<td>
 											<div className="action-row">
+												<Link className="link-chip" href={`/admin/remote-targets/${target.id}/history`}>History</Link>
 												<button
 													type="button"
 													className="ghost"

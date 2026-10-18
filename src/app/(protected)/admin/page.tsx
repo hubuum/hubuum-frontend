@@ -51,6 +51,17 @@ export default function AdminLandingPage() {
 				</article>
 
 				<article className="card stack">
+					<h3>Security</h3>
+					<p className="muted">
+						Release login lockouts, manage principal settings, and inspect
+						effective collection permissions.
+					</p>
+					<Link className="link-chip" href="/admin/security">
+						Open security
+					</Link>
+				</article>
+
+				<article className="card stack">
 					<h3>Remote targets</h3>
 					<p className="muted">
 						Define outbound actions users can invoke from collections, classes,

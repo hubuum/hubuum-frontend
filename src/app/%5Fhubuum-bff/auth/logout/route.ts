@@ -22,17 +22,32 @@ async function performLogout(request: NextRequest) {
 		`[hubuum-auth][cid=${correlationId}] logout request received (${request.method} ${request.nextUrl.pathname})`,
 	);
 	const session = await getSessionFromRequest(request);
+	const all = request.nextUrl.searchParams.get("all") === "true";
+	if (all && !session)
+		return NextResponse.json(
+			{ message: "Sign in before revoking all tokens." },
+			{ status: 401, headers: { [CORRELATION_ID_HEADER]: correlationId } },
+		);
 
 	if (session) {
-		await backendFetchRaw(BACKEND_LOGOUT_PATH, {
-			correlationId,
-			method: "POST",
-			signal: AbortSignal.timeout(5_000),
-			token: session.token,
-		}).catch(() => {
+		const upstream = await backendFetchRaw(
+			all ? "/api/v0/auth/logout_all" : BACKEND_LOGOUT_PATH,
+			{
+				correlationId,
+				method: "POST",
+				signal: AbortSignal.timeout(5_000),
+				token: session.token,
+			},
+		).catch(() => {
 			// Continue local logout even if backend logout fails.
 		});
 
+		if (all && !upstream?.ok) {
+			return NextResponse.json(
+				{ message: "Could not revoke all tokens. Try again." },
+				{ status: 502, headers: { [CORRELATION_ID_HEADER]: correlationId } },
+			);
+		}
 		await destroySession(session.sid);
 	} else {
 		console.info(
@@ -43,7 +58,10 @@ async function performLogout(request: NextRequest) {
 	const payload: MessageResponse = {
 		message: "Logged out.",
 	};
-	const response = NextResponse.json(payload, { status: 200 });
+	const response = NextResponse.json(payload, {
+		status: 200,
+		headers: { [CORRELATION_ID_HEADER]: correlationId },
+	});
 	clearSessionCookie(response, request);
 	console.info(`[hubuum-auth][cid=${correlationId}] logout completed`);
 	return response;

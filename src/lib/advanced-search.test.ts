@@ -345,3 +345,36 @@ describe("advanced search", () => {
 		expect(() => restoreAdvancedSearch("not json")).toThrow();
 	});
 });
+
+it("supports the released IAM and audit catalogs with their own fields and sort rules", () => {
+	for (const target of [
+		"user",
+		"group",
+		"service_account",
+		"audit_event",
+	] as const) {
+		const draft = emptySearchDraft();
+		draft.target = target;
+		draft.sort = [{ field: "id", direction: "asc" }];
+		draft.filter = {
+			id: "root",
+			kind: "field",
+			negate: false,
+			condition: {
+				field: "id",
+				operator: "gte",
+				path: "",
+				valueType: "number",
+				values: ["1"],
+			},
+		};
+		expect(buildAdvancedSearch(draft).target).toEqual({ kind: target });
+		expect(
+			restoreAdvancedSearch(
+				new URL(advancedSearchUrl(draft), "http://localhost").searchParams.get(
+					"query",
+				) ?? "",
+			).target,
+		).toBe(target);
+	}
+});

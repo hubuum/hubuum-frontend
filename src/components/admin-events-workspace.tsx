@@ -2,6 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
+import { CollectionEventSubscriptionsPanel } from "@/components/collection-event-subscriptions-panel";
+import { EventNotificationTester } from "@/components/event-notification-tester";
 import { CreateModal } from "@/components/create-modal";
 import { EventSinkConfiguration } from "@/components/event-sink-configuration";
 import { TableExportMenu } from "@/components/table-export-menu";
@@ -298,6 +300,12 @@ export function AdminEventsWorkspace() {
 
 	return (
 		<section className="stack">
+			<CollectionEventSubscriptionsPanel
+				canManage
+				canExport
+				isPermissionPending={false}
+			/>
+			<EventNotificationTester sinks={sinksQuery.data ?? []} />
 			<CreateModal
 				open={isSinkModalOpen}
 				title={

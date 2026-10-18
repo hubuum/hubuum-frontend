@@ -74,7 +74,7 @@ export async function fetchAuditEntityDirectory(
 		};
 	}
 
-	if (kind === "template" || kind === "remote_target") {
+	if (kind === "export_template" || kind === "remote_target") {
 		// These list handlers use the same shared dynamic filters as IAM lists.
 		const params = {
 			include_total: false,
@@ -83,14 +83,14 @@ export async function fetchAuditEntityDirectory(
 			sort: "name.asc,id.asc",
 		};
 		const response =
-			kind === "template"
+			kind === "export_template"
 				? await getApiV1ExportTemplates(params, { credentials: "include" })
 				: await getApiV1RemoteTargets(params, { credentials: "include" });
 		if (response.status !== 200) {
 			throw new Error(
 				getApiErrorMessage(
 					response.data,
-					kind === "template"
+					kind === "export_template"
 						? "Template lookup is unavailable."
 						: "Remote-target lookup is unavailable.",
 				),
