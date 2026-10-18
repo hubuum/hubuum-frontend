@@ -2,6 +2,7 @@ import { frontendApiPath } from "@/lib/api/frontend";
 
 export async function endBrowserSession(
 	flushSettings: () => Promise<unknown>,
+	all = false,
 ): Promise<void> {
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	try {
@@ -16,11 +17,14 @@ export async function endBrowserSession(
 	} finally {
 		clearTimeout(timer);
 	}
-	const response = await fetch(frontendApiPath("/auth/logout"), {
-		method: "POST",
-		credentials: "include",
-		signal: AbortSignal.timeout(10_000),
-	});
+	const response = await fetch(
+		frontendApiPath(all ? "/auth/logout?all=true" : "/auth/logout"),
+		{
+			method: "POST",
+			credentials: "include",
+			signal: AbortSignal.timeout(10_000),
+		},
+	);
 	if (!response.ok)
 		throw new Error("Sign-out could not be completed. Please try again.");
 }

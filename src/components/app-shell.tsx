@@ -562,6 +562,12 @@ const observeLinks: NavItem[] = [
 
 const adminIdentityLinks: NavItem[] = [
 	{
+		href: "/admin/security",
+		label: "Security",
+		icon: <IconUser />,
+		hint: "Security: login limits, settings, and effective permissions",
+	},
+	{
 		href: "/admin/users",
 		label: "Users",
 		icon: <IconUser />,

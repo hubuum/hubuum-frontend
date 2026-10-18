@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
+import { AdminPrincipalSettings } from "@/components/admin-principal-settings";
+import { PrincipalPermissions } from "@/components/principal-permissions";
+import { UserAnonymization } from "@/components/user-anonymization";
 import { PrincipalGroupMemberships } from "@/components/principal-group-memberships";
 import { PrincipalTokenManager } from "@/components/principal-token-manager";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -351,6 +354,18 @@ export function AdminUserDetail({ userId }: AdminUserDetailProps) {
 				principalId={user.id}
 			/>
 
+			<PrincipalPermissions principalId={user.id} />
+			<AdminPrincipalSettings principalId={user.id} />
+			<UserAnonymization
+				userId={user.id}
+				onAnonymized={() => {
+					setProperName("");
+					setEmail("");
+					setPassword("");
+					setPasswordConfirmation("");
+					setInitialized(false);
+				}}
+			/>
 			<PrincipalTokenManager
 				authority="admin"
 				principalId={user.id}

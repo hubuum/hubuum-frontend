@@ -84,6 +84,7 @@ export function WorkspaceCommands({
 					{ label: "Service accounts", href: "/admin/service-accounts" },
 					{ label: "Backup & restore", href: "/admin/backups" },
 					{ label: "Remote targets", href: "/admin/remote-targets" },
+					{ label: "Security", href: "/admin/security" },
 					{ label: "Configuration", href: "/admin/configuration" },
 					{ label: "Statistics", href: "/statistics" },
 				]
