@@ -22,39 +22,69 @@ export async function fetchAdvancedSearch(
 					: "Could not run advanced search.";
 		throw new Error(getApiErrorMessage(response.data, fallback));
 	}
-	const data = response.data;
+	return parseStructuredSearchResponse(response.data, request.target.kind);
+}
+
+function record(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function validResult(
+	item: unknown,
+	kind: StructuredSearchRequest["target"]["kind"],
+): boolean {
+	if (!record(item) || item.kind !== kind || !record(item.resource))
+		return false;
+	const resource = item.resource;
+	if (!Number.isSafeInteger(resource.id) || Number(resource.id) < 1)
+		return false;
+	if (kind === "audit_event")
+		return [
+			"event_id",
+			"summary",
+			"occurred_at",
+			"entity_type",
+			"action",
+			"actor_kind",
+		].every((field) => typeof resource[field] === "string");
+	if (typeof resource.updated_at !== "string") return false;
+	if (kind === "group")
+		return (
+			typeof resource.groupname === "string" &&
+			typeof resource.description === "string" &&
+			typeof resource.identity_scope === "string"
+		);
+	if (typeof resource.name !== "string") return false;
+	if (kind === "user") return typeof resource.identity_scope === "string";
+	if (typeof resource.description !== "string") return false;
+	if (kind === "class")
+		return (
+			record(resource.collection) &&
+			Number.isSafeInteger(resource.collection.id) &&
+			typeof resource.collection.name === "string"
+		);
+	if (kind === "object")
+		return (
+			Number.isSafeInteger(resource.hubuum_class_id) &&
+			Number.isSafeInteger(resource.collection_id)
+		);
+	return true;
+}
+export function parseStructuredSearchResponse(
+	data: unknown,
+	kind: StructuredSearchRequest["target"]["kind"],
+): StructuredSearchResponse {
 	if (
-		!data ||
-		typeof data !== "object" ||
+		!record(data) ||
 		data.version !== 1 ||
-		data.kind !== request.target.kind ||
+		data.kind !== kind ||
 		!Array.isArray(data.results) ||
 		(data.next != null && typeof data.next !== "string") ||
 		(data.total != null &&
-			(!Number.isSafeInteger(data.total) || data.total < 0)) ||
-		data.results.some(
-			(item) =>
-				!item ||
-				item.kind !== data.kind ||
-				!item.resource ||
-				!Number.isSafeInteger(item.resource.id) ||
-				!("name" in item.resource) ||
-				typeof item.resource.name !== "string" ||
-				!("description" in item.resource) ||
-				typeof item.resource.description !== "string" ||
-				!("updated_at" in item.resource) ||
-				typeof item.resource.updated_at !== "string" ||
-				(item.kind === "class" &&
-					(!item.resource.collection ||
-						!Number.isSafeInteger(item.resource.collection.id) ||
-						typeof item.resource.collection.name !== "string")) ||
-				(item.kind === "object" &&
-					(!Number.isSafeInteger(item.resource.hubuum_class_id) ||
-						!Number.isSafeInteger(item.resource.collection_id))),
-		)
+			(!Number.isSafeInteger(data.total) || Number(data.total) < 0)) ||
+		data.results.some((item) => !validResult(item, kind))
 	)
 		throw new Error(
 			"The server returned an invalid structured search response.",
 		);
-	return data;
+	return data as unknown as StructuredSearchResponse;
 }

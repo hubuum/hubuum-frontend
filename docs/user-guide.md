@@ -118,6 +118,22 @@ Back and Forward restore these controls from the URL. Shared client-side query
 updates use Next.js's native History integration, preserving unrelated parameters
 and anchors without requesting a new server-rendered page for each control edit.
 
+### Search catalogs and streaming
+
+Advanced search includes collections, classes, objects, audit events, users,
+groups, and service accounts, with the fields and sorting supported by each
+catalog. Backend permissions still determine which catalogs and records are
+visible. Audit results open the existing event inspector; principal results link
+to their administration pages.
+
+Enable **Stream results** in ordinary or advanced search to display discovery
+batches or individual structured results as they arrive. The page remains marked
+incomplete until the server sends completion. **Cancel search** stops the request;
+received results remain visible and pagination waits for successful completion.
+A failed or interrupted stream requires an explicit retry and never silently
+falls back to a broader search. Reduce the page size if a response exceeds the
+browser's bounded stream limits.
+
 ## Object data columns
 
 The objects workspace can promote fields from each object's JSON `data` blob
