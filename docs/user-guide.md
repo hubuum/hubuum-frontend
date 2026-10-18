@@ -214,6 +214,21 @@ ad-hoc exports, and object-scoped export templates share the same server-filter
 field discovery, typed operators, validation, and backend query grammar for
 object, nested JSON data, and computed fields.
 
+## Neighborhood graphs
+
+Open **Neighborhood graph** from a class or object detail page to explore its
+visible connections. Set a maximum depth (1–10) and related-node bound (25–250),
+then select **Load graph**. The root is included separately from that bound.
+If the neighborhood exceeds the bound, reduce the depth; this endpoint does not
+paginate or silently truncate the graph.
+
+Columns show the shortest distance from the root. Select a node with the mouse
+or keyboard to inspect its description and path, highlight its direct relations,
+and open its detail page. Expand **Nodes** and **Direct relations** for accessible
+tables, including the stored relation direction. The diagram scrolls within the
+page on small screens. Dense neighborhoods above 5,000 direct relations require
+a smaller depth or node bound in the browser.
+
 ## Bookmarkable reports
 
 Saved executable export templates have stable, authenticated report URLs under

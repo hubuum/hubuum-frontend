@@ -550,6 +550,9 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 							</div>
 						</div>
 						<div className="class-detail-header-actions">
+							<Link className="link-chip" href={`/classes/${classId}/graph`}>
+								Neighborhood graph
+							</Link>
 							<Link
 								className="link-chip"
 								href={resourceHistoryHref({ type: "class", classId })}
