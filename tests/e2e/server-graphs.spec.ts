@@ -125,11 +125,7 @@ test("live class and object neighborhoods include their direct relations", async
 	test.setTimeout(90_000);
 	const headers = { Origin: new URL(page.url()).origin };
 	const cleanup: string[] = [];
-	const create = async (
-		path: string,
-		data: unknown,
-		cleanupPath?: (id: number) => string,
-	) => {
+	const create = async (path: string, data: unknown) => {
 		const url = /^\/classes\/\d+\/$/.test(path)
 			? `/_hubuum-bff${path}objects`
 			: `${api}${path}`;
@@ -139,9 +135,7 @@ test("live class and object neighborhoods include their direct relations", async
 		});
 		expect(response.status(), `Create ${path}`).toBe(201);
 		const result: { id: number } = await response.json();
-		cleanup.push(
-			cleanupPath?.(result.id) ?? `${path.replace(/\/$/, "")}/${result.id}`,
-		);
+		cleanup.push(`${path.replace(/\/$/, "")}/${result.id}`);
 		return result.id;
 	};
 	try {
