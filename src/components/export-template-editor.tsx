@@ -1,7 +1,7 @@
 "use client";
-import { ConfigurationHistory } from "@/components/configuration-history";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -105,6 +105,11 @@ import {
 	newIncludeRow,
 } from "@/lib/report-include";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+
+const ConfigurationHistory = dynamic(
+	() => import("@/components/configuration-history").then(module => module.ConfigurationHistory),
+	{ loading: () => <p role="status">Loading history…</p> },
+);
 
 type TemplateEditorTab = ExportTemplateEditorSection;
 type SaveIntent = "save" | "test";

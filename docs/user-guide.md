@@ -502,6 +502,18 @@ modes unwind one at a time. Escape is ignored while an inline save or delete is
 in progress, so leaving the interface never implies that an active request was
 canceled.
 
+## Remote-target and template history
+
+Use **History** on a remote target in Admin, or the **History** tab in the
+export-template editor, to inspect saved versions. **Load older versions** follows
+the server cursor beyond the first 50 rows. Each entry shows its validity interval,
+revision, actor, initiator, and saved fields; templates also expose saved content.
+
+Enter an RFC3339 timestamp with a timezone to inspect state at an exact instant,
+or select **Inspect state at history #…**. Sub-millisecond precision is preserved.
+A missing snapshot is distinguished from a failed request. Remote-target history
+has a separate URL that can also inspect a known deleted target's retained history.
+
 ## Collection hierarchy
 
 Collections are hierarchical. The frontend shows parent/path information in
@@ -519,15 +531,3 @@ Collection names are unique among siblings, not globally. UI selectors prefer
 path-aware labels where the API uses collection IDs. Import overrides still use
 the backend's name-based `CollectionKey`, so the frontend blocks existing
 collection overrides when multiple visible collections share the selected name.
-
-### Remote-target and template history
-
-Use **History** on a remote target in Admin, or the **History** tab in the
-export-template editor, to inspect saved versions. **Load older versions** follows
-the server cursor beyond the first 50 rows. Each entry shows its validity interval,
-revision, actor, initiator, and saved fields; templates also expose saved content.
-
-Enter an RFC3339 timestamp with a timezone to inspect state at an exact instant,
-or select **Inspect state at history #…**. Sub-millisecond precision is preserved.
-A missing snapshot is distinguished from a failed request. Remote-target history
-has a separate URL that can also inspect a known deleted target's retained history.
