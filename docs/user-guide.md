@@ -26,6 +26,26 @@ session, and failed or ambiguous mutations are never retried automatically.
 After a lost response, inspect the affected credentials, task, or restore before
 trying again. Imports retain their idempotency key through both BFF paths.
 
+## Security administration
+
+Administrators can open **Admin → Security** to inspect login rate-limit scopes,
+filter tracked or locked entries, release one scope, or clear all tracked limits.
+Clearing all applies beyond the current filter. The effective configuration is
+read-only.
+
+The same page inspects settings for any principal and effective collection
+permissions for a selected principal or group, including the source collection,
+group, and inheritance depth. Settings support replacement, JSON Merge Patch,
+JSON Patch, and reset. Edits use the loaded revision; a conflict retains the draft
+so the administrator can reload and reconcile it.
+
+User details also expose settings, direct permissions, **Revoke all tokens**, and
+**Anonymize user**. Anonymization permanently removes personal information and
+disables login while retaining historical references. Both actions require
+confirmation. **Account → Tokens → Revoke all tokens** revokes all of your own
+API tokens and sessions, including the current session. Failed revocation keeps
+the current browser session available for retry.
+
 ## Scoped identities
 
 The login form accepts an optional identity scope. Blank values and `local`
@@ -519,23 +539,3 @@ Collection names are unique among siblings, not globally. UI selectors prefer
 path-aware labels where the API uses collection IDs. Import overrides still use
 the backend's name-based `CollectionKey`, so the frontend blocks existing
 collection overrides when multiple visible collections share the selected name.
-
-### Security administration
-
-Administrators can open **Admin → Security** to inspect login rate-limit scopes,
-filter tracked or locked entries, release one scope, or clear all tracked limits.
-Clearing all applies beyond the current filter. The effective configuration is
-read-only.
-
-The same page inspects settings for any principal and effective collection
-permissions for a selected principal or group, including the source collection,
-group, and inheritance depth. Settings support replacement, JSON Merge Patch,
-JSON Patch, and reset. Edits use the loaded revision; a conflict retains the draft
-so the administrator can reload and reconcile it.
-
-User details also expose settings, direct permissions, **Revoke all tokens**, and
-**Anonymize user**. Anonymization permanently removes personal information and
-disables login while retaining historical references. Both actions require
-confirmation. **Account → Tokens → Revoke all tokens** revokes all of your own
-API tokens and sessions, including the current session. Failed revocation keeps
-the current browser session available for retry.
