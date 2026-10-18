@@ -103,8 +103,10 @@ async function mockUsage(
 		mutationError?: number;
 		count?: number;
 		suggestions?: boolean;
+		beforeRefresh?: (path: string) => Promise<void>;
 	} = {},
 ) {
+	let mutated = false;
 	let declarations = Array.from({ length: options.count ?? 1 }, (_, i) => ({
 		...structuredClone(declaration),
 		id: 17 + i,
@@ -137,6 +139,8 @@ async function mockUsage(
 			body,
 			revision: url.searchParams.get("expected_revision"),
 		});
+		if (mutated && (method === "GET" || path === "/analysis"))
+			await options.beforeRefresh?.(path);
 		if (path === "/analysis") {
 			if (options.analysisError)
 				return route.fulfill({
@@ -164,6 +168,7 @@ async function mockUsage(
 							: "UpdateClass required",
 				},
 			});
+		mutated = true;
 		if (method === "POST") {
 			const created = {
 				...declaration,
@@ -263,6 +268,89 @@ test.describe("query usage workspace", () => {
 			requests.find((request) => request.method === "DELETE")?.revision,
 		).toBe("2");
 	});
+
+	for (const scenario of ["create", "edit", "limit", "adopt"] as const) {
+		test(`restores focus after a delayed ${scenario} save refresh`, async ({
+			page,
+		}) => {
+			let refreshStarted = false;
+			let releaseRefresh = () => {};
+			const refreshFinished = new Promise<void>((resolve) => {
+				releaseRefresh = resolve;
+			});
+			await mockUsage(page, {
+				count: scenario === "limit" ? 31 : 1,
+				beforeRefresh: async (path) => {
+					const delayedPath =
+						scenario === "edit" || scenario === "adopt" ? "/analysis" : "";
+					if (path !== delayedPath) return;
+					refreshStarted = true;
+					await refreshFinished;
+				},
+			});
+			await page.goto("/classes/10/query-usage");
+			await expect(
+				page.getByText("Analysis complete", { exact: true }),
+			).toBeVisible();
+			const trigger = page.getByRole("button", {
+				name:
+					scenario === "edit"
+						? "Edit declaration"
+						: scenario === "adopt"
+							? "Review and adopt"
+							: "New declaration",
+				exact: true,
+			});
+			await trigger.focus();
+			await trigger.press("Enter");
+			const dialog = page.getByRole("dialog", {
+				name:
+					scenario === "edit"
+						? "Edit query usage declaration"
+						: "Create query usage declaration",
+			});
+			if (scenario !== "adopt")
+				await dialog.getByLabel("JSON path").fill("weight");
+			await dialog.getByRole("button", { name: "Save declaration" }).click();
+			try {
+				await expect.poll(() => refreshStarted).toBe(true);
+				await expect(dialog).toBeVisible();
+				await expect(
+					dialog.getByRole("button", { name: "Saving…" }),
+				).toBeDisabled();
+				await page.keyboard.press("Escape");
+				await expect(dialog).toBeVisible();
+			} finally {
+				releaseRefresh();
+			}
+			await expect(dialog).toHaveCount(0);
+			const focusTarget =
+				scenario === "limit" || scenario === "adopt"
+					? page.getByRole("button", { name: "Reload declarations" })
+					: trigger;
+			await expect(focusTarget).toBeEnabled();
+			await expect(focusTarget).toBeFocused();
+			if (scenario === "limit") await expect(trigger).toBeDisabled();
+			if (scenario === "adopt")
+				await expect(
+					page.getByRole("button", { name: "Already declared" }),
+				).toBeDisabled();
+			// A completed save must not prevent a later editor from opening.
+			await page
+				.getByRole("article", {
+					name:
+						scenario === "adopt"
+							? "Declaration hostname"
+							: "Declaration weight",
+					exact: true,
+				})
+				.getByRole("button", { name: "Edit declaration" })
+				.click();
+			await expect(
+				page.getByRole("dialog", { name: "Edit query usage declaration" }),
+			).toBeVisible();
+		});
+	}
 
 	test("analyzes hypothetical intent without saving and adopts only after review", async ({
 		page,

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { useCallback, useEffect, useId, useRef } from "react";
 
 import { useDialogAccessibility } from "@/lib/use-dialog-accessibility";
@@ -12,6 +12,7 @@ type CreateModalProps = {
 	children: ReactNode;
 	navigation?: ModalRecordNavigation;
 	closeDisabled?: boolean;
+	restoreFocusFallbackRef?: RefObject<HTMLElement | null>;
 	panelClassName?: string;
 };
 
@@ -56,6 +57,7 @@ export function CreateModal({
 	children,
 	navigation,
 	closeDisabled = false,
+	restoreFocusFallbackRef,
 	panelClassName = "",
 }: CreateModalProps) {
 	const titleId = useId();
@@ -71,6 +73,7 @@ export function CreateModal({
 		onClose: requestClose,
 		dialogRef: panelRef,
 		overlayRef,
+		restoreFocusFallbackRef,
 		initialFocusSelector:
 			".modal-content input:not([type='hidden']):not([disabled]), .modal-content select:not([disabled]), .modal-content textarea:not([disabled]), .modal-content button:not([disabled])",
 	});

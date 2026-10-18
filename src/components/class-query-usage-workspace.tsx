@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { QueryUsageAnalysis } from "@/components/query-usage-analysis";
 import { QueryUsagePatternForm } from "@/components/query-usage-pattern-form";
@@ -56,6 +56,7 @@ export function ClassQueryUsageWorkspace({
 	const confirm = useConfirm();
 	const { showToast } = useToast();
 	const [editor, setEditor] = useState<Editor | null>(null);
+	const reloadRef = useRef<HTMLButtonElement | null>(null);
 	const classQuery = useQuery({
 		queryKey: ["class", classId],
 		queryFn: ({ signal }) => fetchExpandedClass(classId, signal),
@@ -81,7 +82,6 @@ export function ClassQueryUsageWorkspace({
 				? replaceQueryUsage(classId, context.declaration, pattern)
 				: createQueryUsage(classId, pattern),
 		onSuccess: async () => {
-			setEditor(null);
 			showToast("Query usage declaration saved.", "success");
 			await refresh();
 		},
@@ -133,6 +133,7 @@ export function ClassQueryUsageWorkspace({
 					<h2>Declarations ({declarations.data?.length ?? 0}/32)</h2>
 					<div className="action-row">
 						<button
+							ref={reloadRef}
 							type="button"
 							className="ghost"
 							disabled={busy || declarations.isFetching}
@@ -256,6 +257,7 @@ export function ClassQueryUsageWorkspace({
 						: "Create query usage declaration"
 				}
 				closeDisabled={busy}
+				restoreFocusFallbackRef={reloadRef}
 				onClose={() => setEditor(null)}
 			>
 				{editor ? (
@@ -265,7 +267,13 @@ export function ClassQueryUsageWorkspace({
 							initial={editor.pattern}
 							submitLabel={save.isPending ? "Saving…" : "Save declaration"}
 							disabled={busy}
-							onSubmit={(pattern) => save.mutate({ context: editor, pattern })}
+							onSubmit={(pattern) =>
+								save.mutate(
+									{ context: editor, pattern },
+									// Close after refresh and mutation settlement enable the trigger.
+									{ onSuccess: () => setEditor(null) },
+								)
+							}
 							onCancel={() => setEditor(null)}
 						/>
 						<MutationError error={save.error} />
