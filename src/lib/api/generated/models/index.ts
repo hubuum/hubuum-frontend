@@ -125,6 +125,7 @@ export * from './getApiV1ClassesByClassIdHistoryParams';
 export * from './getApiV1ClassesByClassIdObjectAggregatesParams';
 export * from './getApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsParams';
 export * from './getApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsParams';
+export * from './getApiV1ClassesByClassIdObjectsHistoryParams';
 export * from './getApiV1ClassesByClassIdPermissionsParams';
 export * from './getApiV1ClassesByClassIdRelatedClassesParams';
 export * from './getApiV1ClassesByClassIdRelatedRelationsParams';

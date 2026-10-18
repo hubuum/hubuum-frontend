@@ -55,6 +55,7 @@ import type {
   GetApiV1ClassesByClassIdObjectAggregatesParams,
   GetApiV1ClassesByClassIdObjectsByObjectIdRelatedObjectsParams,
   GetApiV1ClassesByClassIdObjectsByObjectIdRelatedRelationsParams,
+  GetApiV1ClassesByClassIdObjectsHistoryParams,
   GetApiV1ClassesByClassIdPermissionsParams,
   GetApiV1ClassesByClassIdRelatedClassesParams,
   GetApiV1ClassesByClassIdRelatedRelationsParams,
@@ -3753,6 +3754,76 @@ export const getApiV1ClassesByClassIdObjectAggregates = async (classId: number,
 
   const data: getApiV1ClassesByClassIdObjectAggregatesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdObjectAggregatesResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdObjectsHistoryResponse200 = {
+  data: HistoryResponseHubuumObjectHistory[]
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdObjectsHistoryResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdObjectsHistoryResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdObjectsHistoryResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByClassIdObjectsHistoryResponseSuccess = (getApiV1ClassesByClassIdObjectsHistoryResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdObjectsHistoryResponseError = (getApiV1ClassesByClassIdObjectsHistoryResponse400 | getApiV1ClassesByClassIdObjectsHistoryResponse401 | getApiV1ClassesByClassIdObjectsHistoryResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdObjectsHistoryResponse = (getApiV1ClassesByClassIdObjectsHistoryResponseSuccess | getApiV1ClassesByClassIdObjectsHistoryResponseError)
+
+export const getGetApiV1ClassesByClassIdObjectsHistoryUrl = (classId: number,
+    params: GetApiV1ClassesByClassIdObjectsHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/objects/history?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/objects/history`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.
+ * @summary Get Api V1 Classes By Class Id Objects History
+ */
+export const getApiV1ClassesByClassIdObjectsHistory = async (classId: number,
+    params: GetApiV1ClassesByClassIdObjectsHistoryParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdObjectsHistoryResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdObjectsHistoryUrl(classId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdObjectsHistoryResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdObjectsHistoryResponse
 }
 
 

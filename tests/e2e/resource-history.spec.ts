@@ -194,7 +194,11 @@ async function selectHistorical(page: Page) {
 }
 
 test("history routes require a server-side session", async ({ page }) => {
-	for (const path of [objectPath, "/classes/3/history"]) {
+	for (const path of [
+		objectPath,
+		"/classes/3/history",
+		"/classes/3/objects/history?name=retired",
+	]) {
 		await page.goto(path);
 		await expect(page).toHaveURL(/\/login(?:\?|$)/);
 		await expect(page.getByRole("form", { name: "Login form" })).toBeVisible();
@@ -333,6 +337,57 @@ test.describe("resource history", () => {
 			await expect(
 				page.getByRole("row", { name: /^View details for event/ }),
 			).toHaveCount(4);
+			const byName = await page.request.get(
+				`${api}/classes/${classId}/objects/history?${new URLSearchParams({ name, include_total: "false", limit: "25" })}`,
+			);
+			expect([200, 400, 404, 405], await byName.text()).toContain(
+				byName.status(),
+			);
+			if (byName.status() === 400)
+				expect(await byName.json()).toMatchObject({
+					message: 'Path deserialize error: can not parse "objects" to a i32',
+				});
+			await page.goto(`/classes/${classId}`);
+			await page
+				.getByRole("link", { name: "Object history by name", exact: true })
+				.click();
+			await page.getByLabel("Exact historical object name").fill(name);
+			await page
+				.getByRole("button", { name: "Search history", exact: true })
+				.click();
+			if (byName.status() === 200) {
+				const snapshots: {
+					id: number;
+					name: string;
+					op: string;
+					hubuum_class_id: number;
+				}[] = await byName.json();
+				expect(snapshots).toHaveLength(4);
+				expect(new Set(snapshots.map((snapshot) => snapshot.id))).toEqual(
+					new Set([deletedId, renamedId, currentId]),
+				);
+				expect(
+					snapshots.every(
+						(snapshot) =>
+							snapshot.name === name && snapshot.hubuum_class_id === classId,
+					),
+				).toBe(true);
+				expect(
+					snapshots.some(
+						(snapshot) =>
+							snapshot.id === deletedId && /^(D|DELETE)$/.test(snapshot.op),
+					),
+				).toBe(true);
+				await expect(
+					page.getByRole("status", { name: "History search results" }),
+				).toContainText("4 matching snapshots loaded");
+			} else {
+				await expect(
+					page
+						.getByRole("region", { name: "Object history by name" })
+						.getByRole("alert"),
+				).toContainText("By-name history is unavailable on this server");
+			}
 		} finally {
 			for (const id of liveIds)
 				await page.request.delete(`${api}/classes/${classId}/${id}`, {
@@ -346,7 +401,177 @@ test.describe("resource history", () => {
 		}
 	});
 
-	test("name discovery paginates grouped IDs and resets comparisons before restoring the selected ID", async ({
+	test("name history loads snapshots across identities and inspects tombstones without a live lookup", async ({
+		page,
+	}, testInfo) => {
+		await prepare(page);
+		const name = " server / ?,#%雪 ";
+		const snapshots = [
+			{ ...records[0], name, id: 27, history_id: 205, revision: 1 },
+			{ ...records[0], name, history_id: 204, op: "D", valid_to: instants[2] },
+			{ ...records[0], name, history_id: 203 },
+		];
+		const requests: URL[] = [];
+		await page.route(`**${prefix}/objects/history?**`, (route) => {
+			const url = new URL(route.request().url());
+			requests.push(url);
+			return route.fulfill({
+				json: url.searchParams.has("cursor")
+					? snapshots.slice(1)
+					: snapshots.slice(0, 2),
+				headers: url.searchParams.has("cursor")
+					? {}
+					: { "X-Next-Cursor": "older+/= ?" },
+			});
+		});
+		await page.goto(
+			`/classes/3/objects/history?${new URLSearchParams({ name })}`,
+		);
+		await expect(page.getByLabel("Exact historical object name")).toHaveValue(
+			name,
+		);
+		await expect(
+			page.getByRole("status", { name: "History search results" }),
+		).toContainText("2 matching snapshots loaded");
+		await page.getByRole("button", { name: "Load more snapshots" }).click();
+		await expect(
+			page.getByRole("status", { name: "History search results" }),
+		).toContainText("3 matching snapshots loaded");
+		expect(requests[1].searchParams.get("cursor")).toBe("older+/= ?");
+		for (const request of requests) {
+			expect(request.searchParams.get("name")).toBe(name);
+			expect(request.searchParams.get("include_total")).toBe("false");
+		}
+		await expect(
+			page.getByRole("button", { name: "Load more snapshots" }),
+		).toHaveCount(0);
+		await expect(
+			page.getByRole("cell", { name: "Deleted", exact: true }),
+		).toBeVisible();
+		await page.screenshot({
+			path: testInfo.outputPath("object-name-history.png"),
+			fullPage: true,
+		});
+		await page
+			.getByRole("button", { name: "View snapshot #204 for object #12" })
+			.click();
+		const dialog = page.getByRole("dialog", { name: "History version #204" });
+		await expect(dialog).toContainText("Stored state");
+		await expect(dialog).toContainText("9000");
+		await expect(
+			dialog.getByRole("link", { name: "Browse identity history" }),
+		).toHaveAttribute("href", objectPath);
+		expect(requests).toHaveLength(2);
+		await page.keyboard.press("Escape");
+		await expect(dialog).toHaveCount(0);
+		await page.setViewportSize({ width: 320, height: 844 });
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth <= innerWidth,
+			),
+		).toBe(true);
+		expect(
+			(
+				await new AxeBuilder({ page })
+					.include('section[aria-label="Object history by name"]')
+					.analyze()
+			).violations,
+		).toEqual([]);
+		await page
+			.getByRole("button", { name: "View snapshot #205 for object #27" })
+			.click();
+		await expect(
+			page.getByRole("link", { name: "Browse identity history" }),
+		).toHaveAttribute("href", "/objects/3/27/history");
+	});
+
+	test("name history preserves literal searches, resets pagination and follows browser navigation", async ({
+		page,
+	}) => {
+		const requests: URL[] = [];
+		await page.route(/\/api\/v1\/classes\/\d+\/objects\/history\?/, (route) => {
+			const url = new URL(route.request().url());
+			requests.push(url);
+			return route.fulfill({ json: [] });
+		});
+		await page.goto("/classes/3/objects/history");
+		await expect(
+			page.getByRole("heading", { name: "Object history by name" }),
+		).toBeVisible();
+		expect(requests).toHaveLength(0);
+		for (const name of ["123", "   ", ""]) {
+			await page.getByLabel("Exact historical object name").fill(name);
+			await page
+				.getByRole("button", { name: "Search history", exact: true })
+				.click();
+			await expect
+				.poll(() => requests.at(-1)?.searchParams.get("name"))
+				.toBe(name);
+			expect(requests.at(-1)?.searchParams.has("cursor")).toBe(false);
+			await expect(
+				page.getByText("No visible retained snapshots match this name."),
+			).toBeVisible();
+		}
+		await page.goBack();
+		await expect(page.getByLabel("Exact historical object name")).toHaveValue(
+			"   ",
+		);
+		await page.reload();
+		await expect(page.getByLabel("Exact historical object name")).toHaveValue(
+			"   ",
+		);
+		await page.goto("/classes/8/objects/history?name=123");
+		await expect
+			.poll(() => requests.at(-1)?.pathname)
+			.toBe("/_hubuum-bff/hubuum/api/v1/classes/8/objects/history");
+	});
+
+	test("object history name control opens direct history and reports unsupported servers and denied access", async ({
+		page,
+	}) => {
+		await prepare(page);
+		let status = 404;
+		await page.route(`**${prefix}/objects/history?**`, (route) =>
+			route.fulfill({
+				status,
+				json: {
+					message: status === 403 ? "History permission denied" : "Not found",
+				},
+			}),
+		);
+		await selectHistorical(page);
+		await page
+			.getByRole("button", { name: "Recorded name", exact: true })
+			.click();
+		await expect(page).toHaveURL(/\/classes\/3\/objects\/history\?name=/);
+		await expect(page.getByLabel("Exact historical object name")).toHaveValue(
+			base.name,
+		);
+		await expect(
+			page
+				.getByRole("region", { name: "Object history by name" })
+				.getByRole("alert"),
+		).toContainText("By-name history is unavailable on this server");
+		await expect(
+			page.getByText("No visible retained snapshots match this name."),
+		).toHaveCount(0);
+		status = 403;
+		await page
+			.getByRole("button", { name: "Search history", exact: true })
+			.click();
+		await expect(
+			page
+				.getByRole("region", { name: "Object history by name" })
+				.getByRole("alert"),
+		).toContainText("History permission denied");
+		await expect(
+			page
+				.getByRole("region", { name: "Object history by name" })
+				.getByRole("alert"),
+		).not.toContainText("unavailable on this server");
+	});
+
+	test("legacy audit name discovery paginates grouped IDs and resets comparisons before restoring the selected ID", async ({
 		page,
 	}) => {
 		const original = await prepare(page);
@@ -411,9 +636,12 @@ test.describe("resource history", () => {
 		await expect(
 			page.getByText("Live · revision 4", { exact: true }),
 		).toBeVisible();
-		await page
-			.getByRole("button", { name: "Recorded name", exact: true })
-			.click();
+		await page.evaluate((name) => {
+			const url = new URL(window.location.href);
+			url.searchParams.set("historyMatch", "name");
+			url.searchParams.set("historyName", name);
+			window.history.pushState(null, "", url);
+		}, base.name);
 		const groups = page.getByRole("list", { name: "Matching history IDs" });
 		await expect(
 			groups.getByText("Object #27 · Class ID unavailable in loaded events"),

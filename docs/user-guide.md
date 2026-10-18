@@ -308,7 +308,31 @@ switching modes; resource name searches span all visible collections. The mode
 and name are shareable in the URL. Select a name or ID in the global audit table
 to drill into that scope. All results remain subject to ReadAudit permissions.
 
-**Browse history** also offers recorded-name discovery. Matching audit events are
+For objects, **Browse history → Recorded name** opens **Object history by name**.
+The class page also links directly to this search, at
+`/classes/{classId}/objects/history?name=...`; no live object is required.
+It queries retained snapshots by historical class ID and exact, case-sensitive
+name across object IDs, including authorized deletion records and replacements.
+Versions recorded after a rename away are excluded; renaming back adds matching
+versions again. Spaces, numeric names, Unicode, and an explicitly submitted empty
+name are literal values. Identical names in different classes remain separate.
+
+**Load more snapshots** continues the server's ordered results. **View snapshot**
+shows the full returned state and provenance, including deletion records.
+**Browse identity history** opens that object's full history across all its
+names for comparisons and restoration. It never restores into a different object
+that happens to have the same name. The name search is preserved in the URL and
+browser history. Changing names starts a separate result set.
+
+This requires the server's exact-name object history endpoint
+([server #471](https://github.com/hubuum/hubuum/issues/471), implemented in
+[#472](https://github.com/hubuum/hubuum/pull/472)). Older servers show an explicit
+unavailable message; permission failures remain errors. Results use history read
+permissions and retention, independently of audit access. Deleted identities are
+visible only to unscoped administrators under the server's current rules.
+
+Class **Browse history** and existing object audit-discovery bookmarks still
+offer recorded-name discovery through audit events. Matching audit events are
 grouped by entity ID; **Load more matching events** discovers older matches and
 adds to those groups. Discovery is limited by audit visibility and retention, and
 does not promise every object that ever used a name. If an object's class ID is

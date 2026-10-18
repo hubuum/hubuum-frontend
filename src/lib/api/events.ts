@@ -10,6 +10,7 @@ import {
 	getApiV1ClassesByClassIdEvents,
 	getApiV1ClassesByClassIdHistory,
 	getApiV1ClassesByClassIdHistoryAsOf,
+	getGetApiV1ClassesByClassIdObjectsHistoryUrl,
 	getApiV1Collections,
 	getApiV1CollectionsByCollectionIdEventSubscriptions,
 	getApiV1CollectionsByCollectionIdEvents,
@@ -281,6 +282,43 @@ export async function fetchResourceHistoryPage(
 		"Failed to load object history.",
 	);
 	return pageFromResponse(response.data as HistoryRecord[], response.headers);
+}
+
+export async function fetchObjectHistoryByNamePage(
+	classId: number,
+	name: string,
+	cursor?: string,
+): Promise<PageResult<HistoryResponseHubuumObjectHistory>> {
+	const response = await fetch(
+		getGetApiV1ClassesByClassIdObjectsHistoryUrl(classId, {
+			name,
+			cursor,
+			limit: 25,
+			sort: "-history_id",
+			include_total: false,
+		}),
+		{ credentials: "include" },
+	);
+	if (response.status === 200) {
+		const data: HistoryResponseHubuumObjectHistory[] = await response.json();
+		return pageFromResponse(data, response.headers);
+	}
+	const error: unknown = await response.json().catch(() => null);
+	const message = getApiErrorMessage(
+		error,
+		"Could not load object history by name.",
+	);
+	// Older routers treat "objects" as an object ID. Only that exact routing
+	// error means unsupported; other 400s (including stale cursors) remain errors.
+	if (
+		[404, 405, 501].includes(response.status) ||
+		(response.status === 400 &&
+			message === 'Path deserialize error: can not parse "objects" to a i32')
+	)
+		throw new Error(
+			"By-name history is unavailable on this server. A server with exact-name object history support is required.",
+		);
+	throw new Error(message);
 }
 
 export async function fetchResourceHistoryAsOf(
