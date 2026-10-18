@@ -50,7 +50,10 @@ import {
 	useDirectorySearch,
 } from "@/lib/use-directory-search";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
-import { resourceHistoryHref } from "@/lib/resource-history";
+import {
+	objectNameHistoryHref,
+	resourceHistoryHref,
+} from "@/lib/resource-history";
 
 const JsonEditor = dynamic(
 	() => import("@/components/json-editor").then((module) => module.JsonEditor),
@@ -552,6 +555,9 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 								href={resourceHistoryHref({ type: "class", classId })}
 							>
 								Browse history
+							</Link>
+							<Link className="link-chip" href={objectNameHistoryHref(classId)}>
+								Object history by name
 							</Link>
 							<Link
 								className="link-chip"

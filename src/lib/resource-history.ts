@@ -153,6 +153,11 @@ export function namedHistoryHref(scope: HistoryScope, name: string): string {
 	return `${resourceHistoryHref(scope)}?${new URLSearchParams({ historyMatch: "name", historyName: name })}`;
 }
 
+export function objectNameHistoryHref(classId: number, name?: string): string {
+	const query = name === undefined ? "" : `?${new URLSearchParams({ name })}`;
+	return `/classes/${classId}/objects/history${query}`;
+}
+
 export function isDeletedVersion(record: Pick<HistoryRecord, "op">): boolean {
 	return /^(d|delete|deleted)$/i.test(record.op);
 }

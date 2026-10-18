@@ -19,6 +19,7 @@ type HistoryDetailsModalProps = {
 	record: HistoryRecord | null;
 	onClose: () => void;
 	navigation?: ModalRecordNavigation;
+	browseIdentity?: boolean;
 };
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -63,6 +64,7 @@ export function HistoryDetailsModal({
 	record,
 	onClose,
 	navigation,
+	browseIdentity = false,
 }: HistoryDetailsModalProps) {
 	const taskId = record ? getProvenanceTaskId(record) : null;
 	const historyHref =
@@ -73,14 +75,14 @@ export function HistoryDetailsModal({
 						classId: record.hubuum_class_id,
 						objectId: record.id,
 					},
-					record.valid_from,
-					record.history_id,
+					browseIdentity ? undefined : record.valid_from,
+					browseIdentity ? undefined : record.history_id,
 				)
 			: record && "validate_schema" in record
 				? resourceHistoryHref(
 						{ type: "class", classId: record.id },
-						record.valid_from,
-						record.history_id,
+						browseIdentity ? undefined : record.valid_from,
+						browseIdentity ? undefined : record.history_id,
 					)
 				: null;
 
@@ -98,7 +100,9 @@ export function HistoryDetailsModal({
 					<p>{record.name}</p>
 					{historyHref ? (
 						<Link className="link-chip" href={historyHref} onClick={onClose}>
-							Browse this snapshot
+							{browseIdentity
+								? "Browse identity history"
+								: "Browse this snapshot"}
 						</Link>
 					) : null}
 

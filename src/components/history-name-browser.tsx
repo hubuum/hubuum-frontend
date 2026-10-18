@@ -2,7 +2,7 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { AuditMatchControl } from "@/components/audit-match-control";
 import { fetchEventsPage } from "@/lib/api/events";
@@ -10,6 +10,7 @@ import {
 	groupHistoryEvents,
 	type HistoryScope,
 	namedHistoryHref,
+	objectNameHistoryHref,
 } from "@/lib/resource-history";
 import { updateViewQuery } from "@/lib/view-query";
 
@@ -21,6 +22,7 @@ export function HistoryNameBrowser({
 	name?: string;
 }) {
 	const search = useSearchParams();
+	const router = useRouter();
 	const mode = search.get("historyMatch") === "name" ? "name" : "id";
 	const recordedName = search.get("historyName") ?? "";
 	const [draft, setDraft] = useState(recordedName || name || "");
@@ -50,6 +52,10 @@ export function HistoryNameBrowser({
 				mode={mode}
 				onChange={(mode) => {
 					const value = recordedName || name || "";
+					if (mode === "name" && scope.type === "object") {
+						router.push(objectNameHistoryHref(scope.classId, value));
+						return;
+					}
 					setDraft(value);
 					updateViewQuery(
 						{
@@ -79,6 +85,11 @@ export function HistoryNameBrowser({
 						</label>
 						<button type="submit">Find matching IDs</button>
 					</form>
+					{scope.type === "object" ? (
+						<Link href={objectNameHistoryHref(scope.classId, recordedName)}>
+							Search snapshots by name within class #{scope.classId}
+						</Link>
+					) : null}
 					<p className="muted">
 						Matching IDs come from visible, retained audit events across all
 						collections. Load more to discover older matches. Names are recorded
