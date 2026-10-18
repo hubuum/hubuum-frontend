@@ -3,9 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getTemplateHistory = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api/generated/client", async (importOriginal) => ({
-	...(await importOriginal<
-		typeof import("@/lib/api/generated/client")
-	>()),
+	...(await importOriginal<typeof import("@/lib/api/generated/client")>()),
 	getApiV1ExportTemplatesByTemplateIdHistory: getTemplateHistory,
 }));
 
@@ -22,11 +20,19 @@ describe("listReportTemplateHistory", () => {
 	});
 
 	it("orders versions by the server-supported descending history id", async () => {
-		await expect(listReportTemplateHistory(42)).resolves.toEqual([]);
+		await expect(listReportTemplateHistory(42)).resolves.toEqual({
+			items: [],
+			nextCursor: null,
+		});
 
 		expect(getTemplateHistory).toHaveBeenCalledWith(
 			42,
-			{ include_total: false, limit: 50, sort: "-history_id" },
+			{
+				cursor: undefined,
+				include_total: false,
+				limit: 50,
+				sort: "-history_id",
+			},
 			{ credentials: "include" },
 		);
 	});

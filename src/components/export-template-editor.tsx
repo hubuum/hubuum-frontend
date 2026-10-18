@@ -1,4 +1,5 @@
 "use client";
+import { ConfigurationHistory } from "@/components/configuration-history";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -38,10 +39,8 @@ import {
 	fetchReportOutput,
 	fetchReportTask,
 	getReportTemplate,
-	listReportTemplateHistory,
 	listReportTemplates,
 	type ReportTemplate,
-	type ReportTemplateHistory,
 	runTemplateReport,
 	type StoredReportContentType,
 	type TaskResponse,
@@ -226,37 +225,6 @@ function createBuilderId(): string {
 	return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function HistoryEntry({ entry }: { entry: ReportTemplateHistory }) {
-	return (
-		<article className="history-entry-card">
-			<div className="history-entry-header">
-				<div className="stack action-card-header">
-					<strong>{entry.op.replaceAll("_", " ")}</strong>
-					<span className="muted">
-						{formatTimestamp(entry.valid_from)} ·{" "}
-						{entry.actor_username ?? "System"}
-					</span>
-				</div>
-				<span className="template-stamp">Revision #{entry.history_id}</span>
-			</div>
-			<div className="preview-meta">
-				<span>{entry.name}</span>
-				<span>{formatExportContentType(entry.content_type)}</span>
-				<span>{formatExportScope(entry.scope_kind)}</span>
-			</div>
-			<details className="export-disclosure">
-				<summary>
-					<span>View saved content</span>
-					<small>{entry.template.length} characters</small>
-				</summary>
-				<pre className="response-preview export-disclosure-body">
-					{entry.template}
-				</pre>
-			</details>
-		</article>
-	);
-}
-
 function dataFieldDetail(
 	field: DiscoveredJsonField,
 	sampleCount: number,
@@ -438,11 +406,6 @@ export function ExportTemplateEditor({
 		enabled: sourceTemplateId != null,
 	});
 	const effectiveTemplateId = editorState.templateId ?? templateId ?? null;
-	const historyQuery = useQuery({
-		queryKey: ["export-template-history", effectiveTemplateId],
-		queryFn: () => listReportTemplateHistory(effectiveTemplateId ?? 0),
-		enabled: activeTab === "history" && effectiveTemplateId != null,
-	});
 	const testTaskQuery = useQuery({
 		queryKey: ["export-template-test-task", testTaskId],
 		queryFn: () => fetchReportTask(testTaskId ?? 0),
@@ -2215,44 +2178,16 @@ export function ExportTemplateEditor({
 				</GuidedFlowPanel>
 			) : null}
 
-			{activeTab === "history" ? (
+			{activeTab === "history" && effectiveTemplateId != null ? (
 				<GuidedFlowPanel
 					className="stack"
 					idPrefix="template-editor"
 					stepId="history"
 				>
-					<article className="card stack panel-card">
-						<div className="stack action-card-header">
-							<h3>Saved history</h3>
-							<p className="muted">
-								Inspect previous versions and who changed them.
-							</p>
-						</div>
-						{historyQuery.isLoading ? (
-							<div className="muted">Loading saved versions…</div>
-						) : null}
-						{historyQuery.isError ? (
-							<div className="error-banner">
-								{historyQuery.error instanceof Error
-									? historyQuery.error.message
-									: "Failed to load template history."}
-							</div>
-						) : null}
-						{historyQuery.data?.length ? (
-							<div className="history-entry-list">
-								{historyQuery.data.map((entry) => (
-									<HistoryEntry key={entry.history_id} entry={entry} />
-								))}
-							</div>
-						) : null}
-						{!historyQuery.isLoading &&
-						!historyQuery.isError &&
-						historyQuery.data?.length === 0 ? (
-							<div className="empty-state">
-								No saved history is available yet.
-							</div>
-						) : null}
-					</article>
+					<ConfigurationHistory
+						kind="export_template"
+						id={effectiveTemplateId}
+					/>
 				</GuidedFlowPanel>
 			) : null}
 		</section>
