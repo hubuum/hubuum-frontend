@@ -12434,3 +12434,41 @@ html[data-theme="dark"] button.login-background-option {
 .task-filter-group .form-grid {
 	align-items: start;
 }
+
+.query-usage-workspace,
+.query-usage-workspace .card,
+.query-usage-workspace fieldset {
+	min-width: 0;
+}
+
+.query-usage-workspace {
+	overflow-wrap: anywhere;
+}
+
+.query-usage-workspace .panel-header {
+	flex-wrap: wrap;
+	gap: 0.75rem;
+}
+
+.query-usage-workspace table {
+	min-width: 760px;
+}
+
+.query-usage-workspace caption {
+	text-align: left;
+	padding-block: 0.5rem;
+}
+
+.query-usage-facts {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+	gap: 0.5rem 1rem;
+}
+
+.query-usage-facts dt {
+	font-weight: 600;
+}
+
+.query-usage-facts dd {
+	margin: 0;
+}

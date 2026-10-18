@@ -552,6 +552,12 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 						<div className="class-detail-header-actions">
 							<Link
 								className="link-chip"
+								href={`/classes/${classId}/query-usage`}
+							>
+								Query usage
+							</Link>
+							<Link
+								className="link-chip"
 								href={resourceHistoryHref({ type: "class", classId })}
 							>
 								Browse history

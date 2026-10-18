@@ -10,6 +10,16 @@ export default function AdminLandingPage() {
 
 			<div className="grid cols-2">
 				<article className="card stack">
+					<h3>Query usage</h3>
+					<p className="muted">
+						Open a class and choose Query usage to manage declarations, analyze
+						workload evidence, and inspect native resource ownership.
+					</p>
+					<Link className="link-chip" href="/classes">
+						Browse classes
+					</Link>
+				</article>
+				<article className="card stack">
 					<h3>Users</h3>
 					<p className="muted">
 						Browse user accounts, check memberships, and inspect issued tokens.

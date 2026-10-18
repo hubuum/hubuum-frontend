@@ -414,6 +414,46 @@ historical object population. Atomic schema restoration, restore-source audit
 provenance, and further historical context are tracked in
 [blocked follow-up #149](https://github.com/hubuum/hubuum-frontend/issues/149).
 
+## Class query usage
+
+Open a class and choose **Query usage** to inspect expected JSON query patterns.
+Class readers can see declarations, schema compatibility, revision numbers,
+creation and modification attribution, and links to their audit history. Class
+editors can create declarations, replace their path/type/operations, and withdraw
+them with confirmation. Updates and withdrawals use the revision you reviewed;
+after a conflict, reload declarations and reopen the editor to review current
+state. A class supports up to 32 declarations. These declarations are advisory
+and do not change object validation, query results, or guarantee an index.
+
+Unscoped administrators with class read access also receive **Administrative
+analysis**. This shows sampled successful queries, whole-query timing, sampling
+and retention settings, capacity drops, coverage limitations, and suggestions.
+Use **Analyze hypothetical patterns** to review up to 32 patterns without saving
+them. **Review and adopt** opens a prefilled declaration editor; saving uses the
+ordinary audited declaration API. A complete review with no suggestions,
+insufficient evidence, and unavailable analysis are distinct outcomes. Memory
+storage can preserve declarations while analysis is unavailable.
+
+Native resource coverage shows preparation support, adapter progress and
+diagnostics, ownership, shared declaration counts, sizes, native scan counts,
+and cleanup eligibility. Preparation support does not establish that the
+executor is running or that PostgreSQL will choose the index. Missing
+observations and zero scans do not establish that a declaration is unused.
+Observations cover only the responding API process and reset on restart;
+whole-query timing cannot establish the cost of a particular predicate.
+
+Physical preparation and cleanup remain operator actions through the privileged
+`hubuum-admin --reconcile-query-usage` command. Withdrawing the last owner leaves
+cleanup for a later reconciliation pass; independently managed indexes remain
+under operator control. See the
+[server operator guide](https://hubuum.github.io/hubuum/v0.0.19/query_usage/).
+
+**Admin → Configuration → Query observations** displays effective collection,
+sampling, capacity, predicate, and retention settings when the backend provides
+them. These settings are read-only; change server configuration and restart the
+API process to enable collection, which is disabled by default. Older servers
+without these endpoints show an unavailable message.
+
 ## Administrator backup and restore
 
 The admin-only Backup & restore workspace creates server background tasks and
