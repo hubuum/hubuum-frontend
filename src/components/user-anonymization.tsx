@@ -19,11 +19,7 @@ export function UserAnonymization({
 		queryFn: () => fetchUserRevision(userId),
 	});
 	const mutation = useMutation({
-		mutationFn: async () => {
-			if (!query.data?.etag)
-				throw new Error("Reload the user revision before anonymizing.");
-			await anonymizeUser(userId, query.data.etag);
-		},
+		mutationFn: (etag: string) => anonymizeUser(userId, etag),
 		onSuccess: async () => {
 			if (current.data?.principal.principal_id === userId) {
 				await endBrowserSession(async () => undefined);
@@ -40,16 +36,17 @@ export function UserAnonymization({
 		},
 	});
 	async function anonymize() {
-		if (mutation.isPending) return;
+		const reviewed = query.data;
+		if (mutation.isPending || !reviewed?.etag) return;
 		if (
 			await confirm({
 				title: `Anonymize user #${userId}?`,
-				description: `Permanently remove personal information from ${query.data?.user.name ?? "this user"}, disable login, and revoke their tokens. Existing audit references remain. This cannot be undone.`,
+				description: `Permanently remove personal information from ${reviewed.user.name}, disable login, and revoke their tokens. Existing audit references remain. This cannot be undone.`,
 				confirmLabel: "Anonymize user",
 				tone: "danger",
 			})
 		)
-			mutation.mutate();
+			mutation.mutate(reviewed.etag);
 	}
 	return (
 		<section className="card stack" aria-label="User anonymization">
