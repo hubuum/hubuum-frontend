@@ -1,31 +1,45 @@
 import { describe, expect, it } from "vitest";
-import { preserveTaskKindFilter } from "@/lib/event-subscription-filter";
+import {
+	mergeSubscriptionFilters,
+	subscriptionSubjectIds,
+} from "@/lib/event-subscription-filter";
 
-describe("preserveTaskKindFilter", () => {
-	it("retains task kinds without restoring cleared editable filters", () => {
+describe("subscription filters", () => {
+	it("preserves unknown server filters without reviving cleared fields", () => {
+		const original = {
+			task_kinds: ["import"] as const,
+			actor_user_ids: [42],
+			subject_is_admin: true,
+			future_filter: { enabled: true },
+		};
 		expect(
-			preserveTaskKindFilter(
-				{ entity_names: ["updated"] },
-				{ task_kinds: ["import", "export"], actor_user_ids: [42] },
+			mergeSubscriptionFilters(
+				{ subject_is_admin: false, task_kinds: ["backup"] },
+				{ ...original, task_kinds: [...original.task_kinds] },
 			),
-		).toEqual({ entity_names: ["updated"], task_kinds: ["import", "export"] });
-	});
-
-	it("keeps task kinds when all editable filters are removed", () => {
-		expect(
-			preserveTaskKindFilter(undefined, { task_kinds: ["import"] }),
 		).toEqual({
-			task_kinds: ["import"],
+			future_filter: { enabled: true },
+			subject_is_admin: false,
+			task_kinds: ["backup"],
 		});
 	});
-
-	it("does not add filters to new or legacy subscriptions", () => {
-		expect(preserveTaskKindFilter(undefined, undefined)).toBeUndefined();
+	it("clears every editable filter explicitly", () => {
 		expect(
-			preserveTaskKindFilter(undefined, { task_kinds: [] }),
-		).toBeUndefined();
-		expect(preserveTaskKindFilter({ entity_ids: [1] }, {})).toEqual({
-			entity_ids: [1],
-		});
+			mergeSubscriptionFilters(undefined, {
+				task_kinds: ["import"],
+				subject_principal_ids: [4],
+				subject_identity_scopes: ["local"],
+				subject_is_admin: true,
+			}),
+		).toEqual({});
+	});
+	it("supports new subscriptions", () => {
+		expect(mergeSubscriptionFilters(undefined, undefined)).toEqual({});
+	});
+	it("validates exact positive subject IDs without lossy parsing", () => {
+		expect(subscriptionSubjectIds(" 4, 23, 4 ")).toEqual([4, 23]);
+		expect(subscriptionSubjectIds(" ")).toBeUndefined();
+		for (const value of ["1x", "0", "-1", "1.2", "1,", "9007199254740992"])
+			expect(() => subscriptionSubjectIds(value)).toThrow();
 	});
 });

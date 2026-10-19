@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
 	backendFetchRaw: vi.fn(async () => new Response(null, { status: 200 })),
 	clearSessionCookie: vi.fn(),
 	destroySession: vi.fn(async () => undefined),
-	getSessionFromRequest: vi.fn(async () => null),
+	getSessionFromRequest: vi.fn(),
 }));
 
 vi.mock("@/lib/api/backend", () => ({
@@ -23,6 +23,10 @@ import { GET, POST } from "@/app/%5Fhubuum-bff/auth/logout/route";
 describe("logout route", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.getSessionFromRequest.mockResolvedValue(null);
+		mocks.backendFetchRaw.mockResolvedValue(
+			new Response(null, { status: 200 }),
+		);
 	});
 
 	it("rejects GET without reading or destroying the session", async () => {
@@ -58,5 +62,46 @@ describe("logout route", () => {
 		expect(mocks.backendFetchRaw).not.toHaveBeenCalled();
 		expect(mocks.destroySession).not.toHaveBeenCalled();
 		expect(mocks.clearSessionCookie).toHaveBeenCalledWith(response, request);
+	});
+});
+
+describe("all-token logout", () => {
+	function request(origin = "http://localhost") {
+		return new NextRequest(
+			"http://localhost/_hubuum-bff/auth/logout?all=true",
+			{ method: "POST", headers: { Origin: origin } },
+		);
+	}
+	it("revokes upstream before destroying the local session", async () => {
+		mocks.getSessionFromRequest.mockResolvedValue({
+			sid: "local-session",
+			token: "server-only-token",
+		});
+		const response = await POST(request());
+		expect(response.status).toBe(200);
+		expect(mocks.backendFetchRaw).toHaveBeenCalledWith(
+			"/api/v0/auth/logout_all",
+			expect.objectContaining({ method: "POST", token: "server-only-token" }),
+		);
+		expect(mocks.destroySession).toHaveBeenCalledWith("local-session");
+		expect(mocks.clearSessionCookie).toHaveBeenCalled();
+	});
+	it("retains the session and reports failure if upstream revocation fails", async () => {
+		vi.clearAllMocks();
+		mocks.getSessionFromRequest.mockResolvedValue({
+			sid: "local-session",
+			token: "server-only-token",
+		});
+		mocks.backendFetchRaw.mockResolvedValueOnce(
+			new Response(null, { status: 500 }),
+		);
+		expect((await POST(request())).status).toBe(502);
+		expect(mocks.destroySession).not.toHaveBeenCalled();
+		expect(mocks.clearSessionCookie).not.toHaveBeenCalled();
+	});
+	it("rejects cross-origin revocation before reading a session", async () => {
+		vi.clearAllMocks();
+		expect((await POST(request("https://untrusted.test"))).status).toBe(403);
+		expect(mocks.getSessionFromRequest).not.toHaveBeenCalled();
 	});
 });

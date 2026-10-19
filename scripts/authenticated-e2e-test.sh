@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export E2E_QUERY_USAGE_LIVE=1
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_COMPOSE_FILE="${ROOT_DIR}/docker-compose.live-backend.yml"
 VALKEY_COMPOSE_FILE="${ROOT_DIR}/compose.dev.yml"
@@ -81,4 +83,4 @@ BACKEND_BASE_URL="${BASE_URL}" \
   E2E_IDENTITY_SCOPE="local" \
   E2E_USERNAME="admin" \
   E2E_PASSWORD="${admin_password}" \
-  npx playwright test tests/e2e/authenticated-smoke.spec.ts tests/e2e/workspace-quality.spec.ts tests/e2e/schema-workspace.spec.ts tests/e2e/task-cancellation.spec.ts tests/e2e/task-discovery.spec.ts tests/e2e/resource-history.spec.ts tests/e2e/advanced-search.spec.ts --workers=1 "$@"
+  npx playwright test tests/e2e/authenticated-smoke.spec.ts tests/e2e/workspace-quality.spec.ts tests/e2e/schema-workspace.spec.ts tests/e2e/task-cancellation.spec.ts tests/e2e/task-discovery.spec.ts tests/e2e/resource-history.spec.ts tests/e2e/advanced-search.spec.ts tests/e2e/server-*.spec.ts --workers=1 "$@"

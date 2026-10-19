@@ -26,6 +26,26 @@ session, and failed or ambiguous mutations are never retried automatically.
 After a lost response, inspect the affected credentials, task, or restore before
 trying again. Imports retain their idempotency key through both BFF paths.
 
+## Security administration
+
+Administrators can open **Admin → Security** to inspect login rate-limit scopes,
+filter tracked or locked entries, release one scope, or clear all tracked limits.
+Clearing all applies beyond the current filter. The effective configuration is
+read-only.
+
+The same page inspects settings for any principal and effective collection
+permissions for a selected principal or group, including the source collection,
+group, and inheritance depth. Settings support replacement, JSON Merge Patch,
+JSON Patch, and reset. Edits use the loaded revision; a conflict retains the draft
+so the administrator can reload and reconcile it.
+
+User details also expose settings, direct permissions, **Revoke all tokens**, and
+**Anonymize user**. Anonymization permanently removes personal information and
+disables login while retaining historical references. Both actions require
+confirmation. **Account → Tokens → Revoke all tokens** revokes all of your own
+API tokens and sessions, including the current session. Failed revocation keeps
+the current browser session available for retry.
+
 ## Scoped identities
 
 The login form accepts an optional identity scope. Blank values and `local`
@@ -117,6 +137,22 @@ and template-library filters, and Relations view/filter/depth controls. Browser
 Back and Forward restore these controls from the URL. Shared client-side query
 updates use Next.js's native History integration, preserving unrelated parameters
 and anchors without requesting a new server-rendered page for each control edit.
+
+### Search catalogs and streaming
+
+Advanced search includes collections, classes, objects, audit events, users,
+groups, and service accounts, with the fields and sorting supported by each
+catalog. Backend permissions still determine which catalogs and records are
+visible. Audit results open the existing event inspector; principal results link
+to their administration pages.
+
+Enable **Stream results** in ordinary or advanced search to display discovery
+batches or individual structured results as they arrive. The page remains marked
+incomplete until the server sends completion. **Cancel search** stops the request;
+received results remain visible and pagination waits for successful completion.
+A failed or interrupted stream requires an explicit retry and never silently
+falls back to a broader search. Reduce the page size if a response exceeds the
+browser's bounded stream limits.
 
 ## Object data columns
 
@@ -214,6 +250,21 @@ ad-hoc exports, and object-scoped export templates share the same server-filter
 field discovery, typed operators, validation, and backend query grammar for
 object, nested JSON data, and computed fields.
 
+## Neighborhood graphs
+
+Open **Neighborhood graph** from a class or object detail page to explore its
+visible connections. Set a maximum depth (1–10) and related-node bound (25–250),
+then select **Load graph**. The root is included separately from that bound.
+If the neighborhood exceeds the bound, reduce the depth; this endpoint does not
+paginate or silently truncate the graph.
+
+Columns show the shortest distance from the root. Select a node with the mouse
+or keyboard to inspect its description and path, highlight its direct relations,
+and open its detail page. Expand **Nodes** and **Direct relations** for accessible
+tables, including the stored relation direction. The diagram scrolls within the
+page on small screens. Dense neighborhoods above 5,000 direct relations require
+a smaller depth or node bound in the browser.
+
 ## Bookmarkable reports
 
 Saved executable export templates have stable, authenticated report URLs under
@@ -296,6 +347,19 @@ Webhook URLs stay in the server's secret source; the console accepts the secret
 name. Collection subscriptions use that configured destination automatically.
 Existing sinks retain custom configuration and pacing when edited. See the
 [chat webhook guide](webhooks.md) for setup and provider details.
+
+## Relation activity and login subjects
+
+Select a class or object by ID in Audit, or open its activity panel, and enable
+**Include direct relation activity** to include relation changes at either
+endpoint, including deleted relations. Recorded-name searches retain their
+name-based scope. The selection is preserved in the page URL.
+
+Authentication event details show the affected principal's identity scope,
+authentication provider, and administrator status at the time of login. The
+recorded subject remains unchanged when the account is later renamed or its
+permissions change. System notification setup is described in the
+[webhook guide](webhooks.md#system-events-and-delivery-checks).
 
 ## Historical snapshots and object restoration
 
@@ -414,6 +478,46 @@ historical object population. Atomic schema restoration, restore-source audit
 provenance, and further historical context are tracked in
 [blocked follow-up #149](https://github.com/hubuum/hubuum-frontend/issues/149).
 
+## Class query usage
+
+Open a class and choose **Query usage** to inspect expected JSON query patterns.
+Class readers can see declarations, schema compatibility, revision numbers,
+creation and modification attribution, and links to their audit history. Class
+editors can create declarations, replace their path/type/operations, and withdraw
+them with confirmation. Updates and withdrawals use the revision you reviewed;
+after a conflict, reload declarations and reopen the editor to review current
+state. A class supports up to 32 declarations. These declarations are advisory
+and do not change object validation, query results, or guarantee an index.
+
+Unscoped administrators with class read access also receive **Administrative
+analysis**. This shows sampled successful queries, whole-query timing, sampling
+and retention settings, capacity drops, coverage limitations, and suggestions.
+Use **Analyze hypothetical patterns** to review up to 32 patterns without saving
+them. **Review and adopt** opens a prefilled declaration editor; saving uses the
+ordinary audited declaration API. A complete review with no suggestions,
+insufficient evidence, and unavailable analysis are distinct outcomes. Memory
+storage can preserve declarations while analysis is unavailable.
+
+Native resource coverage shows preparation support, adapter progress and
+diagnostics, ownership, shared declaration counts, sizes, native scan counts,
+and cleanup eligibility. Preparation support does not establish that the
+executor is running or that PostgreSQL will choose the index. Missing
+observations and zero scans do not establish that a declaration is unused.
+Observations cover only the responding API process and reset on restart;
+whole-query timing cannot establish the cost of a particular predicate.
+
+Physical preparation and cleanup remain operator actions through the privileged
+`hubuum-admin --reconcile-query-usage` command. Withdrawing the last owner leaves
+cleanup for a later reconciliation pass; independently managed indexes remain
+under operator control. See the
+[server operator guide](https://hubuum.github.io/hubuum/v0.0.19/query_usage/).
+
+**Admin → Configuration → Query observations** displays effective collection,
+sampling, capacity, predicate, and retention settings when the backend provides
+them. These settings are read-only; change server configuration and restart the
+API process to enable collection, which is disabled by default. Older servers
+without these endpoints show an unavailable message.
+
 ## Administrator backup and restore
 
 The admin-only Backup & restore workspace creates server background tasks and
@@ -501,6 +605,18 @@ recently opened menu, create form, or edit mode without saving its draft; nested
 modes unwind one at a time. Escape is ignored while an inline save or delete is
 in progress, so leaving the interface never implies that an active request was
 canceled.
+
+## Remote-target and template history
+
+Use **History** on a remote target in Admin, or the **History** tab in the
+export-template editor, to inspect saved versions. **Load older versions** follows
+the server cursor beyond the first 50 rows. Each entry shows its validity interval,
+revision, actor, initiator, and saved fields; templates also expose saved content.
+
+Enter an RFC3339 timestamp with a timezone to inspect state at an exact instant,
+or select **Inspect state at history #…**. Sub-millisecond precision is preserved.
+A missing snapshot is distinguished from a failed request. Remote-target history
+has a separate URL that can also inspect a known deleted target's retained history.
 
 ## Collection hierarchy
 

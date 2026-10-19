@@ -1828,6 +1828,12 @@ export function ObjectDetail({
 					<div className="object-record-actions">
 						<Link
 							className="link-chip"
+							href={`/objects/${classId}/${objectId}/graph`}
+						>
+							Neighborhood graph
+						</Link>
+						<Link
+							className="link-chip"
 							href={resourceHistoryHref({ type: "object", classId, objectId })}
 						>
 							Browse history

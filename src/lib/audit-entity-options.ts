@@ -5,7 +5,7 @@ export type AuditEntityDirectoryKind =
 	| "object"
 	| "remote_target"
 	| "service_account"
-	| "template"
+	| "export_template"
 	| "user";
 
 export type AuditEntityCandidate = {
@@ -26,7 +26,7 @@ export function isAuditEntityDirectoryKind(
 		value === "object" ||
 		value === "remote_target" ||
 		value === "service_account" ||
-		value === "template" ||
+		value === "export_template" ||
 		value === "user"
 	);
 }

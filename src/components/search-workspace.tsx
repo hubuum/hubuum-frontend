@@ -5,6 +5,11 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { useProgressiveSearch } from "@/lib/use-progressive-search";
+import {
+	streamUnifiedSearch,
+	streamUnifiedSearchKindPage,
+} from "@/lib/api/search-stream";
 import { TableExportMenu } from "@/components/table-export-menu";
 import { fetchExpandedClass } from "@/lib/api/classes";
 import {
@@ -17,6 +22,7 @@ import {
 	type UnifiedSearchKind,
 	type UnifiedSearchNext,
 	type UnifiedSearchResults,
+	type UnifiedSearchResponse,
 } from "@/lib/api/search";
 import { normalizeSearchTerm } from "@/lib/resource-search";
 
@@ -179,7 +185,8 @@ export function SearchWorkspace() {
 	const searchClassSchema = searchParams.get("search_class_schema") === "true";
 	const searchObjectData = searchParams.get("search_object_data") === "true";
 	const kindsParam = getKindsParam(selectedGroups);
-	const searchStateKey = `${searchQuery}::${kindsParam ?? "all"}::${searchClassSchema ? "schema" : "plain"}::${
+	const streaming = searchParams.get("stream") === "true";
+	const searchStateKey = `${streaming}::${searchQuery}::${kindsParam ?? "all"}::${searchClassSchema ? "schema" : "plain"}::${
 		searchObjectData ? "object-data" : "object-name"
 	}`;
 	const [searchWorkspaceState, setSearchWorkspaceState] =
@@ -201,30 +208,32 @@ export function SearchWorkspace() {
 					loadMoreErrors: {},
 				};
 
-	const searchQueryResult = useQuery({
+	const searchQueryResult = useProgressiveSearch<UnifiedSearchResponse>({
 		queryKey: [
 			"unified-search",
 			searchQuery,
 			kindsParam ?? "all",
 			searchClassSchema,
 			searchObjectData,
+			streaming,
 		],
-		queryFn: async ({ signal }) =>
-			fetchUnifiedSearch(
-				{
-					q: searchQuery,
-					kinds: SEARCH_GROUPS.filter((item) =>
-						selectedGroups.includes(item.group),
-					).map((item) => item.kind),
-					limitPerKind: DEFAULT_UNIFIED_SEARCH_LIMIT,
-					searchClassSchema,
-					searchObjectData,
-				},
-				{ signal },
-			),
 		enabled: searchQuery.length > 0 && selectedGroups.length > 0,
+		streaming,
+		fetcher: (signal, onProgress) => {
+			const params = {
+				q: searchQuery,
+				kinds: SEARCH_GROUPS.filter((item) =>
+					selectedGroups.includes(item.group),
+				).map((item) => item.kind),
+				limitPerKind: DEFAULT_UNIFIED_SEARCH_LIMIT,
+				searchClassSchema,
+				searchObjectData,
+			};
+			return onProgress
+				? streamUnifiedSearch(params, onProgress, signal)
+				: fetchUnifiedSearch(params, { signal });
+		},
 	});
-
 	const mergedResults = useMemo(() => {
 		const baseResults =
 			searchQueryResult.data?.results ?? createEmptyUnifiedSearchResults();
@@ -447,7 +456,7 @@ export function SearchWorkspace() {
 	}
 
 	function setAdvancedFlag(
-		key: "search_class_schema" | "search_object_data",
+		key: "search_class_schema" | "search_object_data" | "stream",
 		checked: boolean,
 	) {
 		updateSearchRoute((params) => {
@@ -461,7 +470,7 @@ export function SearchWorkspace() {
 	}
 
 	async function loadMore(group: UnifiedSearchGroup) {
-		if (!searchQuery) {
+		if (!searchQuery || searchQueryResult.incomplete) {
 			return;
 		}
 
@@ -497,7 +506,9 @@ export function SearchWorkspace() {
 		});
 
 		try {
-			const nextPage = await fetchUnifiedSearchKindPage({
+			const nextPage = await (streaming
+				? streamUnifiedSearchKindPage
+				: fetchUnifiedSearchKindPage)({
 				q: searchQuery,
 				kind,
 				limitPerKind: DEFAULT_UNIFIED_SEARCH_LIMIT,
@@ -752,7 +763,7 @@ export function SearchWorkspace() {
 								type="button"
 								className="ghost search-load-more search-load-more--inline"
 								onClick={() => loadMore(group)}
-								disabled={isLoadingMore}
+								disabled={isLoadingMore || searchQueryResult.incomplete}
 							>
 								{isLoadingMore ? "Loading..." : "Load more"}
 							</button>
@@ -790,6 +801,16 @@ export function SearchWorkspace() {
 			<div className="card search-toolbar">
 				<div className="search-toolbar-row">
 					<span className="search-toolbar-title">Search scope</span>
+					<label className="search-toggle">
+						<input
+							type="checkbox"
+							checked={streaming}
+							onChange={(event) =>
+								setAdvancedFlag("stream", event.target.checked)
+							}
+						/>
+						<span>Stream results</span>
+					</label>
 					<div className="search-toggle-grid search-toggle-grid--inline">
 						{SEARCH_GROUPS.map((option) => (
 							<label key={option.group} className="search-toggle">
@@ -864,20 +885,62 @@ export function SearchWorkspace() {
 
 			{renderControls()}
 
+			{streaming &&
+			searchQueryResult.isSuccess &&
+			!searchQueryResult.incomplete ? (
+				<p role="status">Search complete.</p>
+			) : null}
+			{streaming && searchQueryResult.isFetching ? (
+				<div className="card stack">
+					<p role="status">Receiving results… This page is incomplete.</p>
+					<button
+						type="button"
+						className="secondary"
+						onClick={searchQueryResult.cancel}
+					>
+						Cancel search
+					</button>
+				</div>
+			) : null}
+			{searchQueryResult.cancelled ? (
+				<div className="card stack" role="status">
+					<p>Search cancelled. Received results are incomplete.</p>
+					<button
+						type="button"
+						onClick={() => void searchQueryResult.refetch()}
+					>
+						Restart search
+					</button>
+				</div>
+			) : null}
 			{selectedGroups.length === 0 ? (
 				<div className="card empty-state search-empty-state">
 					Select at least one result kind to run a unified search.
 				</div>
-			) : searchQueryResult.isLoading ? (
+			) : searchQueryResult.isLoading && !searchQueryResult.data ? (
 				<div className="card search-status-card">
 					Searching across Hubuum...
 				</div>
 			) : searchQueryResult.isError ? (
-				<div className="card error-banner search-status-card">
-					Failed to load unified search results.{" "}
-					{searchQueryResult.error instanceof Error
-						? searchQueryResult.error.message
-						: "Unknown error"}
+				<div className="stack">
+					<div className="card error-banner search-status-card" role="alert">
+						Failed to load unified search results.{" "}
+						{searchQueryResult.error instanceof Error
+							? searchQueryResult.error.message
+							: "Unknown error"}
+						{streaming ? <p>Received results are incomplete.</p> : null}
+						<button
+							type="button"
+							onClick={() => void searchQueryResult.refetch()}
+						>
+							Retry search
+						</button>
+					</div>
+					{searchQueryResult.data
+						? SEARCH_GROUPS.filter((option) =>
+								selectedGroups.includes(option.group),
+							).map((option) => renderSection(option.group))
+						: null}
 				</div>
 			) : (
 				<div className="stack">

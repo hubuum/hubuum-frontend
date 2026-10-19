@@ -84,3 +84,19 @@ disable delivery spacing.
 Subscriptions retain task-kind filters configured through the API when edited
 in the console. System subscriptions and provider test delivery remain available
 through the server API; the console presets configure collection notifications.
+
+## System events and delivery checks
+
+Administrators can manage system event subscriptions in **Admin → Events**.
+Use the existing destination, events, filters, routing, and review steps to create,
+edit, disable, or delete a rule. Choose `authentication` and `succeeded` for
+successful-login notifications. Subject filters match the principal, identity
+scope, and administrator status recorded at event time, including an explicit
+non-administrator match. Task-kind filters are editable in both collection and
+system subscriptions. Editing preserves unrecognized server filter fields.
+
+The **Preview and test notifications** form renders a saved event through an
+existing webhook subscription. Enter its subscription ID and the event UUID from
+Audit. Preview does not send a notification. **Send test notification** requires
+confirmation, queues a real delivery, and displays its ID for inspection in
+Recent deliveries. Failed or uncertain requests are not replayed automatically.

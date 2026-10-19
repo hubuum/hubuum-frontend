@@ -96,6 +96,41 @@ export function RuntimeConfigPanel({ config }: { config: RunningConfig }) {
 
 	return (
 		<div className="runtime-config-grid">
+			{config.query_observations ? (
+				<RuntimeStatCard
+					title="Query observations"
+					rows={[
+						{
+							label: "Collection",
+							value: enabled(config.query_observations.enabled),
+						},
+						{
+							label: "Sample every",
+							value: `${formatNumber(config.query_observations.sample_every)} logical requests`,
+						},
+						{
+							label: "Patterns per process",
+							value: formatNumber(config.query_observations.max_patterns),
+						},
+						{
+							label: "Patterns per class",
+							value: formatNumber(
+								config.query_observations.max_patterns_per_class,
+							),
+						},
+						{
+							label: "Predicates per query",
+							value: formatNumber(
+								config.query_observations.max_predicates_per_query,
+							),
+						},
+						{
+							label: "Retention",
+							value: formatSeconds(config.query_observations.retention_seconds),
+						},
+					]}
+				/>
+			) : null}
 			{config.schema_validation ? (
 				<RuntimeStatCard
 					title="Schema validation limits"

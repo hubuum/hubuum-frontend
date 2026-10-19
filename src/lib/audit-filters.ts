@@ -10,6 +10,7 @@ export type AuditFilterDraft = {
 	entityMatch: string;
 	entityType: string;
 	initiatorUserId: string;
+	includeRelations: string;
 	occurredAfter: string;
 	occurredBefore: string;
 };
@@ -33,6 +34,7 @@ export const EMPTY_AUDIT_FILTER_DRAFT: AuditFilterDraft = {
 	entityMatch: "id",
 	entityType: "",
 	initiatorUserId: "",
+	includeRelations: "",
 	occurredAfter: "",
 	occurredBefore: "",
 };
@@ -44,6 +46,7 @@ export function parseAuditFilterParams(
 	for (const field of Object.keys(draft) as AuditFilterField[]) {
 		draft[field] = params.get(field) ?? draft[field];
 	}
+	if (draft.entityType === "template") draft.entityType = "export_template";
 	draft.entityMatch = draft.entityMatch === "name" ? "name" : "id";
 	return draft;
 }
@@ -58,10 +61,22 @@ function parsePositiveInteger(value: string): number | undefined {
 	return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+export function canIncludeAuditRelations(draft: AuditFilterDraft): boolean {
+	return (
+		draft.entityMatch !== "name" &&
+		["class", "object"].includes(draft.entityType.trim()) &&
+		/^[1-9]\d*$/.test(draft.entityId.trim()) &&
+		Number.isSafeInteger(Number(draft.entityId))
+	);
+}
+
 export function buildAuditEventFilters(
 	draft: AuditFilterDraft,
 ): EventListOptions {
 	return {
+		...(draft.includeRelations === "true" && canIncludeAuditRelations(draft)
+			? { include_relations: true }
+			: {}),
 		action: draft.action.trim() || undefined,
 		actor_kind: draft.actorKind.trim() || undefined,
 		actor_user_id: parsePositiveInteger(draft.actorUserId),
