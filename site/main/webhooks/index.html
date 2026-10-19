@@ -930,6 +930,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#system-events-and-delivery-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        System events and delivery checks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1376,6 +1387,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#system-events-and-delivery-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        System events and delivery checks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1499,6 +1521,19 @@ disable delivery spacing.</p>
 <p>Subscriptions retain task-kind filters configured through the API when edited
 in the console. System subscriptions and provider test delivery remain available
 through the server API; the console presets configure collection notifications.</p>
+<h2 id="system-events-and-delivery-checks">System events and delivery checks<a class="headerlink" href="#system-events-and-delivery-checks" title="Permanent link">&para;</a></h2>
+<p>Administrators can manage system event subscriptions in <strong>Admin → Events</strong>.
+Use the existing destination, events, filters, routing, and review steps to create,
+edit, disable, or delete a rule. Choose <code>authentication</code> and <code>succeeded</code> for
+successful-login notifications. Subject filters match the principal, identity
+scope, and administrator status recorded at event time, including an explicit
+non-administrator match. Task-kind filters are editable in both collection and
+system subscriptions. Editing preserves unrecognized server filter fields.</p>
+<p>The <strong>Preview and test notifications</strong> form renders a saved event through an
+existing webhook subscription. Enter its subscription ID and the event UUID from
+Audit. Preview does not send a notification. <strong>Send test notification</strong> requires
+confirmation, queues a real delivery, and displays its ID for inspection in
+Recent deliveries. Failed or uncertain requests are not replayed automatically.</p>
 
 
 
