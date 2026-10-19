@@ -7,9 +7,8 @@ type BrandMarkProps = {
 
 function BrandGlyph() {
 	return (
-		<span className="brand-glyph" aria-hidden="true">
-			<svg viewBox="0 0 40 40" fill="none">
-				<title>Hubuum graph mark</title>
+		<span className="brand-glyph">
+			<svg viewBox="0 0 40 40" fill="none" aria-hidden="true" focusable="false">
 				<path d="M9 11.5 20 5l11 6.5v17L20 35 9 28.5z" />
 				<path d="m9 11.5 11 6.4 11-6.4M20 17.9V35" />
 				<circle cx="9" cy="11.5" r="2.25" />

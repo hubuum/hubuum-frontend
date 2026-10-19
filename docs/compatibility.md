@@ -6,6 +6,7 @@ should pin both components to explicit versions.
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
 | `main` (unreleased) | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
+| `v0.0.21` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.20` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.19` | `v0.0.18` | `ghcr.io/hubuum/hubuum-server:v0.0.18` |
 | `v0.0.18` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
@@ -28,7 +29,7 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required checks use the immutable server image for the selected release.
-For Frontend v0.0.20 and Server v0.0.19, it is
+For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
 `ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225`.
 Scheduled tests against server `main` do not change a release's declared target.
 
@@ -66,10 +67,33 @@ See the [advanced-search guide](advanced-search.md) for grouping and Oslo-site
 examples. The optional capability does not change the release compatibility
 baseline above.
 
+## Optional preview snapshot
+
+Release v0.0.21 retains the Server v0.0.19 baseline. Search hydration and
+exact-name object history require newer server capabilities and remain optional.
+The reproducible preview target is server commit
+`00135f71aedcf52ecd8395906a227446121e48e9`, using image
+`ghcr.io/hubuum/hubuum-server@sha256:2e866b6fcb4a9c2023324b722ee0c494d98fc02a2d24feb5c19ebd451878fc27`.
+A preview server can still report version 0.0.19; use the commit and digest to
+identify it. This snapshot is a compatibility test target, not the deployment
+default.
+
+The bundled contract starts with the released OpenAPI from server commit
+`59faad2641620e457d5b0d9d7e112ee395b151ff`, supplemented by search hydration from
+`41b4f68c3bb42180b14e564b8b19d0f0436929aa` and exact-name object history from
+`bee167bdf444918406f8ab22ffe9e19695585f60`. The release checks both the released
+baseline and the pinned preview; the remaining post-release server endpoints
+are outside this frontend release's contract.
+
+Exact-name object history searches retained class-scoped snapshots across
+identities. Server v0.0.19 shows an explicit unavailable state for this optional
+view; ordinary identity history remains available. See the
+[history guide](user-guide.md#historical-snapshots-and-object-restoration).
+
 ## Before upgrading
 
-Frontend v0.0.20 targets server v0.0.19. Deploy that server before upgrading the
-frontend. Replace blank local account names with nonblank accounts and transfer
+Frontend v0.0.21 retains the server v0.0.19 baseline from v0.0.20. Deploy that
+server before upgrading the frontend. Replace blank local account names with nonblank accounts and transfer
 group memberships; correct externally managed names in the identity provider.
 Upgrade strict event readers to accept successful-login events before enabling
 the new server. Older servers cannot read the new event catalog entry.

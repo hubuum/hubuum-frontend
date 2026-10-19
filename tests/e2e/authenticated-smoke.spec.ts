@@ -85,8 +85,15 @@ test("About shows both versions and works on desktop and mobile", async ({
 	}
 	await page.getByLabel("Username").fill(username ?? "");
 	await page.getByLabel("Password", { exact: true }).fill(password ?? "");
+	// The task query starts after shell hydration, when the account menu works.
+	const shellReady = page.waitForResponse(
+		(response) =>
+			new URL(response.url()).pathname === hubuumBffPath("/api/v1/tasks") &&
+			response.ok(),
+	);
 	await page.getByRole("button", { name: "Enter workspace" }).click();
 	await page.waitForURL("**/app");
+	await shellReady;
 
 	await page.getByRole("button", { name: /Open account menu for/ }).click();
 	await page
@@ -139,7 +146,7 @@ test("About shows both versions and works on desktop and mobile", async ({
 	}
 
 	await page
-		.getByRole("button", { name: "Go to or create", exact: true })
+		.getByRole("button", { name: "Go to… Ctrl/⌘ K", exact: true })
 		.click();
 	await page.getByLabel("Find a destination or action").fill("About");
 	await expect(

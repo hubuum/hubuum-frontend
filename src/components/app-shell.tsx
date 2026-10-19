@@ -1877,7 +1877,7 @@ export function AppShell({
 								type="button"
 								className="ghost command-trigger"
 								onClick={() => setCommandsOpen(true)}
-								aria-label="Go to or create"
+								aria-label="Go to… Ctrl/⌘ K"
 								aria-keyshortcuts="Control+k Meta+k"
 								title="Go to or create (Ctrl/Cmd+K)"
 							>

@@ -1,6 +1,6 @@
 {
 	"name": "hubuum-frontend",
-	"version": "0.0.20",
+	"version": "0.0.21",
 	"private": true,
 	"engines": {
 		"node": ">=24.0.0"
@@ -30,49 +30,49 @@
 		"test:live-backend": "scripts/live-backend-test.sh",
 		"lint": "biome lint .",
 		"typecheck": "next typegen && tsc --noEmit",
-		"gen:api": "npx --yes orval@8.42.0 --clean --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
+		"gen:api": "npx --yes orval@8.43.0 --clean --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
 		"audit:prod": "npm audit --omit=dev"
 	},
 	"dependencies": {
 		"@codemirror/autocomplete": "^6.20.3",
 		"@codemirror/lang-jinja": "^6.0.1",
 		"@codemirror/lang-json": "^6.0.2",
-		"@codemirror/language": "^6.12.4",
+		"@codemirror/language": "^6.13.1",
 		"@codemirror/lint": "^6.9.7",
 		"@codemirror/state": "^6.7.6",
-		"@codemirror/view": "^6.43.13",
+		"@codemirror/view": "^6.43.14",
 		"@fontsource-variable/fraunces": "^5.3.0",
 		"@fontsource-variable/jetbrains-mono": "^5.3.0",
 		"@fontsource-variable/space-grotesk": "^5.3.0",
 		"@lezer/highlight": "^1.2.5",
-		"@tanstack/react-query": "^5.104.1",
+		"@tanstack/react-query": "^5.104.4",
 		"@types/prismjs": "^1.26.6",
 		"codemirror": "^6.0.2",
 		"fflate": "0.8.3",
 		"ioredis": "^6.0.0",
-		"next": "^16.3.8",
+		"next": "^16.4.2",
 		"parse5": "8.0.1",
 		"prismjs": "^1.30.0",
-		"react": "^19.3.0",
-		"react-dom": "^19.3.0",
+		"react": "^19.3.1",
+		"react-dom": "^19.3.1",
 		"react-simple-code-editor": "^0.14.1",
 		"xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-		"zod": "^4.6.5"
+		"zod": "^4.6.7"
 	},
 	"overrides": {
-		"postcss": "8.5.28",
+		"postcss": "8.5.31",
 		"sharp": "0.35.5"
 	},
 	"devDependencies": {
-		"@axe-core/playwright": "^4.13.0",
+		"@axe-core/playwright": "^4.14.0",
 		"@biomejs/biome": "^2.5.15",
-		"@playwright/test": "^1.63.0",
-		"@types/node": "^26.6.4",
+		"@playwright/test": "^1.64.1",
+		"@types/node": "^26.6.5",
 		"@types/react": "^19.3.0",
 		"@types/react-dom": "^19.3.0",
 		"@typescript/native": "npm:typescript@^7.0.2",
 		"typescript": "npm:@typescript/typescript6@^6.0.2",
-		"vitest": "^5.0.3"
+		"vitest": "^5.0.5"
 	},
 	"allowScripts": {
 		"fsevents@2.3.2": true,
