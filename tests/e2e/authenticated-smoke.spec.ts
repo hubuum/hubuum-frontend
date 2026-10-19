@@ -139,7 +139,7 @@ test("About shows both versions and works on desktop and mobile", async ({
 	}
 
 	await page
-		.getByRole("button", { name: "Go to or create", exact: true })
+		.getByRole("button", { name: "Go to… Ctrl/⌘ K", exact: true })
 		.click();
 	await page.getByLabel("Find a destination or action").fill("About");
 	await expect(

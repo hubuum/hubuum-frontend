@@ -1493,7 +1493,7 @@ test.describe("workspace quality", () => {
 				.click();
 			await page.keyboard.press("Escape");
 			const commands = page.getByRole("button", {
-				name: "Go to or create",
+				name: "Go to… Ctrl/⌘ K",
 				exact: true,
 			});
 			const search = page.getByRole("textbox", {
@@ -1571,7 +1571,7 @@ test.describe("workspace quality", () => {
 		await page.keyboard.press("ArrowDown");
 		await expect(table.locator('[data-table-row-index="1"]')).toBeFocused();
 		await page
-			.getByRole("button", { name: "Go to or create", exact: true })
+			.getByRole("button", { name: "Go to… Ctrl/⌘ K", exact: true })
 			.focus();
 		await page.keyboard.press("Enter");
 		await expect(
@@ -1580,7 +1580,7 @@ test.describe("workspace quality", () => {
 		await expect(page.getByLabel("Find a destination or action")).toBeFocused();
 		await page.keyboard.press("Escape");
 		await expect(
-			page.getByRole("button", { name: "Go to or create", exact: true }),
+			page.getByRole("button", { name: "Go to… Ctrl/⌘ K", exact: true }),
 		).toBeFocused();
 		await page.keyboard.press("Control+k");
 		await expect(
@@ -1603,7 +1603,7 @@ test.describe("workspace quality", () => {
 		page,
 	}) => {
 		await page
-			.getByRole("button", { name: "Go to or create", exact: true })
+			.getByRole("button", { name: "Go to… Ctrl/⌘ K", exact: true })
 			.click();
 		const input = page.getByLabel("Find a destination or action");
 		const query = "router & switch / 日本語";
@@ -1620,7 +1620,7 @@ test.describe("workspace quality", () => {
 
 	test("Go to Enter opens the first matching destination", async ({ page }) => {
 		await page
-			.getByRole("button", { name: "Go to or create", exact: true })
+			.getByRole("button", { name: "Go to… Ctrl/⌘ K", exact: true })
 			.click();
 		const input = page.getByLabel("Find a destination or action");
 		await input.fill("About");
@@ -1633,7 +1633,7 @@ test.describe("workspace quality", () => {
 
 	test("Go to Enter opens a matching create action", async ({ page }) => {
 		await page
-			.getByRole("button", { name: "Go to or create", exact: true })
+			.getByRole("button", { name: "Go to… Ctrl/⌘ K", exact: true })
 			.click();
 		const input = page.getByLabel("Find a destination or action");
 		await input.fill("New class");
@@ -1647,7 +1647,7 @@ test.describe("workspace quality", () => {
 		page,
 	}) => {
 		await page
-			.getByRole("button", { name: "Go to or create", exact: true })
+			.getByRole("button", { name: "Go to… Ctrl/⌘ K", exact: true })
 			.click();
 		const dialog = page.getByRole("dialog", { name: "Go to or create" });
 		const input = page.getByLabel("Find a destination or action");

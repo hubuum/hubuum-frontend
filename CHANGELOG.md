@@ -46,6 +46,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   subscription deletion, notification tests, and login-limit release.
 - Keep populated administrative tables scrollable and keyboard-accessible on
   narrow screens.
+- Match the command button’s accessible name to its visible label and shortcut,
+  and keep the decorative logo out of the accessibility tree.
 
 ### Compatibility
 

@@ -417,12 +417,15 @@ test.describe("authenticated workspace", () => {
 	test("dashboard has no serious accessibility violations", async ({
 		page,
 	}) => {
-		const results = await new AxeBuilder({ page }).analyze();
-		expect(
-			results.violations.filter((violation) =>
-				["serious", "critical"].includes(violation.impact ?? ""),
-			),
-		).toEqual([]);
+		for (const width of [1440, 390]) {
+			await page.setViewportSize({ width, height: 900 });
+			const results = await new AxeBuilder({ page }).analyze();
+			expect(
+				results.violations.filter((violation) =>
+					["serious", "critical"].includes(violation.impact ?? ""),
+				),
+			).toEqual([]);
+		}
 	});
 
 	test("mobile search traps and restores focus", async ({ page }) => {
