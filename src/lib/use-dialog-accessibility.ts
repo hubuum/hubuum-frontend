@@ -21,6 +21,7 @@ type DialogAccessibilityOptions = {
 	dialogRef: RefObject<HTMLElement | null>;
 	overlayRef: RefObject<HTMLElement | null>;
 	initialFocusSelector?: string;
+	restoreFocusFallbackRef?: RefObject<HTMLElement | null>;
 };
 
 function setOutsideContentInert(overlay: HTMLElement): Array<{
@@ -50,6 +51,7 @@ export function useDialogAccessibility({
 	dialogRef,
 	overlayRef,
 	initialFocusSelector,
+	restoreFocusFallbackRef,
 }: DialogAccessibilityOptions): void {
 	const previousFocusRef = useRef<HTMLElement | null>(null);
 	const onCloseRef = useRef(onClose);
@@ -144,7 +146,18 @@ export function useDialogAccessibility({
 			const previousFocus = previousFocusRef.current;
 			window.requestAnimationFrame(() => {
 				if (previousFocus?.isConnected) previousFocus.focus();
+				if (
+					!previousFocus?.isConnected ||
+					document.activeElement !== previousFocus
+				)
+					restoreFocusFallbackRef?.current?.focus();
 			});
 		};
-	}, [dialogRef, initialFocusSelector, open, overlayRef]);
+	}, [
+		dialogRef,
+		initialFocusSelector,
+		open,
+		overlayRef,
+		restoreFocusFallbackRef,
+	]);
 }

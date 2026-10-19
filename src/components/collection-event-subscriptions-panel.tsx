@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
 	GuidedFlowContinue,
 	GuidedFlowPanel,
@@ -539,6 +539,7 @@ export function CollectionEventSubscriptionsPanel({
 }: CollectionEventSubscriptionsPanelProps) {
 	const queryClient = useQueryClient();
 	const confirm = useConfirm();
+	const headingRef = useRef<HTMLHeadingElement | null>(null);
 	const [isEditorOpen, setEditorOpen] = useState(false);
 	const [editingSubscriptionId, setEditingSubscriptionId] = useState<
 		number | null
@@ -732,6 +733,7 @@ export function CollectionEventSubscriptionsPanel({
 	}
 
 	async function onDelete(subscription: SystemEventSubscription) {
+		if (actionPending) return;
 		if (
 			!(await confirm({
 				title: `Delete event subscription "${subscription.name}"?`,
@@ -739,6 +741,7 @@ export function CollectionEventSubscriptionsPanel({
 					"Future events will no longer be delivered through this subscription.",
 				confirmLabel: "Delete subscription",
 				tone: "danger",
+				restoreFocusFallbackRef: headingRef,
 			}))
 		) {
 			return;
@@ -838,7 +841,7 @@ export function CollectionEventSubscriptionsPanel({
 		<article className="card stack panel-card">
 			<div className="panel-header">
 				<div className="stack action-card-header">
-					<h3>
+					<h3 ref={headingRef} tabIndex={-1}>
 						{collectionId === undefined
 							? "System event subscriptions"
 							: "Event subscriptions"}
