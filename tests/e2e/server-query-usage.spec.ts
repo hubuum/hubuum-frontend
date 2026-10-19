@@ -256,6 +256,9 @@ test.describe("query usage workspace", () => {
 			.getByRole("button", { name: "Withdraw declaration" })
 			.click();
 		await expect(edited).toHaveCount(0);
+		await expect(
+			page.getByRole("button", { name: "Reload declarations" }),
+		).toBeFocused();
 		expect(requests.find((request) => request.method === "PUT")?.body).toEqual({
 			pattern: {
 				path: "mass",

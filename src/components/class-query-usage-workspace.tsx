@@ -103,6 +103,7 @@ export function ClassQueryUsageWorkspace({
 		setEditor(context);
 	}
 	async function withdraw(declaration: QueryUsageResponse) {
+		if (busy) return;
 		if (
 			await confirm({
 				title: `Withdraw ${declaration.pattern.path}?`,
@@ -110,6 +111,7 @@ export function ClassQueryUsageWorkspace({
 					"This removes the declaration at its current revision. Shared resources remain until the last owner withdraws and an operator reconciles cleanup. Queries continue to work.",
 				confirmLabel: "Withdraw declaration",
 				tone: "danger",
+				restoreFocusFallbackRef: reloadRef,
 			})
 		)
 			remove.mutate(declaration);
@@ -136,8 +138,10 @@ export function ClassQueryUsageWorkspace({
 							ref={reloadRef}
 							type="button"
 							className="ghost"
-							disabled={busy || declarations.isFetching}
-							onClick={() => void refresh()}
+							aria-disabled={busy || declarations.isFetching}
+							onClick={() => {
+								if (!busy && !declarations.isFetching) void refresh();
+							}}
 						>
 							Reload declarations
 						</button>
