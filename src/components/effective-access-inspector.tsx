@@ -87,9 +87,8 @@ export function EffectiveAccessInspector() {
 					{!query.data.length ? (
 						<p>No effective collection grants.</p>
 					) : (
-						<div
+						<section
 							className="table-wrap"
-							role="region"
 							aria-label="Effective permission grants"
 							// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable tables need keyboard access.
 							tabIndex={0}
@@ -136,7 +135,7 @@ export function EffectiveAccessInspector() {
 									))}
 								</tbody>
 							</table>
-						</div>
+						</section>
 					)}
 				</>
 			) : null}

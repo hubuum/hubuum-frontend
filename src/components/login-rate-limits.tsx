@@ -110,9 +110,8 @@ export function LoginRateLimits() {
 						<summary>Effective rate-limit configuration</summary>
 						<JsonViewer value={query.data.config} />
 					</details>
-					<div
+					<section
 						className="table-wrap"
-						role="region"
 						aria-label="Login limit entries"
 						// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable tables need keyboard access.
 						tabIndex={0}
@@ -154,7 +153,7 @@ export function LoginRateLimits() {
 								))}
 							</tbody>
 						</table>
-					</div>
+					</section>
 					{!query.data.entries.length ? <p>No matching login limits.</p> : null}
 				</>
 			) : null}
