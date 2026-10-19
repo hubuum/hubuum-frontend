@@ -6,13 +6,56 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.21] - 2026-10-19
+
 ### Added
 
-- Visual advanced search for collections, classes and objects, with nested
-  AND/OR/NOT groups, resource pickers, related-object conditions, cursor paging
-  and versioned bookmarks. Optional related-resource inspection displays bounded
-  visible paths and relation metadata when the server provides search hydration;
-  advanced search remains usable on Server v0.0.19 without that capability.
+- Class query usage declarations with revision-checked editing, workload analysis,
+  hypothetical patterns, suggestion adoption, native resource ownership, and
+  observation configuration. Native preparation and cleanup remain operator CLI
+  operations.
+- System event subscriptions, successful-login subject and task filters,
+  notification preview and confirmed tests, and direct-relation audit filters.
+- Administrative login rate-limit inspection and release, principal settings,
+  effective permissions, user anonymization, and revocation of all user tokens
+  or sessions.
+- Paginated remote-target and export-template configuration history with precise
+  as-of snapshots and provenance.
+- Visual advanced search for all seven server catalogs, with nested AND/OR/NOT
+  groups, resource pickers, related-object conditions, cursor paging, and
+  versioned bookmarks. Ordinary and advanced search support finite streaming,
+  partial results, cancellation, and explicit retry.
+- Bounded class and object neighborhood graphs with keyboard inspection, shortest
+  paths, resource links, and accessible node and relation tables.
+- Optional exact-name object history across identities and optional bounded
+  related-resource inspection for advanced-search results on newer server
+  snapshots. Unsupported servers show an explicit unavailable state while the
+  released search and history workflows remain usable.
+
+### Changed
+
+- Refresh application and development dependencies, the PostCSS override, and
+  the pinned Orval generator to 8.43.0. GitHub Actions pins were checked against
+  their latest stable versions; no dependency exceptions are required.
+
+### Fixed
+
+- Keep settings drafts and anonymization confirmations paired with the revision
+  the administrator reviewed, including across background refreshes.
+- Restore keyboard focus after delayed declaration saves, withdrawals,
+  subscription deletion, notification tests, and login-limit release.
+- Keep populated administrative tables scrollable and keyboard-accessible on
+  narrow screens.
+
+### Compatibility
+
+- Retain Hubuum Server `v0.0.19` as the supported baseline; no backend upgrade is
+  required for the released query usage, administration, streaming, or graph
+  workflows.
+- Search hydration and exact-name object history are optional preview
+  capabilities introduced after Server `v0.0.19`. See the pinned snapshot and
+  contract provenance in the [compatibility guide](https://hubuum.github.io/hubuum-frontend/v0.0.21/compatibility/). These features
+  do not fall back to unbounded or unfiltered requests.
 
 ## [0.0.20] - 2026-10-14
 

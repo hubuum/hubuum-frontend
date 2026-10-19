@@ -6,6 +6,7 @@ should pin both components to explicit versions.
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
 | `main` (unreleased) | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
+| `v0.0.21` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.20` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.19` | `v0.0.18` | `ghcr.io/hubuum/hubuum-server:v0.0.18` |
 | `v0.0.18` | `v0.0.16` | `ghcr.io/hubuum/hubuum-server:v0.0.16` |
@@ -28,7 +29,7 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Frontend `v0.0.20` and unreleased `main` target
+listed server tag. Frontend `v0.0.20`, `v0.0.21`, and unreleased `main` target
 Server `v0.0.19` at
 `sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225`.
 Frontend `v0.0.19` targets
@@ -41,6 +42,26 @@ Frontend `v0.0.16` retains its Server `v0.0.15` target at
 Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
 A separate scheduled workflow follows the moving backend `:main` image.
+
+## Frontend v0.0.21
+
+Frontend v0.0.21 retains the released Server v0.0.19 image above while adding
+query usage, event and security administration, configuration history, streaming
+search, and bounded graph workspaces. The combined feature tree passed 1,094
+unit tests and 51 focused browser scenarios, including live workflows, delayed
+focus restoration, and revision-conflict handling. GitHub CI checks the released
+server contract and both authenticated browser suites.
+
+The release dependency set includes Next.js 16.4.2, React 19.3.1, TanStack Query
+5.104.4, Playwright 1.64.1, axe 4.14.0, Vitest 5.0.5, PostCSS 8.5.31, and Orval
+8.43.0. Dependency freshness and the production audit pass without exceptions.
+The release-readiness workflow repeats verification on the exact merged release
+commit before tagging.
+
+The optional search-hydration and exact-name-history capabilities use the
+[pinned preview snapshot and source provenance](compatibility.md#optional-preview-snapshot).
+The Backend main compatibility workflow must pass against that immutable image
+on the final release commit, independently of the released baseline checks.
 
 ## Server v0.0.19
 

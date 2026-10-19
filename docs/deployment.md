@@ -37,7 +37,7 @@ Install from the published OCI chart:
 
 ```bash
 helm install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.20 \
+  --version 0.0.21 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set valkey.existingSecret.name=hubuum-frontend-valkey
 ```
@@ -46,7 +46,7 @@ For OKD Routes, enable the chart route resource:
 
 ```bash
 helm upgrade --install hubuum oci://ghcr.io/hubuum/charts/hubuum-frontend \
-  --version 0.0.20 \
+  --version 0.0.21 \
   --set backend.baseUrl=https://hubuum-api.example.com \
   --set route.enabled=true \
   --set route.host=hubuum.example.com
