@@ -257,7 +257,7 @@ export function HistoryStackNavigation({
 										type="button"
 										className={styles.timelineEntry}
 										data-version={record.history_id}
-										aria-label={`View version #${record.history_id} · ${historyTime(record.valid_from)} UTC`}
+										title={`${historyTime(record.valid_from)} UTC`}
 										aria-current={
 											record.history_id === selected.history_id
 												? "step"
@@ -271,6 +271,7 @@ export function HistoryStackNavigation({
 										}
 										onClick={() => choose(record)}
 									>
+										<span className="sr-only">View version </span>
 										<span className={styles.timelineDot} aria-hidden="true" />
 										<time dateTime={record.valid_from}>
 											{new Intl.DateTimeFormat(undefined, {
@@ -291,6 +292,7 @@ export function HistoryStackNavigation({
 											}).format(new Date(record.valid_from))}{" "}
 											· #{record.history_id}
 										</small>
+										<span className="sr-only"> UTC</span>
 									</button>
 								</li>
 							))}

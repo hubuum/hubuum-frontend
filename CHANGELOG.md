@@ -48,6 +48,7 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   narrow screens.
 - Match the command button’s accessible name to its visible label and shortcut,
   and keep the decorative logo out of the accessibility tree.
+- Use the visible date, time, and version as history markers' accessible names.
 
 ### Compatibility
 

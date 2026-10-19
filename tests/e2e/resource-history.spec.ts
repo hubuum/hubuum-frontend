@@ -176,7 +176,7 @@ async function prepare(
 function versionMarker(page: Page, id: number) {
 	return page
 		.getByRole("navigation", { name: "History timeline" })
-		.getByRole("button", { name: new RegExp(`^View version #${id} ·`) });
+		.getByRole("button", { name: new RegExp(`^View version .*#${id} UTC$`) });
 }
 
 async function expectSelected(page: Page, id: number) {
