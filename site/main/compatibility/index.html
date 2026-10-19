@@ -575,6 +575,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#optional-preview-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Optional preview snapshot
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#before-upgrading" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1432,6 +1443,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#optional-preview-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Optional preview snapshot
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#before-upgrading" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1577,6 +1599,11 @@ should pin both components to explicit versions.</p>
 <td><code>ghcr.io/hubuum/hubuum-server:v0.0.19</code></td>
 </tr>
 <tr>
+<td><code>v0.0.21</code></td>
+<td><code>v0.0.19</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.19</code></td>
+</tr>
+<tr>
 <td><code>v0.0.20</code></td>
 <td><code>v0.0.19</code></td>
 <td><code>ghcr.io/hubuum/hubuum-server:v0.0.19</code></td>
@@ -1679,7 +1706,7 @@ should pin both components to explicit versions.</p>
 </tbody>
 </table>
 <p>Required checks use the immutable server image for the selected release.
-For Frontend v0.0.20 and Server v0.0.19, it is
+For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
 <code>ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225</code>.
 Scheduled tests against server <code>main</code> do not change a release's declared target.</p>
 <h2 id="advanced-search-capabilities">Advanced search capabilities<a class="headerlink" href="#advanced-search-capabilities" title="Permanent link">&para;</a></h2>
@@ -1710,9 +1737,28 @@ totals use the original structured request with no hydration property.</p>
 <p>See the <a href="../advanced-search/">advanced-search guide</a> for grouping and Oslo-site
 examples. The optional capability does not change the release compatibility
 baseline above.</p>
+<h2 id="optional-preview-snapshot">Optional preview snapshot<a class="headerlink" href="#optional-preview-snapshot" title="Permanent link">&para;</a></h2>
+<p>Release v0.0.21 retains the Server v0.0.19 baseline. Search hydration and
+exact-name object history require newer server capabilities and remain optional.
+The reproducible preview target is server commit
+<code>00135f71aedcf52ecd8395906a227446121e48e9</code>, using image
+<code>ghcr.io/hubuum/hubuum-server@sha256:2e866b6fcb4a9c2023324b722ee0c494d98fc02a2d24feb5c19ebd451878fc27</code>.
+A preview server can still report version 0.0.19; use the commit and digest to
+identify it. This snapshot is a compatibility test target, not the deployment
+default.</p>
+<p>The bundled contract starts with the released OpenAPI from server commit
+<code>59faad2641620e457d5b0d9d7e112ee395b151ff</code>, supplemented by search hydration from
+<code>41b4f68c3bb42180b14e564b8b19d0f0436929aa</code> and exact-name object history from
+<code>bee167bdf444918406f8ab22ffe9e19695585f60</code>. The release checks both the released
+baseline and the pinned preview; the remaining post-release server endpoints
+are outside this frontend release's contract.</p>
+<p>Exact-name object history searches retained class-scoped snapshots across
+identities. Server v0.0.19 shows an explicit unavailable state for this optional
+view; ordinary identity history remains available. See the
+<a href="../user-guide/#historical-snapshots-and-object-restoration">history guide</a>.</p>
 <h2 id="before-upgrading">Before upgrading<a class="headerlink" href="#before-upgrading" title="Permanent link">&para;</a></h2>
-<p>Frontend v0.0.20 targets server v0.0.19. Deploy that server before upgrading the
-frontend. Replace blank local account names with nonblank accounts and transfer
+<p>Frontend v0.0.21 retains the server v0.0.19 baseline from v0.0.20. Deploy that
+server before upgrading the frontend. Replace blank local account names with nonblank accounts and transfer
 group memberships; correct externally managed names in the identity provider.
 Upgrade strict event readers to accept successful-login events before enabling
 the new server. Older servers cannot read the new event catalog entry.</p>
