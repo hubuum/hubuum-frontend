@@ -3,6 +3,7 @@
 import {
 	createContext,
 	type ReactNode,
+	type RefObject,
 	useCallback,
 	useContext,
 	useRef,
@@ -17,6 +18,7 @@ type ConfirmOptions = {
 	confirmLabel?: string;
 	cancelLabel?: string;
 	tone?: "default" | "danger";
+	restoreFocusFallbackRef?: RefObject<HTMLElement | null>;
 };
 
 type PendingConfirm = ConfirmOptions & {
@@ -63,6 +65,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 		dialogRef,
 		overlayRef,
 		initialFocusSelector: "[data-dialog-initial-focus]",
+		restoreFocusFallbackRef: pendingConfirm?.restoreFocusFallbackRef,
 	});
 
 	return (

@@ -124,7 +124,8 @@ export function EventNotificationTester({ sinks }: { sinks: EventSink[] }) {
 					<button
 						type="button"
 						className="secondary"
-						disabled={!valid || busy}
+						disabled={!valid}
+						aria-disabled={busy}
 						onClick={() => void sendTest()}
 					>
 						Send test notification

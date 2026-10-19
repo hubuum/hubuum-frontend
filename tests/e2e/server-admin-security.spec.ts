@@ -29,7 +29,10 @@ test("filters login limits and confirms individual and global release", async ({
 	page,
 }) => {
 	const requests: string[] = [];
+	let deleted = 0;
+	await page.setViewportSize({ width: 390, height: 844 });
 	await page.route(`**${prefix}/api/v0/meta/login-rate-limit**`, (route) => {
+		if (route.request().method() === "DELETE") deleted++;
 		requests.push(
 			`${route.request().method()} ${new URL(route.request().url()).pathname}${new URL(route.request().url()).search}`,
 		);
@@ -38,20 +41,22 @@ test("filters login limits and confirms individual and global release", async ({
 				route.request().method() === "GET"
 					? {
 							config: { enabled: true, backend: "memory" },
-							tracked_entries: 2,
-							locked_entries: 1,
-							returned_entries: 1,
-							entries: [
-								{
-									id: "opaque",
-									identifier: "user@example.test / 127.0.0.1",
-									scope: "user_ip",
-									attempts: 5,
-									locked: true,
-									locked_for_seconds: 30,
-									lockout_level: 2,
-								},
-							],
+							tracked_entries: 2 - deleted,
+							locked_entries: deleted ? 0 : 1,
+							returned_entries: deleted ? 0 : 1,
+							entries: deleted
+								? []
+								: [
+										{
+											id: "opaque",
+											identifier: "user@example.test / 127.0.0.1",
+											scope: "user_ip",
+											attempts: 5,
+											locked: true,
+											locked_for_seconds: 30,
+											lockout_level: 2,
+										},
+									],
 						}
 					: { released: true, cleared: 2 },
 		});
@@ -63,6 +68,11 @@ test("filters login limits and confirms individual and global release", async ({
 		exact: true,
 	});
 	await expect(panel.getByText("30s remaining")).toBeVisible();
+	expect(
+		await page.evaluate(
+			() => document.documentElement.scrollWidth <= window.innerWidth,
+		),
+	).toBe(true);
 	await panel
 		.getByRole("combobox", { name: "Entries", exact: true })
 		.selectOption("all");
@@ -95,6 +105,10 @@ test("filters login limits and confirms individual and global release", async ({
 	await expect
 		.poll(() => requests.filter((x) => x.startsWith("DELETE")))
 		.toEqual([`DELETE ${prefix}/api/v0/meta/login-rate-limit/opaque`]);
+	await expect(panel.getByText("No matching login limits.")).toBeVisible();
+	await expect(
+		panel.getByRole("button", { name: "Reload limits" }),
+	).toBeFocused();
 	await panel.getByRole("button", { name: "Clear all limits" }).click();
 	await page
 		.getByRole("alertdialog")
@@ -103,6 +117,9 @@ test("filters login limits and confirms individual and global release", async ({
 	await expect
 		.poll(() => requests.filter((x) => x.startsWith("DELETE")).length)
 		.toBe(2);
+	await expect(
+		panel.getByRole("button", { name: "Reload limits" }),
+	).toBeFocused();
 	expect(
 		(
 			await new AxeBuilder({ page })
@@ -245,6 +262,12 @@ test("inspects effective permissions for a selected group", async ({
 	await panel.getByLabel("Subject ID", { exact: true }).fill("3");
 	await panel.getByRole("button", { name: "Inspect permissions" }).click();
 	await expect(panel.getByText("Operators (#3)")).toBeVisible();
+	await page.setViewportSize({ width: 390, height: 844 });
+	expect(
+		await page.evaluate(
+			() => document.documentElement.scrollWidth <= window.innerWidth,
+		),
+	).toBe(true);
 	await expect(panel.getByText("Inherited · depth 1")).toBeVisible();
 	await expect(panel.getByText("read object", { exact: true })).toBeVisible();
 });
@@ -361,4 +384,120 @@ test("manages live principal settings, revokes a user's tokens, and anonymizes t
 			.delete(`${prefix}/api/v1/iam/users/${user.id}`, { headers })
 			.catch(() => undefined);
 	}
+});
+
+test("keeps a settings draft paired with its reviewed revision across background refreshes", async ({
+	page,
+}) => {
+	let revision = 1;
+	let reads = 0;
+	let submittedEtag: string | undefined;
+	await page.route(`**${prefix}/api/v1/iam/principals/42/settings`, (route) => {
+		if (route.request().method() !== "GET") {
+			submittedEtag = route.request().headers()["if-match"];
+			return route.fulfill({
+				status: 412,
+				json: { message: "Settings changed concurrently" },
+			});
+		}
+		reads++;
+		return route.fulfill({
+			headers: { ETag: `"settings-${revision}"` },
+			json: { revision, settings: { version: revision } },
+		});
+	});
+	await page.goto("/admin/security");
+	await expect(page.getByText(/tracked;.*shown/)).toBeVisible();
+	const panel = page.getByRole("region", {
+		name: "Principal settings",
+		exact: true,
+	});
+	await panel.getByLabel("Principal ID", { exact: true }).fill("42");
+	await panel.getByRole("button", { name: "Inspect settings" }).click();
+	await panel.getByLabel("Settings JSON").fill('{"draft":true}');
+	revision = 2;
+	const before = reads;
+	await page.clock.setFixedTime(new Date(Date.now() + 31_000));
+	await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+	await page.evaluate(() => window.dispatchEvent(new Event("online")));
+	await expect.poll(() => reads).toBeGreaterThan(before);
+	await expect(panel.getByText(/Principal #42 · revision 1/)).toBeVisible();
+	await panel
+		.getByRole("button", { name: "Save settings", exact: true })
+		.click();
+	await page
+		.getByRole("alertdialog")
+		.getByRole("button", { name: "Save settings", exact: true })
+		.click();
+	await expect(panel.getByRole("alert")).toContainText(
+		"Settings changed concurrently",
+	);
+	expect(submittedEtag).toBe('"settings-1"');
+	await expect(panel.getByLabel("Settings JSON")).toHaveValue('{"draft":true}');
+	await panel.getByRole("button", { name: "Reload settings" }).click();
+	await expect(panel.getByText(/Principal #42 · revision 2/)).toBeVisible();
+	await expect(panel.getByLabel("Settings JSON")).toHaveValue(
+		JSON.stringify({ version: 2 }, null, 2),
+	);
+});
+
+test("anonymization uses the revision reviewed before confirmation", async ({
+	page,
+}) => {
+	let revision = 1;
+	let reads = 0;
+	let submittedEtag: string | undefined;
+	const user = {
+		id: 42,
+		name: "Reviewed user",
+		proper_name: "Reviewed Person",
+		email: "reviewed@example.test",
+		identity_scope: "local",
+		revision: 1,
+		created_at: "2026-01-01T00:00:00Z",
+		updated_at: "2026-01-01T00:00:00Z",
+	};
+	await page.route(`**${prefix}/api/v1/iam/users?*`, (route) =>
+		route.fulfill({ json: [user] }),
+	);
+	await page.route(`**${prefix}/api/v1/iam/users/42`, (route) => {
+		reads++;
+		return route.fulfill({
+			headers: { ETag: `"user-${revision}"` },
+			json: { ...user, revision },
+		});
+	});
+	await page.route(`**${prefix}/api/v1/iam/users/42/anonymize`, (route) => {
+		submittedEtag = route.request().headers()["if-match"];
+		return route.fulfill({
+			status: 412,
+			json: { message: "User changed concurrently" },
+		});
+	});
+	await page.goto("/admin/users/42");
+	const panel = page.getByRole("region", {
+		name: "User anonymization",
+		exact: true,
+	});
+	await panel
+		.getByRole("button", { name: "Anonymize user", exact: true })
+		.click();
+	await expect(page.getByRole("alertdialog")).toContainText("Reviewed user");
+	revision = 2;
+	const before = reads;
+	await page.clock.setFixedTime(new Date(Date.now() + 31_000));
+	await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+	await page.evaluate(() => window.dispatchEvent(new Event("online")));
+	await expect.poll(() => reads).toBeGreaterThan(before);
+	await expect(
+		panel.getByRole("button", { name: "Reload user revision" }),
+	).toBeEnabled();
+	await page
+		.getByRole("alertdialog")
+		.getByRole("button", { name: "Anonymize user", exact: true })
+		.click();
+	await expect(panel.getByRole("alert")).toContainText(
+		"User changed concurrently",
+	);
+	expect(submittedEtag).toBe('"user-1"');
 });

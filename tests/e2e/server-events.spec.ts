@@ -152,6 +152,12 @@ test.describe("server event administration", () => {
 		await expect(
 			page.getByText("No event subscriptions configured."),
 		).toBeVisible();
+		await expect(
+			page.getByRole("heading", {
+				name: "System event subscriptions",
+				exact: true,
+			}),
+		).toBeFocused();
 		expect(writes.map((write) => write.method)).toEqual([
 			"POST",
 			"PATCH",
@@ -188,9 +194,14 @@ test.describe("server event administration", () => {
 	}) => {
 		await mockEvents(page, true);
 		const calls: string[] = [];
-		await page.route(`**${prefix}/event-sinks/7/*`, (route) => {
+		let finishTest!: () => void;
+		const testPending = new Promise<void>((resolve) => {
+			finishTest = resolve;
+		});
+		await page.route(`**${prefix}/event-sinks/7/*`, async (route) => {
 			const path = new URL(route.request().url()).pathname;
 			calls.push(path);
+			if (path.endsWith("/test")) await testPending;
 			expect(route.request().postDataJSON()).toEqual({
 				subscription_id: 9,
 				event_id: "saved-event-id",
@@ -233,6 +244,10 @@ test.describe("server event administration", () => {
 			.getByRole("alertdialog")
 			.getByRole("button", { name: "Send test notification" })
 			.click();
+		await expect(
+			tester.getByRole("button", { name: "Send test notification" }),
+		).toBeFocused();
+		finishTest();
 		await expect(tester.getByRole("status")).toContainText("#41 queued");
 		expect(calls).toHaveLength(2);
 		expect(

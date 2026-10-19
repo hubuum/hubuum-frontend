@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { JsonViewer } from "@/components/json-viewer";
 import { fetchLoginLimits, clearLoginLimits } from "@/lib/api/admin-security";
@@ -11,6 +11,7 @@ export function LoginRateLimits() {
 	const [params, setParams] = useState({ include: "locked", scope: "", q: "" });
 	const client = useQueryClient();
 	const confirm = useConfirm();
+	const reloadRef = useRef<HTMLButtonElement | null>(null);
 	const query = useQuery({
 		queryKey: ["login-rate-limits", params],
 		queryFn: () =>
@@ -35,6 +36,7 @@ export function LoginRateLimits() {
 					: "Remove every tracked scope, including entries outside the current filter.",
 				confirmLabel: id ? "Release" : "Clear all",
 				tone: "danger",
+				restoreFocusFallbackRef: reloadRef,
 			})
 		)
 			clear.mutate(id);
@@ -74,18 +76,20 @@ export function LoginRateLimits() {
 			</form>
 			<div className="action-row">
 				<button
+					ref={reloadRef}
 					type="button"
 					className="secondary"
-					disabled={query.isFetching}
-					onClick={() => void query.refetch()}
+					aria-disabled={query.isFetching || clear.isPending}
+					onClick={() => {
+						if (!query.isFetching && !clear.isPending) void query.refetch();
+					}}
 				>
 					Reload limits
 				</button>
 				<button
 					type="button"
 					className="danger"
-					aria-disabled={clear.isPending}
-					disabled={!query.data?.tracked_entries}
+					disabled={clear.isPending || !query.data?.tracked_entries}
 					onClick={() => void release()}
 				>
 					Clear all limits
@@ -106,7 +110,12 @@ export function LoginRateLimits() {
 						<summary>Effective rate-limit configuration</summary>
 						<JsonViewer value={query.data.config} />
 					</details>
-					<div className="table-scroll">
+					<section
+						className="table-wrap"
+						aria-label="Login limit entries"
+						// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable tables need keyboard access.
+						tabIndex={0}
+					>
 						<table>
 							<thead>
 								<tr>
@@ -134,7 +143,7 @@ export function LoginRateLimits() {
 											<button
 												type="button"
 												className="secondary"
-												aria-disabled={clear.isPending}
+												disabled={clear.isPending}
 												onClick={() => void release(entry.id)}
 											>
 												Release
@@ -144,7 +153,7 @@ export function LoginRateLimits() {
 								))}
 							</tbody>
 						</table>
-					</div>
+					</section>
 					{!query.data.entries.length ? <p>No matching login limits.</p> : null}
 				</>
 			) : null}

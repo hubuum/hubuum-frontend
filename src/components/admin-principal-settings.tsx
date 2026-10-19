@@ -9,9 +9,17 @@ import {
 import { useConfirm } from "@/lib/confirm-context";
 import type { SettingsEditMode } from "@/lib/principal-settings-edit";
 type Snapshot = Awaited<ReturnType<typeof fetchPrincipalSettings>>;
-function SettingsEditor({ id, snapshot }: { id: number; snapshot: Snapshot }) {
+function SettingsEditor({
+	id,
+	snapshot: initialSnapshot,
+}: {
+	id: number;
+	snapshot: Snapshot;
+}) {
 	const client = useQueryClient();
 	const confirm = useConfirm();
+	// Keep the revision paired with the draft until an explicit reload or save.
+	const [snapshot, setSnapshot] = useState(initialSnapshot);
 	const [mode, setMode] = useState<SettingsEditMode>("replace");
 	const [text, setText] = useState(JSON.stringify(snapshot.settings, null, 2));
 	const save = useMutation({
@@ -23,6 +31,7 @@ function SettingsEditor({ id, snapshot }: { id: number; snapshot: Snapshot }) {
 			return savePrincipalSettings(id, snapshot.etag, operation, text);
 		},
 		onSuccess: (data) => {
+			setSnapshot(data);
 			setMode("replace");
 			setText(JSON.stringify(data.settings, null, 2));
 			client.setQueryData(["admin-principal-settings", id], data);
@@ -133,7 +142,8 @@ export function AdminPrincipalSettings({
 	principalId?: number;
 }) {
 	const [draft, setDraft] = useState(principalId?.toString() ?? "");
-	const [id, setId] = useState(principalId);
+	const [selectedId, setId] = useState<number>();
+	const id = principalId ?? selectedId;
 	const [reload, setReload] = useState(0);
 	const query = useQuery({
 		queryKey: ["admin-principal-settings", id],
