@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const accessSeconds = Number(process.env.E2E_SESSION_ACCESS_SECONDS);
+test.use({ trace: "off", screenshot: "off", video: "off" });
 
 test("the BFF rotates expired access without exposing either credential", async ({
 	page,
