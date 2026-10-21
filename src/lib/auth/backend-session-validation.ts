@@ -2,14 +2,11 @@ import "server-only";
 
 import { backendFetchRaw } from "@/lib/api/backend";
 
-export type BackendSessionValidation =
-	| "valid"
-	| "expired"
-	| "unavailable";
+export type BackendSessionValidation = "valid" | "expired" | "unavailable";
 
 const pendingValidations = new Map<
 	string,
-	Promise<BackendSessionValidation>
+	{ token: string; value: Promise<BackendSessionValidation> }
 >();
 
 async function fetchBackendSessionValidation({
@@ -20,7 +17,7 @@ async function fetchBackendSessionValidation({
 	token: string;
 }): Promise<BackendSessionValidation> {
 	try {
-		const response = await backendFetchRaw("/api/v0/auth/validate", {
+		const response = await backendFetchRaw("/api/v1/auth/validate", {
 			correlationId,
 			method: "GET",
 			token,
@@ -43,14 +40,14 @@ export function validateBackendSession({
 	token: string;
 }): Promise<BackendSessionValidation> {
 	const pending = pendingValidations.get(sid);
-	if (pending) {
-		return pending;
+	if (pending?.token === token) {
+		return pending.value;
 	}
 
 	const value = fetchBackendSessionValidation({ correlationId, token });
-	pendingValidations.set(sid, value);
+	pendingValidations.set(sid, { token, value });
 	void value.finally(() => {
-		if (pendingValidations.get(sid) === value) {
+		if (pendingValidations.get(sid)?.value === value) {
 			pendingValidations.delete(sid);
 		}
 	});

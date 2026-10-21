@@ -5,7 +5,7 @@ import {
 	getApiV0MetaLoginRateLimit,
 	getApiV1IamUsersByUserId,
 	postApiV1IamUsersByUserIdAnonymize,
-	postApiV0AuthLogoutUidByUserId,
+	postApiV1AuthLogoutUidByUserId,
 	getApiV1IamPrincipalsByPrincipalIdSettings,
 	putApiV1IamPrincipalsByPrincipalIdSettings,
 	patchApiV1IamPrincipalsByPrincipalIdSettings,
@@ -65,7 +65,7 @@ export async function anonymizeUser(id: number, etag: string) {
 		);
 }
 export async function revokeUserTokens(id: number) {
-	const response = await postApiV0AuthLogoutUidByUserId(id, credentials);
+	const response = await postApiV1AuthLogoutUidByUserId(id, credentials);
 	if (response.status !== 200)
 		throw new Error(
 			getApiErrorMessage(response.data, "Failed to revoke user tokens."),

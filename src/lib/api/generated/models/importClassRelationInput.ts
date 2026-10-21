@@ -8,10 +8,12 @@
 import type { ClassKey } from './classKey';
 import type { ImportWriteCondition } from './importWriteCondition';
 import type { ObjectRelationLimit } from './objectRelationLimit';
+import type { RelationLabel } from './relationLabel';
 import type { RestoreTimestamps } from './restoreTimestamps';
 
 export interface ImportClassRelationInput {
   condition?: ImportWriteCondition | null;
+  forward_label?: RelationLabel | null;
   /** @nullable */
   forward_template_alias?: string | null;
   from_class_key?: ClassKey | null;
@@ -20,6 +22,7 @@ export interface ImportClassRelationInput {
   from_max_relations?: ObjectRelationLimit | null;
   /** @nullable */
   ref?: string | null;
+  reverse_label?: RelationLabel | null;
   /** @nullable */
   reverse_template_alias?: string | null;
   timestamps?: RestoreTimestamps | null;

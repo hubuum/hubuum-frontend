@@ -7,7 +7,7 @@
  */
 
 /**
- * One tracked rate-limit scope (a user+IP pair, an IP, or a subnet).
+ * One tracked rate-limit scope (a user+IP pair, an account, an IP, or a subnet).
  */
 export interface LoginRateLimitEntryResponse {
   /**
@@ -32,6 +32,6 @@ export interface LoginRateLimitEntryResponse {
      * @minimum 0
      */
   lockout_level: number;
-  /** Scope kind: `user_ip`, `ip`, or `subnet`. */
+  /** Scope kind: `user_ip`, `account`, `ip`, or `subnet`. */
   scope: string;
 }

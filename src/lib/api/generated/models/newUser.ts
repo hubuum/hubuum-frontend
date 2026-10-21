@@ -17,6 +17,10 @@ export interface NewUser {
   /** @nullable */
   identity_scope?: string | null;
   name: string;
+  /**
+     * @minLength 1
+     * @maxLength 4096
+     */
   password: string;
   /** @nullable */
   proper_name?: string | null;

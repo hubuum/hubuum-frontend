@@ -2,6 +2,8 @@ import { emitKeypressEvents } from "node:readline";
 import { setTimeout as delay } from "node:timers/promises";
 import { isDeepStrictEqual } from "node:util";
 
+import { sessionTokenProvider } from "../session-token.mjs";
+
 import { requireValue } from "./core.mjs";
 
 export async function waitFor(label, operation, signal, timeout = 180_000) {
@@ -21,6 +23,7 @@ export function apiClient(base, token, signal) {
 		path,
 		{ method = "GET", body, headers = {}, allowed = [200] } = {},
 	) => {
+		const bearer = typeof token === "function" ? await token() : token;
 		const response = await fetch(`${base}${path}`, {
 			method,
 			redirect: "error",
@@ -29,7 +32,7 @@ export function apiClient(base, token, signal) {
 				: AbortSignal.timeout(30_000),
 			headers: {
 				"Content-Type": "application/json",
-				...(token ? { Authorization: `Bearer ${token}` } : {}),
+				...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
 				...headers,
 			},
 			body: body === undefined ? undefined : JSON.stringify(body),
@@ -55,20 +58,26 @@ export async function withAdmin(sandbox, signal, operation) {
 		base,
 		undefined,
 		signal,
-	)("/api/v0/auth/login", {
+	)("/api/v1/auth/login", {
 		method: "POST",
-		body: { name: "admin", password: match[1] },
+		body: { name: "admin", password: match[1], client_id: "hubuum-sandbox" },
 	});
 	requireValue(
-		typeof data?.token === "string" && data.token.length > 0,
+		typeof data?.access_token === "string" && data.access_token.length > 0,
 		"Administrator login did not return a token.",
 	);
-	const api = apiClient(base, data.token, signal);
+	const token = sessionTokenProvider(data, async (refresh_token) => {
+		const result = await apiClient(base, undefined, signal)("/api/v1/auth/refresh", {
+			method: "POST", body: { client_id: "hubuum-sandbox", refresh_token },
+		});
+		return result.data;
+	});
+	const api = apiClient(base, token, signal);
 	try {
 		return await operation(api);
 	} finally {
 		// Revoke even when the setup operation was interrupted.
-		await apiClient(base, data.token)("/api/v0/auth/logout", {
+		await apiClient(base, token)("/api/v1/auth/logout", {
 			method: "POST",
 			allowed: [200, 204, 401],
 		}).catch(() => {});

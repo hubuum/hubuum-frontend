@@ -1,3 +1,4 @@
+import { sessionCredentials } from "@/test/session-fixtures";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,6 +19,7 @@ vi.mock("@/lib/auth/session", () => ({
 
 import { POST } from "@/app/%5Fhubuum-bff/auth/login/route";
 
+const pair = sessionCredentials({ access_token: "issued-token" });
 const loginUrl = "https://console.example/_hubuum-bff/auth/login";
 
 function jsonLoginRequest(headers: HeadersInit = {}): NextRequest {
@@ -41,9 +43,10 @@ function formLoginRequest(headers: HeadersInit = {}): NextRequest {
 
 describe("login route request origin", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		vi.resetAllMocks();
+		mocks.createSession.mockResolvedValue("session-id");
 		mocks.backendFetchRaw
-			.mockResolvedValueOnce(Response.json({ token: "issued-token" }))
+			.mockResolvedValueOnce(Response.json(pair))
 			.mockResolvedValueOnce(
 				Response.json({
 					principal: { identity_scope: "local", name: "admin" },
@@ -57,6 +60,7 @@ describe("login route request origin", () => {
 		);
 
 		expect(response.status).toBe(403);
+		expect(response.headers.get("cache-control")).toContain("no-store");
 		expect(mocks.backendFetchRaw).not.toHaveBeenCalled();
 		expect(mocks.createSession).not.toHaveBeenCalled();
 	});
@@ -70,6 +74,7 @@ describe("login route request origin", () => {
 		);
 
 		expect(response.status).toBe(403);
+		expect(response.headers.get("cache-control")).toContain("no-store");
 		expect(mocks.backendFetchRaw).not.toHaveBeenCalled();
 		expect(mocks.createSession).not.toHaveBeenCalled();
 	});
@@ -83,6 +88,7 @@ describe("login route request origin", () => {
 		);
 
 		expect(response.status).toBe(403);
+		expect(response.headers.get("cache-control")).toContain("no-store");
 		expect(mocks.backendFetchRaw).not.toHaveBeenCalled();
 	});
 
@@ -90,6 +96,7 @@ describe("login route request origin", () => {
 		const response = await POST(jsonLoginRequest());
 
 		expect(response.status).toBe(403);
+		expect(response.headers.get("cache-control")).toContain("no-store");
 		expect(mocks.backendFetchRaw).not.toHaveBeenCalled();
 	});
 
@@ -98,14 +105,17 @@ describe("login route request origin", () => {
 		const response = await POST(request);
 
 		expect(response.status).toBe(200);
-		expect(mocks.backendFetchRaw).toHaveBeenCalledTimes(2);
-		expect(mocks.createSession).toHaveBeenCalledWith(
-			"issued-token",
-			"admin",
+		expect(response.headers.get("cache-control")).toContain("no-store");
+		expect(await response.json()).toEqual({ authenticated: true });
+		expect(mocks.backendFetchRaw.mock.calls[0][1].body).toContain(
+			"hubuum-frontend",
 		);
+		expect(mocks.backendFetchRaw).toHaveBeenCalledTimes(2);
+		expect(mocks.createSession).toHaveBeenCalledWith(pair, "admin");
 		expect(mocks.setSessionCookie).toHaveBeenCalledWith(
 			response,
 			"session-id",
+			Date.parse(pair.refresh_expires_at),
 			request,
 		);
 	});
@@ -116,8 +126,42 @@ describe("login route request origin", () => {
 		);
 
 		expect(response.status).toBe(303);
+		expect(response.headers.get("cache-control")).toContain("no-store");
 		expect(response.headers.get("location")).toBe("/app");
 		expect(mocks.backendFetchRaw).toHaveBeenCalledTimes(2);
 		expect(mocks.createSession).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		["invalid input", 400],
+		["rejected credentials", 401],
+		["invalid upstream response", 502],
+		["unavailable store", 503],
+	] as const)("does not cache %s", async (scenario, status) => {
+		let request = jsonLoginRequest({ Origin: "https://console.example" });
+		if (scenario === "invalid input") {
+			request = new NextRequest(loginUrl, {
+				method: "POST",
+				headers: {
+					Origin: "https://console.example",
+					"Content-Type": "application/json",
+				},
+				body: "{}",
+			});
+		} else if (scenario === "rejected credentials") {
+			mocks.backendFetchRaw
+				.mockReset()
+				.mockResolvedValue(Response.json({}, { status: 401 }));
+		} else if (scenario === "invalid upstream response") {
+			mocks.backendFetchRaw.mockReset().mockResolvedValue(Response.json({}));
+		} else {
+			mocks.backendFetchRaw.mockResolvedValue(
+				new Response(null, { status: 204 }),
+			);
+			mocks.createSession.mockRejectedValue(new Error("Store unavailable"));
+		}
+		const response = await POST(request);
+		expect(response.status).toBe(status);
+		expect(response.headers.get("cache-control")).toContain("no-store");
 	});
 });

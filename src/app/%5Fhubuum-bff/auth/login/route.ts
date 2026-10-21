@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { backendFetchRaw } from "@/lib/api/backend";
-import type {
-	ApiErrorResponse,
-	LoginResponse,
-} from "@/lib/api/generated/models";
+import {
+	parseSessionResponse,
+	SESSION_CLIENT_ID,
+} from "@/lib/auth/session-credentials";
 import { createSession, setSessionCookie } from "@/lib/auth/session";
 import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
@@ -43,7 +43,7 @@ const loginSchema = z
 		message: "name is required",
 	});
 
-const BACKEND_LOGIN_PATH = "/api/v0/auth/login";
+const BACKEND_LOGIN_PATH = "/api/v1/auth/login";
 
 type ParsedCredentials =
 	| { credentials: ScopedLoginCredentials; fromForm: boolean }
@@ -101,7 +101,7 @@ async function revokeIssuedToken(
 	token: string,
 	correlationId: string,
 ): Promise<void> {
-	await backendFetchRaw("/api/v0/auth/logout", {
+	await backendFetchRaw("/api/v1/auth/logout", {
 		correlationId,
 		method: "POST",
 		token,
@@ -114,7 +114,9 @@ export async function POST(request: NextRequest) {
 
 	const correlationId =
 		normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER)) ?? "-";
-	const returnTo = normalizeReturnPath(request.nextUrl.searchParams.get("next"));
+	const returnTo = normalizeReturnPath(
+		request.nextUrl.searchParams.get("next"),
+	);
 	console.info(
 		`[hubuum-auth][cid=${correlationId}] login request received (${request.method} ${request.nextUrl.pathname})`,
 	);
@@ -135,7 +137,7 @@ export async function POST(request: NextRequest) {
 				error: "BadRequest",
 				message: "Invalid login payload",
 			},
-			{ status: 400 },
+			{ status: 400, headers: { "Cache-Control": "no-store" } },
 		);
 	}
 
@@ -145,13 +147,10 @@ export async function POST(request: NextRequest) {
 		headers: {
 			"Content-Type": "application/json",
 		},
-		body: JSON.stringify(credentials),
+		body: JSON.stringify({ ...credentials, client_id: SESSION_CLIENT_ID }),
 	});
 
-	const payload = (await upstream.json().catch(() => null)) as
-		| LoginResponse
-		| ApiErrorResponse
-		| null;
+	const payload: unknown = await upstream.json().catch(() => null);
 	console.info(
 		`[hubuum-auth][cid=${correlationId}] backend login status=${upstream.status}`,
 	);
@@ -161,25 +160,26 @@ export async function POST(request: NextRequest) {
 			return seeOther(loginErrorLocation("invalid_credentials", returnTo));
 		}
 		return NextResponse.json(
-			payload ?? {
+			{
 				error: "AuthenticationFailed",
 				message: "Login failed",
 			},
-			{ status: upstream.status },
+			{ status: upstream.status, headers: { "Cache-Control": "no-store" } },
 		);
 	}
 
-	const token = (payload as LoginResponse | null)?.token;
-	if (!token) {
+	const pair = parseSessionResponse(payload);
+	if (!pair) {
 		return NextResponse.json(
 			{
 				error: "AuthProtocolError",
-				message: "Backend did not return a token",
+				message: "Backend returned an invalid session",
 			},
-			{ status: 502 },
+			{ status: 502, headers: { "Cache-Control": "no-store" } },
 		);
 	}
 
+	const token = pair.access_token;
 	const meResponse = await backendFetchRaw("/api/v1/iam/me", {
 		correlationId,
 		method: "GET",
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
 				message:
 					"The requested identity scope is unavailable or unsupported by this server.",
 			},
-			{ status: 400 },
+			{ status: 400, headers: { "Cache-Control": "no-store" } },
 		);
 	}
 	const sessionIdentity = identity ?? {
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
 
 	let sid: string;
 	try {
-		sid = await createSession(token, sessionUsername);
+		sid = await createSession(pair, sessionUsername);
 	} catch {
 		await revokeIssuedToken(token, correlationId);
 		console.error(
@@ -236,13 +236,22 @@ export async function POST(request: NextRequest) {
 				error: "SessionStoreUnavailable",
 				message: "The frontend session store is unavailable.",
 			},
-			{ status: 503 },
+			{ status: 503, headers: { "Cache-Control": "no-store" } },
 		);
 	}
 	const response = fromForm
 		? seeOther(returnTo)
 		: NextResponse.json({ authenticated: true }, { status: 200 });
-	setSessionCookie(response, sid, request);
+	response.headers.set("Cache-Control", "no-store");
+	setSessionCookie(
+		response,
+		sid,
+		Math.min(
+			Date.parse(pair.refresh_expires_at),
+			Date.parse(pair.absolute_expires_at),
+		),
+		request,
+	);
 	console.info(
 		`[hubuum-auth][cid=${correlationId}] login succeeded and session created (fromForm=${String(fromForm)})`,
 	);

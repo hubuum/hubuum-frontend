@@ -44,8 +44,12 @@ grep -Fq "HUBUUM_FRONTEND_IMAGE=ghcr.io/hubuum/hubuum-frontend:$tag" .env.quicks
 
 if [[ "$compat_backend_image" =~ :(v[0-9]+\.[0-9]+\.[0-9]+)@sha256:[0-9a-f]{64}$ ]]; then
   compat_server_tag="${BASH_REMATCH[1]}"
+elif [[ $# -eq 0 && "$compat_backend_image" =~ :(sha-[0-9a-f]{40})@sha256:[0-9a-f]{64}$ ]]; then
+  # Unreleased coordinated API changes may require an immutable main snapshot.
+  # Tagged frontend releases still require a released server above.
+  compat_server_tag="${BASH_REMATCH[1]}"
 else
-  echo "CI compatibility image is not pinned to a versioned server digest." >&2
+  echo "CI compatibility image must pin a released server digest (or a full commit snapshot for unreleased main)." >&2
   exit 1
 fi
 

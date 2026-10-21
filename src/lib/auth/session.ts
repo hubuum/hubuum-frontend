@@ -1,5 +1,8 @@
 import "server-only";
 
+import type { SessionResponse } from "@/lib/api/generated/models";
+import { sessionPayload } from "@/lib/auth/session-credentials";
+import { refreshSession } from "@/lib/auth/session-refresh";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { invalidateBackendSessionValidation } from "@/lib/auth/backend-session-validation";
@@ -55,32 +58,30 @@ function cookieSettings(request?: NextRequest) {
 
 async function loadSession(sid: string): Promise<ActiveSession | null> {
 	const store = getSessionStore();
-	const payload = await store.get(sid);
-	if (!payload) {
-		return null;
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		const stored = await store.get(sid);
+		if (!stored) return null;
+		const payload = await refreshSession(store, sid, stored);
+		if (!payload) return null;
+		if (payload.generation !== stored.generation) {
+			invalidateBackendSessionValidation(sid);
+			invalidateProtectedLayoutBootstrap(sid);
+		}
+		const now = Date.now();
+		if (
+			!shouldTouchSession(
+				payload.lastSeen,
+				now,
+				getServerEnv().SESSION_TTL_SECONDS,
+			)
+		) {
+			return { sid, ...payload };
+		}
+		const touched: SessionPayload = { ...payload, lastSeen: now };
+		if (await store.touch(sid, touched)) return { sid, ...touched };
+		// A concurrent rotation won; reload its complete pair before proceeding.
 	}
-
-	const now = Date.now();
-	const ttlSeconds = getServerEnv().SESSION_TTL_SECONDS;
-	if (!shouldTouchSession(payload.lastSeen, now, ttlSeconds)) {
-		return {
-			sid,
-			...payload,
-		};
-	}
-
-	const touched: SessionPayload = {
-		...payload,
-		lastSeen: now,
-	};
-	if (!(await store.touch(sid, touched))) {
-		return null;
-	}
-
-	return {
-		sid,
-		...touched,
-	};
+	return null;
 }
 
 async function hydrateSession(sid: string): Promise<ActiveSession | null> {
@@ -102,19 +103,11 @@ async function hydrateSession(sid: string): Promise<ActiveSession | null> {
 }
 
 export async function createSession(
-	token: string,
+	credentials: SessionResponse,
 	username?: string,
 ): Promise<string> {
 	const sid = crypto.randomUUID();
-	const now = Date.now();
-	const payload: SessionPayload = {
-		token,
-		username,
-		createdAt: now,
-		lastSeen: now,
-	};
-
-	await getSessionStore().create(sid, payload);
+	await getSessionStore().create(sid, sessionPayload(credentials, username));
 	return sid;
 }
 
@@ -149,9 +142,19 @@ export async function destroySession(sid: string): Promise<void> {
 export function setSessionCookie(
 	response: NextResponse,
 	sid: string,
+	expiresAt: number,
 	request?: NextRequest,
 ): void {
-	const settings = cookieSettings(request);
+	const settings = {
+		...cookieSettings(request),
+		maxAge: Math.max(
+			0,
+			Math.min(
+				getServerEnv().SESSION_TTL_SECONDS,
+				Math.floor((expiresAt - Date.now()) / 1000),
+			),
+		),
+	};
 	response.cookies.set(SESSION_COOKIE_NAME, sid, settings);
 	response.cookies.set(LEGACY_SESSION_TOKEN_COOKIE_NAME, "", {
 		...settings,

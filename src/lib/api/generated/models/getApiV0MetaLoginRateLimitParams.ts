@@ -12,7 +12,7 @@ export type GetApiV0MetaLoginRateLimitParams = {
  */
 include?: string;
 /**
- * Filter by scope kind: `user_ip`, `ip`, or `subnet`
+ * Filter by scope kind: `user_ip`, `account`, `ip`, or `subnet`
  */
 scope?: string;
 /**

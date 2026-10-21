@@ -1,3 +1,4 @@
+import { sessionCredentials } from "@/test/session-fixtures";
 import { NextRequest, NextResponse } from "next/server";
 import {
 	afterAll,
@@ -29,14 +30,16 @@ const valkeyMock = vi.hoisted(() => {
 			return "OK";
 		},
 	);
+	const evalScript = vi.fn(async () => 0);
 	const del = vi.fn(async (key: string) => (state.delete(key) ? 1 : 0));
 
-	return { control, del, get, set, state };
+	return { control, del, get, set, state, evalScript };
 });
 
 vi.mock("@/lib/valkey", () => ({
 	getValkeyClient: () => ({
 		del: valkeyMock.del,
+		eval: valkeyMock.evalScript,
 		get: valkeyMock.get,
 		set: valkeyMock.set,
 	}),
@@ -68,15 +71,24 @@ describe("server-side sessions", () => {
 			setSessionCookie,
 		} = await import("@/lib/auth/session");
 		const token = "opaque-backend-token";
-		const sid = await createSession(token, "local/admin");
+		const sid = await createSession(
+			sessionCredentials({ access_token: token }),
+			"local/admin",
+		);
 		const request = new NextRequest("http://localhost/login");
 		const response = NextResponse.json({ authenticated: true });
 
-		setSessionCookie(response, sid, request);
+		setSessionCookie(response, sid, Date.now() + 120_000, request);
 
 		expect(response.cookies.get(SESSION_COOKIE_NAME)?.value).toBe(sid);
 		expect(response.cookies.get("hubuum.token")?.value).toBe("");
 		expect(response.headers.get("set-cookie")).not.toContain(token);
+		expect(response.headers.get("set-cookie")).not.toContain(
+			"opaque-refresh-token",
+		);
+		expect(
+			response.cookies.get(SESSION_COOKIE_NAME)?.maxAge,
+		).toBeLessThanOrEqual(120);
 
 		const authenticatedRequest = new NextRequest(
 			"http://localhost/_hubuum-bff/auth/session",
@@ -93,7 +105,7 @@ describe("server-side sessions", () => {
 	it("coalesces parallel hydration and avoids refreshing a recent session", async () => {
 		const { SESSION_COOKIE_NAME, createSession, getSessionFromRequest } =
 			await import("@/lib/auth/session");
-		const sid = await createSession("opaque-backend-token", "local/admin");
+		const sid = await createSession(sessionCredentials(), "local/admin");
 		const request = new NextRequest(
 			"http://localhost/_hubuum-bff/auth/session",
 			{ headers: { Cookie: `${SESSION_COOKIE_NAME}=${sid}` } },
@@ -116,7 +128,7 @@ describe("server-side sessions", () => {
 	it("does not recreate a session deleted while a refresh is in flight", async () => {
 		const { SESSION_COOKIE_NAME, createSession, getSessionFromRequest } =
 			await import("@/lib/auth/session");
-		const sid = await createSession("opaque-backend-token", "local/admin");
+		const sid = await createSession(sessionCredentials(), "local/admin");
 		const [sessionKey, rawPayload] = [...valkeyMock.state.entries()][0] ?? [];
 		expect(sessionKey).toBeDefined();
 		expect(rawPayload).toBeDefined();
@@ -136,7 +148,6 @@ describe("server-side sessions", () => {
 
 		expect(await getSessionFromRequest(request)).toBeNull();
 		expect(valkeyMock.state.has(sessionKey)).toBe(false);
-		expect(valkeyMock.set).toHaveBeenCalledTimes(2);
-		expect(valkeyMock.set.mock.calls[1]).toContain("XX");
+		expect(valkeyMock.evalScript).toHaveBeenCalledOnce();
 	});
 });

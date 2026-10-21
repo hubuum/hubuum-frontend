@@ -6,15 +6,18 @@
  * OpenAPI spec version: 0.0.19
  */
 import type { ObjectRelationLimit } from './objectRelationLimit';
+import type { RelationLabel } from './relationLabel';
 
 /**
  * To create new relations between classes from within a class
  * we only need the id of the class we want to relate to.
  */
 export interface NewHubuumClassRelationFromClass {
+  forward_label?: RelationLabel | null;
   /** @nullable */
   forward_template_alias?: string | null;
   from_max_relations?: ObjectRelationLimit | null;
+  reverse_label?: RelationLabel | null;
   /** @nullable */
   reverse_template_alias?: string | null;
   to_hubuum_class_id: number;

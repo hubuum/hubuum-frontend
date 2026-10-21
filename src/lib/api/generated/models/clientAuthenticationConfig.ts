@@ -18,4 +18,8 @@ export interface ClientAuthenticationConfig {
      * @minimum 1
      */
   max_token_lifetime_hours: number;
+  session_absolute_seconds: number;
+  session_access_seconds: number;
+  session_idle_seconds: number;
+  session_retention_seconds: number;
 }

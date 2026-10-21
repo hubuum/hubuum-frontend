@@ -16,6 +16,11 @@ export interface QueryObservationConfig {
   max_predicates_per_query: number;
   /** @minimum 0 */
   retention_seconds: number;
+  /**
+     * Shared runtime override; null means the process startup setting applies.
+     * @nullable
+     */
+  runtime_override?: boolean | null;
   /** @minimum 0 */
   sample_every: number;
 }

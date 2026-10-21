@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
 
 env:
-  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:v0.0.19@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225
+  COMPAT_BACKEND_IMAGE: ghcr.io/hubuum/hubuum-server:sha-39e33bc47e2571765c8579420d503fed9cd8fd68@sha256:d0df2f53068ed0e442f5bfa03f120101c972d6e12c270e6ef9f53ae7563d4afc
   IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
@@ -39,7 +39,9 @@ jobs:
         with:
           node-version: '24'
       - name: Verify release metadata
-        run: bash scripts/check-release-readiness.sh
+        run: |
+          node --test scripts/check-release-readiness.test.mjs
+          bash scripts/check-release-readiness.sh
       - name: Test CI selection and gate
         run: python3 scripts/test-ci-policy.py
       - name: Classify changes
@@ -65,6 +67,13 @@ jobs:
     needs: changes
     name: Application validation
     runs-on: ubuntu-latest
+    services:
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 2s --health-timeout 2s --health-retries 30
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -81,6 +90,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Test
+        env:
+          HUBUUM_TEST_VALKEY_URL: redis://127.0.0.1:6379/0
         run: npm test
       - name: Test performance budget tooling
         run: npm run test:performance-budget
@@ -117,7 +128,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Test against Hubuum Server v0.0.19
+      - name: Test against the pinned Hubuum Server contract
         env:
           HUBUUM_LIVE_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: npm run test:live-backend
@@ -260,7 +271,7 @@ jobs:
           HUBUUM_FRONTEND_IMAGE: hubuum-frontend:ci
           HUBUUM_FRONTEND_PORT: 13001
         run: bash scripts/quickstart-smoke.sh
-      - name: Smoke test frontend BFF against Hubuum Server v0.0.19
+      - name: Smoke test frontend BFF against the pinned Hubuum Server
         env:
           HUBUUM_COMPAT_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: bash scripts/release-stack-smoke.sh

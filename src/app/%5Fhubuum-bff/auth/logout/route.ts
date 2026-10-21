@@ -13,7 +13,7 @@ import {
 	normalizeCorrelationId,
 } from "@/lib/correlation";
 
-const BACKEND_LOGOUT_PATH = "/api/v0/auth/logout";
+const BACKEND_LOGOUT_PATH = "/api/v1/auth/logout";
 
 async function performLogout(request: NextRequest) {
 	const correlationId =
@@ -25,13 +25,19 @@ async function performLogout(request: NextRequest) {
 	const all = request.nextUrl.searchParams.get("all") === "true";
 	if (all && !session)
 		return NextResponse.json(
-			{ message: "Sign in before revoking all tokens." },
-			{ status: 401, headers: { [CORRELATION_ID_HEADER]: correlationId } },
+			{ message: "Sign in before signing out of all sessions." },
+			{
+				status: 401,
+				headers: {
+					[CORRELATION_ID_HEADER]: correlationId,
+					"Cache-Control": "no-store",
+				},
+			},
 		);
 
 	if (session) {
 		const upstream = await backendFetchRaw(
-			all ? "/api/v0/auth/logout_all" : BACKEND_LOGOUT_PATH,
+			all ? "/api/v1/auth/logout_all" : BACKEND_LOGOUT_PATH,
 			{
 				correlationId,
 				method: "POST",
@@ -44,8 +50,14 @@ async function performLogout(request: NextRequest) {
 
 		if (all && !upstream?.ok) {
 			return NextResponse.json(
-				{ message: "Could not revoke all tokens. Try again." },
-				{ status: 502, headers: { [CORRELATION_ID_HEADER]: correlationId } },
+				{ message: "Could not sign out of all sessions. Try again." },
+				{
+					status: 502,
+					headers: {
+						[CORRELATION_ID_HEADER]: correlationId,
+						"Cache-Control": "no-store",
+					},
+				},
 			);
 		}
 		await destroySession(session.sid);
@@ -60,7 +72,10 @@ async function performLogout(request: NextRequest) {
 	};
 	const response = NextResponse.json(payload, {
 		status: 200,
-		headers: { [CORRELATION_ID_HEADER]: correlationId },
+		headers: {
+			[CORRELATION_ID_HEADER]: correlationId,
+			"Cache-Control": "no-store",
+		},
 	});
 	clearSessionCookie(response, request);
 	console.info(`[hubuum-auth][cid=${correlationId}] logout completed`);
@@ -82,6 +97,7 @@ export async function GET(request: NextRequest) {
 			status: 405,
 			headers: {
 				Allow: "POST",
+				"Cache-Control": "no-store",
 				[CORRELATION_ID_HEADER]: correlationId,
 			},
 		},

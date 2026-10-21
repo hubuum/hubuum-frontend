@@ -1,3 +1,5 @@
+import { sessionCredentials } from "@/test/session-fixtures";
+import { sessionPayload } from "@/lib/auth/session-credentials";
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -21,6 +23,7 @@ import {
 import { RawReportError } from "@/lib/server-template-report";
 
 const session = {
+	...sessionPayload(sessionCredentials()),
 	sid: "session-id",
 	token: "backend-token",
 	username: "admin",

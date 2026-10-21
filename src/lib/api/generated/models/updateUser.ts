@@ -15,7 +15,11 @@
 export interface UpdateUser {
   /** @nullable */
   email?: string | null;
-  /** @nullable */
+  /**
+     * @minLength 1
+     * @maxLength 4096
+     * @nullable
+     */
   password?: string | null;
   /** @nullable */
   proper_name?: string | null;

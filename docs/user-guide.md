@@ -42,8 +42,8 @@ so the administrator can reload and reconcile it.
 User details also expose settings, direct permissions, **Revoke all tokens**, and
 **Anonymize user**. Anonymization permanently removes personal information and
 disables login while retaining historical references. Both actions require
-confirmation. **Account → Tokens → Revoke all tokens** revokes all of your own
-API tokens and sessions, including the current session. Failed revocation keeps
+confirmation. **Account → Tokens → Sign out of all sessions** ends your interactive
+sessions, including the current session, while preserving personal access tokens. Failed revocation keeps
 the current browser session available for retry.
 
 ## Scoped identities

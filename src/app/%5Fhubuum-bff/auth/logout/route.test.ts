@@ -35,6 +35,7 @@ describe("logout route", () => {
 		);
 
 		expect(response.status).toBe(405);
+		expect(response.headers.get("cache-control")).toContain("no-store");
 		expect(response.headers.get("allow")).toBe("POST");
 		expect(await response.json()).toEqual({
 			error: "MethodNotAllowed",
@@ -57,6 +58,7 @@ describe("logout route", () => {
 		const response = await POST(request);
 
 		expect(response.status).toBe(200);
+		expect(response.headers.get("cache-control")).toContain("no-store");
 		expect(await response.json()).toEqual({ message: "Logged out." });
 		expect(mocks.getSessionFromRequest).toHaveBeenCalledWith(request);
 		expect(mocks.backendFetchRaw).not.toHaveBeenCalled();
@@ -79,8 +81,9 @@ describe("all-token logout", () => {
 		});
 		const response = await POST(request());
 		expect(response.status).toBe(200);
+		expect(response.headers.get("cache-control")).toContain("no-store");
 		expect(mocks.backendFetchRaw).toHaveBeenCalledWith(
-			"/api/v0/auth/logout_all",
+			"/api/v1/auth/logout_all",
 			expect.objectContaining({ method: "POST", token: "server-only-token" }),
 		);
 		expect(mocks.destroySession).toHaveBeenCalledWith("local-session");

@@ -8,12 +8,14 @@ workflows, use the [user guide](user-guide.md).
 
 Browser clients never receive backend tokens directly.
 
-1. `POST /_hubuum-bff/auth/login` forwards credentials to Hubuum `/api/v0/auth/login`.
-2. Hubuum returns an opaque token.
-3. Frontend creates a session id (`hubuum.sid`) and stores token in Valkey under that key.
+1. `POST /_hubuum-bff/auth/login` forwards credentials to Hubuum `/api/v1/auth/login`.
+2. Hubuum returns a short-lived access token and a single-use refresh token.
+3. Frontend creates a session id (`hubuum.sid`) and stores the complete credential pair in Valkey under that key.
 4. Browser gets only the `HttpOnly` session cookie.
 5. Browser data requests go via `/_hubuum-bff/hubuum/<path>`.
-6. Proxy reads session from Valkey and injects bearer token for upstream Hubuum request.
+6. The BFF rotates expiring credentials with distributed coordination in Valkey, then injects the access token for the upstream request.
+
+See [interactive sessions](session-security.md) for rotation, expiry and upgrade behavior.
 
 When the backend rejects that bearer token with `401 Unauthorized`, the BFF
 deletes the Valkey session and clears the browser cookie. Protected navigations
@@ -62,9 +64,9 @@ The frontend owns only routes under `/_hubuum-bff/...`.
 
 | Frontend route | Purpose |
 | --- | --- |
-| `/_hubuum-bff/auth/login` | Accepts browser login payloads, calls backend `/api/v0/auth/login`, and creates the frontend session cookie. |
-| `/_hubuum-bff/auth/providers` | Discovers public authentication providers from backend `/api/v0/auth/providers`; the login form falls back to a manual identity-scope field when unavailable. |
-| `/_hubuum-bff/auth/logout` | Logs out locally and asks the backend to revoke the current token. |
+| `/_hubuum-bff/auth/login` | Accepts browser login payloads, calls backend `/api/v1/auth/login`, and creates the frontend session cookie. |
+| `/_hubuum-bff/auth/providers` | Discovers public authentication providers from backend `/api/v1/auth/providers`; the login form falls back to a manual identity-scope field when unavailable. |
+| `/_hubuum-bff/auth/logout` | Logs out locally and asks the backend to revoke the current session family. |
 | `/_hubuum-bff/auth/session` | Readiness-friendly session check for the browser session. |
 | `/_hubuum-bff/hubuum/api/v1/restores/<id>/status` | Capability-authenticated restore status, available after database replacement invalidates bearer sessions. |
 | `/_hubuum-bff/hubuum/<backend-path>` | Generic authenticated BFF proxy. For example, `/_hubuum-bff/hubuum/api/v1/classes` calls backend `/api/v1/classes` with the server-side bearer token. |

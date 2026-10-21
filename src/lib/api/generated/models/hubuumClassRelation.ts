@@ -6,15 +6,18 @@
  * OpenAPI spec version: 0.0.19
  */
 import type { ObjectRelationLimit } from './objectRelationLimit';
+import type { RelationLabel } from './relationLabel';
 import type { ResourceRevision } from './resourceRevision';
 
 export interface HubuumClassRelation {
   created_at: string;
+  forward_label?: RelationLabel | null;
   /** @nullable */
   forward_template_alias?: string | null;
   from_hubuum_class_id: number;
   from_max_relations?: ObjectRelationLimit | null;
   id: number;
+  reverse_label?: RelationLabel | null;
   /** @nullable */
   reverse_template_alias?: string | null;
   revision: ResourceRevision;

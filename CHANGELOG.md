@@ -6,6 +6,17 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** Interactive sign-in requires the server's `/api/v1/auth` session
+  API. Upgrade the server and frontend together; users must sign in again after
+  deployment. Legacy frontend session records are no longer accepted.
+- Keep short-lived access tokens and rotating refresh tokens in Valkey, with
+  atomic coordination across frontend instances. Failed or uncertain refreshes
+  require sign-in; cookie and store expiry cannot outlive backend session limits.
+- Signing out of all sessions preserves separately issued personal access tokens.
+- Mark login and logout responses, including rejected requests, as non-cacheable.
+
 ## [0.0.21] - 2026-10-19
 
 ### Added

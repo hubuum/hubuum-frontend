@@ -150,6 +150,15 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 		// Next may have already decoded a literal percent sign in a resource name.
 		// Keep the existing proxy behavior for such paths.
 	}
+	if (/^\/api\/v[01]\/auth\/(?:login|refresh)(?:\/|$)/.test(normalizedPath)) {
+		const response = NextResponse.json(
+			{ message: "Use the frontend sign-in flow." },
+			{ status: 403, headers: { [CORRELATION_ID_HEADER]: correlationId } },
+		);
+		protectPrivateResponse(response.headers);
+		return response;
+	}
+
 	if (
 		method !== "GET" &&
 		/^\/api\/v1\/iam\/credential-approvals(?:\/|$)/.test(normalizedPath)

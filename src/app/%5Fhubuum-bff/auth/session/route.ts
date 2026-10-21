@@ -15,16 +15,22 @@ export async function GET(request: NextRequest) {
 		console.info(
 			`[hubuum-auth][cid=${correlationId}] session check: unauthenticated`,
 		);
-		return NextResponse.json({ authenticated: false }, { status: 401 });
+		return NextResponse.json(
+			{ authenticated: false },
+			{ status: 401, headers: { "Cache-Control": "private, no-store" } },
+		);
 	}
 
 	console.info(
 		`[hubuum-auth][cid=${correlationId}] session check: authenticated`,
 	);
-	return NextResponse.json({
-		authenticated: true,
-		username: session.username ?? null,
-		createdAt: session.createdAt,
-		lastSeen: session.lastSeen,
-	});
+	return NextResponse.json(
+		{
+			authenticated: true,
+			username: session.username ?? null,
+			createdAt: session.createdAt,
+			lastSeen: session.lastSeen,
+		},
+		{ headers: { "Cache-Control": "private, no-store" } },
+	);
 }
