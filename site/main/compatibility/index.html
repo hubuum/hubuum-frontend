@@ -564,6 +564,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#interactive-session-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Interactive session upgrade
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#advanced-search-capabilities" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -907,6 +918,33 @@
     
   
   Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Session security
 
     
   </span>
@@ -1432,6 +1470,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#interactive-session-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Interactive session upgrade
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#advanced-search-capabilities" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1595,8 +1644,8 @@ should pin both components to explicit versions.</p>
 <tbody>
 <tr>
 <td><code>main</code> (unreleased)</td>
-<td><code>v0.0.19</code></td>
-<td><code>ghcr.io/hubuum/hubuum-server:v0.0.19</code></td>
+<td><code>sha-39e33bc47e2571765c8579420d503fed9cd8fd68</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:sha-39e33bc47e2571765c8579420d503fed9cd8fd68</code></td>
 </tr>
 <tr>
 <td><code>v0.0.21</code></td>
@@ -1705,10 +1754,21 @@ should pin both components to explicit versions.</p>
 </tr>
 </tbody>
 </table>
-<p>Required checks use the immutable server image for the selected release.
-For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
+<p>Required checks use the immutable image for the selected compatibility target.
+For unreleased <code>main</code>, it is
+<code>ghcr.io/hubuum/hubuum-server:sha-39e33bc47e2571765c8579420d503fed9cd8fd68@sha256:d0df2f53068ed0e442f5bfa03f120101c972d6e12c270e6ef9f53ae7563d4afc</code>.</p>
+<p>For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
 <code>ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225</code>.
 Scheduled tests against server <code>main</code> do not change a release's declared target.</p>
+<h2 id="interactive-session-upgrade">Interactive session upgrade<a class="headerlink" href="#interactive-session-upgrade" title="Permanent link">&para;</a></h2>
+<p>Unreleased frontend builds require the versioned login and rotating-refresh
+contract from <a href="https://github.com/hubuum/hubuum/pull/483">server #483</a>.
+The released Server v0.0.19 image does not provide this contract. Apply the server
+migration and role grants with older API and worker replicas stopped, then start
+matching binaries and upgrade the frontend. Clear existing BFF session records and sign in again. PATs and service credentials remain valid;
+interactive sign-out does not revoke them. See <a href="../session-security/">session security</a>.</p>
+<p>The new server also emits backup format 10. Upgrade restore executors with the
+server, and retain a pre-upgrade backup and matching binaries for rollback.</p>
 <h2 id="advanced-search-capabilities">Advanced search capabilities<a class="headerlink" href="#advanced-search-capabilities" title="Permanent link">&para;</a></h2>
 <p>The builder uses version 1 of <code>POST /api/v1/search</code>, available in the supported
 Server v0.0.19 contract. Its explicit target/field/operator matrix and limits are

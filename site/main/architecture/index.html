@@ -753,6 +753,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../session-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Session security
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../deployment/" class="md-nav__link">
         
   
@@ -1412,13 +1439,14 @@ workflows, use the <a href="../user-guide/">user guide</a>.</p>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <p>Browser clients never receive backend tokens directly.</p>
 <ol>
-<li><code>POST /_hubuum-bff/auth/login</code> forwards credentials to Hubuum <code>/api/v0/auth/login</code>.</li>
-<li>Hubuum returns an opaque token.</li>
-<li>Frontend creates a session id (<code>hubuum.sid</code>) and stores token in Valkey under that key.</li>
+<li><code>POST /_hubuum-bff/auth/login</code> forwards credentials to Hubuum <code>/api/v1/auth/login</code>.</li>
+<li>Hubuum returns a short-lived access token and a single-use refresh token.</li>
+<li>Frontend creates a session id (<code>hubuum.sid</code>) and stores the complete credential pair in Valkey under that key.</li>
 <li>Browser gets only the <code>HttpOnly</code> session cookie.</li>
 <li>Browser data requests go via <code>/_hubuum-bff/hubuum/&lt;path&gt;</code>.</li>
-<li>Proxy reads session from Valkey and injects bearer token for upstream Hubuum request.</li>
+<li>The BFF rotates expiring credentials with distributed coordination in Valkey, then injects the access token for the upstream request.</li>
 </ol>
+<p>See <a href="../session-security/">interactive sessions</a> for rotation, expiry and upgrade behavior.</p>
 <p>When the backend rejects that bearer token with <code>401 Unauthorized</code>, the BFF
 deletes the Valkey session and clears the browser cookie. Protected navigations
 and client-side requests then return directly to <code>/login</code>, preserve the current
@@ -1466,15 +1494,15 @@ times out.</p>
 <tbody>
 <tr>
 <td><code>/_hubuum-bff/auth/login</code></td>
-<td>Accepts browser login payloads, calls backend <code>/api/v0/auth/login</code>, and creates the frontend session cookie.</td>
+<td>Accepts browser login payloads, calls backend <code>/api/v1/auth/login</code>, and creates the frontend session cookie.</td>
 </tr>
 <tr>
 <td><code>/_hubuum-bff/auth/providers</code></td>
-<td>Discovers public authentication providers from backend <code>/api/v0/auth/providers</code>; the login form falls back to a manual identity-scope field when unavailable.</td>
+<td>Discovers public authentication providers from backend <code>/api/v1/auth/providers</code>; the login form falls back to a manual identity-scope field when unavailable.</td>
 </tr>
 <tr>
 <td><code>/_hubuum-bff/auth/logout</code></td>
-<td>Logs out locally and asks the backend to revoke the current token.</td>
+<td>Logs out locally and asks the backend to revoke the current session family.</td>
 </tr>
 <tr>
 <td><code>/_hubuum-bff/auth/session</code></td>

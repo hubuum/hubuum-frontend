@@ -877,6 +877,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../session-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Session security
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../deployment/" class="md-nav__link">
         
   
@@ -1487,8 +1514,12 @@
 <p>The browser interface for Hubuum: browse inventory, manage relationships, run
 reports, and administer access. Server-side sessions keep Hubuum bearer tokens
 out of the browser.</p>
-<p>Frontend <strong>v0.0.21</strong>, released <strong>2026-10-19</strong>, targets Hubuum Server <strong>v0.0.19</strong>.
-Read <a href="../compatibility/">compatibility</a> before pairing other releases.</p>
+<p>Frontend <strong>v0.0.21</strong>, released <strong>2026-10-19</strong>, targets Hubuum Server <strong>v0.0.19</strong>.</p>
+<p>The unreleased frontend requires the rotating-session server API introduced in
+<a href="https://github.com/hubuum/hubuum/issues/178">server #178</a>. Upgrade the server and
+frontend together; existing frontend sessions require sign-in again. See
+<a href="../session-security/">session security</a> for rotation and deployment details.</p>
+<p>Read <a href="../compatibility/">compatibility</a> before pairing other releases.</p>
 <p><a href="https://hubuum.github.io/hubuum-frontend/">Documentation</a> · <a href="https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.21">Releases</a> · <a href="https://hubuum.github.io/">Hubuum ecosystem</a></p>
 <h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <p>Download the versioned Compose archive and follow the complete

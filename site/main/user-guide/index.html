@@ -976,6 +976,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../session-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Session security
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../deployment/" class="md-nav__link">
         
   
@@ -1716,8 +1743,8 @@ so the administrator can reload and reconcile it.</p>
 <p>User details also expose settings, direct permissions, <strong>Revoke all tokens</strong>, and
 <strong>Anonymize user</strong>. Anonymization permanently removes personal information and
 disables login while retaining historical references. Both actions require
-confirmation. <strong>Account → Tokens → Revoke all tokens</strong> revokes all of your own
-API tokens and sessions, including the current session. Failed revocation keeps
+confirmation. <strong>Account → Tokens → Sign out of all sessions</strong> ends your interactive
+sessions, including the current session, while preserving personal access tokens. Failed revocation keeps
 the current browser session available for retry.</p>
 <h2 id="scoped-identities">Scoped identities<a class="headerlink" href="#scoped-identities" title="Permanent link">&para;</a></h2>
 <p>The login form accepts an optional identity scope. Blank values and <code>local</code>
