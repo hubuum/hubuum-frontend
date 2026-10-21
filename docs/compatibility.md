@@ -5,7 +5,7 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | Versioned session API from [server #483](https://github.com/hubuum/hubuum/pull/483) | Immutable server snapshot in CI |
+| `main` (unreleased) | `sha-39e33bc47e2571765c8579420d503fed9cd8fd68` | `ghcr.io/hubuum/hubuum-server:sha-39e33bc47e2571765c8579420d503fed9cd8fd68` |
 | `v0.0.21` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.20` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.19` | `v0.0.18` | `ghcr.io/hubuum/hubuum-server:v0.0.18` |
@@ -28,7 +28,10 @@ should pin both components to explicit versions.
 | `v0.0.2` | `v0.0.2` | `ghcr.io/hubuum/hubuum-server:v0.0.2` |
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
-Required checks use the immutable server image for the selected release.
+Required checks use the immutable image for the selected compatibility target.
+For unreleased `main`, it is
+`ghcr.io/hubuum/hubuum-server:sha-39e33bc47e2571765c8579420d503fed9cd8fd68@sha256:d0df2f53068ed0e442f5bfa03f120101c972d6e12c270e6ef9f53ae7563d4afc`.
+
 For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
 `ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225`.
 Scheduled tests against server `main` do not change a release's declared target.

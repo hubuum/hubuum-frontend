@@ -15,7 +15,7 @@ services:
       retries: 30
 
   migrate:
-    image: ${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.19@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225}
+    image: ${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:sha-39e33bc47e2571765c8579420d503fed9cd8fd68@sha256:d0df2f53068ed0e442f5bfa03f120101c972d6e12c270e6ef9f53ae7563d4afc}
     entrypoint: ["/usr/local/bin/hubuum-admin"]
     command: ["--migrate"]
     depends_on:
@@ -25,7 +25,7 @@ services:
       HUBUUM_DATABASE_URL: postgres://hubuum:hubuum_password@postgres:5432/hubuum
 
   restore-executor:
-    image: ${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.19@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225}
+    image: ${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:sha-39e33bc47e2571765c8579420d503fed9cd8fd68@sha256:d0df2f53068ed0e442f5bfa03f120101c972d6e12c270e6ef9f53ae7563d4afc}
     entrypoint: ["/usr/local/bin/hubuum-admin"]
     command: ["--restore-executor"]
     depends_on:
@@ -36,7 +36,7 @@ services:
       HUBUUM_TOKEN_HASH_KEY: live-backend-test-token-hash-key-only
 
   hubuum:
-    image: ${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.19@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225}
+    image: ${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:sha-39e33bc47e2571765c8579420d503fed9cd8fd68@sha256:d0df2f53068ed0e442f5bfa03f120101c972d6e12c270e6ef9f53ae7563d4afc}
     depends_on:
       migrate:
         condition: service_completed_successfully
