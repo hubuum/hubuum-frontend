@@ -28,7 +28,7 @@ describe("public auth provider BFF", () => {
 		const response = await GET(request());
 
 		expect(mocks.backendFetchRaw).toHaveBeenCalledWith(
-			"/api/v0/auth/providers",
+			"/api/v1/auth/providers",
 			expect.objectContaining({ method: "GET" }),
 		);
 		expect(response.status).toBe(200);

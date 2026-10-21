@@ -1,3 +1,4 @@
+import { sessionTokenProvider } from "./session-token.mjs";
 import { verifyHistoryRestores } from "./live-history-suite.mjs";
 import { verifyAdvancedSearch } from "./live-advanced-search-suite.mjs";
 import { credentialRequest } from "./live-credential-request.mjs";
@@ -16,6 +17,7 @@ if (!adminPassword) {
 }
 
 const suffix = `${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+const sessionTokens = new Map();
 const state = {
   passed: 0,
 };
@@ -55,11 +57,12 @@ async function request(method, path, options = {}) {
     query,
     token,
   } = options;
+  const bearer = sessionTokens.has(token) ? await sessionTokens.get(token)() : token;
   const response = await fetch(`${baseUrl}${pathWithQuery(path, query)}`, {
     method,
     headers: {
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
       ...headers,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -71,7 +74,7 @@ async function request(method, path, options = {}) {
 
   if (!allowed.includes(response.status)) {
     throw new Error(
-      `${method} ${path} returned ${response.status}, expected ${allowed.join(", ")}.\n${text}`,
+      `${method} ${path} returned ${response.status}, expected ${allowed.join(", ")}.${path.startsWith("/api/v1/auth/") ? "" : `\n${text}`}`,
     );
   }
 
@@ -148,11 +151,18 @@ async function waitFor(description, probe, { attempts = 30, intervalMs = 250 } =
 }
 
 async function loginAs(name, password) {
-  const login = await request("POST", "/api/v0/auth/login", {
-    body: { name, password },
+  const login = await request("POST", "/api/v1/auth/login", {
+    body: { name, password, client_id: "hubuum-frontend-live-tests" },
   });
-  expectAuthoritativeExpiry(login.data, `Login for ${name}`);
-  return expectBearerToken(login.data, `Login for ${name}`);
+  expectAuthoritativeExpiry({ expires_at: login.data.access_expires_at }, `Login for ${name}`);
+  const token = expectBearerToken({ token: login.data.access_token }, `Login for ${name}`);
+  sessionTokens.set(token, sessionTokenProvider(login.data, async (refresh_token) => {
+    const response = await request("POST", "/api/v1/auth/refresh", {
+      body: { client_id: "hubuum-frontend-live-tests", refresh_token },
+    });
+    return response.data;
+  }));
+  return token;
 }
 
 async function listDeliveries(token, query = { limit: 50, sort: "-updated_at" }) {

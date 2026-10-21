@@ -65,6 +65,13 @@ jobs:
     needs: changes
     name: Application validation
     runs-on: ubuntu-latest
+    services:
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 2s --health-timeout 2s --health-retries 30
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -81,6 +88,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Test
+        env:
+          HUBUUM_TEST_VALKEY_URL: redis://127.0.0.1:6379/0
         run: npm test
       - name: Test performance budget tooling
         run: npm run test:performance-budget

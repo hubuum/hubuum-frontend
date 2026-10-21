@@ -341,11 +341,11 @@ test("manages live principal settings, revokes a user's tokens, and anonymizes t
 		await login(member, name, password);
 		await member.goto("/account/tokens");
 		await member
-			.getByRole("button", { name: "Revoke all tokens", exact: true })
+			.getByRole("button", { name: "Sign out of all sessions", exact: true })
 			.click();
 		await member
 			.getByRole("alertdialog")
-			.getByRole("button", { name: "Revoke all tokens", exact: true })
+			.getByRole("button", { name: "Sign out of all sessions", exact: true })
 			.click();
 		await expect(member).toHaveURL(/\/login$/);
 		const anon = page.getByRole("region", { name: "User anonymization" });

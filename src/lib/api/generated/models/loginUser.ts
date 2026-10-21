@@ -19,6 +19,9 @@ export interface LoginUser {
   identity_scope?: string | null;
   /** @maxLength 255 */
   name: string;
-  /** @maxLength 4096 */
+  /**
+     * @minLength 1
+     * @maxLength 4096
+     */
   password: string;
 }

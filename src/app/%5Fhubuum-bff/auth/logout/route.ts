@@ -13,7 +13,7 @@ import {
 	normalizeCorrelationId,
 } from "@/lib/correlation";
 
-const BACKEND_LOGOUT_PATH = "/api/v0/auth/logout";
+const BACKEND_LOGOUT_PATH = "/api/v1/auth/logout";
 
 async function performLogout(request: NextRequest) {
 	const correlationId =
@@ -25,13 +25,13 @@ async function performLogout(request: NextRequest) {
 	const all = request.nextUrl.searchParams.get("all") === "true";
 	if (all && !session)
 		return NextResponse.json(
-			{ message: "Sign in before revoking all tokens." },
+			{ message: "Sign in before signing out of all sessions." },
 			{ status: 401, headers: { [CORRELATION_ID_HEADER]: correlationId } },
 		);
 
 	if (session) {
 		const upstream = await backendFetchRaw(
-			all ? "/api/v0/auth/logout_all" : BACKEND_LOGOUT_PATH,
+			all ? "/api/v1/auth/logout_all" : BACKEND_LOGOUT_PATH,
 			{
 				correlationId,
 				method: "POST",
@@ -44,7 +44,7 @@ async function performLogout(request: NextRequest) {
 
 		if (all && !upstream?.ok) {
 			return NextResponse.json(
-				{ message: "Could not revoke all tokens. Try again." },
+				{ message: "Could not sign out of all sessions. Try again." },
 				{ status: 502, headers: { [CORRELATION_ID_HEADER]: correlationId } },
 			);
 		}

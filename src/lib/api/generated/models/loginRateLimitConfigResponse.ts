@@ -19,6 +19,8 @@ export interface LoginRateLimitConfigResponse {
   /** @minimum 0 */
   max_attempts: number;
   /** @minimum 0 */
+  max_attempts_per_account: number;
+  /** @minimum 0 */
   max_attempts_per_ip: number;
   /** @minimum 0 */
   max_attempts_per_subnet: number;

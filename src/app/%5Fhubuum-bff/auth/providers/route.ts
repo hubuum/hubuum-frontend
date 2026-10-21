@@ -7,7 +7,7 @@ import {
 	normalizeCorrelationId,
 } from "@/lib/correlation";
 
-const BACKEND_AUTH_PROVIDERS_PATH = "/api/v0/auth/providers";
+const BACKEND_AUTH_PROVIDERS_PATH = "/api/v1/auth/providers";
 
 function errorResponse(message: string, status: number) {
 	return NextResponse.json(

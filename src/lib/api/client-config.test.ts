@@ -17,6 +17,10 @@ const clientConfig = {
 	authentication: {
 		default_token_lifetime_hours: 24,
 		max_token_lifetime_hours: 8760,
+		session_access_seconds: 900,
+		session_idle_seconds: 604800,
+		session_absolute_seconds: 2592000,
+		session_retention_seconds: 2592000,
 	},
 	pagination: {
 		default_page_limit: 50,

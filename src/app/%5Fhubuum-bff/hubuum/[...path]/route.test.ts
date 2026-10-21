@@ -71,6 +71,26 @@ describe("generic BFF proxy admin gate", () => {
 		mocks.validateBackendSession.mockResolvedValue("valid");
 	});
 
+	it.each([
+		"api/v1/auth/login",
+		"api/v1/auth/refresh",
+		"api/v0/auth/login",
+		"api/v1/auth/%72efresh",
+		"api/v1/auth/refresh/",
+	])("blocks raw session issuance via %s", async (path) => {
+		const response = await POST(
+			new NextRequest(`https://console.example/_hubuum-bff/hubuum/${path}`, {
+				method: "POST",
+				headers: { Origin: "https://console.example" },
+				body: "{}",
+			}),
+			routeContext(path.split("/")),
+		);
+		expect(response.status).toBe(403);
+		expect(response.headers.get("cache-control")).toBe("private, no-store");
+		expect(mocks.fetch).not.toHaveBeenCalled();
+	});
+
 	it("preserves resource names containing an already decoded percent sign", async () => {
 		mocks.fetch.mockResolvedValue(Response.json({ name: "100%" }));
 		const response = await GET(

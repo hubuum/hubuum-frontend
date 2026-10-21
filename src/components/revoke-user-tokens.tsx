@@ -46,12 +46,12 @@ export function RevokeUserTokens({
 		if (
 			await confirm({
 				title: self
-					? "Revoke all your tokens?"
+					? "Sign out of all sessions?"
 					: `Revoke all tokens for user #${userId}?`,
 				description: self
-					? "This signs you out on every device and invalidates all your API tokens, including this session."
+					? "This signs you out on every device. Personal access tokens remain valid."
 					: "This signs the user out on every device and invalidates all their API tokens.",
-				confirmLabel: "Revoke all tokens",
+				confirmLabel: self ? "Sign out of all sessions" : "Revoke all tokens",
 				tone: "danger",
 			})
 		)
@@ -66,7 +66,7 @@ export function RevokeUserTokens({
 					aria-disabled={mutation.isPending}
 					onClick={() => void revoke()}
 				>
-					Revoke all tokens
+					{self ? "Sign out of all sessions" : "Revoke all tokens"}
 				</button>
 			</div>
 			{mutation.isError ? <p role="alert">{mutation.error.message}</p> : null}

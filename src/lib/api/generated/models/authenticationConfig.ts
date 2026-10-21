@@ -13,11 +13,19 @@ export interface AuthenticationConfig {
   admin_groupname: string;
   /** @nullable */
   admin_identity_scope?: string | null;
+  credential_activity_enabled: boolean;
+  credential_activity_retention_days: number;
+  /** @minimum 0 */
+  credential_activity_source_cap: number;
   login_rate_limit: LoginRateLimitConfig;
   max_token_lifetime_hours: number;
   previous_token_hash_key_ids: string[];
   provider_config_path: SecretStatus;
   require_stable_token_hash_key: boolean;
+  session_absolute_seconds: number;
+  session_access_seconds: number;
+  session_idle_seconds: number;
+  session_retention_seconds: number;
   stable_token_hash_key_configured: boolean;
   token_hash_key_mode: string;
   token_hash_key_ring_identity: string;

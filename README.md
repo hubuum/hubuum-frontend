@@ -5,6 +5,12 @@ reports, and administer access. Server-side sessions keep Hubuum bearer tokens
 out of the browser.
 
 Frontend **v0.0.21**, released **2026-10-19**, targets Hubuum Server **v0.0.19**.
+
+The unreleased frontend requires the rotating-session server API introduced in
+[server #178](https://github.com/hubuum/hubuum/issues/178). Upgrade the server and
+frontend together; existing frontend sessions require sign-in again. See
+[session security](docs/session-security.md) for rotation and deployment details.
+
 Read [compatibility](docs/compatibility.md) before pairing other releases.
 
 [Documentation](https://hubuum.github.io/hubuum-frontend/) · [Releases](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.21) · [Hubuum ecosystem](https://hubuum.github.io/)

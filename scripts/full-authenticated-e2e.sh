@@ -13,6 +13,8 @@ BASE_URL="http://127.0.0.1:${BACKEND_PORT}"
 KEEP_STACK="${HUBUUM_FULL_E2E_KEEP_STACK:-0}"
 ARTIFACT_DIR="${ROOT_DIR}/test-results/full-authenticated"
 
+export HUBUUM_LIVE_SESSION_ACCESS_SECONDS="${HUBUUM_LIVE_SESSION_ACCESS_SECONDS:-5}"
+export E2E_SESSION_ACCESS_SECONDS="${HUBUUM_LIVE_SESSION_ACCESS_SECONDS}"
 export HUBUUM_LIVE_BACKEND_IMAGE="${BACKEND_IMAGE}"
 export HUBUUM_LIVE_BACKEND_PORT="${BACKEND_PORT}"
 
@@ -101,7 +103,7 @@ E2E_USERNAME="admin" \
 E2E_PASSWORD="${admin_password}" \
 E2E_IDENTITY_SCOPE="local" \
   npx playwright test tests/e2e/authenticated-ui.spec.ts \
-    tests/e2e/collection-event-self-service.spec.ts \
+    tests/e2e/collection-event-self-service.spec.ts tests/e2e/rotating-sessions-live.spec.ts \
     --project=chromium \
     --workers=1
 

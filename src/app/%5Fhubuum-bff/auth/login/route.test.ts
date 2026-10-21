@@ -1,3 +1,4 @@
+import { sessionCredentials } from "@/test/session-fixtures";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,6 +19,7 @@ vi.mock("@/lib/auth/session", () => ({
 
 import { POST } from "@/app/%5Fhubuum-bff/auth/login/route";
 
+const pair = sessionCredentials({ access_token: "issued-token" });
 const loginUrl = "https://console.example/_hubuum-bff/auth/login";
 
 function jsonLoginRequest(headers: HeadersInit = {}): NextRequest {
@@ -41,9 +43,10 @@ function formLoginRequest(headers: HeadersInit = {}): NextRequest {
 
 describe("login route request origin", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		vi.resetAllMocks();
+		mocks.createSession.mockResolvedValue("session-id");
 		mocks.backendFetchRaw
-			.mockResolvedValueOnce(Response.json({ token: "issued-token" }))
+			.mockResolvedValueOnce(Response.json(pair))
 			.mockResolvedValueOnce(
 				Response.json({
 					principal: { identity_scope: "local", name: "admin" },
@@ -98,14 +101,16 @@ describe("login route request origin", () => {
 		const response = await POST(request);
 
 		expect(response.status).toBe(200);
-		expect(mocks.backendFetchRaw).toHaveBeenCalledTimes(2);
-		expect(mocks.createSession).toHaveBeenCalledWith(
-			"issued-token",
-			"admin",
+		expect(await response.json()).toEqual({ authenticated: true });
+		expect(mocks.backendFetchRaw.mock.calls[0][1].body).toContain(
+			"hubuum-frontend",
 		);
+		expect(mocks.backendFetchRaw).toHaveBeenCalledTimes(2);
+		expect(mocks.createSession).toHaveBeenCalledWith(pair, "admin");
 		expect(mocks.setSessionCookie).toHaveBeenCalledWith(
 			response,
 			"session-id",
+			Date.parse(pair.refresh_expires_at),
 			request,
 		);
 	});

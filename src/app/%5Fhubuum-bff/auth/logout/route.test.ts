@@ -80,7 +80,7 @@ describe("all-token logout", () => {
 		const response = await POST(request());
 		expect(response.status).toBe(200);
 		expect(mocks.backendFetchRaw).toHaveBeenCalledWith(
-			"/api/v0/auth/logout_all",
+			"/api/v1/auth/logout_all",
 			expect.objectContaining({ method: "POST", token: "server-only-token" }),
 		);
 		expect(mocks.destroySession).toHaveBeenCalledWith("local-session");

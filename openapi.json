@@ -16,357 +16,6 @@
     }
   ],
   "paths": {
-    "/api/v0/auth/login": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Post Api V0 Auth Login",
-        "description": "Auto-generated documentation for POST /api/v0/auth/login.",
-        "operationId": "postApiV0AuthLogin",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginUser"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Token and authoritative expiry issued",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LoginResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Login fields exceed their supported lengths",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many login attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v0/auth/logout": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Post Api V0 Auth Logout",
-        "description": "Auto-generated documentation for POST /api/v0/auth/logout.",
-        "operationId": "postApiV0AuthLogout",
-        "responses": {
-          "200": {
-            "description": "Token revoked",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
-    "/api/v0/auth/logout/token": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Post Api V0 Auth Logout Token",
-        "description": "Auto-generated documentation for POST /api/v0/auth/logout/token.",
-        "operationId": "postApiV0AuthLogoutToken",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LogoutTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Token revoked",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
-    "/api/v0/auth/logout/uid/{user_id}": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Post Api V0 Auth Logout Uid By User Id",
-        "description": "Auto-generated documentation for POST /api/v0/auth/logout/uid/{user_id}.",
-        "operationId": "postApiV0AuthLogoutUidByUserId",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "path",
-            "description": "User ID to revoke all tokens for",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "All tokens revoked for user",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
-    "/api/v0/auth/logout_all": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Post Api V0 Auth Logout All",
-        "description": "Auto-generated documentation for POST /api/v0/auth/logout_all.",
-        "operationId": "postApiV0AuthLogoutAll",
-        "responses": {
-          "200": {
-            "description": "All tokens revoked for current user",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
-    "/api/v0/auth/providers": {
-      "get": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Get Api V0 Auth Providers",
-        "description": "Auto-generated documentation for GET /api/v0/auth/providers.",
-        "operationId": "getApiV0AuthProviders",
-        "responses": {
-          "200": {
-            "description": "Configured authentication provider names",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthProvidersResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v0/auth/validate": {
-      "get": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Get Api V0 Auth Validate",
-        "description": "Auto-generated documentation for GET /api/v0/auth/validate.",
-        "operationId": "getApiV0AuthValidate",
-        "responses": {
-          "200": {
-            "description": "Token is valid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
     "/api/v0/meta/counts": {
       "get": {
         "tags": [
@@ -492,7 +141,7 @@
           {
             "name": "scope",
             "in": "query",
-            "description": "Filter by scope kind: `user_ip`, `ip`, or `subnet`",
+            "description": "Filter by scope kind: `user_ip`, `account`, `ip`, or `subnet`",
             "required": false,
             "schema": {
               "type": "string"
@@ -778,6 +427,519 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/query-observations": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Api V1 Admin Query Observations",
+        "description": "Auto-generated documentation for GET /api/v1/admin/query-observations.",
+        "operationId": "getApiV1AdminQueryObservations",
+        "responses": {
+          "200": {
+            "description": "Shared override applied to the responding replica and its effective observation settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryObservationConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unscoped human administrator required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Put Api V1 Admin Query Observations",
+        "description": "Auto-generated documentation for PUT /api/v1/admin/query-observations.",
+        "operationId": "putApiV1AdminQueryObservations",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryObservationUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Shared override committed and broadcast; applied on this replica, other replicas reconcile asynchronously",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryObservationConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unscoped human administrator required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Api V1 Auth Login",
+        "description": "Auto-generated documentation for POST /api/v1/auth/login.",
+        "operationId": "postApiV1AuthLogin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Token and authoritative expiry issued",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Password is empty or login fields exceed their supported lengths",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many login attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Api V1 Auth Logout",
+        "description": "Auto-generated documentation for POST /api/v1/auth/logout.",
+        "operationId": "postApiV1AuthLogout",
+        "responses": {
+          "200": {
+            "description": "Token revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/logout/token": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Api V1 Auth Logout Token",
+        "description": "Auto-generated documentation for POST /api/v1/auth/logout/token.",
+        "operationId": "postApiV1AuthLogoutToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Token revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/logout/uid/{user_id}": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Api V1 Auth Logout Uid By User Id",
+        "description": "Auto-generated documentation for POST /api/v1/auth/logout/uid/{user_id}.",
+        "operationId": "postApiV1AuthLogoutUidByUserId",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "User ID to revoke all tokens for",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All tokens revoked for user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/logout_all": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Api V1 Auth Logout All",
+        "description": "Auto-generated documentation for POST /api/v1/auth/logout_all.",
+        "operationId": "postApiV1AuthLogoutAll",
+        "responses": {
+          "200": {
+            "description": "All interactive sessions revoked; durable credentials retained",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/providers": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Api V1 Auth Providers",
+        "description": "Auto-generated documentation for GET /api/v1/auth/providers.",
+        "operationId": "getApiV1AuthProviders",
+        "responses": {
+          "200": {
+            "description": "Configured authentication provider names",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProvidersResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Api V1 Auth Refresh",
+        "description": "Auto-generated documentation for POST /api/v1/auth/refresh.",
+        "operationId": "postApiV1AuthRefresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rotated access and refresh credentials; no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/validate": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Api V1 Auth Validate",
+        "description": "Auto-generated documentation for GET /api/v1/auth/validate.",
+        "operationId": "getApiV1AuthValidate",
+        "responses": {
+          "200": {
+            "description": "Token is valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
@@ -4532,6 +4694,273 @@
         ]
       }
     },
+    "/api/v1/classes/{class_id}/history/entries/{history_id}": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Get Api V1 Classes By Class Id History Entries By History Id",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/history/entries/{history_id}.",
+        "operationId": "getApiV1ClassesByClassIdHistoryEntriesByHistoryId",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "class_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "history_id",
+            "in": "path",
+            "description": "history_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact retained history entry, including deletion markers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryResponse_HubuumClassHistory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid navigation query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/history/timeline": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Get Api V1 Classes By Class Id History Timeline",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/history/timeline. Entries are ordered by (valid_from, history_id), descending for older and ascending for newer. Reuse X-Next-Cursor with the same selection and direction. include_total defaults to false. Use direction=newer&limit=1 or direction=older&limit=1 without a selection to discover the first or last authorized available entry; these bounds do not prove uninterrupted retention.",
+        "operationId": "getApiV1ClassesByClassIdHistoryTimeline",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "class_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "at",
+            "in": "query",
+            "description": "Seek around this exact timestamp; mutually exclusive with anchor.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "anchor",
+            "in": "query",
+            "description": "Resource-scoped history entry; mutually exclusive with at.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HistoryDirection"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum navigation entries; values above the configured maximum are clamped.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 250,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Exact authorized count within the selected window and direction. Defaults to false.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lightweight authorized timeline; ordered by valid_from and history_id The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
+            "headers": {
+              "X-Next-Cursor": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque cursor for the next page. This header is omitted when there are no more results."
+              },
+              "X-Page-Limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Effective page size used by the server after applying the configured default and maximum."
+              },
+              "X-Total-Count": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HistoryResponse_HistoryMarker"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid navigation query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/classes/{class_id}/object-aggregates": {
       "get": {
         "tags": [
@@ -4781,6 +5210,163 @@
           },
           "403": {
             "description": "Token does not permit object reads",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/objects/history/as-of": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Get Api V1 Classes By Class Id Objects History As Of",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/objects/history/as-of. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "operationId": "getApiV1ClassesByClassIdObjectsHistoryAsOf",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Historical class identity",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "at",
+            "in": "query",
+            "description": "Required RFC3339 instant, with full timestamp precision",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of items to return. Defaults to 100. The server clamps values above 250.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 250,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Continuation bound to instant, class, filters, ordering and authorization token",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Include exact authorized retained-object count (default true)",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "history_id (default descending) or revision; prefix - for descending",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "query",
+            "description": "Filter the effective historical object revision",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Effective retained object versions and class/schema snapshot at the same instant. Collection IDs are historical references; expanded collections and computed values are not included. An empty retained page does not prove historical emptiness. The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
+            "headers": {
+              "X-Next-Cursor": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque cursor for the next page. This header is omitted when there are no more results."
+              },
+              "X-Page-Limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Effective page size used by the server after applying the configured default and maximum."
+              },
+              "X-Total-Count": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalClassObjects"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query or mismatched continuation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Class history unavailable at this instant",
             "content": {
               "application/json": {
                 "schema": {
@@ -6128,6 +6714,291 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/relations/history": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Get Api V1 Classes By Class Id Relations History",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/relations/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "operationId": "getApiV1ClassesByClassIdRelationsHistory",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class identity",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of items to return. Defaults to 100. The server clamps values above 250.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 250,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Continuation bound to root, selection, ordering and token",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Exact authorized count; default true",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "history_id or -history_id (default); filters are unsupported",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retained direct relationship changes, including deletion markers for unscoped administrators. Endpoints are resolved at each change's valid_from. The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
+            "headers": {
+              "X-Next-Cursor": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque cursor for the next page. This header is omitted when there are no more results."
+              },
+              "X-Page-Limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Effective page size used by the server after applying the configured default and maximum."
+              },
+              "X-Total-Count": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalRelationships"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query or cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History root unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/relations/history/as-of": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Get Api V1 Classes By Class Id Relations History As Of",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/relations/history/as-of. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "operationId": "getApiV1ClassesByClassIdRelationsHistoryAsOf",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Class identity",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "at",
+            "in": "query",
+            "description": "Required RFC3339 instant; half-open validity with full timestamp precision",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of items to return. Defaults to 100. The server clamps values above 250.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 250,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Continuation bound to root, instant, ordering and token",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Exact authorized count; default true",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "history_id or -history_id (default); filters are unsupported",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active retained direct class edges and endpoint context at the requested instant. No transitive traversal or live-context fallback. The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
+            "headers": {
+              "X-Next-Cursor": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque cursor for the next page. This header is omitted when there are no more results."
+              },
+              "X-Page-Limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Effective page size used by the server after applying the configured default and maximum."
+              },
+              "X-Total-Count": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalRelationships"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query or cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History root unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -8679,6 +9550,696 @@
         ]
       }
     },
+    "/api/v1/classes/{class_id}/{object_id}/history/computed/as-of": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Get Api V1 Classes By Class Id By Object Id History Computed As Of",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/history/computed/as-of.",
+        "operationId": "getApiV1ClassesByClassIdByObjectIdHistoryComputedAsOf",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Current class identity",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "object_id",
+            "in": "path",
+            "description": "Object identity",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "at",
+            "in": "query",
+            "description": "Required RFC 3339 historical instant",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical recomputation using retained shared definitions; never recorded materialization output. Personal fields are unsupported. Missing definition history and unsupported semantics are explicit; field errors have no value.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalComputedValues"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current or historical object/class access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object history unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/{object_id}/history/entries/{history_id}": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Get Api V1 Classes By Class Id By Object Id History Entries By History Id",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/history/entries/{history_id}.",
+        "operationId": "getApiV1ClassesByClassIdByObjectIdHistoryEntriesByHistoryId",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "class_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "object_id",
+            "in": "path",
+            "description": "object_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "history_id",
+            "in": "path",
+            "description": "history_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact retained history entry, including deletion markers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryResponse_HubuumObjectHistory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid navigation query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/{object_id}/history/timeline": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Get Api V1 Classes By Class Id By Object Id History Timeline",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/history/timeline. Entries are ordered by (valid_from, history_id), descending for older and ascending for newer. Reuse X-Next-Cursor with the same selection and direction. include_total defaults to false. Use direction=newer&limit=1 or direction=older&limit=1 without a selection to discover the first or last authorized available entry; these bounds do not prove uninterrupted retention.",
+        "operationId": "getApiV1ClassesByClassIdByObjectIdHistoryTimeline",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "class_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "object_id",
+            "in": "path",
+            "description": "object_id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "at",
+            "in": "query",
+            "description": "Seek around this exact timestamp; mutually exclusive with anchor.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "anchor",
+            "in": "query",
+            "description": "Resource-scoped history entry; mutually exclusive with at.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HistoryDirection"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum navigation entries; values above the configured maximum are clamped.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 250,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Exact authorized count within the selected window and direction. Defaults to false.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lightweight authorized timeline; ordered by valid_from and history_id The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
+            "headers": {
+              "X-Next-Cursor": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque cursor for the next page. This header is omitted when there are no more results."
+              },
+              "X-Page-Limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Effective page size used by the server after applying the configured default and maximum."
+              },
+              "X-Total-Count": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HistoryResponse_HistoryMarker"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid navigation query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/{object_id}/relations/history": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Get Api V1 Classes By Class Id By Object Id Relations History",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/relations/history. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "operationId": "getApiV1ClassesByClassIdByObjectIdRelationsHistory",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Current class identity, or historical class for a deleted object",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "object_id",
+            "in": "path",
+            "description": "Object identity",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of items to return. Defaults to 100. The server clamps values above 250.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 250,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Continuation bound to root, selection, ordering and token",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Exact authorized count; default true",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "history_id or -history_id (default); filters are unsupported",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retained direct object relationship changes. Endpoints are resolved at each change's valid_from; class_relation_id is a historical reference without expanded labels. The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
+            "headers": {
+              "X-Next-Cursor": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque cursor for the next page. This header is omitted when there are no more results."
+              },
+              "X-Page-Limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Effective page size used by the server after applying the configured default and maximum."
+              },
+              "X-Total-Count": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalRelationships"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query or cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History root unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/{object_id}/relations/history/as-of": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Get Api V1 Classes By Class Id By Object Id Relations History As Of",
+        "description": "Auto-generated documentation for GET /api/v1/classes/{class_id}/{object_id}/relations/history/as-of. Supports cursor pagination through the `limit`, `sort`, and `cursor` query parameters. The exact total hit count is returned in the `X-Total-Count` response header unless `include_total=false`, and the next page cursor is returned in the `X-Next-Cursor` response header.",
+        "operationId": "getApiV1ClassesByClassIdByObjectIdRelationsHistoryAsOf",
+        "parameters": [
+          {
+            "name": "class_id",
+            "in": "path",
+            "description": "Current class identity, or historical class for a deleted object",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "object_id",
+            "in": "path",
+            "description": "Object identity",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "at",
+            "in": "query",
+            "description": "Required RFC3339 instant; half-open validity with full timestamp precision",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of items to return. Defaults to 100. The server clamps values above 250.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 250,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Continuation bound to root, instant, ordering and token",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_total",
+            "in": "query",
+            "description": "Exact authorized count; default true",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "history_id or -history_id (default); filters are unsupported",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active retained direct object edges and historical endpoint names, classes and collection IDs at the requested instant. No transitive traversal or live-context fallback. The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
+            "headers": {
+              "X-Next-Cursor": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque cursor for the next page. This header is omitted when there are no more results."
+              },
+              "X-Page-Limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Effective page size used by the server after applying the configured default and maximum."
+              },
+              "X-Total-Count": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Exact total number of results matching the current filter set, independent of cursor pagination. Omitted when include_total=false."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalRelationships"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query or cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History root unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/collections": {
       "get": {
         "tags": [
@@ -9119,7 +10680,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Ancestor collections, nearest parent first",
+            "description": "Readable ancestor collections within token scope, nearest parent first",
             "content": {
               "application/json": {
                 "schema": {
@@ -9181,7 +10742,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Direct child collections",
+            "description": "Readable direct child collections within token scope",
             "content": {
               "application/json": {
                 "schema": {
@@ -14429,6 +15990,16 @@
               }
             }
           },
+          "403": {
+            "description": "Token scope does not cover the stored export",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Export output not found",
             "content": {
@@ -15701,7 +17272,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Current user's personal computed fields The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
+            "description": "Current user's personal computed fields in readable classes; authorization and token scope are applied before pagination and totals The response body contains the current page items as a JSON array. Use the `X-Total-Count` header for the exact number of matching results. Use the `X-Next-Cursor` header, when present, to request the next page.",
             "headers": {
               "X-Next-Cursor": {
                 "schema": {
@@ -17540,6 +19111,95 @@
           },
           "404": {
             "description": "Token not found, not owned by this principal, or already purged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/iam/principals/{principal_id}/tokens/{token_id}/activity": {
+      "get": {
+        "tags": [
+          "principals"
+        ],
+        "summary": "Get Api V1 Iam Principals By Principal Id Tokens By Token Id Activity",
+        "description": "Auto-generated documentation for GET /api/v1/iam/principals/{principal_id}/tokens/{token_id}/activity.",
+        "operationId": "getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdActivity",
+        "parameters": [
+          {
+            "name": "principal_id",
+            "in": "path",
+            "description": "Credential owner",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "token_id",
+            "in": "path",
+            "description": "Retained token",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Source offset, 0-256",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size, 1-100; default 50",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Best-effort creation and recent-source evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialActivityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid pagination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Credential not found or not visible",
             "content": {
               "application/json": {
                 "schema": {
@@ -20111,7 +21771,7 @@
           "remote-targets"
         ],
         "summary": "Post Api V1 Remote Targets",
-        "description": "Auto-generated documentation for POST /api/v1/remote-targets.",
+        "description": "Create a collection target. Server-credential authentication additionally requires an unscoped runtime administrator; enabled targets constitute approval of their destination and credential binding.",
         "operationId": "postApiV1RemoteTargets",
         "requestBody": {
           "content": {
@@ -20570,7 +22230,7 @@
           "remote-targets"
         ],
         "summary": "Patch Api V1 Remote Targets By Target Id",
-        "description": "Auto-generated documentation for PATCH /api/v1/remote-targets/{target_id}.",
+        "description": "Update a target. Credential-binding changes and re-enabling require an unscoped runtime administrator. Binding edits disable the target unless enabled=true explicitly approves the result. Concurrent edits return a conflict.",
         "operationId": "patchApiV1RemoteTargetsByTargetId",
         "parameters": [
           {
@@ -20876,7 +22536,7 @@
           "remote-targets"
         ],
         "summary": "Post Api V1 Remote Targets By Target Id Invoke",
-        "description": "Auto-generated documentation for POST /api/v1/remote-targets/{target_id}/invoke.",
+        "description": "Invoke the current target revision using ExecuteRemoteTarget and read permission for every resource in the template context, including endpoint objects, classes, class relations, and collections. Token scopes and concrete external-policy decisions apply at submission and worker execution. Credential-owner authority is not required. The worker rejects changed revisions before resolving credentials.",
         "operationId": "postApiV1RemoteTargetsByTargetIdInvoke",
         "parameters": [
           {
@@ -21451,6 +23111,93 @@
           },
           "415": {
             "description": "Content type is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/search/hydrate": {
+      "post": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Post Api V1 Search Hydrate",
+        "description": "Lazy bounded visible neighborhood for one root object. Scope is all visible related endpoints in the selected class, not evidence for a search predicate. Does not execute or change root search results or cursors. Returns unique objects/relations and up to limit visible paths, with a truncation flag; no hydration pagination.",
+        "operationId": "postApiV1SearchHydrate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchHydrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Bounded visible neighborhood",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchHydrationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid hydration request or traversal work bound exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Root or target class unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Resources changed during hydration; retry",
             "content": {
               "application/json": {
                 "schema": {
@@ -22889,93 +24636,6 @@
           }
         }
       }
-    },
-    "/api/v1/search/hydrate": {
-      "post": {
-        "tags": [
-          "search"
-        ],
-        "summary": "Post Api V1 Search Hydrate",
-        "description": "Lazy bounded visible neighborhood for one root object. Scope is all visible related endpoints in the selected class, not evidence for a search predicate. Does not execute or change root search results or cursors. Returns unique objects/relations and up to limit visible paths, with a truncation flag; no hydration pagination.",
-        "operationId": "postApiV1SearchHydrate",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SearchHydrationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Bounded visible neighborhood",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SearchHydrationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid hydration request or traversal work bound exceeded",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Root or target class unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Resources changed during hydration; retry",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
     }
   },
   "components": {
@@ -23041,6 +24701,13 @@
         "type": "object",
         "required": [
           "token_lifetime_hours",
+          "credential_activity_retention_days",
+          "credential_activity_source_cap",
+          "credential_activity_enabled",
+          "session_access_seconds",
+          "session_idle_seconds",
+          "session_absolute_seconds",
+          "session_retention_seconds",
           "max_token_lifetime_hours",
           "token_retention_purge_enabled",
           "token_retention_days",
@@ -23069,6 +24736,17 @@
               "null"
             ]
           },
+          "credential_activity_enabled": {
+            "type": "boolean"
+          },
+          "credential_activity_retention_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "credential_activity_source_cap": {
+            "type": "integer",
+            "minimum": 0
+          },
           "login_rate_limit": {
             "$ref": "#/components/schemas/LoginRateLimitConfig"
           },
@@ -23087,6 +24765,22 @@
           },
           "require_stable_token_hash_key": {
             "type": "boolean"
+          },
+          "session_absolute_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "session_access_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "session_idle_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "session_retention_seconds": {
+            "type": "integer",
+            "format": "int64"
           },
           "stable_token_hash_key_configured": {
             "type": "boolean"
@@ -23414,6 +25108,10 @@
         "type": "object",
         "required": [
           "default_token_lifetime_hours",
+          "session_access_seconds",
+          "session_idle_seconds",
+          "session_absolute_seconds",
+          "session_retention_seconds",
           "max_token_lifetime_hours"
         ],
         "properties": {
@@ -23428,6 +25126,22 @@
             "format": "int64",
             "description": "Largest lifetime accepted for an explicitly requested token expiry.",
             "minimum": 1
+          },
+          "session_absolute_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "session_access_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "session_idle_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "session_retention_seconds": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -24094,6 +25808,87 @@
           "total_objects": 42
         }
       },
+      "CredentialActivityResponse": {
+        "type": "object",
+        "required": [
+          "sources",
+          "total",
+          "offset",
+          "limit",
+          "collection_enabled",
+          "best_effort",
+          "retention_days",
+          "source_cap"
+        ],
+        "properties": {
+          "best_effort": {
+            "type": "boolean"
+          },
+          "collection_enabled": {
+            "type": "boolean"
+          },
+          "creation": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CredentialCreationResponse",
+                "description": "Null for historical credentials or unavailable issuance evidence."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "next_offset": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "overflow_since": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Non-null means at least one distinct source was omitted after reaching the cap."
+          },
+          "retention_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "session_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Present when observations are shared by the rotating session family."
+          },
+          "source_cap": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CredentialSourceResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "CredentialApprovalRecord": {
         "type": "object",
         "required": [
@@ -24205,6 +26000,39 @@
       "CredentialApprovalSecret": {
         "type": "string",
         "pattern": "^hca1\\.[0-9a-f]{64}$"
+      },
+      "CredentialCreationResponse": {
+        "type": "object",
+        "required": [
+          "issuance_method",
+          "issued_at",
+          "address_method"
+        ],
+        "properties": {
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address_method": {
+            "type": "string"
+          },
+          "issuance_method": {
+            "type": "string"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "issuer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
       },
       "CredentialOperation": {
         "oneOf": [
@@ -24337,6 +26165,33 @@
             }
           }
         ]
+      },
+      "CredentialSourceResponse": {
+        "type": "object",
+        "required": [
+          "address_method",
+          "first_seen",
+          "last_seen"
+        ],
+        "properties": {
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address_method": {
+            "type": "string"
+          },
+          "first_seen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "CurrentTokenMetadata": {
         "type": "object",
@@ -26644,6 +28499,549 @@
           }
         }
       },
+      "HistoricalClassObjects": {
+        "type": "object",
+        "required": [
+          "at",
+          "class",
+          "objects",
+          "coverage"
+        ],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "class": {
+            "$ref": "#/components/schemas/HistoryResponse_HubuumClassHistory"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/HistoricalPopulationCoverage"
+          },
+          "objects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryResponse_HubuumObjectHistory"
+            }
+          }
+        }
+      },
+      "HistoricalComputationMode": {
+        "type": "string",
+        "enum": [
+          "historical_recomputation"
+        ]
+      },
+      "HistoricalComputedField": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HistoricalComputedFieldResult"
+          },
+          {
+            "type": "object",
+            "required": [
+              "definition_id",
+              "revision",
+              "key",
+              "label",
+              "semantics_version"
+            ],
+            "properties": {
+              "definition_id": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "revision": {
+                "$ref": "#/components/schemas/ResourceRevision"
+              },
+              "semantics_version": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          }
+        ]
+      },
+      "HistoricalComputedFieldResult": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "value",
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "evaluated"
+                ]
+              },
+              "value": {}
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "error",
+              "status"
+            ],
+            "properties": {
+              "error": {
+                "$ref": "#/components/schemas/ComputedFieldErrorResponse"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "error"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "disabled"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "reason",
+              "status"
+            ],
+            "properties": {
+              "reason": {
+                "$ref": "#/components/schemas/HistoricalComputedUnavailableReason"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "unavailable"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "HistoricalComputedObjectSource": {
+        "type": "object",
+        "description": "Identity of the stored object input; this response does not return live caches.",
+        "required": [
+          "object_id",
+          "class_id",
+          "history_id",
+          "revision",
+          "valid_from"
+        ],
+        "properties": {
+          "class_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "history_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "object_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/ResourceRevision"
+          },
+          "valid_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "valid_to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "HistoricalComputedUnavailableReason": {
+        "type": "string",
+        "enum": [
+          "definition_history_unavailable",
+          "class_history_unavailable",
+          "unsupported_evaluator_version",
+          "unsupported_definition_semantics"
+        ]
+      },
+      "HistoricalComputedValues": {
+        "type": "object",
+        "required": [
+          "mode",
+          "at",
+          "object",
+          "shared",
+          "personal"
+        ],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/HistoricalComputationMode"
+          },
+          "object": {
+            "$ref": "#/components/schemas/HistoricalComputedObjectSource"
+          },
+          "personal": {
+            "$ref": "#/components/schemas/HistoricalPersonalFields"
+          },
+          "shared": {
+            "$ref": "#/components/schemas/HistoricalSharedComputedFields"
+          }
+        }
+      },
+      "HistoricalEndpointContext": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "snapshot",
+              "status"
+            ],
+            "properties": {
+              "snapshot": {
+                "$ref": "#/components/schemas/HistoricalRelationEndpoint"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "available"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "reason",
+              "status"
+            ],
+            "properties": {
+              "reason": {
+                "$ref": "#/components/schemas/HistoricalEndpointUnavailableReason"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "unavailable"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "HistoricalEndpointUnavailableReason": {
+        "type": "string",
+        "enum": [
+          "history_unavailable"
+        ]
+      },
+      "HistoricalPersonalFields": {
+        "type": "string",
+        "enum": [
+          "unsupported"
+        ]
+      },
+      "HistoricalPopulationCoverage": {
+        "type": "string",
+        "description": "Retained snapshots do not prove that all historical membership is available.",
+        "enum": [
+          "retained_history"
+        ]
+      },
+      "HistoricalRelationEndpoint": {
+        "type": "object",
+        "description": "IDs refer to historical membership; no current names or computed data are expanded.",
+        "required": [
+          "id",
+          "collection_id",
+          "name",
+          "history_id",
+          "revision",
+          "valid_from"
+        ],
+        "properties": {
+          "collection_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "history_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hubuum_class_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/ResourceRevision"
+          },
+          "valid_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "valid_to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "HistoricalRelationValue": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "relation",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "class"
+                ]
+              },
+              "relation": {
+                "$ref": "#/components/schemas/HubuumClassRelation"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "relation",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "object"
+                ]
+              },
+              "relation": {
+                "$ref": "#/components/schemas/HubuumObjectRelation"
+              }
+            }
+          }
+        ]
+      },
+      "HistoricalRelationships": {
+        "type": "object",
+        "required": [
+          "relations",
+          "coverage"
+        ],
+        "properties": {
+          "at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Null for the change stream; each entry supplies its own context_at."
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/HistoricalPopulationCoverage"
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryResponse_HistoricalRelation"
+            }
+          }
+        }
+      },
+      "HistoricalSharedComputedFields": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "definition_history_id",
+              "valid_from",
+              "evaluator_version",
+              "fields",
+              "status"
+            ],
+            "properties": {
+              "definition_history_id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "evaluator_version": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/HistoricalComputedField"
+                }
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "available"
+                ]
+              },
+              "valid_from": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "valid_to": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "reason",
+              "status"
+            ],
+            "properties": {
+              "reason": {
+                "$ref": "#/components/schemas/HistoricalComputedUnavailableReason"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "unavailable"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "HistoryDirection": {
+        "type": "string",
+        "enum": [
+          "older",
+          "newer"
+        ]
+      },
+      "HistoryMarker": {
+        "type": "object",
+        "description": "Metadata used to navigate history without downloading object data or class schemas.",
+        "required": [
+          "id",
+          "collection_id",
+          "name",
+          "history_id",
+          "revision",
+          "op",
+          "valid_from"
+        ],
+        "properties": {
+          "actor_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "actor_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "collection_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "history_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hubuum_class_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "initiator_user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "op": {
+            "type": "string"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/ResourceRevision"
+          },
+          "task_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "valid_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "valid_to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "HistoryResponse_CollectionHistory": {
         "allOf": [
           {
@@ -26870,6 +29268,211 @@
               "updated_at": {
                 "type": "string",
                 "format": "date-time"
+              },
+              "valid_from": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "valid_to": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "provenance"
+            ],
+            "properties": {
+              "actor_username": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "provenance": {
+                "$ref": "#/components/schemas/Provenance"
+              }
+            }
+          }
+        ],
+        "description": "A serialized history row plus the resolved username of its actor (if any)."
+      },
+      "HistoryResponse_HistoricalRelation": {
+        "allOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalRelationValue"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "history_id",
+                  "revision",
+                  "op",
+                  "valid_from",
+                  "context_at",
+                  "from",
+                  "to"
+                ],
+                "properties": {
+                  "actor_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "int32"
+                  },
+                  "actor_kind": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "context_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "from": {
+                    "$ref": "#/components/schemas/HistoricalEndpointContext"
+                  },
+                  "history_id": {
+                    "type": "integer",
+                    "format": "int64"
+                  },
+                  "initiator_user_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "int32"
+                  },
+                  "op": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "$ref": "#/components/schemas/ResourceRevision"
+                  },
+                  "task_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "int32"
+                  },
+                  "to": {
+                    "$ref": "#/components/schemas/HistoricalEndpointContext"
+                  },
+                  "valid_from": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "valid_to": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time"
+                  }
+                }
+              }
+            ],
+            "description": "Relationship versions and endpoint context resolved at `context_at`."
+          },
+          {
+            "type": "object",
+            "required": [
+              "provenance"
+            ],
+            "properties": {
+              "actor_username": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "provenance": {
+                "$ref": "#/components/schemas/Provenance"
+              }
+            }
+          }
+        ],
+        "description": "A serialized history row plus the resolved username of its actor (if any)."
+      },
+      "HistoryResponse_HistoryMarker": {
+        "allOf": [
+          {
+            "type": "object",
+            "description": "Metadata used to navigate history without downloading object data or class schemas.",
+            "required": [
+              "id",
+              "collection_id",
+              "name",
+              "history_id",
+              "revision",
+              "op",
+              "valid_from"
+            ],
+            "properties": {
+              "actor_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
+              "actor_kind": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "collection_id": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "history_id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "hubuum_class_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
+              "id": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "initiator_user_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
+              },
+              "name": {
+                "type": "string"
+              },
+              "op": {
+                "type": "string"
+              },
+              "revision": {
+                "$ref": "#/components/schemas/ResourceRevision"
+              },
+              "task_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32"
               },
               "valid_from": {
                 "type": "string",
@@ -29563,6 +32166,7 @@
         "required": [
           "enabled",
           "max_attempts",
+          "max_attempts_per_account",
           "max_attempts_per_ip",
           "max_attempts_per_subnet",
           "window_seconds",
@@ -29593,6 +32197,10 @@
             "type": "boolean"
           },
           "max_attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_attempts_per_account": {
             "type": "integer",
             "minimum": 0
           },
@@ -29639,6 +32247,7 @@
           "enabled",
           "backend",
           "max_attempts",
+          "max_attempts_per_account",
           "max_attempts_per_ip",
           "max_attempts_per_subnet",
           "window_seconds",
@@ -29665,6 +32274,10 @@
             "type": "boolean"
           },
           "max_attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_attempts_per_account": {
             "type": "integer",
             "minimum": 0
           },
@@ -29695,7 +32308,7 @@
       },
       "LoginRateLimitEntryResponse": {
         "type": "object",
-        "description": "One tracked rate-limit scope (a user+IP pair, an IP, or a subnet).",
+        "description": "One tracked rate-limit scope (a user+IP pair, an account, an IP, or a subnet).",
         "required": [
           "id",
           "scope",
@@ -29739,7 +32352,7 @@
           },
           "scope": {
             "type": "string",
-            "description": "Scope kind: `user_ip`, `ip`, or `subnet`."
+            "description": "Scope kind: `user_ip`, `account`, `ip`, or `subnet`."
           }
         }
       },
@@ -29823,7 +32436,8 @@
           },
           "password": {
             "type": "string",
-            "maxLength": 4096
+            "maxLength": 4096,
+            "minLength": 1
           }
         },
         "example": {
@@ -30609,7 +33223,9 @@
             "type": "string"
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 1
           },
           "proper_name": {
             "type": [
@@ -31937,6 +34553,13 @@
             "format": "int32",
             "minimum": 0
           },
+          "runtime_override": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Shared runtime override; null means the process startup setting applies."
+          },
           "sample_every": {
             "type": "integer",
             "format": "int32",
@@ -32019,6 +34642,19 @@
             "type": "string"
           }
         }
+      },
+      "QueryObservationUpdateRequest": {
+        "type": "object",
+        "description": "Enable or disable observation collection across replicas sharing storage.",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       },
       "QueryPatternObservation": {
         "type": "object",
@@ -32430,6 +35066,9 @@
             "format": "int64"
           }
         }
+      },
+      "RefreshToken": {
+        "type": "string"
       },
       "RelatedClassGraph": {
         "type": "object",
@@ -34366,6 +37005,135 @@
           "superseded"
         ]
       },
+      "SearchHydrationPath": {
+        "type": "object",
+        "description": "One visible bidirectional path. Relation IDs correspond to successive\nobject ID pairs; an edge's stored orientation need not match traversal.",
+        "required": [
+          "object_ids",
+          "relation_ids"
+        ],
+        "properties": {
+          "object_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "relation_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        }
+      },
+      "SearchHydrationRequest": {
+        "type": "object",
+        "description": "Opt-in, lazy hydration of one search-result object's visible neighborhood.\nThis request does not execute or modify the root search. The class selects\nrelated endpoints; intermediate path objects may belong to other classes.",
+        "required": [
+          "version",
+          "root_class_id",
+          "root_object_id",
+          "class",
+          "depth",
+          "limit"
+        ],
+        "properties": {
+          "class": {
+            "$ref": "#/components/schemas/StructuredClassSelector"
+          },
+          "depth": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 10,
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Maximum visible paths, not an exact count of related objects.",
+            "maximum": 50,
+            "minimum": 1
+          },
+          "root_class_id": {
+            "$ref": "#/components/schemas/HubuumClassID"
+          },
+          "root_object_id": {
+            "$ref": "#/components/schemas/HubuumObjectID"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 1,
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "SearchHydrationResponse": {
+        "type": "object",
+        "description": "A bounded visible neighborhood, independent of root search pagination.\nObjects and relations are unique by ID and include only the returned paths.\nClass/collection IDs are references, not authorization to read their names.",
+        "required": [
+          "version",
+          "root_object_id",
+          "target_class_id",
+          "depth",
+          "limit",
+          "objects",
+          "relations",
+          "paths",
+          "truncated"
+        ],
+        "properties": {
+          "depth": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "objects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HubuumObject"
+            }
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchHydrationPath"
+            }
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HubuumObjectRelation"
+            }
+          },
+          "root_object_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "target_class_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "Additional visible paths exist. No count of hidden resources is exposed.\nThis version does not paginate hydration; narrow the class/depth or raise\nthe path limit, up to 50, to inspect a different bounded scope."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
       "SecretSourceConfig": {
         "type": "object",
         "required": [
@@ -34575,6 +37343,87 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "SessionLoginRequest": {
+        "type": "object",
+        "required": [
+          "client_id",
+          "name",
+          "password"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "identity_scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SessionRefreshRequest": {
+        "type": "object",
+        "required": [
+          "client_id",
+          "refresh_token"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "$ref": "#/components/schemas/RefreshToken"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SessionResponse": {
+        "type": "object",
+        "required": [
+          "session_id",
+          "token_type",
+          "access_token",
+          "access_expires_at",
+          "refresh_token",
+          "refresh_expires_at",
+          "absolute_expires_at"
+        ],
+        "properties": {
+          "absolute_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "access_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "access_token": {
+            "type": "string"
+          },
+          "refresh_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refresh_token": {
+            "$ref": "#/components/schemas/RefreshToken"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "token_type": {
+            "type": "string"
           }
         }
       },
@@ -37018,7 +39867,9 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 4096,
+            "minLength": 1
           },
           "proper_name": {
             "type": [
@@ -37157,135 +40008,6 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "SearchHydrationRequest": {
-        "type": "object",
-        "description": "Opt-in, lazy hydration of one search-result object's visible neighborhood.\nThis request does not execute or modify the root search. The class selects\nrelated endpoints; intermediate path objects may belong to other classes.",
-        "required": [
-          "version",
-          "root_class_id",
-          "root_object_id",
-          "class",
-          "depth",
-          "limit"
-        ],
-        "properties": {
-          "class": {
-            "$ref": "#/components/schemas/StructuredClassSelector"
-          },
-          "depth": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 10,
-            "minimum": 1
-          },
-          "limit": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Maximum visible paths, not an exact count of related objects.",
-            "maximum": 50,
-            "minimum": 1
-          },
-          "root_class_id": {
-            "$ref": "#/components/schemas/HubuumClassID"
-          },
-          "root_object_id": {
-            "$ref": "#/components/schemas/HubuumObjectID"
-          },
-          "version": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 1,
-            "minimum": 1
-          }
-        },
-        "additionalProperties": false
-      },
-      "SearchHydrationResponse": {
-        "type": "object",
-        "description": "A bounded visible neighborhood, independent of root search pagination.\nObjects and relations are unique by ID and include only the returned paths.\nClass/collection IDs are references, not authorization to read their names.",
-        "required": [
-          "version",
-          "root_object_id",
-          "target_class_id",
-          "depth",
-          "limit",
-          "objects",
-          "relations",
-          "paths",
-          "truncated"
-        ],
-        "properties": {
-          "depth": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 0
-          },
-          "limit": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 0
-          },
-          "objects": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HubuumObject"
-            }
-          },
-          "paths": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SearchHydrationPath"
-            }
-          },
-          "relations": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HubuumObjectRelation"
-            }
-          },
-          "root_object_id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "target_class_id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "truncated": {
-            "type": "boolean",
-            "description": "Additional visible paths exist. No count of hidden resources is exposed.\nThis version does not paginate hydration; narrow the class/depth or raise\nthe path limit, up to 50, to inspect a different bounded scope."
-          },
-          "version": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 0
-          }
-        }
-      },
-      "SearchHydrationPath": {
-        "type": "object",
-        "description": "One visible bidirectional path. Relation IDs correspond to successive\nobject ID pairs; an edge's stored orientation need not match traversal.",
-        "required": [
-          "object_ids",
-          "relation_ids"
-        ],
-        "properties": {
-          "object_ids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          "relation_ids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int32"
-            }
           }
         }
       }

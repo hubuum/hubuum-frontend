@@ -19,7 +19,7 @@ function waitForShellReady(page: Page) {
 }
 
 async function revokeCurrentBackendToken(page: Page) {
-	const response = await page.request.post(`${bffPrefix}/api/v0/auth/logout`, {
+	const response = await page.request.post(`${bffPrefix}/api/v1/auth/logout`, {
 		headers: { Origin: new URL(page.url()).origin },
 	});
 	expect(response.status()).toBe(200);
@@ -492,7 +492,7 @@ test.describe("authenticated workspace", () => {
 		const origin = new URL(page.url()).origin;
 		await page.close();
 		const logoutResponse = await context.request.post(
-			"/_hubuum-bff/hubuum/api/v0/auth/logout",
+			"/_hubuum-bff/hubuum/api/v1/auth/logout",
 			{ headers: { Origin: origin } },
 		);
 		expect(logoutResponse.status()).toBe(200);

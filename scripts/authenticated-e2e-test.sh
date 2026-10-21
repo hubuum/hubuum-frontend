@@ -15,6 +15,8 @@ VALKEY_PORT="${HUBUUM_AUTH_E2E_VALKEY_PORT:-16379}"
 BASE_URL="http://127.0.0.1:${BACKEND_PORT}"
 KEEP_STACK="${HUBUUM_AUTH_E2E_KEEP_STACK:-0}"
 
+export HUBUUM_LIVE_SESSION_ACCESS_SECONDS="${HUBUUM_LIVE_SESSION_ACCESS_SECONDS:-5}"
+export E2E_SESSION_ACCESS_SECONDS="${HUBUUM_LIVE_SESSION_ACCESS_SECONDS}"
 export HUBUUM_LIVE_BACKEND_IMAGE="${IMAGE}"
 export HUBUUM_LIVE_BACKEND_PORT="${BACKEND_PORT}"
 export HUBUUM_LIVE_POSTGRES_PORT="${POSTGRES_PORT}"
@@ -83,4 +85,4 @@ BACKEND_BASE_URL="${BASE_URL}" \
   E2E_IDENTITY_SCOPE="local" \
   E2E_USERNAME="admin" \
   E2E_PASSWORD="${admin_password}" \
-  npx playwright test tests/e2e/authenticated-smoke.spec.ts tests/e2e/workspace-quality.spec.ts tests/e2e/schema-workspace.spec.ts tests/e2e/task-cancellation.spec.ts tests/e2e/task-discovery.spec.ts tests/e2e/resource-history.spec.ts tests/e2e/advanced-search.spec.ts tests/e2e/server-*.spec.ts --workers=1 "$@"
+  npx playwright test tests/e2e/rotating-sessions-live.spec.ts tests/e2e/authenticated-smoke.spec.ts tests/e2e/workspace-quality.spec.ts tests/e2e/schema-workspace.spec.ts tests/e2e/task-cancellation.spec.ts tests/e2e/task-discovery.spec.ts tests/e2e/resource-history.spec.ts tests/e2e/advanced-search.spec.ts tests/e2e/server-*.spec.ts --workers=1 "$@"
