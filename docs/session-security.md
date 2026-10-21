@@ -16,6 +16,13 @@ refresh, or ambiguous response, sign-in is required. This avoids replay revoking
 a family when a request succeeded but its response was lost. Rotation does not
 extend the server's absolute session deadline.
 
+Configure rotation on the server with `HUBUUM_SESSION_ACCESS_SECONDS` (900 seconds
+by default). For example, `3600` gives access tokens a one-hour lifetime; the BFF
+refreshes shortly before expiry. `HUBUUM_SESSION_IDLE_SECONDS` and
+`HUBUUM_SESSION_ABSOLUTE_SECONDS` separately bound inactivity and total session
+lifetime. Restart the server after changing these settings and sign in again to
+use the new policy; existing sessions retain the policy from login.
+
 Pair replacement requires both the claimed generation and its owner nonce.
 Session touches update only activity time with the same generation check. Logout
 removes the record, so an in-flight refresh cannot recreate it; a received pair

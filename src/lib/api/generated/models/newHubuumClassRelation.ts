@@ -6,12 +6,15 @@
  * OpenAPI spec version: 0.0.19
  */
 import type { ObjectRelationLimit } from './objectRelationLimit';
+import type { RelationLabel } from './relationLabel';
 
 export interface NewHubuumClassRelation {
+  forward_label?: RelationLabel | null;
   /** @nullable */
   forward_template_alias?: string | null;
   from_hubuum_class_id: number;
   from_max_relations?: ObjectRelationLimit | null;
+  reverse_label?: RelationLabel | null;
   /** @nullable */
   reverse_template_alias?: string | null;
   to_hubuum_class_id: number;

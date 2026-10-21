@@ -5,10 +5,13 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.19
  */
+import type { HubuumClassRelation } from './hubuumClassRelation';
 import type { HubuumObjectRelation } from './hubuumObjectRelation';
 import type { HubuumObjectWithPath } from './hubuumObjectWithPath';
 
 export interface RelatedObjectGraph {
+  /** Authorized definitions referenced by the object edges; labels follow class endpoint order. */
+  class_relations: HubuumClassRelation[];
   objects: HubuumObjectWithPath[];
   relations: HubuumObjectRelation[];
 }

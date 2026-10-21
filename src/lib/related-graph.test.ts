@@ -52,6 +52,7 @@ it("deduplicates alternate paths and lays out stable shortest-distance columns w
 it("links each object using its own class", () => {
 	const result = layoutRelatedGraph(
 		{
+			class_relations: [],
 			objects: [
 				{ ...node(1, [1]), data: {}, hubuum_class_id: 15 },
 				{ ...node(2, [1, 2]), data: {}, hubuum_class_id: 20 },

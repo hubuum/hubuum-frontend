@@ -214,6 +214,7 @@ import type {
   TaskQueueStateResponse,
   TaskResponse,
   UnifiedSearchResponse,
+  UpdateClassRelationLabels,
   UpdateCollection,
   UpdateCollectionParent,
   UpdateEventSink,
@@ -15647,6 +15648,97 @@ export const deleteApiV1RelationsClassesByRelationId = async (relationId: number
 
   const data: deleteApiV1RelationsClassesByRelationIdResponse['data'] = body ? JSON.parse(body) : undefined
   return { data, status: res.status, headers: res.headers } as deleteApiV1RelationsClassesByRelationIdResponse
+}
+
+
+
+export type patchApiV1RelationsClassesByRelationIdResponse200 = {
+  data: HubuumClassRelation
+  status: 200
+}
+
+export type patchApiV1RelationsClassesByRelationIdResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1RelationsClassesByRelationIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1RelationsClassesByRelationIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1RelationsClassesByRelationIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type patchApiV1RelationsClassesByRelationIdResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type patchApiV1RelationsClassesByRelationIdResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type patchApiV1RelationsClassesByRelationIdResponseSuccess = (patchApiV1RelationsClassesByRelationIdResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1RelationsClassesByRelationIdResponseError = (patchApiV1RelationsClassesByRelationIdResponse400 | patchApiV1RelationsClassesByRelationIdResponse401 | patchApiV1RelationsClassesByRelationIdResponse403 | patchApiV1RelationsClassesByRelationIdResponse404 | patchApiV1RelationsClassesByRelationIdResponse409 | patchApiV1RelationsClassesByRelationIdResponse412) & {
+  headers: Headers;
+};
+
+export type patchApiV1RelationsClassesByRelationIdResponse = (patchApiV1RelationsClassesByRelationIdResponseSuccess | patchApiV1RelationsClassesByRelationIdResponseError)
+
+export const getPatchApiV1RelationsClassesByRelationIdUrl = (relationId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/relations/classes/${relationId}`
+}
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/relations/classes/{relation_id}.
+ * @summary Patch Api V1 Relations Classes By Relation Id
+ */
+export const patchApiV1RelationsClassesByRelationId = async (relationId: number,
+    updateClassRelationLabels: UpdateClassRelationLabels, options?: RequestInit): Promise<patchApiV1RelationsClassesByRelationIdResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPatchApiV1RelationsClassesByRelationIdUrl(relationId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateClassRelationLabels)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1RelationsClassesByRelationIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1RelationsClassesByRelationIdResponse
 }
 
 
