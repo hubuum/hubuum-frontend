@@ -39,7 +39,9 @@ jobs:
         with:
           node-version: '24'
       - name: Verify release metadata
-        run: bash scripts/check-release-readiness.sh
+        run: |
+          node --test scripts/check-release-readiness.test.mjs
+          bash scripts/check-release-readiness.sh
       - name: Test CI selection and gate
         run: python3 scripts/test-ci-policy.py
       - name: Classify changes
@@ -126,7 +128,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Test against Hubuum Server v0.0.19
+      - name: Test against the pinned Hubuum Server contract
         env:
           HUBUUM_LIVE_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: npm run test:live-backend
@@ -269,7 +271,7 @@ jobs:
           HUBUUM_FRONTEND_IMAGE: hubuum-frontend:ci
           HUBUUM_FRONTEND_PORT: 13001
         run: bash scripts/quickstart-smoke.sh
-      - name: Smoke test frontend BFF against Hubuum Server v0.0.19
+      - name: Smoke test frontend BFF against the pinned Hubuum Server
         env:
           HUBUUM_COMPAT_BACKEND_IMAGE: ${{ env.COMPAT_BACKEND_IMAGE }}
         run: bash scripts/release-stack-smoke.sh

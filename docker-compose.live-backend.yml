@@ -33,7 +33,7 @@ services:
         condition: service_completed_successfully
     environment:
       HUBUUM_DATABASE_URL: postgres://hubuum:hubuum_password@postgres:5432/hubuum
-      HUBUUM_TOKEN_HASH_KEY: live-backend-test-token-hash-key
+      HUBUUM_TOKEN_HASH_KEY: live-backend-test-token-hash-key-only
 
   hubuum:
     image: ${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.19@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225}
@@ -48,7 +48,7 @@ services:
       HUBUUM_EVENT_DELIVERY_WORKERS: "0"
       HUBUUM_LOGIN_RATE_LIMIT_ENABLED: "false"
       HUBUUM_LOG_LEVEL: debug
-      HUBUUM_TOKEN_HASH_KEY: live-backend-test-token-hash-key
+      HUBUUM_TOKEN_HASH_KEY: live-backend-test-token-hash-key-only
       HUBUUM_SESSION_ACCESS_SECONDS: "${HUBUUM_LIVE_SESSION_ACCESS_SECONDS:-900}"
     ports:
       - "127.0.0.1:${HUBUUM_LIVE_BACKEND_PORT:-9999}:8080"

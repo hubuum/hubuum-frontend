@@ -26,7 +26,13 @@ async function performLogout(request: NextRequest) {
 	if (all && !session)
 		return NextResponse.json(
 			{ message: "Sign in before signing out of all sessions." },
-			{ status: 401, headers: { [CORRELATION_ID_HEADER]: correlationId } },
+			{
+				status: 401,
+				headers: {
+					[CORRELATION_ID_HEADER]: correlationId,
+					"Cache-Control": "no-store",
+				},
+			},
 		);
 
 	if (session) {
@@ -45,7 +51,13 @@ async function performLogout(request: NextRequest) {
 		if (all && !upstream?.ok) {
 			return NextResponse.json(
 				{ message: "Could not sign out of all sessions. Try again." },
-				{ status: 502, headers: { [CORRELATION_ID_HEADER]: correlationId } },
+				{
+					status: 502,
+					headers: {
+						[CORRELATION_ID_HEADER]: correlationId,
+						"Cache-Control": "no-store",
+					},
+				},
 			);
 		}
 		await destroySession(session.sid);
@@ -60,7 +72,10 @@ async function performLogout(request: NextRequest) {
 	};
 	const response = NextResponse.json(payload, {
 		status: 200,
-		headers: { [CORRELATION_ID_HEADER]: correlationId },
+		headers: {
+			[CORRELATION_ID_HEADER]: correlationId,
+			"Cache-Control": "no-store",
+		},
 	});
 	clearSessionCookie(response, request);
 	console.info(`[hubuum-auth][cid=${correlationId}] logout completed`);
@@ -82,6 +97,7 @@ export async function GET(request: NextRequest) {
 			status: 405,
 			headers: {
 				Allow: "POST",
+				"Cache-Control": "no-store",
 				[CORRELATION_ID_HEADER]: correlationId,
 			},
 		},

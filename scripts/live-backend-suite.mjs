@@ -329,7 +329,9 @@ async function main() {
         `EventSubscriptionFilter is missing ${field}.`);
     }
   }
-  const backupVersion = hasQueryUsage ? 9 : hasCollectionSinks ? 8 : hasSystemSubscriptions ? 7 : hasSchemaEvolution ? 6 : 5;
+  const backupVersion = openapi.data.paths?.["/api/v1/classes/{class_id}/{object_id}/history/computed/as-of"]
+    ? 10
+    : hasQueryUsage ? 9 : hasCollectionSinks ? 8 : hasSystemSubscriptions ? 7 : hasSchemaEvolution ? 6 : 5;
 
 
   const token = await loginAs(adminName, adminPassword);

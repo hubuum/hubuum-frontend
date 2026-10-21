@@ -6,6 +6,8 @@ is retained after login. Both credentials stay in the server-side Valkey record;
 the browser receives only the existing HttpOnly, SameSite session cookie.
 The generic BFF proxy blocks login and refresh paths, including encoded paths.
 Credential-management flows continue to require a fresh password approval.
+Approvals are bound to the access credential that requested them; if rotation
+occurs before the approved write, obtain a new approval with the current session.
 
 Before an access token expires, the BFF atomically claims its credential generation
 in Valkey. Other instances wait for the complete replacement pair. A claim never

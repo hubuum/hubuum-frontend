@@ -20,6 +20,7 @@ nav = [
   ] },
   { "Deploy and operate" = [
     { "Configuration" = "configuration.md" },
+    { "Session security" = "session-security.md" },
     { "Helm and OKD deployment" = "deployment.md" },
     { "Compose quick start" = "quickstart-compose.md" },
     { "Observability" = "observability.md" },

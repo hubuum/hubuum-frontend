@@ -15,6 +15,7 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   atomic coordination across frontend instances. Failed or uncertain refreshes
   require sign-in; cookie and store expiry cannot outlive backend session limits.
 - Signing out of all sessions preserves separately issued personal access tokens.
+- Mark login and logout responses, including rejected requests, as non-cacheable.
 
 ## [0.0.21] - 2026-10-19
 

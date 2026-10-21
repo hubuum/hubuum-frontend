@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 				error: "BadRequest",
 				message: "Invalid login payload",
 			},
-			{ status: 400 },
+			{ status: 400, headers: { "Cache-Control": "no-store" } },
 		);
 	}
 
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
 				error: "AuthenticationFailed",
 				message: "Login failed",
 			},
-			{ status: upstream.status },
+			{ status: upstream.status, headers: { "Cache-Control": "no-store" } },
 		);
 	}
 
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 				error: "AuthProtocolError",
 				message: "Backend returned an invalid session",
 			},
-			{ status: 502 },
+			{ status: 502, headers: { "Cache-Control": "no-store" } },
 		);
 	}
 
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
 				message:
 					"The requested identity scope is unavailable or unsupported by this server.",
 			},
-			{ status: 400 },
+			{ status: 400, headers: { "Cache-Control": "no-store" } },
 		);
 	}
 	const sessionIdentity = identity ?? {
@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
 				error: "SessionStoreUnavailable",
 				message: "The frontend session store is unavailable.",
 			},
-			{ status: 503 },
+			{ status: 503, headers: { "Cache-Control": "no-store" } },
 		);
 	}
 	const response = fromForm
