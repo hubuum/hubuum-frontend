@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { TablePagination } from "@/components/table-pagination";
-import { fetchClientPaginationConfig } from "@/lib/api/client-config";
 import { fetchRelatedGraph } from "@/lib/api/related-graph";
 import {
 	graphResourceHref,
@@ -17,7 +16,13 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 	const [depth, setDepth] = useState("2");
 	const config = useQuery({
 		queryKey: ["client-config", "pagination"],
-		queryFn: fetchClientPaginationConfig,
+		queryFn: async () => {
+			// Share the configuration helper through an async chunk across routes.
+			const { fetchClientPaginationConfig } = await import(
+				"@/lib/api/client-config"
+			);
+			return fetchClientPaginationConfig();
+		},
 		staleTime: Number.POSITIVE_INFINITY,
 		retry: false,
 	});
