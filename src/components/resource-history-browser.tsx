@@ -3,7 +3,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { ClassHistoryRestore } from "@/components/class-history-restore";
 import { HistoryComparison } from "@/components/history-comparison";
@@ -113,6 +113,20 @@ function SnapshotPresentation({
 export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 	const search = useSearchParams();
 	const pathname = usePathname();
+	const selectionUrl = `${pathname}?${search.toString()}`;
+	const [scrollPreview, setScrollPreview] = useState<{
+		url: string;
+		record: HistoryRecord;
+	} | null>(null);
+	const scrollCommit = useRef<ReturnType<typeof setTimeout> | null>(null);
+	// Back/Forward and explicit navigation must cancel an uncommitted scroll.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: URL changes cancel the pending scroll commit.
+	useEffect(() => {
+		setScrollPreview(null);
+		return () => {
+			if (scrollCommit.current !== null) clearTimeout(scrollCommit.current);
+		};
+	}, [selectionUrl]);
 	const at = search.get("at") ?? "";
 	const versionId = Number(search.get("version"));
 	const comparisonMode = ["live", "pinned"].includes(
@@ -185,8 +199,10 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 			!selectedLoaded,
 	);
 	const selected =
-		selectedLoaded ??
-		(at && validAt && !versionMismatch ? asOf.data : undefined);
+		scrollPreview?.url === selectionUrl
+			? scrollPreview.record
+			: (selectedLoaded ??
+				(at && validAt && !versionMismatch ? asOf.data : undefined));
 	const selectedIndex = records.findIndex(
 		(record) => record.history_id === selected?.history_id,
 	);
@@ -220,23 +236,54 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 	const updateUrl = useCallback(
 		(values: Record<string, string | null>, replace = false) => {
 			const params = new URLSearchParams(window.location.search);
+			// Pinning or changing the comparison also commits the visible scroll preview.
+			if (scrollPreview?.url === `${pathname}?${params}`) {
+				params.set("at", scrollPreview.record.valid_from);
+				params.set("version", String(scrollPreview.record.history_id));
+			}
 			for (const [key, value] of Object.entries(values)) {
 				if (value === null) params.delete(key);
 				else params.set(key, value);
 			}
+			if (scrollCommit.current !== null) {
+				clearTimeout(scrollCommit.current);
+				scrollCommit.current = null;
+			}
+			if (
+				params.toString() ===
+				new URLSearchParams(window.location.search).toString()
+			)
+				return;
 			window.history[replace ? "replaceState" : "pushState"](
 				null,
 				"",
 				`${pathname}?${params}`,
 			);
 		},
-		[pathname],
+		[pathname, scrollPreview],
 	);
 	const selectVersion = useCallback(
-		(record: HistoryRecord) => {
-			updateUrl({ at: record.valid_from, version: String(record.history_id) });
+		(record: HistoryRecord, scrolling = false) => {
+			if (scrollCommit.current !== null) clearTimeout(scrollCommit.current);
+			if (scrolling) {
+				// Keep the snapshot responsive without writing history on every frame.
+				setScrollPreview({ url: selectionUrl, record });
+				scrollCommit.current = setTimeout(() => {
+					updateUrl({
+						at: record.valid_from,
+						version: String(record.history_id),
+					});
+					scrollCommit.current = null;
+				}, 250);
+			} else {
+				setScrollPreview(null);
+				updateUrl({
+					at: record.valid_from,
+					version: String(record.history_id),
+				});
+			}
 		},
-		[updateUrl],
+		[updateUrl, selectionUrl],
 	);
 	useEffect(() => {
 		if (!at && records[0])

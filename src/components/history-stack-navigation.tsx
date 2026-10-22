@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import type { HistoryRecord } from "@/lib/api/events";
 import {
 	compareSnapshots,
@@ -47,7 +47,7 @@ export function HistoryStackNavigation({
 }: {
 	records: HistoryRecord[];
 	selected: HistoryRecord;
-	onSelect: (record: HistoryRecord) => void;
+	onSelect: (record: HistoryRecord, scrolling?: boolean) => void;
 	loadOlder?: () => void;
 	loadingOlder: boolean;
 	children: React.ReactNode;
@@ -56,6 +56,7 @@ export function HistoryStackNavigation({
 	const timelineHeight = useRef(0);
 	const scrollFrame = useRef<number | null>(null);
 	const scrollSelection = useRef<number | null>(null);
+	const centeredTop = useRef<number | null>(null);
 	const requestedPage = useRef<number | null>(null);
 	const index = records.findIndex(
 		(record) => record.history_id === selected.history_id,
@@ -74,7 +75,7 @@ export function HistoryStackNavigation({
 					)
 					.slice(0, 20);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (index < 0 || !timelineRef.current) return;
 		const viewport = timelineRef.current;
 		timelineHeight.current = viewport.clientHeight;
@@ -87,12 +88,14 @@ export function HistoryStackNavigation({
 			}
 			scrollSelection.current = null;
 			viewport.scrollTop = index * TIMELINE_STEP;
+			centeredTop.current = viewport.scrollTop;
 		});
 		observer.observe(viewport);
 		if (scrollSelection.current === selected.history_id) {
 			scrollSelection.current = null;
 		} else {
 			viewport.scrollTop = index * TIMELINE_STEP;
+			centeredTop.current = viewport.scrollTop;
 		}
 		return () => observer.disconnect();
 	}, [index, selected.history_id]);
@@ -123,17 +126,26 @@ export function HistoryStackNavigation({
 			// Resizing changes the centering padding; it is not timeline travel.
 			if (index >= 0 && viewport.clientHeight !== timelineHeight.current) {
 				viewport.scrollTop = index * TIMELINE_STEP;
+				centeredTop.current = viewport.scrollTop;
 				return;
 			}
 			const top = viewport.scrollTop;
+			const centered =
+				centeredTop.current !== null && Math.abs(top - centeredTop.current) < 1;
+			centeredTop.current = null;
 			const position = Math.max(
 				0,
 				Math.min(records.length - 1, Math.round(top / TIMELINE_STEP)),
 			);
 			const record = records[position];
-			if (record && record.history_id !== selected.history_id) {
+			if (
+				!centered &&
+				record &&
+				record.history_id !== selected.history_id &&
+				record.history_id !== scrollSelection.current
+			) {
 				scrollSelection.current = record.history_id;
-				onSelect(record);
+				onSelect(record, true);
 			}
 			if (
 				top > 0 &&
@@ -230,9 +242,7 @@ export function HistoryStackNavigation({
 				<div className={styles.timelineHeading}>
 					<strong>Timeline</strong>
 					{index >= 0 ? (
-						<span
-							title="Loaded versions newer than the selected snapshot"
-						>
+						<span title="Loaded versions newer than the selected snapshot">
 							{index} newer
 						</span>
 					) : null}
@@ -301,9 +311,7 @@ export function HistoryStackNavigation({
 				</div>
 				<div className={styles.timelineFooter}>
 					{index >= 0 ? (
-						<span
-							title="Loaded versions older than the selected snapshot"
-						>
+						<span title="Loaded versions older than the selected snapshot">
 							{records.length - index - 1} older
 						</span>
 					) : null}
