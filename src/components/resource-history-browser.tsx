@@ -236,9 +236,18 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 	const updateUrl = useCallback(
 		(values: Record<string, string | null>, replace = false) => {
 			const params = new URLSearchParams(window.location.search);
+			// Pinning or changing the comparison also commits the visible scroll preview.
+			if (scrollPreview?.url === `${pathname}?${params}`) {
+				params.set("at", scrollPreview.record.valid_from);
+				params.set("version", String(scrollPreview.record.history_id));
+			}
 			for (const [key, value] of Object.entries(values)) {
 				if (value === null) params.delete(key);
 				else params.set(key, value);
+			}
+			if (scrollCommit.current !== null) {
+				clearTimeout(scrollCommit.current);
+				scrollCommit.current = null;
 			}
 			if (
 				params.toString() ===
@@ -251,7 +260,7 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 				`${pathname}?${params}`,
 			);
 		},
-		[pathname],
+		[pathname, scrollPreview],
 	);
 	const selectVersion = useCallback(
 		(record: HistoryRecord, scrolling = false) => {

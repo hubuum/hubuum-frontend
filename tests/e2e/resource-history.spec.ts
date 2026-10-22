@@ -1083,6 +1083,45 @@ test.describe("resource history", () => {
 		await expectSelected(page, 102);
 	});
 
+	test("comparison controls preserve a pending scroll selection", async ({
+		page,
+	}) => {
+		await prepare(page, { many: true });
+		await page.clock.install();
+		await page.goto(objectPath);
+		await expectSelected(page, 1059);
+		await page.clock.pauseAt(new Date(Date.now() + 1000));
+		const viewport = page
+			.getByRole("navigation", { name: "History timeline" })
+			.locator('[class*="timelineViewport"]');
+		await viewport.evaluate((element) => {
+			element.scrollTop = 80;
+			element.dispatchEvent(new Event("scroll"));
+		});
+		await page.clock.runFor(32);
+		await expectSelected(page, 1058);
+		expect(new URL(page.url()).searchParams.get("version")).toBe("1059");
+		await page
+			.getByRole("button", { name: "Pin as baseline" })
+			.dispatchEvent("click");
+		await expectSelected(page, 1058);
+		expect(new URL(page.url()).searchParams.get("pin")).toBe("1058");
+		expect(new URL(page.url()).searchParams.get("version")).toBe("1058");
+		await viewport.evaluate((element) => {
+			element.scrollTop = 160;
+			element.dispatchEvent(new Event("scroll"));
+		});
+		await page.clock.runFor(32);
+		await expectSelected(page, 1057);
+		await page.getByLabel("Compare with").selectOption("live");
+		await expectSelected(page, 1057);
+		expect(new URL(page.url()).searchParams.get("version")).toBe("1057");
+		await page.clock.runFor(300);
+		await expectSelected(page, 1057);
+		await page.goBack();
+		await expectSelected(page, 1058);
+	});
+
 	test("rapid scrolling near the end settles the URL without flooding browser history", async ({
 		page,
 	}) => {
