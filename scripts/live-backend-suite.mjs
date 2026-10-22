@@ -10,7 +10,7 @@ const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
 const adminPassword = process.env.HUBUUM_LIVE_ADMIN_PASSWORD;
 const expectedServerVersion = process.env.HUBUUM_LIVE_EXPECT_SERVER_VERSION ??
-  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.19");
+  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.20");
 
 if (!adminPassword) {
   throw new Error("HUBUUM_LIVE_ADMIN_PASSWORD is required.");
@@ -314,15 +314,15 @@ async function main() {
     assert(hasSchemaRepairReports, "This run requires saved schema diagnostics and HTML repair reports.");
   }
   const hasSystemSubscriptions = Boolean(openapi.data.paths?.["/api/v1/system-event-subscriptions"]);
-  if (["0.0.18", "0.0.19"].includes(expectedServerVersion)) {
+  if (["0.0.18", "0.0.19", "0.0.20"].includes(expectedServerVersion)) {
     assert(hasSystemSubscriptions, "This run requires the released system subscription contract.");
   }
   const hasCollectionSinks = Boolean(openapi.data.paths?.["/api/v1/collections/{collection_id}/event-sinks"]);
-  if (["0.0.18", "0.0.19"].includes(expectedServerVersion)) {
+  if (["0.0.18", "0.0.19", "0.0.20"].includes(expectedServerVersion)) {
     assert(hasCollectionSinks, "This run requires the released collection sink contract.");
   }
   const hasQueryUsage = Boolean(openapi.data.paths?.["/api/v1/classes/{class_id}/query-usage"]);
-  if (expectedServerVersion === "0.0.19") {
+  if (["0.0.19", "0.0.20"].includes(expectedServerVersion)) {
     assert(hasQueryUsage, "This run requires the released query usage contract.");
     for (const field of ["subject_principal_ids", "subject_identity_scopes", "subject_is_admin"]) {
       assert(openapi.data.components?.schemas?.EventSubscriptionFilter?.properties?.[field],

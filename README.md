@@ -4,23 +4,23 @@ The browser interface for Hubuum: browse inventory, manage relationships, run
 reports, and administer access. Server-side sessions keep Hubuum bearer tokens
 out of the browser.
 
-Frontend **v0.0.21**, released **2026-10-19**, targets Hubuum Server **v0.0.19**.
+Frontend **v0.0.22**, released **2026-10-22**, targets Hubuum Server **v0.0.20**.
 
-The unreleased frontend requires the rotating-session server API introduced in
+This release requires the rotating-session server API introduced in
 [server #178](https://github.com/hubuum/hubuum/issues/178). Upgrade the server and
 frontend together; existing frontend sessions require sign-in again. See
 [session security](docs/session-security.md) for rotation and deployment details.
 
 Read [compatibility](docs/compatibility.md) before pairing other releases.
 
-[Documentation](https://hubuum.github.io/hubuum-frontend/) · [Releases](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.21) · [Hubuum ecosystem](https://hubuum.github.io/)
+[Documentation](https://hubuum.github.io/hubuum-frontend/) · [Releases](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.22) · [Hubuum ecosystem](https://hubuum.github.io/)
 
 ## Quick start
 
 Download the versioned Compose archive and follow the complete
 [Compose quick start](docs/quickstart-compose.md). It runs the frontend and
 Valkey against an existing Hubuum server. For a complete server/frontend stack,
-use the [single-host installer](https://hubuum.github.io/hubuum/v0.0.19/deployment/).
+use the [single-host installer](https://hubuum.github.io/hubuum/v0.0.20/deployment/).
 
 Developers should use [local development](docs/development.md); browser users
 should start with [Atlas](docs/example-dataset.md) and the
@@ -36,10 +36,10 @@ See [runtime settings, proxy routing, and login backgrounds](docs/configuration.
 
 ## Release artifacts
 
-Release v0.0.21 provides Linux AMD64/ARM64 images, a Helm chart, and a
+Release v0.0.22 provides Linux AMD64/ARM64 images, a Helm chart, and a
 checksum-protected Compose archive pinned to the image digest. The image is
-`ghcr.io/hubuum/hubuum-frontend:v0.0.21`; the Helm chart is
-`oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.21`.
+`ghcr.io/hubuum/hubuum-frontend:v0.0.22`; the Helm chart is
+`oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.22`.
 See [deployment](docs/deployment.md) and [release evidence](docs/compatibility.md).
 
 ## Features
@@ -47,11 +47,11 @@ See [deployment](docs/deployment.md) and [release evidence](docs/compatibility.m
 Browse classes and objects, edit data, follow relations, build reports, track
 tasks, and manage authorized workflows. See the [browser guide](docs/user-guide.md).
 
-This release adds query usage management and analysis, system event controls,
-security administration, configuration history, all seven structured-search
-catalogs, cancellable search streaming, and bounded neighborhood graphs.
-Settings edits and confirmations retain their reviewed revisions, and mutation
-dialogs preserve keyboard focus.
+This release adds coordinated rotating sessions across frontend instances,
+requires sign-in again after the server upgrade, and preserves independent PATs
+when signing out. Search hydration and exact-name history now use the supported
+server release. Application dependencies, GitHub Actions, Orval, and the browser
+test image are refreshed together.
 
 <!-- markdownlint-disable-next-line MD033 -->
 <span id="what-is-scaffolded"></span>
@@ -80,6 +80,6 @@ dialogs preserve keyboard focus.
 | <span id="documentation-only-ci"></span>Documentation-only CI | [Guide](docs/development.md#documentation-only-ci) |
 | <span id="deployment-notes-okd"></span>Deployment notes (OKD) | [Guide](docs/deployment.md#deployment-notes-okd) |
 | <span id="container-and-helm-publishing"></span>Container and Helm publishing | [Guide](docs/deployment.md#container-and-helm-publishing) |
-| <span id="important-caveat"></span>Query support | [Server query reference](https://hubuum.github.io/hubuum/v0.0.19/querying/) |
+| <span id="important-caveat"></span>Query support | [Server query reference](https://hubuum.github.io/hubuum/v0.0.20/querying/) |
 
 <!-- markdownlint-enable MD033 -->

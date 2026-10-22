@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
+| `main` (unreleased) | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
+| `v0.0.22` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.21` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.20` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.19` | `v0.0.18` | `ghcr.io/hubuum/hubuum-server:v0.0.18` |
@@ -29,7 +30,7 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required pull-request and release checks use the immutable digest behind the
-listed server tag. Frontend `v0.0.20`, `v0.0.21`, and unreleased `main` target
+listed server tag. Frontend `v0.0.20` and `v0.0.21` target
 Server `v0.0.19` at
 `sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225`.
 Frontend `v0.0.19` targets
@@ -42,6 +43,41 @@ Frontend `v0.0.16` retains its Server `v0.0.15` target at
 Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
 A separate scheduled workflow follows the moving backend `:main` image.
+
+## Frontend v0.0.22
+
+Frontend v0.0.22 targets the released Server v0.0.20 image:
+
+```text
+ghcr.io/hubuum/hubuum-server:v0.0.20@sha256:eaf59f8a4b4793030a78bc1637a8e2b9fad2f810b8621ff9a874dca534b9a23a
+```
+
+Both Linux architectures identify server commit
+`3bede6e5b815585f3ac5372cc829734b2ae14a68`. The bundled OpenAPI document exactly
+matches that release's 257-operation contract, with SHA-256
+`7ad82a5d64f7c01966eb34b9b82009955c2d5d246206190d2210c6bdf03e8dbb`.
+Search hydration and exact-name object history are included in this baseline.
+
+On 2026-10-22, the published Linux AMD64 image passed all 109 live contract
+checks. The production frontend passed all 41 authenticated browser tests,
+followed by all three credential-approval and full-restore tests. The browser
+fixture used five-second access tokens to exercise automatic rotation across
+real access deadlines. Restore completion retained capability polling after
+session invalidation.
+
+The combined release dependency set also passed 1,112 unit tests (four skipped),
+93 tooling tests, 29 public browser checks, and all eight visual comparisons in
+the pinned Playwright container, without baseline changes. Typechecking, lint,
+production dependency audit, production build and bundle budgets passed, as did
+the production container build and Helm lint/render/package checks. Release CI
+requires the hardened container and Compose smoke checks before merge.
+
+**Breaking upgrade:** deploy matching server, frontend, worker, and restore
+binaries during the offline server migration. Clear old BFF session records and
+sign in again. Refresh credentials remain in Valkey-backed server-side sessions;
+PATs are independent of interactive logout. Retain a pre-upgrade PostgreSQL
+snapshot and matching binaries for rollback; new backups use format 10. See
+[current upgrade requirements](compatibility.md#before-upgrading).
 
 ## Frontend v0.0.21
 
@@ -59,7 +95,7 @@ The release-readiness workflow repeats verification on the exact merged release
 commit before tagging.
 
 The optional search-hydration and exact-name-history capabilities use the
-[pinned preview snapshot and source provenance](compatibility.md#optional-preview-snapshot).
+[pinned preview snapshot and source provenance](#optional-preview-snapshot).
 The Backend main compatibility workflow must pass against that immutable image
 on the final release commit, independently of the released baseline checks.
 
@@ -465,3 +501,59 @@ their destination in the sink. Collection-created webhooks always use a fixed UR
 The full authenticated browser runner includes delegated collection-manager and
 shared-sink subscription coverage. Both workflows are mandatory against the
 pinned v0.0.18 fixture, without a separate feature opt-in.
+
+## Previous frontend preview and upgrade notes
+
+### Optional preview snapshot
+
+Release v0.0.21 retains the Server v0.0.19 baseline. Search hydration and
+exact-name object history require newer server capabilities and remain optional.
+The reproducible preview target is server commit
+`00135f71aedcf52ecd8395906a227446121e48e9`, using image
+`ghcr.io/hubuum/hubuum-server@sha256:2e866b6fcb4a9c2023324b722ee0c494d98fc02a2d24feb5c19ebd451878fc27`.
+A preview server can still report version 0.0.19; use the commit and digest to
+identify it. This snapshot is a compatibility test target, not the deployment
+default.
+
+The bundled contract starts with the released OpenAPI from server commit
+`59faad2641620e457d5b0d9d7e112ee395b151ff`, supplemented by search hydration from
+`41b4f68c3bb42180b14e564b8b19d0f0436929aa` and exact-name object history from
+`bee167bdf444918406f8ab22ffe9e19695585f60`. The release checks both the released
+baseline and the pinned preview; the remaining post-release server endpoints
+are outside this frontend release's contract.
+
+Exact-name object history searches retained class-scoped snapshots across
+identities. Server v0.0.19 shows an explicit unavailable state for this optional
+view; ordinary identity history remains available. See the
+[history guide](user-guide.md#historical-snapshots-and-object-restoration).
+
+### Before upgrading
+
+Frontend v0.0.21 retains the server v0.0.19 baseline from v0.0.20. Deploy that
+server before upgrading the frontend. Replace blank local account names with nonblank accounts and transfer
+group memberships; correct externally managed names in the identity provider.
+Upgrade strict event readers to accept successful-login events before enabling
+the new server. Older servers cannot read the new event catalog entry.
+
+The server uses HTTP/1.1 for direct connections, including TLS. Configure reverse
+proxies to use HTTP/1.1 upstream; they can continue offering HTTP/2 to clients.
+
+Backups now use format 9; formats 6, 7, and 8 remain readable. Apply query usage
+migrations and reconcile role grants. Upgrade every API, worker, and restore
+executor together, and retain a pre-upgrade backup and matching binaries for
+recovery. Older servers cannot restore format 9. See the
+[server release notes](https://github.com/hubuum/hubuum/releases/tag/v0.0.19)
+and [backup compatibility](https://hubuum.github.io/hubuum/v0.0.19/backup-restore/).
+
+Server v0.0.18 or newer is required for delegated
+webhook setup. Collection managers need `ManageEventSubscription` and `ReadAudit`;
+shared sinks also need direct collection grants. Follow the
+[browser guide](user-guide.md) for credential prompts, schema repair, and restore
+workflows; upgrade history is not a substitute for those instructions.
+
+Server v0.0.18 requires an offline upgrade from v0.0.17 and emits backup format 8;
+older servers cannot restore that format. Follow the canonical
+[server upgrade and recovery instructions](https://hubuum.github.io/hubuum/v0.0.18/events/#upgrade-and-rollback)
+and [backup compatibility](https://hubuum.github.io/hubuum/v0.0.18/backup-restore/).
+Use the server guide for the actual version transition rather than copying
+migration commands from an older client release.

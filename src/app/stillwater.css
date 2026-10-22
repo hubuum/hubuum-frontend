@@ -1046,9 +1046,11 @@ html[data-design-variant="v6"]
 @media (min-width: 901px) and (max-width: 1120px) {
 	html[data-design-variant="v6"] .topbar.card {
 		grid-template-columns: minmax(0, 1fr) auto;
+		/* biome-ignore-start lint/correctness/noInvalidGridAreas: Both rows have two cells; Biome 2.6 miscounts repeated area names. */
 		grid-template-areas:
 			"identity utilities"
 			"navigation navigation";
+		/* biome-ignore-end lint/correctness/noInvalidGridAreas: Both rows have two cells. */
 	}
 
 	html[data-design-variant="v6"] .topology-navigation--topbar {

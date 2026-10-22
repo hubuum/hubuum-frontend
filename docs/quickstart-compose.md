@@ -10,16 +10,16 @@ Server or PostgreSQL; point it at an existing Hubuum Server instance.
 
 ## Start
 
-Download `hubuum-frontend-v0.0.21-compose.tar.gz` and `SHA256SUMS` from
-[release v0.0.21](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.21).
+Download `hubuum-frontend-v0.0.22-compose.tar.gz` and `SHA256SUMS` from
+[release v0.0.22](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.22).
 The archive contains Compose configuration and its environment template, with
 the frontend image pinned to a digest. In the download directory, verify and
 extract it (on macOS, use `shasum -a 256 -c SHA256SUMS`):
 
 ```sh
 sha256sum -c SHA256SUMS
-tar -xzf hubuum-frontend-v0.0.21-compose.tar.gz
-cd hubuum-frontend-v0.0.21-compose
+tar -xzf hubuum-frontend-v0.0.22-compose.tar.gz
+cd hubuum-frontend-v0.0.22-compose
 ```
 
 If you are reading this file inside the extracted archive, start here:
@@ -49,8 +49,8 @@ curl --fail http://localhost:3000/readyz
 ```
 
 Both the page and readiness probe should be reachable before you sign in with
-a Hubuum account. Frontend v0.0.21 targets server v0.0.19; review
-[compatibility](https://hubuum.github.io/hubuum-frontend/v0.0.21/compatibility/)
+a Hubuum account. Frontend v0.0.22 targets server v0.0.20; review
+[compatibility](https://hubuum.github.io/hubuum-frontend/v0.0.22/compatibility/)
 before using a different server.
 
 ## Manage the quickstart

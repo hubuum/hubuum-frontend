@@ -510,7 +510,7 @@ Physical preparation and cleanup remain operator actions through the privileged
 `hubuum-admin --reconcile-query-usage` command. Withdrawing the last owner leaves
 cleanup for a later reconciliation pass; independently managed indexes remain
 under operator control. See the
-[server operator guide](https://hubuum.github.io/hubuum/v0.0.19/query_usage/).
+[server operator guide](https://hubuum.github.io/hubuum/v0.0.20/query_usage/).
 
 **Admin → Configuration → Query observations** displays effective collection,
 sampling, capacity, predicate, and retention settings when the backend provides

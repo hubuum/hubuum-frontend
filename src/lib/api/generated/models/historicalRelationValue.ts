@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.19
+ * OpenAPI spec version: 0.0.20
  */
 import type { HubuumClassRelation } from './hubuumClassRelation';
 import type { HubuumObjectRelation } from './hubuumObjectRelation';

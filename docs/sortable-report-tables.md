@@ -102,7 +102,7 @@ strict missing-data policy:
 {% endif %}
 ```
 
-See the server's [export template guide](https://hubuum.github.io/hubuum/v0.0.19/export_template_guide/)
+See the server's [export template guide](https://hubuum.github.io/hubuum/v0.0.20/export_template_guide/)
 for template context, relations, and missing-data behavior.
 
 ## Supported layouts and output
