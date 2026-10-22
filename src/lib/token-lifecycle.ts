@@ -2,13 +2,27 @@ import type { PrincipalTokenMetadata } from "@/lib/api/generated/models";
 
 export type TokenLifecycleStatus = "active" | "expired" | "revoked";
 
+export function formatTokenTimestamp(value: string | null | undefined): string {
+	if (!value) return "Not recorded";
+	const parsed = new Date(value);
+	if (Number.isNaN(parsed.getTime())) return value;
+	return new Intl.DateTimeFormat(undefined, {
+		dateStyle: "medium",
+		timeStyle: "long",
+	}).format(parsed);
+}
+
 export function getTokenLifecycleStatus(
-	token: Pick<PrincipalTokenMetadata, "expires_at" | "revoked_at">,
+	token: Pick<PrincipalTokenMetadata, "expires_at" | "revoked_at"> &
+		Partial<Pick<PrincipalTokenMetadata, "expired" | "active">>,
 	now: Date = new Date(),
 ): TokenLifecycleStatus {
 	if (token.revoked_at) {
 		return "revoked";
 	}
+	// The server also applies its default lifetime when no expiry was stored.
+	if (token.expired === true) return "expired";
+	if (token.active === true) return "active";
 
 	if (token.expires_at) {
 		const expiresAt = new Date(token.expires_at);

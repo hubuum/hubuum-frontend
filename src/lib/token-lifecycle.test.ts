@@ -8,6 +8,23 @@ import {
 const now = new Date("2026-08-04T12:00:00Z");
 
 describe("token lifecycle", () => {
+	it("uses the server lifecycle flags including default-lifetime expiry", () => {
+		expect(getTokenLifecycleStatus({ expired: true, active: false }, now)).toBe(
+			"expired",
+		);
+		expect(
+			getTokenLifecycleStatus(
+				{ active: true, expires_at: "2026-08-03T12:00:00Z" },
+				now,
+			),
+		).toBe("active");
+		expect(
+			getTokenLifecycleStatus(
+				{ expired: true, revoked_at: "2026-08-02T12:00:00Z" },
+				now,
+			),
+		).toBe("revoked");
+	});
 	it("identifies active and expired tokens from their expiry", () => {
 		expect(
 			getTokenLifecycleStatus({ expires_at: "2026-08-05T12:00:00Z" }, now),

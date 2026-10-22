@@ -7045,6 +7045,19 @@ button.token-revoke-button {
 	vertical-align: middle;
 }
 
+.token-overview-cell {
+	display: grid;
+	gap: 0.3rem;
+	min-width: 10rem;
+	max-width: 24rem;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.token-overview-cell .badge {
+	justify-self: start;
+}
+
 @media (pointer: coarse) {
 	button.token-revoke-button {
 		min-height: 2.75rem;
