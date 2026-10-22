@@ -1043,7 +1043,9 @@ test.describe("resource history", () => {
 		await versionMarker(page, 103).hover();
 		await page.mouse.wheel(0, 80);
 		await expectSelected(page, 102);
-		expect(new URL(page.url()).searchParams.get("at")).toBe(instants[1]);
+		await expect
+			.poll(() => new URL(page.url()).searchParams.get("at"))
+			.toBe(instants[1]);
 		const heading = page.getByRole("heading", { level: 1 });
 		await expect(heading).toContainText("→");
 		await expect(heading).toContainText("(exclusive)");
@@ -1079,6 +1081,75 @@ test.describe("resource history", () => {
 		await page.getByRole("region", { name: "Snapshot comparison" }).hover();
 		await page.mouse.wheel(0, 200);
 		await expectSelected(page, 102);
+	});
+
+	test("rapid scrolling near the end settles the URL without flooding browser history", async ({
+		page,
+	}) => {
+		const errors: string[] = [];
+		page.on("pageerror", (error) => errors.push(error.message));
+		await prepare(page, { many: true });
+		await page.goto(objectPath);
+		await expectSelected(page, 1059);
+		const timeline = page.getByRole("navigation", { name: "History timeline" });
+		await timeline.getByRole("button", { name: "Load more history" }).click();
+		await expect(versionMarker(page, 1010)).toBeAttached();
+		await timeline.getByRole("button", { name: "Load more history" }).click();
+		await expect(versionMarker(page, 1000)).toBeAttached();
+		await page.getByRole("button", { name: "Pin as baseline" }).click();
+		await page.evaluate(() => {
+			const writes: number[] = [];
+			Object.assign(window, { historyScrollWrites: writes });
+			for (const method of ["pushState", "replaceState"] as const) {
+				const original = window.history[method].bind(window.history);
+				window.history[method] = (...args) => {
+					writes.push(Date.now());
+					if (
+						writes.filter((time) => time > Date.now() - 10_000).length > 100
+					) {
+						throw new DOMException(
+							"History update rate exceeded",
+							"SecurityError",
+						);
+					}
+					return original(...args);
+				};
+			}
+		});
+		const viewport = timeline.locator('[class*="timelineViewport"]');
+		await viewport.evaluate(async (element) => {
+			for (let step = 0; step < 140; step++) {
+				element.scrollTop = (step % 2 ? 57 : 58) * 80;
+				await new Promise<void>((resolve) =>
+					requestAnimationFrame(() => resolve()),
+				);
+			}
+		});
+		await expectSelected(page, 1002);
+		await expect
+			.poll(() => new URL(page.url()).searchParams.get("version"))
+			.toBe("1002");
+		expect(
+			await page.evaluate(
+				() =>
+					(window as unknown as { historyScrollWrites: number[] })
+						.historyScrollWrites.length,
+			),
+		).toBeLessThan(20);
+		expect(new URL(page.url()).searchParams.get("pin")).toBe("1059");
+		await page.goBack();
+		await expectSelected(page, 1059);
+		await page.goForward();
+		await expectSelected(page, 1002);
+		// A pending scroll must not overwrite Back navigation when its timer fires.
+		await viewport.evaluate((element) => {
+			element.scrollTop = 56 * 80;
+		});
+		await expectSelected(page, 1003);
+		await page.goBack();
+		await page.waitForTimeout(350);
+		await expectSelected(page, 1059);
+		expect(errors).toEqual([]);
 	});
 
 	test("a deep fan follows continuous timeline scrolling and loads older pages automatically", async ({
