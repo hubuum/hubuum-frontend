@@ -32,7 +32,7 @@ export function PrincipalTokenManager({
 	targetKind,
 }: PrincipalTokenManagerProps) {
 	const queryClient = useQueryClient();
-	const currentPrincipalQuery = useCurrentPrincipal();
+	const currentPrincipalQuery = useCurrentPrincipal({ live: true });
 	const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 	const [cloneInitialValues, setCloneInitialValues] =
 		useState<TokenMintInitialValues>();
@@ -84,7 +84,9 @@ export function PrincipalTokenManager({
 			) : null}
 			{resolvedListPrincipalId != null ? (
 				<TokenList
+					key={resolvedListPrincipalId}
 					principalId={resolvedListPrincipalId}
+					currentPrincipal={currentPrincipalQuery.isError ? undefined : actor}
 					onClone={
 						canMint
 							? (token, resourceNames) => {

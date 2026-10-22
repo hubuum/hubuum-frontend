@@ -1,9 +1,16 @@
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createElement, type ReactNode } from "react";
+import { renderToStaticMarkup as renderMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { TokenDetailsModal } from "@/components/token-details-modal";
 import { Permissions } from "@/lib/api/generated/models";
+
+function renderToStaticMarkup(children: ReactNode) {
+	return renderMarkup(
+		createElement(QueryClientProvider, { client: new QueryClient(), children }),
+	);
+}
 
 describe("TokenDetailsModal", () => {
 	it("renders every permission and resource boundary from token metadata", () => {
@@ -19,10 +26,7 @@ describe("TokenDetailsModal", () => {
 					issued: "2026-07-25T10:00:00Z",
 					revision: 1,
 					scope: {
-						permissions: [
-							Permissions.ReadCollection,
-							Permissions.ReadClass,
-						],
+						permissions: [Permissions.ReadCollection, Permissions.ReadClass],
 						resources: [
 							{ kind: "collection", id: 17 },
 							{ kind: "class", id: 23 },
