@@ -258,7 +258,7 @@ export function TokenList({
 				<div className="table-header">
 					<div>
 						<h3>Tokens ({tokens.length})</h3>
-						<p className="muted">Select a token to inspect its full scope.</p>
+						<p className="muted">Select a token to inspect its scope and activity.</p>
 					</div>
 					<div className="table-tools">
 						{onCreate ? (

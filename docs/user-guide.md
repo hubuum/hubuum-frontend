@@ -98,6 +98,22 @@ add either human users or service accounts by name, and each service-account
 detail page lists its current runtime group memberships separately from its
 owner group.
 
+Token details also load **Credential activity** when opened. Creation provenance
+shows the issuing principal (which may differ from the owner), issuance method,
+timestamp, and observed address. **Recent sources** provides paginated addresses,
+their resolution method, and first/last seen times. Rotating session credentials
+share the original creation evidence and source history; the session family ID
+identifies that shared history. Refresh activity to request current evidence.
+
+Collection coverage shows whether collection is enabled, its retention window,
+source cap, and any recorded overflow. Activity is best-effort and can be
+incomplete: an empty list does not prove a credential was unused. Unknown
+provenance, unavailable addresses, and disabled collection remain explicit.
+Sources record successful credential validation even when the operation later
+fails or is denied. A connection peer may identify the frontend or another
+proxy; the view does not infer the browser's original address. Activity errors
+can be retried without closing the token's scope and lifecycle details.
+
 ## Workspace navigation and resource selection
 
 Use **Go to…** or **Ctrl/Cmd+K** to find a workspace destination, pinned resource,
