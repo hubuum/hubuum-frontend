@@ -98,7 +98,7 @@ complete partial expansion. Changing the executed query or root page closes
 inspection and cancels pending requests. Root matches, ordering, totals and
 pagination remain independent of inspection.
 
-The optional hydration endpoint is newer than the supported Server v0.0.19
+The hydration endpoint is included in the supported Server v0.0.20
 baseline. Servers without it show hydration as unavailable while ordinary and
 advanced search remain usable. See [compatibility](compatibility.md#advanced-search-capabilities)
 for the request contract and capability boundary.

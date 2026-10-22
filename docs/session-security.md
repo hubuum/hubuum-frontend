@@ -1,6 +1,6 @@
 # Interactive sessions
 
-The unreleased frontend requires the `/api/v1/auth` contract from server #178.
+Frontend v0.0.22 requires the `/api/v1/auth` contract in Server v0.0.20.
 Upgrade both components together and sign in again after deployment. No password
 is retained after login. Both credentials stay in the server-side Valkey record;
 the browser receives only the existing HttpOnly, SameSite session cookie.

@@ -26,7 +26,7 @@ returns only owned and explicitly granted destinations, without sink configurati
 or credentials. Revoking the grant stops new deliveries; an already admitted
 network request may finish. Delivery diagnostics and retries remain in **Admin → Events**.
 
-These collection endpoints are included in Server `v0.0.19`, the supported
+These collection endpoints are included in Server `v0.0.20`, the supported
 release target. Upgrade the server before deploying this frontend. The console
 reports missing support instead of calling the administrator-only sink list
 from a delegated collection editor.
@@ -49,7 +49,7 @@ from a delegated collection editor.
 
 The server must run fan-out and delivery workers, and each delivery worker must
 resolve the same secret alias. The console does not provision external secrets
-or enable server workers. See the [server webhook setup guide](https://github.com/hubuum/hubuum/blob/v0.0.19/docs/webhook_notifications.md)
+or enable server workers. See the [server webhook setup guide](https://github.com/hubuum/hubuum/blob/v0.0.20/docs/webhook_notifications.md)
 for environment/file setup, private Mattermost destinations, system subscriptions,
 and preview/test-delivery commands. Saving a sink does not send a test message.
 

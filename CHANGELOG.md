@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.22] - 2026-10-22
+
 ### Changed
 
 - **Breaking:** Interactive sign-in requires the server's `/api/v1/auth` session
@@ -16,6 +18,14 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   require sign-in; cookie and store expiry cannot outlive backend session limits.
 - Signing out of all sessions preserves separately issued personal access tokens.
 - Mark login and logout responses, including rejected requests, as non-cacheable.
+- Target released Hubuum Server v0.0.20 and its complete 257-operation contract.
+  Search hydration and exact-name object history are now included in the baseline.
+- Refresh every application, development, and GitHub Actions dependency,
+  including Orval 8.44.0, Biome 2.6.2, and matching Playwright 1.64.1 tooling.
+- **Breaking deployment:** stop older server replicas before migrating, upgrade
+  API, workers, and restore executors together, and clear old frontend sessions.
+  Server backup format 10 requires a matching restore executor; retain a
+  pre-upgrade backup and binaries for rollback.
 
 ## [0.0.21] - 2026-10-19
 
@@ -847,7 +857,10 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.19...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.22...HEAD
+[0.0.22]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.21...v0.0.22
+[0.0.21]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.20...v0.0.21
+[0.0.20]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.19...v0.0.20
 [0.0.19]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.18...v0.0.19
 [0.0.18]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.17...v0.0.18
 [0.0.17]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.16...v0.0.17
