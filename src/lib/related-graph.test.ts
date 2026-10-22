@@ -68,12 +68,38 @@ it("rejects unbounded or invalid controls", () => {
 	for (const invalid of [
 		{ depth: 0, limit: 25 },
 		{ depth: 11, limit: 25 },
-		{ depth: 2, limit: 251 },
+		{ depth: 2, limit: 2001 },
 		{ depth: 2, limit: NaN },
 	])
 		expect(() => layoutRelatedGraph(graph, scope, invalid)).toThrow(
 			"Choose a depth",
 		);
+});
+it("wraps large depth groups without overlap or changing paths", () => {
+	const result = layoutRelatedGraph(
+		{
+			classes: [
+				node(1, [1]),
+				...Array.from({ length: 2000 }, (_, index) =>
+					node(index + 2, [1, index + 2]),
+				),
+			],
+			relations: [],
+		},
+		scope,
+		{ depth: 1, limit: 2000 },
+	);
+	expect(result.nodes).toHaveLength(2001);
+	expect(result.height).toBeLessThan(1200);
+	expect(new Set(result.nodes.map((node) => `${node.x}:${node.y}`)).size).toBe(
+		2001,
+	);
+	expect(
+		result.nodes.every(
+			(node) => node.x + 212 <= result.width && node.y + 60 <= result.height,
+		),
+	).toBe(true);
+	expect(result.nodes.at(-1)?.path[0]).toBe(1);
 });
 it("rejects oversized graphs rather than silently truncating", () => {
 	expect(() =>

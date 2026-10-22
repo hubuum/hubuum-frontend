@@ -1,10 +1,15 @@
 .viewport {
 	max-width: 100%;
 	max-height: 65vh;
+	height: min(65vh, 48rem);
 	overflow: auto;
 	border: 1px solid var(--line);
 	border-radius: 12px;
 	background: var(--card);
+}
+.scaledCanvas {
+	position: relative;
+	overflow: hidden;
 }
 .canvas {
 	position: relative;
@@ -55,6 +60,10 @@
 	align-items: end;
 	gap: 16px;
 }
-.workspace {
+.workspace,
+.workspace > * {
 	min-width: 0;
+}
+.workspace details {
+	grid-template-columns: minmax(0, 1fr);
 }

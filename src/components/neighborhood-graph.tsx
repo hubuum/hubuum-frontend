@@ -2,19 +2,52 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { TablePagination } from "@/components/table-pagination";
 import { fetchRelatedGraph } from "@/lib/api/related-graph";
-import { graphResourceHref, type GraphScope } from "@/lib/related-graph";
+import {
+	graphResourceHref,
+	MAX_GRAPH_NODES,
+	type GraphScope,
+} from "@/lib/related-graph";
 import styles from "./neighborhood-graph.module.css";
 
 export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 	const [depth, setDepth] = useState("2");
-	const [limit, setLimit] = useState("50");
-	const [bounds, setBounds] = useState({ depth: 2, limit: 50 });
+	const config = useQuery({
+		queryKey: ["client-config", "pagination"],
+		queryFn: async () => {
+			// Share the configuration helper through an async chunk across routes.
+			const { fetchClientPaginationConfig } = await import(
+				"@/lib/api/client-config"
+			);
+			return fetchClientPaginationConfig();
+		},
+		staleTime: Number.POSITIVE_INFINITY,
+		retry: false,
+	});
+	const maximum = Math.min(MAX_GRAPH_NODES, config.data?.max_page_limit ?? 250);
+	const [limit, setLimit] = useState<number | null>(null);
+	const [includeSameClass, setIncludeSameClass] = useState(false);
+	const [requested, setRequested] = useState({
+		depth: 2,
+		limit: null as number | null,
+		includeSameClass: false,
+	});
+	const bounds = {
+		...requested,
+		limit: Math.min(requested.limit ?? 250, maximum),
+	};
 	const [selectedId, setSelectedId] = useState<number | null>(null);
+	const [zoom, setZoom] = useState(1);
+	const [search, setSearch] = useState("");
+	const [nodePage, setNodePage] = useState(0);
+	const [edgePage, setEdgePage] = useState(0);
+	const viewportRef = useRef<HTMLElement>(null);
 	const query = useQuery({
 		queryKey: ["neighborhood-graph", scope, bounds],
 		queryFn: ({ signal }) => fetchRelatedGraph(scope, bounds, signal),
+		enabled: !config.isPending,
 		retry: false,
 	});
 	const graph = query.data;
@@ -22,6 +55,28 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 		graph?.nodes.find((node) => node.id === selectedId) ??
 		graph?.nodes.find((node) => node.id === graph.rootId);
 	const nodesById = new Map(graph?.nodes.map((node) => [node.id, node]));
+	const matchingNodes =
+		graph?.nodes.filter((node) =>
+			`${node.name} #${node.id}`
+				.toLocaleLowerCase()
+				.includes(search.toLocaleLowerCase()),
+		) ?? [];
+	const visibleNodes = matchingNodes.slice(nodePage * 50, (nodePage + 1) * 50);
+	function focusNode(id: number) {
+		setSelectedId(id);
+		setZoom(1);
+		requestAnimationFrame(() => {
+			const node = viewportRef.current?.querySelector<HTMLButtonElement>(
+				`[data-node-id="${id}"]`,
+			);
+			node?.focus({ preventScroll: true });
+			node?.scrollIntoView({
+				block: "center",
+				inline: "center",
+				behavior: "auto",
+			});
+		});
+	}
 	return (
 		<section
 			className={`stack ${styles.workspace}`}
@@ -42,10 +97,21 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 				className={`card ${styles.controls}`}
 				onSubmit={(event) => {
 					event.preventDefault();
-					const next = { depth: Number(depth), limit: Number(limit) };
-					if (next.depth === bounds.depth && next.limit === bounds.limit)
+					const next = {
+						depth: Number(depth),
+						limit: Math.min(limit ?? 250, maximum),
+						includeSameClass,
+					};
+					setNodePage(0);
+					setEdgePage(0);
+					setSelectedId(null);
+					if (
+						next.depth === bounds.depth &&
+						next.limit === bounds.limit &&
+						next.includeSameClass === bounds.includeSameClass
+					)
 						void query.refetch();
-					else setBounds(next);
+					else setRequested(next);
 				}}
 			>
 				<label className="stack">
@@ -62,22 +128,47 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 				<label className="stack">
 					Maximum related nodes
 					<select
-						value={limit}
-						onChange={(event) => setLimit(event.target.value)}
+						value={Math.min(limit ?? 250, maximum)}
+						onChange={(event) => setLimit(Number(event.target.value))}
 					>
-						{[25, 50, 100, 250].map((value) => (
-							<option key={value} value={value}>
-								{value}
-							</option>
-						))}
+						{[
+							...new Set([
+								25,
+								50,
+								100,
+								250,
+								500,
+								1000,
+								MAX_GRAPH_NODES,
+								maximum,
+							]),
+						]
+							.filter((value) => value <= maximum)
+							.sort((a, b) => a - b)
+							.map((value) => (
+								<option key={value} value={value}>
+									{value}
+								</option>
+							))}
 					</select>
 				</label>
+				{scope.type === "object" ? (
+					<label className="control-check">
+						<input
+							type="checkbox"
+							checked={includeSameClass}
+							onChange={(event) => setIncludeSameClass(event.target.checked)}
+						/>
+						<span>Include objects of the same class</span>
+					</label>
+				) : null}
 				<button type="submit" disabled={query.isFetching}>
 					Load graph
 				</button>
 				<p className="muted">
-					The node limit is a safety bound, not a page size. Reduce the depth if
-					the server rejects an oversized neighborhood.
+					Up to {maximum} related nodes with this server. Reduce the depth
+					{scope.type === "object" ? " or exclude same-class objects" : ""} if
+					the neighborhood exceeds that bound.
 				</p>
 			</form>
 			{query.isFetching ? <p role="status">Loading neighborhood…</p> : null}
@@ -92,55 +183,127 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 						{graph.nodes.length} nodes, including the root ·{" "}
 						{graph.edges.length} direct relations · maximum depth {bounds.depth}
 					</p>
+					{scope.type === "object" && !bounds.includeSameClass ? (
+						<p className="muted">
+							Objects in the root&apos;s class are excluded; the root stays
+							visible. Shortest paths may pass through excluded objects.
+						</p>
+					) : null}
+					<div className={styles.controls}>
+						<button
+							type="button"
+							className="ghost"
+							disabled={zoom <= 0.1}
+							onClick={() => setZoom(Math.max(0.1, zoom - 0.1))}
+						>
+							Zoom out
+						</button>
+						<output aria-label="Graph zoom">{Math.round(zoom * 100)}%</output>
+						<button
+							type="button"
+							className="ghost"
+							disabled={zoom >= 2}
+							onClick={() => setZoom(Math.min(2, zoom + 0.1))}
+						>
+							Zoom in
+						</button>
+						<button
+							type="button"
+							className="ghost"
+							onClick={() =>
+								setZoom(
+									Math.min(
+										1,
+										(viewportRef.current?.clientWidth ?? graph.width) /
+											graph.width,
+									),
+								)
+							}
+						>
+							Fit width
+						</button>
+						<button
+							type="button"
+							className="ghost"
+							onClick={() => {
+								setZoom(1);
+								if (selected) focusNode(selected.id);
+							}}
+						>
+							Actual size
+						</button>
+					</div>
 					<section
 						className={styles.viewport}
 						aria-label="Neighborhood diagram"
+						ref={viewportRef}
+						// biome-ignore lint/a11y/noNoninteractiveTabindex: The scrollable diagram needs keyboard access.
+						tabIndex={0}
+						onKeyDownCapture={(event) => {
+							if (
+								["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(
+									event.key,
+								)
+							)
+								event.stopPropagation();
+						}}
 					>
 						<div
-							className={styles.canvas}
-							style={{ width: graph.width, height: graph.height }}
+							className={styles.scaledCanvas}
+							style={{ width: graph.width * zoom, height: graph.height * zoom }}
 						>
-							<svg
-								className={styles.edges}
-								width={graph.width}
-								height={graph.height}
-								aria-hidden="true"
+							<div
+								className={styles.canvas}
+								style={{
+									width: graph.width,
+									height: graph.height,
+									transform: `scale(${zoom})`,
+									transformOrigin: "top left",
+								}}
 							>
-								{graph.edges.map((edge) => {
-									const from = nodesById.get(edge.from);
-									const to = nodesById.get(edge.to);
-									if (!from || !to) return null;
-									return (
-										<line
-											key={edge.id}
-											className={`${styles.edge} ${edge.from === selected?.id || edge.to === selected?.id ? styles.incident : ""}`}
-											x1={from.x + 106}
-											y1={from.y + 30}
-											x2={to.x + 106}
-											y2={to.y + 30}
-										/>
-									);
-								})}
-							</svg>
-							{graph.nodes.map((node) => (
-								<button
-									key={node.id}
-									type="button"
-									className={styles.node}
-									style={{ left: node.x, top: node.y }}
-									aria-label={`Inspect ${node.name} (#${node.id})`}
-									aria-pressed={selected?.id === node.id}
-									onClick={() => setSelectedId(node.id)}
+								<svg
+									className={styles.edges}
+									width={graph.width}
+									height={graph.height}
+									aria-hidden="true"
 								>
-									<span>{node.name}</span>
-									<small>
-										#{node.id} ·{" "}
-										{node.id === graph.rootId
-											? "Root"
-											: `Depth ${node.path.length - 1}`}
-									</small>
-								</button>
-							))}
+									{graph.edges.map((edge) => {
+										const from = nodesById.get(edge.from);
+										const to = nodesById.get(edge.to);
+										if (!from || !to) return null;
+										return (
+											<line
+												key={edge.id}
+												className={`${styles.edge} ${edge.from === selected?.id || edge.to === selected?.id ? styles.incident : ""}`}
+												x1={from.x + 106}
+												y1={from.y + 30}
+												x2={to.x + 106}
+												y2={to.y + 30}
+											/>
+										);
+									})}
+								</svg>
+								{graph.nodes.map((node) => (
+									<button
+										key={node.id}
+										data-node-id={node.id}
+										type="button"
+										className={styles.node}
+										style={{ left: node.x, top: node.y }}
+										aria-label={`Inspect ${node.name} (#${node.id})`}
+										aria-pressed={selected?.id === node.id}
+										onClick={() => setSelectedId(node.id)}
+									>
+										<span>{node.name}</span>
+										<small>
+											#{node.id} ·{" "}
+											{node.id === graph.rootId
+												? "Root"
+												: `Depth ${node.path.length - 1}`}
+										</small>
+									</button>
+								))}
+							</div>
 						</div>
 					</section>
 					{selected ? (
@@ -164,6 +327,18 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 					) : null}
 					<details className="card stack">
 						<summary>Nodes ({graph.nodes.length})</summary>
+						<label className="control-field">
+							<span>Search loaded nodes</span>
+							<input
+								type="search"
+								value={search}
+								onChange={(event) => {
+									setSearch(event.target.value);
+									setNodePage(0);
+								}}
+								placeholder="Name or ID"
+							/>
+						</label>
 						<div className="table-wrap">
 							<table>
 								<caption>Neighborhood nodes</caption>
@@ -172,10 +347,11 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 										<th>Node</th>
 										<th>Distance</th>
 										<th>Shortest path (IDs)</th>
+										<th>Inspect</th>
 									</tr>
 								</thead>
 								<tbody>
-									{graph.nodes.map((node) => (
+									{visibleNodes.map((node) => (
 										<tr key={node.id}>
 											<td>
 												<Link href={node.href}>
@@ -184,11 +360,33 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 											</td>
 											<td>{node.path.length - 1}</td>
 											<td>{node.path.join(" → ")}</td>
+											<td>
+												<button
+													type="button"
+													className="ghost"
+													onClick={() => focusNode(node.id)}
+													aria-label={`Focus ${node.name} in diagram`}
+												>
+													Focus
+												</button>
+											</td>
 										</tr>
 									))}
 								</tbody>
 							</table>
 						</div>
+						{!matchingNodes.length ? (
+							<p>No loaded nodes match this search.</p>
+						) : null}
+						<TablePagination
+							hasNextPage={(nodePage + 1) * 50 < matchingNodes.length}
+							hasPrevPage={nodePage > 0}
+							onNextPage={() => setNodePage(nodePage + 1)}
+							onPrevPage={() => setNodePage(nodePage - 1)}
+							onFirstPage={() => setNodePage(0)}
+							currentCount={visibleNodes.length}
+							totalCount={matchingNodes.length}
+						/>
 					</details>
 					<details className="card stack">
 						<summary>Direct relations ({graph.edges.length})</summary>
@@ -204,20 +402,33 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 									</tr>
 								</thead>
 								<tbody>
-									{graph.edges.map((edge) => (
-										<tr key={edge.id}>
-											<td>{edge.id}</td>
-											<td>
-												{nodesById.get(edge.from)?.name} (#{edge.from})
-											</td>
-											<td>
-												{nodesById.get(edge.to)?.name} (#{edge.to})
-											</td>
-										</tr>
-									))}
+									{graph.edges
+										.slice(edgePage * 50, (edgePage + 1) * 50)
+										.map((edge) => (
+											<tr key={edge.id}>
+												<td>{edge.id}</td>
+												<td>
+													{nodesById.get(edge.from)?.name} (#{edge.from})
+												</td>
+												<td>
+													{nodesById.get(edge.to)?.name} (#{edge.to})
+												</td>
+											</tr>
+										))}
 								</tbody>
 							</table>
 						</div>
+						<TablePagination
+							hasNextPage={(edgePage + 1) * 50 < graph.edges.length}
+							hasPrevPage={edgePage > 0}
+							onNextPage={() => setEdgePage(edgePage + 1)}
+							onPrevPage={() => setEdgePage(edgePage - 1)}
+							onFirstPage={() => setEdgePage(0)}
+							currentCount={
+								graph.edges.slice(edgePage * 50, (edgePage + 1) * 50).length
+							}
+							totalCount={graph.edges.length}
+						/>
 					</details>
 				</>
 			) : null}

@@ -25,6 +25,9 @@ export async function fetchRelatedGraph(
 		depth__lte: String(bounds.depth),
 		limit: String(bounds.limit),
 	});
+	if (scope.type === "object" && !bounds.includeSameClass) {
+		params.set("class_id__not_equals", String(scope.classId));
+	}
 	const response = await fetch(
 		hubuumBffPath(`/api/v1${resource}/related/graph?${params}`),
 		{ credentials: "include", signal },

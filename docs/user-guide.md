@@ -290,15 +290,26 @@ object, nested JSON data, and computed fields.
 ## Neighborhood graphs
 
 Open **Neighborhood graph** from a class or object detail page to explore its
-visible connections. Set a maximum depth (1–10) and related-node bound (25–250),
-then select **Load graph**. The root is included separately from that bound.
+visible connections. Object graphs exclude other objects in the root's class
+by default. Enable **Include objects of the same class** and select **Load graph**
+to include them. Exclusion happens on the server before the result bound is
+applied, and the root always remains visible. Paths may still pass through
+excluded objects, whose IDs appear in the shortest path.
+
+Set a maximum depth (1–10) and related-node bound, then select **Load graph**.
+The default is up to 250 related nodes. Available limits follow the server's
+advertised maximum, up to the browser's 2,000-node bound. The root is included separately.
 If the neighborhood exceeds the bound, reduce the depth; this endpoint does not
 paginate or silently truncate the graph.
 
-Columns show the shortest distance from the root. Select a node with the mouse
+Groups show the shortest distance from the root; crowded groups wrap into
+columns of twelve nodes. Use **Fit width**, **Zoom in/out**, and **Actual size**
+to navigate larger diagrams. Select a node with the mouse
 or keyboard to inspect its description and path, highlight its direct relations,
 and open its detail page. Expand **Nodes** and **Direct relations** for accessible
-tables, including the stored relation direction. The diagram scrolls within the
+tables, including the stored relation direction. Both tables show 50 rows per
+page. **Search loaded nodes** narrows the node table; **Focus** selects a match,
+restores actual size, and centers it in the diagram. The diagram scrolls within the
 page on small screens. Dense neighborhoods above 5,000 direct relations require
 a smaller depth or node bound in the browser.
 
