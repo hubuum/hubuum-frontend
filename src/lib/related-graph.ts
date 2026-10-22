@@ -6,7 +6,12 @@ import type {
 export type GraphScope =
 	| { type: "class"; classId: number }
 	| { type: "object"; classId: number; objectId: number };
-export type GraphBounds = { depth: number; limit: number };
+export const MAX_GRAPH_NODES = 2000;
+export type GraphBounds = {
+	depth: number;
+	limit: number;
+	includeSameClass?: boolean;
+};
 export type GraphNode = {
 	id: number;
 	name: string;
@@ -38,10 +43,10 @@ export function validateGraphBounds(bounds: GraphBounds) {
 		bounds.depth > 10 ||
 		!Number.isSafeInteger(bounds.limit) ||
 		bounds.limit < 1 ||
-		bounds.limit > 250
+		bounds.limit > MAX_GRAPH_NODES
 	)
 		throw new Error(
-			"Choose a depth from 1 to 10 and a related-node limit from 1 to 250.",
+			`Choose a depth from 1 to 10 and a related-node limit from 1 to ${MAX_GRAPH_NODES}.`,
 		);
 }
 
@@ -131,12 +136,15 @@ export function layoutRelatedGraph(
 			a.name.localeCompare(b.name) ||
 			a.id - b.id,
 	);
-	const counts = new Map<number, number>();
-	for (const node of nodes) {
-		const depth = node.path.length - 1;
-		node.x = 24 + depth * 260;
-		node.y = 32 + (counts.get(depth) ?? 0) * 84;
-		counts.set(depth, (counts.get(depth) ?? 0) + 1);
+	// Wrap crowded depth groups so hundreds of neighbors do not form one tall column.
+	let x = 24;
+	for (let depth = 0; depth <= bounds.depth; depth++) {
+		const level = nodes.filter((node) => node.path.length - 1 === depth);
+		level.forEach((node, index) => {
+			node.x = x + Math.floor(index / 12) * 260;
+			node.y = 32 + (index % 12) * 84;
+		});
+		x += Math.max(1, Math.ceil(level.length / 12)) * 260;
 	}
 	return {
 		nodes,

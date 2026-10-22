@@ -119,6 +119,132 @@ test("bound failures stay explicit without an unbounded fallback", async ({
 	await expect.poll(() => requests).toBe(before + 1);
 });
 
+test("large object graphs exclude the root class by default and support zoom, search and paging", async ({
+	page,
+}) => {
+	test.setTimeout(90_000);
+	const requests: URL[] = [];
+	await page.route(`**${api}/config`, (route) =>
+		route.fulfill({
+			json: { pagination: { default_page_limit: 100, max_page_limit: 1000 } },
+		}),
+	);
+	await page.route(
+		`**${api}/classes/1/objects/223/related/graph?*`,
+		(route) => {
+			const url = new URL(route.request().url());
+			requests.push(url);
+			const count = Number(url.searchParams.get("limit")) > 250 ? 400 : 120;
+			const objects = [
+				{
+					id: 223,
+					name: "Root object",
+					description: "Root",
+					hubuum_class_id: 1,
+					path: [223],
+				},
+				...Array.from({ length: count }, (_, index) => ({
+					id: 1000 + index,
+					name: `Graph node ${index}`,
+					description: "Related object",
+					hubuum_class_id: 2,
+					path: [223, 1000 + index],
+				})),
+			];
+			if (!url.searchParams.has("class_id__not_equals"))
+				objects.push({
+					id: 900,
+					name: "Same class peer",
+					description: "Peer",
+					hubuum_class_id: 1,
+					path: [223, 1000, 900],
+				});
+			return route.fulfill({
+				json: {
+					objects,
+					relations: objects
+						.slice(1)
+						.map((object) => ({
+							id: object.id,
+							from_hubuum_object_id: object.id === 900 ? 1000 : 223,
+							to_hubuum_object_id: object.id,
+						})),
+					class_relations: [],
+				},
+			});
+		},
+	);
+	await page.goto("/objects/1/223/graph");
+	await expect(
+		page.getByText("121 nodes, including the root", { exact: false }),
+	).toBeVisible();
+	expect(requests.at(-1)?.searchParams.get("class_id__not_equals")).toBe("1");
+	await expect(
+		page.getByRole("checkbox", { name: "Include objects of the same class" }),
+	).not.toBeChecked();
+	await expect(
+		page.getByRole("button", { name: /Inspect Same class peer/ }),
+	).toHaveCount(0);
+	await page.getByLabel("Maximum related nodes").selectOption("1000");
+	await page.getByRole("button", { name: "Load graph", exact: true }).click();
+	await expect(
+		page.getByText("401 nodes, including the root", { exact: false }),
+	).toBeVisible();
+	expect(requests.at(-1)?.searchParams.get("limit")).toBe("1000");
+	await page.getByRole("button", { name: "Fit width" }).click();
+	await expect(page.getByLabel("Graph zoom")).not.toHaveText("100%");
+	await page.getByText("Nodes (401)", { exact: true }).click();
+	const table = page.getByRole("table", { name: "Neighborhood nodes" });
+	await expect(table.getByRole("row")).toHaveCount(51);
+	await page.getByRole("button", { name: "Next page", exact: true }).click();
+	await expect(table.getByRole("row")).toHaveCount(51);
+	await page
+		.getByRole("searchbox", { name: "Search loaded nodes" })
+		.fill("Graph node 399");
+	await expect(table.getByRole("row")).toHaveCount(2);
+	await page
+		.getByRole("button", { name: "Focus Graph node 399 in diagram" })
+		.click();
+	await expect(
+		page.getByRole("button", { name: "Inspect Graph node 399 (#1399)" }),
+	).toBeFocused();
+	await expect(page.getByLabel("Graph zoom")).toHaveText("100%");
+	await expect(
+		page.getByRole("region", { name: "Selected node" }),
+	).toContainText("Graph node 399");
+	await page
+		.getByRole("checkbox", { name: "Include objects of the same class" })
+		.check();
+	await page.getByRole("button", { name: "Load graph", exact: true }).click();
+	await expect(
+		page.getByText("402 nodes, including the root", { exact: false }),
+	).toBeVisible();
+	expect(requests.at(-1)?.searchParams.has("class_id__not_equals")).toBe(false);
+	await expect(
+		page.getByRole("button", { name: /Inspect Same class peer/ }),
+	).toBeAttached();
+	await page.getByText("Direct relations (401)", { exact: true }).click();
+	await expect(
+		page
+			.getByRole("table", { name: "Direct neighborhood relations" })
+			.getByRole("row"),
+	).toHaveCount(51);
+	await page.setViewportSize({ width: 390, height: 844 });
+	expect(
+		await page.evaluate(
+			() => document.documentElement.scrollWidth <= innerWidth,
+		),
+	).toBe(true);
+	expect(
+		(
+			await new AxeBuilder({ page })
+				.include("main")
+				.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+				.analyze()
+		).violations,
+	).toEqual([]);
+});
+
 test("live class and object neighborhoods include their direct relations", async ({
 	page,
 }) => {
@@ -180,6 +306,18 @@ test("live class and object neighborhoods include their direct relations", async
 			data: {},
 		});
 		const relationPath = `/classes/${classA}/${objectA}/relations/${classB}/${objectB}`;
+		const sameClassPeer = await create(`/classes/${classA}/`, {
+			name: `Same class peer ${suffix}`,
+			description: "Peer",
+			collection_id: collectionId,
+			hubuum_class_id: classA,
+			data: {},
+		});
+		const peerRelation = `/classes/${classA}/${sameClassPeer}/relations/${classB}/${objectB}`;
+		expect(
+			(await page.request.post(`${api}${peerRelation}`, { headers })).status(),
+		).toBe(201);
+		cleanup.push(peerRelation);
 		expect(
 			(await page.request.post(`${api}${relationPath}`, { headers })).status(),
 		).toBe(201);
@@ -194,6 +332,20 @@ test("live class and object neighborhoods include their direct relations", async
 					exact: false,
 				}),
 			).toBeVisible();
+			if (path.startsWith("/objects/")) {
+				await expect(
+					page.getByRole("button", { name: /Inspect Same class peer/ }),
+				).toHaveCount(0);
+				await page
+					.getByRole("checkbox", { name: "Include objects of the same class" })
+					.check();
+				await page
+					.getByRole("button", { name: "Load graph", exact: true })
+					.click();
+				await expect(
+					page.getByRole("button", { name: /Inspect Same class peer/ }),
+				).toBeVisible();
+			}
 			await page.getByRole("button", { name: /^Inspect .* B / }).click();
 			await expect(
 				page.getByRole("region", { name: "Selected node" }),
