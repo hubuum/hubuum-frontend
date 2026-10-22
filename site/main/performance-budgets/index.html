@@ -1460,7 +1460,7 @@ stopping at the first violation.</p>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">"maxChunkGzipBytes"</span><span class="p">:</span><span class="w"> </span><span class="mi">160000</span><span class="p">,</span>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">"maxRouteGzipBytes"</span><span class="p">:</span><span class="w"> </span><span class="mi">470000</span><span class="p">,</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">"maxTotalGzipBytes"</span><span class="p">:</span><span class="w"> </span><span class="mi">1200000</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">"maxTotalGzipBytes"</span><span class="p">:</span><span class="w"> </span><span class="mi">1250000</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">}</span>
 </code></pre></div>
 <p>The initial production baseline measured approximately:</p>
@@ -1469,8 +1469,13 @@ stopping at the first violation.</p>
 <li>414 KiB for the largest initial route bundle; and</li>
 <li>1.04 MiB for all static JavaScript.</li>
 </ul>
-<p>The limits retain roughly ten to seventeen percent headroom for deterministic
-build variation while still rejecting material regressions.</p>
+<p>The original limits retained roughly ten to seventeen percent headroom for
+build variation. After adding credential introspection and large-graph controls,
+the combined build measures 1,206,471 bytes of compressed static JavaScript,
+compared with 1,198,760 bytes before the graph changes. Loading the graph's shared
+configuration helper asynchronously removes 8,168 bytes from the first combined
+implementation. The 1,250,000-byte total limit leaves about 3.6 percent headroom
+for this measured baseline. The individual chunk and route limits are unchanged.</p>
 <p>Budget changes should be intentional. Prefer reducing or lazy-loading the
 regression. When a product requirement genuinely increases the baseline,
 include the measured before/after values and the reason in the pull request
