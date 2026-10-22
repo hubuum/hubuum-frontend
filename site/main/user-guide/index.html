@@ -1794,6 +1794,38 @@ service accounts cannot receive new tokens. Local group membership editors can
 add either human users or service accounts by name, and each service-account
 detail page lists its current runtime group memberships separately from its
 owner group.</p>
+<p>The token overview defaults to <strong>Active</strong>, sorted by newest issuance, with
+25 tokens per page and the server's exact total when available. Switch to
+<strong>Expired</strong>, <strong>Revoked</strong>, or <strong>All retained</strong>, or order by recent use. Expired
+and revoked subsets can overlap. Missing explicit expiry means the server's
+default lifetime applies; it does not mean the token lasts forever.</p>
+<p><strong>Current web session</strong> identifies this browser's access token separately from
+the paginated list, and badges its row when present. It remains available when
+another page or lifecycle filter is selected. The lookup refreshes every
+30 seconds while this page is visible, on window focus, and with <strong>Refresh
+overview</strong>. The token ID and expiry change as the session rotates; the shared
+session history remains available from <strong>Inspect current token</strong>. Only public
+metadata reaches the browser.</p>
+<p>Enable <strong>Show activity overview</strong> to see each visible token's session/standalone
+classification, creation method and issuer, creation address and resolution,
+retained source count, retention window, and disabled/overflow coverage flags.
+This makes one bounded activity request per token on the current page. Use
+<strong>Refresh overview</strong> to update those summaries. Unavailable activity does not
+hide the token, and zero recorded sources does not establish that it was unused.</p>
+<p>Token details also load <strong>Credential activity</strong> when opened. Creation provenance
+shows the issuing principal (which may differ from the owner), issuance method,
+timestamp, and observed address. <strong>Recent sources</strong> provides paginated addresses,
+their resolution method, and first/last seen times. Rotating session credentials
+share the original creation evidence and source history; the session family ID
+identifies that shared history. Refresh activity to request current evidence.</p>
+<p>Collection coverage shows whether collection is enabled, its retention window,
+source cap, and any recorded overflow. Activity is best-effort and can be
+incomplete: an empty list does not prove a credential was unused. Unknown
+provenance, unavailable addresses, and disabled collection remain explicit.
+Sources record successful credential validation even when the operation later
+fails or is denied. A connection peer may identify the frontend or another
+proxy; the view does not infer the browser's original address. Activity errors
+can be retried without closing the token's scope and lifecycle details.</p>
 <h2 id="workspace-navigation-and-resource-selection">Workspace navigation and resource selection<a class="headerlink" href="#workspace-navigation-and-resource-selection" title="Permanent link">&para;</a></h2>
 <p>Use <strong>Go to…</strong> or <strong>Ctrl/Cmd+K</strong> to find a workspace destination, pinned resource,
 or the current page's create action. The desktop control shows its shortcut;
