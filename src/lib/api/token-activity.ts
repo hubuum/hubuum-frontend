@@ -7,12 +7,13 @@ export async function fetchTokenActivity(
 	tokenId: number,
 	offset: number,
 	signal?: AbortSignal,
+	limit = 50,
 ): Promise<CredentialActivityResponse> {
 	const response =
 		await getApiV1IamPrincipalsByPrincipalIdTokensByTokenIdActivity(
 			principalId,
 			tokenId,
-			{ offset, limit: 50 },
+			{ offset, limit },
 			{ credentials: "include", cache: "no-store", signal },
 		);
 	if (response.status !== 200) {

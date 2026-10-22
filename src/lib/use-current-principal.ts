@@ -6,8 +6,12 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import { getApiV1IamMe } from "@/lib/api/generated/client";
 import type { MeResponse } from "@/lib/api/generated/models";
 
-async function fetchCurrentPrincipal(): Promise<MeResponse> {
-	const response = await getApiV1IamMe({ credentials: "include" });
+async function fetchCurrentPrincipal(signal: AbortSignal): Promise<MeResponse> {
+	const response = await getApiV1IamMe({
+		credentials: "include",
+		cache: "no-store",
+		signal,
+	});
 	if (response.status !== 200) {
 		throw new Error(
 			getApiErrorMessage(
@@ -19,11 +23,13 @@ async function fetchCurrentPrincipal(): Promise<MeResponse> {
 	return response.data;
 }
 
-export function useCurrentPrincipal() {
+export function useCurrentPrincipal({ live = false }: { live?: boolean } = {}) {
 	return useQuery({
 		queryKey: ["current-principal"],
-		queryFn: fetchCurrentPrincipal,
-		staleTime: Number.POSITIVE_INFINITY,
+		queryFn: ({ signal }) => fetchCurrentPrincipal(signal),
+		staleTime: live ? 0 : Number.POSITIVE_INFINITY,
+		refetchInterval: live ? 30_000 : false,
+		refetchOnWindowFocus: live,
 		gcTime: Number.POSITIVE_INFINITY,
 	});
 }
