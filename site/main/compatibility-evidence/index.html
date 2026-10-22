@@ -1065,6 +1065,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#frontend-v0022" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Frontend v0.0.22
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#frontend-v0021" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1211,6 +1222,45 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#previous-frontend-preview-and-upgrade-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Previous frontend preview and upgrade notes
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Previous frontend preview and upgrade notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-preview-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Optional preview snapshot
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#before-upgrading" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Before upgrading
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1488,6 +1538,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#frontend-v0022" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Frontend v0.0.22
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#frontend-v0021" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1637,6 +1698,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#previous-frontend-preview-and-upgrade-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Previous frontend preview and upgrade notes
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Previous frontend preview and upgrade notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-preview-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Optional preview snapshot
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#before-upgrading" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Before upgrading
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1680,8 +1780,13 @@ should pin both components to explicit versions.</p>
 <tbody>
 <tr>
 <td><code>main</code> (unreleased)</td>
-<td><code>v0.0.19</code></td>
-<td><code>ghcr.io/hubuum/hubuum-server:v0.0.19</code></td>
+<td><code>v0.0.20</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.20</code></td>
+</tr>
+<tr>
+<td><code>v0.0.22</code></td>
+<td><code>v0.0.20</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.20</code></td>
 </tr>
 <tr>
 <td><code>v0.0.21</code></td>
@@ -1791,7 +1896,7 @@ should pin both components to explicit versions.</p>
 </tbody>
 </table>
 <p>Required pull-request and release checks use the immutable digest behind the
-listed server tag. Frontend <code>v0.0.20</code>, <code>v0.0.21</code>, and unreleased <code>main</code> target
+listed server tag. Frontend <code>v0.0.20</code> and <code>v0.0.21</code> target
 Server <code>v0.0.19</code> at
 <code>sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225</code>.
 Frontend <code>v0.0.19</code> targets
@@ -1804,6 +1909,33 @@ Frontend <code>v0.0.16</code> retains its Server <code>v0.0.15</code> target at
 Frontend <code>v0.0.15</code> retains its Server <code>v0.0.14</code> target at
 <code>sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594</code>.
 A separate scheduled workflow follows the moving backend <code>:main</code> image.</p>
+<h2 id="frontend-v0022">Frontend v0.0.22<a class="headerlink" href="#frontend-v0022" title="Permanent link">&para;</a></h2>
+<p>Frontend v0.0.22 targets the released Server v0.0.20 image:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ghcr.io/hubuum/hubuum-server:v0.0.20@sha256:eaf59f8a4b4793030a78bc1637a8e2b9fad2f810b8621ff9a874dca534b9a23a
+</code></pre></div>
+<p>Both Linux architectures identify server commit
+<code>3bede6e5b815585f3ac5372cc829734b2ae14a68</code>. The bundled OpenAPI document exactly
+matches that release's 257-operation contract, with SHA-256
+<code>7ad82a5d64f7c01966eb34b9b82009955c2d5d246206190d2210c6bdf03e8dbb</code>.
+Search hydration and exact-name object history are included in this baseline.</p>
+<p>On 2026-10-22, the published Linux AMD64 image passed all 109 live contract
+checks. The production frontend passed all 41 authenticated browser tests,
+followed by all three credential-approval and full-restore tests. The browser
+fixture used five-second access tokens to exercise automatic rotation across
+real access deadlines. Restore completion retained capability polling after
+session invalidation.</p>
+<p>The combined release dependency set also passed 1,112 unit tests (four skipped),
+93 tooling tests, 29 public browser checks, and all eight visual comparisons in
+the pinned Playwright container, without baseline changes. Typechecking, lint,
+production dependency audit, production build and bundle budgets passed, as did
+the production container build and Helm lint/render/package checks. Release CI
+requires the hardened container and Compose smoke checks before merge.</p>
+<p><strong>Breaking upgrade:</strong> deploy matching server, frontend, worker, and restore
+binaries during the offline server migration. Clear old BFF session records and
+sign in again. Refresh credentials remain in Valkey-backed server-side sessions;
+PATs are independent of interactive logout. Retain a pre-upgrade PostgreSQL
+snapshot and matching binaries for rollback; new backups use format 10. See
+<a href="../compatibility/#before-upgrading">current upgrade requirements</a>.</p>
 <h2 id="frontend-v0021">Frontend v0.0.21<a class="headerlink" href="#frontend-v0021" title="Permanent link">&para;</a></h2>
 <p>Frontend v0.0.21 retains the released Server v0.0.19 image above while adding
 query usage, event and security administration, configuration history, streaming
@@ -1817,7 +1949,7 @@ server contract and both authenticated browser suites.</p>
 The release-readiness workflow repeats verification on the exact merged release
 commit before tagging.</p>
 <p>The optional search-hydration and exact-name-history capabilities use the
-<a href="../compatibility/#optional-preview-snapshot">pinned preview snapshot and source provenance</a>.
+<a href="#optional-preview-snapshot">pinned preview snapshot and source provenance</a>.
 The Backend main compatibility workflow must pass against that immutable image
 on the final release commit, independently of the released baseline checks.</p>
 <h2 id="server-v0019">Server v0.0.19<a class="headerlink" href="#server-v0019" title="Permanent link">&para;</a></h2>
@@ -2166,6 +2298,51 @@ their destination in the sink. Collection-created webhooks always use a fixed UR
 <p>The full authenticated browser runner includes delegated collection-manager and
 shared-sink subscription coverage. Both workflows are mandatory against the
 pinned v0.0.18 fixture, without a separate feature opt-in.</p>
+<h2 id="previous-frontend-preview-and-upgrade-notes">Previous frontend preview and upgrade notes<a class="headerlink" href="#previous-frontend-preview-and-upgrade-notes" title="Permanent link">&para;</a></h2>
+<h3 id="optional-preview-snapshot">Optional preview snapshot<a class="headerlink" href="#optional-preview-snapshot" title="Permanent link">&para;</a></h3>
+<p>Release v0.0.21 retains the Server v0.0.19 baseline. Search hydration and
+exact-name object history require newer server capabilities and remain optional.
+The reproducible preview target is server commit
+<code>00135f71aedcf52ecd8395906a227446121e48e9</code>, using image
+<code>ghcr.io/hubuum/hubuum-server@sha256:2e866b6fcb4a9c2023324b722ee0c494d98fc02a2d24feb5c19ebd451878fc27</code>.
+A preview server can still report version 0.0.19; use the commit and digest to
+identify it. This snapshot is a compatibility test target, not the deployment
+default.</p>
+<p>The bundled contract starts with the released OpenAPI from server commit
+<code>59faad2641620e457d5b0d9d7e112ee395b151ff</code>, supplemented by search hydration from
+<code>41b4f68c3bb42180b14e564b8b19d0f0436929aa</code> and exact-name object history from
+<code>bee167bdf444918406f8ab22ffe9e19695585f60</code>. The release checks both the released
+baseline and the pinned preview; the remaining post-release server endpoints
+are outside this frontend release's contract.</p>
+<p>Exact-name object history searches retained class-scoped snapshots across
+identities. Server v0.0.19 shows an explicit unavailable state for this optional
+view; ordinary identity history remains available. See the
+<a href="../user-guide/#historical-snapshots-and-object-restoration">history guide</a>.</p>
+<h3 id="before-upgrading">Before upgrading<a class="headerlink" href="#before-upgrading" title="Permanent link">&para;</a></h3>
+<p>Frontend v0.0.21 retains the server v0.0.19 baseline from v0.0.20. Deploy that
+server before upgrading the frontend. Replace blank local account names with nonblank accounts and transfer
+group memberships; correct externally managed names in the identity provider.
+Upgrade strict event readers to accept successful-login events before enabling
+the new server. Older servers cannot read the new event catalog entry.</p>
+<p>The server uses HTTP/1.1 for direct connections, including TLS. Configure reverse
+proxies to use HTTP/1.1 upstream; they can continue offering HTTP/2 to clients.</p>
+<p>Backups now use format 9; formats 6, 7, and 8 remain readable. Apply query usage
+migrations and reconcile role grants. Upgrade every API, worker, and restore
+executor together, and retain a pre-upgrade backup and matching binaries for
+recovery. Older servers cannot restore format 9. See the
+<a href="https://github.com/hubuum/hubuum/releases/tag/v0.0.19">server release notes</a>
+and <a href="https://hubuum.github.io/hubuum/v0.0.19/backup-restore/">backup compatibility</a>.</p>
+<p>Server v0.0.18 or newer is required for delegated
+webhook setup. Collection managers need <code>ManageEventSubscription</code> and <code>ReadAudit</code>;
+shared sinks also need direct collection grants. Follow the
+<a href="../user-guide/">browser guide</a> for credential prompts, schema repair, and restore
+workflows; upgrade history is not a substitute for those instructions.</p>
+<p>Server v0.0.18 requires an offline upgrade from v0.0.17 and emits backup format 8;
+older servers cannot restore that format. Follow the canonical
+<a href="https://hubuum.github.io/hubuum/v0.0.18/events/#upgrade-and-rollback">server upgrade and recovery instructions</a>
+and <a href="https://hubuum.github.io/hubuum/v0.0.18/backup-restore/">backup compatibility</a>.
+Use the server guide for the actual version transition rather than copying
+migration commands from an older client release.</p>
 
 
 

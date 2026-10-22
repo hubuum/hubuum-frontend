@@ -1514,18 +1514,18 @@
 <p>The browser interface for Hubuum: browse inventory, manage relationships, run
 reports, and administer access. Server-side sessions keep Hubuum bearer tokens
 out of the browser.</p>
-<p>Frontend <strong>v0.0.21</strong>, released <strong>2026-10-19</strong>, targets Hubuum Server <strong>v0.0.19</strong>.</p>
-<p>The unreleased frontend requires the rotating-session server API introduced in
+<p>Frontend <strong>v0.0.22</strong>, released <strong>2026-10-22</strong>, targets Hubuum Server <strong>v0.0.20</strong>.</p>
+<p>This release requires the rotating-session server API introduced in
 <a href="https://github.com/hubuum/hubuum/issues/178">server #178</a>. Upgrade the server and
 frontend together; existing frontend sessions require sign-in again. See
 <a href="../session-security/">session security</a> for rotation and deployment details.</p>
 <p>Read <a href="../compatibility/">compatibility</a> before pairing other releases.</p>
-<p><a href="https://hubuum.github.io/hubuum-frontend/">Documentation</a> · <a href="https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.21">Releases</a> · <a href="https://hubuum.github.io/">Hubuum ecosystem</a></p>
+<p><a href="https://hubuum.github.io/hubuum-frontend/">Documentation</a> · <a href="https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.22">Releases</a> · <a href="https://hubuum.github.io/">Hubuum ecosystem</a></p>
 <h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <p>Download the versioned Compose archive and follow the complete
 <a href="../quickstart-compose/">Compose quick start</a>. It runs the frontend and
 Valkey against an existing Hubuum server. For a complete server/frontend stack,
-use the <a href="https://hubuum.github.io/hubuum/v0.0.19/deployment/">single-host installer</a>.</p>
+use the <a href="https://hubuum.github.io/hubuum/v0.0.20/deployment/">single-host installer</a>.</p>
 <p>Developers should use <a href="../development/">local development</a>; browser users
 should start with <a href="../example-dataset/">Atlas</a> and the
 <a href="../user-guide/">user guide</a>.</p>
@@ -1534,19 +1534,19 @@ should start with <a href="../example-dataset/">Atlas</a> and the
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <p>See <a href="../configuration/">runtime settings, proxy routing, and login backgrounds</a>.</p>
 <h2 id="release-artifacts">Release artifacts<a class="headerlink" href="#release-artifacts" title="Permanent link">&para;</a></h2>
-<p>Release v0.0.21 provides Linux AMD64/ARM64 images, a Helm chart, and a
+<p>Release v0.0.22 provides Linux AMD64/ARM64 images, a Helm chart, and a
 checksum-protected Compose archive pinned to the image digest. The image is
-<code>ghcr.io/hubuum/hubuum-frontend:v0.0.21</code>; the Helm chart is
-<code>oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.21</code>.
+<code>ghcr.io/hubuum/hubuum-frontend:v0.0.22</code>; the Helm chart is
+<code>oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.22</code>.
 See <a href="../deployment/">deployment</a> and <a href="../compatibility/">release evidence</a>.</p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
 <p>Browse classes and objects, edit data, follow relations, build reports, track
 tasks, and manage authorized workflows. See the <a href="../user-guide/">browser guide</a>.</p>
-<p>This release adds query usage management and analysis, system event controls,
-security administration, configuration history, all seven structured-search
-catalogs, cancellable search streaming, and bounded neighborhood graphs.
-Settings edits and confirmations retain their reviewed revisions, and mutation
-dialogs preserve keyboard focus.</p>
+<p>This release adds coordinated rotating sessions across frontend instances,
+requires sign-in again after the server upgrade, and preserves independent PATs
+when signing out. Search hydration and exact-name history now use the supported
+server release. Application dependencies, GitHub Actions, Orval, and the browser
+test image are refreshed together.</p>
 <!-- markdownlint-disable-next-line MD033 -->
 <p><span id="what-is-scaffolded"></span></p>
 <h2 id="further-reading">Further reading<a class="headerlink" href="#further-reading" title="Permanent link">&para;</a></h2>
@@ -1634,7 +1634,7 @@ dialogs preserve keyboard focus.</p>
 </tr>
 <tr>
 <td><span id="important-caveat"></span>Query support</td>
-<td><a href="https://hubuum.github.io/hubuum/v0.0.19/querying/">Server query reference</a></td>
+<td><a href="https://hubuum.github.io/hubuum/v0.0.20/querying/">Server query reference</a></td>
 </tr>
 </tbody>
 </table>

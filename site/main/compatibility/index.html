@@ -586,10 +586,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-preview-snapshot" class="md-nav__link">
+  <a href="#released-contract" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Optional preview snapshot
+        Released contract
       </span>
     </span>
   </a>
@@ -1492,10 +1492,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-preview-snapshot" class="md-nav__link">
+  <a href="#released-contract" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Optional preview snapshot
+        Released contract
       </span>
     </span>
   </a>
@@ -1644,8 +1644,13 @@ should pin both components to explicit versions.</p>
 <tbody>
 <tr>
 <td><code>main</code> (unreleased)</td>
-<td><code>sha-39e33bc47e2571765c8579420d503fed9cd8fd68</code></td>
-<td><code>ghcr.io/hubuum/hubuum-server:sha-39e33bc47e2571765c8579420d503fed9cd8fd68</code></td>
+<td><code>v0.0.20</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.20</code></td>
+</tr>
+<tr>
+<td><code>v0.0.22</code></td>
+<td><code>v0.0.20</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.20</code></td>
 </tr>
 <tr>
 <td><code>v0.0.21</code></td>
@@ -1755,13 +1760,13 @@ should pin both components to explicit versions.</p>
 </tbody>
 </table>
 <p>Required checks use the immutable image for the selected compatibility target.
-For unreleased <code>main</code>, it is
-<code>ghcr.io/hubuum/hubuum-server:sha-39e33bc47e2571765c8579420d503fed9cd8fd68@sha256:d0df2f53068ed0e442f5bfa03f120101c972d6e12c270e6ef9f53ae7563d4afc</code>.</p>
+For Frontend v0.0.22 and unreleased <code>main</code>, it is
+<code>ghcr.io/hubuum/hubuum-server:v0.0.20@sha256:eaf59f8a4b4793030a78bc1637a8e2b9fad2f810b8621ff9a874dca534b9a23a</code>.</p>
 <p>For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
 <code>ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225</code>.
 Scheduled tests against server <code>main</code> do not change a release's declared target.</p>
 <h2 id="interactive-session-upgrade">Interactive session upgrade<a class="headerlink" href="#interactive-session-upgrade" title="Permanent link">&para;</a></h2>
-<p>Unreleased frontend builds require the versioned login and rotating-refresh
+<p>Frontend v0.0.22 requires the versioned login and rotating-refresh
 contract from <a href="https://github.com/hubuum/hubuum/pull/483">server #483</a>.
 The released Server v0.0.19 image does not provide this contract. Apply the server
 migration and role grants with older API and worker replicas stopped, then start
@@ -1771,12 +1776,12 @@ interactive sign-out does not revoke them. See <a href="../session-security/">se
 server, and retain a pre-upgrade backup and matching binaries for rollback.</p>
 <h2 id="advanced-search-capabilities">Advanced search capabilities<a class="headerlink" href="#advanced-search-capabilities" title="Permanent link">&para;</a></h2>
 <p>The builder uses version 1 of <code>POST /api/v1/search</code>, available in the supported
-Server v0.0.19 contract. Its explicit target/field/operator matrix and limits are
+Server v0.0.20 contract. Its explicit target/field/operator matrix and limits are
 documented in the <a href="https://github.com/hubuum/hubuum/blob/main/docs/search_api.md">server search reference</a>.
 Unknown targets, predicates, bookmark versions and server errors never cause
 an unfiltered fallback. The regular <code>GET /api/v1/search</code> page stays available.</p>
 <p>Related-resource inspection requires the optional <code>POST /api/v1/search/hydrate</code>
-capability introduced after Server v0.0.19. It is requested lazily through the
+capability included in Server v0.0.20. It is requested lazily through the
 BFF, independently of root search. Its version 1 body has <code>root_class_id</code>,
 <code>root_object_id</code>, an exact <code>class: { id }</code>, <code>depth</code> (1–10), and <code>limit</code> (1–50
 visible paths). The response has the same bounds and root ID, <code>target_class_id</code>,
@@ -1795,52 +1800,28 @@ and changed-resource errors remain visible and require explicit retry. There is
 no fallback to unbounded legacy relation endpoints. Root sorting, pagination and
 totals use the original structured request with no hydration property.</p>
 <p>See the <a href="../advanced-search/">advanced-search guide</a> for grouping and Oslo-site
-examples. The optional capability does not change the release compatibility
-baseline above.</p>
-<h2 id="optional-preview-snapshot">Optional preview snapshot<a class="headerlink" href="#optional-preview-snapshot" title="Permanent link">&para;</a></h2>
-<p>Release v0.0.21 retains the Server v0.0.19 baseline. Search hydration and
-exact-name object history require newer server capabilities and remain optional.
-The reproducible preview target is server commit
-<code>00135f71aedcf52ecd8395906a227446121e48e9</code>, using image
-<code>ghcr.io/hubuum/hubuum-server@sha256:2e866b6fcb4a9c2023324b722ee0c494d98fc02a2d24feb5c19ebd451878fc27</code>.
-A preview server can still report version 0.0.19; use the commit and digest to
-identify it. This snapshot is a compatibility test target, not the deployment
-default.</p>
-<p>The bundled contract starts with the released OpenAPI from server commit
-<code>59faad2641620e457d5b0d9d7e112ee395b151ff</code>, supplemented by search hydration from
-<code>41b4f68c3bb42180b14e564b8b19d0f0436929aa</code> and exact-name object history from
-<code>bee167bdf444918406f8ab22ffe9e19695585f60</code>. The release checks both the released
-baseline and the pinned preview; the remaining post-release server endpoints
-are outside this frontend release's contract.</p>
-<p>Exact-name object history searches retained class-scoped snapshots across
-identities. Server v0.0.19 shows an explicit unavailable state for this optional
-view; ordinary identity history remains available. See the
-<a href="../user-guide/#historical-snapshots-and-object-restoration">history guide</a>.</p>
+examples. Hydration is included in the declared Server v0.0.20 baseline.</p>
+<h2 id="released-contract">Released contract<a class="headerlink" href="#released-contract" title="Permanent link">&para;</a></h2>
+<p>Frontend v0.0.22 bundles the complete 257-operation OpenAPI contract from
+Server v0.0.20. Search hydration and exact-name object history across identities
+are part of that supported baseline. See <a href="../compatibility-evidence/#frontend-v0022">v0.0.22 verification</a>
+for source provenance, the immutable image, and completed live/browser checks. Earlier optional-preview evidence is
+retained in <a href="../compatibility-evidence/">compatibility history</a>.</p>
 <h2 id="before-upgrading">Before upgrading<a class="headerlink" href="#before-upgrading" title="Permanent link">&para;</a></h2>
-<p>Frontend v0.0.21 retains the server v0.0.19 baseline from v0.0.20. Deploy that
-server before upgrading the frontend. Replace blank local account names with nonblank accounts and transfer
-group memberships; correct externally managed names in the identity provider.
-Upgrade strict event readers to accept successful-login events before enabling
-the new server. Older servers cannot read the new event catalog entry.</p>
-<p>The server uses HTTP/1.1 for direct connections, including TLS. Configure reverse
-proxies to use HTTP/1.1 upstream; they can continue offering HTTP/2 to clients.</p>
-<p>Backups now use format 9; formats 6, 7, and 8 remain readable. Apply query usage
-migrations and reconcile role grants. Upgrade every API, worker, and restore
-executor together, and retain a pre-upgrade backup and matching binaries for
-recovery. Older servers cannot restore format 9. See the
-<a href="https://github.com/hubuum/hubuum/releases/tag/v0.0.19">server release notes</a>
-and <a href="https://hubuum.github.io/hubuum/v0.0.19/backup-restore/">backup compatibility</a>.</p>
-<p>Server v0.0.18 or newer is required for delegated
-webhook setup. Collection managers need <code>ManageEventSubscription</code> and <code>ReadAudit</code>;
-shared sinks also need direct collection grants. Follow the
-<a href="../user-guide/">browser guide</a> for credential prompts, schema repair, and restore
-workflows; upgrade history is not a substitute for those instructions.</p>
-<p>Server v0.0.18 requires an offline upgrade from v0.0.17 and emits backup format 8;
-older servers cannot restore that format. Follow the canonical
-<a href="https://hubuum.github.io/hubuum/v0.0.18/events/#upgrade-and-rollback">server upgrade and recovery instructions</a>
-and <a href="https://hubuum.github.io/hubuum/v0.0.18/backup-restore/">backup compatibility</a>.
-Use the server guide for the actual version transition rather than copying
-migration commands from an older client release.</p>
+<p>Deploy Server v0.0.20 and Frontend v0.0.22 together. Stop old API and worker
+replicas, apply the server's offline migration and role grants, then start
+matching API, worker, and restore binaries. Clear old frontend sessions and
+sign in again. Existing PATs and service credentials remain independent.</p>
+<p>The server emits backup format 10. Keep a pre-upgrade backup and matching
+binaries for rollback; older servers cannot restore the new format. Follow the
+<a href="https://hubuum.github.io/hubuum/v0.0.20/deployment/">server deployment guide</a>
+and <a href="https://hubuum.github.io/hubuum/v0.0.20/backup-restore/">backup compatibility</a>.
+The existing single-host updater supports this transition; pin both component
+tags and create a pre-upgrade snapshot before running it.</p>
+<p>Reverse proxies should use HTTP/1.1 for direct server connections. Collection
+managers need <code>ManageEventSubscription</code> and <code>ReadAudit</code> for delegated webhook
+setup; shared sinks also need direct collection grants. Follow the
+<a href="../user-guide/">browser guide</a> for credential prompts and recovery workflows.</p>
 <h2 id="verification-evidence">Verification evidence<a class="headerlink" href="#verification-evidence" title="Permanent link">&para;</a></h2>
 <p><a href="../compatibility-evidence/">Detailed evidence and historical migrations</a> retain tested
 image identities, dates, suite results, and earlier compatibility limits.</p>
