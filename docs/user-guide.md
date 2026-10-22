@@ -98,6 +98,43 @@ add either human users or service accounts by name, and each service-account
 detail page lists its current runtime group memberships separately from its
 owner group.
 
+The token overview defaults to **Active**, sorted by newest issuance, with
+25 tokens per page and the server's exact total when available. Switch to
+**Expired**, **Revoked**, or **All retained**, or order by recent use. Expired
+and revoked subsets can overlap. Missing explicit expiry means the server's
+default lifetime applies; it does not mean the token lasts forever.
+
+**Current web session** identifies this browser's access token separately from
+the paginated list, and badges its row when present. It remains available when
+another page or lifecycle filter is selected. The lookup refreshes every
+30 seconds while this page is visible, on window focus, and with **Refresh
+overview**. The token ID and expiry change as the session rotates; the shared
+session history remains available from **Inspect current token**. Only public
+metadata reaches the browser.
+
+Enable **Show activity overview** to see each visible token's session/standalone
+classification, creation method and issuer, creation address and resolution,
+retained source count, retention window, and disabled/overflow coverage flags.
+This makes one bounded activity request per token on the current page. Use
+**Refresh overview** to update those summaries. Unavailable activity does not
+hide the token, and zero recorded sources does not establish that it was unused.
+
+Token details also load **Credential activity** when opened. Creation provenance
+shows the issuing principal (which may differ from the owner), issuance method,
+timestamp, and observed address. **Recent sources** provides paginated addresses,
+their resolution method, and first/last seen times. Rotating session credentials
+share the original creation evidence and source history; the session family ID
+identifies that shared history. Refresh activity to request current evidence.
+
+Collection coverage shows whether collection is enabled, its retention window,
+source cap, and any recorded overflow. Activity is best-effort and can be
+incomplete: an empty list does not prove a credential was unused. Unknown
+provenance, unavailable addresses, and disabled collection remain explicit.
+Sources record successful credential validation even when the operation later
+fails or is denied. A connection peer may identify the frontend or another
+proxy; the view does not infer the browser's original address. Activity errors
+can be retried without closing the token's scope and lifecycle details.
+
 ## Workspace navigation and resource selection
 
 Use **Go to…** or **Ctrl/Cmd+K** to find a workspace destination, pinned resource,

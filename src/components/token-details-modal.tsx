@@ -5,10 +5,12 @@ import {
 	type ModalRecordNavigation,
 } from "@/components/create-modal";
 import { JsonViewer } from "@/components/json-viewer";
+import { TokenActivity } from "@/components/token-activity";
 import type { PrincipalTokenMetadata } from "@/lib/api/generated/models";
 import type { TokenResourceNameMap } from "@/lib/api/token-resource-names";
 import {
 	formatTokenLifecycleStatus,
+	formatTokenTimestamp as formatTimestamp,
 	getTokenLifecycleStatus,
 } from "@/lib/token-lifecycle";
 import { tokenResourceScopeKey } from "@/lib/token-resource-scope-selection";
@@ -32,22 +34,6 @@ const RESOURCE_GROUPS = [
 	{ kind: "class", label: "Classes" },
 	{ kind: "object", label: "Objects" },
 ] as const;
-
-function formatTimestamp(value: string | null | undefined): string {
-	if (!value) {
-		return "Not recorded";
-	}
-
-	const parsed = new Date(value);
-	if (Number.isNaN(parsed.getTime())) {
-		return value;
-	}
-
-	return new Intl.DateTimeFormat(undefined, {
-		dateStyle: "medium",
-		timeStyle: "long",
-	}).format(parsed);
-}
 
 export function TokenDetailsModal({
 	token,
@@ -233,9 +219,7 @@ export function TokenDetailsModal({
 													{hasObjectScopeWithoutClass
 														? "An object resource must belong to one of the class entries in the same scope. "
 														: `Could not resolve ${unresolvedResourceNames} resource ${
-																unresolvedResourceNames === 1
-																	? "name"
-																	: "names"
+																unresolvedResourceNames === 1 ? "name" : "names"
 															}. `}
 													The exact IDs are retained.
 												</small>
@@ -246,6 +230,12 @@ export function TokenDetailsModal({
 							</div>
 						)}
 					</section>
+
+					<TokenActivity
+						key={`${token.principal_id}:${token.id}`}
+						principalId={token.principal_id}
+						tokenId={token.id}
+					/>
 
 					<p className="muted token-detail-security-note">
 						The raw bearer token and its stored hash are never returned by the
