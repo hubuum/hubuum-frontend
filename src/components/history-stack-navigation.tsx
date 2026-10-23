@@ -122,7 +122,8 @@ export function HistoryStackNavigation<T extends HistoryEntry>({
 
 	function choose(record: T, focus = false) {
 		scrollSelection.current = null;
-		if (record.history_id !== selected.history_id) onSelect(record);
+		// An explicit choice must also commit an uncommitted scroll preview.
+		onSelect(record);
 		if (focus)
 			timelineRef.current
 				?.querySelector<HTMLButtonElement>(

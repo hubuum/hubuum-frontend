@@ -1451,6 +1451,7 @@ test.describe("resource history", () => {
 		await expect(
 			page.getByRole("combobox", { name: "Select a stored version" }),
 		).toHaveCount(0);
+		await versionMarker(page, 103).scrollIntoViewIfNeeded();
 		await versionMarker(page, 103).hover();
 		await page.mouse.wheel(0, 80);
 		await expectSelected(page, 102);
@@ -1492,6 +1493,31 @@ test.describe("resource history", () => {
 		await page.getByRole("region", { name: "Snapshot comparison" }).hover();
 		await page.mouse.wheel(0, 200);
 		await expectSelected(page, 102);
+	});
+
+	test("clicking a previewed version commits it before Back navigation", async ({
+		page,
+	}) => {
+		await prepare(page, { many: true });
+		await page.clock.install();
+		await page.goto(objectPath);
+		await expectSelected(page, 1059);
+		await page.clock.pauseAt(new Date(Date.now() + 1000));
+		const viewport = page
+			.getByRole("navigation", { name: "History timeline" })
+			.locator('[class*="timelineViewport"]');
+		await viewport.evaluate((element) => {
+			element.scrollTop = 80;
+			element.dispatchEvent(new Event("scroll"));
+		});
+		await page.clock.runFor(32);
+		await expectSelected(page, 1058);
+		expect(new URL(page.url()).searchParams.get("version")).toBe("1059");
+		await versionMarker(page, 1058).dispatchEvent("click");
+		expect(new URL(page.url()).searchParams.get("version")).toBe("1058");
+		await page.clock.runFor(300);
+		await page.goBack();
+		await expectSelected(page, 1059);
 	});
 
 	test("comparison controls preserve a pending scroll selection", async ({

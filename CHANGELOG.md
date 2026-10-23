@@ -30,6 +30,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Coalesce timeline scroll navigation to avoid browser history rate limits.
 - Refresh history timelines and exact snapshots after restoration.
 - Keep the history reading area stable while selected snapshots load.
+- Commit explicitly selected scroll previews and keep timeline markers centered
+  across viewport changes.
 - Keep keyboard shortcut badges readable in dark themes.
 
 ### Compatibility
