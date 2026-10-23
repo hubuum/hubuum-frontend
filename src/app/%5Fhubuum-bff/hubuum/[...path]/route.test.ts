@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 	discardAdminProbeResponse: vi.fn((response: Response) => {
 		void response.body?.cancel();
 	}),
-	destroySession: vi.fn(),
+	invalidateRejectedSession: vi.fn().mockResolvedValue(true),
 	emitOperationalEvent: vi.fn(),
 	fetch: vi.fn(),
 	getSessionFromRequest: vi.fn(),
@@ -30,7 +30,7 @@ vi.mock("@/lib/auth/backend-session-validation", () => ({
 
 vi.mock("@/lib/auth/session", () => ({
 	clearSessionCookie: mocks.clearSessionCookie,
-	destroySession: mocks.destroySession,
+	invalidateRejectedSession: mocks.invalidateRejectedSession,
 	getSessionFromRequest: mocks.getSessionFromRequest,
 }));
 
@@ -40,9 +40,10 @@ vi.mock("@/lib/operational-events", () => ({
 	operationalLevelForStatus: () => "info",
 }));
 
-import { GET, POST } from "@/app/%5Fhubuum-bff/hubuum/[...path]/route";
+import { GET, PATCH, POST } from "@/app/%5Fhubuum-bff/hubuum/[...path]/route";
 
 const session = {
+	generation: "old-generation",
 	createdAt: Date.now(),
 	lastSeen: Date.now(),
 	sid: "session-id",
@@ -84,11 +85,90 @@ describe("generic BFF proxy admin gate", () => {
 				headers: { Origin: "https://console.example" },
 				body: "{}",
 			}),
-			routeContext(path.split("/")),
+			routeContext(path.split("/").map(decodeURIComponent)),
 		);
 		expect(response.status).toBe(403);
 		expect(response.headers.get("cache-control")).toBe("private, no-store");
 		expect(mocks.fetch).not.toHaveBeenCalled();
+	});
+
+	it.each(["rack#1", "rack?1", "rack/1", "rack%2F1", "rack\\1", "føø & bar"])(
+		"preserves literal resource name %s for reads and writes",
+		async (name) => {
+			for (const method of ["GET", "PATCH"] as const) {
+				mocks.fetch.mockResolvedValue(Response.json({ name }));
+				const path = `api/v1/classes/by-name/${encodeURIComponent(name)}`;
+				const incoming = new NextRequest(
+					`https://console.example/_hubuum-bff/hubuum/${path}?limit=25`,
+					{
+						method,
+						headers: { Origin: "https://console.example" },
+						...(method === "PATCH"
+							? { body: '{"description":"changed"}' }
+							: {}),
+					},
+				);
+				const response = await (method === "GET" ? GET : PATCH)(
+					incoming,
+					routeContext(["api", "v1", "classes", "by-name", name]),
+				);
+				expect(response.status).toBe(200);
+				const target = mocks.fetch.mock.lastCall?.[0] as URL;
+				expect(target.pathname).toBe(
+					`/api/v1/classes/by-name/${encodeURIComponent(name)}`,
+				);
+				expect(target.search).toBe("?limit=25");
+				expect(target.hash).toBe("");
+			}
+		},
+	);
+
+	it.each(["GET", "PATCH"] as const)(
+		"preserves a rotated session after a late %s rejection without replaying it",
+		async (method) => {
+			mocks.invalidateRejectedSession.mockResolvedValueOnce(false);
+			mocks.fetch.mockResolvedValue(
+				Response.json({ message: "Old credential expired" }, { status: 401 }),
+			);
+			const incoming = new NextRequest(
+				"https://console.example/_hubuum-bff/hubuum/api/v1/classes/1",
+				{
+					method,
+					headers: {
+						Origin: "https://console.example",
+						"X-Correlation-Id": "late-request",
+					},
+					...(method === "PATCH" ? { body: "{}" } : {}),
+				},
+			);
+			const response = await (method === "GET" ? GET : PATCH)(
+				incoming,
+				routeContext(["api", "v1", "classes", "1"]),
+			);
+			expect(response.status).toBe(409);
+			expect(await response.json()).toMatchObject({ error: "session_rotated" });
+			expect(response.headers.get("X-Correlation-Id")).toBe("late-request");
+			expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+			expect(mocks.invalidateRejectedSession).toHaveBeenCalledWith(session);
+			expect(mocks.clearSessionCookie).not.toHaveBeenCalled();
+			expect(mocks.fetch).toHaveBeenCalledOnce();
+		},
+	);
+
+	it("preserves a rotated session even if the rejected upstream body fails to cancel", async () => {
+		mocks.invalidateRejectedSession.mockResolvedValueOnce(false);
+		const cancel = vi.fn(() => Promise.reject(new Error("Upstream disconnected")));
+		mocks.fetch.mockResolvedValue(
+			new Response(new ReadableStream({ cancel }), { status: 401 }),
+		);
+		const response = await GET(
+			request("api/v1/classes/1"),
+			routeContext(["api", "v1", "classes", "1"]),
+		);
+		expect(response.status).toBe(409);
+		expect(await response.json()).toMatchObject({ error: "session_rotated" });
+		expect(cancel).toHaveBeenCalledOnce();
+		expect(mocks.clearSessionCookie).not.toHaveBeenCalled();
 	});
 
 	it("preserves resource names containing an already decoded percent sign", async () => {
@@ -113,7 +193,7 @@ describe("generic BFF proxy admin gate", () => {
 				headers: { Origin: "https://console.example" },
 				body: "{}",
 			}),
-			routeContext(path.split("/")),
+			routeContext(path.split("/").map(decodeURIComponent)),
 		);
 		expect(response.status).toBe(403);
 		expect(response.headers.get("cache-control")).toBe("private, no-store");
@@ -248,7 +328,7 @@ describe("generic BFF proxy admin gate", () => {
 		);
 
 		expect(response.status).toBe(401);
-		expect(mocks.destroySession).toHaveBeenCalledWith("session-id");
+		expect(mocks.invalidateRejectedSession).toHaveBeenCalledWith(session);
 		expect(mocks.clearSessionCookie).toHaveBeenCalledWith(
 			response,
 			incomingRequest,

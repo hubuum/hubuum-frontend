@@ -2,12 +2,8 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-	clearSessionCookie,
-	destroySession,
-	getSessionFromRequest,
-	type ActiveSession,
-} from "@/lib/auth/session";
+import { getSessionFromRequest, type ActiveSession } from "@/lib/auth/session";
+import { handleUnauthorizedResponse } from "@/lib/auth/unauthorized-response";
 import {
 	CORRELATION_ID_HEADER,
 	generateCorrelationId,
@@ -55,10 +51,7 @@ export async function rawReportErrorResponse(
 ): Promise<Response> {
 	const status = error instanceof RawReportError ? error.status : 502;
 	if (status === 401) {
-		await destroySession(session.sid);
-		const response = loginRedirect(request);
-		clearSessionCookie(response, request);
-		return response;
+		return handleUnauthorizedResponse(loginRedirect(request), request, session);
 	}
 
 	const message =

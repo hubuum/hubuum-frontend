@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
 	backendFetchRaw: vi.fn(),
 	getSessionFromRequest: vi.fn(),
 	validateBackendSession: vi.fn(),
-	destroySession: vi.fn(),
+	invalidateRejectedSession: vi.fn().mockResolvedValue(true),
 	clearSessionCookie: vi.fn(),
 }));
 vi.mock("@/lib/api/backend", () => ({
@@ -54,6 +54,7 @@ function request(overrides = {}, origin = "https://console.example") {
 describe("credential mutation BFF", () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		mocks.invalidateRejectedSession.mockResolvedValue(true);
 		mocks.getSessionFromRequest.mockResolvedValue({
 			sid: "session",
 			token: "original-bearer",
@@ -218,7 +219,7 @@ describe("credential mutation BFF", () => {
 		const response = await POST(request());
 		expect(response.status).toBe(403);
 		expect((await response.json()).reason).toBe("password_confirmation_failed");
-		expect(mocks.destroySession).not.toHaveBeenCalled();
+		expect(mocks.invalidateRejectedSession).not.toHaveBeenCalled();
 		expect(mocks.backendFetchRaw).toHaveBeenCalledOnce();
 	});
 	it("expires a revoked session after approval authentication fails", async () => {
@@ -227,7 +228,9 @@ describe("credential mutation BFF", () => {
 			.mockResolvedValue(new Response(null, { status: 401 }));
 		mocks.validateBackendSession.mockResolvedValue("expired");
 		expect((await POST(request())).status).toBe(401);
-		expect(mocks.destroySession).toHaveBeenCalledWith("session");
+		expect(mocks.invalidateRejectedSession).toHaveBeenCalledWith(
+			expect.objectContaining({ sid: "session", token: "original-bearer" }),
+		);
 		expect(mocks.clearSessionCookie).toHaveBeenCalledOnce();
 	});
 	it.each([403, 404, 429, 503])(

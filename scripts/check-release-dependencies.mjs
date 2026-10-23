@@ -87,6 +87,49 @@ export function validateNodePins(dockerfile, workflows, releases) {
 	return target;
 }
 
+export async function verifyNodeImageDigest(dockerfile, request = fetch) {
+	const image =
+		/^FROM(?:\s+--platform=\S+)?\s+node:([^\s@]+)@(sha256:[0-9a-f]{64})/im.exec(
+			dockerfile,
+		);
+	if (!image) fail("Docker must pin a Node image tag and digest.");
+	const [, tag, pinnedDigest] = image;
+	const auth = await request(
+		"https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/node:pull",
+		{ signal: AbortSignal.timeout(30_000) },
+	);
+	if (!auth.ok)
+		fail(
+			`Could not authorize the public Node image check: HTTP ${auth.status}.`,
+		);
+	const { token } = await auth.json();
+	if (typeof token !== "string" || !token)
+		fail("Docker registry returned invalid authorization metadata.");
+	const manifest = await request(
+		`https://registry-1.docker.io/v2/library/node/manifests/${encodeURIComponent(tag)}`,
+		{
+			method: "HEAD",
+			headers: {
+				Authorization: `Bearer ${token}`,
+				Accept:
+					"application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json",
+			},
+			signal: AbortSignal.timeout(30_000),
+		},
+	);
+	if (!manifest.ok)
+		fail(`Could not check Node image ${tag}: HTTP ${manifest.status}.`);
+	const resolvedDigest = manifest.headers.get("docker-content-digest");
+	if (!resolvedDigest || !/^sha256:[0-9a-f]{64}$/.test(resolvedDigest)) {
+		fail("Docker registry did not return a valid Node image digest.");
+	}
+	if (pinnedDigest !== resolvedDigest) {
+		fail(
+			`Node image ${tag} resolves to ${resolvedDigest}, not pinned digest ${pinnedDigest}. Update the Docker digest.`,
+		);
+	}
+}
+
 export function latestStableTag(tags) {
 	return tags
 		.map((tag) => ({ ...tag, version: parseSemverTag(tag.name) }))
@@ -486,11 +529,13 @@ export async function runReleaseDependencyGate() {
 		signal: AbortSignal.timeout(30_000),
 	});
 	if (!nodeResponse.ok) fail(`Could not check Node.js releases: HTTP ${nodeResponse.status}.`);
+	const dockerfile = readFileSync(join(projectRoot, "Dockerfile"), "utf8");
 	const nodeVersion = validateNodePins(
-		readFileSync(join(projectRoot, "Dockerfile"), "utf8"),
+		dockerfile,
 		workflows,
 		await nodeResponse.json(),
 	);
+	await verifyNodeImageDigest(dockerfile);
 
 	const npmResult = commandOutput("npm", ["outdated", "--json", "--long"]);
 	if (![0, 1].includes(npmResult.status)) {

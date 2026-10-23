@@ -37,7 +37,9 @@ function testStore(initial: SessionPayload): SessionStore {
 			return true;
 		},
 		async invalidateGeneration(_sid, generation) {
-			if (value?.generation === generation) value = null;
+			if (value?.generation !== generation) return false;
+			value = null;
+			return true;
 		},
 		async destroy() {
 			value = null;

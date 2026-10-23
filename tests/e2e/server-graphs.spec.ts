@@ -191,6 +191,36 @@ test("large object graphs exclude the root class by default and support zoom, se
 		page.getByText("401 nodes, including the root", { exact: false }),
 	).toBeVisible();
 	expect(requests.at(-1)?.searchParams.get("limit")).toBe("1000");
+	const diagram = page.getByRole("region", { name: "Neighborhood diagram" });
+	const root = diagram.getByRole("button", {
+		name: "Inspect Root object (#223)",
+		exact: true,
+	});
+	await root.focus();
+	await page.keyboard.press("ArrowDown");
+	await expect(
+		diagram.getByRole("button", {
+			name: "Inspect Graph node 0 (#1000)",
+			exact: true,
+		}),
+	).toBeFocused();
+	await page.keyboard.press("End");
+	const last = diagram.getByRole("button", {
+		name: "Inspect Graph node 99 (#1099)",
+		exact: true,
+	});
+	await expect(last).toBeFocused();
+	await page.keyboard.press("Tab");
+	await expect(
+		page.getByRole("link", { name: "Open object", exact: true }),
+	).toBeFocused();
+	await page.keyboard.press("Shift+Tab");
+	await expect(last).toBeFocused();
+	await page.keyboard.press("Home");
+	await expect(root).toBeFocused();
+	await page.keyboard.press("ArrowUp");
+	await expect(root).toBeFocused();
+
 	await page.getByRole("button", { name: "Fit width" }).click();
 	await expect(page.getByLabel("Graph zoom")).not.toHaveText("100%");
 	await page.getByText("Nodes (401)", { exact: true }).click();

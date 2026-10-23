@@ -233,13 +233,44 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 							Actual size
 						</button>
 					</div>
+					<p className="muted" id="graph-keyboard-help">
+						Use ↑ and ↓ to inspect nodes, Home and End to reach the first and
+						last node, and Tab to leave the diagram.
+					</p>
 					<section
 						className={styles.viewport}
 						aria-label="Neighborhood diagram"
+						aria-describedby="graph-keyboard-help"
 						ref={viewportRef}
 						// biome-ignore lint/a11y/noNoninteractiveTabindex: The scrollable diagram needs keyboard access.
 						tabIndex={0}
 						onKeyDownCapture={(event) => {
+							if (event.altKey || event.ctrlKey || event.metaKey) return;
+							if (
+								event.target instanceof HTMLButtonElement &&
+								event.target.hasAttribute("data-node-id")
+							) {
+								const nodeId = Number(event.target.dataset.nodeId);
+								const index = graph.nodes.findIndex(
+									(node) => node.id === nodeId,
+								);
+								const destination =
+									event.key === "Home"
+										? 0
+										: event.key === "End"
+											? graph.nodes.length - 1
+											: event.key === "ArrowUp"
+												? Math.max(0, index - 1)
+												: event.key === "ArrowDown"
+													? Math.min(graph.nodes.length - 1, index + 1)
+													: null;
+								if (destination !== null) {
+									event.preventDefault();
+									event.stopPropagation();
+									focusNode(graph.nodes[destination].id);
+									return;
+								}
+							}
 							if (
 								["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(
 									event.key,
@@ -292,6 +323,7 @@ export function NeighborhoodGraph({ scope }: { scope: GraphScope }) {
 										style={{ left: node.x, top: node.y }}
 										aria-label={`Inspect ${node.name} (#${node.id})`}
 										aria-pressed={selected?.id === node.id}
+										tabIndex={selected?.id === node.id ? 0 : -1}
 										onClick={() => setSelectedId(node.id)}
 									>
 										<span>{node.name}</span>
