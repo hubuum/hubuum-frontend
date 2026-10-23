@@ -13,7 +13,8 @@ This workflow does not require `dev:deps` or edits to `.env.local`.
 
 ## First-time setup
 
-Install Node.js 24 LTS and Docker Compose or Podman with a Compose provider,
+Install the latest Node.js 24 LTS release (currently 24.22.1) and Docker Compose
+or Podman with a Compose provider,
 then install the project dependencies:
 
 ```sh

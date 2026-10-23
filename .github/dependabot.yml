@@ -13,3 +13,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # Runtime major upgrades follow the supported LTS policy in AGENTS.md.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]

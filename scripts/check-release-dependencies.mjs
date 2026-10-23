@@ -54,6 +54,39 @@ function compareSemver(left, right) {
 	return 0;
 }
 
+export function validateNodePins(dockerfile, workflows, releases) {
+	const images = [...dockerfile.matchAll(/^FROM(?:\s+--platform=\S+)?\s+node:(\S+)/gim)].map((match) => match[1]);
+	const image = images[0];
+	const version = /^(\d+\.\d+\.\d+)-[^@]+@sha256:[0-9a-f]{64}$/.exec(image ?? "")?.[1];
+	if (!version || images.some((value) => value !== image)) {
+		fail("All Docker Node stages must use the same exact version and image digest.");
+	}
+	if (!Array.isArray(releases)) fail("Node.js returned an invalid release index.");
+	const current = parseSemverTag(version);
+	const latest = releases
+		.filter((release) => typeof release?.lts === "string")
+		.map((release) => parseSemverTag(release.version))
+		.filter((release) => release?.major === current.major && release.specificity === 3)
+		.sort((left, right) => compareSemver(right, left))[0];
+	if (!latest) fail(`No LTS releases were found for Node.js ${current.major}.`);
+	const target = latest.tag.replace(/^v/, "");
+	if (version !== target) {
+		fail(`Docker pins Node.js ${version}; update to the latest Node.js ${current.major} LTS release, ${target}.`);
+	}
+	let count = 0;
+	for (const [path, content] of Object.entries(workflows)) {
+		for (const [index, line] of content.split("\n").entries()) {
+			const match = /^\s*node-version:\s*(.*)$/.exec(line);
+			if (!match) continue;
+			count++;
+			const pin = match[1].split("#")[0].trim().replace(/^["']|["']$/g, "");
+			if (pin !== target) fail(`${path}:${index + 1} must pin Node.js ${target}, matching Docker.`);
+		}
+	}
+	if (!count) fail("No CI Node.js version pins were found.");
+	return target;
+}
+
 export function latestStableTag(tags) {
 	return tags
 		.map((tag) => ({ ...tag, version: parseSemverTag(tag.name) }))
@@ -441,13 +474,23 @@ function allowedMessage(item) {
 	return `${subject} is deferred until ${entry.expiresOn}: ${entry.reason} (${entry.trackingIssue}).`;
 }
 
-export function runReleaseDependencyGate() {
+export async function runReleaseDependencyGate() {
 	const packageDocument = JSON.parse(
 		readFileSync(join(projectRoot, "package.json"), "utf8"),
 	);
 	const exceptionDocument = JSON.parse(readFileSync(exceptionPath, "utf8"));
 	const exceptions = validateExceptions(exceptionDocument);
-	const pins = collectActionPins(readWorkflows());
+	const workflows = readWorkflows();
+	const pins = collectActionPins(workflows);
+	const nodeResponse = await fetch("https://nodejs.org/dist/index.json", {
+		signal: AbortSignal.timeout(30_000),
+	});
+	if (!nodeResponse.ok) fail(`Could not check Node.js releases: HTTP ${nodeResponse.status}.`);
+	const nodeVersion = validateNodePins(
+		readFileSync(join(projectRoot, "Dockerfile"), "utf8"),
+		workflows,
+		await nodeResponse.json(),
+	);
 
 	const npmResult = commandOutput("npm", ["outdated", "--json", "--long"]);
 	if (![0, 1].includes(npmResult.status)) {
@@ -502,14 +545,14 @@ export function runReleaseDependencyGate() {
 	const productionCount = Object.keys(packageDocument.dependencies ?? {}).length;
 	const developmentCount = Object.keys(packageDocument.devDependencies ?? {}).length;
 	console.log(
-		`Release dependency gate passed for ${productionCount} application dependencies, ${developmentCount} development dependencies, the pinned API generator, ${pins.length} pinned action references, and ${dependabotPullRequests.length} open Dependabot PRs.`,
+		`Release dependency gate passed for Node.js ${nodeVersion} in Docker and CI, ${productionCount} application dependencies, ${developmentCount} development dependencies, the pinned API generator, ${pins.length} pinned action references, and ${dependabotPullRequests.length} open Dependabot PRs.`,
 	);
 }
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";
 if (import.meta.url === invokedPath) {
 	try {
-		runReleaseDependencyGate();
+		await runReleaseDependencyGate();
 	} catch (error) {
 		console.error(error instanceof Error ? error.message : String(error));
 		process.exitCode = 1;
