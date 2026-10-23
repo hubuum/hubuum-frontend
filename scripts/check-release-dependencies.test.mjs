@@ -51,7 +51,7 @@ test("Node image check rejects a new label paired with an old or missing digest"
 	for (const digest of [`sha256:${"b".repeat(64)}`, "invalid", null]) {
 		await assert.rejects(
 			verifyNodeImageDigest(`FROM ${nodeImage}`, async (url) =>
-				url.includes("auth.docker.io")
+				new URL(url).hostname === "auth.docker.io"
 					? Response.json({ token: "public-registry-test-token" })
 					: new Response(null, {
 							headers: digest ? { "docker-content-digest": digest } : {},
@@ -73,7 +73,7 @@ test("Node image check fails closed when the registry cannot be verified", async
 		);
 		await assert.rejects(
 			verifyNodeImageDigest(`FROM ${nodeImage}`, async (url) =>
-				url.includes("auth.docker.io")
+				new URL(url).hostname === "auth.docker.io"
 					? Response.json({ token: "public-registry-test-token" })
 					: new Response(null, { status }),
 			),
