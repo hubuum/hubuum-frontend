@@ -10,11 +10,8 @@ import { copySafeIncomingRequestHeaders } from "@/lib/api/proxy-request-headers"
 import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
 import { discardAdminProbeResponse, probeAdminAccess } from "@/lib/auth/admin";
 import { validateBackendSession } from "@/lib/auth/backend-session-validation";
-import {
-	clearSessionCookie,
-	destroySession,
-	getSessionFromRequest,
-} from "@/lib/auth/session";
+import { getSessionFromRequest } from "@/lib/auth/session";
+import { handleUnauthorizedResponse } from "@/lib/auth/unauthorized-response";
 import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
@@ -48,7 +45,8 @@ function toUpstreamPath(
 		return null;
 	}
 
-	const joinedBase = pathParts.join("/");
+	// Next has already decoded each segment. Keep names literal when building a URL.
+	const joinedBase = pathParts.map(encodeURIComponent).join("/");
 	const joined =
 		preserveTrailingSlash && !joinedBase.endsWith("/")
 			? `${joinedBase}/`
@@ -268,9 +266,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 						},
 					},
 				);
-				await destroySession(session.sid);
-				clearSessionCookie(response, request);
-				return response;
+				return handleUnauthorizedResponse(response, request, session);
 			}
 			if (validation === "valid") {
 				emitOperationalEvent("warn", "bff.proxy.rejected", {
@@ -386,8 +382,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
 
 	if (upstreamResponse.status === 401) {
-		await destroySession(session.sid);
-		clearSessionCookie(response, request);
+		return handleUnauthorizedResponse(response, request, session);
 	}
 
 	return response;

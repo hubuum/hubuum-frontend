@@ -56,6 +56,7 @@ describe("server-side sessions", () => {
 		valkeyMock.state.clear();
 		valkeyMock.control.deleteAfterGet = false;
 		vi.clearAllMocks();
+		valkeyMock.evalScript.mockResolvedValue(0);
 	});
 
 	afterAll(() => {
@@ -123,6 +124,34 @@ describe("server-side sessions", () => {
 		await getSessionFromRequest(request);
 		expect(valkeyMock.get).toHaveBeenCalledTimes(2);
 		expect(valkeyMock.set).toHaveBeenCalledTimes(1);
+	});
+
+	it("preserves a replacement session after the old access token is rejected", async () => {
+		const { createSession, invalidateRejectedSession } = await import(
+			"@/lib/auth/session"
+		);
+		const { sessionPayload } = await import("@/lib/auth/session-credentials");
+		const old = sessionPayload(sessionCredentials());
+		const sid = await createSession(sessionCredentials());
+		expect(await invalidateRejectedSession({ ...old, sid })).toBe(false);
+		expect(valkeyMock.del).not.toHaveBeenCalled();
+		expect(valkeyMock.state.size).toBe(1);
+		expect(valkeyMock.evalScript).toHaveBeenCalledWith(
+			expect.any(String),
+			1,
+			expect.any(String),
+			old.generation,
+			"1",
+		);
+	});
+
+	it("recognizes an invalidated or missing session as expired", async () => {
+		const { invalidateRejectedSession } = await import("@/lib/auth/session");
+		const { sessionPayload } = await import("@/lib/auth/session-credentials");
+		const session = { ...sessionPayload(sessionCredentials()), sid: "missing" };
+		expect(await invalidateRejectedSession(session)).toBe(true);
+		valkeyMock.evalScript.mockResolvedValueOnce(1);
+		expect(await invalidateRejectedSession(session)).toBe(true);
 	});
 
 	it("does not recreate a session deleted while a refresh is in flight", async () => {

@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetchRaw } from "@/lib/api/backend";
-import {
-	clearSessionCookie,
-	destroySession,
-	getSessionFromRequest,
-} from "@/lib/auth/session";
+import { getSessionFromRequest } from "@/lib/auth/session";
+import { handleUnauthorizedResponse } from "@/lib/auth/unauthorized-response";
 import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
@@ -82,8 +79,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
 
 	if (upstream.status === 401) {
-		await destroySession(session.sid);
-		clearSessionCookie(response, request);
+		return handleUnauthorizedResponse(response, request, session);
 	}
 
 	return response;

@@ -3,11 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { backendFetchRaw } from "@/lib/api/backend";
 import { copyPaginationHeaders } from "@/lib/api/proxy-pagination-headers";
 import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
-import {
-	clearSessionCookie,
-	destroySession,
-	getSessionFromRequest,
-} from "@/lib/auth/session";
+import { getSessionFromRequest } from "@/lib/auth/session";
+import { handleUnauthorizedResponse } from "@/lib/auth/unauthorized-response";
 import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
@@ -109,8 +106,7 @@ async function proxyClassRelations(
 	response.headers.set(CORRELATION_ID_HEADER, correlationId);
 
 	if (upstream.status === 401) {
-		await destroySession(session.sid);
-		clearSessionCookie(response, request);
+		return handleUnauthorizedResponse(response, request, session);
 	}
 
 	return response;

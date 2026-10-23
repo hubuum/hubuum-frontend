@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	clearSessionCookie: vi.fn(),
-	destroySession: vi.fn(),
+	invalidateRejectedSession: vi.fn().mockResolvedValue(true),
 	getCurrentPrincipalId: vi.fn(),
 	getSessionFromRequest: vi.fn(),
 	loadUserSettingsSnapshotForPrincipal: vi.fn(),
@@ -14,7 +14,7 @@ vi.mock("@/lib/auth/current-principal", () => ({
 }));
 vi.mock("@/lib/auth/session", () => ({
 	clearSessionCookie: mocks.clearSessionCookie,
-	destroySession: mocks.destroySession,
+	invalidateRejectedSession: mocks.invalidateRejectedSession,
 	getSessionFromRequest: mocks.getSessionFromRequest,
 }));
 vi.mock("@/lib/user-settings-server", async (importOriginal) => ({
@@ -52,7 +52,7 @@ describe("settings route authentication", () => {
 
 		expect(response.status).toBe(200);
 		expect(mocks.getSessionFromRequest).toHaveBeenCalledOnce();
-		expect(mocks.destroySession).not.toHaveBeenCalled();
+		expect(mocks.invalidateRejectedSession).not.toHaveBeenCalled();
 		expect(mocks.clearSessionCookie).not.toHaveBeenCalled();
 	});
 
@@ -62,7 +62,7 @@ describe("settings route authentication", () => {
 		const response = await GET(request);
 
 		expect(response.status).toBe(401);
-		expect(mocks.destroySession).not.toHaveBeenCalled();
+		expect(mocks.invalidateRejectedSession).not.toHaveBeenCalled();
 		expect(mocks.clearSessionCookie).toHaveBeenCalledWith(response, request);
 	});
 
@@ -72,7 +72,7 @@ describe("settings route authentication", () => {
 		const response = await GET(request);
 
 		expect(response.status).toBe(401);
-		expect(mocks.destroySession).toHaveBeenCalledWith("session-id");
+		expect(mocks.invalidateRejectedSession).toHaveBeenCalledWith(session);
 		expect(mocks.clearSessionCookie).toHaveBeenCalledWith(response, request);
 	});
 
@@ -84,7 +84,7 @@ describe("settings route authentication", () => {
 		const response = await GET(request);
 
 		expect(response.status).toBe(401);
-		expect(mocks.destroySession).toHaveBeenCalledWith("session-id");
+		expect(mocks.invalidateRejectedSession).toHaveBeenCalledWith(session);
 		expect(mocks.clearSessionCookie).toHaveBeenCalledWith(response, request);
 	});
 });

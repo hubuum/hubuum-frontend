@@ -4,10 +4,10 @@ import { getCurrentPrincipalId } from "@/lib/auth/current-principal";
 import { invalidateProtectedLayoutBootstrap } from "@/lib/auth/protected-layout-bootstrap";
 import {
 	clearSessionCookie,
-	destroySession,
 	getSessionFromRequest,
 	type ActiveSession,
 } from "@/lib/auth/session";
+import { handleUnauthorizedResponse } from "@/lib/auth/unauthorized-response";
 import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
@@ -55,7 +55,7 @@ async function invalidateSessionForUnauthorizedResponse(
 		return response;
 	}
 	if (session) {
-		await destroySession(session.sid);
+		return handleUnauthorizedResponse(response, request, session);
 	}
 	clearSessionCookie(response, request);
 	return response;

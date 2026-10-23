@@ -1,7 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { fetchResourceHistoryAsOf } from "@/lib/api/events";
 import {
 	fetchHistoryEntry,
@@ -60,11 +60,15 @@ export function useHistoryTimeline(
 		enabled: valid && Boolean(window.version || window.at),
 		retry: false,
 	});
-	const records = mergeHistoryMarkers<HistoryResponseHistoryMarker>([
-		...(older.data?.pages.flatMap((page) => page.items) ?? []),
-		...(newer.data?.pages.flatMap((page) => page.items) ?? []),
-		...(anchor.data && !anchor.isError ? [anchor.data] : []),
-	]);
+	const records = useMemo(
+		() =>
+			mergeHistoryMarkers<HistoryResponseHistoryMarker>([
+				...(older.data?.pages.flatMap((page) => page.items) ?? []),
+				...(newer.data?.pages.flatMap((page) => page.items) ?? []),
+				...(anchor.data && !anchor.isError ? [anchor.data] : []),
+			]),
+		[older.data, newer.data, anchor.data, anchor.isError],
+	);
 	// Keep the current window while travelling within it. Bookmarks, Back/Forward,
 	// and date jumps outside it seek directly instead of scanning from the newest page.
 	if (selectionKey !== lastSelection) {

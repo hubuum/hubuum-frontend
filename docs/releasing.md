@@ -51,8 +51,9 @@ backend version is intentionally raised.
 
    `release:dependencies` checks the official Node.js release index for the
    latest LTS release in the Dockerfile's configured major version and requires
-   every Docker stage and CI Node version pin to match. Keep the Docker image
-   digest in sync with its version; Dependabot also tracks the base image within
+   every Docker stage and CI Node version pin to match. It also resolves the
+   pinned tag through Docker Hub and checks that its manifest digest matches
+   the Dockerfile. Dependabot tracks the base image within
    the supported Node major. Major runtime upgrades remain an explicit LTS
    compatibility decision.
    It queries the npm registry for installed dependencies

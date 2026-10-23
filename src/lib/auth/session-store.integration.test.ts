@@ -85,6 +85,65 @@ describe.skipIf(!process.env.HUBUUM_TEST_VALKEY_URL)(
 			expect(await store.get("logout")).toBeNull();
 		});
 
+		it("preserves refreshing and replaced generations after late access rejections", async () => {
+			const old = sessionPayload(sessionCredentials());
+			const next = sessionPayload(sessionCredentials());
+			const owner = crypto.randomUUID();
+			await store.create("late-rejection", old);
+			await store.claimRefresh("late-rejection", old.generation, owner);
+			expect(
+				await otherInstance.invalidateGeneration(
+					"late-rejection",
+					old.generation,
+					{
+						preserveRefresh: true,
+					},
+				),
+			).toBe(false);
+			expect(
+				await store.completeRefresh(
+					"late-rejection",
+					old.generation,
+					owner,
+					next,
+				),
+			).toBe(true);
+			expect(
+				await otherInstance.invalidateGeneration(
+					"late-rejection",
+					old.generation,
+					{
+						preserveRefresh: true,
+					},
+				),
+			).toBe(false);
+			expect(await store.get("late-rejection")).toEqual(next);
+			expect(
+				await otherInstance.invalidateGeneration(
+					"late-rejection",
+					next.generation,
+					{
+						preserveRefresh: true,
+					},
+				),
+			).toBe(true);
+			expect(await store.get("late-rejection")).toBeNull();
+		});
+
+		it("allows a failed refresh to invalidate its own claimed generation", async () => {
+			const old = sessionPayload(sessionCredentials());
+			await store.create("failed-refresh", old);
+			await store.claimRefresh(
+				"failed-refresh",
+				old.generation,
+				crypto.randomUUID(),
+			);
+			expect(
+				await store.invalidateGeneration("failed-refresh", old.generation),
+			).toBe(true);
+			expect(await store.get("failed-refresh")).toBeNull();
+		});
+
 		it("bounds Valkey expiry by the server deadline", async () => {
 			const payload = sessionPayload(
 				sessionCredentials({

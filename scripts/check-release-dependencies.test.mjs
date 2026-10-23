@@ -10,6 +10,7 @@ import {
 	parseNpmOutdated,
 	validateExceptions,
 	validateNodePins,
+	verifyNodeImageDigest,
 } from "./check-release-dependencies.mjs";
 
 const sha1 = "1".repeat(40);
@@ -24,6 +25,66 @@ const nodeReleases = [
 	{ version: "v22.23.4", lts: "Jod" },
 ];
 const nodeWorkflows = { "ci.yml": "      node-version: '24.22.1' # LTS" };
+
+test("Node image check verifies the digest resolved from the pinned tag", async () => {
+	const requests = [];
+	await verifyNodeImageDigest(`FROM ${nodeImage}`, async (url, options) => {
+		requests.push({ url, options });
+		return requests.length === 1
+			? Response.json({ token: "public-registry-test-token" })
+			: new Response(null, {
+					headers: { "docker-content-digest": `sha256:${"a".repeat(64)}` },
+				});
+	});
+	assert.equal(
+		requests[1].url,
+		"https://registry-1.docker.io/v2/library/node/manifests/24.22.1-alpine3.24",
+	);
+	assert.equal(requests[1].options.method, "HEAD");
+	assert.equal(
+		requests[1].options.headers.Authorization,
+		"Bearer public-registry-test-token",
+	);
+});
+
+test("Node image check rejects a new label paired with an old or missing digest", async () => {
+	for (const digest of [`sha256:${"b".repeat(64)}`, "invalid", null]) {
+		await assert.rejects(
+			verifyNodeImageDigest(`FROM ${nodeImage}`, async (url) =>
+				url.includes("auth.docker.io")
+					? Response.json({ token: "public-registry-test-token" })
+					: new Response(null, {
+							headers: digest ? { "docker-content-digest": digest } : {},
+						}),
+			),
+			/not pinned digest|valid Node image digest/,
+		);
+	}
+});
+
+test("Node image check fails closed when the registry cannot be verified", async () => {
+	for (const status of [401, 429, 503]) {
+		await assert.rejects(
+			verifyNodeImageDigest(
+				`FROM ${nodeImage}`,
+				async () => new Response(null, { status }),
+			),
+			/Could not authorize/,
+		);
+		await assert.rejects(
+			verifyNodeImageDigest(`FROM ${nodeImage}`, async (url) =>
+				url.includes("auth.docker.io")
+					? Response.json({ token: "public-registry-test-token" })
+					: new Response(null, { status }),
+			),
+			/Could not check Node image/,
+		);
+	}
+	await assert.rejects(
+		verifyNodeImageDigest(`FROM ${nodeImage}`, async () => Response.json({})),
+		/invalid authorization/,
+	);
+});
 
 test("Node pins use the latest LTS release in the supported major across Docker and CI", () => {
 	assert.equal(validateNodePins(

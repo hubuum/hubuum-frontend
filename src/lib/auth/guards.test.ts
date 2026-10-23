@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-	destroySession: vi.fn(),
+	invalidateRejectedSession: vi.fn().mockResolvedValue(true),
 	getSessionFromServerCookies: vi.fn(),
 	headers: vi.fn(),
 	redirect: vi.fn((location: string) => {
@@ -16,7 +16,7 @@ vi.mock("@/lib/auth/backend-session-validation", () => ({
 	validateBackendSession: mocks.validateBackendSession,
 }));
 vi.mock("@/lib/auth/session", () => ({
-	destroySession: mocks.destroySession,
+	invalidateRejectedSession: mocks.invalidateRejectedSession,
 	getSessionFromServerCookies: mocks.getSessionFromServerCookies,
 }));
 
@@ -45,7 +45,7 @@ describe("server session guard", () => {
 
 	it("returns a locally stored session after backend validation", async () => {
 		await expect(requireServerSession()).resolves.toEqual(session);
-		expect(mocks.destroySession).not.toHaveBeenCalled();
+		expect(mocks.invalidateRejectedSession).not.toHaveBeenCalled();
 		expect(mocks.redirect).not.toHaveBeenCalled();
 	});
 
@@ -53,7 +53,7 @@ describe("server session guard", () => {
 		mocks.validateBackendSession.mockResolvedValue("unavailable");
 
 		await expect(requireServerSession()).resolves.toEqual(session);
-		expect(mocks.destroySession).not.toHaveBeenCalled();
+		expect(mocks.invalidateRejectedSession).not.toHaveBeenCalled();
 		expect(mocks.redirect).not.toHaveBeenCalled();
 	});
 
@@ -63,10 +63,49 @@ describe("server session guard", () => {
 		await expect(requireServerSession()).rejects.toThrow(
 			"redirect:/login?error=session_expired&next=%2Fadmin%2Fusers%3Flimit%3D50",
 		);
-		expect(mocks.destroySession).toHaveBeenCalledWith("session-id");
+		expect(mocks.invalidateRejectedSession).toHaveBeenCalledWith(session);
 		expect(mocks.redirect).toHaveBeenCalledWith(
 			"/login?error=session_expired&next=%2Fadmin%2Fusers%3Flimit%3D50",
 		);
+	});
+
+	it("revalidates a newer generation after an old validation returns expired", async () => {
+		const next = {
+			...session,
+			generation: "new-generation",
+			token: "new-token",
+		};
+		mocks.validateBackendSession
+			.mockResolvedValueOnce("expired")
+			.mockResolvedValueOnce("valid");
+		mocks.invalidateRejectedSession.mockResolvedValueOnce(false);
+		mocks.getSessionFromServerCookies
+			.mockResolvedValueOnce(session)
+			.mockResolvedValueOnce(next);
+		await expect(requireServerSession()).resolves.toEqual(next);
+		expect(mocks.validateBackendSession).toHaveBeenLastCalledWith(
+			expect.objectContaining({ token: "new-token" }),
+		);
+		expect(mocks.redirect).not.toHaveBeenCalled();
+	});
+
+	it("still rejects a replacement that was itself revoked", async () => {
+		const next = {
+			...session,
+			generation: "new-generation",
+			token: "new-token",
+		};
+		mocks.validateBackendSession.mockResolvedValue("expired");
+		mocks.invalidateRejectedSession
+			.mockResolvedValueOnce(false)
+			.mockResolvedValueOnce(true);
+		mocks.getSessionFromServerCookies
+			.mockResolvedValueOnce(session)
+			.mockResolvedValueOnce(next);
+		await expect(requireServerSession()).rejects.toThrow(
+			"redirect:/login?error=session_expired",
+		);
+		expect(mocks.invalidateRejectedSession).toHaveBeenLastCalledWith(next);
 	});
 
 	it("redirects a missing frontend session without an expiry warning", async () => {
@@ -74,6 +113,6 @@ describe("server session guard", () => {
 
 		await expect(requireServerSession()).rejects.toThrow("redirect:/login");
 		expect(mocks.validateBackendSession).not.toHaveBeenCalled();
-		expect(mocks.destroySession).not.toHaveBeenCalled();
+		expect(mocks.invalidateRejectedSession).not.toHaveBeenCalled();
 	});
 });

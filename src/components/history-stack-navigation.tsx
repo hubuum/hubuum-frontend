@@ -9,15 +9,26 @@ import {
 } from "@/lib/resource-history";
 import styles from "@/components/resource-history.module.css";
 
+const timestampFormatter = new Intl.DateTimeFormat(undefined, {
+	dateStyle: "medium",
+	timeStyle: "medium",
+	timeZone: "UTC",
+});
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+	month: "short",
+	day: "numeric",
+	timeZone: "UTC",
+});
+const timeFormatter = new Intl.DateTimeFormat(undefined, {
+	hour: "2-digit",
+	minute: "2-digit",
+	hourCycle: "h23",
+	timeZone: "UTC",
+});
+
 export function historyTime(value: string): string {
 	const date = new Date(value);
-	return Number.isNaN(date.getTime())
-		? value
-		: new Intl.DateTimeFormat(undefined, {
-				dateStyle: "medium",
-				timeStyle: "medium",
-				timeZone: "UTC",
-			}).format(date);
+	return Number.isNaN(date.getTime()) ? value : timestampFormatter.format(date);
 }
 
 function summary(record: HistoryEntry, earlier?: HistoryEntry): string {
@@ -309,23 +320,14 @@ export function HistoryStackNavigation<T extends HistoryEntry>({
 										<span className="sr-only">View version </span>
 										<span className={styles.timelineDot} aria-hidden="true" />
 										<time dateTime={record.valid_from}>
-											{new Intl.DateTimeFormat(undefined, {
-												month: "short",
-												day: "numeric",
-												timeZone: "UTC",
-											}).format(new Date(record.valid_from))}
+											{dateFormatter.format(new Date(record.valid_from))}
 											<span className={styles.timelineYear}>
 												, {new Date(record.valid_from).getUTCFullYear()}
 											</span>
 										</time>
 										<small>
-											{new Intl.DateTimeFormat(undefined, {
-												hour: "2-digit",
-												minute: "2-digit",
-												hourCycle: "h23",
-												timeZone: "UTC",
-											}).format(new Date(record.valid_from))}{" "}
-											· #{record.history_id}
+											{timeFormatter.format(new Date(record.valid_from))} · #
+											{record.history_id}
 											{showObjectIds ? (
 												<span> · Object #{record.id}</span>
 											) : null}

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-	clearSessionCookie,
-	destroySession,
-	getSessionFromRequest,
-} from "@/lib/auth/session";
+import { getSessionFromRequest } from "@/lib/auth/session";
+import { handleUnauthorizedResponse } from "@/lib/auth/unauthorized-response";
 import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
@@ -84,8 +81,7 @@ export async function POST(request: NextRequest) {
 			correlationId,
 		);
 		if (unauthorized) {
-			await destroySession(session.sid);
-			clearSessionCookie(response, request);
+			return handleUnauthorizedResponse(response, request, session);
 		}
 		return response;
 	}

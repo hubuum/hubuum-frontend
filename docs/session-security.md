@@ -29,6 +29,12 @@ removes the record, so an in-flight refresh cannot recreate it; a received pair
 that cannot be stored is revoked on a best-effort basis. Process-local request
 coalescing is only an optimization; Valkey provides coordination across replicas.
 
+An upstream rejection invalidates only the access generation used by that request.
+If a newer generation exists or rotation is in progress, the BFF preserves the
+session and returns `409 session_rotated` with retry guidance. It does not replay
+the request. Protected page guards reload and validate the replacement credential
+before rendering. Explicit logout still removes the entire local session.
+
 Valkey TTL is the minimum of `SESSION_TTL_SECONDS`, the refresh deadline, and the
 absolute session deadline. The cookie is bounded by those limits at login and
 is not extended by a background refresh. The server remains authoritative for

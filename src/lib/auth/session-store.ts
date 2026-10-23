@@ -25,7 +25,11 @@ export interface SessionStore {
 		owner: string,
 		payload: SessionPayload,
 	): Promise<boolean>;
-	invalidateGeneration(sid: string, generation: string): Promise<void>;
+	invalidateGeneration(
+		sid: string,
+		generation: string,
+		options?: { preserveRefresh?: boolean },
+	): Promise<boolean>;
 	destroy(sid: string): Promise<void>;
 }
 
@@ -61,7 +65,9 @@ const INVALIDATE_GENERATION = `
 local raw = redis.call('GET', KEYS[1])
 if not raw then return 0 end
 local session = cjson.decode(raw)
-if session.generation == ARGV[1] then return redis.call('DEL', KEYS[1]) end
+if session.generation == ARGV[1] and not (ARGV[2] == '1' and session.refreshing) then
+  return redis.call('DEL', KEYS[1])
+end
 return 0
 `;
 
@@ -154,12 +160,19 @@ export class ValkeySessionStore implements SessionStore {
 		);
 	}
 
-	async invalidateGeneration(sid: string, generation: string): Promise<void> {
-		await getValkeyClient().eval(
-			INVALIDATE_GENERATION,
-			1,
-			this.key(sid),
-			generation,
+	async invalidateGeneration(
+		sid: string,
+		generation: string,
+		options: { preserveRefresh?: boolean } = {},
+	): Promise<boolean> {
+		return (
+			(await getValkeyClient().eval(
+				INVALIDATE_GENERATION,
+				1,
+				this.key(sid),
+				generation,
+				options.preserveRefresh ? "1" : "0",
+			)) === 1
 		);
 	}
 

@@ -132,10 +132,34 @@ export async function getSessionFromServerCookies(): Promise<ActiveSession | nul
 	return hydrateSession(sid);
 }
 
-export async function destroySession(sid: string): Promise<void> {
+function invalidateSessionCaches(sid: string): void {
 	pendingSessionHydrations.delete(sid);
 	invalidateBackendSessionValidation(sid);
 	invalidateProtectedLayoutBootstrap(sid);
+}
+
+// A late rejection of an older access credential must not revoke its replacement
+// or interrupt an in-flight rotation. Only explicit logout destroys all generations.
+export async function invalidateRejectedSession(
+	session: ActiveSession,
+): Promise<boolean> {
+	const store = getSessionStore();
+	const removed = await store.invalidateGeneration(
+		session.sid,
+		session.generation,
+		{
+			preserveRefresh: true,
+		},
+	);
+	if (removed || !(await store.get(session.sid))) {
+		invalidateSessionCaches(session.sid);
+		return true;
+	}
+	return false;
+}
+
+export async function destroySession(sid: string): Promise<void> {
+	invalidateSessionCaches(sid);
 	await getSessionStore().destroy(sid);
 }
 

@@ -5,11 +5,8 @@ import { backendFetchRaw } from "@/lib/api/backend";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { copySafeUpstreamResponseHeaders } from "@/lib/api/proxy-response-headers";
 import { validateBackendSession } from "@/lib/auth/backend-session-validation";
-import {
-	clearSessionCookie,
-	destroySession,
-	getSessionFromRequest,
-} from "@/lib/auth/session";
+import { getSessionFromRequest } from "@/lib/auth/session";
+import { handleUnauthorizedResponse } from "@/lib/auth/unauthorized-response";
 import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
@@ -101,9 +98,7 @@ export async function POST(request: NextRequest) {
 	}
 	const expireSession = async () => {
 		const response = error(401, "Your session expired. Sign in again.");
-		await destroySession(session.sid);
-		clearSessionCookie(response, request);
-		return response;
+		return handleUnauthorizedResponse(response, request, session);
 	};
 	let approvalResponse: Response;
 	try {

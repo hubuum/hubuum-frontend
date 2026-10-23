@@ -5,13 +5,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	clearSessionCookie: vi.fn(),
-	destroySession: vi.fn(),
+	invalidateRejectedSession: vi.fn().mockResolvedValue(true),
 	getSessionFromRequest: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/session", () => ({
 	clearSessionCookie: mocks.clearSessionCookie,
-	destroySession: mocks.destroySession,
+	invalidateRejectedSession: mocks.invalidateRejectedSession,
 	getSessionFromRequest: mocks.getSessionFromRequest,
 }));
 
@@ -63,7 +63,7 @@ describe("raw report route boundary", () => {
 				session,
 			);
 
-			expect(mocks.destroySession).toHaveBeenCalledWith("session-id");
+			expect(mocks.invalidateRejectedSession).toHaveBeenCalledWith(session);
 			expect(mocks.clearSessionCookie).toHaveBeenCalledWith(response, request);
 			expect(response.status).toBe(307);
 			expect(response.headers.get("Location")).toBe(

@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	clearSessionCookie: vi.fn(),
-	destroySession: vi.fn(),
+	invalidateRejectedSession: vi.fn().mockResolvedValue(true),
 	getBookmarkableTemplateReportStatus: vi.fn(),
 	getSessionFromRequest: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/session", () => ({
 	clearSessionCookie: mocks.clearSessionCookie,
-	destroySession: mocks.destroySession,
+	invalidateRejectedSession: mocks.invalidateRejectedSession,
 	getSessionFromRequest: mocks.getSessionFromRequest,
 }));
 
