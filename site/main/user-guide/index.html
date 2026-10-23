@@ -774,6 +774,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Historical snapshots and object restoration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#historical-navigation-and-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Historical navigation and context
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1633,6 +1650,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Historical snapshots and object restoration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#historical-navigation-and-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Historical navigation and context
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2119,8 +2153,8 @@ A deep snapshot fan follows a scrollable timeline on the left that matches the
 height of the card stack: newer versions above, older below. Counts above and
 below the timeline show how many loaded versions are newer and older than the
 selected snapshot. Separate fans frame the snapshot in the same direction.
-The nearest four previews on each side show centered titles, with a change
-summary on the closest preview; the selected snapshot scrolls within its own
+The nearest four previews on each side show centered titles, with an operation
+label on the closest preview; the selected snapshot scrolls within its own
 reading area so both directions remain visible.
 Mouse/trackpad scrolling, touch scrolling, date markers, and
 Up/Down keys select a snapshot; Home/End move within the loaded range. The
@@ -2133,7 +2167,8 @@ Links preserve the original timestamp precision and stored version ID; the
 effective interval excludes its end. Deleted, inaccessible, and unavailable
 history is shown explicitly. Historical views are read-only and do not substitute
 current relationships, computed values, class definitions, or collection labels.
-Class history covers the definition, not its historical object population.</p>
+The class snapshot covers its definition; the separate historical population
+panel lists its objects at the selected instant.</p>
 <p>Expand <strong>Historical class and collection context</strong> to load the collection name
 at the selected time and, for objects, the historical class name, schema, and
 validation setting. Lookups use the IDs stored in the snapshot and the exact
@@ -2173,9 +2208,29 @@ values perform no write. The source snapshot remains selected after success.</p>
 <p>Schema and validation restoration remain disabled: populated classes require
 staged analysis and activation, which cannot be combined atomically with metadata
 restoration through the existing endpoints. Class restoration never restores its
-historical object population. Atomic schema restoration, restore-source audit
-provenance, and further historical context are tracked in
-<a href="https://github.com/hubuum/hubuum-frontend/issues/149">blocked follow-up #149</a>.</p>
+historical object population. Atomic schema restoration and restore-source audit
+provenance remain tracked in
+<a href="https://github.com/hubuum/hubuum-frontend/issues/149">follow-up #149</a>.</p>
+<h3 id="historical-navigation-and-context">Historical navigation and context<a class="headerlink" href="#historical-navigation-and-context" title="Permanent link">&para;</a></h3>
+<p>Class and object timelines load lightweight markers. Selecting a version or
+comparison baseline fetches that exact snapshot. Old bookmarks load nearby
+markers directly; <strong>Load newer history</strong> and <strong>Load more history</strong> page in either
+direction. Deletion-marker bookmarks can be reopened directly. Date jumps retain
+the exact selected instant and never substitute a live snapshot after an error.</p>
+<p>Open <strong>Historical relationships</strong> for direct connections and endpoint names at
+the selected instant. Links open the endpoint's historical version. Missing
+endpoint context is shown explicitly.</p>
+<p>On classes, <strong>Historical object population</strong> lists the retained object versions
+that belonged to the class at that time. Open a stored data document or follow
+an object's historical link, and use <strong>Load more historical objects</strong> to continue.
+Empty results do not establish that the class was empty: retained history may be
+incomplete, and current permissions still apply.</p>
+<p>On objects, <strong>Historical computed values</strong> recomputes shared fields from the
+stored object and historical definitions. The panel identifies the object and
+definition versions, evaluator, and field semantics, with errors, disabled fields,
+and unavailable definitions shown separately. These are not recorded cached
+values. Personal historical fields are unsupported. Opening these panels does
+not change the current resource or trigger restoration.</p>
 <h2 id="class-query-usage">Class query usage<a class="headerlink" href="#class-query-usage" title="Permanent link">&para;</a></h2>
 <p>Open a class and choose <strong>Query usage</strong> to inspect expected JSON query patterns.
 Class readers can see declarations, schema compatibility, revision numbers,

@@ -597,6 +597,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#history-integration-in-v0023" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        History integration in v0.0.23
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#before-upgrading" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1503,6 +1514,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#history-integration-in-v0023" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        History integration in v0.0.23
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#before-upgrading" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1648,6 +1670,11 @@ should pin both components to explicit versions.</p>
 <td><code>ghcr.io/hubuum/hubuum-server:v0.0.20</code></td>
 </tr>
 <tr>
+<td><code>v0.0.23</code></td>
+<td><code>v0.0.20</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.20</code></td>
+</tr>
+<tr>
 <td><code>v0.0.22</code></td>
 <td><code>v0.0.20</code></td>
 <td><code>ghcr.io/hubuum/hubuum-server:v0.0.20</code></td>
@@ -1760,7 +1787,7 @@ should pin both components to explicit versions.</p>
 </tbody>
 </table>
 <p>Required checks use the immutable image for the selected compatibility target.
-For Frontend v0.0.22 and unreleased <code>main</code>, it is
+For Frontend v0.0.22, v0.0.23, and unreleased <code>main</code>, it is
 <code>ghcr.io/hubuum/hubuum-server:v0.0.20@sha256:eaf59f8a4b4793030a78bc1637a8e2b9fad2f810b8621ff9a874dca534b9a23a</code>.</p>
 <p>For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
 <code>ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225</code>.
@@ -1807,6 +1834,20 @@ Server v0.0.20. Search hydration and exact-name object history across identities
 are part of that supported baseline. See <a href="../compatibility-evidence/#frontend-v0022">v0.0.22 verification</a>
 for source provenance, the immutable image, and completed live/browser checks. Earlier optional-preview evidence is
 retained in <a href="../compatibility-evidence/">compatibility history</a>.</p>
+<h2 id="history-integration-in-v0023">History integration in v0.0.23<a class="headerlink" href="#history-integration-in-v0023" title="Permanent link">&para;</a></h2>
+<p>Frontend v0.0.23 uses Server v0.0.20's <code>history/timeline</code> and scoped
+<code>history/entries/{history_id}</code> endpoints. Timelines page metadata in both
+directions; only selected and comparison snapshots fetch full documents.
+Exact IDs distinguish deletion markers from final live versions, and timestamp
+precision is preserved for bookmarks, date jumps, and context requests.</p>
+<p>Historical relationships, class object populations, and shared computed values
+load only when their panels are opened. Population and relationship results
+cover authorized retained history, not a claim of historical completeness.
+Computed values are historical recomputations, not recorded materializations;
+personal historical fields are unsupported. Errors never fall back to live data.
+Restore provenance and atomic schema restoration remain separate pending work.
+See the <a href="../compatibility-evidence/#frontend-v0023-candidate">candidate verification evidence</a>
+for completed local checks and the remaining publication gates.</p>
 <h2 id="before-upgrading">Before upgrading<a class="headerlink" href="#before-upgrading" title="Permanent link">&para;</a></h2>
 <p>Deploy Server v0.0.20 and Frontend v0.0.22 together. Stop old API and worker
 replicas, apply the server's offline migration and role grants, then start
