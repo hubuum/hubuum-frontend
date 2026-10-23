@@ -786,6 +786,7 @@ test.describe("resource history", () => {
 		const viewport = page
 			.getByRole("navigation", { name: "History timeline" })
 			.locator('[class*="timelineViewport"]');
+		await viewport.scrollIntoViewIfNeeded();
 		await viewport.evaluate((element) => {
 			element.scrollTop = 24 * 80;
 		});
