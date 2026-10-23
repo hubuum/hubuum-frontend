@@ -55,4 +55,29 @@ export async function verifyHistoryRestores({ request, auth, classId, objectId }
   assert.equal(classRestored.data.description, classBefore.data.description);
   assert.deepEqual(classRestored.data.json_schema, classBefore.data.json_schema);
   assert.equal(classRestored.data.validate_schema, classBefore.data.validate_schema);
+
+  // Navigation must remain lightweight, exact, and scoped in the released contract.
+  for (const resourcePath of [path, classPath]) {
+    const markers = await request("GET", `${resourcePath}/history/timeline`, { ...auth, query: { limit: 1, include_total: false, direction: "older" } });
+    assert.equal(markers.headers.get("x-total-count"), null);
+    const marker = markers.data[0];
+    assert.ok(marker?.history_id);
+    assert.equal(Object.hasOwn(marker, "data"), false);
+    assert.equal(Object.hasOwn(marker, "json_schema"), false);
+    const entry = await request("GET", `${resourcePath}/history/entries/${marker.history_id}`, auth);
+    assert.equal(entry.data.history_id, marker.history_id);
+    assert.equal(entry.data.valid_from, marker.valid_from);
+    const older = await request("GET", `${resourcePath}/history/timeline`, { ...auth, query: { anchor: marker.history_id, direction: "older", limit: 1, include_total: false } });
+    assert.ok(older.data.every(row => row.history_id !== marker.history_id));
+    const relations = await request("GET", `${resourcePath}/relations/history/as-of`, { ...auth, query: { at: marker.valid_from, limit: 1, include_total: false } });
+    assert.equal(relations.data.coverage, "retained_history");
+    assert.ok(Array.isArray(relations.data.relations));
+  }
+  const population = await request("GET", `${classPath}/objects/history/as-of`, { ...auth, query: { at: source.valid_from, limit: 25, include_total: false } });
+  assert.equal(population.data.coverage, "retained_history");
+  assert.ok(population.data.objects.some(row => row.id === objectId && row.history_id === source.history_id));
+  const computed = await request("GET", `${path}/history/computed/as-of`, { ...auth, query: { at: source.valid_from } });
+  assert.equal(computed.data.mode, "historical_recomputation");
+  assert.equal(computed.data.object.history_id, source.history_id);
+  assert.equal(computed.data.personal, "unsupported");
 }

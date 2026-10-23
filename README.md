@@ -4,16 +4,21 @@ The browser interface for Hubuum: browse inventory, manage relationships, run
 reports, and administer access. Server-side sessions keep Hubuum bearer tokens
 out of the browser.
 
-Frontend **v0.0.22**, released **2026-10-22**, targets Hubuum Server **v0.0.20**.
+Frontend **v0.0.23** targets Hubuum Server **v0.0.20**.
 
-This release requires the rotating-session server API introduced in
-[server #178](https://github.com/hubuum/hubuum/issues/178). Upgrade the server and
-frontend together; existing frontend sessions require sign-in again. See
+This release adds lightweight history navigation and historical
+relationships, object populations, and recomputed shared fields. See the
+[changelog](CHANGELOG.md) and [history guide](docs/user-guide.md#historical-snapshots-and-object-restoration).
+
+Deployments upgrading from before Frontend v0.0.22 require the rotating-session
+server API introduced in [server #178](https://github.com/hubuum/hubuum/issues/178).
+Upgrade the server and frontend together; existing frontend sessions require
+sign-in again. See
 [session security](docs/session-security.md) for rotation and deployment details.
 
 Read [compatibility](docs/compatibility.md) before pairing other releases.
 
-[Documentation](https://hubuum.github.io/hubuum-frontend/) · [Releases](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.22) · [Hubuum ecosystem](https://hubuum.github.io/)
+[Documentation](https://hubuum.github.io/hubuum-frontend/) · [Releases](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.23) · [Hubuum ecosystem](https://hubuum.github.io/)
 
 ## Quick start
 
@@ -36,10 +41,10 @@ See [runtime settings, proxy routing, and login backgrounds](docs/configuration.
 
 ## Release artifacts
 
-Release v0.0.22 provides Linux AMD64/ARM64 images, a Helm chart, and a
+Release v0.0.23 provides Linux AMD64/ARM64 images, a Helm chart, and a
 checksum-protected Compose archive pinned to the image digest. The image is
-`ghcr.io/hubuum/hubuum-frontend:v0.0.22`; the Helm chart is
-`oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.22`.
+`ghcr.io/hubuum/hubuum-frontend:v0.0.23`; the Helm chart is
+`oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.23`.
 See [deployment](docs/deployment.md) and [release evidence](docs/compatibility.md).
 
 ## Features
@@ -47,11 +52,11 @@ See [deployment](docs/deployment.md) and [release evidence](docs/compatibility.m
 Browse classes and objects, edit data, follow relations, build reports, track
 tasks, and manage authorized workflows. See the [browser guide](docs/user-guide.md).
 
-This release adds coordinated rotating sessions across frontend instances,
-requires sign-in again after the server upgrade, and preserves independent PATs
-when signing out. Search hydration and exact-name history now use the supported
-server release. Application dependencies, GitHub Actions, Orval, and the browser
-test image are refreshed together.
+This release adds historical context and direct version lookup, extends token
+activity details and larger object graphs, and improves scrolling history by
+ID and recorded name. It retains the existing server baseline and coordinated
+rotating sessions. Application dependencies, GitHub Actions, and Orval pass the
+release dependency gate together.
 
 <!-- markdownlint-disable-next-line MD033 -->
 <span id="what-is-scaffolded"></span>

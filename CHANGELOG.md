@@ -6,6 +6,38 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.23] - 2026-10-23
+
+### Added
+
+- Lightweight class and object history timelines with direct version lookup,
+  navigation around old bookmarks, and exact deletion-marker links.
+- On-demand historical relationships, paginated class object populations, and
+  shared computed values evaluated using the definitions effective at the
+  selected time. Missing retained history stays explicit.
+- Current session details and credential activity in the token overview.
+
+### Changed
+
+- Support larger object graphs and exclude same-class objects by default.
+- Use the scrolling timeline for object history by exact name across identities.
+- Refresh Next.js to 16.4.3, CodeMirror autocomplete/view, TanStack Query, Biome,
+  and the pinned Docker login action to 4.7.0. All other GitHub Actions pins and
+  the Orval generator are current; no exceptions are required.
+
+### Fixed
+
+- Coalesce timeline scroll navigation to avoid browser history rate limits.
+- Refresh history timelines and exact snapshots after restoration.
+- Keep keyboard shortcut badges readable in dark themes.
+
+### Compatibility
+
+- Keep Hubuum Server `v0.0.20` as the supported baseline. These history endpoints
+  are already part of the bundled contract; no server upgrade is required.
+- Restore-source provenance and atomic class schema/validation restoration
+  remain unavailable. Class restoration does not restore object populations.
+
 ## [0.0.22] - 2026-10-22
 
 ### Changed
@@ -857,7 +889,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.22...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.23...HEAD
+[0.0.23]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.22...v0.0.23
 [0.0.22]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.21...v0.0.22
 [0.0.21]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.20...v0.0.21
 [0.0.20]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.19...v0.0.20

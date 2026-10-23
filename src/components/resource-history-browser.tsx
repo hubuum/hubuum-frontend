@@ -1,11 +1,12 @@
 "use client";
 
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { ClassHistoryRestore } from "@/components/class-history-restore";
+import { HistoricalResourceContext } from "@/components/historical-resource-context";
 import { HistoryComparison } from "@/components/history-comparison";
 import { HistoryContext } from "@/components/history-context";
 import { HistoryNameBrowser } from "@/components/history-name-browser";
@@ -16,11 +17,9 @@ import {
 } from "@/components/history-stack-navigation";
 import { ObjectHistoryRestore } from "@/components/object-history-restore";
 import styles from "@/components/resource-history.module.css";
-import {
-	fetchResourceHistoryAsOf,
-	fetchResourceHistoryPage,
-	type HistoryRecord,
-} from "@/lib/api/events";
+import type { HistoryRecord } from "@/lib/api/events";
+import type { HistoryResponseHistoryMarker } from "@/lib/api/generated/models";
+import { fetchHistoryEntry } from "@/lib/api/history-navigation";
 import {
 	fetchHistoryLiveResource,
 	type LiveHistoryResource,
@@ -39,20 +38,23 @@ import {
 	snapshotFields,
 	versionContains,
 } from "@/lib/resource-history";
+import { historyVersionId } from "@/lib/history-timeline";
+import { useHistoryTimeline } from "@/lib/use-history-timeline";
 import { useHistorySelection } from "@/lib/use-history-selection";
 
 export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 	const search = useSearchParams();
-	const { preview, updateUrl, selectVersion } = useHistorySelection();
+	const { preview, updateUrl, selectVersion } =
+		useHistorySelection<HistoryResponseHistoryMarker>();
 	const at = search.get("at") ?? "";
-	const versionId = Number(search.get("version"));
+	const versionId = historyVersionId(search.get("version"));
 	const comparisonMode = ["live", "pinned"].includes(
 		search.get("compare") ?? "",
 	)
 		? (search.get("compare") ?? "previous")
 		: "previous";
 	const pinAt = search.get("pinAt") ?? "";
-	const pinId = Number(search.get("pin"));
+	const pinId = historyVersionId(search.get("pin"));
 	const [expanded, setExpanded] = useState(false);
 	const [onlyChanges, setOnlyChanges] = useState(true);
 	const [jumpOpen, setJumpOpen] = useState(false);
@@ -63,82 +65,45 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 	const [capturedLive, setCapturedLive] = useState<LiveHistoryResource | null>(
 		null,
 	);
-	const history = useInfiniteQuery({
-		queryKey: ["history-browser", scope],
-		initialPageParam: "",
-		queryFn: ({ pageParam }) =>
-			fetchResourceHistoryPage(scope, {
-				cursor: pageParam || undefined,
-				limit: 25,
-				sort: "-history_id",
-				include_total: false,
-			}),
-		getNextPageParam: (page) => page.nextCursor ?? undefined,
-		retry: false,
-	});
-	const records = useMemo(
-		() =>
-			Array.from(
-				new Map(
-					(history.data?.pages.flatMap((page) => page.items) ?? []).map(
-						(record) => [record.history_id, record],
-					),
-				).values(),
-			).sort((a, b) => b.history_id - a.history_id),
-		[history.data],
-	);
-	const selectedLoaded = at
-		? records.find(
-				(record) =>
-					record.history_id === versionId &&
-					(record.valid_from === at || versionContains(record, at)),
-			)
-		: records[0];
 	const validAt = !at || historyInstant(at) !== null;
-	const asOf = useQuery({
-		queryKey: ["history-as-of", scope, at],
-		queryFn: async () => {
-			const record = await fetchResourceHistoryAsOf(scope, at);
-			if (!versionContains(record, at))
-				throw new Error(
-					"No active snapshot is available at this time. The resource may have been deleted or the historical interval may be unavailable.",
-				);
-			return record;
-		},
-		enabled: Boolean(at) && validAt && !selectedLoaded,
-		retry: false,
-	});
-	const versionMismatch = Boolean(
-		at &&
-			search.has("version") &&
-			asOf.data &&
-			asOf.data.history_id !== versionId &&
-			!selectedLoaded,
+	const validVersion = !search.has("version") || versionId !== undefined;
+	const timeline = useHistoryTimeline(
+		scope,
+		versionId,
+		at,
+		validAt && validVersion,
+		preview,
 	);
-	const selected =
-		preview ??
-		selectedLoaded ??
-		(at && validAt && !versionMismatch ? asOf.data : undefined);
+	const { records, selected, snapshot, older: history, newer } = timeline;
 	const selectedIndex = records.findIndex(
 		(record) => record.history_id === selected?.history_id,
 	);
 	const previous = selectedIndex >= 0 ? records[selectedIndex + 1] : undefined;
-	const pinnedLoaded = records.find(
-		(record) => record.history_id === pinId && record.valid_from === pinAt,
-	);
+	const baselineId =
+		comparisonMode === "pinned"
+			? pinId
+			: comparisonMode === "previous"
+				? previous?.history_id
+				: undefined;
 	const pinned = useQuery({
-		queryKey: ["history-as-of", scope, pinAt],
-		queryFn: () => fetchResourceHistoryAsOf(scope, pinAt),
+		queryKey: ["history-browser", scope, "entry", baselineId],
+		queryFn: ({ signal }) =>
+			fetchHistoryEntry(scope, baselineId as number, signal),
 		enabled:
-			comparisonMode === "pinned" &&
-			Boolean(pinAt) &&
-			historyInstant(pinAt) !== null &&
-			!pinnedLoaded,
+			baselineId !== undefined &&
+			snapshot !== undefined &&
+			!isDeletedVersion(snapshot),
 		retry: false,
 	});
-	const pinnedRecord =
-		pinnedLoaded ??
-		(pinned.data?.history_id === pinId ? pinned.data : undefined);
+	const baselineRecord =
+		!pinned.isError &&
+		pinned.data &&
+		(comparisonMode !== "pinned" ||
+			!pinAt ||
+			pinned.data.valid_from === pinAt ||
+			versionContains(pinned.data, pinAt))
+			? pinned.data
+			: undefined;
 	const live = useQuery({
 		queryKey: ["history-live", scope],
 		queryFn: () => fetchHistoryLiveResource(scope),
@@ -150,13 +115,12 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 		if (live.data && !capturedLive) setCapturedLive(live.data);
 	}, [live.data, capturedLive]);
 	useEffect(() => {
-		if (!at && records[0])
+		if (!at && versionId === undefined && validVersion && records[0])
 			updateUrl(
 				{ at: records[0].valid_from, version: String(records[0].history_id) },
 				true,
 			);
-	}, [at, records, updateUrl]);
-	const baselineRecord = comparisonMode === "pinned" ? pinnedRecord : previous;
+	}, [at, versionId, validVersion, records, updateUrl]);
 	const baseline =
 		comparisonMode === "live"
 			? capturedLive?.fields
@@ -309,28 +273,38 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 					{success}
 				</p>
 			) : null}
-			{history.isLoading || (at && !selectedLoaded && asOf.isFetching) ? (
+			{timeline.loading ? (
 				<p role="status">Loading historical snapshots…</p>
 			) : null}
-			{history.isError ? (
+			{history.isError || newer.isError ? (
 				<p role="alert" className="error-banner">
-					Could not load the history list: {history.error.message}
+					Could not load the history list:{" "}
+					{history.error?.message ?? newer.error?.message}
+					<button
+						type="button"
+						onClick={() => {
+							if (history.isError) void history.refetch();
+							if (newer.isError) void newer.refetch();
+						}}
+					>
+						Retry timeline
+					</button>
 				</p>
 			) : null}
-			{!validAt ? (
+			{!validAt || !validVersion ? (
 				<p role="alert" className="error-banner">
-					The selected timestamp is invalid. Use Jump to date to choose another
-					instant.
+					The selected timestamp or version is invalid. Use Jump to date to
+					choose another instant.
 				</p>
 			) : null}
-			{at && !selectedLoaded && asOf.isError ? (
+			{timeline.error ? (
 				<p role="alert" className="error-banner">
-					Snapshot unavailable at {at}. {asOf.error.message} Dates before known
-					history, deletion, retention, or permission limits may make snapshots
-					unavailable.
+					Snapshot unavailable at {at}. {timeline.error.message} Dates before
+					known history, deletion, retention, or permission limits may make
+					snapshots unavailable.
 				</p>
 			) : null}
-			{versionMismatch ? (
+			{timeline.mismatch ? (
 				<p role="alert" className="error-banner">
 					The requested version does not match the snapshot at this time. Choose
 					another visible entry.
@@ -355,6 +329,14 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 									}
 								: undefined
 						}
+						loadNewer={
+							newer.hasNextPage
+								? () => {
+										void newer.fetchNextPage();
+									}
+								: undefined
+						}
+						loadingNewer={newer.isFetchingNextPage}
 						loadingOlder={history.isFetchingNextPage}
 					>
 						<article className={styles.snapshot}>
@@ -370,20 +352,31 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 										{scope.type} #{selected.id}
 									</p>
 								</div>
-								{!deleted ? (
+								{!deleted && snapshot ? (
 									<button
 										type="button"
 										className={styles.restore}
 										onClick={() => {
 											updateUrl({ compare: "live" });
-											setRestoring(selected);
+											setRestoring(snapshot);
 										}}
 									>
 										Restore to live…
 									</button>
 								) : null}
 							</header>
-							{!deleted ? (
+							{!snapshot ? (
+								<p role="status">
+									{timeline.error
+										? "Snapshot unavailable."
+										: "Loading snapshot…"}{" "}
+									{timeline.error ? (
+										<button type="button" onClick={timeline.retrySnapshot}>
+											Retry snapshot
+										</button>
+									) : null}
+								</p>
+							) : !deleted ? (
 								<>
 									<p className={styles.baseline}>{baselineLabel}</p>
 									{comparisonMode === "live" && live.isError ? (
@@ -409,7 +402,26 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 											</button>
 										</div>
 									) : null}
-									{!baseline && comparisonMode === "previous" ? (
+									{comparisonMode !== "live" && pinned.isError ? (
+										<p role="alert">
+											Comparison snapshot unavailable. {pinned.error.message}{" "}
+											<button
+												type="button"
+												onClick={() => void pinned.refetch()}
+											>
+												Retry comparison
+											</button>
+										</p>
+									) : null}
+									{!baseline &&
+									pinned.isFetching &&
+									comparisonMode === "previous" ? (
+										<p role="status">Loading previous baseline…</p>
+									) : null}
+									{!baseline &&
+									!pinned.isFetching &&
+									!pinned.isError &&
+									comparisonMode === "previous" ? (
 										<p className="muted">
 											{history.hasNextPage || selectedIndex < 0
 												? "Load older history to find the previous visible version."
@@ -426,14 +438,14 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 									{expanded && baseline ? (
 										<HistoryComparison
 											before={baseline}
-											after={snapshotFields(selected)}
+											after={snapshotFields(snapshot)}
 											baselineLabel={baselineLabel}
 											selectedLabel={`Selected · ${historyTime(selected.valid_from)} UTC · #${selected.history_id}`}
 											onlyChanges={onlyChanges}
 										/>
 									) : (
 										<SnapshotPresentation
-											record={selected}
+											record={snapshot}
 											baseline={baseline}
 										/>
 									)}
@@ -449,13 +461,23 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 					<p className={styles.note}>
 						Only authorized snapshots are shown; history may be incomplete.{" "}
 						{scope.type === "class"
-							? "Class definition history does not include the historical object population. Class restoration supports names, descriptions, and collection assignments."
-							: "Historical relationships and computed values are unavailable here."}{" "}
+							? "Class restoration supports names, descriptions, and collection assignments; it does not restore the historical object population."
+							: "Open the historical context panels to inspect relationships and recomputed values at this time."}{" "}
 						Collection and class IDs come from the snapshot; current labels are
 						not substituted.
 					</p>
 					{!deleted && "collection_id" in selected ? (
-						<HistoryContext record={selected} at={at || selected.valid_from} />
+						<>
+							<HistoryContext
+								record={selected}
+								at={preview ? selected.valid_from : at || selected.valid_from}
+							/>
+							<HistoricalResourceContext
+								scope={scope}
+								record={selected}
+								at={preview ? selected.valid_from : at || selected.valid_from}
+							/>
+						</>
 					) : null}
 					<details className={styles.provenance}>
 						<summary>Version details and provenance</summary>
@@ -495,7 +517,7 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 					className="secondary"
 					onClick={() => selectVersion(records[0])}
 				>
-					Show latest visible entry
+					Show newest loaded entry
 				</button>
 			) : null}
 			<CreateModal

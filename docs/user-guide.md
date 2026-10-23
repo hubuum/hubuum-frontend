@@ -468,8 +468,8 @@ A deep snapshot fan follows a scrollable timeline on the left that matches the
 height of the card stack: newer versions above, older below. Counts above and
 below the timeline show how many loaded versions are newer and older than the
 selected snapshot. Separate fans frame the snapshot in the same direction.
-The nearest four previews on each side show centered titles, with a change
-summary on the closest preview; the selected snapshot scrolls within its own
+The nearest four previews on each side show centered titles, with an operation
+label on the closest preview; the selected snapshot scrolls within its own
 reading area so both directions remain visible.
 Mouse/trackpad scrolling, touch scrolling, date markers, and
 Up/Down keys select a snapshot; Home/End move within the loaded range. The
@@ -483,7 +483,8 @@ Links preserve the original timestamp precision and stored version ID; the
 effective interval excludes its end. Deleted, inaccessible, and unavailable
 history is shown explicitly. Historical views are read-only and do not substitute
 current relationships, computed values, class definitions, or collection labels.
-Class history covers the definition, not its historical object population.
+The class snapshot covers its definition; the separate historical population
+panel lists its objects at the selected instant.
 
 Expand **Historical class and collection context** to load the collection name
 at the selected time and, for objects, the historical class name, schema, and
@@ -528,9 +529,34 @@ values perform no write. The source snapshot remains selected after success.
 Schema and validation restoration remain disabled: populated classes require
 staged analysis and activation, which cannot be combined atomically with metadata
 restoration through the existing endpoints. Class restoration never restores its
-historical object population. Atomic schema restoration, restore-source audit
-provenance, and further historical context are tracked in
-[blocked follow-up #149](https://github.com/hubuum/hubuum-frontend/issues/149).
+historical object population. Atomic schema restoration and restore-source audit
+provenance remain tracked in
+[follow-up #149](https://github.com/hubuum/hubuum-frontend/issues/149).
+
+### Historical navigation and context
+
+Class and object timelines load lightweight markers. Selecting a version or
+comparison baseline fetches that exact snapshot. Old bookmarks load nearby
+markers directly; **Load newer history** and **Load more history** page in either
+direction. Deletion-marker bookmarks can be reopened directly. Date jumps retain
+the exact selected instant and never substitute a live snapshot after an error.
+
+Open **Historical relationships** for direct connections and endpoint names at
+the selected instant. Links open the endpoint's historical version. Missing
+endpoint context is shown explicitly.
+
+On classes, **Historical object population** lists the retained object versions
+that belonged to the class at that time. Open a stored data document or follow
+an object's historical link, and use **Load more historical objects** to continue.
+Empty results do not establish that the class was empty: retained history may be
+incomplete, and current permissions still apply.
+
+On objects, **Historical computed values** recomputes shared fields from the
+stored object and historical definitions. The panel identifies the object and
+definition versions, evaluator, and field semantics, with errors, disabled fields,
+and unavailable definitions shown separately. These are not recorded cached
+values. Personal historical fields are unsupported. Opening these panels does
+not change the current resource or trigger restoration.
 
 ## Class query usage
 

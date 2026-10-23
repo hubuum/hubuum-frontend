@@ -6,6 +6,7 @@ should pin both components to explicit versions.
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
 | `main` (unreleased) | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
+| `v0.0.23` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.22` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.21` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.20` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
@@ -43,6 +44,44 @@ Frontend `v0.0.16` retains its Server `v0.0.15` target at
 Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
 A separate scheduled workflow follows the moving backend `:main` image.
+
+## Frontend v0.0.23 candidate
+
+This is local verification of the release candidate on 2026-10-23, not evidence
+of a published release. The supported Server v0.0.20 image and bundled OpenAPI
+contract remain unchanged from v0.0.22 below.
+
+The initial local results below used Next.js 16.4.2. Final release preparation
+updates Next.js to 16.4.3 and the pinned Docker login action to 4.7.0; the release
+pull request and exact merged commit must repeat the required checks against
+that combined dependency set.
+
+The combined dependency set passed 1,163 unit tests, followed by the four
+Valkey integration tests, 86 tooling tests, and all 109 live backend contract
+checks. The live checks now exercise lightweight timelines, scoped exact entries
+including tombstones, historical relationships, object populations, and computed
+values against the released server.
+
+Browser verification covered all 276 cases across the full run, focused reruns,
+and opt-in checks. Initial failures identified a shortcut-badge contrast bug and
+stale test selectors or navigation expectations; all were corrected and rerun.
+All 39 history scenarios and the dashboard checks passed on the final production
+container, followed by the live computed-field workflow and full database restore.
+The eight visual baselines passed without updates. Five-second access tokens
+exercised rotation, and restore polling continued after session invalidation.
+
+Lint, typechecking, production build, bundle budgets, dependency freshness,
+production audit, container build, and Helm lint/render/package checks passed.
+Lint still reports existing warnings; the production audit found no vulnerabilities.
+The dependency gate found no open Dependabot updates or required exceptions.
+
+Quickstart and authenticated release-stack smoke checks passed using temporary
+Podman-compatible Compose copies. This host's Podman rejects Docker's tmpfs
+`uid`/`gid` options, so only the disposable cache mount used mode `1777` in place
+of ownership `1001:1001` and mode `0750`. Repository deployment files retain their
+original hardening. Unmodified Docker Compose checks, native ARM64 packaging,
+and the exact merged commit's CI and release-readiness gate remain required
+before publication.
 
 ## Frontend v0.0.22
 

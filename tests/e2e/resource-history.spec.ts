@@ -109,6 +109,56 @@ async function prepare(
 	await page.route(`**${prefix}**`, async (route) => {
 		const request = route.request();
 		const url = new URL(request.url());
+		if (url.pathname.endsWith("/history/timeline")) {
+			const anchor = Number(url.searchParams.get("anchor"));
+			const at = url.searchParams.get("at");
+			const newer = url.searchParams.get("direction") === "newer";
+			const offset = Number(url.searchParams.get("cursor") ?? 0);
+			const rows = history.filter((record) =>
+				anchor
+					? newer
+						? record.history_id > anchor
+						: record.history_id < anchor
+					: at
+						? newer
+							? record.valid_from > at
+							: record.valid_from <= at
+						: true,
+			);
+			if (newer) rows.reverse();
+			return route.fulfill({
+				json: rows.slice(offset, offset + pageSize).map((record) => {
+					return Object.fromEntries(
+						Object.entries(record).filter(
+							([key]) =>
+								![
+									"data",
+									"json_schema",
+									"validate_schema",
+									"description",
+									"created_at",
+									"updated_at",
+								].includes(key),
+						),
+					);
+				}),
+				headers:
+					offset + pageSize < rows.length
+						? { "X-Next-Cursor": String(offset + pageSize) }
+						: {},
+			});
+		}
+		if (url.pathname.includes("/history/entries/")) {
+			const record = history.find(
+				(record) =>
+					record.history_id === Number(url.pathname.split("/").at(-1)),
+			);
+			return route.fulfill(
+				record
+					? { json: record }
+					: { status: 404, json: { message: "Snapshot unavailable" } },
+			);
+		}
 		if (url.pathname.endsWith("/history/as-of")) {
 			const at = url.searchParams.get("at") ?? "";
 			state.asOf.push(at);
@@ -228,6 +278,240 @@ test.describe("resource history", () => {
 			.fill(process.env.E2E_PASSWORD ?? "");
 		await page.getByRole("button", { name: "Enter workspace" }).click();
 		await page.waitForURL("**/app");
+	});
+
+	test("lightweight navigation seeks around old bookmarks and fetches only selected snapshots and baselines", async ({
+		page,
+	}) => {
+		await prepare(page, { many: true });
+		const requests: URL[] = [];
+		page.on("request", (request) => {
+			if (request.url().includes(`${prefix}/12/history`))
+				requests.push(new URL(request.url()));
+		});
+		const at = new Date(Date.UTC(2026, 7, 1, 10)).toISOString();
+		await page.goto(`${objectPath}?version=1010&at=${encodeURIComponent(at)}`);
+		await expectSelected(page, 1010);
+		await expect(page.getByText(/Previous visible ·.*#1009/)).toBeVisible();
+		expect(
+			requests.filter((url) => url.pathname.endsWith("/history")),
+		).toHaveLength(0);
+		expect(
+			new Set(
+				requests
+					.filter((url) => url.pathname.includes("/entries/"))
+					.map((url) => url.pathname.split("/").at(-1)),
+			),
+		).toEqual(new Set(["1010", "1009"]));
+		for (const url of requests.filter((url) =>
+			url.pathname.endsWith("/timeline"),
+		)) {
+			expect(url.searchParams.get("anchor")).toBe("1010");
+			expect(url.searchParams.get("include_total")).toBe("false");
+		}
+		await page.getByRole("button", { name: "Load newer history" }).click();
+		await expect(versionMarker(page, 1059)).toHaveCount(1);
+		await versionMarker(page, 1009).click();
+		await expectSelected(page, 1009);
+		await page.goBack();
+		await expectSelected(page, 1010);
+	});
+
+	test("exact deletion bookmarks resolve directly and invalid version IDs never select a default", async ({
+		page,
+	}) => {
+		await prepare(page, { deleted: true });
+		await page.goto(
+			`${objectPath}?version=103&at=${encodeURIComponent(instants[2])}`,
+		);
+		await expectSelected(page, 103);
+		await expect(
+			page.getByText("This marker records the deletion.", { exact: false }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Restore to live…" }),
+		).toHaveCount(0);
+		await page.reload();
+		await expectSelected(page, 103);
+		await page.goto(`${objectPath}?version=invalid`);
+		await expect(
+			page
+				.getByRole("region", { name: "Object history", exact: true })
+				.getByRole("alert"),
+		).toContainText("version is invalid");
+		await expect(
+			page.getByRole("region", { name: "Selected snapshot" }),
+		).toHaveCount(0);
+	});
+
+	test("historical relationships and computed values load lazily with explicit unavailable states", async ({
+		page,
+	}, testInfo) => {
+		await prepare(page);
+		const requests: URL[] = [];
+		await page.route(`**${prefix}/12/relations/history/as-of?**`, (route) => {
+			const url = new URL(route.request().url());
+			requests.push(url);
+			const at = url.searchParams.get("at");
+			return route.fulfill({
+				json: {
+					at,
+					coverage: "retained_history",
+					relations: [
+						{
+							kind: "object",
+							history_id: 200,
+							revision: 1,
+							op: "I",
+							valid_from: instants[0],
+							valid_to: null,
+							context_at: at,
+							relation: {
+								id: 2,
+								from_hubuum_object_id: 12,
+								to_hubuum_object_id: 20,
+							},
+							from: { status: "available", snapshot: records[1] },
+							to: { status: "unavailable", reason: "history_unavailable" },
+						},
+					],
+				},
+			});
+		});
+		await page.route(`**${prefix}/12/history/computed/as-of?**`, (route) => {
+			const url = new URL(route.request().url());
+			requests.push(url);
+			return route.fulfill({
+				json: {
+					at: url.searchParams.get("at"),
+					mode: "historical_recomputation",
+					object: { class_id: 3, object_id: 12, history_id: 102 },
+					personal: "unsupported",
+					shared: {
+						status: "available",
+						definition_history_id: 50,
+						evaluator_version: 1,
+						fields: [
+							{
+								key: "mtu",
+								label: "MTU",
+								definition_id: 1,
+								revision: 2,
+								semantics_version: 1,
+								status: "evaluated",
+								value: 1500,
+							},
+							{
+								key: "missing",
+								label: "Missing",
+								definition_id: 2,
+								revision: 1,
+								semantics_version: 1,
+								status: "error",
+								error: {
+									code: "missing_input",
+									message: "Historical input is missing",
+								},
+							},
+						],
+					},
+				},
+			});
+		});
+		await selectHistorical(page);
+		expect(requests).toHaveLength(0);
+		await page.getByText("Historical relationships", { exact: true }).click();
+		const relationships = page.getByRole("region", {
+			name: "Historical relationships",
+			exact: true,
+		});
+		await expect(relationships).toContainText(
+			"Historical endpoint unavailable",
+		);
+		await expect(
+			relationships.getByRole("link", { name: "Edge router (#12)" }),
+		).toHaveAttribute("href", /version=102/);
+		await page.getByText("Historical computed values", { exact: true }).click();
+		const computed = page.getByRole("region", {
+			name: "Historical computed values",
+			exact: true,
+		});
+		await expect(computed).toContainText("Definition version #50");
+		await expect(computed).toContainText("Historical input is missing");
+		await page.screenshot({
+			path: testInfo.outputPath("historical-context-desktop.png"),
+			fullPage: true,
+		});
+		for (const url of requests)
+			expect(url.searchParams.get("at")).toBe(instants[1]);
+		await page.setViewportSize({ width: 390, height: 844 });
+		expect(
+			(
+				await new AxeBuilder({ page })
+					.include('[aria-label="Historical relationships"]')
+					.include('[aria-label="Historical computed values"]')
+					.analyze()
+			).violations,
+		).toEqual([]);
+		await page.screenshot({
+			path: testInfo.outputPath("historical-context-mobile.png"),
+			fullPage: true,
+		});
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth <= innerWidth,
+			),
+		).toBe(true);
+	});
+
+	test("historical population pages retained objects and never substitutes live data on failure", async ({
+		page,
+	}) => {
+		await prepare(page, { classHistory: true });
+		const requests: URL[] = [];
+		await page.route(`**${prefix}/objects/history/as-of?**`, (route) => {
+			const url = new URL(route.request().url());
+			requests.push(url);
+			if (url.searchParams.has("cursor"))
+				return route.fulfill({
+					status: 403,
+					json: { message: "Historical access denied" },
+				});
+			const { data: _data, hubuum_class_id: _id, ...record } = records[1];
+			return route.fulfill({
+				json: {
+					at: instants[1],
+					coverage: "retained_history",
+					class: { ...record, id: 3, validate_schema: true },
+					objects: [records[1]],
+				},
+				headers: { "X-Next-Cursor": "next" },
+			});
+		});
+		await page.goto(
+			`/classes/3/history?version=102&at=${encodeURIComponent(instants[1])}`,
+		);
+		await expectSelected(page, 102);
+		expect(requests).toHaveLength(0);
+		await page
+			.getByText("Historical object population", { exact: true })
+			.click();
+		const population = page.getByRole("region", {
+			name: "Historical object population",
+			exact: true,
+		});
+		await expect(
+			population.getByRole("link", { name: "Edge router (#12)" }),
+		).toHaveAttribute("href", /version=102/);
+		await population
+			.getByRole("button", { name: "Load more historical objects" })
+			.click();
+		await expect(population.getByRole("alert")).toContainText(
+			"Historical access denied",
+		);
+		expect(requests).toHaveLength(2);
+		expect(requests[1].searchParams.get("cursor")).toBe("next");
+		expect(requests[1].searchParams.get("at")).toBe(instants[1]);
 	});
 
 	test("live resource audit names span deletion, recreation and renames through the BFF", async ({
@@ -691,8 +975,18 @@ test.describe("resource history", () => {
 		const writes: string[] = [];
 		await page.route(/\/api\/v1\/classes\/8\/27(?:\/|\?|$)/, async (route) => {
 			const url = new URL(route.request().url());
-			if (url.pathname.endsWith("/history"))
+			if (
+				url.pathname.endsWith("/history") ||
+				url.pathname.endsWith("/history/timeline")
+			)
 				return route.fulfill({ json: replacementHistory });
+			if (url.pathname.includes("/history/entries/"))
+				return route.fulfill({
+					json: replacementHistory.find(
+						(record) =>
+							record.history_id === Number(url.pathname.split("/").at(-1)),
+					),
+				});
 			if (route.request().method() === "PATCH") writes.push(url.pathname);
 			return route.fulfill({
 				json: replacement,
@@ -889,6 +1183,13 @@ test.describe("resource history", () => {
 		await expect(
 			page.getByRole("button", { name: "Entity ID", exact: true }),
 		).toHaveAttribute("aria-pressed", "true");
+		// The form updates immediately; wait for the applied URL filters before Back.
+		await expect(
+			page.getByRole("button", {
+				name: "Remove Recorded name · retired-server filter",
+				exact: true,
+			}),
+		).toHaveCount(0);
 		await page.goBack();
 		await expect(page.getByLabel("Exact recorded name")).toHaveValue(
 			"retired-server",
@@ -909,9 +1210,17 @@ test.describe("resource history", () => {
 			hubuum_class_id: 7,
 			collection_id: 8,
 		}));
-		await page.route(`**${prefix}/12/history?**`, (route) =>
-			route.fulfill({ json: snapshots }),
-		);
+		await page.route("**/classes/7/12/history/**", (route) => {
+			const url = new URL(route.request().url());
+			return route.fulfill({
+				json: url.pathname.includes("/entries/")
+					? snapshots.find(
+							(record) =>
+								record.history_id === Number(url.pathname.split("/").at(-1)),
+						)
+					: snapshots,
+			});
+		});
 		const requests: string[] = [];
 		await page.route(
 			/\/api\/v1\/(classes\/7|collections\/8)\/history\/as-of\?/,
@@ -947,7 +1256,9 @@ test.describe("resource history", () => {
 			},
 		);
 		const at = "2026-09-25T12:00:00.123456Z";
-		await page.goto(`${objectPath}?at=${encodeURIComponent(at)}&version=102`);
+		await page.goto(
+			`/objects/7/12/history?at=${encodeURIComponent(at)}&version=102`,
+		);
 		await expectSelected(page, 102);
 		expect(requests).toHaveLength(0);
 		await page
@@ -1229,6 +1540,7 @@ test.describe("resource history", () => {
 			const errors: string[] = [];
 			page.on("pageerror", (error) => errors.push(error.message));
 			await prepare(page, { many: true });
+			await page.clock.install();
 			await page.goto(
 				mode === "ID"
 					? objectPath
@@ -1244,6 +1556,7 @@ test.describe("resource history", () => {
 			await expect(versionMarker(page, 1000)).toBeAttached();
 			if (mode === "ID")
 				await page.getByRole("button", { name: "Pin as baseline" }).click();
+			await page.clock.pauseAt(new Date(Date.now() + 1000));
 			await page.evaluate(() => {
 				const writes: number[] = [];
 				Object.assign(window, { historyScrollWrites: writes });
@@ -1264,14 +1577,19 @@ test.describe("resource history", () => {
 				}
 			});
 			const viewport = timeline.locator('[class*="timelineViewport"]');
-			await viewport.evaluate(async (element) => {
-				for (let step = 0; step < 140; step++) {
-					element.scrollTop = (step % 2 ? 57 : 58) * 80;
-					await new Promise<void>((resolve) =>
-						requestAnimationFrame(() => resolve()),
-					);
-				}
-			});
+			// Drive a continuous scroll at a fixed cadence. Real scheduler stalls
+			// can otherwise exceed the debounce and create legitimate extra entries.
+			for (let step = 0; step < 140; step++) {
+				await viewport.evaluate(
+					(element, position) => {
+						element.scrollTop = position * 80;
+						element.dispatchEvent(new Event("scroll"));
+					},
+					step % 2 ? 57 : 58,
+				);
+				await page.clock.runFor(32);
+			}
+			await page.clock.runFor(300);
 			await expectSelected(page, 1002);
 			await expect
 				.poll(() => new URL(page.url()).searchParams.get("version"))
@@ -1296,10 +1614,12 @@ test.describe("resource history", () => {
 			// A pending scroll must not overwrite Back navigation when its timer fires.
 			await viewport.evaluate((element) => {
 				element.scrollTop = 56 * 80;
+				element.dispatchEvent(new Event("scroll"));
 			});
+			await page.clock.runFor(32);
 			await expectSelected(page, 1003);
 			await page.goBack();
-			await page.waitForTimeout(350);
+			await page.clock.runFor(350);
 			await expectSelected(page, 1059);
 			expect(errors).toEqual([]);
 		});
@@ -1431,6 +1751,11 @@ test.describe("resource history", () => {
 		page,
 	}) => {
 		const state = await prepare(page);
+		const historyReads: string[] = [];
+		page.on("request", (request) => {
+			const path = new URL(request.url()).pathname;
+			if (path.includes(`${prefix}/12/history/`)) historyReads.push(path);
+		});
 		await selectHistorical(page);
 		await page.getByRole("button", { name: "Restore to live…" }).click();
 		let dialog = page.getByRole("dialog");
@@ -1454,12 +1779,16 @@ test.describe("resource history", () => {
 			.getByRole("checkbox", { name: "/network", exact: true })
 			.check();
 		await dialog.getByRole("button", { name: /Review \d+ changes/ }).click();
+		const readsBeforeRestore = historyReads.length;
 		await dialog
 			.getByRole("button", { name: "Restore selected values to live" })
 			.click();
 		await expect(
 			page.getByText(/Historical values restored as a new audited update/),
 		).toBeVisible();
+		const refreshed = historyReads.slice(readsBeforeRestore);
+		expect(refreshed.some((path) => path.endsWith("/timeline"))).toBe(true);
+		expect(refreshed.some((path) => path.endsWith("/entries/102"))).toBe(true);
 		expect(state.writes).toEqual([
 			{
 				etag: '"object:12:4"',
@@ -1633,7 +1962,7 @@ test.describe("resource history", () => {
 			page.getByRole("button", { name: "Jump to date" }),
 		).toBeVisible();
 		await page
-			.getByRole("button", { name: "Show latest visible entry" })
+			.getByRole("button", { name: "Show newest loaded entry" })
 			.click();
 		await expect(page.getByText(/Deletion marker/)).toBeVisible();
 		await expect(
@@ -1661,13 +1990,13 @@ test.describe("resource history", () => {
 		);
 		await expect(
 			page.getByRole("region", { name: "Object history" }).getByRole("alert"),
-		).toContainText("does not match");
+		).toContainText("unavailable");
 		await expect(
 			page.getByRole("button", { name: "Restore to live…" }),
 		).toHaveCount(0);
 	});
 
-	test("class snapshots clearly exclude historical object populations", async ({
+	test("class restoration excludes historical object populations", async ({
 		page,
 	}) => {
 		await prepare(page, { classHistory: true });
@@ -1675,10 +2004,8 @@ test.describe("resource history", () => {
 		await expect(
 			page.getByRole("region", { name: "Class definition history" }),
 		).toBeVisible();
-		await expect(
-			page.getByText(/Class definition history does not include/),
-		).toContainText(
-			"Class restoration supports names, descriptions, and collection assignments.",
+		await expect(page.getByText(/Class restoration supports/)).toContainText(
+			"Class restoration supports names, descriptions, and collection assignments",
 		);
 		await expect(
 			page.getByRole("button", { name: "Restore to live…" }),
