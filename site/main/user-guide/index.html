@@ -2083,12 +2083,18 @@ name across object IDs, including authorized deletion records and replacements.
 Versions recorded after a rename away are excluded; renaming back adds matching
 versions again. Spaces, numeric names, Unicode, and an explicitly submitted empty
 name are literal values. Identical names in different classes remain separate.</p>
-<p><strong>Load more snapshots</strong> continues the server's ordered results. <strong>View snapshot</strong>
-shows the full returned state and provenance, including deletion records.
+<p>Name history uses the same scrollable timeline and snapshot fan as history by
+ID. Scroll, select a date marker, or use Up/Down and Home/End to inspect snapshots.
+Older entries load near the end; <strong>Load more history</strong> is also available.
+Markers and snapshot cards identify the object ID, including deleted objects
+and replacements. <strong>Version details and provenance</strong> shows the full returned
+state, including deletion records.
 <strong>Browse identity history</strong> opens that object's full history across all its
 names for comparisons and restoration. It never restores into a different object
-that happens to have the same name. The name search is preserved in the URL and
-browser history. Changing names starts a separate result set.</p>
+that happens to have the same name. The name search and selected version are
+preserved in the URL and browser history. Reopening a selected version loads older
+pages as needed. Changing names starts a separate result set and clears the
+selection.</p>
 <p>This requires the server's exact-name object history endpoint
 (<a href="https://github.com/hubuum/hubuum/issues/471">server #471</a>, implemented in
 <a href="https://github.com/hubuum/hubuum/pull/472">#472</a>). Older servers show an explicit
