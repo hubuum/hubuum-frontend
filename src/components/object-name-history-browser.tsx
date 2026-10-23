@@ -3,13 +3,24 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HistoryDetailsModal } from "@/components/history-details-modal";
-import { historyTime } from "@/components/history-stack-navigation";
-import { fetchObjectHistoryByNamePage } from "@/lib/api/events";
-import type { HistoryResponseHubuumObjectHistory } from "@/lib/api/generated/models";
-import { isDeletedVersion } from "@/lib/resource-history";
-import { updateViewQuery } from "@/lib/view-query";
+import { SnapshotPresentation } from "@/components/history-snapshot-presentation";
+import {
+	HistoryStackNavigation,
+	historyTime,
+} from "@/components/history-stack-navigation";
+import styles from "@/components/resource-history.module.css";
+import {
+	fetchObjectHistoryByNamePage,
+	type HistoryRecord,
+} from "@/lib/api/events";
+import {
+	historyInstant,
+	isDeletedVersion,
+	resourceHistoryHref,
+} from "@/lib/resource-history";
+import { useHistorySelection } from "@/lib/use-history-selection";
 
 export function ObjectNameHistoryBrowser({ classId }: { classId: number }) {
 	const name = useSearchParams().get("name");
@@ -31,8 +42,15 @@ function ObjectNameHistoryResults({
 }) {
 	const [ready, setReady] = useState(false);
 	useEffect(() => setReady(true), []);
-	const [selected, setSelected] =
-		useState<HistoryResponseHubuumObjectHistory | null>(null);
+	const [details, setDetails] = useState<HistoryRecord | null>(null);
+	const search = useSearchParams();
+	const { preview, updateUrl, selectVersion } = useHistorySelection();
+	const version = search.get("version");
+	const at = search.get("at");
+	const validSelection =
+		Number.isSafeInteger(Number(version)) &&
+		Number(version) > 0 &&
+		(!at || historyInstant(at) !== null);
 	const history = useInfiniteQuery({
 		queryKey: ["object-history-by-name", classId, name],
 		initialPageParam: "",
@@ -42,13 +60,62 @@ function ObjectNameHistoryResults({
 		enabled: name !== null,
 		retry: false,
 	});
-	const records = Array.from(
-		new Map(
-			(history.data?.pages.flatMap((page) => page.items) ?? []).map(
-				(record) => [record.history_id, record],
-			),
-		).values(),
+	const records = useMemo(
+		() =>
+			Array.from(
+				new Map(
+					(history.data?.pages.flatMap((page) => page.items) ?? []).map(
+						(record) => [record.history_id, record],
+					),
+				).values(),
+			).sort((a, b) => b.history_id - a.history_id),
+		[history.data],
 	);
+	const selectedLoaded =
+		version === null
+			? records[0]
+			: records.find(
+					(record) =>
+						record.history_id === Number(version) &&
+						(!at || record.valid_from === at),
+				);
+	const selected = preview ?? selectedLoaded;
+	const { hasNextPage, isFetching, isError, fetchNextPage } = history;
+	const needsOlderPages =
+		validSelection &&
+		!selectedLoaded &&
+		(!records.length || records[records.length - 1].history_id > Number(version));
+	// Name results span identities: recover bookmarked versions from this search,
+	// without resolving an as-of snapshot against a different live object.
+	useEffect(() => {
+		if (
+			name !== null &&
+			needsOlderPages &&
+			hasNextPage &&
+			!isFetching &&
+			!isError
+		)
+			void fetchNextPage();
+	}, [
+		name,
+		needsOlderPages,
+		hasNextPage,
+		isFetching,
+		isError,
+		fetchNextPage,
+	]);
+	useEffect(() => {
+		if (version === null && records[0])
+			updateUrl(
+				{ at: records[0].valid_from, version: String(records[0].history_id) },
+				true,
+			);
+	}, [version, records, updateUrl]);
+	const locating =
+		name !== null &&
+		needsOlderPages &&
+		!isError &&
+		(history.isLoading || hasNextPage);
 	return (
 		<section className="stack" aria-label="Object history by name">
 			<header className="page-header">
@@ -74,7 +141,15 @@ function ObjectNameHistoryResults({
 						new FormData(event.currentTarget).get("name") ?? "",
 					);
 					if (draft === name) void history.refetch();
-					else updateViewQuery({ name: draft }, "push");
+					else
+						updateUrl({
+							name: draft,
+							at: null,
+							version: null,
+							compare: null,
+							pin: null,
+							pinAt: null,
+						});
 				}}
 			>
 				<label className="control-field">
@@ -111,69 +186,87 @@ function ObjectNameHistoryResults({
 					No visible retained snapshots match this name.
 				</p>
 			) : null}
-			{records.length ? (
-				<div className="table-wrap card">
-					<table>
-						<caption>Matching historical snapshots · Class #{classId}</caption>
-						<thead>
-							<tr>
-								<th scope="col">Object ID</th>
-								<th scope="col">Version</th>
-								<th scope="col">Recorded at</th>
-								<th scope="col">Operation</th>
-								<th scope="col">Snapshot</th>
-							</tr>
-						</thead>
-						<tbody>
-							{records.map((record) => (
-								<tr key={record.history_id}>
-									<td>#{record.id}</td>
-									<td>
-										#{record.history_id} · revision {record.revision}
-									</td>
-									<td>
-										<time
-											dateTime={record.valid_from}
-											title={record.valid_from}
-										>
-											{historyTime(record.valid_from)} UTC
-										</time>
-									</td>
-									<td>{isDeletedVersion(record) ? "Deleted" : record.op}</td>
-									<td>
-										<button
-											type="button"
-											className="secondary"
-											onClick={() => setSelected(record)}
-											aria-label={`View snapshot #${record.history_id} for object #${record.id}`}
-										>
-											View snapshot
-										</button>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
+			{locating ? <p role="status">Loading the selected snapshot…</p> : null}
+			{version !== null &&
+			!selected &&
+			!locating &&
+			!history.isLoading &&
+			!history.isError ? (
+				<p role="alert">
+					The selected snapshot is unavailable in this name’s visible history.
+				</p>
 			) : null}
-			{history.hasNextPage ? (
+			{selected ? (
+				<HistoryStackNavigation
+					records={records}
+					selected={selected}
+					onSelect={selectVersion}
+					showObjectIds
+					loadOlder={hasNextPage ? () => void fetchNextPage() : undefined}
+					loadingOlder={history.isFetchingNextPage}
+				>
+					<article className={styles.snapshot}>
+						<header className={styles.snapshotHeading}>
+							<div>
+								<h2>
+									<time dateTime={selected.valid_from}>
+										{historyTime(selected.valid_from)} UTC
+									</time>
+								</h2>
+								<p className="muted">
+									Stored version #{selected.history_id} · {selected.op} ·{" "}
+									object #{selected.id} · revision {selected.revision}
+								</p>
+							</div>
+							<Link
+								className="link-chip"
+								href={resourceHistoryHref({
+									type: "object",
+									classId,
+									objectId: selected.id,
+								})}
+							>
+								Browse identity history
+							</Link>
+						</header>
+						{isDeletedVersion(selected) ? (
+							<p>
+								This marker records the deletion of object #{selected.id}. The
+								fields below show its retained stored state.
+							</p>
+						) : null}
+						<SnapshotPresentation record={selected} />
+						<button
+							type="button"
+							className="secondary"
+							onClick={() => setDetails(selected)}
+						>
+							Version details and provenance
+						</button>
+					</article>
+				</HistoryStackNavigation>
+			) : records.length ? (
 				<button
 					type="button"
 					className="secondary"
-					disabled={history.isFetchingNextPage}
-					onClick={() => void history.fetchNextPage()}
+					onClick={() => selectVersion(records[0])}
 				>
-					{history.isFetchingNextPage ? "Loading…" : "Load more snapshots"}
+					Show latest visible entry
+				</button>
+			) : null}
+			{history.isError && !selected ? (
+				<button type="button" onClick={() => void history.refetch()}>
+					Retry loading history
 				</button>
 			) : null}
 			<p className="muted">
-				Open a snapshot to inspect its full stored state and provenance. Browse
+				Scroll the timeline or use its arrow keys to inspect snapshots. Browse
 				that identity’s history for comparisons and restoration to the same
 				object ID. A replacement with the same name is a separate identity.
 			</p>
 			<HistoryDetailsModal
-				record={selected}
-				onClose={() => setSelected(null)}
+				record={details}
+				onClose={() => setDetails(null)}
 				browseIdentity
 			/>
 		</section>

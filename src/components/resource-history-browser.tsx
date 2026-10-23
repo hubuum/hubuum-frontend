@@ -2,18 +2,18 @@
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
 import { ClassHistoryRestore } from "@/components/class-history-restore";
 import { HistoryComparison } from "@/components/history-comparison";
 import { HistoryContext } from "@/components/history-context";
 import { HistoryNameBrowser } from "@/components/history-name-browser";
+import { SnapshotPresentation } from "@/components/history-snapshot-presentation";
 import {
 	HistoryStackNavigation,
 	historyTime,
 } from "@/components/history-stack-navigation";
-import { JsonViewer } from "@/components/json-viewer";
 import { ObjectHistoryRestore } from "@/components/object-history-restore";
 import styles from "@/components/resource-history.module.css";
 import {
@@ -21,7 +21,6 @@ import {
 	fetchResourceHistoryPage,
 	type HistoryRecord,
 } from "@/lib/api/events";
-import { toObjectDataJsonPointer } from "@/lib/api/object-data-patch";
 import {
 	fetchHistoryLiveResource,
 	type LiveHistoryResource,
@@ -31,7 +30,6 @@ import {
 	formatEventInitiator,
 	getProvenanceTaskId,
 } from "@/lib/event-provenance";
-import { flattenObjectPropertyEntries } from "@/lib/object-property-entries";
 import {
 	compareSnapshots,
 	type HistoryScope,
@@ -41,92 +39,11 @@ import {
 	snapshotFields,
 	versionContains,
 } from "@/lib/resource-history";
-
-function SnapshotPresentation({
-	record,
-	baseline,
-}: {
-	record: HistoryRecord;
-	baseline?: Record<string, unknown>;
-}) {
-	const fields = snapshotFields(record);
-	const flat = flattenObjectPropertyEntries(fields);
-	const changes = baseline ? compareSnapshots(baseline, fields) : [];
-	return (
-		<>
-			<dl className={styles.fields}>
-				{flat.entries.map((entry) => {
-					const path = toObjectDataJsonPointer(entry.segments);
-					const change = changes.find(
-						(item) => item.path === path || path.startsWith(`${item.path}/`),
-					);
-					return (
-						<div
-							key={entry.id}
-							className={styles.field}
-							data-kind={change?.kind}
-						>
-							<dt>
-								<code>{entry.label}</code>
-							</dt>
-							<dd>
-								{entry.value}
-								{change ? (
-									<span
-										className={`status-pill ${styles.changeBadge}`}
-										data-kind={change.kind}
-									>
-										{change.kind}
-									</span>
-								) : null}
-							</dd>
-						</div>
-					);
-				})}
-				{changes
-					.filter((change) => change.kind === "removed")
-					.map((change) => (
-						<div className={styles.field} key={change.path} data-kind="removed">
-							<dt>
-								<code>{change.path}</code>
-							</dt>
-							<dd>
-								<span className="status-pill">removed</span>
-								<span className="muted">Not present in this snapshot</span>
-							</dd>
-						</div>
-					))}
-			</dl>
-			{flat.truncated ? (
-				<p className="muted">
-					Field preview is limited. The JSON view contains the full snapshot.
-				</p>
-			) : null}
-			<details className={styles.json}>
-				<summary>Snapshot JSON</summary>
-				<JsonViewer value={fields} defaultTab="json" />
-			</details>
-		</>
-	);
-}
+import { useHistorySelection } from "@/lib/use-history-selection";
 
 export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 	const search = useSearchParams();
-	const pathname = usePathname();
-	const selectionUrl = `${pathname}?${search.toString()}`;
-	const [scrollPreview, setScrollPreview] = useState<{
-		url: string;
-		record: HistoryRecord;
-	} | null>(null);
-	const scrollCommit = useRef<ReturnType<typeof setTimeout> | null>(null);
-	// Back/Forward and explicit navigation must cancel an uncommitted scroll.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: URL changes cancel the pending scroll commit.
-	useEffect(() => {
-		setScrollPreview(null);
-		return () => {
-			if (scrollCommit.current !== null) clearTimeout(scrollCommit.current);
-		};
-	}, [selectionUrl]);
+	const { preview, updateUrl, selectVersion } = useHistorySelection();
 	const at = search.get("at") ?? "";
 	const versionId = Number(search.get("version"));
 	const comparisonMode = ["live", "pinned"].includes(
@@ -199,10 +116,9 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 			!selectedLoaded,
 	);
 	const selected =
-		scrollPreview?.url === selectionUrl
-			? scrollPreview.record
-			: (selectedLoaded ??
-				(at && validAt && !versionMismatch ? asOf.data : undefined));
+		preview ??
+		selectedLoaded ??
+		(at && validAt && !versionMismatch ? asOf.data : undefined);
 	const selectedIndex = records.findIndex(
 		(record) => record.history_id === selected?.history_id,
 	);
@@ -233,58 +149,6 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 	useEffect(() => {
 		if (live.data && !capturedLive) setCapturedLive(live.data);
 	}, [live.data, capturedLive]);
-	const updateUrl = useCallback(
-		(values: Record<string, string | null>, replace = false) => {
-			const params = new URLSearchParams(window.location.search);
-			// Pinning or changing the comparison also commits the visible scroll preview.
-			if (scrollPreview?.url === `${pathname}?${params}`) {
-				params.set("at", scrollPreview.record.valid_from);
-				params.set("version", String(scrollPreview.record.history_id));
-			}
-			for (const [key, value] of Object.entries(values)) {
-				if (value === null) params.delete(key);
-				else params.set(key, value);
-			}
-			if (scrollCommit.current !== null) {
-				clearTimeout(scrollCommit.current);
-				scrollCommit.current = null;
-			}
-			if (
-				params.toString() ===
-				new URLSearchParams(window.location.search).toString()
-			)
-				return;
-			window.history[replace ? "replaceState" : "pushState"](
-				null,
-				"",
-				`${pathname}?${params}`,
-			);
-		},
-		[pathname, scrollPreview],
-	);
-	const selectVersion = useCallback(
-		(record: HistoryRecord, scrolling = false) => {
-			if (scrollCommit.current !== null) clearTimeout(scrollCommit.current);
-			if (scrolling) {
-				// Keep the snapshot responsive without writing history on every frame.
-				setScrollPreview({ url: selectionUrl, record });
-				scrollCommit.current = setTimeout(() => {
-					updateUrl({
-						at: record.valid_from,
-						version: String(record.history_id),
-					});
-					scrollCommit.current = null;
-				}, 250);
-			} else {
-				setScrollPreview(null);
-				updateUrl({
-					at: record.valid_from,
-					version: String(record.history_id),
-				});
-			}
-		},
-		[updateUrl, selectionUrl],
-	);
 	useEffect(() => {
 		if (!at && records[0])
 			updateUrl(
