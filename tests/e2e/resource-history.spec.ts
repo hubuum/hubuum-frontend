@@ -1629,8 +1629,20 @@ test.describe("resource history", () => {
 		page,
 	}, testInfo) => {
 		await prepare(page, { many: true });
+		await page.route(`**${prefix}/12/history/entries/*`, async (route) => {
+			await new Promise((resolve) => setTimeout(resolve, 800));
+			await route.fallback();
+		});
 		await page.goto(objectPath);
 		await expectSelected(page, 1059);
+		const selectedPanel = page.getByRole("region", {
+			name: "Selected snapshot",
+			exact: true,
+		});
+		await expect(selectedPanel).toContainText("1559");
+		const readingHeight = await selectedPanel.evaluate(
+			(element) => element.getBoundingClientRect().height,
+		);
 		const timeline = page.getByRole("navigation", { name: "History timeline" });
 		await expect(timeline.getByText("0 newer", { exact: true })).toBeVisible();
 		await expect(timeline.getByText("24 older", { exact: true })).toBeVisible();
@@ -1643,8 +1655,17 @@ test.describe("resource history", () => {
 		for (let tick = 1; tick <= 6; tick++) {
 			await page.mouse.wheel(0, 80);
 			await expectSelected(page, 1059 - tick);
+			if (tick === 1) {
+				await expect(selectedPanel).toContainText("Loading snapshot…");
+				expect(
+					await selectedPanel.evaluate(
+						(element) => element.getBoundingClientRect().height,
+					),
+				).toBeCloseTo(readingHeight, 0);
+			}
 		}
 		await expectSelected(page, 1053);
+		await expect(selectedPanel).toContainText("1553");
 		await expect(timeline.getByText("6 newer", { exact: true })).toBeVisible();
 		await expect(timeline.getByText("18 older", { exact: true })).toBeVisible();
 		const newerFan = page.getByRole("img", {
@@ -1662,10 +1683,6 @@ test.describe("resource history", () => {
 		const timelineBounds = await page
 			.getByRole("navigation", { name: "History timeline" })
 			.boundingBox();
-		const selectedPanel = page.getByRole("region", {
-			name: "Selected snapshot",
-			exact: true,
-		});
 		const selectedBounds = await selectedPanel.boundingBox();
 		if (!newerBounds || !selectedBounds || !olderBounds || !timelineBounds)
 			throw new Error(

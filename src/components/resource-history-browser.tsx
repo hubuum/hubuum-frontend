@@ -273,7 +273,7 @@ export function ResourceHistoryBrowser({ scope }: { scope: HistoryScope }) {
 					{success}
 				</p>
 			) : null}
-			{timeline.loading ? (
+			{timeline.loading && !selected ? (
 				<p role="status">Loading historical snapshots…</p>
 			) : null}
 			{history.isError || newer.isError ? (
