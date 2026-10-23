@@ -49,7 +49,13 @@ backend version is intentionally raised.
    npm run audit:prod
    ```
 
-   `release:dependencies` queries the npm registry for installed dependencies
+   `release:dependencies` checks the official Node.js release index for the
+   latest LTS release in the Dockerfile's configured major version and requires
+   every Docker stage and CI Node version pin to match. Keep the Docker image
+   digest in sync with its version; Dependabot also tracks the base image within
+   the supported Node major. Major runtime upgrades remain an explicit LTS
+   compatibility decision.
+   It queries the npm registry for installed dependencies
    and the script-pinned Orval generator, verifies every external
    workflow `uses:` pin against the latest stable action tag and commit, and
    blocks on open Dependabot pull requests. The untagged `hubuum/.github`

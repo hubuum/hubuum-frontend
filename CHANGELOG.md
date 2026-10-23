@@ -24,6 +24,9 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Refresh Next.js to 16.4.3, CodeMirror autocomplete/view, TanStack Query, Biome,
   and the pinned Docker login action to 4.7.0. All other GitHub Actions pins and
   the Orval generator are current; no exceptions are required.
+- Update the Docker base image and all CI runtimes to Node.js 24.22.1 LTS,
+  including its security fixes. The release dependency gate now checks Node
+  freshness and matching runtime pins, and Dependabot tracks the Docker image.
 
 ### Fixed
 

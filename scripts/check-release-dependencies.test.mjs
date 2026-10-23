@@ -9,10 +9,58 @@ import {
 	latestStableTag,
 	parseNpmOutdated,
 	validateExceptions,
+	validateNodePins,
 } from "./check-release-dependencies.mjs";
 
 const sha1 = "1".repeat(40);
 const sha2 = "2".repeat(40);
+
+const nodeImage = `node:24.22.1-alpine3.24@sha256:${"a".repeat(64)}`;
+const nodeReleases = [
+	{ version: "v26.12.1", lts: false },
+	{ version: "v24.23.0-rc.1", lts: "Krypton" },
+	{ version: "v24.22.1", lts: "Krypton" },
+	{ version: "v24.21.0", lts: "Krypton" },
+	{ version: "v22.23.4", lts: "Jod" },
+];
+const nodeWorkflows = { "ci.yml": "      node-version: '24.22.1' # LTS" };
+
+test("Node pins use the latest LTS release in the supported major across Docker and CI", () => {
+	assert.equal(validateNodePins(
+		`FROM ${nodeImage} AS builder\nFROM ${nodeImage} AS runner`,
+		nodeWorkflows,
+		nodeReleases,
+	), "24.22.1");
+});
+
+test("Node gate rejects stale runtimes, inconsistent stages, and missing image digests", () => {
+	assert.throws(() => validateNodePins(
+		`FROM ${nodeImage.replace("24.22.1", "24.21.0")}`,
+		nodeWorkflows,
+		nodeReleases,
+	), /update to the latest Node.js 24 LTS release, 24.22.1/);
+	for (const dockerfile of [
+		"FROM node:24.22.1-alpine3.24",
+		`FROM ${nodeImage}\nFROM ${nodeImage.replace("24.22.1", "24.21.0")}`,
+		`FROM ${nodeImage}\nFROM --platform=linux/arm64 ${nodeImage.replace("24.22.1", "24.21.0")}`,
+		"FROM alpine:3.24",
+	]) {
+		assert.throws(() => validateNodePins(dockerfile, nodeWorkflows, nodeReleases), /same exact version and image digest/);
+	}
+});
+
+test("Node gate rejects stale or floating CI pins and unavailable release metadata", () => {
+	for (const pin of ["24.21.0", "24", "lts/*"]) {
+		assert.throws(() => validateNodePins(
+			`FROM ${nodeImage}`,
+			{ "ci.yml": `node-version: ${pin}` },
+			nodeReleases,
+		), /ci.yml:1 must pin Node.js 24.22.1/);
+	}
+	assert.throws(() => validateNodePins(`FROM ${nodeImage}`, {}, nodeReleases), /No CI Node.js version pins/);
+	assert.throws(() => validateNodePins(`FROM ${nodeImage}`, nodeWorkflows, {}), /invalid release index/);
+	assert.throws(() => validateNodePins(`FROM ${nodeImage}`, nodeWorkflows, []), /No LTS releases/);
+});
 
 test("collectActionPins requires immutable refs with stable version comments", () => {
 	const pins = collectActionPins({
