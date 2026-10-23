@@ -6,6 +6,7 @@ should pin both components to explicit versions.
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
 | `main` (unreleased) | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
+| `v0.0.23` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.22` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.21` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
 | `v0.0.20` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
@@ -30,7 +31,7 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required checks use the immutable image for the selected compatibility target.
-For Frontend v0.0.22 and unreleased `main`, it is
+For Frontend v0.0.22, v0.0.23, and unreleased `main`, it is
 `ghcr.io/hubuum/hubuum-server:v0.0.20@sha256:eaf59f8a4b4793030a78bc1637a8e2b9fad2f810b8621ff9a874dca534b9a23a`.
 
 For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
@@ -89,6 +90,23 @@ Server v0.0.20. Search hydration and exact-name object history across identities
 are part of that supported baseline. See [v0.0.22 verification](compatibility-evidence.md#frontend-v0022)
 for source provenance, the immutable image, and completed live/browser checks. Earlier optional-preview evidence is
 retained in [compatibility history](compatibility-evidence.md).
+
+## History integration in v0.0.23
+
+Frontend v0.0.23 uses Server v0.0.20's `history/timeline` and scoped
+`history/entries/{history_id}` endpoints. Timelines page metadata in both
+directions; only selected and comparison snapshots fetch full documents.
+Exact IDs distinguish deletion markers from final live versions, and timestamp
+precision is preserved for bookmarks, date jumps, and context requests.
+
+Historical relationships, class object populations, and shared computed values
+load only when their panels are opened. Population and relationship results
+cover authorized retained history, not a claim of historical completeness.
+Computed values are historical recomputations, not recorded materializations;
+personal historical fields are unsupported. Errors never fall back to live data.
+Restore provenance and atomic schema restoration remain separate pending work.
+See the [candidate verification evidence](compatibility-evidence.md#frontend-v0023-candidate)
+for completed local checks and the remaining publication gates.
 
 ## Before upgrading
 

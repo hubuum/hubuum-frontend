@@ -417,14 +417,25 @@ test.describe("authenticated workspace", () => {
 	test("dashboard has no serious accessibility violations", async ({
 		page,
 	}) => {
-		for (const width of [1440, 390]) {
-			await page.setViewportSize({ width, height: 900 });
-			const results = await new AxeBuilder({ page }).analyze();
-			expect(
-				results.violations.filter((violation) =>
-					["serious", "critical"].includes(violation.impact ?? ""),
-				),
-			).toEqual([]);
+		for (const theme of ["light", "dark"]) {
+			await page.getByRole("button", { name: /Open account menu for/ }).click();
+			await page
+				.getByRole("button", {
+					name: theme === "light" ? "Light" : "Dark",
+					exact: true,
+				})
+				.click();
+			await page.keyboard.press("Escape");
+			await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+			for (const width of [1440, 390]) {
+				await page.setViewportSize({ width, height: 900 });
+				const results = await new AxeBuilder({ page }).analyze();
+				expect(
+					results.violations.filter((violation) =>
+						["serious", "critical"].includes(violation.impact ?? ""),
+					),
+				).toEqual([]);
+			}
 		}
 	});
 

@@ -4,18 +4,18 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { JsonViewer } from "@/components/json-viewer";
 import styles from "@/components/resource-history.module.css";
-import type { HistoryRecord } from "@/lib/api/events";
+import type { HistoryResponseHistoryMarker } from "@/lib/api/generated/models";
 import { fetchHistoricalContext } from "@/lib/api/resource-history";
 
 export function HistoryContext({
 	record,
 	at,
 }: {
-	record: Extract<HistoryRecord, { collection_id: number }>;
+	record: HistoryResponseHistoryMarker;
 	at: string;
 }) {
 	const [open, setOpen] = useState(false);
-	const classId = "hubuum_class_id" in record ? record.hubuum_class_id : null;
+	const classId = record.hubuum_class_id ?? null;
 	const historicalClass = useQuery({
 		queryKey: ["history-context", "class", classId, at],
 		queryFn: () => {

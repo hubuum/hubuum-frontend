@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef } from "react";
-import type { HistoryRecord } from "@/lib/api/events";
+import type { HistoryEntry } from "@/lib/history-timeline";
 import {
 	compareSnapshots,
 	isDeletedVersion,
@@ -20,9 +20,15 @@ export function historyTime(value: string): string {
 			}).format(date);
 }
 
-function summary(record: HistoryRecord, earlier?: HistoryRecord): string {
+function summary(record: HistoryEntry, earlier?: HistoryEntry): string {
 	if (isDeletedVersion(record)) return "Deleted";
-	if (!earlier || earlier.id !== record.id || isDeletedVersion(earlier))
+	if (
+		!("description" in record) ||
+		!earlier ||
+		!("description" in earlier) ||
+		earlier.id !== record.id ||
+		isDeletedVersion(earlier)
+	)
 		return record.op;
 	const changes = compareSnapshots(
 		snapshotFields(earlier),
@@ -38,19 +44,23 @@ function summary(record: HistoryRecord, earlier?: HistoryRecord): string {
 
 const TIMELINE_STEP = 80;
 
-export function HistoryStackNavigation({
+export function HistoryStackNavigation<T extends HistoryEntry>({
 	records,
 	selected,
 	onSelect,
 	loadOlder,
+	loadNewer,
+	loadingNewer = false,
 	loadingOlder,
 	showObjectIds = false,
 	children,
 }: {
-	records: HistoryRecord[];
-	selected: HistoryRecord;
-	onSelect: (record: HistoryRecord, scrolling?: boolean) => void;
+	records: T[];
+	selected: T;
+	onSelect: (record: T, scrolling?: boolean) => void;
 	loadOlder?: () => void;
+	loadNewer?: () => void;
+	loadingNewer?: boolean;
 	loadingOlder: boolean;
 	showObjectIds?: boolean;
 	children: React.ReactNode;
@@ -110,9 +120,10 @@ export function HistoryStackNavigation({
 		[],
 	);
 
-	function choose(record: HistoryRecord, focus = false) {
+	function choose(record: T, focus = false) {
 		scrollSelection.current = null;
-		if (record.history_id !== selected.history_id) onSelect(record);
+		// An explicit choice must also commit an uncommitted scroll preview.
+		onSelect(record);
 		if (focus)
 			timelineRef.current
 				?.querySelector<HTMLButtonElement>(
@@ -245,6 +256,16 @@ export function HistoryStackNavigation({
 			>
 				<div className={styles.timelineHeading}>
 					<strong>Timeline</strong>
+					{loadNewer ? (
+						<button
+							type="button"
+							className="ghost"
+							disabled={loadingNewer}
+							onClick={loadNewer}
+						>
+							{loadingNewer ? "Loading newer history…" : "Load newer history"}
+						</button>
+					) : null}
 					{index >= 0 ? (
 						<span title="Loaded versions newer than the selected snapshot">
 							{index} newer

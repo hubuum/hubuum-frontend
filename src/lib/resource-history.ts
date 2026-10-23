@@ -190,7 +190,10 @@ export function historyInstant(value: string): bigint | null {
 	return BigInt(seconds) * 1_000_000n + BigInt((match[2] ?? "").padEnd(9, "0"));
 }
 
-export function versionContains(record: HistoryRecord, at: string): boolean {
+export function versionContains(
+	record: Pick<HistoryRecord, "op" | "valid_from" | "valid_to">,
+	at: string,
+): boolean {
 	if (isDeletedVersion(record)) return false;
 	const point = historyInstant(at);
 	const start = historyInstant(record.valid_from);

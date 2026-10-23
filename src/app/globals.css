@@ -5781,6 +5781,7 @@ button.object-column-sort:focus-visible {
 	font-size: 0.85rem;
 	font-weight: 600;
 	background: var(--bg-strong);
+	color: var(--ink);
 	border: 1px solid var(--line);
 	border-radius: 6px;
 	box-shadow: 0 2px 0 var(--line);

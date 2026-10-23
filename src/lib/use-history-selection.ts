@@ -3,14 +3,15 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HistoryRecord } from "@/lib/api/events";
+import type { HistoryEntry } from "@/lib/history-timeline";
 
-export function useHistorySelection() {
+export function useHistorySelection<T extends HistoryEntry = HistoryRecord>() {
 	const search = useSearchParams();
 	const pathname = usePathname();
 	const selectionUrl = `${pathname}?${search.toString()}`;
 	const [scrollPreview, setScrollPreview] = useState<{
 		url: string;
-		record: HistoryRecord;
+		record: T;
 	} | null>(null);
 	const scrollCommit = useRef<ReturnType<typeof setTimeout> | null>(null);
 	// Back/Forward and explicit navigation must cancel an uncommitted scroll.
@@ -51,7 +52,7 @@ export function useHistorySelection() {
 		[pathname, scrollPreview],
 	);
 	const selectVersion = useCallback(
-		(record: HistoryRecord, scrolling = false) => {
+		(record: T, scrolling = false) => {
 			if (scrollCommit.current !== null) clearTimeout(scrollCommit.current);
 			if (scrolling) {
 				// Keep the snapshot responsive without writing history on every frame.

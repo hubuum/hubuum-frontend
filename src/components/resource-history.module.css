@@ -60,7 +60,6 @@
 	position: relative;
 	flex: 1;
 	min-height: 0;
-	container-type: size;
 }
 .timelineCursor {
 	position: absolute;
@@ -89,7 +88,14 @@
 .timelineEntries {
 	list-style: none;
 	margin: 0;
-	padding: calc(50cqh - 40px) 0;
+	height: 100%;
+	padding: 0;
+}
+.timelineEntries::before,
+.timelineEntries::after {
+	content: "";
+	display: block;
+	height: calc(50% - 40px);
 }
 .timelineEntries li {
 	position: relative;
@@ -207,7 +213,7 @@
 	border: 1px solid var(--line);
 	border-radius: 14px;
 	box-shadow: var(--shadow);
-	max-height: clamp(340px, 50vh, 640px);
+	height: clamp(340px, 50vh, 640px);
 	overflow: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--line) var(--card);

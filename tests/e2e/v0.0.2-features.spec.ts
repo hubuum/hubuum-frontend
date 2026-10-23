@@ -764,7 +764,7 @@ test.describe("v0.0.3 server features", () => {
 				groupedTable.getByRole("columnheader", { name: /Count/ }),
 			).toHaveAttribute("aria-sort", "descending");
 			await groupedTable
-				.getByRole("button", { name: /Shared · Shared hostname/ })
+				.getByRole("button", { name: "Shared · Shared hostname", exact: true })
 				.click();
 			await expect(
 				groupedTable.getByRole("columnheader", {
@@ -961,26 +961,16 @@ test.describe("v0.0.3 server features", () => {
 				.first();
 			await expect(historyRow).toBeVisible();
 			await historyRow.click();
-			const historyDialog = page.getByRole("dialog", {
-				name: /History version #/,
-			});
-			await expect(historyDialog.getByText("Stored state")).toBeVisible();
 			await expect(
-				historyDialog.getByRole("button", {
-					name: "Previous history version",
-				}),
-			).toBeDisabled();
-			const nextHistoryVersion = historyDialog.getByRole("button", {
-				name: "Next history version",
-			});
-			await expect(nextHistoryVersion).toBeEnabled();
-			await page.keyboard.press("ArrowRight");
-			await expect(
-				historyDialog.getByRole("button", {
-					name: "Previous history version",
-				}),
-			).toBeEnabled();
-			await historyDialog.getByRole("button", { name: "Close dialog" }).click();
+				page.getByRole("region", { name: "Selected snapshot" }),
+			).toContainText("e2e-host-updated");
+			const versions = page
+				.getByRole("navigation", { name: "History timeline" })
+				.getByRole("button", { name: /^View version / });
+			await expect(versions.first()).toHaveAttribute("aria-current", "step");
+			await versions.first().press("ArrowDown");
+			await expect(versions.nth(1)).toHaveAttribute("aria-current", "step");
+			await page.getByRole("link", { name: "Back to live", exact: true }).click();
 
 			await page.goto("/audit");
 			const globalAuditRow = page
