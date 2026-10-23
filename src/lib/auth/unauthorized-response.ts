@@ -17,7 +17,9 @@ export async function handleUnauthorizedResponse(
 		clearSessionCookie(response, request);
 		return response;
 	}
-	await response.body?.cancel();
+	void response.body?.cancel().catch(() => {
+		// Cleanup must not hide the retry response if the upstream disconnected.
+	});
 	// Keep the browser's global 401 handler from signing out a rotated session.
 	// Mutations are not replayed: the caller must explicitly retry the operation.
 	const headers = new Headers({ "Cache-Control": "private, no-store" });

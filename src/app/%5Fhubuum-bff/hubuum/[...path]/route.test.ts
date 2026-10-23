@@ -155,6 +155,22 @@ describe("generic BFF proxy admin gate", () => {
 		},
 	);
 
+	it("preserves a rotated session even if the rejected upstream body fails to cancel", async () => {
+		mocks.invalidateRejectedSession.mockResolvedValueOnce(false);
+		const cancel = vi.fn(() => Promise.reject(new Error("Upstream disconnected")));
+		mocks.fetch.mockResolvedValue(
+			new Response(new ReadableStream({ cancel }), { status: 401 }),
+		);
+		const response = await GET(
+			request("api/v1/classes/1"),
+			routeContext(["api", "v1", "classes", "1"]),
+		);
+		expect(response.status).toBe(409);
+		expect(await response.json()).toMatchObject({ error: "session_rotated" });
+		expect(cancel).toHaveBeenCalledOnce();
+		expect(mocks.clearSessionCookie).not.toHaveBeenCalled();
+	});
+
 	it("preserves resource names containing an already decoded percent sign", async () => {
 		mocks.fetch.mockResolvedValue(Response.json({ name: "100%" }));
 		const response = await GET(
