@@ -176,7 +176,9 @@ async function prepare(
 function versionMarker(page: Page, id: number) {
 	return page
 		.getByRole("navigation", { name: "History timeline" })
-		.getByRole("button", { name: new RegExp(`^View version .*#${id} UTC$`) });
+		.getByRole("button", {
+			name: new RegExp(`^View version .*#${id}(?: · Object #\\d+)? UTC$`),
+		});
 }
 
 async function expectSelected(page: Page, id: number) {
@@ -433,7 +435,8 @@ test.describe("resource history", () => {
 		await expect(
 			page.getByRole("status", { name: "History search results" }),
 		).toContainText("2 matching snapshots loaded");
-		await page.getByRole("button", { name: "Load more snapshots" }).click();
+		await expectSelected(page, 205);
+		await page.getByRole("button", { name: "Load more history" }).click();
 		await expect(
 			page.getByRole("status", { name: "History search results" }),
 		).toContainText("3 matching snapshots loaded");
@@ -443,17 +446,19 @@ test.describe("resource history", () => {
 			expect(request.searchParams.get("include_total")).toBe("false");
 		}
 		await expect(
-			page.getByRole("button", { name: "Load more snapshots" }),
+			page.getByRole("button", { name: "Load more history" }),
 		).toHaveCount(0);
+		await versionMarker(page, 204).click();
+		await expectSelected(page, 204);
 		await expect(
-			page.getByRole("cell", { name: "Deleted", exact: true }),
-		).toBeVisible();
+			page.getByRole("region", { name: "Selected snapshot" }),
+		).toContainText("deletion of object #12");
 		await page.screenshot({
 			path: testInfo.outputPath("object-name-history.png"),
 			fullPage: true,
 		});
 		await page
-			.getByRole("button", { name: "View snapshot #204 for object #12" })
+			.getByRole("button", { name: "Version details and provenance" })
 			.click();
 		const dialog = page.getByRole("dialog", { name: "History version #204" });
 		await expect(dialog).toContainText("Stored state");
@@ -477,12 +482,107 @@ test.describe("resource history", () => {
 					.analyze()
 			).violations,
 		).toEqual([]);
-		await page
-			.getByRole("button", { name: "View snapshot #205 for object #27" })
-			.click();
+		await versionMarker(page, 205).click();
 		await expect(
 			page.getByRole("link", { name: "Browse identity history" }),
 		).toHaveAttribute("href", "/objects/3/27/history");
+	});
+
+	test("name timeline loads older pages, restores bookmarked selections and resets on a new search", async ({
+		page,
+	}) => {
+		await prepare(page, { many: true });
+		const requests: URL[] = [];
+		await page.route(`**${prefix}/objects/history?**`, async (route) => {
+			requests.push(new URL(route.request().url()));
+			await route.fallback();
+		});
+		await page.goto("/classes/3/objects/history?name=Edge+router");
+		await expectSelected(page, 1059);
+		const viewport = page
+			.getByRole("navigation", { name: "History timeline" })
+			.locator('[class*="timelineViewport"]');
+		await viewport.evaluate((element) => {
+			element.scrollTop = 24 * 80;
+		});
+		await expectSelected(page, 1035);
+		await expect(versionMarker(page, 1010)).toBeAttached();
+		await versionMarker(page, 1035).focus();
+		await page.keyboard.press("ArrowDown");
+		await expectSelected(page, 1034);
+		await expect
+			.poll(() => new URL(page.url()).searchParams.get("version"))
+			.toBe("1034");
+		const at = new URL(page.url()).searchParams.get("at");
+		expect(at).toBe(new Date(Date.UTC(2026, 7, 1, 34)).toISOString());
+		requests.length = 0;
+		await page.reload();
+		await expectSelected(page, 1034);
+		expect(requests.some((url) => url.searchParams.has("cursor"))).toBe(true);
+		await page.getByLabel("Exact historical object name").fill("new name");
+		await page
+			.getByRole("button", { name: "Search history", exact: true })
+			.click();
+		await expectSelected(page, 1059);
+		expect(requests.at(-1)?.searchParams.has("cursor")).toBe(false);
+		expect(new URL(page.url()).searchParams.get("name")).toBe("new name");
+		await page.goBack();
+		await expectSelected(page, 1034);
+		await expect(page.getByLabel("Exact historical object name")).toHaveValue(
+			"Edge router",
+		);
+		requests.length = 0;
+		await page.goto("/classes/3/objects/history?name=Edge+router&version=9999");
+		await expect(
+			page
+				.getByRole("region", { name: "Object history by name" })
+				.getByRole("alert"),
+		).toContainText("selected snapshot is unavailable");
+		expect(requests).toHaveLength(1);
+		await page
+			.getByRole("button", { name: "Show latest visible entry" })
+			.click();
+		await expectSelected(page, 1059);
+	});
+
+	test("name bookmarks stop on a failed older page and allow retrying", async ({
+		page,
+	}) => {
+		let denyOlder = true;
+		let requests = 0;
+		await page.route(`**${prefix}/objects/history?**`, (route) => {
+			requests++;
+			const older = new URL(route.request().url()).searchParams.has("cursor");
+			return route.fulfill(
+				older && denyOlder
+					? { status: 403, json: { message: "History permission denied" } }
+					: {
+							json: older ? records.slice(2) : records.slice(0, 2),
+							headers: older ? {} : { "X-Next-Cursor": "older" },
+						},
+			);
+		});
+		await page.goto(
+			`/classes/3/objects/history?${new URLSearchParams({ name: base.name, version: "101", at: instants[0] })}`,
+		);
+		await expect(
+			page
+				.getByRole("region", { name: "Object history by name" })
+				.getByRole("alert"),
+		).toContainText("History permission denied");
+		await page.waitForTimeout(300);
+		expect(requests).toBe(2);
+		await expect(
+			page.getByText("The selected snapshot is unavailable", { exact: false }),
+		).toHaveCount(0);
+		denyOlder = false;
+		await page.getByRole("button", { name: "Retry loading history" }).click();
+		await expectSelected(page, 101);
+		await expect(
+			page
+				.getByRole("region", { name: "Object history by name" })
+				.getByRole("alert"),
+		).toHaveCount(0);
 	});
 
 	test("name history preserves literal searches, resets pagination and follows browser navigation", async ({
@@ -1122,74 +1222,88 @@ test.describe("resource history", () => {
 		await expectSelected(page, 1058);
 	});
 
-	test("rapid scrolling near the end settles the URL without flooding browser history", async ({
-		page,
-	}) => {
-		const errors: string[] = [];
-		page.on("pageerror", (error) => errors.push(error.message));
-		await prepare(page, { many: true });
-		await page.goto(objectPath);
-		await expectSelected(page, 1059);
-		const timeline = page.getByRole("navigation", { name: "History timeline" });
-		await timeline.getByRole("button", { name: "Load more history" }).click();
-		await expect(versionMarker(page, 1010)).toBeAttached();
-		await timeline.getByRole("button", { name: "Load more history" }).click();
-		await expect(versionMarker(page, 1000)).toBeAttached();
-		await page.getByRole("button", { name: "Pin as baseline" }).click();
-		await page.evaluate(() => {
-			const writes: number[] = [];
-			Object.assign(window, { historyScrollWrites: writes });
-			for (const method of ["pushState", "replaceState"] as const) {
-				const original = window.history[method].bind(window.history);
-				window.history[method] = (...args) => {
-					writes.push(Date.now());
-					if (
-						writes.filter((time) => time > Date.now() - 10_000).length > 100
-					) {
-						throw new DOMException(
-							"History update rate exceeded",
-							"SecurityError",
-						);
-					}
-					return original(...args);
-				};
-			}
-		});
-		const viewport = timeline.locator('[class*="timelineViewport"]');
-		await viewport.evaluate(async (element) => {
-			for (let step = 0; step < 140; step++) {
-				element.scrollTop = (step % 2 ? 57 : 58) * 80;
-				await new Promise<void>((resolve) =>
-					requestAnimationFrame(() => resolve()),
+	for (const mode of ["ID", "name"] as const) {
+		test(`rapid ${mode} history scrolling settles the URL without flooding browser history`, async ({
+			page,
+		}) => {
+			const errors: string[] = [];
+			page.on("pageerror", (error) => errors.push(error.message));
+			await prepare(page, { many: true });
+			await page.goto(
+				mode === "ID"
+					? objectPath
+					: "/classes/3/objects/history?name=Edge+router",
+			);
+			await expectSelected(page, 1059);
+			const timeline = page.getByRole("navigation", {
+				name: "History timeline",
+			});
+			await timeline.getByRole("button", { name: "Load more history" }).click();
+			await expect(versionMarker(page, 1010)).toBeAttached();
+			await timeline.getByRole("button", { name: "Load more history" }).click();
+			await expect(versionMarker(page, 1000)).toBeAttached();
+			if (mode === "ID")
+				await page.getByRole("button", { name: "Pin as baseline" }).click();
+			await page.evaluate(() => {
+				const writes: number[] = [];
+				Object.assign(window, { historyScrollWrites: writes });
+				for (const method of ["pushState", "replaceState"] as const) {
+					const original = window.history[method].bind(window.history);
+					window.history[method] = (...args) => {
+						writes.push(Date.now());
+						if (
+							writes.filter((time) => time > Date.now() - 10_000).length > 100
+						) {
+							throw new DOMException(
+								"History update rate exceeded",
+								"SecurityError",
+							);
+						}
+						return original(...args);
+					};
+				}
+			});
+			const viewport = timeline.locator('[class*="timelineViewport"]');
+			await viewport.evaluate(async (element) => {
+				for (let step = 0; step < 140; step++) {
+					element.scrollTop = (step % 2 ? 57 : 58) * 80;
+					await new Promise<void>((resolve) =>
+						requestAnimationFrame(() => resolve()),
+					);
+				}
+			});
+			await expectSelected(page, 1002);
+			await expect
+				.poll(() => new URL(page.url()).searchParams.get("version"))
+				.toBe("1002");
+			expect(
+				await page.evaluate(
+					() =>
+						(window as unknown as { historyScrollWrites: number[] })
+							.historyScrollWrites.length,
+				),
+			).toBeLessThan(20);
+			if (mode === "ID")
+				expect(new URL(page.url()).searchParams.get("pin")).toBe("1059");
+			else
+				expect(new URL(page.url()).searchParams.get("name")).toBe(
+					"Edge router",
 				);
-			}
+			await page.goBack();
+			await expectSelected(page, 1059);
+			await page.goForward();
+			await expectSelected(page, 1002);
+			// A pending scroll must not overwrite Back navigation when its timer fires.
+			await viewport.evaluate((element) => {
+				element.scrollTop = 56 * 80;
+			});
+			await expectSelected(page, 1003);
+			await page.goBack();
+			await page.waitForTimeout(350);
+			await expectSelected(page, 1059);
+			expect(errors).toEqual([]);
 		});
-		await expectSelected(page, 1002);
-		await expect
-			.poll(() => new URL(page.url()).searchParams.get("version"))
-			.toBe("1002");
-		expect(
-			await page.evaluate(
-				() =>
-					(window as unknown as { historyScrollWrites: number[] })
-						.historyScrollWrites.length,
-			),
-		).toBeLessThan(20);
-		expect(new URL(page.url()).searchParams.get("pin")).toBe("1059");
-		await page.goBack();
-		await expectSelected(page, 1059);
-		await page.goForward();
-		await expectSelected(page, 1002);
-		// A pending scroll must not overwrite Back navigation when its timer fires.
-		await viewport.evaluate((element) => {
-			element.scrollTop = 56 * 80;
-		});
-		await expectSelected(page, 1003);
-		await page.goBack();
-		await page.waitForTimeout(350);
-		await expectSelected(page, 1059);
-		expect(errors).toEqual([]);
-	});
+	}
 
 	test("a deep fan follows continuous timeline scrolling and loads older pages automatically", async ({
 		page,

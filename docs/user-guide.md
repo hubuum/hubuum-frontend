@@ -429,12 +429,18 @@ Versions recorded after a rename away are excluded; renaming back adds matching
 versions again. Spaces, numeric names, Unicode, and an explicitly submitted empty
 name are literal values. Identical names in different classes remain separate.
 
-**Load more snapshots** continues the server's ordered results. **View snapshot**
-shows the full returned state and provenance, including deletion records.
+Name history uses the same scrollable timeline and snapshot fan as history by
+ID. Scroll, select a date marker, or use Up/Down and Home/End to inspect snapshots.
+Older entries load near the end; **Load more history** is also available.
+Markers and snapshot cards identify the object ID, including deleted objects
+and replacements. **Version details and provenance** shows the full returned
+state, including deletion records.
 **Browse identity history** opens that object's full history across all its
 names for comparisons and restoration. It never restores into a different object
-that happens to have the same name. The name search is preserved in the URL and
-browser history. Changing names starts a separate result set.
+that happens to have the same name. The name search and selected version are
+preserved in the URL and browser history. Reopening a selected version loads older
+pages as needed. Changing names starts a separate result set and clears the
+selection.
 
 This requires the server's exact-name object history endpoint
 ([server #471](https://github.com/hubuum/hubuum/issues/471), implemented in

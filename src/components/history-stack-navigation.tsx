@@ -22,7 +22,8 @@ export function historyTime(value: string): string {
 
 function summary(record: HistoryRecord, earlier?: HistoryRecord): string {
 	if (isDeletedVersion(record)) return "Deleted";
-	if (!earlier || isDeletedVersion(earlier)) return record.op;
+	if (!earlier || earlier.id !== record.id || isDeletedVersion(earlier))
+		return record.op;
 	const changes = compareSnapshots(
 		snapshotFields(earlier),
 		snapshotFields(record),
@@ -43,6 +44,7 @@ export function HistoryStackNavigation({
 	onSelect,
 	loadOlder,
 	loadingOlder,
+	showObjectIds = false,
 	children,
 }: {
 	records: HistoryRecord[];
@@ -50,6 +52,7 @@ export function HistoryStackNavigation({
 	onSelect: (record: HistoryRecord, scrolling?: boolean) => void;
 	loadOlder?: () => void;
 	loadingOlder: boolean;
+	showObjectIds?: boolean;
 	children: React.ReactNode;
 }) {
 	const timelineRef = useRef<HTMLDivElement>(null);
@@ -194,6 +197,7 @@ export function HistoryStackNavigation({
 											{historyTime(record.valid_from)} UTC
 										</time>{" "}
 										· #{record.history_id}
+										{showObjectIds ? ` · Object #${record.id}` : null}
 									</span>
 									{layer === 0 ? (
 										<span className={styles.fanSummary}>
@@ -301,6 +305,9 @@ export function HistoryStackNavigation({
 												timeZone: "UTC",
 											}).format(new Date(record.valid_from))}{" "}
 											· #{record.history_id}
+											{showObjectIds ? (
+												<span> · Object #{record.id}</span>
+											) : null}
 										</small>
 										<span className="sr-only"> UTC</span>
 									</button>
