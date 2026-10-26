@@ -1,5 +1,9 @@
 [
   {
+    "version": "v0.0.24",
+    "source_sha": "7eb668360a8573eae28e708dd6677a30be7a51a8"
+  },
+  {
     "version": "v0.0.23",
     "source_sha": "66037fe7a19d6345f8d12bf1adb743221ee3787e"
   },
