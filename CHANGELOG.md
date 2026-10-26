@@ -26,7 +26,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Wrap long resource names so detail pages remain usable on narrow screens.
-
+- Label retained suggestions with their original preset separately from the
+  controls for generating a new suggestion.
 - Preserve literal property names and array traversal throughout field selection,
   JSON Pointer generation, template insertion, and autocomplete.
 

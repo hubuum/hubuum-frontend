@@ -83,6 +83,10 @@ export function SchemaSuggestionPanel({
 		isTerminalTaskStatus(task.data.status) &&
 		task.data.status !== "succeeded";
 	const error = submit.error ?? task.error ?? report.error;
+	const reportPreset =
+		SCHEMA_PROFILE_PRESETS.find(
+			(option) => option.value === (report.data?.options.preset ?? "balanced"),
+		)?.label ?? "Unknown";
 	return (
 		<section className="card stack" aria-labelledby={`${id}-title`}>
 			<div>
@@ -102,7 +106,9 @@ export function SchemaSuggestionPanel({
 			>
 				<div className="action-row">
 					<label className="control-field">
-						<span>Suggestion preset</span>
+						<span>
+							{taskId ? "Preset for a new suggestion" : "Suggestion preset"}
+						</span>
 						<select
 							value={preset}
 							onChange={(event) =>
@@ -186,6 +192,7 @@ export function SchemaSuggestionPanel({
 			) : null}
 			{report.data && report.isSuccess && task.isSuccess && matchesClass ? (
 				<div className="stack">
+					<h3>Suggestion result · {reportPreset} preset</h3>
 					<p className="info-banner">
 						Reviewed {report.data.sampled_objects} authorized objects with a
 						limit of {report.data.effective_sample_limit}.{" "}
@@ -196,8 +203,8 @@ export function SchemaSuggestionPanel({
 					</p>
 					{report.data.status === "blocked" ? (
 						<p role="status">
-							The selected inference policy found conflicting evidence. Review
-							the findings or try Balanced or Expansive.
+							This suggestion's inference policy found conflicting evidence.
+							Review the findings or try Balanced or Expansive.
 						</p>
 					) : null}
 					{report.data.status === "insufficient" ? (

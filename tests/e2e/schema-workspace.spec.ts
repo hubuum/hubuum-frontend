@@ -643,9 +643,18 @@ test.describe("schema workspace", () => {
 		await page.goto("/classes/10/schema?profile=71");
 		await expect(
 			page.getByText(
-				"The selected inference policy found conflicting evidence.",
+				"This suggestion's inference policy found conflicting evidence.",
 				{ exact: false },
 			),
+		).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: "Suggestion result · Strict preset" }),
+		).toBeVisible();
+		await page
+			.getByLabel("Preset for a new suggestion")
+			.selectOption("expansive");
+		await expect(
+			page.getByRole("heading", { name: "Suggestion result · Strict preset" }),
 		).toBeVisible();
 		await page.getByText("Inference findings (1)", { exact: true }).click();
 		await expect(
