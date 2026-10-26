@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
+| `main` (unreleased) | `v0.0.21` | `ghcr.io/hubuum/hubuum-server:v0.0.21` |
+| `v0.0.24` | `v0.0.21` | `ghcr.io/hubuum/hubuum-server:v0.0.21` |
 | `v0.0.23` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.22` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.21` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
@@ -44,6 +45,34 @@ Frontend `v0.0.16` retains its Server `v0.0.15` target at
 Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
 A separate scheduled workflow follows the moving backend `:main` image.
+
+## Frontend v0.0.24
+
+The release targets Server v0.0.21 and its 261-operation, 401-schema contract.
+OpenAPI source revision: `19db1547936f9a3844544085243e6d64b8e318a0`.
+OpenAPI SHA-256: `82d4ed17ab48ed45f7894739bbe3fe3ad2750462b394824b8b68da7ad6198a89`.
+Immutable image: `ghcr.io/hubuum/hubuum-server:v0.0.21@sha256:a5e1ad7a17281eefb4c1ed4da172a80bf815840f78bde6390d1e42bb2d51e0b6`.
+On 2026-10-26, the canonical published-image checks passed all 110 live API
+checks, all 198 authenticated smoke cases without retries, all 41 full-session
+cases, and all three live credential/restore cases. These cover bounded field
+discovery, all three suggestion presets, review and explicit activation,
+short-lived access tokens, and approved restore completion after session expiry.
+
+Local verification also passed 1,213 unit tests, 99 tooling tests, lint,
+typechecking, production build, bundle budgets, dependency freshness, production
+audit, 29 public browser cases, and eight unchanged visual baselines. Helm
+lint, rendering, and packaging passed. The production frontend image passed
+non-root, read-only health checks and the discovery/template insertion workflow
+against the reviewed server candidate, including restrictive public-asset
+permissions. Docker packaging and the exact merged commit's release-readiness
+workflow repeat the deployment and authenticated checks before publication.
+
+Class pages expose bounded discovery, source filters, structured paths, and
+sample limitations. Schema workspaces support three inference presets, retained
+report links, readable findings, explicit proposal staging, whole-class impact,
+and activation. Field pickers preserve literal property and array identity.
+Desktop and 390-pixel mobile candidate reviews covered labels, wrapping, and
+blocked reports; final release verification records the combined dependency set.
 
 ## Frontend v0.0.23 candidate
 

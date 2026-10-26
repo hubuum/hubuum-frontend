@@ -1,7 +1,7 @@
 # Deploy the frontend
 
 Use the [Compose quick start](quickstart-compose.md) for evaluation against an
-existing server. The [server single-host installer](https://hubuum.github.io/hubuum/v0.0.20/deployment/)
+existing server. The [server single-host installer](https://hubuum.github.io/hubuum/v0.0.21/deployment/)
 provisions a complete stack. For Kubernetes and OKD, use the Helm instructions
 below and review [configuration](configuration.md).
 

@@ -15,7 +15,6 @@ import { IncludeRows } from "@/components/include-rows";
 import { ObjectDirectoryLookup } from "@/components/object-directory-lookup";
 import { ReportHtmlPreview } from "@/components/report-html-preview";
 import { ReportQueryBuilder } from "@/components/report-query-builder";
-import { TemplateCodeEditor } from "@/components/template-code-editor";
 import {
 	fetchRelatedClassPaths,
 	relatedClassPathsQueryKey,
@@ -104,6 +103,14 @@ import {
 	newIncludeRow,
 } from "@/lib/report-include";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+
+const TemplateCodeEditor = dynamic(
+	() =>
+		import("@/components/template-code-editor").then(
+			(module) => module.TemplateCodeEditor,
+		),
+	{ loading: () => <p role="status">Loading template editor…</p> },
+);
 
 const ConfigurationHistory = dynamic(
 	() =>

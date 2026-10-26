@@ -6,6 +6,7 @@ test.use({ trace: "off" });
 test("discovers structured fields and selects literal properties and array inputs", async ({
 	page,
 }) => {
+	test.setTimeout(60_000);
 	test.skip(
 		!process.env.E2E_USERNAME || !process.env.E2E_PASSWORD,
 		"Requires an authenticated test session.",
@@ -42,6 +43,7 @@ test("discovers structured fields and selects literal properties and array input
 	const collection = await collectionResponse.json();
 	let classId: number | undefined;
 	let objectId: number | undefined;
+	let templateId: number | undefined;
 	try {
 		const classResponse = await page.request.post(`${prefix}/classes`, {
 			headers,
@@ -144,7 +146,48 @@ test("discovers structured fields and selects literal properties and array input
 			}),
 		).toBeVisible();
 		expect(fullObjectReads).toEqual([]);
+
+		const templateResponse = await page.request.post(
+			`${prefix}/export-templates`,
+			{
+				headers,
+				data: {
+					name: `discovery_template_${suffix}`,
+					description: "Inventory-backed template editor",
+					collection_id: collection.id,
+					class_id: classId,
+					kind: "export",
+					scope_kind: "objects_in_class",
+					content_type: "text/plain",
+					template: "Initial template",
+				},
+			},
+		);
+		expect(templateResponse.status()).toBe(201);
+		templateId = (await templateResponse.json()).id;
+		page.once("dialog", (dialog) => dialog.accept());
+		await page.goto(`/exports/templates/${templateId}`);
+		const body = page.getByRole("textbox", { name: "Template body" });
+		await expect(body).toContainText("Initial template");
+		await page.getByText("Insert a data field", { exact: true }).click();
+		await page
+			.getByTitle('Insert {{ item.data["a.b"] }}', { exact: true })
+			.click();
+		await expect(body).toContainText('{{ item.data["a.b"] }}');
+		await page
+			.getByTitle("Insert {{ item.data.values[0] }}", { exact: true })
+			.click();
+		await expect(body).toContainText("{{ item.data.values[0] }}");
+		await page.getByRole("tab", { name: /1\. Details/ }).click();
+		await page.getByRole("tab", { name: /6\. Design/ }).click();
+		await expect(body).toContainText('{{ item.data["a.b"] }}');
+		await expect(body).toContainText("{{ item.data.values[0] }}");
+		expect(fullObjectReads).toEqual([]);
 	} finally {
+		if (templateId)
+			await page.request.delete(`${prefix}/export-templates/${templateId}`, {
+				headers,
+			});
 		if (objectId && classId)
 			await page.request.delete(`${prefix}/classes/${classId}/${objectId}`, {
 				headers,

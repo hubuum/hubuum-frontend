@@ -6,6 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.24] - 2026-10-26
+
+This release targets Hubuum Server v0.0.21. Upgrade the server first and follow
+its migration, worker, restore-executor, and writable temporary-disk requirements.
+
 ### Added
 
 - Discover fields on class pages with source filters, structured paths, sample
@@ -18,6 +23,9 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Breaking server target:** require Server v0.0.21 for inventory-backed field
+  pickers and schema suggestions. Upgrade the server before the frontend.
+
 - Feed computed-field and template pickers from the server field inventory while
   retaining declared schema fields. Load full object samples only for previews.
 - Update TanStack Query to 5.105.0, Biome to 2.6.3, Orval to 8.45.0, and
@@ -25,6 +33,10 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Keep bundled public assets readable by the non-root container user when the
+  image is built from a checkout with private file permissions.
+- Load the template code editor when its workflow step opens to keep initial
+  route downloads within the existing performance budget.
 - Wrap long resource names so detail pages remain usable on narrow screens.
 - Label retained suggestions with their original preset separately from the
   controls for generating a new suggestion.
@@ -920,7 +932,8 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.23...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.24...HEAD
+[0.0.24]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.23...v0.0.24
 [0.0.23]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.22...v0.0.23
 [0.0.22]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.21...v0.0.22
 [0.0.21]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.20...v0.0.21
