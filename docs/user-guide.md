@@ -651,6 +651,49 @@ includes names, descriptions, collection selectors, schema validation, and JSON
 schema. Opening one focuses its editor immediately, and Escape restores the
 draft. Permission-gated hierarchy moves remain a separate collection operation.
 
+## Discover fields and suggest schemas
+
+Open a class and use **Discover fields** to search object data, shared computed
+values, and personal computed values. Choose a sample limit of 1–250 and a depth
+of 0–32, then refresh. Object counts and value occurrences describe the authorized
+sample; repeated array items can contribute several occurrences. Truncation and
+computed evaluation errors remain visible. Example values are bounded previews.
+Expand **Structured path** to distinguish a literal property such as `a.b` from
+nested properties, or a property named `[#]` from array traversal.
+
+The computed-field editor and export-template editor combine declared schema
+fields with this server inventory. Refreshing fields does not download entire
+object documents. Computed-field inputs require an explicit index for array
+items; template inserts start with `[0]`, which you can replace with the index
+you need. Computed-field previews load sample objects only when you open Preview.
+
+Choose **Suggest a schema** from the class or open **Edit schema → Schema**.
+Select a preset and sample limit, then **Generate suggestion**:
+
+| Preset | Result |
+| --- | --- |
+| Balanced | Preserve observed types, require consistently present fields, allow extra fields. |
+| Strict | Reject mixed unrelated types, require consistently present fields, deny extra fields. |
+| Expansive | Preserve observed types and make fields optional; allow extra fields. |
+
+Inference uses authorized object data, excluding computed values. Null and
+missing properties remain distinct. Review the schema, findings, and sample
+limits before choosing **Use suggestion in proposal**. This only fills an
+unsaved draft; it does not stage or activate a policy. Unsaved edits require
+confirmation before replacement. Continue through Validation and Review & test,
+run whole-class impact analysis, and activate explicitly when compatible.
+
+A successful sample does not prove that every object is compatible. Blocked or
+insufficient reports cannot be used as proposals. Reports expire after 24 hours;
+expired or inaccessible reports require a new suggestion or restored access.
+The page URL retains the profiling task so you can reload or return later.
+**Tasks → Schema suggestion → Review schema suggestion** opens the same report.
+Running profiling tasks support cancellation through the standard task controls.
+Class read access permits discovery and profiling; staging and administrative
+impact analysis retain their existing permission requirements.
+
+## Edit and activate schemas
+
 On server builds with versioned schemas, the class page shows the current schema,
 write enforcement, and existing-object validation state. **Edit schema** opens
 **Schema → Validation → Review & test → Activate** directly in the editor.

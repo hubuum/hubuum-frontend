@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.20
+ * OpenAPI spec version: 0.0.21
  */
 
 export type TaskKind = typeof TaskKind[keyof typeof TaskKind];
@@ -16,4 +16,5 @@ export const TaskKind = {
   reindex: 'reindex',
   remote_call: 'remote_call',
   schema_validation: 'schema_validation',
+  schema_profiling: 'schema_profiling',
 } as const;

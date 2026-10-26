@@ -1,10 +1,15 @@
 import Link from "next/link";
 import type { TaskResponse } from "@/lib/api/generated/models";
-import { taskMetadataFields, taskSchemaReportHref } from "@/lib/task-metadata";
+import {
+	taskMetadataFields,
+	taskSchemaReportHref,
+	taskSchemaSuggestionHref,
+} from "@/lib/task-metadata";
 
 export function TaskDiscoveryDetails({ task }: { task: TaskResponse }) {
 	const fields = taskMetadataFields(task);
 	const reportHref = taskSchemaReportHref(task);
+	const suggestionHref = taskSchemaSuggestionHref(task);
 	return (
 		<article
 			className="card stack panel-card"
@@ -40,6 +45,17 @@ export function TaskDiscoveryDetails({ task }: { task: TaskResponse }) {
 					Schema work status describes the recorded run. It does not indicate
 					whether its findings still apply to the current schema.
 				</p>
+			) : null}
+			{suggestionHref ? (
+				<div className="stack">
+					<p className="muted">
+						Suggestions describe an authorized sample and expire after 24 hours.
+						Review the candidate before staging and checking the whole class.
+					</p>
+					<Link className="link-chip" href={suggestionHref}>
+						Review schema suggestion
+					</Link>
+				</div>
 			) : null}
 			{reportHref ? (
 				<a

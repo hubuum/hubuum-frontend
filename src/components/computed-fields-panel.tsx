@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-
+import { FieldDiscoverySummary } from "@/components/field-discovery-panel";
 import {
 	GuidedFlowContinue,
 	GuidedFlowPanel,
@@ -31,6 +31,10 @@ import {
 	rebuildSharedComputedFields,
 	updateComputedField,
 } from "@/lib/api/computed-fields";
+import {
+	classFieldInventoryQueryKey,
+	fetchClassFieldInventory,
+} from "@/lib/api/field-discovery";
 import type {
 	ClassComputationState,
 	ComputedFieldDefinition,
@@ -53,7 +57,9 @@ import {
 import { useConfirm } from "@/lib/confirm-context";
 import {
 	type DiscoveredJsonField,
-	discoverJsonFields,
+	discoveredFieldKey,
+	inventoryDataFields,
+	structuredFieldPath,
 } from "@/lib/json-field-discovery";
 
 const RESULT_TYPE_LABELS: Record<ComputedResultType, string> = {
@@ -351,24 +357,21 @@ function ComputedFieldEditor({
 	const objectSamplesQuery = useQuery({
 		queryKey: classObjectSamplesQueryKey(classId),
 		queryFn: () => fetchClassObjectSamples(classId),
+		enabled: activeStep === "preview" && previewMode === "object",
 		staleTime: CLASS_OBJECT_SAMPLES_STALE_TIME,
 		gcTime: CLASS_OBJECT_SAMPLES_GC_TIME,
 	});
 	const objects = objectSamplesQuery.data ?? [];
-	const schemaFields = useMemo(
-		() => discoverJsonFields(jsonSchema, []),
-		[jsonSchema],
-	);
-	const usesSchemaFields = schemaFields.length > 0;
+	const inventoryQuery = useQuery({
+		queryKey: classFieldInventoryQueryKey(classId),
+		queryFn: ({ signal }) =>
+			fetchClassFieldInventory(classId, undefined, signal),
+		retry: false,
+	});
+	const sampleCount = inventoryQuery.data?.sampled_objects ?? 0;
 	const discoveredFields = useMemo(
-		() =>
-			usesSchemaFields
-				? schemaFields
-				: discoverJsonFields(
-						undefined,
-						objects.map((objectItem) => objectItem.data),
-					),
-		[objects, schemaFields, usesSchemaFields],
+		() => inventoryDataFields(jsonSchema, inventoryQuery.data),
+		[jsonSchema, inventoryQuery.data],
 	);
 	const matchingFields = useMemo(() => {
 		const normalized = fieldSearch.trim().toLocaleLowerCase();
@@ -393,7 +396,8 @@ function ComputedFieldEditor({
 			matchingFields.filter((field) => {
 				const pointer = jsonPointerFromFieldPath(
 					field.path,
-					arrayIndexes[JSON.stringify(field.path)],
+					arrayIndexes[discoveredFieldKey(field)],
+					field.structuredPath,
 				);
 				return pointer === null || !paths.includes(pointer);
 			}),
@@ -501,11 +505,15 @@ function ComputedFieldEditor({
 
 	function addField(field: DiscoveredJsonField) {
 		if (paths.length >= 16) return;
-		const key = JSON.stringify(field.path);
-		const pointer = jsonPointerFromFieldPath(field.path, arrayIndexes[key]);
+		const key = discoveredFieldKey(field);
+		const pointer = jsonPointerFromFieldPath(
+			field.path,
+			arrayIndexes[key],
+			field.structuredPath,
+		);
 		if (pointer === null || paths.includes(pointer)) return;
 		updatePaths([...paths, pointer]);
-		const indexCount = arrayItemCount(field.path);
+		const indexCount = arrayItemCount(field.path, field.structuredPath);
 		if (indexCount > 0) {
 			setArrayIndexes((current) => ({
 				...current,
@@ -665,17 +673,23 @@ function ComputedFieldEditor({
 								<div className="stack action-card-header">
 									<h4 id="available-inputs-heading">Available fields</h4>
 									<p className="muted">
-										{usesSchemaFields
-											? "Discovered from the class schema."
-											: objectSamplesQuery.isFetching
-												? "Inspecting up to 100 objects because the class has no discoverable schema fields…"
-												: `Discovered by inspecting ${objects.length} object${objects.length === 1 ? "" : "s"}.`}
+										Declared schema fields and observed data fields. Array items
+										require an explicit index.
 									</p>
 								</div>
 								<span className="computed-transfer-count">
 									{availableFields.length + (rootAvailable ? 1 : 0)} available
 								</span>
 							</div>
+							<FieldDiscoverySummary inventory={inventoryQuery.data} />
+							<button
+								type="button"
+								className="ghost"
+								disabled={inventoryQuery.isFetching}
+								onClick={() => void inventoryQuery.refetch()}
+							>
+								Refresh fields
+							</button>
 							<label className="control-field">
 								<span>Find fields</span>
 								<input
@@ -685,9 +699,9 @@ function ComputedFieldEditor({
 									placeholder="Name or type"
 								/>
 							</label>
-							{objectSamplesQuery.isError && !usesSchemaFields ? (
+							{inventoryQuery.isError ? (
 								<div className="error-banner" role="alert">
-									{objectSamplesQuery.error.message}
+									{inventoryQuery.error.message}
 								</div>
 							) : null}
 							{availableFields.length || rootAvailable ? (
@@ -711,31 +725,38 @@ function ComputedFieldEditor({
 										</li>
 									) : null}
 									{availableFields.map((field) => {
-										const key = JSON.stringify(field.path);
-										const arrayEntries = field.path.flatMap(
+										const key = discoveredFieldKey(field);
+										const arrayEntries = structuredFieldPath(field).flatMap(
 											(segment, pathIndex) =>
-												segment === "[#]"
+												segment.kind === "array_item"
 													? [
 															{
 																id: JSON.stringify(
-																	field.path.slice(0, pathIndex + 1),
+																	structuredFieldPath(field).slice(
+																		0,
+																		pathIndex + 1,
+																	),
 																),
 															},
 														]
 													: [],
 										);
-										const indexCount = arrayItemCount(field.path);
+										const indexCount = arrayItemCount(
+											field.path,
+											field.structuredPath,
+										);
 										const indexes =
 											arrayIndexes[key] ?? Array(indexCount).fill("");
 										const pointer = jsonPointerFromFieldPath(
 											field.path,
 											indexes,
+											field.structuredPath,
 										);
 										return (
 											<li key={key} className="computed-field-palette-item">
 												<div className="template-data-field">
 													<code>{field.label}</code>
-													<small>{fieldDetail(field, objects.length)}</small>
+													<small>{fieldDetail(field, sampleCount)}</small>
 												</div>
 												{indexCount > 0 ? (
 													<div className="computed-array-indexes">
@@ -774,7 +795,7 @@ function ComputedFieldEditor({
 										);
 									})}
 								</ul>
-							) : objectSamplesQuery.isFetching && !usesSchemaFields ? (
+							) : inventoryQuery.isFetching ? (
 								<p className="muted">Looking for data fields…</p>
 							) : matchingFields.length > 0 || paths.includes("") ? (
 								<div className="empty-state">

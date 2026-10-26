@@ -12,6 +12,7 @@ import {
 } from "@/components/guided-flow";
 import { SchemaCompliancePanel } from "@/components/schema-compliance-panel";
 import { SchemaRevisionHistory } from "@/components/schema-revision-history";
+import { SchemaSuggestionPanel } from "@/components/schema-suggestion-panel";
 import { SchemaWorkReport } from "@/components/schema-work-report";
 import { fetchExpandedClass } from "@/lib/api/classes";
 import type {
@@ -89,6 +90,7 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 	const confirm = useConfirm();
 	const revisionId = positiveSchemaId(params.get("revision"));
 	const taskId = positiveSchemaId(params.get("task"));
+	const profileId = positiveSchemaId(params.get("profile"));
 	const checkId = positiveSchemaId(params.get("check"));
 	const checkRevision = positiveSchemaId(params.get("check_revision"));
 	const step = schemaFlowStep(params.get("step"));
@@ -407,6 +409,37 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 		setNotice(null);
 		setDraft(draftFrom(source));
 		navigate({ step: "schema", view: "flow" });
+	}
+	async function applySuggestion(schema: unknown) {
+		if (!active) return;
+		if (
+			dirty &&
+			!(await confirm({
+				title: "Replace the unsaved proposal?",
+				description:
+					"Use this suggestion as a new draft. Your current unsaved edits will be replaced.",
+				confirmLabel: "Use suggestion",
+				tone: "danger",
+			}))
+		)
+			return;
+		setDraft({
+			input: schemaDocument(schema),
+			enforce: draft?.enforce ?? active.validate_schema,
+			base: active,
+		});
+		setError(null);
+		setNotice(
+			"Suggestion added to the proposal. Review it, choose validation, and check all existing objects before activation.",
+		);
+		navigate({
+			step: "schema",
+			view: "flow",
+			revision: null,
+			task: null,
+			check: null,
+			check_revision: null,
+		});
 	}
 	const review = useMemo(
 		() =>
@@ -811,6 +844,15 @@ export function ClassSchemaWorkspace({ classId }: { classId: number }) {
 					/>
 					{step === "schema" ? (
 						<GuidedFlowPanel idPrefix="schema-flow" stepId="schema">
+							<SchemaSuggestionPanel
+								classId={classId}
+								taskId={profileId}
+								disabled={busy || !active}
+								onTask={(id) =>
+									navigate({ profile: id, step: "schema", view: "flow" })
+								}
+								onUseCandidate={applySuggestion}
+							/>
 							{draft ? (
 								<article className="card stack">
 									<h2>Proposed schema</h2>

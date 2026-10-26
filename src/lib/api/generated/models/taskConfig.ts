@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.20
+ * OpenAPI spec version: 0.0.21
  */
 
 export interface TaskConfig {
@@ -33,6 +33,8 @@ export interface TaskConfig {
   remote_call_execution_timeout_seconds: number;
   /** @minimum 0 */
   remote_call_max_active_per_user: number;
+  /** @minimum 0 */
+  schema_profiling_execution_timeout_seconds: number;
   /** @minimum 0 */
   schema_validation_execution_timeout_seconds: number;
   /** @minimum 0 */

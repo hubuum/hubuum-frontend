@@ -468,6 +468,194 @@ test.describe("schema workspace", () => {
 		await page.waitForURL("**/app");
 	});
 
+	for (const preset of ["strict", "balanced", "expansive"] as const) {
+		test(`reviews a ${preset} suggestion before explicitly saving a revision`, async ({
+			page,
+		}) => {
+			const requests = await mockSchema(page);
+			const submitted: unknown[] = [];
+			const task = {
+				id: 71,
+				kind: "schema_profiling",
+				status: "succeeded",
+				created_at: timestamp,
+				links: {},
+				progress: {},
+				unattempted_items: 0,
+				details: {
+					schema_profiling: {
+						class_id: 10,
+						output_url: "/api/v1/classes/10/schema/profiles/71",
+					},
+				},
+			};
+			const schema = {
+				type: "object",
+				properties: { hostname: { type: "string" } },
+			};
+			await page.route(`**${schemaPath}/profiles`, (route) => {
+				submitted.push(route.request().postDataJSON());
+				expect(route.request().headers()["idempotency-key"]).toBeTruthy();
+				return route.fulfill({ status: 202, json: task });
+			});
+			await page.route("**/_hubuum-bff/hubuum/api/v1/tasks/71", (route) =>
+				route.fulfill({ json: task }),
+			);
+			await page.route(`**${schemaPath}/profiles/71`, (route) =>
+				route.fulfill({
+					json: {
+						class_id: 10,
+						status: "candidate",
+						sampled: true,
+						sampled_objects: 2,
+						effective_sample_limit: 7,
+						options: { preset, sample_limit: 7 },
+						truncation: "sample_limit",
+						findings: [],
+						sample_valid: true,
+						schema,
+					},
+				}),
+			);
+			await page.goto("/classes/10/schema");
+			await page.getByLabel("Suggestion preset").selectOption(preset);
+			await page.getByLabel("Maximum sampled objects").fill("7");
+			await page
+				.getByRole("button", { name: "Generate suggestion", exact: true })
+				.click();
+			await expect(page).toHaveURL(/profile=71/);
+			await expect(
+				page.getByText(
+					"A passing sample does not prove whole-class compatibility.",
+					{ exact: false },
+				),
+			).toBeVisible();
+			expect(submitted).toEqual([{ preset, sample_limit: 7 }]);
+			expect(requests.filter((request) => request.method === "POST")).toEqual(
+				[],
+			);
+			await page.reload();
+			await page
+				.getByRole("button", { name: "Use suggestion in proposal" })
+				.click();
+			await expect(
+				page.getByRole("textbox", {
+					name: "Proposed JSON schema",
+					exact: true,
+				}),
+			).toContainText('"hostname"');
+			expect(requests.filter((request) => request.method === "POST")).toEqual(
+				[],
+			);
+			await page
+				.getByRole("button", { name: "Continue to validation" })
+				.click();
+			await page
+				.getByRole("checkbox", { name: "Enforce validation on object writes" })
+				.check();
+			await page
+				.getByRole("button", { name: "Continue to review & test" })
+				.click();
+			await page
+				.getByRole("button", { name: "Save revision", exact: true })
+				.click();
+			await expect(page).toHaveURL(/revision=2/);
+			expect(requests.filter((request) => request.method === "POST")).toEqual([
+				{
+					method: "POST",
+					path: "/revisions",
+					body: { json_schema: schema, validate_schema: true },
+				},
+			]);
+		});
+	}
+	for (const status of [403, 404, 410]) {
+		test(`explains suggestion report status ${status} without exposing an apply action`, async ({
+			page,
+		}) => {
+			await mockSchema(page);
+			await page.route("**/_hubuum-bff/hubuum/api/v1/tasks/71", (route) =>
+				route.fulfill({
+					json: {
+						id: 71,
+						kind: "schema_profiling",
+						status: "succeeded",
+						details: { schema_profiling: { class_id: 10 } },
+					},
+				}),
+			);
+			await page.route(`**${schemaPath}/profiles/71`, (route) =>
+				route.fulfill({ status, json: { message: "Unavailable" } }),
+			);
+			await page.goto("/classes/10/schema?profile=71");
+			await expect(
+				page
+					.getByRole("region", {
+						name: "Suggest a schema from existing objects",
+					})
+					.getByRole("alert"),
+			).toContainText(
+				status === 410 ? "expired" : status === 403 ? "access" : "available",
+			);
+			await expect(
+				page.getByRole("button", { name: "Use suggestion in proposal" }),
+			).toHaveCount(0);
+			const accessibility = await new AxeBuilder({ page })
+				.include("main")
+				.analyze();
+			expect(accessibility.violations).toEqual([]);
+		});
+	}
+	test("keeps blocked suggestion findings reviewable without applying them", async ({
+		page,
+	}) => {
+		await mockSchema(page);
+		await page.route("**/_hubuum-bff/hubuum/api/v1/tasks/71", (route) =>
+			route.fulfill({
+				json: {
+					id: 71,
+					kind: "schema_profiling",
+					status: "succeeded",
+					details: { schema_profiling: { class_id: 10 } },
+				},
+			}),
+		);
+		await page.route(`**${schemaPath}/profiles/71`, (route) =>
+			route.fulfill({
+				json: {
+					class_id: 10,
+					status: "blocked",
+					sampled: true,
+					sampled_objects: 2,
+					effective_sample_limit: 100,
+					options: { preset: "strict" },
+					findings: [
+						{
+							kind: "mixed_types",
+							path: [{ property: "hostname" }],
+							types: ["string", "number"],
+						},
+					],
+					sample_valid: false,
+				},
+			}),
+		);
+		await page.goto("/classes/10/schema?profile=71");
+		await expect(
+			page.getByText(
+				"The selected inference policy found conflicting evidence.",
+				{ exact: false },
+			),
+		).toBeVisible();
+		await page.getByText("Inference findings (1)", { exact: true }).click();
+		await expect(
+			page.getByText("Observed types: string, number.", { exact: false }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "Use suggestion in proposal" }),
+		).toHaveCount(0);
+	});
+
 	test("proposes, reviews and saves a revision without activating", async ({
 		page,
 	}, testInfo) => {

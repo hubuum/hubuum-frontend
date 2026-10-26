@@ -6,6 +6,30 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Discover fields on class pages with source filters, structured paths, sample
+  bounds, per-type counts, bounded previews, and computed evaluation errors.
+- Generate Strict, Balanced, or Expansive schema suggestions, inspect findings,
+  resume from task links, and use a reviewed candidate in the existing explicit
+  staging, whole-class impact, and activation workflow.
+- Show schema profiling in task discovery, details, and cancellation controls,
+  including actionable expired and inaccessible report states.
+
+### Changed
+
+- Feed computed-field and template pickers from the server field inventory while
+  retaining declared schema fields. Load full object samples only for previews.
+- Update TanStack Query to 5.105.0, Biome to 2.6.3, Orval to 8.45.0, and
+  Markdown lint action to v25.
+
+### Fixed
+
+- Wrap long resource names so detail pages remain usable on narrow screens.
+
+- Preserve literal property names and array traversal throughout field selection,
+  JSON Pointer generation, template insertion, and autocomplete.
+
 ## [0.0.23] - 2026-10-23
 
 ### Added

@@ -1,12 +1,12 @@
 import type { ComputedOperationType } from "@/lib/api/computed-fields";
 import type { ComputedResultType } from "@/lib/api/generated/models";
 import {
+	type DataFieldPathSegment,
 	type DiscoveredJsonField,
-	JSON_ARRAY_ITEM_SEGMENT,
 	type JsonFieldType,
+	structuredFieldPath,
 } from "@/lib/json-field-discovery";
 
-const ARRAY_INDEX = /^\[(\d+)\]$/;
 const FIELD_LABEL_COLLATOR = new Intl.Collator(undefined, {
 	numeric: true,
 	sensitivity: "base",
@@ -66,8 +66,13 @@ export const COMPUTED_OPERATIONS: ComputedOperationOption[] = [
 	},
 ];
 
-export function arrayItemCount(path: readonly string[]): number {
-	return path.filter((segment) => segment === JSON_ARRAY_ITEM_SEGMENT).length;
+export function arrayItemCount(
+	path: readonly string[],
+	structuredPath?: DataFieldPathSegment[],
+): number {
+	return structuredFieldPath({ path: [...path], structuredPath }).filter(
+		(segment) => segment.kind === "array_item",
+	).length;
 }
 
 export function sortDiscoveredJsonFields(
@@ -87,18 +92,23 @@ function escapeJsonPointerSegment(segment: string): string {
 export function jsonPointerFromFieldPath(
 	path: readonly string[],
 	arrayIndexes: readonly string[] = [],
+	structuredPath?: DataFieldPathSegment[],
 ): string | null {
 	let arrayIndex = 0;
 	const pointerSegments: string[] = [];
-	for (const segment of path) {
-		if (segment === JSON_ARRAY_ITEM_SEGMENT) {
+	for (const segment of structuredFieldPath({
+		path: [...path],
+		structuredPath,
+	})) {
+		if (segment.kind === "array_item") {
 			const value = arrayIndexes[arrayIndex++]?.trim() ?? "";
 			if (!/^(0|[1-9]\d*)$/.test(value)) return null;
 			pointerSegments.push(value);
 			continue;
 		}
-		const fixedIndex = ARRAY_INDEX.exec(segment);
-		pointerSegments.push(fixedIndex ? fixedIndex[1] : segment);
+		pointerSegments.push(
+			segment.kind === "array_index" ? String(segment.index) : segment.name,
+		);
 	}
 	return `/${pointerSegments.map(escapeJsonPointerSegment).join("/")}`;
 }
@@ -108,10 +118,10 @@ export function pathsToText(paths: readonly string[]): string {
 }
 
 function pointerPatternForField(field: DiscoveredJsonField): RegExp {
-	const segments = field.path.map((segment) => {
-		if (segment === JSON_ARRAY_ITEM_SEGMENT) return "(?:0|[1-9]\\d*)";
-		const fixedIndex = ARRAY_INDEX.exec(segment);
-		const pointerSegment = fixedIndex ? fixedIndex[1] : segment;
+	const segments = structuredFieldPath(field).map((segment) => {
+		if (segment.kind === "array_item") return "(?:0|[1-9]\\d*)";
+		const pointerSegment =
+			segment.kind === "array_index" ? String(segment.index) : segment.name;
 		return escapeJsonPointerSegment(pointerSegment).replace(
 			/[.*+?^${}()|[\]\\]/g,
 			"\\$&",

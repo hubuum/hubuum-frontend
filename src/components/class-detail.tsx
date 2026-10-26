@@ -16,6 +16,7 @@ import {
 import { ClassSchemaStatus } from "@/components/class-schema-status";
 import { CollectionDirectoryLookup } from "@/components/collection-directory-lookup";
 import { ComputedFieldsPanel } from "@/components/computed-fields-panel";
+import { FieldDiscoveryPanel } from "@/components/field-discovery-panel";
 import { InlineFieldEditTrigger } from "@/components/inline-field-edit-trigger";
 import { PinButton } from "@/components/pin-button";
 import { RemoteInvocationsPanel } from "@/components/remote-invocations-panel";
@@ -46,14 +47,14 @@ import {
 import { summarizeJsonDocument } from "@/lib/json-inspector";
 import { trackRecentItem } from "@/lib/recent-items";
 import {
+	objectNameHistoryHref,
+	resourceHistoryHref,
+} from "@/lib/resource-history";
+import {
 	directoryLookupStatus,
 	useDirectorySearch,
 } from "@/lib/use-directory-search";
 import { useEscapeToCancel } from "@/lib/use-escape-to-cancel";
-import {
-	objectNameHistoryHref,
-	resourceHistoryHref,
-} from "@/lib/resource-history";
 
 const JsonEditor = dynamic(
 	() => import("@/components/json-editor").then((module) => module.JsonEditor),
@@ -1030,6 +1031,8 @@ export function ClassDetail({ classId }: ClassDetailProps) {
 					</article>
 				</section>
 			</div>
+
+			<FieldDiscoveryPanel classId={classId} />
 
 			<ComputedFieldsPanel
 				classId={classId}

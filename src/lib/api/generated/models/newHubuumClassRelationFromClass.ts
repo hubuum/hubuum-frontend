@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.20
+ * OpenAPI spec version: 0.0.21
  */
 import type { ObjectRelationLimit } from './objectRelationLimit';
 import type { RelationLabel } from './relationLabel';

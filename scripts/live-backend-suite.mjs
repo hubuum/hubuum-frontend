@@ -1,3 +1,4 @@
+import { verifyFieldDiscoveryAndSuggestions } from "./live-discovery-suite.mjs";
 import { sessionTokenProvider } from "./session-token.mjs";
 import { verifyHistoryRestores } from "./live-history-suite.mjs";
 import { verifyAdvancedSearch } from "./live-advanced-search-suite.mjs";
@@ -341,7 +342,7 @@ async function main() {
   const adminUserId = 1;
 
   const runningConfig = await request("GET", "/api/v1/admin/config", auth);
-  for (const kind of ["import", "export", "backup", "reindex", "remote_call", "schema_validation"]) {
+  for (const kind of ["import", "export", "backup", "reindex", "remote_call", "schema_validation", "schema_profiling"]) {
     const timeout = runningConfig.data.tasks?.[`${kind}_execution_timeout_seconds`];
     assert(Number.isInteger(timeout) && timeout > 0, `Missing ${kind} execution limit.`);
   }
@@ -582,6 +583,8 @@ async function main() {
   pass("minted, inspected, and used an unscoped service-account token");
   await verifyTaskCancellation({ request, waitFor, auth, readerToken: unscopedToken });
   pass("verified task cancellation acknowledgement, idempotence, authorization, and UTF-8 reason limits");
+  await verifyFieldDiscoveryAndSuggestions({ request, waitFor, auth, readerToken: unscopedToken, collectionId: collection.data.id, suffix });
+  pass("verified structured field discovery and reviewed schema suggestions through activation");
   if (hasSchemaEvolution) {
     await verifySchemaEvolution({ request, waitFor, auth, readerToken: unscopedToken, collectionId: collection.data.id, suffix, hasRepairReports: hasSchemaRepairReports });
     pass("verified staged schemas, impact comparison, report authorization, pending and strict activation, stale proofs, and object evidence");
