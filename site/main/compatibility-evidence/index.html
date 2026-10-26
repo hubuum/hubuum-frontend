@@ -1065,6 +1065,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#frontend-v0024" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Frontend v0.0.24
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#frontend-v0023-candidate" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1549,6 +1560,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#frontend-v0024" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Frontend v0.0.24
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#frontend-v0023-candidate" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1802,8 +1824,13 @@ should pin both components to explicit versions.</p>
 <tbody>
 <tr>
 <td><code>main</code> (unreleased)</td>
-<td><code>v0.0.20</code></td>
-<td><code>ghcr.io/hubuum/hubuum-server:v0.0.20</code></td>
+<td><code>v0.0.21</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.21</code></td>
+</tr>
+<tr>
+<td><code>v0.0.24</code></td>
+<td><code>v0.0.21</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.21</code></td>
 </tr>
 <tr>
 <td><code>v0.0.23</code></td>
@@ -1936,6 +1963,30 @@ Frontend <code>v0.0.16</code> retains its Server <code>v0.0.15</code> target at
 Frontend <code>v0.0.15</code> retains its Server <code>v0.0.14</code> target at
 <code>sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594</code>.
 A separate scheduled workflow follows the moving backend <code>:main</code> image.</p>
+<h2 id="frontend-v0024">Frontend v0.0.24<a class="headerlink" href="#frontend-v0024" title="Permanent link">&para;</a></h2>
+<p>The release targets Server v0.0.21 and its 261-operation, 401-schema contract.
+OpenAPI source revision: <code>19db1547936f9a3844544085243e6d64b8e318a0</code>.
+OpenAPI SHA-256: <code>82d4ed17ab48ed45f7894739bbe3fe3ad2750462b394824b8b68da7ad6198a89</code>.
+Immutable image: <code>ghcr.io/hubuum/hubuum-server:v0.0.21@sha256:a5e1ad7a17281eefb4c1ed4da172a80bf815840f78bde6390d1e42bb2d51e0b6</code>.
+On 2026-10-26, the canonical published-image checks passed all 110 live API
+checks, all 198 authenticated smoke cases without retries, all 41 full-session
+cases, and all three live credential/restore cases. These cover bounded field
+discovery, all three suggestion presets, review and explicit activation,
+short-lived access tokens, and approved restore completion after session expiry.</p>
+<p>Local verification also passed 1,213 unit tests, 99 tooling tests, lint,
+typechecking, production build, bundle budgets, dependency freshness, production
+audit, 29 public browser cases, and eight unchanged visual baselines. Helm
+lint, rendering, and packaging passed. The production frontend image passed
+non-root, read-only health checks and the discovery/template insertion workflow
+against the reviewed server candidate, including restrictive public-asset
+permissions. Docker packaging and the exact merged commit's release-readiness
+workflow repeat the deployment and authenticated checks before publication.</p>
+<p>Class pages expose bounded discovery, source filters, structured paths, and
+sample limitations. Schema workspaces support three inference presets, retained
+report links, readable findings, explicit proposal staging, whole-class impact,
+and activation. Field pickers preserve literal property and array identity.
+Desktop and 390-pixel mobile candidate reviews covered labels, wrapping, and
+blocked reports; final release verification records the combined dependency set.</p>
 <h2 id="frontend-v0023-candidate">Frontend v0.0.23 candidate<a class="headerlink" href="#frontend-v0023-candidate" title="Permanent link">&para;</a></h2>
 <p>This is local verification of the release candidate on 2026-10-23, not evidence
 of a published release. The supported Server v0.0.20 image and bundled OpenAPI

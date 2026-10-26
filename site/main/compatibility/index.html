@@ -1666,8 +1666,13 @@ should pin both components to explicit versions.</p>
 <tbody>
 <tr>
 <td><code>main</code> (unreleased)</td>
-<td><code>v0.0.20</code></td>
-<td><code>ghcr.io/hubuum/hubuum-server:v0.0.20</code></td>
+<td><code>v0.0.21</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.21</code></td>
+</tr>
+<tr>
+<td><code>v0.0.24</code></td>
+<td><code>v0.0.21</code></td>
+<td><code>ghcr.io/hubuum/hubuum-server:v0.0.21</code></td>
 </tr>
 <tr>
 <td><code>v0.0.23</code></td>
@@ -1787,7 +1792,9 @@ should pin both components to explicit versions.</p>
 </tbody>
 </table>
 <p>Required checks use the immutable image for the selected compatibility target.
-For Frontend v0.0.22, v0.0.23, and unreleased <code>main</code>, it is
+For Frontend v0.0.24 and unreleased <code>main</code>, it is
+<code>ghcr.io/hubuum/hubuum-server:v0.0.21@sha256:a5e1ad7a17281eefb4c1ed4da172a80bf815840f78bde6390d1e42bb2d51e0b6</code>.</p>
+<p>For Frontend v0.0.22 and v0.0.23, it is
 <code>ghcr.io/hubuum/hubuum-server:v0.0.20@sha256:eaf59f8a4b4793030a78bc1637a8e2b9fad2f810b8621ff9a874dca534b9a23a</code>.</p>
 <p>For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
 <code>ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225</code>.
@@ -1829,11 +1836,13 @@ totals use the original structured request with no hydration property.</p>
 <p>See the <a href="../advanced-search/">advanced-search guide</a> for grouping and Oslo-site
 examples. Hydration is included in the declared Server v0.0.20 baseline.</p>
 <h2 id="released-contract">Released contract<a class="headerlink" href="#released-contract" title="Permanent link">&para;</a></h2>
-<p>Frontend v0.0.22 bundles the complete 257-operation OpenAPI contract from
-Server v0.0.20. Search hydration and exact-name object history across identities
-are part of that supported baseline. See <a href="../compatibility-evidence/#frontend-v0022">v0.0.22 verification</a>
-for source provenance, the immutable image, and completed live/browser checks. Earlier optional-preview evidence is
-retained in <a href="../compatibility-evidence/">compatibility history</a>.</p>
+<p>Frontend v0.0.24 bundles the complete 261-operation, 401-schema OpenAPI contract
+from Server v0.0.21. It exposes bounded raw/computed field discovery and sampled
+schema suggestions through class pages, schema workspaces, task links, and field
+pickers. Suggestions never change active policy automatically. See
+<a href="../compatibility-evidence/#frontend-v0024">v0.0.24 verification</a> for source
+provenance and the final pinned live/browser checks. Historical contracts remain
+in <a href="../compatibility-evidence/">compatibility history</a>.</p>
 <h2 id="history-integration-in-v0023">History integration in v0.0.23<a class="headerlink" href="#history-integration-in-v0023" title="Permanent link">&para;</a></h2>
 <p>Frontend v0.0.23 uses Server v0.0.20's <code>history/timeline</code> and scoped
 <code>history/entries/{history_id}</code> endpoints. Timelines page metadata in both
@@ -1849,16 +1858,18 @@ Restore provenance and atomic schema restoration remain separate pending work.
 See the <a href="../compatibility-evidence/#frontend-v0023-candidate">candidate verification evidence</a>
 for completed local checks and the remaining publication gates.</p>
 <h2 id="before-upgrading">Before upgrading<a class="headerlink" href="#before-upgrading" title="Permanent link">&para;</a></h2>
-<p>Deploy Server v0.0.20 and Frontend v0.0.22 together. Stop old API and worker
-replicas, apply the server's offline migration and role grants, then start
-matching API, worker, and restore binaries. Clear old frontend sessions and
-sign in again. Existing PATs and service credentials remain independent.</p>
-<p>The server emits backup format 10. Keep a pre-upgrade backup and matching
-binaries for rollback; older servers cannot restore the new format. Follow the
-<a href="https://hubuum.github.io/hubuum/v0.0.20/deployment/">server deployment guide</a>
-and <a href="https://hubuum.github.io/hubuum/v0.0.20/backup-restore/">backup compatibility</a>.
-The existing single-host updater supports this transition; pin both component
-tags and create a pre-upgrade snapshot before running it.</p>
+<p>Upgrade to Server v0.0.21 before Frontend v0.0.24. Stop older API and worker
+processes, apply the four migrations and role grants during a quiet period, then
+start matching API, worker, template-worker, and restore-executor binaries.
+Provide writable temporary disk for backup and restore spooling. Keep a
+pre-upgrade snapshot and matching binaries for rollback; complete or expire
+staged restores before reverting their storage migration. Backup output remains
+format 10 and restore input supports formats 6–10. Follow the
+<a href="https://hubuum.github.io/hubuum/v0.0.21/deployment/">server deployment guide</a>
+and <a href="https://hubuum.github.io/hubuum/v0.0.21/backup-restore/">backup compatibility</a>.</p>
+<p>Upgrades from before Frontend v0.0.22 also require the rotating-session migration,
+clearing old BFF sessions, and signing in again. PATs and service credentials
+remain independent. Pin both component releases in deployments.</p>
 <p>Reverse proxies should use HTTP/1.1 for direct server connections. Collection
 managers need <code>ManageEventSubscription</code> and <code>ReadAudit</code> for delegated webhook
 setup; shared sinks also need direct collection grants. Follow the

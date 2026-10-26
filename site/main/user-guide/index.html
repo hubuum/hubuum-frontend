@@ -816,6 +816,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#discover-fields-and-suggest-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Discover fields and suggest schemas
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edit-and-activate-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Edit and activate schemas
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#remote-target-and-template-history" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1692,6 +1714,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#discover-fields-and-suggest-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Discover fields and suggest schemas
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edit-and-activate-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Edit and activate schemas
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#remote-target-and-template-history" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2309,6 +2353,58 @@ same whole-field edit target instead of a separate pencil or Edit control. This
 includes names, descriptions, collection selectors, schema validation, and JSON
 schema. Opening one focuses its editor immediately, and Escape restores the
 draft. Permission-gated hierarchy moves remain a separate collection operation.</p>
+<h2 id="discover-fields-and-suggest-schemas">Discover fields and suggest schemas<a class="headerlink" href="#discover-fields-and-suggest-schemas" title="Permanent link">&para;</a></h2>
+<p>Open a class and use <strong>Discover fields</strong> to search object data, shared computed
+values, and personal computed values. Choose a sample limit of 1–250 and a depth
+of 0–32, then refresh. Object counts and value occurrences describe the authorized
+sample; repeated array items can contribute several occurrences. Truncation and
+computed evaluation errors remain visible. Example values are bounded previews.
+Expand <strong>Structured path</strong> to distinguish a literal property such as <code>a.b</code> from
+nested properties, or a property named <code>[#]</code> from array traversal.</p>
+<p>The computed-field editor and export-template editor combine declared schema
+fields with this server inventory. Refreshing fields does not download entire
+object documents. Computed-field inputs require an explicit index for array
+items; template inserts start with <code>[0]</code>, which you can replace with the index
+you need. Computed-field previews load sample objects only when you open Preview.</p>
+<p>Choose <strong>Suggest a schema</strong> from the class or open <strong>Edit schema → Schema</strong>.
+Select a preset and sample limit, then <strong>Generate suggestion</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Balanced</td>
+<td>Preserve observed types, require consistently present fields, allow extra fields.</td>
+</tr>
+<tr>
+<td>Strict</td>
+<td>Reject mixed unrelated types, require consistently present fields, deny extra fields.</td>
+</tr>
+<tr>
+<td>Expansive</td>
+<td>Preserve observed types and make fields optional; allow extra fields.</td>
+</tr>
+</tbody>
+</table>
+<p>Inference uses authorized object data, excluding computed values. Null and
+missing properties remain distinct. Review the schema, findings, and sample
+limits before choosing <strong>Use suggestion in proposal</strong>. This only fills an
+unsaved draft; it does not stage or activate a policy. Unsaved edits require
+confirmation before replacement. Continue through Validation and Review &amp; test,
+run whole-class impact analysis, and activate explicitly when compatible.</p>
+<p>A successful sample does not prove that every object is compatible. Blocked or
+insufficient reports cannot be used as proposals. Reports expire after 24 hours;
+expired or inaccessible reports require a new suggestion or restored access.
+The page URL retains the profiling task so you can reload or return later.
+<strong>Tasks → Schema suggestion → Review schema suggestion</strong> opens the same report.
+Running profiling tasks support cancellation through the standard task controls.
+Class read access permits discovery and profiling; staging and administrative
+impact analysis retain their existing permission requirements.</p>
+<h2 id="edit-and-activate-schemas">Edit and activate schemas<a class="headerlink" href="#edit-and-activate-schemas" title="Permanent link">&para;</a></h2>
 <p>On server builds with versioned schemas, the class page shows the current schema,
 write enforcement, and existing-object validation state. <strong>Edit schema</strong> opens
 <strong>Schema → Validation → Review &amp; test → Activate</strong> directly in the editor.
