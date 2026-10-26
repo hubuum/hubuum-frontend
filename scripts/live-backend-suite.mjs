@@ -1,3 +1,4 @@
+import { verifyFieldDiscoveryAndSuggestions } from "./live-discovery-suite.mjs";
 import { sessionTokenProvider } from "./session-token.mjs";
 import { verifyHistoryRestores } from "./live-history-suite.mjs";
 import { verifyAdvancedSearch } from "./live-advanced-search-suite.mjs";
@@ -10,7 +11,7 @@ const baseUrl = process.env.HUBUUM_LIVE_BACKEND_URL ?? "http://127.0.0.1:9999";
 const adminName = process.env.HUBUUM_LIVE_ADMIN_USER ?? "admin";
 const adminPassword = process.env.HUBUUM_LIVE_ADMIN_PASSWORD;
 const expectedServerVersion = process.env.HUBUUM_LIVE_EXPECT_SERVER_VERSION ??
-  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.20");
+  (process.env.HUBUUM_LIVE_FORWARD_COMPATIBILITY === "1" ? null : "0.0.21");
 
 if (!adminPassword) {
   throw new Error("HUBUUM_LIVE_ADMIN_PASSWORD is required.");
@@ -314,15 +315,15 @@ async function main() {
     assert(hasSchemaRepairReports, "This run requires saved schema diagnostics and HTML repair reports.");
   }
   const hasSystemSubscriptions = Boolean(openapi.data.paths?.["/api/v1/system-event-subscriptions"]);
-  if (["0.0.18", "0.0.19", "0.0.20"].includes(expectedServerVersion)) {
+  if (["0.0.18", "0.0.19", "0.0.20", "0.0.21"].includes(expectedServerVersion)) {
     assert(hasSystemSubscriptions, "This run requires the released system subscription contract.");
   }
   const hasCollectionSinks = Boolean(openapi.data.paths?.["/api/v1/collections/{collection_id}/event-sinks"]);
-  if (["0.0.18", "0.0.19", "0.0.20"].includes(expectedServerVersion)) {
+  if (["0.0.18", "0.0.19", "0.0.20", "0.0.21"].includes(expectedServerVersion)) {
     assert(hasCollectionSinks, "This run requires the released collection sink contract.");
   }
   const hasQueryUsage = Boolean(openapi.data.paths?.["/api/v1/classes/{class_id}/query-usage"]);
-  if (["0.0.19", "0.0.20"].includes(expectedServerVersion)) {
+  if (["0.0.19", "0.0.20", "0.0.21"].includes(expectedServerVersion)) {
     assert(hasQueryUsage, "This run requires the released query usage contract.");
     for (const field of ["subject_principal_ids", "subject_identity_scopes", "subject_is_admin"]) {
       assert(openapi.data.components?.schemas?.EventSubscriptionFilter?.properties?.[field],
@@ -341,7 +342,7 @@ async function main() {
   const adminUserId = 1;
 
   const runningConfig = await request("GET", "/api/v1/admin/config", auth);
-  for (const kind of ["import", "export", "backup", "reindex", "remote_call", "schema_validation"]) {
+  for (const kind of ["import", "export", "backup", "reindex", "remote_call", "schema_validation", "schema_profiling"]) {
     const timeout = runningConfig.data.tasks?.[`${kind}_execution_timeout_seconds`];
     assert(Number.isInteger(timeout) && timeout > 0, `Missing ${kind} execution limit.`);
   }
@@ -582,6 +583,8 @@ async function main() {
   pass("minted, inspected, and used an unscoped service-account token");
   await verifyTaskCancellation({ request, waitFor, auth, readerToken: unscopedToken });
   pass("verified task cancellation acknowledgement, idempotence, authorization, and UTF-8 reason limits");
+  await verifyFieldDiscoveryAndSuggestions({ request, waitFor, auth, readerToken: unscopedToken, collectionId: collection.data.id, suffix });
+  pass("verified structured field discovery and reviewed schema suggestions through activation");
   if (hasSchemaEvolution) {
     await verifySchemaEvolution({ request, waitFor, auth, readerToken: unscopedToken, collectionId: collection.data.id, suffix, hasRepairReports: hasSchemaRepairReports });
     pass("verified staged schemas, impact comparison, report authorization, pending and strict activation, stale proofs, and object evidence");

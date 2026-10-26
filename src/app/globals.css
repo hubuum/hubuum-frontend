@@ -8217,6 +8217,7 @@ button.token-revoke-button {
 }
 
 .detail-title {
+	overflow-wrap: anywhere;
 	margin: 0;
 	min-width: 0;
 }
@@ -9816,11 +9817,11 @@ html[data-density="compact"] .audit-static-value {
 
 /* Normal content/menu/form buttons only — exclude fixed-size icon buttons. */
 html[data-density="compact"]
-button:not(.icon-button):not(.fab):not(.sidebar-link-button):not(
-	.topbar-search-clear
-):not(.topbar-search-submit):not(.field-hint-button):not(
-	.pin-button-inline
-):not(.toast-close):not(.permission-chip-button):not(.table-filter-clear) {
+	button:not(.icon-button):not(.fab):not(.sidebar-link-button):not(
+		.topbar-search-clear
+	):not(.topbar-search-submit):not(.field-hint-button):not(
+		.pin-button-inline
+	):not(.toast-close):not(.permission-chip-button):not(.table-filter-clear) {
 	padding: 0.55rem 0.8rem;
 }
 

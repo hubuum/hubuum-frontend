@@ -72,6 +72,9 @@ function getTaskHeading(task: TaskRecord | null, taskId: number): string {
 	if (task.kind === "remote_call") {
 		return `Remote invocation task #${task.id}`;
 	}
+	if (task.kind === "schema_profiling") {
+		return `Schema suggestion task #${task.id}`;
+	}
 	if (task.kind === "schema_validation") {
 		return `Schema validation task #${task.id}`;
 	}

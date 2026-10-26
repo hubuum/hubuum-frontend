@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-
+import { FieldDiscoverySummary } from "@/components/field-discovery-panel";
 import {
 	GuidedFlowContinue,
 	GuidedFlowPanel,
@@ -15,13 +15,6 @@ import { IncludeRows } from "@/components/include-rows";
 import { ObjectDirectoryLookup } from "@/components/object-directory-lookup";
 import { ReportHtmlPreview } from "@/components/report-html-preview";
 import { ReportQueryBuilder } from "@/components/report-query-builder";
-import { TemplateCodeEditor } from "@/components/template-code-editor";
-import {
-	CLASS_OBJECT_SAMPLES_GC_TIME,
-	CLASS_OBJECT_SAMPLES_STALE_TIME,
-	classObjectSamplesQueryKey,
-	fetchClassObjectSamples,
-} from "@/lib/api/class-objects";
 import {
 	fetchRelatedClassPaths,
 	relatedClassPathsQueryKey,
@@ -34,6 +27,10 @@ import {
 	fetchExportClasses,
 	fetchExportCollections,
 } from "@/lib/api/export-options";
+import {
+	classFieldInventoryQueryKey,
+	fetchClassFieldInventory,
+} from "@/lib/api/field-discovery";
 import {
 	createReportTemplate,
 	fetchReportOutput,
@@ -89,11 +86,12 @@ import {
 } from "@/lib/export-workspace";
 import {
 	type DiscoveredJsonField,
-	discoverJsonFields,
+	discoveredFieldKey,
+	inventoryDataFields,
 } from "@/lib/json-field-discovery";
 import {
+	discoveredServerFilterDataFields,
 	resolveObjectServerFilterComputedFields,
-	resolveObjectServerFilterDataFields,
 	type ServerFilterComputedField,
 	type ServerFilterDataField,
 } from "@/lib/object-server-filter-fields";
@@ -106,8 +104,19 @@ import {
 } from "@/lib/report-include";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 
+const TemplateCodeEditor = dynamic(
+	() =>
+		import("@/components/template-code-editor").then(
+			(module) => module.TemplateCodeEditor,
+		),
+	{ loading: () => <p role="status">Loading template editor…</p> },
+);
+
 const ConfigurationHistory = dynamic(
-	() => import("@/components/configuration-history").then(module => module.ConfigurationHistory),
+	() =>
+		import("@/components/configuration-history").then(
+			(module) => module.ConfigurationHistory,
+		),
 	{ loading: () => <p role="status">Loading history…</p> },
 );
 
@@ -264,8 +273,8 @@ function DataFieldPalette({
 		(field) => field.source === "schema",
 	).length;
 	const sampledCount = fields.length - schemaCount;
-	const hasSchemaArrayItems = fields.some(
-		(field) => field.source === "schema" && field.label.includes("[]"),
+	const hasSchemaArrayItems = fields.some((field) =>
+		field.structuredPath?.some((segment) => segment.kind === "array_item"),
 	);
 
 	return (
@@ -321,7 +330,7 @@ function DataFieldPalette({
 							</>
 						);
 						return (
-							<li key={field.templateExpression}>
+							<li key={discoveredFieldKey(field)}>
 								{onInsert ? (
 									<button
 										type="button"
@@ -587,22 +596,22 @@ export function ExportTemplateEditor({
 				: { ...current, includeRows };
 		});
 	}, [relatedClassDepthStatus, relatedClassMinimumDepthById]);
-	const schemaDataFields = useMemo(
-		() => discoverJsonFields(selectedClass?.json_schema, []),
-		[selectedClass?.json_schema],
-	);
-	const usesSchemaFields = schemaDataFields.length > 0;
-	const classObjectSamplesQuery = useQuery({
-		queryKey: classObjectSamplesQueryKey(selectedClass?.id ?? null),
-		queryFn: () => fetchClassObjectSamples(selectedClass?.id ?? 0),
+	const inventoryQuery = useQuery({
+		queryKey: classFieldInventoryQueryKey(selectedClass?.id ?? null),
+		queryFn: ({ signal }) =>
+			fetchClassFieldInventory(selectedClass?.id ?? 0, undefined, signal),
 		enabled:
-			editorState.kind === "export" &&
-			scopeNeedsClass &&
-			selectedClass != null &&
-			(!usesSchemaFields || usesObjectServerFilters),
-		staleTime: CLASS_OBJECT_SAMPLES_STALE_TIME,
-		gcTime: CLASS_OBJECT_SAMPLES_GC_TIME,
+			editorState.kind === "export" && scopeNeedsClass && selectedClass != null,
+		retry: false,
 	});
+	const sampleCount = inventoryQuery.data?.sampled_objects ?? 0;
+	const discoveredDataFields = useMemo(
+		() => inventoryDataFields(selectedClass?.json_schema, inventoryQuery.data),
+		[selectedClass?.json_schema, inventoryQuery.data],
+	);
+	const usesSchemaFields = discoveredDataFields.some(
+		(field) => field.source === "schema",
+	);
 	const sharedComputedQuery = useQuery({
 		queryKey: ["computed-fields", "shared", selectedClass?.id ?? null],
 		queryFn: () => fetchSharedComputedFields(selectedClass?.id ?? 0),
@@ -613,24 +622,13 @@ export function ExportTemplateEditor({
 		queryFn: () => fetchPersonalComputedFields(selectedClass?.id ?? 0),
 		enabled: usesObjectServerFilters && selectedClass != null,
 	});
-	const sampledObjects = useMemo(
-		() =>
-			Array.isArray(classObjectSamplesQuery.data)
-				? classObjectSamplesQuery.data
-				: [],
-		[classObjectSamplesQuery.data],
-	);
-	const objectSampleData = useMemo(
-		() => sampledObjects.map((objectItem) => objectItem.data),
-		[sampledObjects],
-	);
 	const objectServerFilterDataFields = useMemo<ServerFilterDataField[]>(
 		() =>
-			resolveObjectServerFilterDataFields(
+			discoveredServerFilterDataFields(
 				selectedClass?.json_schema,
-				objectSampleData,
+				discoveredDataFields,
 			),
-		[objectSampleData, selectedClass?.json_schema],
+		[selectedClass?.json_schema, discoveredDataFields],
 	);
 	const objectServerFilterComputedFields = useMemo<ServerFilterComputedField[]>(
 		() =>
@@ -639,16 +637,6 @@ export function ExportTemplateEditor({
 				personalComputedQuery.data ?? [],
 			),
 		[personalComputedQuery.data, sharedComputedQuery.data?.definitions],
-	);
-	const discoveredDataFields = useMemo(
-		() =>
-			usesSchemaFields
-				? schemaDataFields
-				: discoverJsonFields(
-						undefined,
-						sampledObjects.map((objectItem) => objectItem.data),
-					),
-		[sampledObjects, schemaDataFields, usesSchemaFields],
 	);
 	const groupingExampleFields = useMemo(() => {
 		const options = new Map<string, string>([
@@ -674,13 +662,14 @@ export function ExportTemplateEditor({
 		() =>
 			discoveredDataFields.map((field) => ({
 				path: field.path,
-				detail: dataFieldDetail(field, sampledObjects.length),
+				structuredPath: field.structuredPath,
+				detail: dataFieldDetail(field, sampleCount),
 			})),
-		[discoveredDataFields, sampledObjects.length],
+		[discoveredDataFields, sampleCount],
 	);
-	const dataFieldError = classObjectSamplesQuery.isError
-		? classObjectSamplesQuery.error instanceof Error
-			? classObjectSamplesQuery.error.message
+	const dataFieldError = inventoryQuery.isError
+		? inventoryQuery.error instanceof Error
+			? inventoryQuery.error.message
 			: "The sample could not be loaded."
 		: null;
 	const editorTemplateNames = useMemo(() => {
@@ -1385,7 +1374,7 @@ export function ExportTemplateEditor({
 											? `${discoveredDataFields.length} fields available`
 											: usesSchemaFields
 												? "From class schema"
-												: classObjectSamplesQuery.isFetching
+												: inventoryQuery.isFetching
 													? "Inspecting objects…"
 													: "No fields found"}
 									</small>
@@ -1395,17 +1384,14 @@ export function ExportTemplateEditor({
 										Choose a field to insert it at the cursor. You can also type{" "}
 										<code>item.data.</code> for autocomplete.
 									</p>
+									<FieldDiscoverySummary inventory={inventoryQuery.data} />
 									<DataFieldPalette
 										fields={discoveredDataFields}
-										sampleCount={sampledObjects.length}
-										isLoading={classObjectSamplesQuery.isFetching}
+										sampleCount={sampleCount}
+										isLoading={inventoryQuery.isFetching}
 										error={dataFieldError}
-										sourceMode={usesSchemaFields ? "schema" : "sample"}
-										onRefresh={
-											usesSchemaFields
-												? undefined
-												: () => void classObjectSamplesQuery.refetch()
-										}
+										sourceMode="sample"
+										onRefresh={() => void inventoryQuery.refetch()}
 										onInsert={(field) =>
 											setInsertRequest({
 												id: insertRequestIdRef.current++,
@@ -1900,21 +1886,18 @@ export function ExportTemplateEditor({
 								<h3>Available data fields</h3>
 								<p className="muted">
 									{usesSchemaFields
-										? "These fields come from the class schema and will be available in Appearance and editor autocomplete."
-										: "This class has no discoverable schema fields, so the editor inspects its first 100 objects. Sampled fields may not represent every object and will be carried into Appearance and editor autocomplete."}
+										? "Declared schema fields and sampled data fields are available in Appearance and editor autocomplete."
+										: "Observed data fields come from a bounded authorized sample. Use them in Appearance and editor autocomplete."}
 								</p>
 							</div>
+							<FieldDiscoverySummary inventory={inventoryQuery.data} />
 							<DataFieldPalette
 								fields={discoveredDataFields}
-								sampleCount={sampledObjects.length}
-								isLoading={classObjectSamplesQuery.isFetching}
+								sampleCount={sampleCount}
+								isLoading={inventoryQuery.isFetching}
 								error={dataFieldError}
-								sourceMode={usesSchemaFields ? "schema" : "sample"}
-								onRefresh={
-									usesSchemaFields
-										? undefined
-										: () => void classObjectSamplesQuery.refetch()
-								}
+								sourceMode="sample"
+								onRefresh={() => void inventoryQuery.refetch()}
 							/>
 						</article>
 					) : null}
@@ -1955,7 +1938,7 @@ export function ExportTemplateEditor({
 						objectFilterHint={
 							selectedClass == null
 								? "Select a class to configure server filters."
-								: classObjectSamplesQuery.isLoading
+								: inventoryQuery.isLoading
 									? "Inspecting a cached object sample for nested fields and value types…"
 									: "Open Server filters to add or edit filters. Data-field behavior matches the Objects and ad-hoc Export workspaces."
 						}

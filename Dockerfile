@@ -25,7 +25,7 @@ RUN addgroup -S -g 1001 nextjs \
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nextjs /app/public ./public
 
 USER 1001
 EXPOSE 3000

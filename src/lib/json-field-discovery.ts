@@ -1,3 +1,12 @@
+import type {
+	ClassFieldInventory,
+	FieldPathSegment,
+} from "@/lib/api/generated/models";
+
+export type DataFieldPathSegment =
+	| FieldPathSegment
+	| { kind: "array_index"; index: number };
+
 export type JsonFieldSource = "schema" | "sampled";
 
 export type JsonFieldType =
@@ -11,6 +20,7 @@ export type JsonFieldType =
 
 export type DiscoveredJsonField = {
 	path: string[];
+	structuredPath?: DataFieldPathSegment[];
 	label: string;
 	templateExpression: string;
 	source: JsonFieldSource;
@@ -26,7 +36,7 @@ type DiscoveryOptions = {
 };
 
 type MutableField = {
-	path: string[];
+	path: DataFieldPathSegment[];
 	fromSchema: boolean;
 	schemaTypes: Set<JsonFieldType>;
 	sampleTypes: Set<JsonFieldType>;
@@ -55,7 +65,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function fieldId(path: string[]): string {
+function fieldId(path: DataFieldPathSegment[]): string {
 	return JSON.stringify(path);
 }
 
@@ -96,7 +106,7 @@ function getSchemaTypes(schema: Record<string, unknown>): Set<JsonFieldType> {
 
 function getOrCreateField(
 	fields: Map<string, MutableField>,
-	path: string[],
+	path: DataFieldPathSegment[],
 ): MutableField {
 	const id = fieldId(path);
 	const current = fields.get(id);
@@ -115,7 +125,7 @@ function getOrCreateField(
 function collectSchemaFields(
 	schema: unknown,
 	fields: Map<string, MutableField>,
-	parentPath: string[],
+	parentPath: DataFieldPathSegment[],
 	depth: number,
 	maxDepth: number,
 ) {
@@ -124,7 +134,10 @@ function collectSchemaFields(
 	if (!properties) return;
 
 	for (const [key, propertySchema] of Object.entries(properties)) {
-		const path = [...parentPath, key];
+		const path: DataFieldPathSegment[] = [
+			...parentPath,
+			{ kind: "property", name: key },
+		];
 		if (!isRecord(propertySchema)) {
 			const field = getOrCreateField(fields, path);
 			field.fromSchema = true;
@@ -163,13 +176,16 @@ function collectSchemaFields(
 		}
 
 		if (!isArray || depth >= maxDepth) continue;
-		const itemSchemas: Array<{ segment: string; schema: unknown }> = tupleItems
+		const itemSchemas: Array<{
+			segment: DataFieldPathSegment;
+			schema: unknown;
+		}> = tupleItems
 			? tupleItems.map((itemSchema, index) => ({
-					segment: `[${index}]`,
+					segment: { kind: "array_index", index },
 					schema: itemSchema,
 				}))
 			: commonItems
-				? [{ segment: JSON_ARRAY_ITEM_SEGMENT, schema: commonItems }]
+				? [{ segment: { kind: "array_item" }, schema: commonItems }]
 				: [];
 		for (const item of itemSchemas) {
 			const itemPath = [...path, item.segment];
@@ -196,8 +212,11 @@ function collectSchemaFields(
 }
 
 function recordSampleField(
-	paths: Map<string, { path: string[]; types: Set<JsonFieldType> }>,
-	path: string[],
+	paths: Map<
+		string,
+		{ path: DataFieldPathSegment[]; types: Set<JsonFieldType> }
+	>,
+	path: DataFieldPathSegment[],
 	type: JsonFieldType,
 ) {
 	const id = fieldId(path);
@@ -208,8 +227,11 @@ function recordSampleField(
 
 function collectSampleValue(
 	value: unknown,
-	paths: Map<string, { path: string[]; types: Set<JsonFieldType> }>,
-	path: string[],
+	paths: Map<
+		string,
+		{ path: DataFieldPathSegment[]; types: Set<JsonFieldType> }
+	>,
+	path: DataFieldPathSegment[],
 	depth: number,
 	maxDepth: number,
 	maxArrayItems: number,
@@ -228,7 +250,7 @@ function collectSampleValue(
 			collectSampleValue(
 				childValue,
 				paths,
-				[...path, `[${index}]`],
+				[...path, { kind: "array_index", index }],
 				depth + 1,
 				maxDepth,
 				maxArrayItems,
@@ -245,7 +267,7 @@ function collectSampleValue(
 				collectSampleValue(
 					childValue,
 					paths,
-					[...path, key],
+					[...path, { kind: "property", name: key }],
 					depth + 1,
 					maxDepth,
 					maxArrayItems,
@@ -261,7 +283,10 @@ function collectSampleValue(
 
 function collectSampleFields(
 	value: unknown,
-	paths: Map<string, { path: string[]; types: Set<JsonFieldType> }>,
+	paths: Map<
+		string,
+		{ path: DataFieldPathSegment[]; types: Set<JsonFieldType> }
+	>,
 	maxDepth: number,
 	maxArrayItems: number,
 	budget: { remaining: number },
@@ -272,7 +297,7 @@ function collectSampleFields(
 		collectSampleValue(
 			childValue,
 			paths,
-			[key],
+			[{ kind: "property", name: key }],
 			1,
 			maxDepth,
 			maxArrayItems,
@@ -281,28 +306,95 @@ function collectSampleFields(
 	}
 }
 
-function formatPath(path: string[]): string {
+export function structuredFieldPath(
+	field: Pick<DiscoveredJsonField, "path" | "structuredPath">,
+): DataFieldPathSegment[] {
+	return (
+		field.structuredPath ??
+		field.path.map((segment) => {
+			if (segment === JSON_ARRAY_ITEM_SEGMENT) return { kind: "array_item" };
+			if (ARRAY_INDEX.test(segment))
+				return { kind: "array_index", index: Number(segment.slice(1, -1)) };
+			return { kind: "property", name: segment };
+		})
+	);
+}
+
+export function discoveredFieldKey(field: DiscoveredJsonField): string {
+	return JSON.stringify(structuredFieldPath(field));
+}
+
+function legacyPath(path: DataFieldPathSegment[]): string[] {
+	return path.map((segment) =>
+		segment.kind === "property"
+			? segment.name
+			: segment.kind === "array_item"
+				? JSON_ARRAY_ITEM_SEGMENT
+				: `[${segment.index}]`,
+	);
+}
+
+function formatPath(path: DataFieldPathSegment[]): string {
 	return path
 		.map((segment, index) => {
-			if (segment === JSON_ARRAY_ITEM_SEGMENT) return "[]";
-			if (ARRAY_INDEX.test(segment)) return segment;
-			if (IDENTIFIER.test(segment))
-				return `${index === 0 ? "" : "."}${segment}`;
-			return `[${JSON.stringify(segment)}]`;
+			if (segment.kind === "array_item") return "[]";
+			if (segment.kind === "array_index") return `[${segment.index}]`;
+			return IDENTIFIER.test(segment.name)
+				? `${index === 0 ? "" : "."}${segment.name}`
+				: `[${JSON.stringify(segment.name)}]`;
 		})
 		.join("");
 }
 
 export function toTemplateDataExpression(path: string[]): string {
+	return templateExpression(structuredFieldPath({ path }));
+}
+
+function templateExpression(path: DataFieldPathSegment[]): string {
 	return `item.data${path
 		.map((segment) => {
-			if (segment === JSON_ARRAY_ITEM_SEGMENT) return "[0]";
-			if (ARRAY_INDEX.test(segment)) return segment;
-			return IDENTIFIER.test(segment)
-				? `.${segment}`
-				: `[${JSON.stringify(segment)}]`;
+			if (segment.kind === "array_item") return "[0]";
+			if (segment.kind === "array_index") return `[${segment.index}]`;
+			return IDENTIFIER.test(segment.name)
+				? `.${segment.name}`
+				: `[${JSON.stringify(segment.name)}]`;
 		})
 		.join("")}`;
+}
+
+/** Merge declared fields with sampled data; display labels are never path identities. */
+export function inventoryDataFields(
+	schema: unknown,
+	inventory?: ClassFieldInventory,
+): DiscoveredJsonField[] {
+	const fields = new Map(
+		discoverJsonFields(schema, []).map((field) => [
+			discoveredFieldKey(field),
+			field,
+		]),
+	);
+	for (const observed of inventory?.fields ?? []) {
+		if (observed.source !== "data") continue;
+		const key = JSON.stringify(observed.path);
+		const declared = fields.get(key);
+		const observedTypes = Object.entries(observed.types)
+			.filter(([, count]) => count && count > 0)
+			.map(([type]) => (type === "bool" ? "boolean" : type)) as JsonFieldType[];
+		fields.set(key, {
+			path: legacyPath(observed.path),
+			structuredPath: observed.path,
+			label: formatPath(observed.path),
+			templateExpression: templateExpression(observed.path),
+			source: declared ? "schema" : "sampled",
+			observedIn: observed.object_count,
+			types: orderedTypes(
+				new Set([...(declared?.types ?? []), ...observedTypes]),
+			),
+		});
+	}
+	return [...fields.values()].sort((left, right) =>
+		left.label.localeCompare(right.label, undefined, { numeric: true }),
+	);
 }
 
 function orderedTypes(types: Set<JsonFieldType>): JsonFieldType[] {
@@ -328,7 +420,7 @@ export function discoverJsonFields(
 	for (const sample of sampleData.slice(0, maxSamples)) {
 		const sampleFields = new Map<
 			string,
-			{ path: string[]; types: Set<JsonFieldType> }
+			{ path: DataFieldPathSegment[]; types: Set<JsonFieldType> }
 		>();
 		collectSampleFields(sample, sampleFields, maxDepth, maxArrayItems, {
 			remaining: MAX_PATHS_PER_DOCUMENT,
@@ -365,9 +457,10 @@ export function discoverJsonFields(
 					? field.sampleTypes
 					: field.schemaTypes;
 			return {
-				path: field.path,
+				path: legacyPath(field.path),
+				structuredPath: field.path,
 				label: formatPath(field.path),
-				templateExpression: toTemplateDataExpression(field.path),
+				templateExpression: templateExpression(field.path),
 				source: field.fromSchema ? "schema" : "sampled",
 				types: orderedTypes(types),
 				observedIn: field.observedIn,

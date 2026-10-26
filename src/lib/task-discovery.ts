@@ -29,6 +29,7 @@ export const taskFilterGroups: readonly {
 					"reindex",
 					"remote_call",
 					"schema_validation",
+					"schema_profiling",
 				],
 			},
 			{

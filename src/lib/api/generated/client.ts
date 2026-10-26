@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.20
+ * OpenAPI spec version: 0.0.21
  */
 import type {
   ApiErrorResponse,
@@ -11,6 +11,7 @@ import type {
   BackupDocument,
   BackupRequest,
   ClassComputationState,
+  ClassFieldInventory,
   ClassSchemaResponse,
   ClearRateLimitResponse,
   ClientConfig,
@@ -55,6 +56,7 @@ import type {
   GetApiV1ClassesByClassIdByObjectIdRelationsHistoryAsOfParams,
   GetApiV1ClassesByClassIdByObjectIdRelationsHistoryParams,
   GetApiV1ClassesByClassIdEventsParams,
+  GetApiV1ClassesByClassIdFieldsParams,
   GetApiV1ClassesByClassIdHistoryAsOfParams,
   GetApiV1ClassesByClassIdHistoryParams,
   GetApiV1ClassesByClassIdHistoryTimelineParams,
@@ -72,6 +74,7 @@ import type {
   GetApiV1ClassesByClassIdSchemaRevisionsParams,
   GetApiV1ClassesByClassIdSchemaTasksByTaskIdReportParams,
   GetApiV1ClassesByClassIdTrailingParams,
+  GetApiV1ClassesByNameByClassNameFieldsParams,
   GetApiV1ClassesByNameByClassNameObjectAggregatesParams,
   GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameParams,
   GetApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsParams,
@@ -193,6 +196,8 @@ import type {
   SchemaActivationRequest,
   SchemaActivationResponse,
   SchemaCompliancePage,
+  SchemaProfileReport,
+  SchemaProfileRequest,
   SchemaRepairReportRequest,
   SchemaRevision,
   SchemaRevisionResponse,
@@ -1831,6 +1836,81 @@ const res = await fetch(getPatchApiV1ClassesByNameByClassNameUrl(className),
 
   const data: patchApiV1ClassesByNameByClassNameResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1ClassesByNameByClassNameResponse
+}
+
+
+
+export type getApiV1ClassesByNameByClassNameFieldsResponse200 = {
+  data: ClassFieldInventory
+  status: 200
+}
+
+export type getApiV1ClassesByNameByClassNameFieldsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByNameByClassNameFieldsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByNameByClassNameFieldsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByNameByClassNameFieldsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByNameByClassNameFieldsResponseSuccess = (getApiV1ClassesByNameByClassNameFieldsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByNameByClassNameFieldsResponseError = (getApiV1ClassesByNameByClassNameFieldsResponse400 | getApiV1ClassesByNameByClassNameFieldsResponse401 | getApiV1ClassesByNameByClassNameFieldsResponse403 | getApiV1ClassesByNameByClassNameFieldsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByNameByClassNameFieldsResponse = (getApiV1ClassesByNameByClassNameFieldsResponseSuccess | getApiV1ClassesByNameByClassNameFieldsResponseError)
+
+export const getGetApiV1ClassesByNameByClassNameFieldsUrl = (className: string,
+    params?: GetApiV1ClassesByNameByClassNameFieldsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/fields?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/by-name/${encodeURIComponent(className)}/fields`
+}
+
+/**
+ * Returns observed data paths and enabled shared/caller-personal computed selectors. Objects are sampled by ascending ID after authorization. Counts describe this sample only; repeated array items contribute separate observations. Explicit truncation flags identify sample, candidate, depth, traversal, cardinality, path, and response limits. No exact class-wide count or schema inference is performed.
+ * @summary Discover fields in an authorized sample of a class
+ */
+export const getApiV1ClassesByNameByClassNameFields = async (className: string,
+    params?: GetApiV1ClassesByNameByClassNameFieldsParams, options?: RequestInit): Promise<getApiV1ClassesByNameByClassNameFieldsResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByNameByClassNameFieldsUrl(className,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByNameByClassNameFieldsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByNameByClassNameFieldsResponse
 }
 
 
@@ -3745,6 +3825,81 @@ export const getApiV1ClassesByClassIdEvents = async (classId: number,
 
 
 
+export type getApiV1ClassesByClassIdFieldsResponse200 = {
+  data: ClassFieldInventory
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdFieldsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1ClassesByClassIdFieldsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdFieldsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByClassIdFieldsResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdFieldsResponseSuccess = (getApiV1ClassesByClassIdFieldsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdFieldsResponseError = (getApiV1ClassesByClassIdFieldsResponse400 | getApiV1ClassesByClassIdFieldsResponse401 | getApiV1ClassesByClassIdFieldsResponse403 | getApiV1ClassesByClassIdFieldsResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdFieldsResponse = (getApiV1ClassesByClassIdFieldsResponseSuccess | getApiV1ClassesByClassIdFieldsResponseError)
+
+export const getGetApiV1ClassesByClassIdFieldsUrl = (classId: HubuumClassID,
+    params?: GetApiV1ClassesByClassIdFieldsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/fields?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/fields`
+}
+
+/**
+ * Returns the same bounded inventory as name-addressed field discovery. Use the stable class ID when it is already known or the class name is a URL dot segment. Counts describe an authorized sample only; explicit truncation flags identify its limits.
+ * @summary Discover fields in an authorized sample of a class by ID
+ */
+export const getApiV1ClassesByClassIdFields = async (classId: HubuumClassID,
+    params?: GetApiV1ClassesByClassIdFieldsParams, options?: RequestInit): Promise<getApiV1ClassesByClassIdFieldsResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdFieldsUrl(classId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdFieldsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdFieldsResponse
+}
+
+
+
 export type getApiV1ClassesByClassIdHistoryResponse200 = {
   data: HistoryResponseHubuumClassHistory[]
   status: 200
@@ -5591,6 +5746,165 @@ export const getApiV1ClassesByClassIdSchemaObjects = async (classId: HubuumClass
 
   const data: getApiV1ClassesByClassIdSchemaObjectsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdSchemaObjectsResponse
+}
+
+
+
+export type postApiV1ClassesByClassIdSchemaProfilesResponse202 = {
+  data: TaskResponse
+  status: 202
+}
+
+export type postApiV1ClassesByClassIdSchemaProfilesResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1ClassesByClassIdSchemaProfilesResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1ClassesByClassIdSchemaProfilesResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1ClassesByClassIdSchemaProfilesResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type postApiV1ClassesByClassIdSchemaProfilesResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1ClassesByClassIdSchemaProfilesResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1ClassesByClassIdSchemaProfilesResponseSuccess = (postApiV1ClassesByClassIdSchemaProfilesResponse202) & {
+  headers: Headers;
+};
+export type postApiV1ClassesByClassIdSchemaProfilesResponseError = (postApiV1ClassesByClassIdSchemaProfilesResponse400 | postApiV1ClassesByClassIdSchemaProfilesResponse401 | postApiV1ClassesByClassIdSchemaProfilesResponse403 | postApiV1ClassesByClassIdSchemaProfilesResponse404 | postApiV1ClassesByClassIdSchemaProfilesResponse409 | postApiV1ClassesByClassIdSchemaProfilesResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1ClassesByClassIdSchemaProfilesResponse = (postApiV1ClassesByClassIdSchemaProfilesResponseSuccess | postApiV1ClassesByClassIdSchemaProfilesResponseError)
+
+export const getPostApiV1ClassesByClassIdSchemaProfilesUrl = (classId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/profiles`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/classes/{class_id}/schema/profiles.
+ * @summary Queue schema inference from authorized raw object data
+ */
+export const postApiV1ClassesByClassIdSchemaProfiles = async (classId: number,
+    schemaProfileRequest: SchemaProfileRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdSchemaProfilesResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1ClassesByClassIdSchemaProfilesUrl(classId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schemaProfileRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1ClassesByClassIdSchemaProfilesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1ClassesByClassIdSchemaProfilesResponse
+}
+
+
+
+export type getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse200 = {
+  data: SchemaProfileReport
+  status: 200
+}
+
+export type getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
+export type getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponseSuccess = (getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponseError = (getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse401 | getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse403 | getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse404 | getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse410) & {
+  headers: Headers;
+};
+
+export type getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse = (getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponseSuccess | getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponseError)
+
+export const getGetApiV1ClassesByClassIdSchemaProfilesByTaskIdUrl = (classId: number,
+    taskId: number,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/classes/${classId}/schema/profiles/${taskId}`
+}
+
+/**
+ * Returns sampled observations, a candidate or inference findings, and replay results. Never modifies the class schema. Reports expire after 24 hours; access to every sampled object is rechecked.
+ * @summary Read an authorized schema profiling report
+ */
+export const getApiV1ClassesByClassIdSchemaProfilesByTaskId = async (classId: number,
+    taskId: number, options?: RequestInit): Promise<getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse> => {
+
+  const res = await fetch(getGetApiV1ClassesByClassIdSchemaProfilesByTaskIdUrl(classId,taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1ClassesByClassIdSchemaProfilesByTaskIdResponse
 }
 
 

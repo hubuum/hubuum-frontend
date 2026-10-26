@@ -49,7 +49,7 @@ curl --fail http://localhost:3000/readyz
 ```
 
 Both the page and readiness probe should be reachable before you sign in with
-a Hubuum account. Frontend v0.0.22 targets server v0.0.20; review
+a Hubuum account. Frontend v0.0.24 targets server v0.0.21; review
 [compatibility](https://hubuum.github.io/hubuum-frontend/v0.0.22/compatibility/)
 before using a different server.
 

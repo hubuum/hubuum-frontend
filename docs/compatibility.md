@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
+| `main` (unreleased) | `v0.0.21` | `ghcr.io/hubuum/hubuum-server:v0.0.21` |
+| `v0.0.24` | `v0.0.21` | `ghcr.io/hubuum/hubuum-server:v0.0.21` |
 | `v0.0.23` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.22` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.21` | `v0.0.19` | `ghcr.io/hubuum/hubuum-server:v0.0.19` |
@@ -31,7 +32,10 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required checks use the immutable image for the selected compatibility target.
-For Frontend v0.0.22, v0.0.23, and unreleased `main`, it is
+For Frontend v0.0.24 and unreleased `main`, it is
+`ghcr.io/hubuum/hubuum-server:v0.0.21@sha256:a5e1ad7a17281eefb4c1ed4da172a80bf815840f78bde6390d1e42bb2d51e0b6`.
+
+For Frontend v0.0.22 and v0.0.23, it is
 `ghcr.io/hubuum/hubuum-server:v0.0.20@sha256:eaf59f8a4b4793030a78bc1637a8e2b9fad2f810b8621ff9a874dca534b9a23a`.
 
 For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
@@ -85,11 +89,13 @@ examples. Hydration is included in the declared Server v0.0.20 baseline.
 
 ## Released contract
 
-Frontend v0.0.22 bundles the complete 257-operation OpenAPI contract from
-Server v0.0.20. Search hydration and exact-name object history across identities
-are part of that supported baseline. See [v0.0.22 verification](compatibility-evidence.md#frontend-v0022)
-for source provenance, the immutable image, and completed live/browser checks. Earlier optional-preview evidence is
-retained in [compatibility history](compatibility-evidence.md).
+Frontend v0.0.24 bundles the complete 261-operation, 401-schema OpenAPI contract
+from Server v0.0.21. It exposes bounded raw/computed field discovery and sampled
+schema suggestions through class pages, schema workspaces, task links, and field
+pickers. Suggestions never change active policy automatically. See
+[v0.0.24 verification](compatibility-evidence.md#frontend-v0024) for source
+provenance and the final pinned live/browser checks. Historical contracts remain
+in [compatibility history](compatibility-evidence.md).
 
 ## History integration in v0.0.23
 
@@ -110,17 +116,19 @@ for completed local checks and the remaining publication gates.
 
 ## Before upgrading
 
-Deploy Server v0.0.20 and Frontend v0.0.22 together. Stop old API and worker
-replicas, apply the server's offline migration and role grants, then start
-matching API, worker, and restore binaries. Clear old frontend sessions and
-sign in again. Existing PATs and service credentials remain independent.
+Upgrade to Server v0.0.21 before Frontend v0.0.24. Stop older API and worker
+processes, apply the four migrations and role grants during a quiet period, then
+start matching API, worker, template-worker, and restore-executor binaries.
+Provide writable temporary disk for backup and restore spooling. Keep a
+pre-upgrade snapshot and matching binaries for rollback; complete or expire
+staged restores before reverting their storage migration. Backup output remains
+format 10 and restore input supports formats 6–10. Follow the
+[server deployment guide](https://hubuum.github.io/hubuum/v0.0.21/deployment/)
+and [backup compatibility](https://hubuum.github.io/hubuum/v0.0.21/backup-restore/).
 
-The server emits backup format 10. Keep a pre-upgrade backup and matching
-binaries for rollback; older servers cannot restore the new format. Follow the
-[server deployment guide](https://hubuum.github.io/hubuum/v0.0.20/deployment/)
-and [backup compatibility](https://hubuum.github.io/hubuum/v0.0.20/backup-restore/).
-The existing single-host updater supports this transition; pin both component
-tags and create a pre-upgrade snapshot before running it.
+Upgrades from before Frontend v0.0.22 also require the rotating-session migration,
+clearing old BFF sessions, and signing in again. PATs and service credentials
+remain independent. Pin both component releases in deployments.
 
 Reverse proxies should use HTTP/1.1 for direct server connections. Collection
 managers need `ManageEventSubscription` and `ReadAudit` for delegated webhook

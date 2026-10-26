@@ -20,6 +20,8 @@ const consequences: Record<TaskRecord["kind"], string> = {
 		"Committed batches remain. Class materialization stays incomplete until a later rebuild finishes.",
 	remote_call:
 		"A dispatched request may already have affected the remote system. Cancellation cannot undo those effects. Review the remote system before submitting replacement work.",
+	schema_profiling:
+		"Sampling and inference stop at checkpoints. A cancelled suggestion publishes no report and leaves the class schema unchanged.",
 	schema_validation:
 		"Completed batches remain. Further schema work stops without changing the active schema or repairing objects.",
 };

@@ -123,6 +123,16 @@ export function taskMetadataFields(
 			),
 		);
 		add("Computation revision", detail.computation_revision);
+	} else if (task.kind === "schema_profiling" && details?.schema_profiling) {
+		const detail = details.schema_profiling;
+		fields.push(
+			targetField(
+				detail.class_id == null
+					? null
+					: { type: "class", class_id: detail.class_id },
+			),
+		);
+		add("Report retention", "24 hours");
 	} else if (task.kind === "schema_validation" && details?.schema_validation) {
 		const detail = details.schema_validation;
 		fields.push(
@@ -167,4 +177,16 @@ export function taskSchemaReportHref(
 	if (!positiveId(task.id) || !positiveId(detail?.class_id)) return null;
 	const expected = `/api/v1/classes/${detail.class_id}/schema/tasks/${task.id}/report`;
 	return detail?.results_url === expected ? hubuumBffPath(expected) : null;
+}
+
+export function taskSchemaSuggestionHref(
+	task: Pick<TaskResponse, "id" | "kind" | "details">,
+): string | null {
+	const detail =
+		task.kind === "schema_profiling" ? task.details?.schema_profiling : null;
+	if (!positiveId(task.id) || !positiveId(detail?.class_id)) return null;
+	const expected = `/api/v1/classes/${detail.class_id}/schema/profiles/${task.id}`;
+	return detail.output_url === expected
+		? `/classes/${detail.class_id}/schema?profile=${task.id}&step=schema`
+		: null;
 }

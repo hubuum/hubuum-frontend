@@ -6,7 +6,10 @@ import type {
 } from "@codemirror/autocomplete";
 
 import type { ReportScopeKind } from "@/lib/api/reporting";
-import { JSON_ARRAY_ITEM_SEGMENT } from "@/lib/json-field-discovery";
+import {
+	type DataFieldPathSegment,
+	JSON_ARRAY_ITEM_SEGMENT,
+} from "@/lib/json-field-discovery";
 import {
 	type FieldDef,
 	getScopeObjectFields,
@@ -23,6 +26,7 @@ export type TemplateCompletionOptions = {
 
 export type TemplateDataFieldCompletion = {
 	path: string[];
+	structuredPath?: DataFieldPathSegment[];
 	detail: string;
 };
 
@@ -261,7 +265,7 @@ function step(
 		case "data": {
 			const path = [...kind.path, segment.name, ...segment.indexSegments];
 			const isKnownPath = (options.dataFields ?? []).some((field) =>
-				isKnownDataPathPrefix(field.path, path),
+				isKnownDataPathPrefix(field.path, path, field.structuredPath),
 			);
 			return isKnownPath ? { type: "data", path } : { type: "unknown" };
 		}
@@ -290,9 +294,18 @@ function dataPathSegmentsMatch(known: string, actual: string): boolean {
 function isKnownDataPathPrefix(
 	knownPath: string[],
 	actualPath: string[],
+	structuredPath?: DataFieldPathSegment[],
 ): boolean {
 	return actualPath.every((segment, index) =>
-		dataPathSegmentsMatch(knownPath[index] ?? "", segment),
+		structuredPath
+			? structuredPath[index]?.kind === "array_item"
+				? /^\[\d+\]$/.test(segment)
+				: structuredPath[index]?.kind === "array_index"
+					? segment === `[${structuredPath[index].index}]`
+					: structuredPath[index]?.kind === "property" &&
+						!/^\[\d+\]$/.test(segment) &&
+						structuredPath[index].name === segment
+			: dataPathSegmentsMatch(knownPath[index] ?? "", segment),
 	);
 }
 
@@ -302,7 +315,8 @@ function dataCompletions(
 ): Completion[] {
 	const completions = new Map<string, Completion>();
 	for (const field of options.dataFields ?? []) {
-		if (!isKnownDataPathPrefix(field.path, path)) continue;
+		if (!isKnownDataPathPrefix(field.path, path, field.structuredPath))
+			continue;
 		const nextSegment = field.path[path.length];
 		if (!nextSegment || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(nextSegment)) continue;
 		const isLeaf = field.path.length === path.length + 1;

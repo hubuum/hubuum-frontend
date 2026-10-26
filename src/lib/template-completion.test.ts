@@ -49,3 +49,39 @@ describe("template data field completion", () => {
 		).resolves.toEqual(["ipv4", "mac"]);
 	});
 });
+
+it("does not confuse marker-shaped properties with observed array traversal", async () => {
+	const document = "{% for item in items %}{{ item.data.values[9].";
+	const source = createTemplateCompletionSource({
+		scopeKind: "objects_in_class",
+		relationHydrated: false,
+		dataFields: [
+			{
+				path: ["values", "[#]", "literal"],
+				structuredPath: [
+					{ kind: "property", name: "values" },
+					{ kind: "property", name: "[#]" },
+					{ kind: "property", name: "literal" },
+				],
+				detail: "literal property",
+			},
+			{
+				path: ["values", "[#]", "observed"],
+				structuredPath: [
+					{ kind: "property", name: "values" },
+					{ kind: "array_item" },
+					{ kind: "property", name: "observed" },
+				],
+				detail: "array property",
+			},
+		],
+	});
+	const result = await source(
+		new CompletionContext(
+			EditorState.create({ doc: document }),
+			document.length,
+			true,
+		),
+	);
+	expect(result?.options.map((option) => option.label)).toEqual(["observed"]);
+});

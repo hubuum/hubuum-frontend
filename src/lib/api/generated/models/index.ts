@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.20
+ * OpenAPI spec version: 0.0.21
  */
 
 export * from './addOperation';
@@ -21,6 +21,7 @@ export * from './backupState';
 export * from './backupStateSections';
 export * from './backupTaskDetails';
 export * from './classComputationState';
+export * from './classFieldInventory';
 export * from './classKey';
 export * from './classSchemaResponse';
 export * from './clearRateLimitResponse';
@@ -67,6 +68,7 @@ export * from './currentTokenMetadata';
 export * from './databaseConfig';
 export * from './dbStateResponse';
 export * from './deleteApiV1ClassesByClassIdQueryUsageByDeclarationIdParams';
+export * from './discoveredField';
 export * from './effectiveGroupPermission';
 export * from './eventConfig';
 export * from './eventDeliveryHealthResponse';
@@ -117,6 +119,9 @@ export * from './exportTemplateID';
 export * from './exportTemplateKind';
 export * from './exportTemplateRunRequest';
 export * from './exportWarning';
+export * from './fieldDiscoveryTruncation';
+export * from './fieldPathSegment';
+export * from './fieldSource';
 export * from './getApiV0MetaLoginRateLimitParams';
 export * from './getApiV1ClassesByClassIdByObjectIdEventsParams';
 export * from './getApiV1ClassesByClassIdByObjectIdHistoryAsOfParams';
@@ -127,6 +132,7 @@ export * from './getApiV1ClassesByClassIdByObjectIdParams';
 export * from './getApiV1ClassesByClassIdByObjectIdRelationsHistoryAsOfParams';
 export * from './getApiV1ClassesByClassIdByObjectIdRelationsHistoryParams';
 export * from './getApiV1ClassesByClassIdEventsParams';
+export * from './getApiV1ClassesByClassIdFieldsParams';
 export * from './getApiV1ClassesByClassIdHistoryAsOfParams';
 export * from './getApiV1ClassesByClassIdHistoryParams';
 export * from './getApiV1ClassesByClassIdHistoryTimelineParams';
@@ -144,6 +150,7 @@ export * from './getApiV1ClassesByClassIdSchemaObjectsParams';
 export * from './getApiV1ClassesByClassIdSchemaRevisionsParams';
 export * from './getApiV1ClassesByClassIdSchemaTasksByTaskIdReportParams';
 export * from './getApiV1ClassesByClassIdTrailingParams';
+export * from './getApiV1ClassesByNameByClassNameFieldsParams';
 export * from './getApiV1ClassesByNameByClassNameObjectAggregatesParams';
 export * from './getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameParams';
 export * from './getApiV1ClassesByNameByClassNameObjectsByNameByObjectNameRelatedObjectsParams';
@@ -324,6 +331,8 @@ export * from './principalSettingsResponse';
 export * from './principalTokenMetadata';
 export * from './principalTokenPointResponse';
 export * from './probeResponse';
+export * from './profilePreset';
+export * from './profileSuggestionStatus';
 export * from './provenance';
 export * from './provenanceActor';
 export * from './provenancePrincipal';
@@ -400,6 +409,9 @@ export * from './schemaImpactReadiness';
 export * from './schemaImpactResponse';
 export * from './schemaIssue';
 export * from './schemaObjectUrlTemplate';
+export * from './schemaProfileReport';
+export * from './schemaProfileRequest';
+export * from './schemaProfileTaskDetails';
 export * from './schemaReference';
 export * from './schemaRepairReportRequest';
 export * from './schemaRevision';

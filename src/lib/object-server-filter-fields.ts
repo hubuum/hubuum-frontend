@@ -1,8 +1,13 @@
 import type { ComputedFieldDefinition } from "@/lib/api/generated/models";
-import { discoverJsonFields } from "@/lib/json-field-discovery";
+import {
+	type DiscoveredJsonField,
+	discoverJsonFields,
+	structuredFieldPath,
+} from "@/lib/json-field-discovery";
 import {
 	getJsonSchemaServerFilterDataType,
 	inferObjectServerFilterDataType,
+	isServerFilterableDataPath,
 	type ObjectComputedFilterScope,
 	type ObjectComputedResultType,
 	type ObjectServerFilterDataType,
@@ -24,10 +29,7 @@ export type ServerFilterComputedField = {
 	resultType: ObjectComputedResultType;
 };
 
-function getValueAtDataPath(
-	data: unknown,
-	path: readonly string[],
-): unknown {
+function getValueAtDataPath(data: unknown, path: readonly string[]): unknown {
 	let current = data;
 	for (const segment of path) {
 		const arrayIndex = segment.match(/^\[(\d+)]$/);
@@ -132,4 +134,37 @@ export function resolveObjectServerFilterComputedFields(
 		...fieldsFor(sharedDefinitions, "shared"),
 		...fieldsFor(personalDefinitions, "personal"),
 	];
+}
+
+/** Discovery previews are display strings, not source values for type inference. */
+export function discoveredServerFilterDataFields(
+	jsonSchema: unknown,
+	fields: readonly DiscoveredJsonField[],
+): ServerFilterDataField[] {
+	return fields.flatMap((field) => {
+		const segments = structuredFieldPath(field);
+		if (segments.some((segment) => segment.kind === "array_item")) return [];
+		const path = segments.map((segment) =>
+			segment.kind === "property"
+				? segment.name
+				: segment.kind === "array_index"
+					? String(segment.index)
+					: "",
+		);
+		if (!isServerFilterableDataPath(path)) return [];
+		const types = field.types.filter(
+			(type) => type !== "null" && type !== "unknown",
+		);
+		const observedType = types.length === 1 ? types[0] : "unknown";
+		return [
+			{
+				id: JSON.stringify(path),
+				label: field.label,
+				path,
+				dataType:
+					getJsonSchemaServerFilterDataType(jsonSchema, field.path) ??
+					observedType,
+			},
+		];
+	});
 }

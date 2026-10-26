@@ -314,7 +314,7 @@ npm run gen:api
 ```
 
 Generated output goes to `src/lib/api/generated`.
-The generator runs via `npx orval@8.39.0`, so network access is required when generating.
+The generator runs via `npx orval@8.45.0`, so network access is required when generating.
 
 ## Documentation-only CI
 
