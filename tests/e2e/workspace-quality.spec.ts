@@ -1663,7 +1663,7 @@ test.describe("workspace quality", () => {
 		await expect(dialog).toBeVisible();
 		await input.press("ArrowUp");
 		const resourceSearch = dialog.getByRole("link", {
-			name: "Search resources for “About”",
+			name: "Show all results for “About”",
 		});
 		await expect(resourceSearch).toBeFocused();
 		await resourceSearch.press("Enter");

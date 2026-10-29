@@ -6,6 +6,13 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Stream resource suggestions while typing in Go to (Ctrl/Cmd+K) and workspace
+  search (/), with direct Enter navigation, stable keyboard selection, pinned
+  resource deduplication, and cancellation of obsolete lookups. Early Enter waits
+  for completion before opening a unique match or the full search workspace.
+
 ## [0.0.24] - 2026-10-26
 
 This release targets Hubuum Server v0.0.21. Upgrade the server first and follow

@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { CreateModal } from "@/components/create-modal";
+import { QuickSearch, type QuickSearchOption } from "@/components/quick-search";
 import { getPinnedItems } from "@/lib/pinned-items";
 import { USER_SETTINGS_CHANGED_EVENT } from "@/lib/user-settings-client";
 
 function pinnedDestinations() {
 	return getPinnedItems().map((item) => ({
 		label: item.name,
+		detail: `${item.type === "object" ? "Object" : item.type === "class" ? "Class" : "Collection"} #${item.id}${item.classId ? ` · Class #${item.classId}` : ""}${item.collectionId ? ` · Collection #${item.collectionId}` : ""} · Pinned`,
 		href:
 			item.type === "object"
 				? `/objects/${item.classId}/${item.id}`
@@ -52,7 +54,6 @@ export function WorkspaceCommands({
 }) {
 	const [search, setSearch] = useState("");
 	const [pins, setPins] = useState<ReturnType<typeof pinnedDestinations>>([]);
-	const listRef = useRef<HTMLDivElement | null>(null);
 	useEffect(() => {
 		if (open) {
 			setSearch("");
@@ -92,40 +93,22 @@ export function WorkspaceCommands({
 	].filter((item) =>
 		item.label.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
 	);
-	function navigateOptions(event: KeyboardEvent<HTMLElement>) {
-		if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-		const options = Array.from(
-			listRef.current?.querySelectorAll<HTMLElement>("a, button") ?? [],
-		);
-		if (!options.length) return;
-		event.preventDefault();
-		const index = options.indexOf(document.activeElement as HTMLElement);
-		if (index === -1) {
-			options[event.key === "ArrowDown" ? 0 : options.length - 1]?.focus();
-			return;
-		}
-		options[
-			(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) %
-				options.length
-		]?.focus();
-	}
-	function searchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-		if (event.nativeEvent.isComposing) return;
-		if (event.key !== "Enter") {
-			navigateOptions(event);
-			return;
-		}
-		if (
-			!search.trim() ||
-			event.altKey ||
-			event.ctrlKey ||
-			event.metaKey ||
-			event.shiftKey
-		)
-			return;
-		event.preventDefault();
-		listRef.current?.querySelector<HTMLElement>("a, button")?.click();
-	}
+	const options: QuickSearchOption[] = [
+		...(onCreate &&
+		createLabel?.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
+			? [
+					{
+						id: "create",
+						label: createLabel,
+						onSelect: () => {
+							onClose();
+							window.requestAnimationFrame(onCreate);
+						},
+					},
+				]
+			: []),
+		...new Map(destinations.map((item) => [item.href, item])).values(),
+	];
 	return (
 		<CreateModal
 			open={open}
@@ -134,55 +117,17 @@ export function WorkspaceCommands({
 			panelClassName="command-dialog"
 		>
 			<div className="stack">
-				<label className="control-field">
-					Find a destination or action
-					<input
-						value={search}
-						onChange={(event) => setSearch(event.target.value)}
-						onKeyDown={searchKeyDown}
-						enterKeyHint="go"
-						placeholder="Objects, tasks, create…"
-					/>
-				</label>
-				<div className="command-options" ref={listRef}>
-					{onCreate &&
-					createLabel
-						?.toLocaleLowerCase()
-						.includes(search.trim().toLocaleLowerCase()) ? (
-						<button
-							type="button"
-							onKeyDown={navigateOptions}
-							onClick={() => {
-								onClose();
-								window.requestAnimationFrame(onCreate);
-							}}
-						>
-							{createLabel}
-						</button>
-					) : null}
-					{[
-						...new Map(destinations.map((item) => [item.href, item])).values(),
-					].map((item) => (
-						<Link
-							onKeyDown={navigateOptions}
-							key={item.href}
-							href={item.href}
-							prefetch={false}
-							onClick={onClose}
-						>
-							{item.label}
-						</Link>
-					))}
-					{search.trim() ? (
-						<Link
-							onKeyDown={navigateOptions}
-							href={`/search?q=${encodeURIComponent(search.trim())}`}
-							onClick={onClose}
-						>
-							Search resources for “{search.trim()}”
-						</Link>
-					) : null}
-				</div>
+				<label htmlFor="command-search">Find a destination or action</label>
+				<QuickSearch
+					inputId="command-search"
+					label="Find a destination or action"
+					value={search}
+					onChange={setSearch}
+					placeholder="Objects, tasks, create…"
+					searchHref={`/search?q=${encodeURIComponent(search.trim())}`}
+					localOptions={options}
+					onNavigate={onClose}
+				/>
 			</div>
 		</CreateModal>
 	);

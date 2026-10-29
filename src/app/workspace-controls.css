@@ -148,6 +148,40 @@ button.table-pagination-action {
 .command-options > a:focus-visible {
 	background: var(--accent-soft);
 }
+.quick-search {
+	border: 0;
+	padding: 0;
+	margin: 0;
+	min-width: 0;
+}
+.quick-search-options > a {
+	display: grid;
+	gap: 0.15rem;
+	overflow-wrap: anywhere;
+}
+.quick-search-options > a:focus-visible,
+.quick-search-options > button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+.quick-search-popover {
+	background: var(--card);
+	border: 1px solid var(--line);
+	border-radius: 16px;
+	box-shadow: var(--shadow-float);
+	position: absolute;
+	top: calc(100% + 0.4rem);
+	right: 0;
+	width: min(34rem, calc(100vw - 2rem));
+	max-height: min(60vh, 32rem);
+	z-index: 60;
+	padding: 0.5rem;
+}
+.quick-search-status {
+	margin: 0;
+	padding: 0.5rem 0.8rem;
+	font-size: 0.85rem;
+}
 .login-heading {
 	margin: 0 0 1rem;
 	font-size: 1.5rem;

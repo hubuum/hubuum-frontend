@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-	type FormEvent,
 	ReactNode,
 	useCallback,
 	useEffect,
@@ -16,6 +15,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { CreateModal } from "@/components/create-modal";
 import { KeyboardHelp } from "@/components/keyboard-help";
 import { LogoutButton } from "@/components/logout-button";
+import { QuickSearch } from "@/components/quick-search";
 import { ToastContainer } from "@/components/toast-container";
 import {
 	PinnedNavigation,
@@ -1393,23 +1393,18 @@ export function AppShell({
 		})
 		.slice(0, 6);
 
-	function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
+	const workspaceSearchParams = isSearchRoute
+		? new URLSearchParams(searchParams.toString())
+		: new URLSearchParams();
+	const trimmedSearchTerm = normalizeSearchTerm(searchInput);
+	if (trimmedSearchTerm) workspaceSearchParams.set("q", trimmedSearchTerm);
+	else workspaceSearchParams.delete("q");
+	const workspaceSearchHref = workspaceSearchParams.size
+		? `/search?${workspaceSearchParams}` : "/search";
+
+	function openFullSearch() {
 		setMobileSearchOpen(false);
-
-		const trimmedSearchTerm = normalizeSearchTerm(searchInput);
-		const params = isSearchRoute
-			? new URLSearchParams(searchParams.toString())
-			: new URLSearchParams();
-
-		if (trimmedSearchTerm) {
-			params.set("q", trimmedSearchTerm);
-		} else {
-			params.delete("q");
-		}
-
-		const query = params.toString();
-		router.push(query ? `/search?${query}` : "/search");
+		router.push(workspaceSearchHref);
 	}
 
 	function clearSearch() {
@@ -1886,19 +1881,19 @@ export function AppShell({
 									Ctrl/⌘ K
 								</kbd>
 							</button>
-							<form
+							<div
 								className="topbar-search-form desktop-search-form"
-								onSubmit={onSearchSubmit}
 							>
-								<div className="topbar-search-field">
-									<input
-										aria-label="Search collections, classes, and objects"
-										aria-keyshortcuts="/"
-										className="topbar-search-input"
-										value={searchInput}
-										onChange={(event) => setSearchInput(event.target.value)}
-										placeholder="Search collections, classes, and objects"
-									/>
+								<QuickSearch
+									label="Search collections, classes, and objects"
+									shortcut="/"
+									inputClassName="topbar-search-input"
+									value={searchInput}
+									onChange={setSearchInput}
+									placeholder="Search collections, classes, and objects"
+									searchHref={workspaceSearchHref}
+									dropdown
+								>
 									{searchInput === "" ? (
 										<span className="topbar-search-hint" aria-hidden="true">
 											Type <kbd className="keyboard-key shortcut-hint-key">/</kbd> to search
@@ -1914,15 +1909,16 @@ export function AppShell({
 											<IconClose />
 										</button>
 									) : null}
-								</div>
+								</QuickSearch>
 								<button
-									type="submit"
+									type="button"
+									onClick={openFullSearch}
 									className="ghost icon-button topbar-search-submit"
 									aria-label="Open search"
 								>
 									<IconSearch />
 								</button>
-							</form>
+							</div>
 
 							<button
 								type="button"
@@ -2200,28 +2196,22 @@ export function AppShell({
 				title="Search workspace"
 				onClose={() => setMobileSearchOpen(false)}
 			>
-				<form className="stack mobile-search-form" onSubmit={onSearchSubmit}>
-					<label className="control-field" htmlFor="mobile-workspace-search">
-						<span>Collections, classes, and objects</span>
-						<input
-							id="mobile-workspace-search"
-							value={searchInput}
-							onChange={(event) => setSearchInput(event.target.value)}
-							placeholder="Search the workspace"
-							autoComplete="off"
-						/>
-					</label>
+				<div className="stack mobile-search-form">
+					<label htmlFor="mobile-workspace-search">Collections, classes, and objects</label>
+					<QuickSearch
+						inputId="mobile-workspace-search"
+						label="Collections, classes, and objects"
+						value={searchInput}
+						onChange={setSearchInput}
+						placeholder="Search the workspace"
+						searchHref={workspaceSearchHref}
+						onNavigate={() => setMobileSearchOpen(false)}
+					/>
 					<div className="form-actions form-actions--end">
-						<button
-							type="button"
-							className="ghost"
-							onClick={() => setMobileSearchOpen(false)}
-						>
-							Cancel
-						</button>
-						<button type="submit">Search</button>
+						<button type="button" className="ghost" onClick={() => setMobileSearchOpen(false)}>Cancel</button>
+						<button type="button" onClick={openFullSearch}>Show all results</button>
 					</div>
-				</form>
+				</div>
 			</CreateModal>
 
 			<KeyboardHelp
