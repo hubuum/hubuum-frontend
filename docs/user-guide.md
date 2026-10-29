@@ -137,13 +137,25 @@ can be retried without closing the token's scope and lifecycle details.
 
 ## Workspace navigation and resource selection
 
-Use **Go to…** or **Ctrl/Cmd+K** to find a workspace destination, pinned resource,
-or the current page's create action. The desktop control shows its shortcut;
+Use **Go to…** or **Ctrl/Cmd+K** to find a workspace destination, an accessible
+resource, or the current page's create action. The desktop control shows its shortcut;
 the empty workspace search shows **Type / to search** until focused. Press **/**
 outside a text field to focus workspace search or open it on a smaller screen.
-Type a query and press **Enter** to activate
-the first matching destination or action, or search resources when none match.
-Use the arrow keys to choose a different result before pressing Enter.
+Destinations and pins appear immediately. After a short typing pause, both search
+controls stream up to five matches per resource type, with IDs and class/collection
+context. Pinned resources appear only once. Typing never navigates automatically.
+Use the arrow keys to choose a result, then **Enter** to open it directly. Incoming
+batches preserve result order and keyboard focus. **Enter** in the input opens the
+first matching destination/action or the first completed resource result. If pressed
+before resources finish loading, it waits: one match with no further pages opens
+directly; otherwise it opens the full search. A visible result can be selected
+explicitly before the stream finishes.
+
+**Show all results** opens the full search workspace. Workspace search preserves
+the current search catalogs and data/schema options. Changing the query, leaving
+the suggestions, or pressing **Escape** cancels pending navigation and the old
+lookup. Interrupted searches retain received results and offer an explicit retry.
+
 Up to three pinned destinations also appear as direct links below the toolbar.
 Data-menu destination links and shortcut
 expansion buttons are separate controls. Mobile navigation traps keyboard focus
