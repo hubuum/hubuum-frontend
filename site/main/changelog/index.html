@@ -1262,7 +1262,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0025-2026-11-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        0.0.25 - 2026-11-09
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.25 - 2026-11-09">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2772,7 +2783,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0025-2026-11-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        0.0.25 - 2026-11-09
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.25 - 2026-11-09">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -4221,11 +4243,28 @@
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <p>All notable changes to Hubuum Frontend are documented in this file.</p>
 <p>The project follows <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
-<h2 id="unreleased"><a href="https://github.com/hubuum/hubuum-frontend/compare/v0.0.24...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="unreleased"><a href="https://github.com/hubuum/hubuum-frontend/compare/v0.0.25...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="0025-2026-11-09"><a href="https://github.com/hubuum/hubuum-frontend/compare/v0.0.24...v0.0.25">0.0.25</a> - 2026-11-09<a class="headerlink" href="#0025-2026-11-09" title="Permanent link">&para;</a></h2>
+<p>This release targets Hubuum Server v0.0.22 and its 272-operation, 431-schema
+OpenAPI contract. Upgrade the server and its workers before the frontend.</p>
 <ul>
+<li>
+<p><strong>Breaking server target:</strong> runtime configuration editing requires Server
+  v0.0.22. Apply its migrations and upgrade API, worker, template-worker, and
+  restore-executor binaries together; review template fuel and rendering changes.</p>
+</li>
+<li>
+<p>Accept omitted optional discovery explanations and group ownership values
+  without preventing configuration inspection. Keep newly discovered group names
+  usable when adopting the generated v0.0.22 API contract.</p>
+</li>
 <li>
 <p>Show server-provided enum-choice explanations and associate runtime-setting
   help with controls for screen readers.</p>
+</li>
+<li>
+<p>Keep long runtime setting values, explanations, and expanded effective JSON
+  within the configuration page on mobile screens.</p>
 </li>
 <li>
 <p>Render editable runtime configuration from the server catalogue on the administrator configuration page. New scalar fields need no frontend release; unsupported shapes remain read-only. Edits preserve omitted fields and report revision conflicts without retrying. Older servers retain effective-configuration inspection.</p>
