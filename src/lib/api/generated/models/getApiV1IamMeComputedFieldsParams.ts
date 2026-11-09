@@ -7,26 +7,18 @@
  */
 
 export type GetApiV1IamMeComputedFieldsParams = {
-/**
- * Limit results to one class
- */
-class_id?: number;
-/**
- * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
- * @minimum 1
- * @maximum 250
- */
-limit?: number;
-/**
- * Comma-separated sort fields. Cursor pagination uses the requested sort order and appends a stable tie-breaker automatically.
- */
-sort?: string;
-/**
- * Opaque cursor returned in the X-Next-Cursor response header from a previous page. Supply it unchanged to fetch the next page.
- */
-cursor?: string;
-/**
- * Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.
- */
-include_total?: boolean;
+  /** Limit results to one class */
+  class_id?: number;
+  /**
+   * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
+   * @minimum 1
+   * @maximum 250
+   */
+  limit?: number;
+  /** Comma-separated sort fields. Cursor pagination uses the requested sort order and appends a stable tie-breaker automatically. */
+  sort?: string;
+  /** Opaque cursor returned in the X-Next-Cursor response header from a previous page. Supply it unchanged to fetch the next page. */
+  cursor?: string;
+  /** Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count. */
+  include_total?: boolean;
 };

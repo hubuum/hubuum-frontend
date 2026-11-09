@@ -7,16 +7,10 @@
  */
 
 export type GetApiV1ClassesByNameByClassNameObjectAggregatesParams = {
-/**
- * Up to three repeated ordered dimensions: name, description, collection_id, created_at, updated_at, json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>
- */
-group_by?: string[];
-/**
- * Up to four repeated numeric measures in operation:field form. Operations are sum, average, min, and max; fields are json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>. At least one group_by or aggregate parameter is required.
- */
-aggregate?: string[];
-/**
- * Aggregate ordering: dimensions.asc, dimensions.desc, object_count.asc, or object_count.desc
- */
-sort?: string;
+  /** Up to three repeated ordered dimensions: name, description, collection_id, created_at, updated_at, json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key> */
+  group_by?: string[];
+  /** Up to four repeated numeric measures in operation:field form. Operations are sum, average, min, and max; fields are json_data.<comma-separated-path>, computed.shared.<key>, or computed.personal.<key>. At least one group_by or aggregate parameter is required. */
+  aggregate?: string[];
+  /** Aggregate ordering: dimensions.asc, dimensions.desc, object_count.asc, or object_count.desc */
+  sort?: string;
 };

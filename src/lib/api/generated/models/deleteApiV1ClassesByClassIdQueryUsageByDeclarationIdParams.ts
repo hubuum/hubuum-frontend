@@ -8,8 +8,6 @@
 import type { ResourceRevision } from './resourceRevision';
 
 export type DeleteApiV1ClassesByClassIdQueryUsageByDeclarationIdParams = {
-/**
- * Current declaration revision
- */
-expected_revision: ResourceRevision;
+  /** Current declaration revision */
+  expected_revision: ResourceRevision;
 };

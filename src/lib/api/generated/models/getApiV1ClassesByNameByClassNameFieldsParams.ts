@@ -7,20 +7,18 @@
  */
 
 export type GetApiV1ClassesByNameByClassNameFieldsParams = {
-/**
- * Maximum authorized sample size; defaults to 100
- * @minimum 1
- * @maximum 250
- */
-limit?: number;
-/**
- * Maximum path depth; defaults to 6
- * @minimum 0
- * @maximum 32
- */
-depth?: number;
-/**
- * Include object and array paths; defaults to false
- */
-containers?: boolean;
+  /**
+   * Maximum authorized sample size; defaults to 100
+   * @minimum 1
+   * @maximum 250
+   */
+  limit?: number;
+  /**
+   * Maximum path depth; defaults to 6
+   * @minimum 0
+   * @maximum 32
+   */
+  depth?: number;
+  /** Include object and array paths; defaults to false */
+  containers?: boolean;
 };

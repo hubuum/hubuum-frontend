@@ -7,8 +7,6 @@
  */
 
 export type GetApiV1ClassesByClassIdSchemaTasksByTaskIdReportParams = {
-/**
- * Download the retained HTML
- */
-download?: boolean;
+  /** Download the retained HTML */
+  download?: boolean;
 };
