@@ -4222,6 +4222,15 @@
 <p>All notable changes to Hubuum Frontend are documented in this file.</p>
 <p>The project follows <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <h2 id="unreleased"><a href="https://github.com/hubuum/hubuum-frontend/compare/v0.0.24...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<ul>
+<li>
+<p>Show server-provided enum-choice explanations and associate runtime-setting
+  help with controls for screen readers.</p>
+</li>
+<li>
+<p>Render editable runtime configuration from the server catalogue on the administrator configuration page. New scalar fields need no frontend release; unsupported shapes remain read-only. Edits preserve omitted fields and report revision conflicts without retrying. Older servers retain effective-configuration inspection.</p>
+</li>
+</ul>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Stream resource suggestions while typing in Go to (Ctrl/Cmd+K) and workspace

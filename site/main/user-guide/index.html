@@ -859,6 +859,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#shared-runtime-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Shared runtime settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1757,6 +1768,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#shared-runtime-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Shared runtime settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2468,6 +2490,24 @@ read-only context for the current principal.</p>
 path-aware labels where the API uses collection IDs. Import overrides still use
 the backend's name-based <code>CollectionKey</code>, so the frontend blocks existing
 collection overrides when multiple visible collections share the selected name.</p>
+<h2 id="shared-runtime-settings">Shared runtime settings<a class="headerlink" href="#shared-runtime-settings" title="Permanent link">&para;</a></h2>
+<p>The administrator configuration page discovers editable groups from servers
+implementing runtime settings discovery version 1. It renders boolean, numeric,
+string, and enum fields with the advertised descriptions, units, and bounds.
+The contract is introduced by <a href="https://github.com/hubuum/hubuum/pull/584">server PR #584</a>.
+Field explanations appear below their controls and are associated with them for
+screen readers. Enum choices include the server's explanations of what each
+value means. Labels and help come from the server; older catalogues without
+choice descriptions still display the available values.
+New scalar fields appear without a frontend release. Unsupported schemas and
+specialized authentication workflows remain read-only, with the server's reason.</p>
+<p>The form shows requested shared values when they differ from effective values
+because of a deployment ceiling. Source, revision, application status, and timing
+remain visible. Save sends only edited fields and the revision you loaded. If
+another administrator edited the group, reload and review the conflict before
+saving again. A successful commit does not promise every replica has applied it.</p>
+<p>Older servers without discovery retain read-only effective configuration. This
+optional capability does not change the frontend's pinned v0.0.21 target.</p>
 
 
 
