@@ -167,6 +167,26 @@ export function runtimeChanges(
 	return changes;
 }
 
+// Invalid numeric drafts still count as unsaved; validation happens on submit.
+export function runtimeDraftCount(
+	descriptor: RuntimeSettingsDescriptor,
+	drafts: Record<string, string | boolean>,
+	initial: Record<string, unknown>,
+): number {
+	return runtimeFields(descriptor).filter((field) => {
+		if (!Object.hasOwn(drafts, field.name) || field.kind === "readonly")
+			return false;
+		const input = drafts[field.name];
+		const value =
+			(field.kind === "integer" || field.kind === "number") &&
+			typeof input === "string" &&
+			input.trim() !== ""
+				? Number(input)
+				: input;
+		return value !== initial[field.name];
+	}).length;
+}
+
 const root = "/api/v1/admin/runtime-settings";
 async function read(response: Response): Promise<unknown> {
 	const body: unknown = await response.json();

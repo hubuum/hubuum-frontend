@@ -4,6 +4,7 @@ import {
 	fetchRuntimeSettingsCatalogue,
 	fetchRuntimeSettingsGroup,
 	runtimeChanges,
+	runtimeDraftCount,
 	runtimeFields,
 	saveRuntimeSettings,
 	type RuntimeSettingsDescriptor,
@@ -133,6 +134,27 @@ describe("runtime configuration discovery", () => {
 				{ new_option: 5, enabled: true },
 			),
 		).toEqual({});
+	});
+	it("counts changed and invalid drafts without counting reverted or read-only values", () => {
+		const initial = { new_option: 5, enabled: true, opaque: {} };
+		expect(runtimeDraftCount(descriptor, {}, initial)).toBe(0);
+		expect(
+			runtimeDraftCount(
+				descriptor,
+				{ new_option: "05", enabled: true },
+				initial,
+			),
+		).toBe(0);
+		expect(
+			runtimeDraftCount(
+				descriptor,
+				{ new_option: "12", enabled: false, opaque: "ignored" },
+				initial,
+			),
+		).toBe(2);
+		for (const new_option of ["", "NaN", "1.5", "21"]) {
+			expect(runtimeDraftCount(descriptor, { new_option }, initial)).toBe(1);
+		}
 	});
 	it("keeps unfamiliar composed schemas read-only", () => {
 		const schema = {

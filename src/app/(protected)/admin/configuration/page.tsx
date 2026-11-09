@@ -29,15 +29,15 @@ export default async function AdminConfigurationPage() {
 				</p>
 			</header>
 
-			<RuntimeSettingsEditor />
-
-			{config ? (
-				<RuntimeConfigPanel config={config} />
-			) : (
-				<div className="error-banner" role="alert">
-					Runtime configuration is unavailable from this server.
-				</div>
-			)}
+			<RuntimeSettingsEditor>
+				{config ? (
+					<RuntimeConfigPanel config={config} />
+				) : (
+					<div className="error-banner" role="alert">
+						Runtime configuration is unavailable from this server.
+					</div>
+				)}
+			</RuntimeSettingsEditor>
 		</section>
 	);
 }

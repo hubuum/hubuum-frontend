@@ -115,8 +115,11 @@ test.describe("v0.0.3 server features", () => {
 		await expect(
 			page.getByRole("heading", { name: "Runtime configuration" }),
 		).toBeVisible();
+		await page.getByRole("tab", { name: /^Effective configuration/ }).click();
 		await expect(
-			page.getByText(/Read-only effective server settings/),
+			page
+				.getByRole("tabpanel", { name: /^Effective configuration/ })
+				.getByText(/Read-only server snapshot/),
 		).toBeVisible();
 		await expect(
 			page.getByRole("heading", {
@@ -447,37 +450,32 @@ test.describe("v0.0.3 server features", () => {
 
 				return {
 					action: textInset("td:nth-child(3) .audit-action-value"),
-					filterable: textInset(
-						"td:nth-child(4) .audit-drilldown-button",
-					),
+					filterable: textInset("td:nth-child(4) .audit-drilldown-button"),
 					plain: textInset("td:nth-child(5) .audit-static-value"),
 				};
 			});
-			expect(valueTextInsets.plain).toBeCloseTo(
-				valueTextInsets.filterable,
-				1,
-			);
+			expect(valueTextInsets.plain).toBeCloseTo(valueTextInsets.filterable, 1);
 			const headerTextInsets = await page
 				.locator(".audit-table-wrap")
 				.evaluate((table) =>
-					Array.from(
-						table.querySelectorAll("th.audit-value-header"),
-					).map((header) => {
-						const textNode = Array.from(header.childNodes).find(
-							(node) =>
-								node.nodeType === Node.TEXT_NODE &&
-								Boolean(node.textContent?.trim()),
-						);
-						if (!textNode) {
-							throw new Error("Could not measure audit header text.");
-						}
-						const range = document.createRange();
-						range.selectNodeContents(textNode);
-						return (
-							range.getBoundingClientRect().left -
-							header.getBoundingClientRect().left
-						);
-					}),
+					Array.from(table.querySelectorAll("th.audit-value-header")).map(
+						(header) => {
+							const textNode = Array.from(header.childNodes).find(
+								(node) =>
+									node.nodeType === Node.TEXT_NODE &&
+									Boolean(node.textContent?.trim()),
+							);
+							if (!textNode) {
+								throw new Error("Could not measure audit header text.");
+							}
+							const range = document.createRange();
+							range.selectNodeContents(textNode);
+							return (
+								range.getBoundingClientRect().left -
+								header.getBoundingClientRect().left
+							);
+						},
+					),
 				);
 			expect(headerTextInsets).toHaveLength(5);
 			const expectedHeaderTextInsets = [
@@ -488,10 +486,7 @@ test.describe("v0.0.3 server features", () => {
 				valueTextInsets.filterable,
 			];
 			for (const [index, headerTextInset] of headerTextInsets.entries()) {
-				expect(headerTextInset).toBeCloseTo(
-					expectedHeaderTextInsets[index],
-					1,
-				);
+				expect(headerTextInset).toBeCloseTo(expectedHeaderTextInsets[index], 1);
 			}
 			await actionDrilldown.click();
 			await expect(
@@ -970,7 +965,9 @@ test.describe("v0.0.3 server features", () => {
 			await expect(versions.first()).toHaveAttribute("aria-current", "step");
 			await versions.first().press("ArrowDown");
 			await expect(versions.nth(1)).toHaveAttribute("aria-current", "step");
-			await page.getByRole("link", { name: "Back to live", exact: true }).click();
+			await page
+				.getByRole("link", { name: "Back to live", exact: true })
+				.click();
 
 			await page.goto("/audit");
 			const globalAuditRow = page

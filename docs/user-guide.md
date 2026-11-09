@@ -784,11 +784,19 @@ choice descriptions still display the available values.
 New scalar fields appear without a frontend release. Unsupported schemas and
 specialized authentication workflows remain read-only, with the server's reason.
 
+Each discovered group has its own tab. Switching tabs keeps unsaved edits, and
+tabs with pending edits show **Unsaved**. **Save changes** and **Discard** apply
+to the current group; saving is disabled until a value changes. Labels and help
+sit beside controls on larger screens and above them on smaller screens.
+The **Effective configuration** tab contains the read-only server snapshot.
+
 The form shows requested shared values when they differ from effective values
 because of a deployment ceiling. Source, revision, application status, and timing
 remain visible. Save sends only edited fields and the revision you loaded. If
 another administrator edited the group, reload and review the conflict before
 saving again. A successful commit does not promise every replica has applied it.
+Expand **Effective values** to inspect the group's applied values or reload its
+settings. Reload replaces that group's draft with the latest server values.
 
 Discovery is part of the pinned Server v0.0.22 contract. Older servers without
 discovery retain read-only effective configuration; upgrade the server before

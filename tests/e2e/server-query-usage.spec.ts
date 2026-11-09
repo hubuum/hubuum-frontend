@@ -597,6 +597,7 @@ test.describe("query usage workspace", () => {
 		page,
 	}) => {
 		await page.goto("/admin/configuration");
+		await page.getByRole("tab", { name: /^Effective configuration/ }).click();
 		await expect(
 			page.getByRole("heading", { name: "Query observations", exact: true }),
 		).toBeVisible();
