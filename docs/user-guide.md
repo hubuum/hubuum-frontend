@@ -790,5 +790,6 @@ remain visible. Save sends only edited fields and the revision you loaded. If
 another administrator edited the group, reload and review the conflict before
 saving again. A successful commit does not promise every replica has applied it.
 
-Older servers without discovery retain read-only effective configuration. This
-optional capability does not change the frontend's pinned v0.0.21 target.
+Discovery is part of the pinned Server v0.0.22 contract. Older servers without
+discovery retain read-only effective configuration; upgrade the server before
+using runtime editing.

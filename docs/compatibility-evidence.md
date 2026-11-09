@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.21` | `ghcr.io/hubuum/hubuum-server:v0.0.21` |
+| `main` (unreleased) | `v0.0.22` | `ghcr.io/hubuum/hubuum-server:v0.0.22` |
+| `v0.0.25` | `v0.0.22` | `ghcr.io/hubuum/hubuum-server:v0.0.22` |
 | `v0.0.24` | `v0.0.21` | `ghcr.io/hubuum/hubuum-server:v0.0.21` |
 | `v0.0.23` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.22` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
@@ -45,6 +46,39 @@ Frontend `v0.0.16` retains its Server `v0.0.15` target at
 Frontend `v0.0.15` retains its Server `v0.0.14` target at
 `sha256:6c1c8d7316a1f60a02e4505611a44e21030ba678b5b451f5b293a12f2bd87594`.
 A separate scheduled workflow follows the moving backend `:main` image.
+
+## Frontend v0.0.25
+
+The release targets Server v0.0.22 and its 272-operation, 431-schema contract.
+OpenAPI source revision: `242285411044459c3ac73563d9338905f3b4f377`.
+OpenAPI SHA-256: `4981b76ff4e4a96392f9a59e41e3c2e86b1d4b3d7049911b7565c224ba7ca2b7`.
+Immutable image: `ghcr.io/hubuum/hubuum-server:v0.0.22@sha256:71ff4090eac071f23ae59f7265dc07165939d42771a73d1d291defa023b4964b`.
+
+On 2026-11-09, the canonical published-image checks passed all 216 authenticated
+smoke cases without retries, all 43 full-session cases, all three live
+credential/restore cases, and all 110 live API checks. Runtime settings coverage
+includes server-provided field and enum help, a live pagination edit and ownership
+restoration, future fields, stale-revision conflicts, accessible associations,
+and narrow-screen layout with long read-only values and expanded effective JSON.
+
+Local verification also passed 1,235 unit tests (six expected skips), 26 release
+tooling tests, typechecking, production build, 29 public browser cases, and eight
+unchanged visual baselines in the pinned Linux browser image. Lint passed with
+153 existing warnings; changed runtime-setting files have none. The production
+audit found no vulnerabilities, and the release dependency gate passed for
+Node.js, application and development dependencies, Orval, pinned Actions, and
+an empty Dependabot queue. Helm lint, rendering, and packaging passed.
+The production v0.0.25 frontend image also passed non-root, read-only health
+and version checks, Compose quickstart, authenticated BFF login/session/logout,
+and three focused configuration/runtime browser checks against the published
+server image. The exact merged commit's release-readiness workflow repeats
+packaging and deployment checks before publication.
+
+Upgrade the server and all workers first, apply the server migrations and role
+grants with older writers stopped, and review template fuel and rendering
+changes. Runtime edits require discovery and a loaded revision; unsupported
+schemas and specialized authentication workflows remain read-only. See
+[current upgrade requirements](compatibility.md#before-upgrading).
 
 ## Frontend v0.0.24
 

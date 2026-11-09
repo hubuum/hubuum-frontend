@@ -6,8 +6,24 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.25] - 2026-11-09
+
+This release targets Hubuum Server v0.0.22 and its 272-operation, 431-schema
+OpenAPI contract. Upgrade the server and its workers before the frontend.
+
+- **Breaking server target:** runtime configuration editing requires Server
+  v0.0.22. Apply its migrations and upgrade API, worker, template-worker, and
+  restore-executor binaries together; review template fuel and rendering changes.
+
+- Accept omitted optional discovery explanations and group ownership values
+  without preventing configuration inspection. Keep newly discovered group names
+  usable when adopting the generated v0.0.22 API contract.
+
 - Show server-provided enum-choice explanations and associate runtime-setting
   help with controls for screen readers.
+
+- Keep long runtime setting values, explanations, and expanded effective JSON
+  within the configuration page on mobile screens.
 
 - Render editable runtime configuration from the server catalogue on the administrator configuration page. New scalar fields need no frontend release; unsupported shapes remain read-only. Edits preserve omitted fields and report revision conflicts without retrying. Older servers retain effective-configuration inspection.
 
@@ -944,7 +960,8 @@ its migration, worker, restore-executor, and writable temporary-disk requirement
 - The production image and chart run as a non-root user with dropped
   capabilities and read-only root filesystems.
 
-[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.24...HEAD
+[Unreleased]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.25...HEAD
+[0.0.25]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.24...v0.0.25
 [0.0.24]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.23...v0.0.24
 [0.0.23]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.22...v0.0.23
 [0.0.22]: https://github.com/hubuum/hubuum-frontend/compare/v0.0.21...v0.0.22

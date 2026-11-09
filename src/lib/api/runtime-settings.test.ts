@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
 	fetchRuntimeSettingsCatalogue,
+	fetchRuntimeSettingsGroup,
 	runtimeChanges,
 	runtimeFields,
 	saveRuntimeSettings,
@@ -32,6 +33,42 @@ const descriptor: RuntimeSettingsDescriptor = {
 };
 afterEach(() => vi.unstubAllGlobals());
 describe("runtime configuration discovery", () => {
+	it("accepts the optional read-only explanation being omitted", async () => {
+		const { read_only_reason: _, ...advertised } = descriptor;
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockResolvedValue(
+					Response.json({ schema_version: 1, groups: [advertised] }),
+				),
+		);
+		expect((await fetchRuntimeSettingsCatalogue())?.groups[0]).toEqual(
+			advertised,
+		);
+	});
+	it("normalizes unavailable optional group values without enabling edits", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(
+				Response.json({
+					group: "future_policy",
+					source: "deployment",
+					mutable: true,
+					restart_required: false,
+					takes_effect: "next_request",
+					replica: { status: "unavailable" },
+					effective: {},
+					constrained_by_ceiling: false,
+				}),
+			),
+		);
+		expect(await fetchRuntimeSettingsGroup("future_policy")).toMatchObject({
+			revision: null,
+			runtime: null,
+			deployment: null,
+		});
+	});
 	it("preserves field help and descriptions for advertised enum choices", () => {
 		const schema = {
 			properties: {

@@ -3,10 +3,14 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.21
+ * OpenAPI spec version: 0.0.22
  */
 
 export interface QueryObservationConfig {
+  /**
+     * Effective enablement on the responding replica. See
+     * `runtime_settings.query_observations` for its source and revision.
+     */
   enabled: boolean;
   /** @minimum 0 */
   max_patterns: number;
@@ -16,11 +20,6 @@ export interface QueryObservationConfig {
   max_predicates_per_query: number;
   /** @minimum 0 */
   retention_seconds: number;
-  /**
-     * Shared runtime override; null means the process startup setting applies.
-     * @nullable
-     */
-  runtime_override?: boolean | null;
   /** @minimum 0 */
   sample_every: number;
 }
