@@ -162,7 +162,15 @@ test("runtime configuration tabs preserve drafts and scope saves, discards and r
 	const effectiveTab = page.getByRole("tab", {
 		name: /^Effective configuration/,
 	});
-	await expect(policyTab).toHaveAttribute("aria-selected", "true");
+	await expect(page.getByRole("tab")).toHaveCount(4);
+	await expect(page.getByRole("tab").first()).toHaveAccessibleName(
+		/^Effective configuration/,
+	);
+	await expect(effectiveTab).toHaveAttribute("aria-selected", "true");
+	await expect(
+		page.getByRole("tabpanel", { name: /^Effective configuration/ }),
+	).toBeVisible();
+	await policyTab.click();
 	await expect(page.getByRole("tabpanel")).toHaveCount(1);
 	const policy = page.getByRole("tabpanel", { name: /^Future policy/ });
 	const limit = policy.getByRole("spinbutton", {
@@ -190,7 +198,11 @@ test("runtime configuration tabs preserve drafts and scope saves, discards and r
 	).toBeVisible();
 	await expect(limit).not.toBeVisible();
 	await expect(page.getByRole("tabpanel")).toHaveCount(1);
-	await effectiveTab.press("Home");
+	await effectiveTab.press("End");
+	await expect(paginationTab).toBeFocused();
+	await paginationTab.press("Home");
+	await expect(effectiveTab).toBeFocused();
+	await page.keyboard.press("ArrowRight");
 	await expect(
 		page.getByRole("tab", { name: /^Authentication/ }),
 	).toBeFocused();
@@ -245,6 +257,7 @@ test("runtime configuration tabs remain accessible and responsive in both themes
 	const { states } = await mockSettings(page);
 	states.future_policy.constrained_by_ceiling = true;
 	await page.goto("/admin/configuration");
+	await page.getByRole("tab", { name: /^Future policy/ }).click();
 	await expect(
 		page.getByRole("tab", { name: /^Future policy/ }),
 	).toHaveAttribute("aria-selected", "true");
@@ -493,6 +506,7 @@ test("renders future fields and requires review after a revision conflict", asyn
 	const card = page
 		.getByRole("article")
 		.filter({ has: page.getByRole("heading", { name: "Future policy" }) });
+	await page.getByRole("tab", { name: /^Future policy/ }).click();
 	await expect(
 		card.getByRole("combobox", { name: "Operating mode" }),
 	).toHaveAccessibleDescription(/Prefer speed with more resource use/);

@@ -21,7 +21,7 @@ const tabPrefix = "runtime-settings";
 
 export function RuntimeSettingsEditor({ children }: { children: ReactNode }) {
 	const router = useRouter();
-	const [selectedTab, setSelectedTab] = useState<string | null>(null);
+	const [selectedTab, setSelectedTab] = useState("effective");
 	const [dirtyGroups, setDirtyGroups] = useState<Record<string, boolean>>({});
 	const onDirtyChange = useCallback((group: string, dirty: boolean) => {
 		setDirtyGroups((current) =>
@@ -36,6 +36,11 @@ export function RuntimeSettingsEditor({ children }: { children: ReactNode }) {
 	const groups = catalogue.data?.groups ?? [];
 	const supported = catalogue.data?.schema_version === 1;
 	const steps = [
+		{
+			id: "effective",
+			label: "Effective configuration",
+			hint: "Read-only server snapshot",
+		},
 		...groups.map((descriptor) => ({
 			id: `group-${descriptor.key}`,
 			label: `${descriptor.title}${dirtyGroups[descriptor.key] ? " · Unsaved" : ""}`,
@@ -44,20 +49,10 @@ export function RuntimeSettingsEditor({ children }: { children: ReactNode }) {
 					? `Takes effect: ${descriptor.takes_effect.replaceAll("_", " ")}`
 					: "Read only",
 		})),
-		{
-			id: "effective",
-			label: "Effective configuration",
-			hint: "Read-only server snapshot",
-		},
 	];
-	const defaultGroup =
-		groups.find((group) => group.patch_supported) ?? groups[0];
-	const activeTab =
-		selectedTab && steps.some((step) => step.id === selectedTab)
-			? selectedTab
-			: defaultGroup
-				? `group-${defaultGroup.key}`
-				: "effective";
+	const activeTab = steps.some((step) => step.id === selectedTab)
+		? selectedTab
+		: "effective";
 	return (
 		<section
 			className="stack runtime-settings-editor"

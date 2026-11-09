@@ -788,7 +788,8 @@ Each discovered group has its own tab. Switching tabs keeps unsaved edits, and
 tabs with pending edits show **Unsaved**. **Save changes** and **Discard** apply
 to the current group; saving is disabled until a value changes. Labels and help
 sit beside controls on larger screens and above them on smaller screens.
-The **Effective configuration** tab contains the read-only server snapshot.
+The **Effective configuration** tab comes first, opens by default, and contains
+the read-only server snapshot.
 
 The form shows requested shared values when they differ from effective values
 because of a deployment ceiling. Source, revision, application status, and timing
