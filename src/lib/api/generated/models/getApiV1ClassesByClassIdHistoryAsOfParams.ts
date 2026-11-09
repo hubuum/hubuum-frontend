@@ -7,8 +7,6 @@
  */
 
 export type GetApiV1ClassesByClassIdHistoryAsOfParams = {
-/**
- * RFC3339 timestamp
- */
-at: string;
+  /** RFC3339 timestamp */
+  at: string;
 };

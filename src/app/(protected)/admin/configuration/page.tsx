@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 
+import { RuntimeSettingsEditor } from "@/components/runtime-settings-editor";
 import { RuntimeConfigPanel } from "@/components/runtime-config-panel";
 import { requireServerSession } from "@/lib/auth/guards";
 import {
@@ -23,10 +24,12 @@ export default async function AdminConfigurationPage() {
 					<h2>Runtime configuration</h2>
 				</div>
 				<p className="muted">
-					Read-only effective server settings. Secrets and sensitive values are
-					redacted by Hubuum Server.
+					Manage supported shared policies and inspect effective server
+					settings. Secrets and sensitive values are redacted by Hubuum Server.
 				</p>
 			</header>
+
+			<RuntimeSettingsEditor />
 
 			{config ? (
 				<RuntimeConfigPanel config={config} />

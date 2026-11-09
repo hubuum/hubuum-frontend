@@ -7,26 +7,18 @@
  */
 
 export type GetApiV1ClassesByClassIdByObjectIdRelationsHistoryAsOfParams = {
-/**
- * Required RFC3339 instant; half-open validity with full timestamp precision
- */
-at: string;
-/**
- * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
- * @minimum 1
- * @maximum 250
- */
-limit?: number;
-/**
- * Continuation bound to root, instant, ordering and token
- */
-cursor?: string;
-/**
- * Exact authorized count; default true
- */
-include_total?: boolean;
-/**
- * history_id or -history_id (default); filters are unsupported
- */
-sort?: string;
+  /** Required RFC3339 instant; half-open validity with full timestamp precision */
+  at: string;
+  /**
+   * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
+   * @minimum 1
+   * @maximum 250
+   */
+  limit?: number;
+  /** Continuation bound to root, instant, ordering and token */
+  cursor?: string;
+  /** Exact authorized count; default true */
+  include_total?: boolean;
+  /** history_id or -history_id (default); filters are unsupported */
+  sort?: string;
 };

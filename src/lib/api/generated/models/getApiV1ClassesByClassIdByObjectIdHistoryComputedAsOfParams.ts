@@ -7,8 +7,6 @@
  */
 
 export type GetApiV1ClassesByClassIdByObjectIdHistoryComputedAsOfParams = {
-/**
- * Required RFC 3339 historical instant
- */
-at: string;
+  /** Required RFC 3339 historical instant */
+  at: string;
 };

@@ -7,13 +7,11 @@
  */
 
 export type GetApiV1ClassesByClassIdSchemaRevisionsParams = {
-/**
- * Last schema revision; defaults to zero
- */
-after?: number;
-/**
- * 1 to 100 revisions; defaults to 50
- * @minimum 0
- */
-limit?: number;
+  /** Last schema revision; defaults to zero */
+  after?: number;
+  /**
+   * 1 to 100 revisions; defaults to 50
+   * @minimum 0
+   */
+  limit?: number;
 };

@@ -7,30 +7,20 @@
  */
 
 export type GetApiV1ClassesByClassIdObjectsHistoryParams = {
-/**
- * Exact historical object name; numeric names remain names
- */
-name: string;
-/**
- * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
- * @minimum 1
- * @maximum 250
- */
-limit?: number;
-/**
- * Opaque name-history continuation cursor
- */
-cursor?: string;
-/**
- * Include exact visible total (default true)
- */
-include_total?: boolean;
-/**
- * history_id (default descending) or revision; prefix - for descending
- */
-sort?: string;
-/**
- * Filter by snapshot revision
- */
-revision?: number;
+  /** Exact historical object name; numeric names remain names */
+  name: string;
+  /**
+   * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
+   * @minimum 1
+   * @maximum 250
+   */
+  limit?: number;
+  /** Opaque name-history continuation cursor */
+  cursor?: string;
+  /** Include exact visible total (default true) */
+  include_total?: boolean;
+  /** history_id (default descending) or revision; prefix - for descending */
+  sort?: string;
+  /** Filter by snapshot revision */
+  revision?: number;
 };

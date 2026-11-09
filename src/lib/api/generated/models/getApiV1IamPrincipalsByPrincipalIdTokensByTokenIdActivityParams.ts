@@ -7,14 +7,14 @@
  */
 
 export type GetApiV1IamPrincipalsByPrincipalIdTokensByTokenIdActivityParams = {
-/**
- * Source offset, 0-256
- * @minimum 0
- */
-offset?: number;
-/**
- * Page size, 1-100; default 50
- * @minimum 0
- */
-limit?: number;
+  /**
+   * Source offset, 0-256
+   * @minimum 0
+   */
+  offset?: number;
+  /**
+   * Page size, 1-100; default 50
+   * @minimum 0
+   */
+  limit?: number;
 };

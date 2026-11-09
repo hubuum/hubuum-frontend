@@ -6,6 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Show server-provided enum-choice explanations and associate runtime-setting
+  help with controls for screen readers.
+
+- Render editable runtime configuration from the server catalogue on the administrator configuration page. New scalar fields need no frontend release; unsupported shapes remain read-only. Edits preserve omitted fields and report revision conflicts without retrying. Older servers retain effective-configuration inspection.
+
 ### Added
 
 - Stream resource suggestions while typing in Go to (Ctrl/Cmd+K) and workspace

@@ -8,17 +8,13 @@
 import type { ComplianceStatus } from './complianceStatus';
 
 export type GetApiV1ClassesByClassIdSchemaObjectsParams = {
-/**
- * Last inspected object ID
- */
-after?: number;
-/**
- * 1 to 100 candidates
- * @minimum 0
- */
-limit?: number;
-/**
- * Effective active-revision compliance
- */
-status?: ComplianceStatus;
+  /** Last inspected object ID */
+  after?: number;
+  /**
+   * 1 to 100 candidates
+   * @minimum 0
+   */
+  limit?: number;
+  /** Effective active-revision compliance */
+  status?: ComplianceStatus;
 };

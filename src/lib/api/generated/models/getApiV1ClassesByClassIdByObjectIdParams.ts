@@ -7,8 +7,6 @@
  */
 
 export type GetApiV1ClassesByClassIdByObjectIdParams = {
-/**
- * Set to computed to enrich the object
- */
-include?: string;
+  /** Set to computed to enrich the object */
+  include?: string;
 };
