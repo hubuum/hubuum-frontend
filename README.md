@@ -4,7 +4,8 @@ The browser interface for Hubuum: browse inventory, manage relationships, run
 reports, and administer access. Server-side sessions keep Hubuum bearer tokens
 out of the browser.
 
-Frontend **v0.0.25** (November 9, 2026) targets Hubuum Server **v0.0.22**.
+Frontend **v0.0.25** (November 9, 2026) targets Hubuum Server **v0.0.22**
+and includes the Next.js 16.4.6 maintenance update.
 
 Edit runtime configuration through forms built from the server's catalogue.
 Labels, explanations, bounds, units, and enum-choice help come from the server;
