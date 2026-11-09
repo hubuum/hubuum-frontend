@@ -6,7 +6,7 @@ BACKEND_COMPOSE_FILE="${ROOT_DIR}/docker-compose.live-backend.yml"
 VALKEY_COMPOSE_FILE="${ROOT_DIR}/compose.dev.yml"
 BACKEND_PROJECT="${HUBUUM_FULL_E2E_BACKEND_PROJECT:-hubuum-frontend-full-e2e-backend}"
 VALKEY_PROJECT="${HUBUUM_FULL_E2E_VALKEY_PROJECT:-hubuum-frontend-full-e2e-valkey}"
-BACKEND_IMAGE="${HUBUUM_FULL_E2E_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.21@sha256:a5e1ad7a17281eefb4c1ed4da172a80bf815840f78bde6390d1e42bb2d51e0b6}"
+BACKEND_IMAGE="${HUBUUM_FULL_E2E_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.22@sha256:71ff4090eac071f23ae59f7265dc07165939d42771a73d1d291defa023b4964b}"
 BACKEND_PORT="${HUBUUM_FULL_E2E_BACKEND_PORT:-19999}"
 VALKEY_PORT="${HUBUUM_FULL_E2E_VALKEY_PORT:-16379}"
 BASE_URL="http://127.0.0.1:${BACKEND_PORT}"
@@ -104,6 +104,7 @@ E2E_PASSWORD="${admin_password}" \
 E2E_IDENTITY_SCOPE="local" \
   npx playwright test tests/e2e/authenticated-ui.spec.ts \
     tests/e2e/collection-event-self-service.spec.ts tests/e2e/rotating-sessions-live.spec.ts \
+    tests/e2e/runtime-settings.spec.ts \
     --project=chromium \
     --workers=1
 

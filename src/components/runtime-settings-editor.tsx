@@ -6,11 +6,11 @@ import { useState } from "react";
 import {
 	fetchRuntimeSettingsCatalogue,
 	fetchRuntimeSettingsGroup,
+	type RuntimeSettingsDescriptor,
+	type RuntimeSettingsState,
 	runtimeChanges,
 	runtimeFields,
 	saveRuntimeSettings,
-	type RuntimeSettingsDescriptor,
-	type RuntimeSettingsState,
 } from "@/lib/api/runtime-settings";
 
 export function RuntimeSettingsEditor() {
@@ -36,7 +36,10 @@ export function RuntimeSettingsEditor() {
 		);
 	const supported = catalogue.data.schema_version === 1;
 	return (
-		<section className="stack" aria-label="Editable runtime settings">
+		<section
+			className="stack runtime-settings-editor"
+			aria-label="Editable runtime settings"
+		>
 			{!supported && (
 				<p className="error-banner">
 					This settings catalogue requires a newer frontend. Settings are

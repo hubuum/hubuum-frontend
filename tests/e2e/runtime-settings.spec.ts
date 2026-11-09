@@ -24,10 +24,6 @@ test("edits a discovered pagination setting against the live server", async ({
 	page,
 }) => {
 	const schema = await page.request.get(`${root}/schema`);
-	test.skip(
-		schema.status() === 404,
-		"Server does not implement runtime settings discovery",
-	);
 	expect(schema.status()).toBe(200);
 	const originalResponse = await page.request.get(`${root}/pagination`);
 	const original = await originalResponse.json();
@@ -82,12 +78,12 @@ test("renders future fields and requires review after a revision conflict", asyn
 		replica: { status: "current" },
 		effective: {
 			new_option: 5,
-			complex_option: { retained: true },
+			complex_option: { retained: true, description: "x".repeat(512) },
 			mode: "balanced",
 		},
 		runtime: {
 			new_option: 5,
-			complex_option: { retained: true },
+			complex_option: { retained: true, description: "x".repeat(512) },
 			mode: "balanced",
 		},
 		deployment: null,
@@ -176,6 +172,7 @@ test("renders future fields and requires review after a revision conflict", asyn
 		{ expected_revision: 4, changes: { new_option: 12 } },
 		{ expected_revision: 5, changes: { new_option: 12 } },
 	]);
+	await card.getByText("Effective values", { exact: true }).click();
 	expect(
 		(
 			await new AxeBuilder({ page })

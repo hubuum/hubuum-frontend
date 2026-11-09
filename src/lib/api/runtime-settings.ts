@@ -2,8 +2,18 @@ import { z } from "zod";
 
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { hubuumBffPath } from "@/lib/api/frontend";
+import type {
+	RuntimeSettingsDescriptor as ServerRuntimeSettingsDescriptor,
+	RuntimeSettingsPatch,
+} from "@/lib/api/generated/models";
 
-const descriptorSchema = z.object({
+// Discovery accepts groups and effects introduced after the pinned server.
+export type RuntimeSettingsDescriptor = Omit<
+	ServerRuntimeSettingsDescriptor,
+	"key" | "takes_effect"
+> & { key: string; takes_effect: string };
+
+const descriptorSchema: z.ZodType<RuntimeSettingsDescriptor> = z.object({
 	key: z.string().regex(/^[a-zA-Z0-9_]+$/),
 	title: z.string(),
 	description: z.string(),
@@ -11,7 +21,7 @@ const descriptorSchema = z.object({
 	patch_supported: z.boolean(),
 	requires_local_admin: z.boolean(),
 	takes_effect: z.string(),
-	read_only_reason: z.string().nullable(),
+	read_only_reason: z.string().nullish(),
 });
 const catalogueSchema = z.object({
 	schema_version: z.number().int(),
@@ -20,18 +30,29 @@ const catalogueSchema = z.object({
 const stateSchema = z.object({
 	group: z.string(),
 	source: z.string(),
-	revision: z.number().int().positive().safe().nullable(),
+	revision: z
+		.number()
+		.int()
+		.positive()
+		.safe()
+		.nullish()
+		.transform((value) => value ?? null),
 	mutable: z.boolean(),
 	restart_required: z.boolean(),
 	takes_effect: z.string(),
 	replica: z.object({ status: z.string() }).passthrough(),
 	effective: z.record(z.string(), z.unknown()),
-	runtime: z.record(z.string(), z.unknown()).nullable(),
-	deployment: z.record(z.string(), z.unknown()).nullable(),
+	runtime: z
+		.record(z.string(), z.unknown())
+		.nullish()
+		.transform((value) => value ?? null),
+	deployment: z
+		.record(z.string(), z.unknown())
+		.nullish()
+		.transform((value) => value ?? null),
 	constrained_by_ceiling: z.boolean(),
 });
 
-export type RuntimeSettingsDescriptor = z.infer<typeof descriptorSchema>;
 export type RuntimeSettingsState = z.infer<typeof stateSchema>;
 export type RuntimeField = {
 	name: string;
@@ -180,13 +201,14 @@ export async function saveRuntimeSettings(
 	revision: number,
 	changes: Record<string, unknown>,
 ) {
+	const patch: RuntimeSettingsPatch = { expected_revision: revision, changes };
 	const response = await fetch(
 		hubuumBffPath(`${root}/${encodeURIComponent(group)}`),
 		{
 			method: "PATCH",
 			credentials: "include",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ expected_revision: revision, changes }),
+			body: JSON.stringify(patch),
 		},
 	);
 	return z
