@@ -11,6 +11,9 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 This release targets Hubuum Server v0.0.22 and its 272-operation, 431-schema
 OpenAPI contract. Upgrade the server and its workers before the frontend.
 
+- Update Next.js to 16.4.6, including route-response compression and development
+  garbage-collection fixes.
+
 - **Breaking server target:** runtime configuration editing requires Server
   v0.0.22. Apply its migrations and upgrade API, worker, template-worker, and
   restore-executor binaries together; review template fuel and rendering changes.
