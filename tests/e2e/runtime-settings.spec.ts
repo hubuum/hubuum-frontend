@@ -74,6 +74,7 @@ async function mockSettings(page: Page, schemaVersion = 1) {
 						type: "integer",
 						title: "Default page size",
 						minimum: 1,
+						maximum: 250,
 						"x-unit": "items",
 					},
 				},
@@ -375,11 +376,72 @@ test("runtime configuration shows newer catalogue versions as read-only tabs", a
 	).toBeVisible();
 });
 
+test("runtime configuration shows the page-size maximum and rejects values above it", async ({
+	page,
+}) => {
+	const { patches } = await mockSettings(page);
+	await page.goto("/admin/configuration");
+	await page.getByRole("tab", { name: /^Pagination/ }).click();
+	const panel = page.getByRole("tabpanel", { name: /^Pagination/ });
+	const input = panel.getByRole("spinbutton", {
+		name: "Default page size (items)",
+	});
+	const save = panel.getByRole("button", { name: "Save changes" });
+	await expect(
+		panel.getByText("(Deployment maximum: 250 items.)", { exact: true }),
+	).toBeVisible();
+	await expect(input).toHaveAccessibleDescription(
+		"(Deployment maximum: 250 items.)",
+	);
+	await expect(input).toHaveAttribute("max", "250");
+	await expect(input).toHaveAttribute("min", "1");
+	await input.fill("251");
+	await save.click();
+	expect(
+		await input.evaluate(
+			(element) => (element as HTMLInputElement).validity.rangeOverflow,
+		),
+	).toBe(true);
+	await expect(input).toBeFocused();
+	expect(patches).toEqual([]);
+	// The submit handler must also reject the value if native validation is bypassed.
+	await panel.locator("form").evaluate((form) => {
+		(form as HTMLFormElement).noValidate = true;
+	});
+	await save.click();
+	await expect(panel.getByRole("alert")).toContainText(
+		"Default page size must be at most 250.",
+	);
+	expect(patches).toEqual([]);
+	await input.fill("250");
+	await save.click();
+	await expect(
+		panel.getByRole("status").filter({ hasText: "Saved revision" }),
+	).toContainText("Saved revision 5");
+	expect(patches).toEqual([
+		{
+			group: "pagination",
+			body: { expected_revision: 4, changes: { default_page_limit: 250 } },
+		},
+	]);
+});
+
 test("edits a discovered pagination setting against the live server", async ({
 	page,
 }) => {
 	const schema = await page.request.get(`${root}/schema`);
 	expect(schema.status()).toBe(200);
+	const catalogue: { groups: RuntimeSettingsDescriptor[] } =
+		await schema.json();
+	const configResponse = await page.request.get(
+		"/_hubuum-bff/hubuum/api/v1/admin/config",
+	);
+	expect(configResponse.status()).toBe(200);
+	const config = await configResponse.json();
+	const maximum: number = config.pagination.max_page_limit;
+	expect(
+		catalogue.groups.find((group) => group.key === "pagination")?.schema,
+	).toMatchObject({ properties: { default_page_limit: { maximum } } });
 	const originalResponse = await page.request.get(`${root}/pagination`);
 	const original = await originalResponse.json();
 	await page.goto("/admin/configuration");
@@ -394,6 +456,12 @@ test("edits a discovered pagination setting against the live server", async ({
 		});
 		await expect(input).toHaveAccessibleDescription(
 			/Requests with an explicit limit/,
+		);
+		await expect(input).toHaveAttribute("max", String(maximum));
+		await expect(input).toHaveAccessibleDescription(
+			new RegExp(
+				`Deployment maximum: ${maximum.toLocaleString("en-US")} items`,
+			),
 		);
 		await input.fill(String(next));
 		await card.getByRole("button", { name: "Save changes" }).click();

@@ -790,6 +790,8 @@ to the current group; saving is disabled until a value changes. Labels and help
 sit beside controls on larger screens and above them on smaller screens.
 The **Effective configuration** tab comes first, opens by default, and contains
 the read-only server snapshot.
+The default page size shows the deployment maximum advertised by the server.
+Values above that maximum are rejected before saving.
 
 The form shows requested shared values when they differ from effective values
 because of a deployment ceiling. Source, revision, application status, and timing

@@ -78,6 +78,17 @@ export function runtimeFields(
 	return Object.entries(object(descriptor.schema.properties)).map(
 		([name, raw]) => {
 			const field = object(raw);
+			const maximum =
+				typeof field.maximum === "number" ? field.maximum : undefined;
+			let description =
+				typeof field.description === "string" ? field.description : undefined;
+			if (
+				descriptor.key === "pagination" &&
+				name === "default_page_limit" &&
+				maximum !== undefined
+			) {
+				description = `${description ? `${description} ` : ""}(Deployment maximum: ${maximum.toLocaleString()} items.)`;
+			}
 			const choices =
 				Array.isArray(field.enum) &&
 				field.enum.length > 0 &&
@@ -113,12 +124,11 @@ export function runtimeFields(
 					typeof field.title === "string"
 						? field.title
 						: name.replaceAll("_", " "),
-				description:
-					typeof field.description === "string" ? field.description : undefined,
+				description,
 				unit: typeof field["x-unit"] === "string" ? field["x-unit"] : undefined,
 				kind,
 				minimum: typeof field.minimum === "number" ? field.minimum : undefined,
-				maximum: typeof field.maximum === "number" ? field.maximum : undefined,
+				maximum,
 				choices,
 				choiceDescriptions: Object.fromEntries(
 					(choices ?? []).flatMap((choice) => {
