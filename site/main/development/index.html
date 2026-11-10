@@ -1689,6 +1689,13 @@ failure, or frontend exit stops its child processes and removes that project's
 container, network, and volumes. Existing development services and <code>.env.local</code>
 are left alone; installed dependencies, cached images, and Next.js build caches
 are retained.</p>
+<p>To exercise browser setup, omit <code>BACKEND_BASE_URL</code>. Open the frontend,
+enter the one-time key printed at startup and your server URL, check the
+connection, then save it. An optional <code>SETUP_KEY</code> of 32–256 characters overrides
+automatic generation and is never printed.
+<code>run.sh</code> explicitly leaves the backend empty in this mode, overriding any
+backend in <code>.env.local</code>. Its temporary Valkey forgets the connection on exit;
+use persistent Valkey for an installation that should retain setup.</p>
 <p><code>PORT</code> defaults to 3000. Options are forwarded to the usual development launcher:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">BACKEND_BASE_URL</span><span class="o">=</span>https://your-hubuum-server.example.com<span class="w"> </span>./run.sh<span class="w"> </span>--port<span class="w"> </span><span class="m">4444</span><span class="w"> </span>--listen<span class="w"> </span><span class="m">127</span>.0.0.1
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./run.sh<span class="w"> </span>--help
@@ -1751,6 +1758,13 @@ out existing local sessions.</p>
 backend credentials:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>npm<span class="w"> </span>run<span class="w"> </span>test:e2e:public
 </code></pre></div>
+<p>Run the one-time connection flow against an isolated Valkey and a local HTTP
+server fixture with <code>npm run test:e2e:setup</code>. It checks identity rejection,
+compatibility confirmation, accessibility, mobile layout, shared setup,
+administrator target switching, session isolation, and persistence across a
+Valkey restart and fresh processes. Docker or Podman
+is required; no live backend credentials are used. The wrapper removes only
+its own Valkey project and disables recordings containing the test setup key.</p>
 <p>Pixel comparisons run separately in CI so an intentional or accidental visual
 change does not hide the functional results. Both CI and baseline updates use
 the same digest-pinned Playwright 1.64.0 Noble <code>linux/amd64</code> image, bundled

@@ -1539,7 +1539,13 @@ should start with <a href="../example-dataset/">Atlas</a> and the
 <h3 id="container-quickstart">Container quickstart<a class="headerlink" href="#container-quickstart" title="Permanent link">&para;</a></h3>
 <p>See <a href="../quickstart-compose/#start">download, configure, and start</a>.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<p>See <a href="../configuration/">runtime settings, proxy routing, and login backgrounds</a>.</p>
+<p>See <a href="../configuration/">runtime settings, proxy routing, and login backgrounds</a>.
+When no backend is configured, the frontend offers an installation-wide
+<a href="../configuration/#first-time-connection-setup">connection setup flow</a>
+that checks Hubuum identity and compatibility before saving the URL. It prints
+a one-time setup key at startup unless an explicit key is supplied. Unverified
+or incompatible versions require confirmation. Administrators can later change
+saved connections in <strong>Configuration → Connection</strong>; persistence uses Valkey.</p>
 <h2 id="release-artifacts">Release artifacts<a class="headerlink" href="#release-artifacts" title="Permanent link">&para;</a></h2>
 <p>Release v0.0.25 provides Linux AMD64/ARM64 images, a Helm chart, and a
 checksum-protected Compose archive pinned to the image digest. The image is

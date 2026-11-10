@@ -1477,6 +1477,15 @@ extract it (on macOS, use <code>shasum -a 256 -c SHA256SUMS</code>):</p>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>login-backgrounds
 </code></pre></div>
 <p>Edit <code>.env.quickstart</code> and set <code>BACKEND_BASE_URL</code> to your server's API origin.
+Alternatively, leave it empty to use
+<a href="../configuration/#first-time-connection-setup">browser connection setup</a>.
+The frontend prints a generated one-time key in its startup output; read it
+with <code>docker compose --env-file .env.quickstart -f compose.quickstart.yml logs frontend</code>.
+The browser asks for that key before checking and saving your server address.
+You may supply a random <code>SETUP_KEY</code> of 32–256 characters to keep the key out of
+logs. The saved connection survives restarts using the bundled Valkey volume.
+Valkey runs directly as its image's <code>999:1000</code> user so shutdown and restart work
+with all Linux capabilities dropped. Existing data must be writable by UID 999.
 For Docker Desktop, a server on the host is normally reachable at
 <code>http://host.docker.internal:8080</code>. On Linux Docker Engine, add
 <code>extra_hosts: ["host.docker.internal:host-gateway"]</code> to the frontend service or
@@ -1498,8 +1507,8 @@ before using a different server.</p>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>up<span class="w"> </span>-d
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>docker<span class="w"> </span>compose<span class="w"> </span>--env-file<span class="w"> </span>.env.quickstart<span class="w"> </span>-f<span class="w"> </span>compose.quickstart.yml<span class="w"> </span>down
 </code></pre></div>
-<p>Use <code>down -v</code> only when you also want to remove the Valkey data volume and sign
-out all stored sessions.</p>
+<p>Use <code>down -v</code> only when you also want to remove the Valkey data volume, forget
+the connection saved through browser setup, and sign out all stored sessions.</p>
 <p>This quickstart binds the frontend to loopback and does not configure TLS. Use
 the Helm chart or the Hubuum Server single-host installer for production.</p>
 <h2 id="optional-login-backgrounds">Optional login backgrounds<a class="headerlink" href="#optional-login-backgrounds" title="Permanent link">&para;</a></h2>

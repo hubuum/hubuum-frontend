@@ -790,6 +790,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#first-time-connection-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        First-time connection setup
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changing-the-connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changing the connection
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#proxy-routing" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1371,6 +1393,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#first-time-connection-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        First-time connection setup
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changing-the-connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changing the connection
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#proxy-routing" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1446,7 +1490,11 @@
 <tbody>
 <tr>
 <td><code>BACKEND_BASE_URL</code></td>
-<td>Required Hubuum API origin reachable from the frontend process/container.</td>
+<td>Hubuum API origin reachable from the frontend process/container. Takes precedence over browser setup. Leave empty for setup.</td>
+</tr>
+<tr>
+<td><code>SETUP_KEY</code></td>
+<td>Optional random secret of 32–256 characters authorizing one-time browser setup. If omitted, the frontend generates and prints a one-time key at startup.</td>
 </tr>
 <tr>
 <td><code>VALKEY_URL</code></td>
@@ -1462,7 +1510,7 @@
 </tr>
 <tr>
 <td><code>SETTINGS_PREFIX</code></td>
-<td>Prefix for compatibility settings cached in Valkey.</td>
+<td>Prefix for installation configuration and compatibility settings in Valkey. Use a distinct prefix per installation.</td>
 </tr>
 <tr>
 <td><code>NEXT_PUBLIC_APP_NAME</code></td>
@@ -1474,6 +1522,66 @@
 <a href="https://github.com/hubuum/hubuum-frontend/blob/main/.env.quickstart.example">Compose environment template</a> for their supported
 settings. Restart the frontend after changing runtime configuration; public
 Next.js build variables require rebuilding the application.</p>
+<h2 id="first-time-connection-setup">First-time connection setup<a class="headerlink" href="#first-time-connection-setup" title="Permanent link">&para;</a></h2>
+<p>With no <code>BACKEND_BASE_URL</code> or saved connection, visiting the frontend opens
+<code>/setup</code>. Keep <code>VALKEY_URL</code> configured. The frontend generates a random 256-bit
+setup key and prints it to stdout with the <code>[hubuum-setup]</code> prefix. Enter that
+key and the backend origin, select <strong>Check connection</strong>, review the detected
+version, then select <strong>Save and continue</strong> to reach sign-in.</p>
+<p>The generated key is shared by all replicas through Valkey and printed again
+on startup until setup completes. Saving the connection atomically consumes
+the key; it is never printed after setup. Anyone with access to that startup
+output can perform setup while the installation is unconfigured. Keep those
+logs private. For deployments where secrets must not enter logs, supply your
+own <code>SETUP_KEY</code> through a secret manager; explicit keys are never printed.
+The setup page and API never disclose either kind of key.</p>
+<p>The frontend checks <code>/readyz</code>, <code>/api-doc/openapi.json</code>, and <code>/api/v1/config</code>
+from its own network. It verifies Hubuum's API identity, required session
+operations, public configuration, and the supported release in
+<a href="../compatibility/">compatibility</a>. Currently this is Server <code>v0.0.22</code>.
+Optional <code>v</code> prefixes and build metadata are accepted. Other releases,
+prereleases, Git development descriptions, and unknown versions show
+<strong>Compatibility not verified</strong> and require an explicit <strong>continue anyway</strong>
+confirmation. Stock servers older than <code>v0.0.20</code> lack the required rotating
+authentication contract. These and servers advertising missing session
+operations show <strong>Known compatibility problems</strong>, but may also be selected
+after confirmation to allow patched installations. An override does not make
+the frontend compatible; individual features or sign-in may still fail.
+An unreachable server or an unrecognizable Hubuum API cannot be selected.
+Discovery follows no redirects and sends no credentials to the candidate.
+The URL must be an HTTP(S) origin without credentials or <code>/api</code> paths.
+Saving repeats validation before atomically creating the connection. Changed
+warnings or a changed version require fresh confirmation.</p>
+<p>The connection applies to everyone and is stored without expiry at
+<code>&lt;SETTINGS_PREFIX&gt;installation:backend</code> in Valkey. All replicas must share that
+store and prefix. Enable Valkey persistence and retain its volume; the Compose
+quickstart already does this. Ephemeral development Valkey forgets the choice
+when stopped. Setup closes after the first successful save, and you can remove
+<code>SETUP_KEY</code> and restart the frontend afterward.</p>
+<h2 id="changing-the-connection">Changing the connection<a class="headerlink" href="#changing-the-connection" title="Permanent link">&para;</a></h2>
+<p>Administrators can open <strong>Configuration → Connection</strong> to change a saved
+target. The form checks the candidate and requires confirmation that the
+change affects everyone and requires sign-in again. <strong>Effective configuration</strong>
+remains the first and default tab. Setup keys are not used for later changes;
+the BFF checks administrator access against the current server.</p>
+<p>Each switch receives a new connection revision, invalidating existing frontend
+sessions even when switching back to a previous origin. Backend credentials
+remain bound to their original connection. Browser preferences and pending
+settings updates are cleared when the browser next loads the new connection;
+fallback settings in Valkey are isolated by connection. The backend's own
+account settings remain on that backend.</p>
+<p>An explicitly configured <code>BACKEND_BASE_URL</code> always wins. Its Connection tab
+is read-only; change the environment value and restart all frontend replicas.
+This also provides operator recovery if a saved target is unavailable or
+cannot authenticate an administrator. To restore browser management, repair
+the saved target at <code>&lt;SETTINGS_PREFIX&gt;installation:backend</code> while the frontend
+is stopped, or remove it to repeat setup, then remove the environment override.
+Preserve the settings prefix and persistent Valkey volume during upgrades.
+When changing environment-managed deployments, clear installation sessions and
+fallback user settings; the legacy environment-managed settings namespace is
+preserved for existing deployments.</p>
+<p>For Helm, set <code>backend.baseUrl: ""</code>. Optionally supply <code>SETUP_KEY</code> using
+<code>extraEnv</code> with a <code>secretKeyRef</code> to avoid printing a generated key.</p>
 <h2 id="proxy-routing">Proxy routing<a class="headerlink" href="#proxy-routing" title="Permanent link">&para;</a></h2>
 <p>Route <code>/api/v0/*</code> and <code>/api/v1/*</code> to Hubuum Server, and <code>/_hubuum-bff/*</code> plus
 browser routes to the frontend. The BFF prefix is fixed. TLS-terminating proxies
@@ -1489,6 +1597,9 @@ from <code>login-backgrounds/</code> at runtime and remain outside the image.</p
 through <code>loginBackgrounds.existingClaim</code> at <code>/app/login-backgrounds</code>.</p>
 <h2 id="readiness-and-operations">Readiness and operations<a class="headerlink" href="#readiness-and-operations" title="Permanent link">&para;</a></h2>
 <p><code>/healthz</code> checks the frontend process; <code>/readyz</code> also checks dependencies.
+Before setup, healthy Valkey permits a <code>200</code> response with
+<code>status: "setup_required"</code> and <code>backend: "not_configured"</code>, allowing ingress
+traffic to reach setup. After setup, readiness requires both dependencies.
 Use <a href="../observability/">observability</a> for probes, logging, and request IDs.</p>
 
 

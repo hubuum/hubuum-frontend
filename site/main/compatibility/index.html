@@ -1805,7 +1805,14 @@ For Frontend v0.0.25, it is
 <code>ghcr.io/hubuum/hubuum-server:v0.0.20@sha256:eaf59f8a4b4793030a78bc1637a8e2b9fad2f810b8621ff9a874dca534b9a23a</code>.</p>
 <p>For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
 <code>ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225</code>.
-Scheduled tests against server <code>main</code> do not change a release's declared target.</p>
+Scheduled tests against server <code>main</code> do not change a release's declared target.
+Browser connection setup checks this declared target before saving a backend.
+Unverified versions and known compatibility problems require explicit
+confirmation; patched installations can be selected despite their reported
+version. This escape hatch does not expand the supported release matrix.
+Update <code>SUPPORTED_SERVER_VERSION</code> in <code>src/lib/backend-setup.ts</code> when advancing
+the supported release; its test checks alignment with the bundled OpenAPI file.
+Existing environment-configured deployments retain their current behavior.</p>
 <h2 id="interactive-session-upgrade">Interactive session upgrade<a class="headerlink" href="#interactive-session-upgrade" title="Permanent link">&para;</a></h2>
 <p>Frontend v0.0.22 requires the versioned login and rotating-refresh
 contract from <a href="https://github.com/hubuum/hubuum/pull/483">server #483</a>.
