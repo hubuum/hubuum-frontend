@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 			request: parseBookmarkableReportRequest(request.nextUrl.searchParams),
 			sessionId: auth.session.sid,
 			templateId: parsedTemplateId,
-			token: auth.session.token,
+			token: sessionCredential(auth.session),
 			dependencies: { timing },
 		});
 

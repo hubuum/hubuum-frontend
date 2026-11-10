@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -19,7 +20,10 @@ export default async function AdminLayout({
 		normalizeCorrelationId(requestHeaders.get(CORRELATION_ID_HEADER)) ??
 		undefined;
 	const session = await requireServerSession();
-	const canViewAdmin = await hasAdminAccess(session.token, correlationId);
+	const canViewAdmin = await hasAdminAccess(
+		sessionCredential(session),
+		correlationId,
+	);
 
 	if (!canViewAdmin) {
 		redirect("/app");

@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { BackendCredential } from "@/lib/backend-target";
+
 import { BackendError, backendFetchJson } from "@/lib/api/backend";
 import type {
 	CountsResponse,
@@ -13,7 +15,7 @@ export type CountsWithOptionalCollections = CountsResponse & {
 };
 
 export async function fetchMetaCounts(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<CountsWithOptionalCollections> {
 	return backendFetchJson<CountsWithOptionalCollections>(
@@ -26,7 +28,7 @@ export async function fetchMetaCounts(
 }
 
 export async function tryFetchMetaCounts(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<CountsWithOptionalCollections | null> {
 	try {
@@ -40,7 +42,7 @@ export async function tryFetchMetaCounts(
 }
 
 export async function fetchDbState(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<DbStateResponse> {
 	return backendFetchJson<DbStateResponse>("/api/v0/meta/db", {
@@ -50,7 +52,7 @@ export async function fetchDbState(
 }
 
 export async function fetchTaskQueueState(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<TaskQueueStateResponse> {
 	return backendFetchJson<TaskQueueStateResponse>("/api/v0/meta/tasks", {
@@ -60,7 +62,7 @@ export async function fetchTaskQueueState(
 }
 
 export async function fetchRunningConfig(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<RunningConfig> {
 	return backendFetchJson<RunningConfig>("/api/v1/admin/config", {
@@ -70,7 +72,7 @@ export async function fetchRunningConfig(
 }
 
 export async function tryFetchRunningConfig(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<RunningConfig | null> {
 	try {
@@ -93,7 +95,7 @@ export type SystemMetaSnapshot = {
 };
 
 export async function tryFetchSystemMetaSnapshot(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<SystemMetaSnapshot | null> {
 	try {

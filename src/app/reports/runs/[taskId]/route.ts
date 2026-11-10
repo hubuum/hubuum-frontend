@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { NextRequest } from "next/server";
 
 import {
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 			await getStoredRawReport({
 				correlationId: auth.correlationId,
 				taskId: parsedTaskId,
-				token: auth.session.token,
+				token: sessionCredential(auth.session),
 				dependencies: { timing },
 			}),
 		);

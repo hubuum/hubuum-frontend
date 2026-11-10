@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { headers } from "next/headers";
 
 import { ImportsWorkspace } from "@/components/imports-workspace";
@@ -15,7 +16,7 @@ export default async function ImportsPage() {
 		undefined;
 	const session = await requireServerSession();
 	const canCreateCollections = await hasAdminAccess(
-		session.token,
+		sessionCredential(session),
 		correlationId,
 	);
 

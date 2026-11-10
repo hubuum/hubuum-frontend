@@ -78,6 +78,17 @@ export function runtimeFields(
 	return Object.entries(object(descriptor.schema.properties)).map(
 		([name, raw]) => {
 			const field = object(raw);
+			const maximum =
+				typeof field.maximum === "number" ? field.maximum : undefined;
+			let description =
+				typeof field.description === "string" ? field.description : undefined;
+			if (
+				descriptor.key === "pagination" &&
+				name === "default_page_limit" &&
+				maximum !== undefined
+			) {
+				description = `${description ? `${description} ` : ""}(Deployment maximum: ${maximum.toLocaleString()} items.)`;
+			}
 			const choices =
 				Array.isArray(field.enum) &&
 				field.enum.length > 0 &&
@@ -113,12 +124,11 @@ export function runtimeFields(
 					typeof field.title === "string"
 						? field.title
 						: name.replaceAll("_", " "),
-				description:
-					typeof field.description === "string" ? field.description : undefined,
+				description,
 				unit: typeof field["x-unit"] === "string" ? field["x-unit"] : undefined,
 				kind,
 				minimum: typeof field.minimum === "number" ? field.minimum : undefined,
-				maximum: typeof field.maximum === "number" ? field.maximum : undefined,
+				maximum,
 				choices,
 				choiceDescriptions: Object.fromEntries(
 					(choices ?? []).flatMap((choice) => {
@@ -165,6 +175,26 @@ export function runtimeChanges(
 		if (value !== initial[field.name]) changes[field.name] = value;
 	}
 	return changes;
+}
+
+// Invalid numeric drafts still count as unsaved; validation happens on submit.
+export function runtimeDraftCount(
+	descriptor: RuntimeSettingsDescriptor,
+	drafts: Record<string, string | boolean>,
+	initial: Record<string, unknown>,
+): number {
+	return runtimeFields(descriptor).filter((field) => {
+		if (!Object.hasOwn(drafts, field.name) || field.kind === "readonly")
+			return false;
+		const input = drafts[field.name];
+		const value =
+			(field.kind === "integer" || field.kind === "number") &&
+			typeof input === "string" &&
+			input.trim() !== ""
+				? Number(input)
+				: input;
+		return value !== initial[field.name];
+	}).length;
 }
 
 const root = "/api/v1/admin/runtime-settings";

@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetchRaw } from "@/lib/api/backend";
@@ -82,7 +83,7 @@ async function proxyClassObjects(request: NextRequest, context: RouteContext) {
 	const upstream = await backendFetchRaw(upstreamPath, {
 		correlationId,
 		method,
-		token: session.token,
+		token: sessionCredential(session),
 		headers: upstreamHeaders,
 		body,
 	});

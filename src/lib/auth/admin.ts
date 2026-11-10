@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { BackendCredential } from "@/lib/backend-target";
+
 import { backendFetchRaw } from "@/lib/api/backend";
 
 export type AdminAccessProbe =
@@ -15,7 +17,7 @@ export function discardAdminProbeResponse(response: Response): void {
 }
 
 export async function probeAdminAccess(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<AdminAccessProbe> {
 	try {
@@ -53,7 +55,7 @@ export async function probeAdminAccess(
 }
 
 export async function hasAdminAccess(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<boolean> {
 	const probe = await probeAdminAccess(token, correlationId);

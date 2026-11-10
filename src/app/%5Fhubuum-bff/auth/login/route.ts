@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { backendFetchRaw } from "@/lib/api/backend";
+import { type BackendTarget, getBackendTarget } from "@/lib/backend-target";
 import {
 	parseSessionResponse,
 	SESSION_CLIENT_ID,
@@ -100,11 +101,13 @@ async function parseCredentials(
 async function revokeIssuedToken(
 	token: string,
 	correlationId: string,
+	target: BackendTarget,
 ): Promise<void> {
 	await backendFetchRaw("/api/v1/auth/logout", {
 		correlationId,
 		method: "POST",
 		token,
+		target,
 	}).catch(() => undefined);
 }
 
@@ -141,7 +144,14 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
+	const target = await getBackendTarget();
+	if (!target)
+		return NextResponse.json(
+			{ message: "Backend setup is required." },
+			{ status: 503 },
+		);
 	const upstream = await backendFetchRaw(BACKEND_LOGIN_PATH, {
+		target,
 		correlationId,
 		method: "POST",
 		headers: {
@@ -181,6 +191,7 @@ export async function POST(request: NextRequest) {
 
 	const token = pair.access_token;
 	const meResponse = await backendFetchRaw("/api/v1/iam/me", {
+		target,
 		correlationId,
 		method: "GET",
 		token,
@@ -194,7 +205,7 @@ export async function POST(request: NextRequest) {
 	if (
 		!authenticatedIdentityMatchesRequest(identity, credentials.identity_scope)
 	) {
-		await revokeIssuedToken(token, correlationId);
+		await revokeIssuedToken(token, correlationId, target);
 		if (fromForm) {
 			return seeOther(
 				loginErrorLocation("identity_scope_unavailable", returnTo),
@@ -220,9 +231,9 @@ export async function POST(request: NextRequest) {
 
 	let sid: string;
 	try {
-		sid = await createSession(pair, sessionUsername);
+		sid = await createSession(pair, sessionUsername, target);
 	} catch {
-		await revokeIssuedToken(token, correlationId);
+		await revokeIssuedToken(token, correlationId, target);
 		console.error(
 			`[hubuum-auth][cid=${correlationId}] session store unavailable; verify VALKEY_URL and Valkey connectivity`,
 		);

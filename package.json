@@ -21,6 +21,7 @@
 		"test:dev-deps": "node --test scripts/dev-deps.test.mjs scripts/run.test.mjs",
 		"test:server-options": "node --test scripts/server-options.test.mjs",
 		"test:e2e": "playwright test",
+		"test:e2e:setup": "bash scripts/setup-e2e-test.sh",
 		"test:e2e:authenticated": "bash scripts/authenticated-e2e-test.sh",
 		"test:e2e:authenticated:full": "bash scripts/full-authenticated-e2e.sh",
 		"test:e2e:public": "playwright test tests/e2e/public-ui.spec.ts tests/e2e/report-tables.spec.ts --grep-invert 'public visual regression'",

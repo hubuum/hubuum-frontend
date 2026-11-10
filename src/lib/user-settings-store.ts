@@ -84,7 +84,18 @@ class ValkeyUserSettingsStore implements UserSettingsStore {
 
 let store: UserSettingsStore | null = null;
 
-export function getUserSettingsStore(): UserSettingsStore {
+export function getUserSettingsStore(
+	connectionRevision?: string,
+): UserSettingsStore {
+	if (
+		connectionRevision &&
+		!connectionRevision.startsWith("environment:") &&
+		!connectionRevision.startsWith("legacy:")
+	) {
+		return new ValkeyUserSettingsStore(
+			`${getServerEnv().SETTINGS_PREFIX}backend:${connectionRevision}:`,
+		);
+	}
 	if (store) return store;
 
 	const env = getServerEnv();

@@ -17,6 +17,13 @@ vi.mock("@/lib/auth/session", () => ({
 	setSessionCookie: mocks.setSessionCookie,
 }));
 
+vi.mock("@/lib/backend-target", () => ({
+	getBackendTarget: async () => ({
+		origin: "https://backend.test",
+		revision: "connection-1",
+	}),
+}));
+
 import { POST } from "@/app/%5Fhubuum-bff/auth/login/route";
 
 const pair = sessionCredentials({ access_token: "issued-token" });
@@ -111,7 +118,16 @@ describe("login route request origin", () => {
 			"hubuum-frontend",
 		);
 		expect(mocks.backendFetchRaw).toHaveBeenCalledTimes(2);
-		expect(mocks.createSession).toHaveBeenCalledWith(pair, "admin");
+		expect(mocks.createSession).toHaveBeenCalledWith(pair, "admin", {
+			origin: "https://backend.test",
+			revision: "connection-1",
+		});
+		for (const [, options] of mocks.backendFetchRaw.mock.calls) {
+			expect(options.target).toEqual({
+				origin: "https://backend.test",
+				revision: "connection-1",
+			});
+		}
 		expect(mocks.setSessionCookie).toHaveBeenCalledWith(
 			response,
 			"session-id",

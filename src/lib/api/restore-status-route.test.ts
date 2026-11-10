@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ backendFetchRaw: vi.fn() }));
 vi.mock("@/lib/api/backend", () => mocks);
+vi.mock("@/lib/backend-target", () => ({
+	getBackendTarget: async () => ({
+		origin: "https://backend.test",
+		revision: "connection-1",
+	}),
+}));
 
 import { GET } from "@/app/%5Fhubuum-bff/hubuum/api/v1/restores/[restoreId]/status/route";
 
@@ -11,6 +17,7 @@ function request(capability = "restore-capability") {
 		"https://hubuum.invalid/_hubuum-bff/hubuum/api/v1/restores/42/status",
 		{
 			headers: {
+				"x-hubuum-backend-revision": "connection-1",
 				"X-Hubuum-Restore-Capability": capability,
 				Authorization: "Bearer browser-supplied",
 				Cookie: "hubuum.sid=expired",
@@ -39,6 +46,10 @@ describe("capability-authenticated restore status", () => {
 			"X-Hubuum-Restore-Capability": "restore-capability",
 		});
 		expect(options.token).toBeUndefined();
+		expect(options.target).toEqual({
+			origin: "https://backend.test",
+			revision: "connection-1",
+		});
 	});
 	it.each(["0", "-1", "../iam/me", "9007199254740992"])(
 		"rejects invalid restore ID %s",
@@ -65,6 +76,15 @@ describe("capability-authenticated restore status", () => {
 			params: Promise.resolve({ restoreId: "42" }),
 		});
 		expect(result.status).toBe(403);
+	});
+	it("does not forward a restore capability from a previously selected server", async () => {
+		const stale = request();
+		stale.headers.set("x-hubuum-backend-revision", "old-connection");
+		const result = await GET(stale, {
+			params: Promise.resolve({ restoreId: "42" }),
+		});
+		expect(result.status).toBe(409);
+		expect(mocks.backendFetchRaw).not.toHaveBeenCalled();
 	});
 	it("makes a temporarily unavailable backend retryable without expiring a session", async () => {
 		mocks.backendFetchRaw.mockResolvedValue(

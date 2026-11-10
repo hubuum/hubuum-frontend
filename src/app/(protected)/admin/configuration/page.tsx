@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { headers } from "next/headers";
 
 import { RuntimeSettingsEditor } from "@/components/runtime-settings-editor";
@@ -15,7 +16,10 @@ export default async function AdminConfigurationPage() {
 		normalizeCorrelationId(requestHeaders.get(CORRELATION_ID_HEADER)) ??
 		undefined;
 	const session = await requireServerSession();
-	const config = await tryFetchRunningConfig(session.token, correlationId);
+	const config = await tryFetchRunningConfig(
+		sessionCredential(session),
+		correlationId,
+	);
 
 	return (
 		<section className="stack">
@@ -29,15 +33,15 @@ export default async function AdminConfigurationPage() {
 				</p>
 			</header>
 
-			<RuntimeSettingsEditor />
-
-			{config ? (
-				<RuntimeConfigPanel config={config} />
-			) : (
-				<div className="error-banner" role="alert">
-					Runtime configuration is unavailable from this server.
-				</div>
-			)}
+			<RuntimeSettingsEditor>
+				{config ? (
+					<RuntimeConfigPanel config={config} />
+				) : (
+					<div className="error-banner" role="alert">
+						Runtime configuration is unavailable from this server.
+					</div>
+				)}
+			</RuntimeSettingsEditor>
 		</section>
 	);
 }

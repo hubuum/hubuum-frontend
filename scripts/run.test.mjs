@@ -10,8 +10,9 @@ import { fileURLToPath } from "node:url";
 
 const script = fileURLToPath(new URL("../run.sh", import.meta.url));
 
-for (const [mode, signal, expectedCode, address = "127.0.0.1:46379"] of [
+for (const [mode, signal, expectedCode, address = "127.0.0.1:46379", backendUrl = "https://backend.example.com"] of [
 	["exit", null, 0],
+	["exit", null, 0, "127.0.0.1:46379", ""],
 	["exit", null, 0, "46379"],
 	["exit", null, 1, "invalid"],
 	["start-fails", null, 17],
@@ -68,7 +69,7 @@ if ((command === "dev:deps" && mode === "startup") || command === "dev") {
 				env: {
 					...process.env,
 					PATH: `${directory}:${process.env.PATH}`,
-					BACKEND_BASE_URL: "https://backend.example.com",
+					BACKEND_BASE_URL: backendUrl,
 					PORT: "4444",
 					HUBUUM_VALKEY_PROJECT: "developer-owned",
 					HUBUUM_CONTAINER_RUNTIME: join(directory, "runtime"),
@@ -141,7 +142,7 @@ if ((command === "dev:deps" && mode === "startup") || command === "dev") {
 				"--listen",
 				"127.0.0.1",
 			]);
-			assert.equal(frontend.backend, "https://backend.example.com");
+			assert.equal(frontend.backend, backendUrl);
 			assert.equal(frontend.port, "4444");
 			assert.equal(frontend.valkey, "redis://127.0.0.1:46379/0");
 		}

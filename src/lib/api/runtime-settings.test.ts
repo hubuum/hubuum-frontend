@@ -4,6 +4,7 @@ import {
 	fetchRuntimeSettingsCatalogue,
 	fetchRuntimeSettingsGroup,
 	runtimeChanges,
+	runtimeDraftCount,
 	runtimeFields,
 	saveRuntimeSettings,
 	type RuntimeSettingsDescriptor,
@@ -105,6 +106,60 @@ describe("runtime configuration discovery", () => {
 			choiceDescriptions: {},
 		});
 	});
+	it.each([250, 1000])(
+		"shows and enforces the advertised pagination maximum of %s",
+		(maximum) => {
+			const pagination: RuntimeSettingsDescriptor = {
+				...descriptor,
+				key: "pagination",
+				schema: {
+					properties: {
+						default_page_limit: {
+							type: "integer",
+							title: "Default page size",
+							description: "Maximum items when a request omits its limit.",
+							minimum: 1,
+							maximum,
+						},
+					},
+				},
+			};
+			expect(runtimeFields(pagination)[0]).toMatchObject({
+				minimum: 1,
+				maximum,
+				description: `Maximum items when a request omits its limit. (Deployment maximum: ${maximum.toLocaleString()} items.)`,
+			});
+			expect(() =>
+				runtimeChanges(
+					pagination,
+					{ default_page_limit: String(maximum + 1) },
+					{ default_page_limit: 50 },
+				),
+			).toThrow(`Default page size must be at most ${maximum}.`);
+			expect(
+				runtimeChanges(
+					pagination,
+					{ default_page_limit: String(maximum) },
+					{ default_page_limit: 50 },
+				),
+			).toEqual({ default_page_limit: maximum });
+		},
+	);
+	it("does not invent a pagination maximum when the catalogue omits it", () => {
+		const pagination = {
+			...descriptor,
+			key: "pagination",
+			schema: {
+				properties: {
+					default_page_limit: { type: "integer", description: "Page size." },
+				},
+			},
+		};
+		expect(runtimeFields(pagination)[0]).toMatchObject({
+			description: "Page size.",
+			maximum: undefined,
+		});
+	});
 	it("edits newly discovered fields while preserving unedited and unsupported values", () => {
 		expect(
 			runtimeChanges(
@@ -133,6 +188,27 @@ describe("runtime configuration discovery", () => {
 				{ new_option: 5, enabled: true },
 			),
 		).toEqual({});
+	});
+	it("counts changed and invalid drafts without counting reverted or read-only values", () => {
+		const initial = { new_option: 5, enabled: true, opaque: {} };
+		expect(runtimeDraftCount(descriptor, {}, initial)).toBe(0);
+		expect(
+			runtimeDraftCount(
+				descriptor,
+				{ new_option: "05", enabled: true },
+				initial,
+			),
+		).toBe(0);
+		expect(
+			runtimeDraftCount(
+				descriptor,
+				{ new_option: "12", enabled: false, opaque: "ignored" },
+				initial,
+			),
+		).toBe(2);
+		for (const new_option of ["", "NaN", "1.5", "21"]) {
+			expect(runtimeDraftCount(descriptor, { new_option }, initial)).toBe(1);
+		}
 	});
 	it("keeps unfamiliar composed schemas read-only", () => {
 		const schema = {

@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { headers } from "next/headers";
 import Link from "next/link";
 
@@ -64,7 +65,10 @@ export default async function StatisticsPage() {
 		normalizeCorrelationId(requestHeaders.get(CORRELATION_ID_HEADER)) ??
 		undefined;
 	const session = await requireServerSession();
-	const canViewAdmin = await hasAdminAccess(session.token, correlationId);
+	const canViewAdmin = await hasAdminAccess(
+		sessionCredential(session),
+		correlationId,
+	);
 
 	if (!canViewAdmin) {
 		return (
@@ -97,7 +101,7 @@ export default async function StatisticsPage() {
 	}
 
 	const snapshot = await tryFetchSystemMetaSnapshot(
-		session.token,
+		sessionCredential(session),
 		correlationId,
 	);
 

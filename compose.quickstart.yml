@@ -3,6 +3,7 @@ name: hubuum-frontend
 services:
   valkey:
     image: docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+    user: "999:1000"
     restart: unless-stopped
     command: ["valkey-server", "--appendonly", "yes"]
     read_only: true
@@ -12,10 +13,6 @@ services:
       - valkey_data:/data
     cap_drop:
       - ALL
-    cap_add:
-      - CHOWN
-      - SETGID
-      - SETUID
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -36,7 +33,8 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      BACKEND_BASE_URL: ${BACKEND_BASE_URL:?Set BACKEND_BASE_URL in .env.quickstart}
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-}
+      SETUP_KEY: ${SETUP_KEY:-}
       VALKEY_URL: redis://valkey:6379/0
       SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-28800}
       SESSION_PREFIX: ${SESSION_PREFIX:-hubuum:sess:}

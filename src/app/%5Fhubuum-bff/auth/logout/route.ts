@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetchRaw } from "@/lib/api/backend";
@@ -42,7 +43,7 @@ async function performLogout(request: NextRequest) {
 				correlationId,
 				method: "POST",
 				signal: AbortSignal.timeout(5_000),
-				token: session.token,
+				token: sessionCredential(session),
 			},
 		).catch(() => {
 			// Continue local logout even if backend logout fails.

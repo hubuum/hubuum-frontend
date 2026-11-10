@@ -52,11 +52,17 @@ describe("backend session validation", () => {
 
 		const first = validateBackendSession({
 			sid: "concurrent",
-			token: "backend-token",
+			token: {
+				token: "backend-token",
+				target: { origin: "https://backend.test", revision: "connection-1" },
+			},
 		});
 		const second = validateBackendSession({
 			sid: "concurrent",
-			token: "backend-token",
+			token: {
+				token: "backend-token",
+				target: { origin: "https://backend.test", revision: "connection-1" },
+			},
 		});
 
 		expect(mocks.backendFetchRaw).toHaveBeenCalledOnce();

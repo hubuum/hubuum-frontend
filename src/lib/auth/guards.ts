@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import "server-only";
 
 import { headers } from "next/headers";
@@ -28,10 +29,9 @@ export async function requireServerSession() {
 	}
 
 	let validation = await validateBackendSession({
-		correlationId:
-			correlationId === "-" ? undefined : correlationId,
+		correlationId: correlationId === "-" ? undefined : correlationId,
 		sid: session.sid,
-		token: session.token,
+		token: sessionCredential(session),
 	});
 	if (validation === "expired") {
 		if (!(await invalidateRejectedSession(session))) {
@@ -41,7 +41,7 @@ export async function requireServerSession() {
 				validation = await validateBackendSession({
 					correlationId: correlationId === "-" ? undefined : correlationId,
 					sid: session.sid,
-					token: session.token,
+					token: sessionCredential(session),
 				});
 				if (validation !== "expired") return session;
 				if (!(await invalidateRejectedSession(session))) {

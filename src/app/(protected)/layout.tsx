@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
 
@@ -24,11 +25,12 @@ export default async function ProtectedLayout({
 		await loadProtectedLayoutBootstrap({
 			correlationId,
 			sid: session.sid,
-			token: session.token,
+			token: sessionCredential(session),
 		});
 
 	return (
 		<UserSettingsSync
+			backendRevision={session.backendRevision}
 			principalId={principalId}
 			initialSnapshot={initialSettings}
 		>

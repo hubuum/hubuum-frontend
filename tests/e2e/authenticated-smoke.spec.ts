@@ -45,6 +45,7 @@ test("Configuration shows the effective backup capture limit on desktop and mobi
 	await expect(
 		page.getByRole("heading", { name: "Runtime configuration", exact: true }),
 	).toBeVisible();
+	await page.getByRole("tab", { name: /^Effective configuration/ }).click();
 	const limit = page.getByRole("listitem").filter({
 		has: page.getByText("Maximum backup capture rows", { exact: true }),
 	});

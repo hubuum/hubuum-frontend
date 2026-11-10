@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { FRONTEND_API_PREFIX } from "@/lib/api/frontend";
+import {
+	BACKEND_REVISION_HEADER,
+	getBrowserBackendRevision,
+} from "@/lib/backend-connection";
 
 import {
 	CORRELATION_ID_HEADER,
@@ -130,16 +135,23 @@ function installClientFetchPatch() {
 
 		const interactionCorrelationId = getActiveInteractionCorrelationId();
 		let requestInit = init;
-		if (interactionCorrelationId) {
+		const backendRevision = requestUrl.pathname.startsWith(
+			`${FRONTEND_API_PREFIX}/`,
+		)
+			? getBrowserBackendRevision()
+			: undefined;
+		if (interactionCorrelationId || backendRevision) {
 			const headers = new Headers(
 				init?.headers ?? (input instanceof Request ? input.headers : undefined),
 			);
 			const existingHeader = normalizeCorrelationId(
 				headers.get(CORRELATION_ID_HEADER),
 			);
-			if (!existingHeader) {
+			if (!existingHeader && interactionCorrelationId) {
 				headers.set(CORRELATION_ID_HEADER, interactionCorrelationId);
 			}
+			if (backendRevision)
+				headers.set(BACKEND_REVISION_HEADER, backendRevision);
 
 			requestInit = {
 				...init,
