@@ -1,6 +1,9 @@
 import "server-only";
 
-import { verifyBackendInstallation } from "@/lib/backend-setup";
+import {
+	type BackendAssessment,
+	verifyBackendInstallation,
+} from "@/lib/backend-setup";
 import { CORRELATION_ID_HEADER } from "@/lib/correlation";
 
 async function readJson(
@@ -47,7 +50,7 @@ async function readJson(
 export async function inspectBackend(
 	origin: string,
 	correlationId: string,
-): Promise<string> {
+): Promise<BackendAssessment> {
 	const init: RequestInit = {
 		cache: "no-store",
 		redirect: "error",
@@ -76,6 +79,10 @@ export async function inspectBackend(
 		await get("/api-doc/openapi.json"),
 		8 * 1024 * 1024,
 	);
-	const config = await readJson(await get("/api/v1/config"), 64 * 1024);
+	// Older or patched servers may not expose this optional client projection.
+	// Keep a recognized installation selectable with an explicit warning.
+	const config = await get("/api/v1/config")
+		.then((response) => readJson(response, 64 * 1024))
+		.catch(() => null);
 	return verifyBackendInstallation(document, config);
 }

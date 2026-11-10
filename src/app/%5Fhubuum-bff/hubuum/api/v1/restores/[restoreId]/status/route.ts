@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetchRaw } from "@/lib/api/backend";
+import { getBackendTarget } from "@/lib/backend-target";
+import { BACKEND_REVISION_HEADER } from "@/lib/backend-connection";
 import {
 	CORRELATION_ID_HEADER,
 	generateCorrelationId,
@@ -36,9 +38,24 @@ export async function GET(
 	}
 
 	try {
+		const target = await getBackendTarget();
+		if (
+			!target ||
+			(!target.revision.startsWith("environment:") &&
+				request.headers.get(BACKEND_REVISION_HEADER) !== target.revision)
+		) {
+			return NextResponse.json(
+				{
+					message:
+						"The server connection changed. Restore status belongs to the original server.",
+				},
+				{ status: 409, headers },
+			);
+		}
 		const upstream = await backendFetchRaw(
 			`/api/v1/restores/${restoreId}/status`,
 			{
+				target,
 				method: "GET",
 				correlationId,
 				headers: { "X-Hubuum-Restore-Capability": capability },

@@ -12395,6 +12395,16 @@ html[data-theme="dark"] .auth-background::after {
 	letter-spacing: 0.02em;
 }
 
+.backend-setup-form .checkbox-row input[type="checkbox"] {
+	min-height: 1rem;
+	flex-shrink: 0;
+}
+
+.backend-connection-panel,
+.backend-setup-form [role="status"] {
+	overflow-wrap: anywhere;
+}
+
 .auth-form-panel .muted {
 	color: color-mix(in oklab, var(--muted) 62%, var(--ink));
 }

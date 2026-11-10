@@ -15,6 +15,7 @@ import {
 	getUserSettingsSyncStatus,
 	initializeUserSettings,
 	prepareUserSettingsCache,
+	prepareUserSettingsConnection,
 	resetUserSettingsSyncForTests,
 	writeDeviceSetting,
 	writeUserSetting,
@@ -94,6 +95,34 @@ describe("user settings synchronization", () => {
 		vi.useRealTimers();
 		vi.unstubAllGlobals();
 	});
+
+	it("drops pending changes from every account when the installation connection changes", () => {
+		const storage = createLocalStorage({
+			"hubuum.backend-revision": "first",
+			[USER_SETTINGS_OWNER_KEY]: "1",
+			[PORTABLE_USER_SETTING_KEYS.theme]: "dark",
+			[`${USER_SETTINGS_PENDING_KEY_PREFIX}1`]: '{"hubuum.theme":"dark"}',
+			[`${USER_SETTINGS_PENDING_KEY_PREFIX}2`]: '{"hubuum.theme":"light"}',
+		});
+		installWindow(storage);
+		prepareUserSettingsConnection("second");
+		expect(storage.getItem(PORTABLE_USER_SETTING_KEYS.theme)).toBeNull();
+		expect(storage.getItem(`${USER_SETTINGS_PENDING_KEY_PREFIX}1`)).toBeNull();
+		expect(storage.getItem(`${USER_SETTINGS_PENDING_KEY_PREFIX}2`)).toBeNull();
+		expect(storage.getItem("hubuum.backend-revision")).toBe("second");
+	});
+
+	it.each(["environment:existing", "legacy:existing"])(
+		"preserves existing preferences when upgrading %s",
+		(revision) => {
+			const storage = createLocalStorage({
+				[PORTABLE_USER_SETTING_KEYS.theme]: "dark",
+			});
+			installWindow(storage);
+			prepareUserSettingsConnection(revision);
+			expect(storage.getItem(PORTABLE_USER_SETTING_KEYS.theme)).toBe("dark");
+		},
+	);
 
 	it("migrates portable legacy values but leaves device state local", () => {
 		const storage = createLocalStorage({

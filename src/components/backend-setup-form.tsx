@@ -4,15 +4,23 @@ import { useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { frontendApiPath } from "@/lib/api/frontend";
-import { SUPPORTED_SERVER_VERSION } from "@/lib/backend-setup";
+import {
+	backendCheckSchema,
+	type BackendCheck,
+	SUPPORTED_SERVER_VERSION,
+} from "@/lib/backend-setup";
+import { clearUserSettingsForLogout } from "@/lib/user-settings-client";
 
-export function BackendSetupForm() {
+export function BackendSetupForm({
+	expectedRevision,
+}: {
+	expectedRevision?: string;
+} = {}) {
+	const changing = expectedRevision !== undefined;
 	const [url, setUrl] = useState("");
 	const [key, setKey] = useState("");
-	const [verified, setVerified] = useState<{
-		origin: string;
-		version: string;
-	} | null>(null);
+	const [verified, setVerified] = useState<BackendCheck | null>(null);
+	const [acceptWarnings, setAcceptWarnings] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -20,40 +28,48 @@ export function BackendSetupForm() {
 		setBusy(true);
 		setError(null);
 		try {
-			const response = await fetch(frontendApiPath("/setup"), {
-				method: "POST",
-				credentials: "include",
-				headers: {
-					"Content-Type": "application/json",
-					"x-hubuum-setup-key": key,
+			const response = await fetch(
+				frontendApiPath(changing ? "/connection" : "/setup"),
+				{
+					method: "POST",
+					credentials: "include",
+					headers: {
+						"Content-Type": "application/json",
+						...(changing ? {} : { "x-hubuum-setup-key": key }),
+					},
+					body: JSON.stringify({
+						url,
+						action: verified ? "save" : "check",
+						confirmation: acceptWarnings ? verified : undefined,
+						expectedRevision,
+					}),
 				},
-				body: JSON.stringify({ url, action: verified ? "save" : "check" }),
-			});
+			);
 			const data: unknown = await response.json();
+			const result = backendCheckSchema.safeParse(data);
 			if (!response.ok) {
-				throw new Error(
-					getApiErrorMessage(data, "Setup could not be completed."),
+				setVerified(
+					response.status === 409 && result.success ? result.data : null,
 				);
+				setAcceptWarnings(false);
+				setError(getApiErrorMessage(data, "Setup could not be completed."));
+				return;
 			}
 			if (verified) {
 				setKey("");
+				clearUserSettingsForLogout();
 				window.location.assign("/login");
 				return;
 			}
-			if (
-				data &&
-				typeof data === "object" &&
-				"origin" in data &&
-				typeof data.origin === "string" &&
-				"version" in data &&
-				typeof data.version === "string"
-			) {
-				setVerified({ origin: data.origin, version: data.version });
+			if (result.success) {
+				setVerified(result.data);
+				setAcceptWarnings(false);
 			} else {
 				throw new Error("The server check returned an unexpected response.");
 			}
 		} catch (error) {
 			setVerified(null);
+			setAcceptWarnings(false);
 			setError(
 				error instanceof Error
 					? error.message
@@ -66,8 +82,8 @@ export function BackendSetupForm() {
 
 	return (
 		<form
-			className="login-card card"
-			aria-label="Backend setup"
+			className={`${changing ? "stack card" : "login-card card"} backend-setup-form`}
+			aria-label={changing ? "Change server connection" : "Backend setup"}
 			onSubmit={(event) => {
 				event.preventDefault();
 				void submit();
@@ -75,8 +91,9 @@ export function BackendSetupForm() {
 			aria-busy={busy}
 		>
 			<p className="muted">
-				Connect this console to Hubuum Server. Everyone using this installation
-				will share this connection.
+				{changing
+					? "Changing this connection affects everyone using this console. All users will need to sign in again on the new server."
+					: "Connect this console to Hubuum Server. Everyone using this installation will share this connection."}
 			</p>
 			<label htmlFor="backend-url">Server URL</label>
 			<input
@@ -95,55 +112,106 @@ export function BackendSetupForm() {
 				onChange={(event) => {
 					setUrl(event.target.value);
 					setVerified(null);
+					setAcceptWarnings(false);
 					setError(null);
 				}}
 			/>
 			<p id="backend-url-help" className="muted">
-				Use an address reachable from this frontend, without /api/v1. Supports
-				Hubuum Server v{SUPPORTED_SERVER_VERSION}.
+				Use an address reachable from this frontend, without /api/v1. Tested
+				with Hubuum Server v{SUPPORTED_SERVER_VERSION}; other versions require
+				confirmation.
 			</p>
-			<label htmlFor="setup-key">Setup key</label>
-			<input
-				id="setup-key"
-				name="setup-key"
-				type="password"
-				required
-				minLength={32}
-				maxLength={256}
-				autoComplete="off"
-				value={key}
-				disabled={busy}
-				aria-describedby="setup-key-help"
-				onChange={(event) => {
-					setKey(event.target.value);
-					setVerified(null);
-					setError(null);
-				}}
-			/>
-			<p id="setup-key-help" className="muted">
-				Use the setup key supplied by the person who started this frontend.
-			</p>
+			{!changing ? (
+				<>
+					<label htmlFor="setup-key">Setup key</label>
+					<input
+						id="setup-key"
+						name="setup-key"
+						type="password"
+						required
+						minLength={32}
+						maxLength={256}
+						autoComplete="off"
+						value={key}
+						disabled={busy}
+						aria-describedby="setup-key-help"
+						onChange={(event) => {
+							setKey(event.target.value);
+							setVerified(null);
+							setAcceptWarnings(false);
+							setError(null);
+						}}
+					/>
+					<p id="setup-key-help" className="muted">
+						Find the one-time key in the frontend startup output, or use the key
+						supplied by your installation operator.
+					</p>
+				</>
+			) : null}
 			{error ? (
 				<div className="error-banner" role="alert">
 					{error}
 				</div>
 			) : null}
 			{verified ? (
-				<div role="status">
-					<strong>Compatible server found</strong>
-					<p>
-						Hubuum Server {verified.version} at {verified.origin} is ready. Save
-						this connection to continue to sign in.
-					</p>
-				</div>
+				<>
+					<div role="status">
+						<strong>
+							{verified.compatibility === "supported"
+								? "Compatible server found"
+								: verified.compatibility === "incompatible"
+									? "Known compatibility problems"
+									: "Compatibility not verified"}
+						</strong>
+						<p>
+							Hubuum Server at {verified.origin}.{" "}
+							{verified.version
+								? `Reported version: ${verified.version}.`
+								: "Version not reported."}
+						</p>
+						{verified.warnings.length ? (
+							<ul>
+								{verified.warnings.map((warning) => (
+									<li key={warning}>{warning}</li>
+								))}
+							</ul>
+						) : null}
+					</div>
+					{changing || verified.compatibility !== "supported" ? (
+						<label className="checkbox-row">
+							<input
+								type="checkbox"
+								checked={acceptWarnings}
+								disabled={busy}
+								onChange={(event) => setAcceptWarnings(event.target.checked)}
+							/>
+							{changing
+								? "I have reviewed the server check and want to switch this console for everyone, requiring all users to sign in again."
+								: "I understand these compatibility warnings and want to continue anyway."}
+						</label>
+					) : null}
+				</>
 			) : null}
-			<button type="submit" className="login-submit" disabled={busy}>
+			<button
+				type="submit"
+				className={changing ? "button" : "login-submit"}
+				disabled={
+					busy ||
+					(verified !== null &&
+						(changing || verified.compatibility !== "supported") &&
+						!acceptWarnings)
+				}
+			>
 				{busy
 					? verified
 						? "Saving connection…"
 						: "Checking server…"
 					: verified
-						? "Save and continue"
+						? changing
+							? "Switch server and sign out"
+							: verified.compatibility === "supported"
+								? "Save and continue"
+								: "Save and continue anyway"
 						: "Check connection"}
 			</button>
 		</form>

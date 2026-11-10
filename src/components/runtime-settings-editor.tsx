@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 import { GuidedFlowPanel, GuidedFlowTabs } from "@/components/guided-flow";
+import { BackendConnectionPanel } from "@/components/backend-connection-panel";
 
 import {
 	fetchRuntimeSettingsCatalogue,
@@ -49,6 +50,7 @@ export function RuntimeSettingsEditor({ children }: { children: ReactNode }) {
 					? `Takes effect: ${descriptor.takes_effect.replaceAll("_", " ")}`
 					: "Read only",
 		})),
+		{ id: "connection", label: "Connection", hint: "Frontend server target" },
 	];
 	const activeTab = steps.some((step) => step.id === selectedTab)
 		? selectedTab
@@ -116,6 +118,11 @@ export function RuntimeSettingsEditor({ children }: { children: ReactNode }) {
 						</p>
 					</header>
 					{children}
+				</GuidedFlowPanel>
+			</div>
+			<div hidden={activeTab !== "connection"}>
+				<GuidedFlowPanel idPrefix={tabPrefix} stepId="connection" tabIndex={0}>
+					{activeTab === "connection" ? <BackendConnectionPanel /> : null}
 				</GuidedFlowPanel>
 			</div>
 		</section>

@@ -16,27 +16,33 @@ import {
 	initializeUserSettings,
 	markUserSettingsSyncDegraded,
 	prepareUserSettingsCache,
+	prepareUserSettingsConnection,
 	USER_SETTINGS_QUERY_KEY,
 	USER_SETTINGS_SYNC_STATUS_EVENT,
 	type UserSettingsSyncStatus,
 } from "@/lib/user-settings-client";
 import { loadUserSettingsSnapshot } from "@/lib/user-settings-transport";
+import { setBrowserBackendRevision } from "@/lib/backend-connection";
 import type { UserSettingsSnapshot } from "@/lib/user-settings-types";
 
 type UserSettingsSyncProps = {
 	children: ReactNode;
 	principalId: number | null;
 	initialSnapshot: UserSettingsSnapshot | null;
+	backendRevision?: string;
 };
 
 export function UserSettingsSync({
 	children,
 	principalId,
 	initialSnapshot,
+	backendRevision,
 }: UserSettingsSyncProps) {
 	const initializedSnapshot = useRef<UserSettingsSnapshot | null>(null);
 	const [cacheRevision, setCacheRevision] = useState(() => {
 		if (typeof window !== "undefined") {
+			setBrowserBackendRevision(backendRevision);
+			prepareUserSettingsConnection(backendRevision);
 			if (initialSnapshot) initializeUserSettings(initialSnapshot);
 			else prepareUserSettingsCache(principalId);
 		}

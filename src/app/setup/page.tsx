@@ -27,23 +27,11 @@ export default async function SetupPage() {
 						<BackendSetupForm />
 					) : (
 						<div className="login-card card" role="status">
-							{status === "disabled" ? (
-								<>
-									<p>This console needs a Hubuum Server connection.</p>
-									<p>
-										Ask the installation operator to enable browser setup with a{" "}
-										<code>SETUP_KEY</code> of at least 32 characters, or
-										configure <code>BACKEND_BASE_URL</code>, then restart the
-										frontend.
-									</p>
-								</>
-							) : (
-								<p>
-									Setup is temporarily unavailable. Ask the installation
-									operator to check the frontend configuration and Valkey
-									connection, then reload this page.
-								</p>
-							)}
+							<p>
+								Setup is temporarily unavailable. Ask the installation operator
+								to check the frontend configuration and Valkey connection, then
+								reload this page.
+							</p>
 						</div>
 					)}
 					<p className="footer-note">

@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
@@ -39,7 +40,10 @@ export default async function CollectionDetailPage({
 		notFound();
 	}
 
-	const canAdminister = await hasAdminAccess(session.token, correlationId);
+	const canAdminister = await hasAdminAccess(
+		sessionCredential(session),
+		correlationId,
+	);
 
 	return (
 		<section className="stack">

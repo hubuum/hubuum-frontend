@@ -76,6 +76,23 @@ describe("server settings transport selection", () => {
 		});
 	});
 
+	it("isolates fallback settings for the same principal ID on another connection", async () => {
+		vi.mocked(backendFetchRaw).mockImplementation(async () =>
+			jsonResponse({}, 404),
+		);
+		store.getUserSettings.mockResolvedValue({});
+		for (const revision of ["first", "second"]) {
+			await loadUserSettingsSnapshotForPrincipal({
+				...context,
+				token: {
+					token: "bound-token",
+					target: { origin: "https://backend.test", revision },
+				},
+			});
+			expect(getUserSettingsStore).toHaveBeenLastCalledWith(revision);
+		}
+	});
+
 	it("uses the backend namespace without reading temporary storage", async () => {
 		vi.mocked(backendFetchRaw).mockResolvedValueOnce(
 			jsonResponse(

@@ -97,19 +97,35 @@ describe("server-side sessions", () => {
 		);
 		const session = await getSessionFromRequest(authenticatedRequest);
 
-		expect(session).toMatchObject({ sid, token, username: "local/admin", backendOrigin: "http://hubuum.test" });
+		expect(session).toMatchObject({
+			sid,
+			token,
+			username: "local/admin",
+			backendOrigin: "http://hubuum.test",
+		});
 
 		await destroySession(sid);
 		expect(await getSessionFromRequest(authenticatedRequest)).toBeNull();
 	});
 
 	it("invalidates credentials bound to another backend before refreshing them", async () => {
-		const { SESSION_COOKIE_NAME, createSession, getSessionFromRequest } = await import("@/lib/auth/session");
+		const { SESSION_COOKIE_NAME, createSession, getSessionFromRequest } =
+			await import("@/lib/auth/session");
 		const sid = await createSession(sessionCredentials());
 		const key = `hubuum:sess:${sid}`;
 		const stored = JSON.parse(valkeyMock.state.get(key) ?? "{}");
-		valkeyMock.state.set(key, JSON.stringify({ ...stored, backendOrigin: "https://old-backend.test", refreshAt: 0 }));
-		const request = new NextRequest("http://localhost/_hubuum-bff/auth/session", { headers: { Cookie: `${SESSION_COOKIE_NAME}=${sid}` } });
+		valkeyMock.state.set(
+			key,
+			JSON.stringify({
+				...stored,
+				backendOrigin: "https://old-backend.test",
+				refreshAt: 0,
+			}),
+		);
+		const request = new NextRequest(
+			"http://localhost/_hubuum-bff/auth/session",
+			{ headers: { Cookie: `${SESSION_COOKIE_NAME}=${sid}` } },
+		);
 		expect(await getSessionFromRequest(request)).toBeNull();
 		expect(valkeyMock.state.has(key)).toBe(false);
 		expect(valkeyMock.evalScript).not.toHaveBeenCalled();
@@ -136,6 +152,48 @@ describe("server-side sessions", () => {
 		await getSessionFromRequest(request);
 		expect(valkeyMock.get).toHaveBeenCalledTimes(2);
 		expect(valkeyMock.set).toHaveBeenCalledTimes(1);
+	});
+
+	it("invalidates an old connection revision even when its origin matches again", async () => {
+		const { SESSION_COOKIE_NAME, createSession, getSessionFromRequest } =
+			await import("@/lib/auth/session");
+		const sid = await createSession(sessionCredentials());
+		const key = `hubuum:sess:${sid}`;
+		const stored = JSON.parse(valkeyMock.state.get(key) ?? "{}");
+		valkeyMock.state.set(
+			key,
+			JSON.stringify({
+				...stored,
+				backendRevision: "before-switch",
+				refreshAt: 0,
+			}),
+		);
+		const request = new NextRequest(
+			"http://localhost/_hubuum-bff/auth/session",
+			{ headers: { Cookie: `${SESSION_COOKIE_NAME}=${sid}` } },
+		);
+		expect(await getSessionFromRequest(request)).toBeNull();
+		expect(valkeyMock.state.has(key)).toBe(false);
+		expect(valkeyMock.evalScript).not.toHaveBeenCalled();
+	});
+
+	it("rejects a stale tab without destroying the newly signed-in session shared by its cookie", async () => {
+		const { SESSION_COOKIE_NAME, createSession, getSessionFromRequest } =
+			await import("@/lib/auth/session");
+		const sid = await createSession(sessionCredentials());
+		const request = new NextRequest(
+			"http://localhost/_hubuum-bff/auth/session",
+			{
+				headers: {
+					Cookie: `${SESSION_COOKIE_NAME}=${sid}`,
+					"x-hubuum-backend-revision": "old-tab",
+				},
+			},
+		);
+		expect(await getSessionFromRequest(request)).toBeNull();
+		expect(valkeyMock.state.has(`hubuum:sess:${sid}`)).toBe(true);
+		request.headers.delete("x-hubuum-backend-revision");
+		expect(await getSessionFromRequest(request)).not.toBeNull();
 	});
 
 	it("preserves a replacement session after the old access token is rejected", async () => {

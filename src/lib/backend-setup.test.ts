@@ -41,9 +41,11 @@ describe("backend setup discovery", () => {
 	});
 	it("recognizes the bundled contract and keeps the supported release aligned", () => {
 		expect(document.info.version).toBe(SUPPORTED_SERVER_VERSION);
-		expect(verifyBackendInstallation(document, config)).toBe(
-			SUPPORTED_SERVER_VERSION,
-		);
+		expect(verifyBackendInstallation(document, config)).toEqual({
+			version: SUPPORTED_SERVER_VERSION,
+			compatibility: "supported",
+			warnings: [],
+		});
 	});
 	it.each(["v0.0.22", "0.0.22+build.123"])(
 		"accepts release labels and build metadata: %s",
@@ -53,7 +55,7 @@ describe("backend setup discovery", () => {
 					{ ...document, info: { ...document.info, version } },
 					config,
 				),
-			).toBe(version);
+			).toEqual({ version, compatibility: "supported", warnings: [] });
 		},
 	);
 	it.each([
@@ -64,30 +66,76 @@ describe("backend setup discovery", () => {
 		"v0.0.22-5-gabcdef",
 		"main",
 		"0.0.22-dirty",
-	])("rejects unsupported or unverified versions: %s", (version) => {
-		expect(() =>
-			verifyBackendInstallation(
-				{ ...document, info: { ...document.info, version } },
-				config,
-			),
-		).toThrow("not supported");
-	});
+	])(
+		"warns about unverified versions without claiming incompatibility: %s",
+		(version) => {
+			expect(
+				verifyBackendInstallation(
+					{ ...document, info: { ...document.info, version } },
+					config,
+				),
+			).toMatchObject({
+				version,
+				compatibility: "unverified",
+				warnings: [expect.stringContaining("has not been verified")],
+			});
+		},
+	);
 	it.each([
 		null,
 		{},
 		{ ...document, info: { ...document.info, title: "Another API" } },
-		{ ...document, paths: {} },
 	])("rejects unrelated or incomplete installations", (candidate) => {
 		expect(() => verifyBackendInstallation(candidate, config)).toThrow(
 			"Hubuum API",
 		);
 	});
 	it.each([null, {}, { ...config, pagination: {} }])(
-		"requires working public configuration",
+		"warns when optional public configuration cannot be validated",
 		(candidate) => {
-			expect(() => verifyBackendInstallation(document, candidate)).toThrow(
-				"public configuration",
-			);
+			expect(verifyBackendInstallation(document, candidate)).toMatchObject({
+				compatibility: "unverified",
+				warnings: [expect.stringContaining("public configuration")],
+			});
 		},
 	);
+	it.each([undefined, "", null, 22])(
+		"permits an unknown reported version with a warning",
+		(version) => {
+			expect(
+				verifyBackendInstallation(
+					{ ...document, info: { ...document.info, version } },
+					config,
+				),
+			).toMatchObject({
+				version: null,
+				compatibility: "unverified",
+				warnings: [expect.stringContaining("did not report")],
+			});
+		},
+	);
+	it.each(["0.0.19", "v0.0.18", "0.0.19-patched"])(
+		"explains known stock-version failures while allowing a patched build: %s",
+		(version) => {
+			expect(
+				verifyBackendInstallation(
+					{ ...document, info: { ...document.info, version } },
+					config,
+				),
+			).toMatchObject({
+				compatibility: "incompatible",
+				warnings: expect.arrayContaining([
+					expect.stringContaining("backported"),
+				]),
+			});
+		},
+	);
+	it("flags missing required operations even on the tested release", () => {
+		expect(
+			verifyBackendInstallation({ ...document, paths: {} }, config),
+		).toMatchObject({
+			compatibility: "incompatible",
+			warnings: [expect.stringContaining("missing required")],
+		});
+	});
 });

@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { headers } from "next/headers";
 
 import { QuickAccessPanel } from "@/components/quick-access-panel";
@@ -7,10 +8,7 @@ import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
-import {
-	getTotalCollections,
-	tryFetchMetaCounts,
-} from "@/lib/meta";
+import { getTotalCollections, tryFetchMetaCounts } from "@/lib/meta";
 import { fetchVisibleWorkspaceSummary } from "@/lib/workspace-summary";
 
 export default async function AppPage() {
@@ -22,14 +20,17 @@ export default async function AppPage() {
 	const { canViewAdmin } = await loadProtectedLayoutBootstrap({
 		correlationId,
 		sid: session.sid,
-		token: session.token,
+		token: sessionCredential(session),
 	});
 	const counts = canViewAdmin
-		? await tryFetchMetaCounts(session.token, correlationId)
+		? await tryFetchMetaCounts(sessionCredential(session), correlationId)
 		: null;
 	const visibleSummary = canViewAdmin
 		? null
-		: await fetchVisibleWorkspaceSummary(session.token, correlationId);
+		: await fetchVisibleWorkspaceSummary(
+				sessionCredential(session),
+				correlationId,
+			);
 	const totalCollections = counts ? getTotalCollections(counts) : null;
 	const totalClasses = counts?.total_classes ?? null;
 	const totalObjects = counts?.total_objects ?? null;

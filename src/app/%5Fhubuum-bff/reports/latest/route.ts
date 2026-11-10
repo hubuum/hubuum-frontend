@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getSessionFromRequest } from "@/lib/auth/session";
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
 					revision,
 					sessionId: session.sid,
 					templateId,
-					token: session.token,
+					token: sessionCredential(session),
 				})),
 				templateId,
 			})),

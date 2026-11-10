@@ -163,7 +163,7 @@ test("runtime configuration tabs preserve drafts and scope saves, discards and r
 	const effectiveTab = page.getByRole("tab", {
 		name: /^Effective configuration/,
 	});
-	await expect(page.getByRole("tab")).toHaveCount(4);
+	await expect(page.getByRole("tab")).toHaveCount(5);
 	await expect(page.getByRole("tab").first()).toHaveAccessibleName(
 		/^Effective configuration/,
 	);
@@ -200,8 +200,8 @@ test("runtime configuration tabs preserve drafts and scope saves, discards and r
 	await expect(limit).not.toBeVisible();
 	await expect(page.getByRole("tabpanel")).toHaveCount(1);
 	await effectiveTab.press("End");
-	await expect(paginationTab).toBeFocused();
-	await paginationTab.press("Home");
+	await expect(page.getByRole("tab", { name: /^Connection/ })).toBeFocused();
+	await page.getByRole("tab", { name: /^Connection/ }).press("Home");
 	await expect(effectiveTab).toBeFocused();
 	await page.keyboard.press("ArrowRight");
 	await expect(
@@ -341,7 +341,7 @@ for (const discovery of ["unavailable", "empty", "error"] as const) {
 				exact: true,
 			}),
 		).toBeVisible();
-		await expect(page.getByRole("tab")).toHaveCount(1);
+		await expect(page.getByRole("tab")).toHaveCount(2);
 		await expect(
 			page.getByRole("button", { name: "Save changes" }),
 		).toHaveCount(0);

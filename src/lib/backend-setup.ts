@@ -32,15 +32,29 @@ const installationSchema = z.object({
 	openapi: z.string().startsWith("3."),
 	info: z.object({
 		title: z.literal("Hubuum REST API"),
-		version: z.string().min(1).max(128),
+		version: z.unknown().optional(),
 	}),
+	paths: z.record(z.string(), z.unknown()),
+});
+
+const sessionApiSchema = z.object({
 	paths: z.object({
 		"/api/v1/auth/login": z.object({ post: operation }),
 		"/api/v1/auth/refresh": z.object({ post: operation }),
 		"/api/v1/iam/me": z.object({ get: operation }),
-		"/api/v1/config": z.object({ get: operation }),
 	}),
 });
+
+export const backendAssessmentSchema = z.object({
+	version: z.string().max(128).nullable(),
+	compatibility: z.enum(["supported", "unverified", "incompatible"]),
+	warnings: z.array(z.string().max(1024)).max(8),
+});
+export const backendCheckSchema = backendAssessmentSchema.extend({
+	origin: z.string().url(),
+});
+export type BackendAssessment = z.infer<typeof backendAssessmentSchema>;
+export type BackendCheck = z.infer<typeof backendCheckSchema>;
 
 const clientConfigSchema = z.object({
 	authentication: z.object({
@@ -57,28 +71,62 @@ const clientConfigSchema = z.object({
 export function verifyBackendInstallation(
 	document: unknown,
 	config: unknown,
-): string {
+): BackendAssessment {
 	const parsed = installationSchema.safeParse(document);
 	if (!parsed.success) {
 		throw new Error(
-			"This URL does not expose a supported Hubuum API. Check the server address and proxy routing.",
+			"This URL does not expose a recognizable Hubuum API. Check the server address and proxy routing.",
 		);
 	}
-	const version = parsed.data.info.version;
-	// Build metadata does not change a release. Prereleases and later builds are
-	// not declared supported merely because their version sorts after our target.
-	const release = version.match(
+	const rawVersion = parsed.data.info.version;
+	const version =
+		typeof rawVersion === "string" &&
+		rawVersion.trim() &&
+		rawVersion.length <= 128
+			? rawVersion.trim()
+			: null;
+	const warnings: string[] = [];
+	// Build metadata does not change a release. Other versions may work but have
+	// not been verified against this frontend's declared compatibility target.
+	const release = version?.match(
 		/^v?(\d+\.\d+\.\d+)(?:\+[0-9A-Za-z.-]+)?$/,
 	)?.[1];
 	if (release !== SUPPORTED_SERVER_VERSION) {
-		throw new Error(
-			`Server version ${version} is not supported by this frontend. Use Hubuum Server v${SUPPORTED_SERVER_VERSION} or a matching frontend release.`,
+		warnings.push(
+			version
+				? `Server ${version} has not been verified with this frontend. The tested release is v${SUPPORTED_SERVER_VERSION}.`
+				: `The server did not report a recognizable version. The tested release is v${SUPPORTED_SERVER_VERSION}.`,
+		);
+	}
+	const oldRelease = version?.match(/^v?0\.0\.(\d+)(?:$|[-+])/);
+	const requiresBackport =
+		oldRelease !== undefined &&
+		oldRelease !== null &&
+		Number(oldRelease[1]) < 20;
+	const missingSessionApi = !sessionApiSchema.safeParse(document).success;
+	if (requiresBackport) {
+		warnings.push(
+			"Standard releases before v0.0.20 lack the rotating-session authentication required by this frontend. Sign-in will fail unless that API has been backported.",
+		);
+	}
+	if (missingSessionApi) {
+		warnings.push(
+			"The advertised API is missing required sign-in, refresh, or current-user operations. Sign-in and session renewal are expected to fail unless this is a patched server with an outdated API document.",
 		);
 	}
 	if (!clientConfigSchema.safeParse(config).success) {
-		throw new Error(
-			"The server's public configuration is missing or incompatible with this frontend.",
+		warnings.push(
+			"The server's public configuration is missing or could not be validated. Some features and displayed defaults may be unavailable.",
 		);
 	}
-	return version;
+	return {
+		version,
+		compatibility:
+			requiresBackport || missingSessionApi
+				? "incompatible"
+				: warnings.length
+					? "unverified"
+					: "supported",
+		warnings,
+	};
 }

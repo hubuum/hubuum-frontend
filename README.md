@@ -43,7 +43,10 @@ See [download, configure, and start](docs/quickstart-compose.md#start).
 See [runtime settings, proxy routing, and login backgrounds](docs/configuration.md).
 When no backend is configured, the frontend offers an installation-wide
 [connection setup flow](docs/configuration.md#first-time-connection-setup)
-that verifies Hubuum identity and compatibility before saving the URL.
+that checks Hubuum identity and compatibility before saving the URL. It prints
+a one-time setup key at startup unless an explicit key is supplied. Unverified
+or incompatible versions require confirmation. Administrators can later change
+saved connections in **Configuration → Connection**; persistence uses Valkey.
 
 ## Release artifacts
 

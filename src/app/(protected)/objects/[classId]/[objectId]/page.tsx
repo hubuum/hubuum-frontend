@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
@@ -33,7 +34,10 @@ export default async function ObjectDetailPage({
 		normalizeCorrelationId(requestHeaders.get(CORRELATION_ID_HEADER)) ??
 		undefined;
 	const session = await requireServerSession();
-	const canEditAnything = await hasAdminAccess(session.token, correlationId);
+	const canEditAnything = await hasAdminAccess(
+		sessionCredential(session),
+		correlationId,
+	);
 	const { classId, objectId } = await params;
 	const parsedClassId = parseId(classId);
 	const parsedObjectId = parseId(objectId);

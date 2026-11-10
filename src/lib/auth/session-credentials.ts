@@ -34,6 +34,7 @@ export function parseSessionResponse(value: unknown): SessionResponse | null {
 
 export const sessionPayloadSchema = z.object({
 	backendOrigin: z.string().url().optional(),
+	backendRevision: z.string().optional(),
 	token: z.string().min(1),
 	refreshToken: z.string().min(1),
 	sessionId: z.uuid(),

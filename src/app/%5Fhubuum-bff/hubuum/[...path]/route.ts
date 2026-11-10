@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { NextRequest, NextResponse } from "next/server";
 
 import { buildBackendUrl, getSafeBackendPathForLogs } from "@/lib/api/backend";
@@ -216,7 +217,10 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 	};
 	let reusableAdminResponse: Response | null = null;
 	if (isAdminOnlyMetaPath(path)) {
-		const probe = await probeAdminAccess(session.token, correlationId);
+		const probe = await probeAdminAccess(
+			sessionCredential(session),
+			correlationId,
+		);
 		if (probe.status === "allowed") {
 			if (canReuseAdminProbeResponse(method, path, request.nextUrl.search)) {
 				reusableAdminResponse = probe.response;
@@ -247,7 +251,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 			const validation = await validateBackendSession({
 				correlationId,
 				sid: session.sid,
-				token: session.token,
+				token: sessionCredential(session),
 			});
 			if (validation === "expired") {
 				emitOperationalEvent("warn", "bff.proxy.unauthenticated", {
@@ -308,13 +312,20 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 		headers: upstreamHeaders,
 		body,
 		cache: "no-store",
+		redirect: "error",
 		signal: request.signal,
 	};
 	if (body) {
 		upstreamRequest.duplex = "half";
 	}
 
-	const targetUrl = new URL(await buildBackendUrl(path));
+	const credential = sessionCredential(session);
+	const targetUrl = new URL(
+		await buildBackendUrl(
+			path,
+			typeof credential === "object" ? credential.target : undefined,
+		),
+	);
 	targetUrl.search = request.nextUrl.search;
 
 	let upstreamResponse: Response;

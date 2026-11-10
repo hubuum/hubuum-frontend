@@ -3,19 +3,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { inspectBackend } from "@/lib/backend-discovery";
-import { normalizeBackendOrigin } from "@/lib/backend-setup";
-import { getBackendBaseUrl, saveInitialBackend } from "@/lib/backend-target";
+import {
+	backendCheckSchema,
+	type BackendCheck,
+	normalizeBackendOrigin,
+} from "@/lib/backend-setup";
+import {
+	getBackendBaseUrl,
+	getSetupKey,
+	saveInitialBackend,
+} from "@/lib/backend-target";
 import { rejectCrossOriginBffMutation } from "@/lib/bff-request-origin";
 import {
 	CORRELATION_ID_HEADER,
 	generateCorrelationId,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
-import { getServerEnv } from "@/lib/env";
 
 const requestSchema = z.object({
 	action: z.enum(["check", "save"]),
 	url: z.string().min(1).max(2048),
+	confirmation: backendCheckSchema.optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -33,25 +41,22 @@ export async function POST(request: NextRequest) {
 			},
 		});
 	try {
-		const env = getServerEnv();
-		if (!env.SETUP_KEY)
-			return reply(403, {
-				message:
-					"Browser setup has not been enabled by the installation operator.",
-			});
-		const key = request.headers.get("x-hubuum-setup-key") ?? "";
-		const digest = (value: string) =>
-			createHash("sha256").update(value).digest();
-		if (
-			key.length > 256 ||
-			!timingSafeEqual(digest(key), digest(env.SETUP_KEY))
-		) {
-			return reply(403, { message: "The setup key is incorrect." });
-		}
 		if (await getBackendBaseUrl())
 			return reply(409, {
 				message: "This installation already has a backend. Reload to sign in.",
 			});
+		const setupKey = await getSetupKey();
+		if (!setupKey)
+			return reply(503, {
+				message:
+					"The setup key is unavailable. Check the frontend startup output or restart the frontend.",
+			});
+		const key = request.headers.get("x-hubuum-setup-key") ?? "";
+		const digest = (value: string) =>
+			createHash("sha256").update(value).digest();
+		if (key.length > 256 || !timingSafeEqual(digest(key), digest(setupKey))) {
+			return reply(403, { message: "The setup key is incorrect." });
+		}
 		const parsed = requestSchema.safeParse(
 			await request.json().catch(() => null),
 		);
@@ -65,9 +70,9 @@ export async function POST(request: NextRequest) {
 				message: error instanceof Error ? error.message : "Invalid server URL.",
 			});
 		}
-		let version: string;
+		let check: BackendCheck;
 		try {
-			version = await inspectBackend(origin, correlationId);
+			check = { ...(await inspectBackend(origin, correlationId)), origin };
 		} catch (error) {
 			return reply(422, {
 				message:
@@ -76,14 +81,25 @@ export async function POST(request: NextRequest) {
 						: "The server could not be verified.",
 			});
 		}
+		if (
+			parsed.data.action === "save" &&
+			check.compatibility !== "supported" &&
+			JSON.stringify(parsed.data.confirmation) !== JSON.stringify(check)
+		) {
+			return reply(409, {
+				...check,
+				saved: false,
+				message:
+					"Review the current compatibility warnings and confirm that you want to continue anyway.",
+			});
+		}
 		if (parsed.data.action === "save" && !(await saveInitialBackend(origin))) {
 			return reply(409, {
 				message: "Another setup completed first. Reload to sign in.",
 			});
 		}
 		return reply(200, {
-			origin,
-			version,
+			...check,
 			saved: parsed.data.action === "save",
 		});
 	} catch {

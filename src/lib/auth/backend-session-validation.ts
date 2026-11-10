@@ -1,12 +1,14 @@
 import "server-only";
 
+import type { BackendCredential } from "@/lib/backend-target";
+
 import { backendFetchRaw } from "@/lib/api/backend";
 
 export type BackendSessionValidation = "valid" | "expired" | "unavailable";
 
 const pendingValidations = new Map<
 	string,
-	{ token: string; value: Promise<BackendSessionValidation> }
+	{ credentialKey: string; value: Promise<BackendSessionValidation> }
 >();
 
 async function fetchBackendSessionValidation({
@@ -14,7 +16,7 @@ async function fetchBackendSessionValidation({
 	token,
 }: {
 	correlationId?: string;
-	token: string;
+	token: BackendCredential;
 }): Promise<BackendSessionValidation> {
 	try {
 		const response = await backendFetchRaw("/api/v1/auth/validate", {
@@ -37,15 +39,17 @@ export function validateBackendSession({
 }: {
 	correlationId?: string;
 	sid: string;
-	token: string;
+	token: BackendCredential;
 }): Promise<BackendSessionValidation> {
 	const pending = pendingValidations.get(sid);
-	if (pending?.token === token) {
+	const credentialKey =
+		typeof token === "string" ? token : JSON.stringify(token);
+	if (pending?.credentialKey === credentialKey) {
 		return pending.value;
 	}
 
 	const value = fetchBackendSessionValidation({ correlationId, token });
-	pendingValidations.set(sid, { token, value });
+	pendingValidations.set(sid, { credentialKey, value });
 	void value.finally(() => {
 		if (pendingValidations.get(sid)?.value === value) {
 			pendingValidations.delete(sid);

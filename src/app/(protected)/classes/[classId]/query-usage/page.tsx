@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ClassQueryUsageWorkspace } from "@/components/class-query-usage-workspace";
@@ -21,7 +22,10 @@ export default async function ClassQueryUsagePage({
 	const correlationId =
 		normalizeCorrelationId((await headers()).get(CORRELATION_ID_HEADER)) ??
 		undefined;
-	const canAnalyze = await hasAdminAccess(session.token, correlationId);
+	const canAnalyze = await hasAdminAccess(
+		sessionCredential(session),
+		correlationId,
+	);
 	return (
 		<ClassQueryUsageWorkspace
 			key={classId}

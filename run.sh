@@ -6,7 +6,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 for arg in "$@"; do
   if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
     echo "Usage: [BACKEND_BASE_URL=https://your-server] PORT=4444 ./run.sh [options]"
-    echo "Without a backend URL, use the browser setup flow (requires SETUP_KEY)."
+    echo "Without a backend URL, use browser setup with the key printed at startup (or SETUP_KEY)."
     echo "Starts a private, temporary Valkey instance; Ctrl-C stops both services."
     exec npm run dev -- --help
   fi

@@ -9,8 +9,13 @@ import { invalidateBackendSessionValidation } from "@/lib/auth/backend-session-v
 import { invalidateProtectedLayoutBootstrap } from "@/lib/auth/protected-layout-bootstrap";
 import { getSessionStore, type SessionPayload } from "@/lib/auth/session-store";
 import { shouldTouchSession } from "@/lib/auth/session-touch";
-import { getBackendBaseUrl } from "@/lib/backend-target";
+import {
+	assertBackendTarget,
+	type BackendTarget,
+	getBackendTarget,
+} from "@/lib/backend-target";
 import { getServerEnv } from "@/lib/env";
+import { BACKEND_REVISION_HEADER } from "@/lib/backend-connection";
 
 export const SESSION_COOKIE_NAME = "hubuum.sid";
 const LEGACY_SESSION_TOKEN_COOKIE_NAME = "hubuum.token";
@@ -62,18 +67,26 @@ async function loadSession(sid: string): Promise<ActiveSession | null> {
 	for (let attempt = 0; attempt < 3; attempt += 1) {
 		const stored = await store.get(sid);
 		if (!stored) return null;
-		const backendUrl = await getBackendBaseUrl();
+		const target = await getBackendTarget();
 		if (
-			!backendUrl ||
+			!target ||
 			(stored.backendOrigin
-				? stored.backendOrigin !== new URL(backendUrl).origin
-				: !getServerEnv().BACKEND_BASE_URL)
+				? stored.backendOrigin !== target.origin
+				: !getServerEnv().BACKEND_BASE_URL) ||
+			(stored.backendRevision
+				? stored.backendRevision !== target.revision
+				: !getServerEnv().BACKEND_BASE_URL &&
+					!target?.revision.startsWith("legacy:"))
 		) {
 			// Never forward an existing credential pair to a newly selected server.
 			await store.destroy(sid);
 			return null;
 		}
-		const payload = await refreshSession(store, sid, stored);
+		const payload = await refreshSession(store, sid, {
+			...stored,
+			backendOrigin: target.origin,
+			backendRevision: target.revision,
+		});
 		if (!payload) return null;
 		if (payload.generation !== stored.generation) {
 			invalidateBackendSessionValidation(sid);
@@ -117,13 +130,16 @@ async function hydrateSession(sid: string): Promise<ActiveSession | null> {
 export async function createSession(
 	credentials: SessionResponse,
 	username?: string,
+	selectedTarget?: BackendTarget,
 ): Promise<string> {
 	const sid = crypto.randomUUID();
-	const backendUrl = await getBackendBaseUrl();
-	if (!backendUrl) throw new Error("Backend setup is required.");
+	const target = selectedTarget ?? (await getBackendTarget());
+	if (!target) throw new Error("Backend setup is required.");
+	await assertBackendTarget(target);
 	await getSessionStore().create(sid, {
 		...sessionPayload(credentials, username),
-		backendOrigin: new URL(backendUrl).origin,
+		backendOrigin: target.origin,
+		backendRevision: target.revision,
 	});
 	return sid;
 }
@@ -136,7 +152,15 @@ export async function getSessionFromRequest(
 		return null;
 	}
 
-	return hydrateSession(sid);
+	const session = await hydrateSession(sid);
+	const requestedRevision = request.headers.get(BACKEND_REVISION_HEADER);
+	if (
+		requestedRevision &&
+		session?.backendRevision &&
+		requestedRevision !== session.backendRevision
+	)
+		return null;
+	return session;
 }
 
 export async function getSessionFromServerCookies(): Promise<ActiveSession | null> {

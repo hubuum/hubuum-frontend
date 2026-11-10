@@ -4,7 +4,13 @@ import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
-import { getBackendBaseUrl } from "@/lib/backend-target";
+import {
+	assertBackendTarget,
+	type BackendCredential,
+	type BackendTarget,
+	getBackendTarget,
+} from "@/lib/backend-target";
+import { getServerEnv } from "@/lib/env";
 import {
 	emitOperationalEvent,
 	operationalErrorFields,
@@ -14,7 +20,8 @@ import {
 
 type BackendRequestInit = RequestInit & {
 	correlationId?: string;
-	token?: string;
+	token?: BackendCredential;
+	target?: BackendTarget;
 };
 
 export class BackendError extends Error {
@@ -27,11 +34,15 @@ export class BackendError extends Error {
 	}
 }
 
-export async function buildBackendUrl(path: string): Promise<string> {
-	const origin = await getBackendBaseUrl();
-	if (!origin) throw new Error("Backend setup is required.");
+export async function buildBackendUrl(
+	path: string,
+	target?: BackendTarget,
+): Promise<string> {
+	if (target) await assertBackendTarget(target);
+	const selected = target ?? (await getBackendTarget());
+	if (!selected) throw new Error("Backend setup is required.");
 	const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-	return new URL(normalizedPath, origin).toString();
+	return new URL(normalizedPath, selected.origin).toString();
 }
 
 export function getSafeBackendPathForLogs(path: string): string {
@@ -67,6 +78,15 @@ export async function backendFetchRaw(
 	init: BackendRequestInit = {},
 ): Promise<Response> {
 	const headers = new Headers(init.headers);
+	const credential = init.token;
+	const target =
+		typeof credential === "object" ? credential.target : init.target;
+	if (
+		typeof credential === "string" &&
+		!target &&
+		!getServerEnv().BACKEND_BASE_URL
+	)
+		throw new Error("A credential must be bound to its backend connection.");
 	const method = (init.method ?? "GET").toUpperCase();
 	const safePath = getSafeBackendPathForLogs(path);
 	const startedAt = Date.now();
@@ -79,15 +99,19 @@ export async function backendFetchRaw(
 		headers.set(CORRELATION_ID_HEADER, normalizedCorrelationId);
 	}
 	if (init.token) {
-		headers.set("Authorization", `Bearer ${init.token}`);
+		headers.set(
+			"Authorization",
+			`Bearer ${typeof credential === "object" ? credential.token : credential}`,
+		);
 	}
 	const correlationId = headers.get(CORRELATION_ID_HEADER) ?? "-";
 
 	try {
-		const response = await fetch(await buildBackendUrl(path), {
+		const response = await fetch(await buildBackendUrl(path, target), {
 			...init,
 			headers,
 			cache: "no-store",
+			redirect: "error",
 		});
 		const duration = Date.now() - startedAt;
 		emitOperationalEvent(

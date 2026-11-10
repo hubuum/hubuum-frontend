@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { BackendCredential } from "@/lib/backend-target";
+
 import { backendFetchRaw } from "@/lib/api/backend";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import type {
@@ -66,7 +68,7 @@ type BookmarkableTemplateReportOptions = {
 	request: ExportTemplateRunRequest;
 	sessionId: string;
 	templateId: number;
-	token: string;
+	token: BackendCredential;
 };
 
 export type BookmarkableReportFreshness = {
@@ -371,7 +373,7 @@ async function fetchRawOutput({
 	correlationId: string;
 	runtime: ReportRuntime;
 	taskId: number;
-	token: string;
+	token: BackendCredential;
 }): Promise<Response> {
 	const output = await runtime.timing.measure("output", () =>
 		runtime.backendFetch(`/api/v1/exports/${taskId}/output`, {
@@ -392,7 +394,7 @@ async function fetchRawOutput({
 async function fetchTask(
 	taskId: number,
 	correlationId: string,
-	token: string,
+	token: BackendCredential,
 	runtime: ReportRuntime,
 ): Promise<ReportTaskState | null> {
 	const response = await runtime.timing.measure("validation", () =>
@@ -411,7 +413,7 @@ async function fetchTask(
 async function waitForTask(
 	task: ReportTaskState,
 	correlationId: string,
-	token: string,
+	token: BackendCredential,
 	runtime: ReportRuntime,
 ): Promise<ReportTaskState> {
 	let current = task;
@@ -437,7 +439,7 @@ async function submitTemplateReport(
 	templateId: number,
 	request: ExportTemplateRunRequest,
 	correlationId: string,
-	token: string,
+	token: BackendCredential,
 	runtime: ReportRuntime,
 ): Promise<ReportTaskState> {
 	const submission = await runtime.timing.measure("submit", () =>
@@ -457,7 +459,7 @@ async function submitTemplateReport(
 async function completeTask(
 	task: ReportTaskState,
 	correlationId: string,
-	token: string,
+	token: BackendCredential,
 	runtime: ReportRuntime,
 ): Promise<ReportTaskState> {
 	const completed = await waitForTask(task, correlationId, token, runtime);
@@ -473,7 +475,7 @@ async function completeTask(
 async function renderTask(
 	task: ReportTaskState,
 	correlationId: string,
-	token: string,
+	token: BackendCredential,
 	runtime: ReportRuntime,
 ): Promise<Response> {
 	const completed = await completeTask(task, correlationId, token, runtime);
@@ -488,7 +490,7 @@ async function renderTask(
 async function templateRevision(
 	templateId: number,
 	correlationId: string,
-	token: string,
+	token: BackendCredential,
 	runtime: ReportRuntime,
 ): Promise<string> {
 	const response = await runtime.timing.measure("revision", () =>
@@ -576,7 +578,7 @@ export async function getBookmarkableTemplateReportStatus({
 	revision: string;
 	sessionId: string;
 	templateId: number;
-	token: string;
+	token: BackendCredential;
 }): Promise<BookmarkableTemplateReportStatus> {
 	const runtime = createRuntime(dependencies);
 	const runStore = dependencies.runStore ?? getTemplateReportRunStore();
@@ -660,7 +662,7 @@ async function tryCachedReport({
 	runStore: TemplateReportRunStore;
 	runtime: ReportRuntime;
 	taskId: number;
-	token: string;
+	token: BackendCredential;
 }): Promise<{ response: Response | null } | null> {
 	let task = await fetchTask(taskId, correlationId, token, runtime);
 	if (
@@ -717,7 +719,7 @@ export async function getStoredRawReport({
 }: {
 	correlationId: string;
 	taskId: number;
-	token: string;
+	token: BackendCredential;
 	dependencies?: ReportDependencies;
 }): Promise<Response> {
 	return fetchRawOutput({
@@ -738,7 +740,7 @@ export async function renderFreshTemplateReport({
 	correlationId: string;
 	request: ExportTemplateRunRequest;
 	templateId: number;
-	token: string;
+	token: BackendCredential;
 	dependencies?: ReportDependencies;
 }): Promise<Response> {
 	const runtime = createRuntime(dependencies);

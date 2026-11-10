@@ -30,9 +30,15 @@ mkdir -p login-backgrounds
 ```
 
 Edit `.env.quickstart` and set `BACKEND_BASE_URL` to your server's API origin.
-Alternatively, leave it empty and set a random `SETUP_KEY` of 32–256 characters
-to use [browser connection setup](configuration.md#first-time-connection-setup).
+Alternatively, leave it empty to use
+[browser connection setup](configuration.md#first-time-connection-setup).
+The frontend prints a generated one-time key in its startup output; read it
+with `docker compose --env-file .env.quickstart -f compose.quickstart.yml logs frontend`.
 The browser asks for that key before checking and saving your server address.
+You may supply a random `SETUP_KEY` of 32–256 characters to keep the key out of
+logs. The saved connection survives restarts using the bundled Valkey volume.
+Valkey runs directly as its image's `999:1000` user so shutdown and restart work
+with all Linux capabilities dropped. Existing data must be writable by UID 999.
 For Docker Desktop, a server on the host is normally reachable at
 `http://host.docker.internal:8080`. On Linux Docker Engine, add
 `extra_hosts: ["host.docker.internal:host-gateway"]` to the frontend service or
