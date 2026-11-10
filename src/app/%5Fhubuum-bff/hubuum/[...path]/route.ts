@@ -314,7 +314,7 @@ async function proxyToBackend(request: NextRequest, context: RouteContext) {
 		upstreamRequest.duplex = "half";
 	}
 
-	const targetUrl = new URL(buildBackendUrl(path));
+	const targetUrl = new URL(await buildBackendUrl(path));
 	targetUrl.search = request.nextUrl.search;
 
 	let upstreamResponse: Response;

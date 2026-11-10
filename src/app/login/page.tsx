@@ -6,6 +6,7 @@ import { LoginBackgroundPicker } from "@/components/login-background-picker";
 import { LoginForm } from "@/components/login-form";
 import { APPLICATION_VERSION } from "@/lib/application-version";
 import { getSessionFromServerCookies } from "@/lib/auth/session";
+import { getBackendSetupStatus } from "@/lib/backend-target";
 import { listMountedLoginBackgrounds } from "@/lib/login-backgrounds";
 import { normalizeReturnPath } from "@/lib/return-path";
 import { SESSION_EXPIRED_ERROR_CODE } from "@/lib/session-expiry";
@@ -23,6 +24,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 	if ("username" in params || "password" in params) {
 		redirect("/login");
 	}
+	if (await getBackendSetupStatus() !== "configured") redirect("/setup");
 	const requestedReturnPath = Array.isArray(params.next)
 		? params.next[0]
 		: params.next;

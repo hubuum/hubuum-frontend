@@ -41,6 +41,9 @@ See [download, configure, and start](docs/quickstart-compose.md#start).
 ## Configuration
 
 See [runtime settings, proxy routing, and login backgrounds](docs/configuration.md).
+When no backend is configured, the frontend offers an installation-wide
+[connection setup flow](docs/configuration.md#first-time-connection-setup)
+that verifies Hubuum identity and compatibility before saving the URL.
 
 ## Release artifacts
 

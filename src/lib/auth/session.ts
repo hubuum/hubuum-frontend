@@ -9,6 +9,7 @@ import { invalidateBackendSessionValidation } from "@/lib/auth/backend-session-v
 import { invalidateProtectedLayoutBootstrap } from "@/lib/auth/protected-layout-bootstrap";
 import { getSessionStore, type SessionPayload } from "@/lib/auth/session-store";
 import { shouldTouchSession } from "@/lib/auth/session-touch";
+import { getBackendBaseUrl } from "@/lib/backend-target";
 import { getServerEnv } from "@/lib/env";
 
 export const SESSION_COOKIE_NAME = "hubuum.sid";
@@ -61,6 +62,17 @@ async function loadSession(sid: string): Promise<ActiveSession | null> {
 	for (let attempt = 0; attempt < 3; attempt += 1) {
 		const stored = await store.get(sid);
 		if (!stored) return null;
+		const backendUrl = await getBackendBaseUrl();
+		if (
+			!backendUrl ||
+			(stored.backendOrigin
+				? stored.backendOrigin !== new URL(backendUrl).origin
+				: !getServerEnv().BACKEND_BASE_URL)
+		) {
+			// Never forward an existing credential pair to a newly selected server.
+			await store.destroy(sid);
+			return null;
+		}
 		const payload = await refreshSession(store, sid, stored);
 		if (!payload) return null;
 		if (payload.generation !== stored.generation) {
@@ -107,7 +119,12 @@ export async function createSession(
 	username?: string,
 ): Promise<string> {
 	const sid = crypto.randomUUID();
-	await getSessionStore().create(sid, sessionPayload(credentials, username));
+	const backendUrl = await getBackendBaseUrl();
+	if (!backendUrl) throw new Error("Backend setup is required.");
+	await getSessionStore().create(sid, {
+		...sessionPayload(credentials, username),
+		backendOrigin: new URL(backendUrl).origin,
+	});
 	return sid;
 }
 

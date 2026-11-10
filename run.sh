@@ -5,13 +5,14 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 for arg in "$@"; do
   if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
-    echo "Usage: BACKEND_BASE_URL=https://your-server PORT=4444 ./run.sh [options]"
+    echo "Usage: [BACKEND_BASE_URL=https://your-server] PORT=4444 ./run.sh [options]"
+    echo "Without a backend URL, use the browser setup flow (requires SETUP_KEY)."
     echo "Starts a private, temporary Valkey instance; Ctrl-C stops both services."
     exec npm run dev -- --help
   fi
 done
 
-: "${BACKEND_BASE_URL:?Set BACKEND_BASE_URL to the remote Hubuum Server base URL.}"
+export BACKEND_BASE_URL="${BACKEND_BASE_URL-}"
 if [[ ! -d node_modules/next ]]; then
   echo "Install dependencies first with npm ci (Node.js 24 required)." >&2
   exit 1

@@ -153,6 +153,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run public accessibility and responsive checks
         run: npm run test:e2e:public
+      - name: Run one-time backend connection setup checks
+        run: npm run test:e2e:setup
 
   visual-regression:
     if: needs.changes.outputs.code == 'true'

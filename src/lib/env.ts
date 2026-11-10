@@ -6,7 +6,14 @@ const serverEnvSchema = z.object({
 	NODE_ENV: z
 		.enum(["development", "test", "production"])
 		.default("development"),
-	BACKEND_BASE_URL: z.string().url(),
+	BACKEND_BASE_URL: z.preprocess(
+		(value) => (value === "" ? undefined : value),
+		z.string().url().optional(),
+	),
+	SETUP_KEY: z.preprocess(
+		(value) => (value === "" ? undefined : value),
+		z.string().min(32).max(256).optional(),
+	),
 	VALKEY_URL: z.string().url(),
 	SESSION_TTL_SECONDS: z.coerce
 		.number()

@@ -45,6 +45,10 @@ For Frontend v0.0.22 and v0.0.23, it is
 For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
 `ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225`.
 Scheduled tests against server `main` do not change a release's declared target.
+Browser connection setup checks this declared target before saving a backend.
+Update `SUPPORTED_SERVER_VERSION` in `src/lib/backend-setup.ts` when advancing
+the supported release; its test checks alignment with the bundled OpenAPI file.
+Existing environment-configured deployments retain their current behavior.
 
 ## Interactive session upgrade
 

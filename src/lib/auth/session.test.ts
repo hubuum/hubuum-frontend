@@ -97,10 +97,22 @@ describe("server-side sessions", () => {
 		);
 		const session = await getSessionFromRequest(authenticatedRequest);
 
-		expect(session).toMatchObject({ sid, token, username: "local/admin" });
+		expect(session).toMatchObject({ sid, token, username: "local/admin", backendOrigin: "http://hubuum.test" });
 
 		await destroySession(sid);
 		expect(await getSessionFromRequest(authenticatedRequest)).toBeNull();
+	});
+
+	it("invalidates credentials bound to another backend before refreshing them", async () => {
+		const { SESSION_COOKIE_NAME, createSession, getSessionFromRequest } = await import("@/lib/auth/session");
+		const sid = await createSession(sessionCredentials());
+		const key = `hubuum:sess:${sid}`;
+		const stored = JSON.parse(valkeyMock.state.get(key) ?? "{}");
+		valkeyMock.state.set(key, JSON.stringify({ ...stored, backendOrigin: "https://old-backend.test", refreshAt: 0 }));
+		const request = new NextRequest("http://localhost/_hubuum-bff/auth/session", { headers: { Cookie: `${SESSION_COOKIE_NAME}=${sid}` } });
+		expect(await getSessionFromRequest(request)).toBeNull();
+		expect(valkeyMock.state.has(key)).toBe(false);
+		expect(valkeyMock.evalScript).not.toHaveBeenCalled();
 	});
 
 	it("coalesces parallel hydration and avoids refreshing a recent session", async () => {

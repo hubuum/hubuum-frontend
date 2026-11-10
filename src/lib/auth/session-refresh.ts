@@ -68,6 +68,7 @@ export async function refreshSession(
 			}
 			const next = {
 				...sessionPayload(pair, current.username),
+				backendOrigin: current.backendOrigin,
 				createdAt: current.createdAt,
 			};
 			if (await store.completeRefresh(sid, current.generation, owner, next))

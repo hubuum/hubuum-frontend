@@ -36,7 +36,8 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      BACKEND_BASE_URL: ${BACKEND_BASE_URL:?Set BACKEND_BASE_URL in .env.quickstart}
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-}
+      SETUP_KEY: ${SETUP_KEY:-}
       VALKEY_URL: redis://valkey:6379/0
       SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-28800}
       SESSION_PREFIX: ${SESSION_PREFIX:-hubuum:sess:}

@@ -4,7 +4,7 @@ import {
 	CORRELATION_ID_HEADER,
 	normalizeCorrelationId,
 } from "@/lib/correlation";
-import { getServerEnv } from "@/lib/env";
+import { getBackendBaseUrl } from "@/lib/backend-target";
 import {
 	emitOperationalEvent,
 	operationalErrorFields,
@@ -27,10 +27,11 @@ export class BackendError extends Error {
 	}
 }
 
-export function buildBackendUrl(path: string): string {
-	const env = getServerEnv();
+export async function buildBackendUrl(path: string): Promise<string> {
+	const origin = await getBackendBaseUrl();
+	if (!origin) throw new Error("Backend setup is required.");
 	const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-	return new URL(normalizedPath, env.BACKEND_BASE_URL).toString();
+	return new URL(normalizedPath, origin).toString();
 }
 
 export function getSafeBackendPathForLogs(path: string): string {
@@ -83,7 +84,7 @@ export async function backendFetchRaw(
 	const correlationId = headers.get(CORRELATION_ID_HEADER) ?? "-";
 
 	try {
-		const response = await fetch(buildBackendUrl(path), {
+		const response = await fetch(await buildBackendUrl(path), {
 			...init,
 			headers,
 			cache: "no-store",

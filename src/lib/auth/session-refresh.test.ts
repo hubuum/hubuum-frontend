@@ -49,7 +49,7 @@ function testStore(initial: SessionPayload): SessionStore {
 
 function rotationFixture() {
 	const pair = sessionCredentials();
-	const initial = { ...sessionPayload(pair), refreshAt: 0 };
+	const initial = { ...sessionPayload(pair), backendOrigin: "https://hubuum.test", refreshAt: 0 };
 	const next = sessionCredentials({
 		...pair,
 		access_token: "next-access",
@@ -77,7 +77,8 @@ describe("distributed session refresh", () => {
 			results.every(
 				(value) =>
 					value?.token === "next-access" &&
-					value.refreshToken === "next-refresh",
+					value.refreshToken === "next-refresh" &&
+					value.backendOrigin === "https://hubuum.test",
 			),
 		).toBe(true);
 		expect(backend.mock.calls[0][1].token).toBeUndefined();
