@@ -3,13 +3,11 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.21
+ * OpenAPI spec version: 0.0.22
  */
 import type { ResourceRevision } from './resourceRevision';
 
 export type DeleteApiV1ClassesByClassIdQueryUsageByDeclarationIdParams = {
-/**
- * Current declaration revision
- */
-expected_revision: ResourceRevision;
+  /** Current declaration revision */
+  expected_revision: ResourceRevision;
 };

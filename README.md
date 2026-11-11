@@ -4,13 +4,14 @@ The browser interface for Hubuum: browse inventory, manage relationships, run
 reports, and administer access. Server-side sessions keep Hubuum bearer tokens
 out of the browser.
 
-Frontend **v0.0.24** (October 26, 2026) targets Hubuum Server **v0.0.21**.
+Frontend **v0.0.25** (November 9, 2026) targets Hubuum Server **v0.0.22**
+and includes the Next.js 16.4.6 maintenance update.
 
-Discover fields from class pages, generate schema suggestions with three policy
-presets, and review a candidate before staging, whole-class impact analysis, and
-explicit activation. Task links resume suggestions, and field pickers use the
-bounded server inventory. See the [browser guide](docs/user-guide.md) and
-[changelog](CHANGELOG.md).
+Edit runtime configuration through forms built from the server's catalogue.
+Labels, explanations, bounds, units, and enum-choice help come from the server;
+new scalar fields appear without a frontend release. Partial edits preserve
+untouched fields and stale revisions require review before retrying. See the
+[browser guide](docs/user-guide.md#shared-runtime-settings) and [changelog](CHANGELOG.md).
 
 Deployments upgrading from before Frontend v0.0.22 require the rotating-session
 server API introduced in [server #178](https://github.com/hubuum/hubuum/issues/178).
@@ -20,14 +21,14 @@ sign-in again. See
 
 Read [compatibility](docs/compatibility.md) before pairing other releases.
 
-[Documentation](https://hubuum.github.io/hubuum-frontend/) · [Releases](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.24) · [Hubuum ecosystem](https://hubuum.github.io/)
+[Documentation](https://hubuum.github.io/hubuum-frontend/) · [Releases](https://github.com/hubuum/hubuum-frontend/releases/tag/v0.0.25) · [Hubuum ecosystem](https://hubuum.github.io/)
 
 ## Quick start
 
 Download the versioned Compose archive and follow the complete
 [Compose quick start](docs/quickstart-compose.md). It runs the frontend and
 Valkey against an existing Hubuum server. For a complete server/frontend stack,
-use the [single-host installer](https://hubuum.github.io/hubuum/v0.0.21/deployment/).
+use the [single-host installer](https://hubuum.github.io/hubuum/v0.0.22/deployment/).
 
 Developers should use [local development](docs/development.md); browser users
 should start with [Atlas](docs/example-dataset.md) and the
@@ -40,13 +41,19 @@ See [download, configure, and start](docs/quickstart-compose.md#start).
 ## Configuration
 
 See [runtime settings, proxy routing, and login backgrounds](docs/configuration.md).
+When no backend is configured, the frontend offers an installation-wide
+[connection setup flow](docs/configuration.md#first-time-connection-setup)
+that checks Hubuum identity and compatibility before saving the URL. It prints
+a one-time setup key at startup unless an explicit key is supplied. Unverified
+or incompatible versions require confirmation. Administrators can later change
+saved connections in **Configuration → Connection**; persistence uses Valkey.
 
 ## Release artifacts
 
-Release v0.0.24 provides Linux AMD64/ARM64 images, a Helm chart, and a
+Release v0.0.25 provides Linux AMD64/ARM64 images, a Helm chart, and a
 checksum-protected Compose archive pinned to the image digest. The image is
-`ghcr.io/hubuum/hubuum-frontend:v0.0.24`; the Helm chart is
-`oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.24`.
+`ghcr.io/hubuum/hubuum-frontend:v0.0.25`; the Helm chart is
+`oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.25`.
 See [deployment](docs/deployment.md) and [release evidence](docs/compatibility.md).
 
 ## Features
@@ -57,7 +64,7 @@ tasks, and manage authorized workflows. See the [browser guide](docs/user-guide.
 Field discovery preserves literal property names, array paths, computed sources,
 sampling bounds, and evaluation errors. Suggestions explain their findings and
 remain separate from the active class policy. Expired reports and lost access
-have explicit recovery paths. Upgrade the server to v0.0.21 first; application
+have explicit recovery paths. Upgrade the server to v0.0.22 first; application
 dependencies, GitHub Actions, and Orval are reviewed together for this release.
 
 <!-- markdownlint-disable-next-line MD033 -->
@@ -87,6 +94,6 @@ dependencies, GitHub Actions, and Orval are reviewed together for this release.
 | <span id="documentation-only-ci"></span>Documentation-only CI | [Guide](docs/development.md#documentation-only-ci) |
 | <span id="deployment-notes-okd"></span>Deployment notes (OKD) | [Guide](docs/deployment.md#deployment-notes-okd) |
 | <span id="container-and-helm-publishing"></span>Container and Helm publishing | [Guide](docs/deployment.md#container-and-helm-publishing) |
-| <span id="important-caveat"></span>Query support | [Server query reference](https://hubuum.github.io/hubuum/v0.0.21/querying/) |
+| <span id="important-caveat"></span>Query support | [Server query reference](https://hubuum.github.io/hubuum/v0.0.22/querying/) |
 
 <!-- markdownlint-enable MD033 -->

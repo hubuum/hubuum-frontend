@@ -1,6 +1,6 @@
 {
 	"name": "hubuum-frontend",
-	"version": "0.0.24",
+	"version": "0.0.25",
 	"private": true,
 	"engines": {
 		"node": ">=24.0.0"
@@ -21,6 +21,7 @@
 		"test:dev-deps": "node --test scripts/dev-deps.test.mjs scripts/run.test.mjs",
 		"test:server-options": "node --test scripts/server-options.test.mjs",
 		"test:e2e": "playwright test",
+		"test:e2e:setup": "bash scripts/setup-e2e-test.sh",
 		"test:e2e:authenticated": "bash scripts/authenticated-e2e-test.sh",
 		"test:e2e:authenticated:full": "bash scripts/full-authenticated-e2e.sh",
 		"test:e2e:public": "playwright test tests/e2e/public-ui.spec.ts tests/e2e/report-tables.spec.ts --grep-invert 'public visual regression'",
@@ -30,7 +31,7 @@
 		"test:live-backend": "scripts/live-backend-test.sh",
 		"lint": "biome lint .",
 		"typecheck": "next typegen && tsc --noEmit",
-		"gen:api": "npx --yes orval@8.45.0 --clean --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
+		"gen:api": "npx --yes orval@8.47.0 --clean --config orval.config.mjs && node scripts/patch-generated-client-prefix.mjs",
 		"audit:prod": "npm audit --omit=dev"
 	},
 	"dependencies": {
@@ -45,13 +46,13 @@
 		"@fontsource-variable/jetbrains-mono": "^5.3.0",
 		"@fontsource-variable/space-grotesk": "^5.3.0",
 		"@lezer/highlight": "^1.2.5",
-		"@tanstack/react-query": "^5.104.5",
+		"@tanstack/react-query": "^5.107.1",
 		"@types/prismjs": "^1.26.6",
 		"codemirror": "^6.0.2",
 		"fflate": "0.8.3",
 		"ioredis": "^6.0.0",
-		"next": "^16.4.3",
-		"parse5": "8.0.1",
+		"next": "^16.4.6",
+		"parse5": "8.1.1",
 		"prismjs": "^1.30.0",
 		"react": "^19.3.1",
 		"react-dom": "^19.3.1",
@@ -65,14 +66,14 @@
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.14.0",
-		"@biomejs/biome": "^2.6.3",
-		"@playwright/test": "^1.64.1",
-		"@types/node": "^26.6.5",
+		"@biomejs/biome": "^2.6.6",
+		"@playwright/test": "^1.65.0",
+		"@types/node": "^26.6.6",
 		"@types/react": "^19.3.0",
 		"@types/react-dom": "^19.3.0",
 		"@typescript/native": "npm:typescript@^7.0.2",
 		"typescript": "npm:@typescript/typescript6@^6.0.2",
-		"vitest": "^5.0.5"
+		"vitest": "^5.1.0"
 	},
 	"allowScripts": {
 		"fsevents@2.3.2": true,

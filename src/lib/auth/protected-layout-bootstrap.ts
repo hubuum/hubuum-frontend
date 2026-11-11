@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { BackendCredential } from "@/lib/backend-target";
+
 import { hasAdminAccess } from "@/lib/auth/admin";
 import { getCurrentPrincipalId } from "@/lib/auth/current-principal";
 import { loadUserSettingsSnapshotForPrincipal } from "@/lib/user-settings-server";
@@ -44,7 +46,7 @@ async function fetchProtectedLayoutBootstrap({
 	token,
 }: {
 	correlationId?: string;
-	token: string;
+	token: BackendCredential;
 }): Promise<ProtectedLayoutBootstrap> {
 	const [canViewAdmin, principalId] = await Promise.all([
 		hasAdminAccess(token, correlationId),
@@ -72,7 +74,7 @@ export function loadProtectedLayoutBootstrap({
 }: {
 	correlationId?: string;
 	sid: string;
-	token: string;
+	token: BackendCredential;
 }): Promise<ProtectedLayoutBootstrap> {
 	const now = Date.now();
 	pruneCache(now);

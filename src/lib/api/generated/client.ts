@@ -3,11 +3,13 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.21
+ * OpenAPI spec version: 0.0.22
  */
 import type {
   ApiErrorResponse,
   AuthProvidersResponse,
+  AuthenticationSettingsRequest,
+  AuthorizationSettingsRequest,
   BackupDocument,
   BackupRequest,
   ClassComputationState,
@@ -32,6 +34,10 @@ import type {
   CredentialApprovalRequest,
   CredentialApprovalResponse,
   DbStateResponse,
+  DeleteApiV1AdminRuntimeSettingsAuthenticationParams,
+  DeleteApiV1AdminRuntimeSettingsAuthorizationParams,
+  DeleteApiV1AdminRuntimeSettingsPaginationParams,
+  DeleteApiV1AdminRuntimeSettingsQueryObservationsParams,
   DeleteApiV1ClassesByClassIdQueryUsageByDeclarationIdParams,
   EffectiveGroupPermission,
   EventDeliveryHealthResponse,
@@ -47,6 +53,7 @@ import type {
   ExportTemplate,
   ExportTemplateRunRequest,
   GetApiV0MetaLoginRateLimitParams,
+  GetApiV1AdminRuntimeSettingsHistoryByGroupParams,
   GetApiV1ClassesByClassIdByObjectIdEventsParams,
   GetApiV1ClassesByClassIdByObjectIdHistoryAsOfParams,
   GetApiV1ClassesByClassIdByObjectIdHistoryComputedAsOfParams,
@@ -166,6 +173,7 @@ import type {
   NewUser,
   ObjectAggregateRow,
   ObjectDataPatchDocument,
+  PaginationSettingsRequest,
   Permissions,
   PersonalComputedFieldDefinitionRequest,
   PrincipalCollectionPermissions,
@@ -176,8 +184,7 @@ import type {
   PrincipalTokenMetadata,
   PrincipalTokenPointResponse,
   ProbeResponse,
-  QueryObservationConfig,
-  QueryObservationUpdateRequest,
+  QueryObservationSettingsRequest,
   QueryUsageAnalysisRequest,
   QueryUsageAnalysisResponse,
   QueryUsageCreateRequest,
@@ -193,6 +200,13 @@ import type {
   RestoreConfirmRequest,
   RestoreStageResponse,
   RunningConfig,
+  RuntimeSettingsCatalogue,
+  RuntimeSettingsGroup,
+  RuntimeSettingsGroupState,
+  RuntimeSettingsHistoryResponse,
+  RuntimeSettingsPatch,
+  RuntimeSettingsReport,
+  RuntimeSettingsUpdateResponse,
   SchemaActivationRequest,
   SchemaActivationResponse,
   SchemaCompliancePage,
@@ -666,45 +680,45 @@ export const getApiV1AdminConfig = async ( options?: RequestInit): Promise<getAp
 
 
 
-export type getApiV1AdminQueryObservationsResponse200 = {
-  data: QueryObservationConfig
+export type getApiV1AdminRuntimeSettingsResponse200 = {
+  data: RuntimeSettingsReport
   status: 200
 }
 
-export type getApiV1AdminQueryObservationsResponse401 = {
+export type getApiV1AdminRuntimeSettingsResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type getApiV1AdminQueryObservationsResponse403 = {
+export type getApiV1AdminRuntimeSettingsResponse403 = {
   data: ApiErrorResponse
   status: 403
 }
 
-export type getApiV1AdminQueryObservationsResponseSuccess = (getApiV1AdminQueryObservationsResponse200) & {
+export type getApiV1AdminRuntimeSettingsResponseSuccess = (getApiV1AdminRuntimeSettingsResponse200) & {
   headers: Headers;
 };
-export type getApiV1AdminQueryObservationsResponseError = (getApiV1AdminQueryObservationsResponse401 | getApiV1AdminQueryObservationsResponse403) & {
+export type getApiV1AdminRuntimeSettingsResponseError = (getApiV1AdminRuntimeSettingsResponse401 | getApiV1AdminRuntimeSettingsResponse403) & {
   headers: Headers;
 };
 
-export type getApiV1AdminQueryObservationsResponse = (getApiV1AdminQueryObservationsResponseSuccess | getApiV1AdminQueryObservationsResponseError)
+export type getApiV1AdminRuntimeSettingsResponse = (getApiV1AdminRuntimeSettingsResponseSuccess | getApiV1AdminRuntimeSettingsResponseError)
 
-export const getGetApiV1AdminQueryObservationsUrl = () => {
-
-
+export const getGetApiV1AdminRuntimeSettingsUrl = () => {
 
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/query-observations`
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings`
 }
 
 /**
- * Auto-generated documentation for GET /api/v1/admin/query-observations.
- * @summary Get Api V1 Admin Query Observations
+ * Auto-generated documentation for GET /api/v1/admin/runtime-settings.
+ * @summary Get Api V1 Admin Runtime Settings
  */
-export const getApiV1AdminQueryObservations = async ( options?: RequestInit): Promise<getApiV1AdminQueryObservationsResponse> => {
+export const getApiV1AdminRuntimeSettings = async ( options?: RequestInit): Promise<getApiV1AdminRuntimeSettingsResponse> => {
 
-  const res = await fetch(getGetApiV1AdminQueryObservationsUrl(),
+  const res = await fetch(getGetApiV1AdminRuntimeSettingsUrl(),
   {
     ...options,
     method: 'GET'
@@ -716,54 +730,137 @@ export const getApiV1AdminQueryObservations = async ( options?: RequestInit): Pr
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: getApiV1AdminQueryObservationsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getApiV1AdminQueryObservationsResponse
+  const data: getApiV1AdminRuntimeSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AdminRuntimeSettingsResponse
 }
 
 
 
-export type putApiV1AdminQueryObservationsResponse200 = {
-  data: QueryObservationConfig
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse200 = {
+  data: RuntimeSettingsUpdateResponse
   status: 200
 }
 
-export type putApiV1AdminQueryObservationsResponse400 = {
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse400 = {
   data: ApiErrorResponse
   status: 400
 }
 
-export type putApiV1AdminQueryObservationsResponse401 = {
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse401 = {
   data: ApiErrorResponse
   status: 401
 }
 
-export type putApiV1AdminQueryObservationsResponse403 = {
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse403 = {
   data: ApiErrorResponse
   status: 403
 }
 
-export type putApiV1AdminQueryObservationsResponseSuccess = (putApiV1AdminQueryObservationsResponse200) & {
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponseSuccess = (deleteApiV1AdminRuntimeSettingsAuthenticationResponse200) & {
   headers: Headers;
 };
-export type putApiV1AdminQueryObservationsResponseError = (putApiV1AdminQueryObservationsResponse400 | putApiV1AdminQueryObservationsResponse401 | putApiV1AdminQueryObservationsResponse403) & {
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponseError = (deleteApiV1AdminRuntimeSettingsAuthenticationResponse400 | deleteApiV1AdminRuntimeSettingsAuthenticationResponse401 | deleteApiV1AdminRuntimeSettingsAuthenticationResponse403 | deleteApiV1AdminRuntimeSettingsAuthenticationResponse412) & {
   headers: Headers;
 };
 
-export type putApiV1AdminQueryObservationsResponse = (putApiV1AdminQueryObservationsResponseSuccess | putApiV1AdminQueryObservationsResponseError)
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse = (deleteApiV1AdminRuntimeSettingsAuthenticationResponseSuccess | deleteApiV1AdminRuntimeSettingsAuthenticationResponseError)
 
-export const getPutApiV1AdminQueryObservationsUrl = () => {
+export const getDeleteApiV1AdminRuntimeSettingsAuthenticationUrl = (params: DeleteApiV1AdminRuntimeSettingsAuthenticationParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/query-observations`
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/authentication?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/authentication`
 }
 
 /**
- * Auto-generated documentation for PUT /api/v1/admin/query-observations.
- * @summary Put Api V1 Admin Query Observations
+ * Auto-generated documentation for DELETE /api/v1/admin/runtime-settings/authentication.
+ * @summary Delete Api V1 Admin Runtime Settings Authentication
  */
-export const putApiV1AdminQueryObservations = async (queryObservationUpdateRequest: QueryObservationUpdateRequest, options?: RequestInit): Promise<putApiV1AdminQueryObservationsResponse> => {
+export const deleteApiV1AdminRuntimeSettingsAuthentication = async (params: DeleteApiV1AdminRuntimeSettingsAuthenticationParams, options?: RequestInit): Promise<deleteApiV1AdminRuntimeSettingsAuthenticationResponse> => {
+
+  const res = await fetch(getDeleteApiV1AdminRuntimeSettingsAuthenticationUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1AdminRuntimeSettingsAuthenticationResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1AdminRuntimeSettingsAuthenticationResponse
+}
+
+
+
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse200 = {
+  data: RuntimeSettingsUpdateResponse
+  status: 200
+}
+
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponseSuccess = (postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse200) & {
+  headers: Headers;
+};
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponseError = (postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse400 | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse401 | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse403 | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse412 | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse503) & {
+  headers: Headers;
+};
+
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse = (postApiV1AdminRuntimeSettingsAuthenticationPreflightResponseSuccess | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponseError)
+
+export const getPostApiV1AdminRuntimeSettingsAuthenticationPreflightUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/authentication/preflight`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/admin/runtime-settings/authentication/preflight.
+ * @summary Post Api V1 Admin Runtime Settings Authentication Preflight
+ */
+export const postApiV1AdminRuntimeSettingsAuthenticationPreflight = async (authenticationSettingsRequest: AuthenticationSettingsRequest, options?: RequestInit): Promise<postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -779,20 +876,752 @@ export const putApiV1AdminQueryObservations = async (queryObservationUpdateReque
     }
     return headers;
   };
-const res = await fetch(getPutApiV1AdminQueryObservationsUrl(),
+const res = await fetch(getPostApiV1AdminRuntimeSettingsAuthenticationPreflightUrl(),
   {
     ...options,
-    method: 'PUT',
+    method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(queryObservationUpdateRequest)
+    body: JSON.stringify(authenticationSettingsRequest)
   }
 )
 
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: putApiV1AdminQueryObservationsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as putApiV1AdminQueryObservationsResponse
+  const data: postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse
+}
+
+
+
+export type putApiV1AdminRuntimeSettingsAuthorizationResponse200 = {
+  data: RuntimeSettingsUpdateResponse
+  status: 200
+}
+
+export type putApiV1AdminRuntimeSettingsAuthorizationResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type putApiV1AdminRuntimeSettingsAuthorizationResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type putApiV1AdminRuntimeSettingsAuthorizationResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type putApiV1AdminRuntimeSettingsAuthorizationResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type putApiV1AdminRuntimeSettingsAuthorizationResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
+export type putApiV1AdminRuntimeSettingsAuthorizationResponseSuccess = (putApiV1AdminRuntimeSettingsAuthorizationResponse200) & {
+  headers: Headers;
+};
+export type putApiV1AdminRuntimeSettingsAuthorizationResponseError = (putApiV1AdminRuntimeSettingsAuthorizationResponse400 | putApiV1AdminRuntimeSettingsAuthorizationResponse401 | putApiV1AdminRuntimeSettingsAuthorizationResponse403 | putApiV1AdminRuntimeSettingsAuthorizationResponse412 | putApiV1AdminRuntimeSettingsAuthorizationResponse503) & {
+  headers: Headers;
+};
+
+export type putApiV1AdminRuntimeSettingsAuthorizationResponse = (putApiV1AdminRuntimeSettingsAuthorizationResponseSuccess | putApiV1AdminRuntimeSettingsAuthorizationResponseError)
+
+export const getPutApiV1AdminRuntimeSettingsAuthorizationUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/authorization`
+}
+
+/**
+ * Auto-generated documentation for PUT /api/v1/admin/runtime-settings/authorization.
+ * @summary Put Api V1 Admin Runtime Settings Authorization
+ */
+export const putApiV1AdminRuntimeSettingsAuthorization = async (authorizationSettingsRequest: AuthorizationSettingsRequest, options?: RequestInit): Promise<putApiV1AdminRuntimeSettingsAuthorizationResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPutApiV1AdminRuntimeSettingsAuthorizationUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(authorizationSettingsRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1AdminRuntimeSettingsAuthorizationResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1AdminRuntimeSettingsAuthorizationResponse
+}
+
+
+
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse200 = {
+  data: RuntimeSettingsUpdateResponse
+  status: 200
+}
+
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponseSuccess = (deleteApiV1AdminRuntimeSettingsAuthorizationResponse200) & {
+  headers: Headers;
+};
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponseError = (deleteApiV1AdminRuntimeSettingsAuthorizationResponse400 | deleteApiV1AdminRuntimeSettingsAuthorizationResponse401 | deleteApiV1AdminRuntimeSettingsAuthorizationResponse403 | deleteApiV1AdminRuntimeSettingsAuthorizationResponse412 | deleteApiV1AdminRuntimeSettingsAuthorizationResponse503) & {
+  headers: Headers;
+};
+
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse = (deleteApiV1AdminRuntimeSettingsAuthorizationResponseSuccess | deleteApiV1AdminRuntimeSettingsAuthorizationResponseError)
+
+export const getDeleteApiV1AdminRuntimeSettingsAuthorizationUrl = (params: DeleteApiV1AdminRuntimeSettingsAuthorizationParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/authorization?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/authorization`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/admin/runtime-settings/authorization.
+ * @summary Delete Api V1 Admin Runtime Settings Authorization
+ */
+export const deleteApiV1AdminRuntimeSettingsAuthorization = async (params: DeleteApiV1AdminRuntimeSettingsAuthorizationParams, options?: RequestInit): Promise<deleteApiV1AdminRuntimeSettingsAuthorizationResponse> => {
+
+  const res = await fetch(getDeleteApiV1AdminRuntimeSettingsAuthorizationUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1AdminRuntimeSettingsAuthorizationResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1AdminRuntimeSettingsAuthorizationResponse
+}
+
+
+
+export type getApiV1AdminRuntimeSettingsHistoryByGroupResponse200 = {
+  data: RuntimeSettingsHistoryResponse
+  status: 200
+}
+
+export type getApiV1AdminRuntimeSettingsHistoryByGroupResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type getApiV1AdminRuntimeSettingsHistoryByGroupResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1AdminRuntimeSettingsHistoryByGroupResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1AdminRuntimeSettingsHistoryByGroupResponseSuccess = (getApiV1AdminRuntimeSettingsHistoryByGroupResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AdminRuntimeSettingsHistoryByGroupResponseError = (getApiV1AdminRuntimeSettingsHistoryByGroupResponse400 | getApiV1AdminRuntimeSettingsHistoryByGroupResponse401 | getApiV1AdminRuntimeSettingsHistoryByGroupResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1AdminRuntimeSettingsHistoryByGroupResponse = (getApiV1AdminRuntimeSettingsHistoryByGroupResponseSuccess | getApiV1AdminRuntimeSettingsHistoryByGroupResponseError)
+
+export const getGetApiV1AdminRuntimeSettingsHistoryByGroupUrl = (group: RuntimeSettingsGroup,
+    params?: GetApiV1AdminRuntimeSettingsHistoryByGroupParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/history/${group}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/history/${group}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/admin/runtime-settings/history/{group}.
+ * @summary Get Api V1 Admin Runtime Settings History By Group
+ */
+export const getApiV1AdminRuntimeSettingsHistoryByGroup = async (group: RuntimeSettingsGroup,
+    params?: GetApiV1AdminRuntimeSettingsHistoryByGroupParams, options?: RequestInit): Promise<getApiV1AdminRuntimeSettingsHistoryByGroupResponse> => {
+
+  const res = await fetch(getGetApiV1AdminRuntimeSettingsHistoryByGroupUrl(group,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AdminRuntimeSettingsHistoryByGroupResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AdminRuntimeSettingsHistoryByGroupResponse
+}
+
+
+
+export type putApiV1AdminRuntimeSettingsPaginationResponse200 = {
+  data: RuntimeSettingsUpdateResponse
+  status: 200
+}
+
+export type putApiV1AdminRuntimeSettingsPaginationResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type putApiV1AdminRuntimeSettingsPaginationResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type putApiV1AdminRuntimeSettingsPaginationResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type putApiV1AdminRuntimeSettingsPaginationResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type putApiV1AdminRuntimeSettingsPaginationResponseSuccess = (putApiV1AdminRuntimeSettingsPaginationResponse200) & {
+  headers: Headers;
+};
+export type putApiV1AdminRuntimeSettingsPaginationResponseError = (putApiV1AdminRuntimeSettingsPaginationResponse400 | putApiV1AdminRuntimeSettingsPaginationResponse401 | putApiV1AdminRuntimeSettingsPaginationResponse403 | putApiV1AdminRuntimeSettingsPaginationResponse412) & {
+  headers: Headers;
+};
+
+export type putApiV1AdminRuntimeSettingsPaginationResponse = (putApiV1AdminRuntimeSettingsPaginationResponseSuccess | putApiV1AdminRuntimeSettingsPaginationResponseError)
+
+export const getPutApiV1AdminRuntimeSettingsPaginationUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/pagination`
+}
+
+/**
+ * Auto-generated documentation for PUT /api/v1/admin/runtime-settings/pagination.
+ * @summary Put Api V1 Admin Runtime Settings Pagination
+ */
+export const putApiV1AdminRuntimeSettingsPagination = async (paginationSettingsRequest: PaginationSettingsRequest, options?: RequestInit): Promise<putApiV1AdminRuntimeSettingsPaginationResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPutApiV1AdminRuntimeSettingsPaginationUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(paginationSettingsRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1AdminRuntimeSettingsPaginationResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1AdminRuntimeSettingsPaginationResponse
+}
+
+
+
+export type deleteApiV1AdminRuntimeSettingsPaginationResponse200 = {
+  data: RuntimeSettingsUpdateResponse
+  status: 200
+}
+
+export type deleteApiV1AdminRuntimeSettingsPaginationResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type deleteApiV1AdminRuntimeSettingsPaginationResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1AdminRuntimeSettingsPaginationResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1AdminRuntimeSettingsPaginationResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type deleteApiV1AdminRuntimeSettingsPaginationResponseSuccess = (deleteApiV1AdminRuntimeSettingsPaginationResponse200) & {
+  headers: Headers;
+};
+export type deleteApiV1AdminRuntimeSettingsPaginationResponseError = (deleteApiV1AdminRuntimeSettingsPaginationResponse400 | deleteApiV1AdminRuntimeSettingsPaginationResponse401 | deleteApiV1AdminRuntimeSettingsPaginationResponse403 | deleteApiV1AdminRuntimeSettingsPaginationResponse412) & {
+  headers: Headers;
+};
+
+export type deleteApiV1AdminRuntimeSettingsPaginationResponse = (deleteApiV1AdminRuntimeSettingsPaginationResponseSuccess | deleteApiV1AdminRuntimeSettingsPaginationResponseError)
+
+export const getDeleteApiV1AdminRuntimeSettingsPaginationUrl = (params: DeleteApiV1AdminRuntimeSettingsPaginationParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/pagination?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/pagination`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/admin/runtime-settings/pagination.
+ * @summary Delete Api V1 Admin Runtime Settings Pagination
+ */
+export const deleteApiV1AdminRuntimeSettingsPagination = async (params: DeleteApiV1AdminRuntimeSettingsPaginationParams, options?: RequestInit): Promise<deleteApiV1AdminRuntimeSettingsPaginationResponse> => {
+
+  const res = await fetch(getDeleteApiV1AdminRuntimeSettingsPaginationUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1AdminRuntimeSettingsPaginationResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1AdminRuntimeSettingsPaginationResponse
+}
+
+
+
+export type putApiV1AdminRuntimeSettingsQueryObservationsResponse200 = {
+  data: RuntimeSettingsUpdateResponse
+  status: 200
+}
+
+export type putApiV1AdminRuntimeSettingsQueryObservationsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type putApiV1AdminRuntimeSettingsQueryObservationsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type putApiV1AdminRuntimeSettingsQueryObservationsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type putApiV1AdminRuntimeSettingsQueryObservationsResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type putApiV1AdminRuntimeSettingsQueryObservationsResponseSuccess = (putApiV1AdminRuntimeSettingsQueryObservationsResponse200) & {
+  headers: Headers;
+};
+export type putApiV1AdminRuntimeSettingsQueryObservationsResponseError = (putApiV1AdminRuntimeSettingsQueryObservationsResponse400 | putApiV1AdminRuntimeSettingsQueryObservationsResponse401 | putApiV1AdminRuntimeSettingsQueryObservationsResponse403 | putApiV1AdminRuntimeSettingsQueryObservationsResponse412) & {
+  headers: Headers;
+};
+
+export type putApiV1AdminRuntimeSettingsQueryObservationsResponse = (putApiV1AdminRuntimeSettingsQueryObservationsResponseSuccess | putApiV1AdminRuntimeSettingsQueryObservationsResponseError)
+
+export const getPutApiV1AdminRuntimeSettingsQueryObservationsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/query_observations`
+}
+
+/**
+ * Auto-generated documentation for PUT /api/v1/admin/runtime-settings/query_observations.
+ * @summary Put Api V1 Admin Runtime Settings Query Observations
+ */
+export const putApiV1AdminRuntimeSettingsQueryObservations = async (queryObservationSettingsRequest: QueryObservationSettingsRequest, options?: RequestInit): Promise<putApiV1AdminRuntimeSettingsQueryObservationsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPutApiV1AdminRuntimeSettingsQueryObservationsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(queryObservationSettingsRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putApiV1AdminRuntimeSettingsQueryObservationsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putApiV1AdminRuntimeSettingsQueryObservationsResponse
+}
+
+
+
+export type deleteApiV1AdminRuntimeSettingsQueryObservationsResponse200 = {
+  data: RuntimeSettingsUpdateResponse
+  status: 200
+}
+
+export type deleteApiV1AdminRuntimeSettingsQueryObservationsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type deleteApiV1AdminRuntimeSettingsQueryObservationsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1AdminRuntimeSettingsQueryObservationsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1AdminRuntimeSettingsQueryObservationsResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type deleteApiV1AdminRuntimeSettingsQueryObservationsResponseSuccess = (deleteApiV1AdminRuntimeSettingsQueryObservationsResponse200) & {
+  headers: Headers;
+};
+export type deleteApiV1AdminRuntimeSettingsQueryObservationsResponseError = (deleteApiV1AdminRuntimeSettingsQueryObservationsResponse400 | deleteApiV1AdminRuntimeSettingsQueryObservationsResponse401 | deleteApiV1AdminRuntimeSettingsQueryObservationsResponse403 | deleteApiV1AdminRuntimeSettingsQueryObservationsResponse412) & {
+  headers: Headers;
+};
+
+export type deleteApiV1AdminRuntimeSettingsQueryObservationsResponse = (deleteApiV1AdminRuntimeSettingsQueryObservationsResponseSuccess | deleteApiV1AdminRuntimeSettingsQueryObservationsResponseError)
+
+export const getDeleteApiV1AdminRuntimeSettingsQueryObservationsUrl = (params: DeleteApiV1AdminRuntimeSettingsQueryObservationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/query_observations?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/query_observations`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/admin/runtime-settings/query_observations.
+ * @summary Delete Api V1 Admin Runtime Settings Query Observations
+ */
+export const deleteApiV1AdminRuntimeSettingsQueryObservations = async (params: DeleteApiV1AdminRuntimeSettingsQueryObservationsParams, options?: RequestInit): Promise<deleteApiV1AdminRuntimeSettingsQueryObservationsResponse> => {
+
+  const res = await fetch(getDeleteApiV1AdminRuntimeSettingsQueryObservationsUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1AdminRuntimeSettingsQueryObservationsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1AdminRuntimeSettingsQueryObservationsResponse
+}
+
+
+
+export type getApiV1AdminRuntimeSettingsSchemaResponse200 = {
+  data: RuntimeSettingsCatalogue
+  status: 200
+}
+
+export type getApiV1AdminRuntimeSettingsSchemaResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1AdminRuntimeSettingsSchemaResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1AdminRuntimeSettingsSchemaResponseSuccess = (getApiV1AdminRuntimeSettingsSchemaResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AdminRuntimeSettingsSchemaResponseError = (getApiV1AdminRuntimeSettingsSchemaResponse401 | getApiV1AdminRuntimeSettingsSchemaResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1AdminRuntimeSettingsSchemaResponse = (getApiV1AdminRuntimeSettingsSchemaResponseSuccess | getApiV1AdminRuntimeSettingsSchemaResponseError)
+
+export const getGetApiV1AdminRuntimeSettingsSchemaUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/schema`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/admin/runtime-settings/schema.
+ * @summary Get Api V1 Admin Runtime Settings Schema
+ */
+export const getApiV1AdminRuntimeSettingsSchema = async ( options?: RequestInit): Promise<getApiV1AdminRuntimeSettingsSchemaResponse> => {
+
+  const res = await fetch(getGetApiV1AdminRuntimeSettingsSchemaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AdminRuntimeSettingsSchemaResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AdminRuntimeSettingsSchemaResponse
+}
+
+
+
+export type getApiV1AdminRuntimeSettingsByGroupResponse200 = {
+  data: RuntimeSettingsGroupState
+  status: 200
+}
+
+export type getApiV1AdminRuntimeSettingsByGroupResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type getApiV1AdminRuntimeSettingsByGroupResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type getApiV1AdminRuntimeSettingsByGroupResponseSuccess = (getApiV1AdminRuntimeSettingsByGroupResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AdminRuntimeSettingsByGroupResponseError = (getApiV1AdminRuntimeSettingsByGroupResponse401 | getApiV1AdminRuntimeSettingsByGroupResponse403) & {
+  headers: Headers;
+};
+
+export type getApiV1AdminRuntimeSettingsByGroupResponse = (getApiV1AdminRuntimeSettingsByGroupResponseSuccess | getApiV1AdminRuntimeSettingsByGroupResponseError)
+
+export const getGetApiV1AdminRuntimeSettingsByGroupUrl = (group: RuntimeSettingsGroup,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/${group}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/admin/runtime-settings/{group}.
+ * @summary Get Api V1 Admin Runtime Settings By Group
+ */
+export const getApiV1AdminRuntimeSettingsByGroup = async (group: RuntimeSettingsGroup, options?: RequestInit): Promise<getApiV1AdminRuntimeSettingsByGroupResponse> => {
+
+  const res = await fetch(getGetApiV1AdminRuntimeSettingsByGroupUrl(group),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AdminRuntimeSettingsByGroupResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AdminRuntimeSettingsByGroupResponse
+}
+
+
+
+export type patchApiV1AdminRuntimeSettingsByGroupResponse200 = {
+  data: RuntimeSettingsUpdateResponse
+  status: 200
+}
+
+export type patchApiV1AdminRuntimeSettingsByGroupResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type patchApiV1AdminRuntimeSettingsByGroupResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type patchApiV1AdminRuntimeSettingsByGroupResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type patchApiV1AdminRuntimeSettingsByGroupResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type patchApiV1AdminRuntimeSettingsByGroupResponseSuccess = (patchApiV1AdminRuntimeSettingsByGroupResponse200) & {
+  headers: Headers;
+};
+export type patchApiV1AdminRuntimeSettingsByGroupResponseError = (patchApiV1AdminRuntimeSettingsByGroupResponse400 | patchApiV1AdminRuntimeSettingsByGroupResponse401 | patchApiV1AdminRuntimeSettingsByGroupResponse403 | patchApiV1AdminRuntimeSettingsByGroupResponse412) & {
+  headers: Headers;
+};
+
+export type patchApiV1AdminRuntimeSettingsByGroupResponse = (patchApiV1AdminRuntimeSettingsByGroupResponseSuccess | patchApiV1AdminRuntimeSettingsByGroupResponseError)
+
+export const getPatchApiV1AdminRuntimeSettingsByGroupUrl = (group: RuntimeSettingsGroup,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/${group}`
+}
+
+/**
+ * Auto-generated documentation for PATCH /api/v1/admin/runtime-settings/{group}.
+ * @summary Patch Api V1 Admin Runtime Settings By Group
+ */
+export const patchApiV1AdminRuntimeSettingsByGroup = async (group: RuntimeSettingsGroup,
+    runtimeSettingsPatch: RuntimeSettingsPatch, options?: RequestInit): Promise<patchApiV1AdminRuntimeSettingsByGroupResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPatchApiV1AdminRuntimeSettingsByGroupUrl(group),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(runtimeSettingsPatch)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: patchApiV1AdminRuntimeSettingsByGroupResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as patchApiV1AdminRuntimeSettingsByGroupResponse
 }
 
 

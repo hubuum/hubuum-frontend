@@ -63,6 +63,14 @@ container, network, and volumes. Existing development services and `.env.local`
 are left alone; installed dependencies, cached images, and Next.js build caches
 are retained.
 
+To exercise browser setup, omit `BACKEND_BASE_URL`. Open the frontend,
+enter the one-time key printed at startup and your server URL, check the
+connection, then save it. An optional `SETUP_KEY` of 32–256 characters overrides
+automatic generation and is never printed.
+`run.sh` explicitly leaves the backend empty in this mode, overriding any
+backend in `.env.local`. Its temporary Valkey forgets the connection on exit;
+use persistent Valkey for an installation that should retain setup.
+
 `PORT` defaults to 3000. Options are forwarded to the usual development launcher:
 
 ```sh
@@ -155,6 +163,14 @@ backend credentials:
 ```sh
 npm run test:e2e:public
 ```
+
+Run the one-time connection flow against an isolated Valkey and a local HTTP
+server fixture with `npm run test:e2e:setup`. It checks identity rejection,
+compatibility confirmation, accessibility, mobile layout, shared setup,
+administrator target switching, session isolation, and persistence across a
+Valkey restart and fresh processes. Docker or Podman
+is required; no live backend credentials are used. The wrapper removes only
+its own Valkey project and disables recordings containing the test setup key.
 
 Pixel comparisons run separately in CI so an intentional or accidental visual
 change does not hide the functional results. Both CI and baseline updates use

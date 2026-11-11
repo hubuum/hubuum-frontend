@@ -3,58 +3,36 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.21
+ * OpenAPI spec version: 0.0.22
  */
 
 export type GetApiV1ClassesByClassIdByObjectIdEventsParams = {
-/**
- * Include object relation events touching this object; defaults to false
- */
-include_relations?: boolean;
-/**
- * Optional action filter
- */
-action?: string;
-/**
- * Optional actor kind filter
- */
-actor_kind?: string;
-/**
- * Optional actor principal id filter
- */
-actor_user_id?: number;
-/**
- * Optional root task initiator principal id filter
- */
-initiator_user_id?: number;
-/**
- * Optional collection id filter
- */
-collection_id?: number;
-/**
- * Optional lower occurred_at bound, RFC3339 or YYYY-MM-DD
- */
-occurred_after?: string;
-/**
- * Optional upper occurred_at bound, RFC3339 or YYYY-MM-DD
- */
-occurred_before?: string;
-/**
- * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
- * @minimum 1
- * @maximum 250
- */
-limit?: number;
-/**
- * Comma-separated sort fields. Supported fields: id, occurred_at
- */
-sort?: string;
-/**
- * Cursor token from X-Next-Cursor
- */
-cursor?: string;
-/**
- * Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count.
- */
-include_total?: boolean;
+  /** Include object relation events touching this object; defaults to false */
+  include_relations?: boolean;
+  /** Optional action filter */
+  action?: string;
+  /** Optional actor kind filter */
+  actor_kind?: string;
+  /** Optional actor principal id filter */
+  actor_user_id?: number;
+  /** Optional root task initiator principal id filter */
+  initiator_user_id?: number;
+  /** Optional collection id filter */
+  collection_id?: number;
+  /** Optional lower occurred_at bound, RFC3339 or YYYY-MM-DD */
+  occurred_after?: string;
+  /** Optional upper occurred_at bound, RFC3339 or YYYY-MM-DD */
+  occurred_before?: string;
+  /**
+   * Maximum number of items to return. Defaults to 100. The server clamps values above 250.
+   * @minimum 1
+   * @maximum 250
+   */
+  limit?: number;
+  /** Comma-separated sort fields. Supported fields: id, occurred_at */
+  sort?: string;
+  /** Cursor token from X-Next-Cursor */
+  cursor?: string;
+  /** Whether to execute an exact count query and return X-Total-Count. Defaults to true; set false on latency-sensitive requests that do not need the count. */
+  include_total?: boolean;
 };

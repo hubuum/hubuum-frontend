@@ -770,3 +770,37 @@ Collection names are unique among siblings, not globally. UI selectors prefer
 path-aware labels where the API uses collection IDs. Import overrides still use
 the backend's name-based `CollectionKey`, so the frontend blocks existing
 collection overrides when multiple visible collections share the selected name.
+
+## Shared runtime settings
+
+The administrator configuration page discovers editable groups from servers
+implementing runtime settings discovery version 1. It renders boolean, numeric,
+string, and enum fields with the advertised descriptions, units, and bounds.
+The contract is introduced by [server PR #584](https://github.com/hubuum/hubuum/pull/584).
+Field explanations appear below their controls and are associated with them for
+screen readers. Enum choices include the server's explanations of what each
+value means. Labels and help come from the server; older catalogues without
+choice descriptions still display the available values.
+New scalar fields appear without a frontend release. Unsupported schemas and
+specialized authentication workflows remain read-only, with the server's reason.
+
+Each discovered group has its own tab. Switching tabs keeps unsaved edits, and
+tabs with pending edits show **Unsaved**. **Save changes** and **Discard** apply
+to the current group; saving is disabled until a value changes. Labels and help
+sit beside controls on larger screens and above them on smaller screens.
+The **Effective configuration** tab comes first, opens by default, and contains
+the read-only server snapshot.
+The default page size shows the deployment maximum advertised by the server.
+Values above that maximum are rejected before saving.
+
+The form shows requested shared values when they differ from effective values
+because of a deployment ceiling. Source, revision, application status, and timing
+remain visible. Save sends only edited fields and the revision you loaded. If
+another administrator edited the group, reload and review the conflict before
+saving again. A successful commit does not promise every replica has applied it.
+Expand **Effective values** to inspect the group's applied values or reload its
+settings. Reload replaces that group's draft with the latest server values.
+
+Discovery is part of the pinned Server v0.0.22 contract. Older servers without
+discovery retain read-only effective configuration; upgrade the server before
+using runtime editing.

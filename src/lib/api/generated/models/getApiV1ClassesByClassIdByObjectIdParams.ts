@@ -3,12 +3,10 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.21
+ * OpenAPI spec version: 0.0.22
  */
 
 export type GetApiV1ClassesByClassIdByObjectIdParams = {
-/**
- * Set to computed to enrich the object
- */
-include?: string;
+  /** Set to computed to enrich the object */
+  include?: string;
 };

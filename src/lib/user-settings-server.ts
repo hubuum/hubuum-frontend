@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { BackendCredential } from "@/lib/backend-target";
+
 import { backendFetchRaw } from "@/lib/api/backend";
 import type { PrincipalSettingsResponse } from "@/lib/api/generated/models";
 import {
@@ -19,7 +21,7 @@ const BACKEND_SELF_SETTINGS_PATH = "/api/v1/iam/me/settings";
 
 type SettingsRequestContext = {
 	principalId: number;
-	token: string;
+	token: BackendCredential;
 	correlationId?: string;
 };
 
@@ -87,9 +89,14 @@ async function readBackendSettings(
 }
 
 async function loadFallbackSettings(
-	principalId: number,
+	context: SettingsRequestContext,
 ): Promise<UserSettings> {
-	const store = getUserSettingsStore();
+	const principalId = context.principalId;
+	const store = getUserSettingsStore(
+		typeof context.token === "object"
+			? context.token.target.revision
+			: undefined,
+	);
 	const storedSettings = await store.getUserSettings(principalId);
 	const staleKeys = Object.keys(storedSettings).filter(
 		(key) => !isUserSettingKey(key),
@@ -104,13 +111,17 @@ async function loadFallbackSettings(
 }
 
 async function clearFallbackSettings(
-	principalId: number,
+	context: SettingsRequestContext,
 	settings: UserSettings,
 ): Promise<void> {
 	const keys = Object.keys(settings);
 	if (keys.length === 0) return;
-	await getUserSettingsStore().patchUserSettings(
-		principalId,
+	await getUserSettingsStore(
+		typeof context.token === "object"
+			? context.token.target.revision
+			: undefined,
+	).patchUserSettings(
+		context.principalId,
 		Object.fromEntries(keys.map((key) => [key, null])),
 	);
 }
@@ -153,7 +164,7 @@ async function resolveSettingsTransport(
 	if (response.status === 404) {
 		return {
 			transport: "fallback",
-			settings: await loadFallbackSettings(context.principalId),
+			settings: await loadFallbackSettings(context),
 		};
 	}
 	if (response.status !== 200) {
@@ -168,7 +179,7 @@ async function resolveSettingsTransport(
 		return { transport: "backend", settings: backendSettings };
 	}
 
-	const fallbackSettings = await loadFallbackSettings(context.principalId);
+	const fallbackSettings = await loadFallbackSettings(context);
 	if (Object.keys(fallbackSettings).length === 0) {
 		return { transport: "backend", settings: {} };
 	}
@@ -177,7 +188,7 @@ async function resolveSettingsTransport(
 		context,
 		fallbackSettings,
 	);
-	await clearFallbackSettings(context.principalId, fallbackSettings);
+	await clearFallbackSettings(context, fallbackSettings);
 	return { transport: "backend", settings: migratedSettings };
 }
 
@@ -196,9 +207,10 @@ export async function patchUserSettingsForPrincipal(
 	const settings =
 		resolved.transport === "backend"
 			? await patchBackendSettings(context, updates)
-			: await getUserSettingsStore().patchUserSettings(
-					context.principalId,
-					updates,
-				);
+			: await getUserSettingsStore(
+					typeof context.token === "object"
+						? context.token.target.revision
+						: undefined,
+				).patchUserSettings(context.principalId, updates);
 	return snapshot(context.principalId, filterPortableUserSettings(settings));
 }

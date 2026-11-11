@@ -3,42 +3,28 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.21
+ * OpenAPI spec version: 0.0.22
  */
 
 export type GetApiV1SearchStreamParams = {
-/**
- * Plain-text query string
- */
-q: string;
-/**
- * Comma-separated kinds: collection,class,object
- */
-kinds?: string;
-/**
- * Maximum results per kind. Defaults to 100. The server clamps values above 250.
- * @minimum 1
- * @maximum 250
- */
-limit_per_kind?: number;
-/**
- * Opaque cursor for collection results
- */
-cursor_collections?: string;
-/**
- * Opaque cursor for class results
- */
-cursor_classes?: string;
-/**
- * Opaque cursor for object results
- */
-cursor_objects?: string;
-/**
- * Include class schema text in class matching
- */
-search_class_schema?: boolean;
-/**
- * Include object JSON string values in object matching
- */
-search_object_data?: boolean;
+  /** Plain-text query string */
+  q: string;
+  /** Comma-separated kinds: collection,class,object */
+  kinds?: string;
+  /**
+   * Maximum results per kind. Defaults to 100. The server clamps values above 250.
+   * @minimum 1
+   * @maximum 250
+   */
+  limit_per_kind?: number;
+  /** Opaque cursor for collection results */
+  cursor_collections?: string;
+  /** Opaque cursor for class results */
+  cursor_classes?: string;
+  /** Opaque cursor for object results */
+  cursor_objects?: string;
+  /** Include class schema text in class matching */
+  search_class_schema?: boolean;
+  /** Include object JSON string values in object matching */
+  search_object_data?: boolean;
 };

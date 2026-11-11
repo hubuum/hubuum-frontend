@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetchRaw } from "@/lib/api/backend";
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 		{
 			correlationId,
 			method: "GET",
-			token: session.token,
+			token: sessionCredential(session),
 		},
 	);
 
