@@ -279,12 +279,19 @@ test.describe("installation setup", () => {
 		await page
 			.getByRole("button", { name: "Switch server and sign out" })
 			.click();
-		await expect(page).toHaveURL(/\/login$/);
+		// Background requests may observe invalidation before the explicit redirect
+		// and preserve a session-expiry return path on the login URL.
+		await expect(page).toHaveURL((url) => url.pathname === "/login");
 		expect(
 			(await otherPage.request.get("/_hubuum-bff/connection")).status(),
 		).toBe(401);
-		await login(page.request);
-		await page.goto("/admin/configuration");
+		await page.goto("/login?next=%2Fadmin%2Fconfiguration");
+		await page.getByLabel("Username", { exact: true }).fill("admin");
+		await page.getByLabel("Password", { exact: true }).fill("fixture-password");
+		await page.getByRole("button", { name: "Enter workspace" }).click();
+		await expect(page).toHaveURL(
+			(url) => url.pathname === "/admin/configuration",
+		);
 		await page.getByRole("tab", { name: /^Connection/ }).click();
 		await expect(
 			page.getByText(`Current server: ${secondOrigin}`, { exact: true }),
