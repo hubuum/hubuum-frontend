@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/docker-compose.live-backend.yml"
 PROJECT="${HUBUUM_LIVE_COMPOSE_PROJECT:-hubuum-frontend-live-test}"
-IMAGE="${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.21@sha256:a5e1ad7a17281eefb4c1ed4da172a80bf815840f78bde6390d1e42bb2d51e0b6}"
+IMAGE="${HUBUUM_LIVE_BACKEND_IMAGE:-ghcr.io/hubuum/hubuum-server:v0.0.22@sha256:71ff4090eac071f23ae59f7265dc07165939d42771a73d1d291defa023b4964b}"
 PORT="${HUBUUM_LIVE_BACKEND_PORT:-9999}"
 BASE_URL="${HUBUUM_LIVE_BACKEND_URL:-http://127.0.0.1:${PORT}}"
 KEEP_STACK="${HUBUUM_LIVE_KEEP_STACK:-0}"

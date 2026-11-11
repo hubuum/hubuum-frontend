@@ -1,9 +1,11 @@
 import "server-only";
 
+import type { BackendCredential } from "@/lib/backend-target";
+
 import { backendFetchRaw } from "@/lib/api/backend";
 
 export async function getCurrentPrincipalId(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<number | null> {
 	const response = await backendFetchRaw("/api/v1/iam/me", {

@@ -764,7 +764,7 @@ test.describe("workspace quality", () => {
 			},
 		]);
 		const popupPromise = context.waitForEvent("page");
-		await openTable.click({ modifiers: ["Control"] });
+		await openTable.click({ modifiers: ["ControlOrMeta"] });
 		const popup = await popupPromise;
 		await expect(popup.getByRole("link", { name: /^host-/ })).toHaveText([
 			"host-100",
@@ -1483,6 +1483,7 @@ test.describe("workspace quality", () => {
 		test(`search shortcut hints follow focus and input in ${theme} mode`, async ({
 			page,
 		}, testInfo) => {
+			await page.emulateMedia({ reducedMotion: "reduce" });
 			await page.setViewportSize({ width: 1440, height: 1000 });
 			await page.getByRole("button", { name: /Open account menu for/ }).click();
 			await page

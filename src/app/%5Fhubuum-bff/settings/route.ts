@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getCurrentPrincipalId } from "@/lib/auth/current-principal";
@@ -29,9 +30,17 @@ async function getRequestIdentity(
 		normalizeCorrelationId(request.headers.get(CORRELATION_ID_HEADER)) ??
 		undefined;
 
-	const principalId = await getCurrentPrincipalId(session.token, correlationId);
+	const principalId = await getCurrentPrincipalId(
+		sessionCredential(session),
+		correlationId,
+	);
 	return principalId
-		? { principalId, sid: session.sid, token: session.token, correlationId }
+		? {
+				principalId,
+				sid: session.sid,
+				token: sessionCredential(session),
+				correlationId,
+			}
 		: null;
 }
 
@@ -84,11 +93,7 @@ export async function GET(request: NextRequest) {
 			{ message: "User settings are temporarily unavailable." },
 			{ status },
 		);
-		return invalidateSessionForUnauthorizedResponse(
-			response,
-			request,
-			session,
-		);
+		return invalidateSessionForUnauthorizedResponse(response, request, session);
 	}
 }
 
@@ -140,10 +145,6 @@ export async function PATCH(request: NextRequest) {
 			},
 			{ status },
 		);
-		return invalidateSessionForUnauthorizedResponse(
-			response,
-			request,
-			session,
-		);
+		return invalidateSessionForUnauthorizedResponse(response, request, session);
 	}
 }

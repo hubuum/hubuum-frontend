@@ -3,32 +3,28 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.21
+ * OpenAPI spec version: 0.0.22
  */
 import type { HistoryDirection } from './historyDirection';
 
 export type GetApiV1ClassesByClassIdHistoryTimelineParams = {
-from?: string;
-until?: string;
-/**
- * Seek around this exact timestamp; mutually exclusive with anchor.
- */
-at?: string;
-/**
- * Resource-scoped history entry; mutually exclusive with at.
- * @minimum 1
- */
-anchor?: number;
-direction?: HistoryDirection;
-/**
- * Maximum navigation entries; values above the configured maximum are clamped.
- * @minimum 1
- * @maximum 250
- */
-limit?: number;
-cursor?: string;
-/**
- * Exact authorized count within the selected window and direction. Defaults to false.
- */
-include_total?: boolean;
+  from?: string;
+  until?: string;
+  /** Seek around this exact timestamp; mutually exclusive with anchor. */
+  at?: string;
+  /**
+   * Resource-scoped history entry; mutually exclusive with at.
+   * @minimum 1
+   */
+  anchor?: number;
+  direction?: HistoryDirection;
+  /**
+   * Maximum navigation entries; values above the configured maximum are clamped.
+   * @minimum 1
+   * @maximum 250
+   */
+  limit?: number;
+  cursor?: string;
+  /** Exact authorized count within the selected window and direction. Defaults to false. */
+  include_total?: boolean;
 };

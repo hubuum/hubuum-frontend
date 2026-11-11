@@ -1,6 +1,7 @@
 import "server-only";
 
 import { backendFetchRaw } from "@/lib/api/backend";
+import { type BackendTarget, sessionCredential } from "@/lib/backend-target";
 import {
 	parseSessionResponse,
 	sessionPayload,
@@ -8,10 +9,14 @@ import {
 } from "./session-credentials";
 import type { SessionStore } from "./session-store";
 
-async function revokeUnstoredAccess(token: string): Promise<void> {
+async function revokeUnstoredAccess(
+	token: string,
+	target?: BackendTarget,
+): Promise<void> {
 	await backendFetchRaw("/api/v1/auth/logout", {
 		method: "POST",
 		token,
+		target,
 		signal: AbortSignal.timeout(2_000),
 	}).catch(() => undefined);
 }
@@ -22,6 +27,8 @@ export async function refreshSession(
 	sid: string,
 	initial: SessionPayload,
 ): Promise<SessionPayload | null> {
+	const credential = sessionCredential(initial);
+	const target = typeof credential === "object" ? credential.target : undefined;
 	let current: SessionPayload | null = initial;
 	const deadline = Date.now() + 10_000;
 	while (current && Date.now() < deadline) {
@@ -46,6 +53,7 @@ export async function refreshSession(
 		let issuedToken: string | undefined;
 		try {
 			const response = await backendFetchRaw("/api/v1/auth/refresh", {
+				target,
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
@@ -68,6 +76,8 @@ export async function refreshSession(
 			}
 			const next = {
 				...sessionPayload(pair, current.username),
+				backendOrigin: target?.origin ?? current.backendOrigin,
+				backendRevision: target?.revision ?? current.backendRevision,
 				createdAt: current.createdAt,
 			};
 			if (await store.completeRefresh(sid, current.generation, owner, next))
@@ -79,7 +89,7 @@ export async function refreshSession(
 			);
 		}
 		await store.invalidateGeneration(sid, current.generation);
-		if (issuedToken) await revokeUnstoredAccess(issuedToken);
+		if (issuedToken) await revokeUnstoredAccess(issuedToken, target);
 		return null;
 	}
 	if (current) await store.invalidateGeneration(sid, current.generation);

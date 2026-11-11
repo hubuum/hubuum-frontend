@@ -263,6 +263,24 @@ export function clearUserSettingsForLogout(): void {
 	window.localStorage.removeItem(USER_SETTINGS_CACHE_VERSION_KEY);
 }
 
+export function prepareUserSettingsConnection(revision?: string): void {
+	if (typeof window === "undefined" || !revision) return;
+	const previous = window.localStorage.getItem("hubuum.backend-revision");
+	if (
+		previous !== revision &&
+		(previous !== null ||
+			(!revision.startsWith("environment:") && !revision.startsWith("legacy:")))
+	) {
+		clearUserSettingsForLogout();
+		for (let index = window.localStorage.length - 1; index >= 0; index--) {
+			const key = window.localStorage.key(index);
+			if (key?.startsWith(USER_SETTINGS_PENDING_KEY_PREFIX))
+				window.localStorage.removeItem(key);
+		}
+	}
+	window.localStorage.setItem("hubuum.backend-revision", revision);
+}
+
 function scheduleFlush(delayMs = FLUSH_DEBOUNCE_MS): void {
 	if (!syncEnabled || flushTimer !== null) return;
 	flushTimer = window.setTimeout(() => {

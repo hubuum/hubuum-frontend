@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { BackendCredential } from "@/lib/backend-target";
+
 import { backendFetchRaw } from "@/lib/api/backend";
 
 export type VisibleWorkspaceSummary = {
@@ -18,7 +20,7 @@ function parseTotalCount(response: Response): number | null {
 
 async function fetchVisibleCount(
 	path: string,
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<number | null> {
 	try {
@@ -30,7 +32,7 @@ async function fetchVisibleCount(
 }
 
 export async function fetchVisibleWorkspaceSummary(
-	token: string,
+	token: BackendCredential,
 	correlationId?: string,
 ): Promise<VisibleWorkspaceSummary> {
 	const [collections, classes, tasks] = await Promise.all([

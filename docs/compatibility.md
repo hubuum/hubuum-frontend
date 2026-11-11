@@ -5,7 +5,8 @@ should pin both components to explicit versions.
 
 | Frontend | Supported Hubuum Server | CI contract target |
 | --- | --- | --- |
-| `main` (unreleased) | `v0.0.21` | `ghcr.io/hubuum/hubuum-server:v0.0.21` |
+| `main` (unreleased) | `v0.0.22` | `ghcr.io/hubuum/hubuum-server:v0.0.22` |
+| `v0.0.25` | `v0.0.22` | `ghcr.io/hubuum/hubuum-server:v0.0.22` |
 | `v0.0.24` | `v0.0.21` | `ghcr.io/hubuum/hubuum-server:v0.0.21` |
 | `v0.0.23` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
 | `v0.0.22` | `v0.0.20` | `ghcr.io/hubuum/hubuum-server:v0.0.20` |
@@ -32,7 +33,10 @@ should pin both components to explicit versions.
 | `v0.0.1` | `v0.0.1` | `ghcr.io/hubuum/hubuum-server:v0.0.1` |
 
 Required checks use the immutable image for the selected compatibility target.
-For Frontend v0.0.24 and unreleased `main`, it is
+For Frontend v0.0.25, it is
+`ghcr.io/hubuum/hubuum-server:v0.0.22@sha256:71ff4090eac071f23ae59f7265dc07165939d42771a73d1d291defa023b4964b`.
+
+For Frontend v0.0.24, it is
 `ghcr.io/hubuum/hubuum-server:v0.0.21@sha256:a5e1ad7a17281eefb4c1ed4da172a80bf815840f78bde6390d1e42bb2d51e0b6`.
 
 For Frontend v0.0.22 and v0.0.23, it is
@@ -41,6 +45,13 @@ For Frontend v0.0.22 and v0.0.23, it is
 For Frontend v0.0.20/v0.0.21 and Server v0.0.19, it is
 `ghcr.io/hubuum/hubuum-server@sha256:6fbe91693356b8885e6b1115cea4417dbf80747ba4af3eb0a15b855ffff47225`.
 Scheduled tests against server `main` do not change a release's declared target.
+Browser connection setup checks this declared target before saving a backend.
+Unverified versions and known compatibility problems require explicit
+confirmation; patched installations can be selected despite their reported
+version. This escape hatch does not expand the supported release matrix.
+Update `SUPPORTED_SERVER_VERSION` in `src/lib/backend-setup.ts` when advancing
+the supported release; its test checks alignment with the bundled OpenAPI file.
+Existing environment-configured deployments retain their current behavior.
 
 ## Interactive session upgrade
 
@@ -89,13 +100,13 @@ examples. Hydration is included in the declared Server v0.0.20 baseline.
 
 ## Released contract
 
-Frontend v0.0.24 bundles the complete 261-operation, 401-schema OpenAPI contract
-from Server v0.0.21. It exposes bounded raw/computed field discovery and sampled
-schema suggestions through class pages, schema workspaces, task links, and field
-pickers. Suggestions never change active policy automatically. See
-[v0.0.24 verification](compatibility-evidence.md#frontend-v0024) for source
-provenance and the final pinned live/browser checks. Historical contracts remain
-in [compatibility history](compatibility-evidence.md).
+Frontend v0.0.25 bundles the complete 272-operation, 431-schema OpenAPI contract
+from Server v0.0.22. Administrator runtime forms discover field types, labels,
+help, units, limits, and enum explanations from the server. Partial edits carry
+the loaded revision, preserve unedited fields, and never retry a conflict
+automatically. Unknown scalar fields remain usable; unsupported schemas and
+specialized authentication workflows remain read-only. Historical contracts
+remain in [compatibility history](compatibility-evidence.md).
 
 ## History integration in v0.0.23
 
@@ -116,15 +127,18 @@ for completed local checks and the remaining publication gates.
 
 ## Before upgrading
 
-Upgrade to Server v0.0.21 before Frontend v0.0.24. Stop older API and worker
-processes, apply the four migrations and role grants during a quiet period, then
+Upgrade to Server v0.0.22 before Frontend v0.0.25. Stop older API and worker
+processes, apply its migrations and role grants during a quiet period, then
 start matching API, worker, template-worker, and restore-executor binaries.
 Provide writable temporary disk for backup and restore spooling. Keep a
 pre-upgrade snapshot and matching binaries for rollback; complete or expire
 staged restores before reverting their storage migration. Backup output remains
 format 10 and restore input supports formats 6–10. Follow the
-[server deployment guide](https://hubuum.github.io/hubuum/v0.0.21/deployment/)
-and [backup compatibility](https://hubuum.github.io/hubuum/v0.0.21/backup-restore/).
+[server deployment guide](https://hubuum.github.io/hubuum/v0.0.22/deployment/)
+and [backup compatibility](https://hubuum.github.io/hubuum/v0.0.22/backup-restore/).
+Review template fuel limits and rendered output for the server's MiniJinja 3.1
+changes. Runtime query-observation ownership replaces the removed override API;
+upgrade all server replicas together so later edits apply consistently.
 
 Upgrades from before Frontend v0.0.22 also require the rotating-session migration,
 clearing old BFF sessions, and signing in again. PATs and service credentials

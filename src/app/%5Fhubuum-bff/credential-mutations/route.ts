@@ -1,3 +1,4 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
 			"/api/v1/iam/credential-approvals",
 			{
 				method: "POST",
-				token: session.token,
+				token: sessionCredential(session),
 				correlationId,
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ password: mutation.password, operation }),
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
 		await approvalResponse.body?.cancel();
 		const validation = await validateBackendSession({
 			sid: session.sid,
-			token: session.token,
+			token: sessionCredential(session),
 			correlationId,
 		});
 		if (validation === "expired") return expireSession();
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
 	try {
 		const upstream = await backendFetchRaw(mutation.path, {
 			method: mutation.method,
-			token: session.token,
+			token: sessionCredential(session),
 			correlationId,
 			headers,
 			body: JSON.stringify(mutation.body),

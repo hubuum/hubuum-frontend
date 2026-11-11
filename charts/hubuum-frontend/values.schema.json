@@ -9,7 +9,7 @@
       "type": "object",
       "required": ["baseUrl"],
       "properties": {
-        "baseUrl": { "type": "string", "format": "uri", "minLength": 1 }
+        "baseUrl": { "anyOf": [{ "const": "" }, { "type": "string", "format": "uri", "minLength": 1 }] }
       }
     },
     "image": {

@@ -3,17 +3,15 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.21
+ * OpenAPI spec version: 0.0.22
  */
 
 export type GetApiV1ClassesByClassIdSchemaRevisionsParams = {
-/**
- * Last schema revision; defaults to zero
- */
-after?: number;
-/**
- * 1 to 100 revisions; defaults to 50
- * @minimum 0
- */
-limit?: number;
+  /** Last schema revision; defaults to zero */
+  after?: number;
+  /**
+   * 1 to 100 revisions; defaults to 50
+   * @minimum 0
+   */
+  limit?: number;
 };

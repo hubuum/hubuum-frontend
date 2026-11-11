@@ -64,6 +64,7 @@ The frontend owns only routes under `/_hubuum-bff/...`.
 
 | Frontend route | Purpose |
 | --- | --- |
+| `/_hubuum-bff/setup` | Checks and saves the first installation-wide backend connection. Requires the deployment setup key and same-origin mutation metadata; closes once configured. |
 | `/_hubuum-bff/auth/login` | Accepts browser login payloads, calls backend `/api/v1/auth/login`, and creates the frontend session cookie. |
 | `/_hubuum-bff/auth/providers` | Discovers public authentication providers from backend `/api/v1/auth/providers`; the login form falls back to a manual identity-scope field when unavailable. |
 | `/_hubuum-bff/auth/logout` | Logs out locally and asks the backend to revoke the current session family. |

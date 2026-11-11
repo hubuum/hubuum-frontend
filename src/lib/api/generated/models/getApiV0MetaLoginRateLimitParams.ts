@@ -3,20 +3,14 @@
  * Do not edit manually.
  * Hubuum REST API
  * OpenAPI documentation for the Hubuum REST service.
- * OpenAPI spec version: 0.0.21
+ * OpenAPI spec version: 0.0.22
  */
 
 export type GetApiV0MetaLoginRateLimitParams = {
-/**
- * `locked` (default) or `all`
- */
-include?: string;
-/**
- * Filter by scope kind: `user_ip`, `account`, `ip`, or `subnet`
- */
-scope?: string;
-/**
- * Case-insensitive substring match on the scope identifier
- */
-q?: string;
+  /** `locked` (default) or `all` */
+  include?: string;
+  /** Filter by scope kind: `user_ip`, `account`, `ip`, or `subnet` */
+  scope?: string;
+  /** Case-insensitive substring match on the scope identifier */
+  q?: string;
 };

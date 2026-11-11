@@ -1,5 +1,7 @@
+import { sessionCredential } from "@/lib/backend-target";
 import { headers } from "next/headers";
 
+import { RuntimeSettingsEditor } from "@/components/runtime-settings-editor";
 import { RuntimeConfigPanel } from "@/components/runtime-config-panel";
 import { requireServerSession } from "@/lib/auth/guards";
 import {
@@ -14,7 +16,10 @@ export default async function AdminConfigurationPage() {
 		normalizeCorrelationId(requestHeaders.get(CORRELATION_ID_HEADER)) ??
 		undefined;
 	const session = await requireServerSession();
-	const config = await tryFetchRunningConfig(session.token, correlationId);
+	const config = await tryFetchRunningConfig(
+		sessionCredential(session),
+		correlationId,
+	);
 
 	return (
 		<section className="stack">
@@ -23,18 +28,20 @@ export default async function AdminConfigurationPage() {
 					<h2>Runtime configuration</h2>
 				</div>
 				<p className="muted">
-					Read-only effective server settings. Secrets and sensitive values are
-					redacted by Hubuum Server.
+					Manage supported shared policies and inspect effective server
+					settings. Secrets and sensitive values are redacted by Hubuum Server.
 				</p>
 			</header>
 
-			{config ? (
-				<RuntimeConfigPanel config={config} />
-			) : (
-				<div className="error-banner" role="alert">
-					Runtime configuration is unavailable from this server.
-				</div>
-			)}
+			<RuntimeSettingsEditor>
+				{config ? (
+					<RuntimeConfigPanel config={config} />
+				) : (
+					<div className="error-banner" role="alert">
+						Runtime configuration is unavailable from this server.
+					</div>
+				)}
+			</RuntimeSettingsEditor>
 		</section>
 	);
 }

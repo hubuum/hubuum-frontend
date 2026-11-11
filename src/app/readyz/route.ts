@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { APPLICATION_VERSION } from "@/lib/application-version";
-import { getServerEnv } from "@/lib/env";
+import { getBackendBaseUrl } from "@/lib/backend-target";
 import { checkReadiness } from "@/lib/health";
 import { pingValkey } from "@/lib/valkey";
 
@@ -9,15 +9,19 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
 	try {
-		const env = getServerEnv();
+		const backendBaseUrl = await getBackendBaseUrl();
 		const result = await checkReadiness({
-			backendBaseUrl: env.BACKEND_BASE_URL,
+			backendBaseUrl,
 			pingValkey,
 		});
 
 		return NextResponse.json(
 			{
-				status: result.ready ? "ready" : "unavailable",
+				status: result.ready
+					? backendBaseUrl
+						? "ready"
+						: "setup_required"
+					: "unavailable",
 				version: APPLICATION_VERSION,
 				dependencies: result.dependencies,
 			},
