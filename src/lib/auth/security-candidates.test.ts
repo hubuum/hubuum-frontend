@@ -75,6 +75,26 @@ function request(body?: unknown, origin = "https://console.example") {
 	);
 }
 describe("administrator candidate BFF boundary", () => {
+	it("discards only this actor's private candidate and never calls a destructive server route", async () => {
+		mocks.session.mockResolvedValue(actor);
+		mocks.admin.mockResolvedValue({
+			status: "allowed",
+			response: new Response(null),
+		});
+		await preserveCandidateReport(actor, target, report());
+		const response = await securityCandidateAction(
+			new NextRequest(
+				"https://console.example/_hubuum-bff/admin/security-candidates/" + id,
+				{ method: "DELETE", headers: { Origin: "https://console.example" } },
+			),
+			id,
+			"discard",
+		);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ discarded: true });
+		expect(mocks.fetch).not.toHaveBeenCalled();
+		expect(mocks.values.size).toBe(0);
+	});
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.values.clear();

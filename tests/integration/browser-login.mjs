@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium, expect } from "@playwright/test";
+import { approveProvider } from "./browser-provider.mjs";
 
 let browser;
 let stage = "input";
@@ -78,61 +79,20 @@ try {
 
 	async function authorize(owner, decision = "Approve") {
 		authorizationAttempt++;
-		stage = "public-code";
-		const region = owner.getByRole("region", {
-			name: "Browser authentication",
+		stage = "provider-authorization";
+		return approveProvider(owner, input, decision, (popup) => {
+			providerPage = popup;
+			popup.on("response", (response) => {
+				if (
+					response.status() >= 400 &&
+					new URL(response.url()).origin === input.serverOrigin
+				)
+					providerResponses.push({
+						status: response.status(),
+						path: new URL(response.url()).pathname,
+					});
+			});
 		});
-		const code = await region.locator("code").textContent();
-		assert(code, "Public verification code required");
-		const popupEvent = owner.waitForEvent("popup");
-		await region
-			.getByRole("link", { name: "Open authentication page" })
-			.click();
-		const popup = await popupEvent;
-		providerPage = popup;
-		popup.on("response", (response) => {
-			if (
-				response.status() >= 400 &&
-				new URL(response.url()).origin === input.serverOrigin
-			)
-				providerResponses.push({
-					status: response.status(),
-					path: new URL(response.url()).pathname,
-				});
-		});
-		await popup.waitForLoadState("domcontentloaded");
-		assert.equal(await popup.evaluate(() => window.opener === null), true);
-		assert.equal(new URL(popup.url()).origin, input.serverOrigin);
-		stage = "hosted-code";
-		await popup.getByLabel("Verification code", { exact: true }).fill(code);
-		await popup.getByRole("button", { name: "Continue", exact: true }).click();
-		stage = "provider-continuation";
-		await popup.getByRole("button", { name: "Continue", exact: true }).click();
-		await popup
-			.getByRole("link", { name: "Continue to sign in", exact: true })
-			.click();
-		if (input.profile !== "oauth") {
-			stage = "keycloak-password";
-			await expect(popup.locator("#password")).toBeVisible();
-			const username = popup.locator("#username");
-			if (
-				(await username.count()) &&
-				(await username.isVisible()) &&
-				(await username.isEditable())
-			)
-				await username.fill(input.username);
-			await popup.locator("#password").fill(input.password);
-			await popup.locator("#kc-login").click();
-		}
-		stage = "explicit-approval";
-		await expect(
-			popup.getByRole("heading", {
-				name: "Approve this request?",
-				exact: true,
-			}),
-		).toBeVisible();
-		await popup.getByRole("button", { name: decision, exact: true }).click();
-		return popup;
 	}
 
 	async function beginToken(owner, name) {

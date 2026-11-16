@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib
 import json
 import os
+import select
 from pathlib import Path
 import signal
 import socket
@@ -182,6 +183,7 @@ class Consumer:
         self.prefix = fixture.prefix + ":"
         self.process = None
         self.browser_ui = False
+        self.admin_ui = False
         self.log = (fixture.root / "frontend.log").open("w")
         os.chmod(fixture.root / "frontend.log", 0o600)
         self.secrets = [fixture.local_password, fixture.client_secret]
@@ -469,12 +471,75 @@ class Consumer:
             spec["membership"].update(refresh_interval_seconds=30, max_stale_seconds=90)
         return spec
 
+    def browser_admin_ui(self):
+        public_key = subprocess.check_output(["openssl", "x509", "-in", str(self.fixture.root / "mount/server.pem"), "-pubkey", "-noout"])
+        der = subprocess.check_output(["openssl", "pkey", "-pubin", "-outform", "DER"], input=public_key)
+        configuration = self.provider_configuration()
+        credential = configuration.pop("bind_password") if self.profile == "ldap" else configuration.pop("credential")["value"]
+        payload = {"profile": self.profile, "serverOrigin": self.fixture.origin, "spki": base64.b64encode(hashlib.sha256(der).digest()).decode(),
+                   "localPassword": self.fixture.local_password, "configuration": configuration, "credential": credential,
+                   "username": "amy" if self.profile == "ldap" else "alice",
+                   "password": self.fixture.ldap_password if self.profile == "ldap" else getattr(self.fixture, "password", "")}
+        child = subprocess.Popen([str(self.node), "tests/integration/browser-admin.mjs"], cwd=ROOT, env=self.env,
+                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        before = None
+        deadline = time.monotonic() + 180
+        complete = False
+        try:
+            child.stdin.write(json.dumps(payload) + "\n")
+            child.stdin.flush()
+            while time.monotonic() < deadline:
+                if not select.select([child.stdout], [], [], min(5, max(0, deadline - time.monotonic())))[0]:
+                    continue
+                line = child.stdout.readline()
+                if not line:
+                    break
+                event = json.loads(line)
+                if event["event"] == "candidate-created":
+                    self.fixture.provider_id = self.provider = event["provider"]
+                    if self.profile in ("id_token", "userinfo"):
+                        client = self.fixture.provider_api("/clients?clientId=hubuum")[0]
+                        client["redirectUris"] = [self.fixture.origin + "/api/v1/auth/callbacks/" + self.provider]
+                        self.fixture.provider_api("/clients/" + client["id"], client, method="PUT")
+                elif event["event"] == "preview-before":
+                    before = self.counts()
+                elif event["event"] == "preview-after":
+                    if before is None or before != self.counts():
+                        raise RuntimeError("Product candidate preview changed persistent identity, membership, session or credential counts")
+                    self.passed("product administration preview leaves all six persistent identity, membership, session and credential counts unchanged")
+                elif event["event"] == "failure":
+                    self.fixture.evidence.joinpath("admin-ui-failure.json").write_text(json.dumps(event, indent=2) + "\n")
+                    raise RuntimeError("Product administration UI stopped at " + event["stage"])
+                elif event["event"] == "complete":
+                    if event.get("passed") is not True or event["provider"] != self.provider:
+                        raise RuntimeError("Product administration returned no matching provider acceptance")
+                    for check in event["checks"]:
+                        self.passed(check)
+                    complete = True
+                    break
+                else:
+                    raise RuntimeError("Unknown product administration checkpoint")
+                child.stdin.write("ok\n")
+                child.stdin.flush()
+            if not complete or child.wait(timeout=10) != 0:
+                raise RuntimeError("Product administration did not complete within its bounded deadline")
+        finally:
+            if child.poll() is None:
+                child.kill()
+                child.wait()
+            child.stdin.close()
+            child.stdout.close()
+            child.stderr.close()
+
     def configure(self):
         self.api("auth/login", {"name": "admin", "password": self.fixture.local_password}, browser=self.admin)
         administrator = self.snapshot(self.admin)
         self.passed("ordinary local administrator login persists privately before external setup")
         if self.profile == "local":
             self.provider = "local"
+            return
+        if self.admin_ui:
+            self.browser_admin_ui()
             return
         spec = self.provider_configuration()
         candidate = self.fixture.api("/api/v1/admin/runtime-settings/security-candidates", {
@@ -672,6 +737,7 @@ def main():
     parser.add_argument("--profile", choices=("id_token", "userinfo", "oauth", "ldap", "local"), required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--browser-ui", action="store_true", help="Qualify actual product login and fresh-approval UI")
+    parser.add_argument("--admin-ui", action="store_true", help="Qualify actual provider configure/test/activate UI before native login")
     args = parser.parse_args()
     node_version = subprocess.check_output([str(args.node), "--version"], text=True).strip()
     if not node_version.startswith("v24."):
@@ -730,13 +796,15 @@ def main():
                 settings = json.loads(values["HUBUUM_AUTH_BROWSER"])
                 settings["return_targets"].append({"id": "frontend", "client_id": "hubuum-frontend", "uri": FRONTEND + "/_hubuum-bff/auth/interactions/return"})
                 values["HUBUUM_AUTH_BROWSER"] = json.dumps(settings)
-                values["HUBUUM_SESSION_ACCESS_SECONDS"] = "120" if args.browser_ui else "30"
+                values["HUBUUM_SESSION_ACCESS_SECONDS"] = "120" if args.browser_ui or args.admin_ui else "30"
             return super().env(name, values)
 
     fixture = Fixture(args.image, args.evidence, 48479, 48480) if args.profile in ("oauth", "ldap", "local") else Fixture(args.image, args.evidence, 48477, 48478, args.profile)
     report = {"profile": args.profile, "source": SOURCE, "server_image": qualified, "valkey": VALKEY,
-              "scope": "product login/approval UI" if args.browser_ui else "BFF transport",
-              "browser_ui_controller_sha256": hashlib.sha256((ROOT / "tests/integration/browser-login.mjs").read_bytes()).hexdigest() if args.browser_ui else None,
+              "scope": "product provider administration and login/approval UI" if args.admin_ui else "product login/approval UI" if args.browser_ui else "BFF transport",
+              "admin_ui_controller_sha256": hashlib.sha256((ROOT / "tests/integration/browser-admin.mjs").read_bytes()).hexdigest() if args.admin_ui else None,
+              "provider_ui_controller_sha256": hashlib.sha256((ROOT / "tests/integration/browser-provider.mjs").read_bytes()).hexdigest() if args.browser_ui or args.admin_ui else None,
+              "browser_ui_controller_sha256": hashlib.sha256((ROOT / "tests/integration/browser-login.mjs").read_bytes()).hexdigest() if args.browser_ui or args.admin_ui else None,
               "node_version": node_version, "ldap_image": LDAP if args.profile == "ldap" else None,
               "browser_controller_sha256": hashlib.sha256((ROOT / "tests/integration/browser-security.mjs").read_bytes()).hexdigest(),
               "controller_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), "checks": [], "passed": False,
@@ -759,7 +827,8 @@ def main():
         identity.update(server_source_commit=commit, frontend_source_commit=report["frontend_source_commit"], frontend_source_dirty=report["frontend_source_dirty"])
         identity_path.write_text(json.dumps(identity, indent=2) + "\n")
         consumer = Consumer(fixture, module, args.node.resolve(), args.profile)
-        consumer.browser_ui = args.browser_ui
+        consumer.browser_ui = args.browser_ui or args.admin_ui
+        consumer.admin_ui = args.admin_ui
         report["checks"] = consumer.results
         consumer.start()
         consumer.qualify()

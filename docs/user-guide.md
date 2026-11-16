@@ -805,6 +805,65 @@ Discovery is part of the pinned Server v0.0.22 contract. Older servers without
 discovery retain read-only effective configuration; upgrade the server before
 using runtime editing.
 
+## Project #6 provider administration
+
+Open **Admin → Runtime configuration → Authentication** with a local, unscoped
+human administrator. The provider list shows applied availability, definition
+source, credential configuration and the responding replica's revision/status.
+Local accounts remain always on for recovery. Unknown provider kinds, stale
+replicas and deployment locks prevent editing rather than dropping definitions.
+
+Add LDAP, OIDC or OAuth providers, or edit/enable/disable existing providers.
+Names identify identity scopes and cannot be renamed after creation. Configure
+connection, admission/provisioning and membership policy in the non-secret JSON
+settings. LDAP scope must match the provider name. Browser membership settings
+select the claim source/pointer, group key mode and refresh/staleness intervals;
+LDAP uses its directory group attributes/rules. The server validates the complete
+definition. Deployment references remain deployment-owned; selecting runtime for
+one explicitly adopts its definition, subject to deployment locks.
+
+Credential actions are explicit: **Keep** preserves the configured credential,
+**Reference** selects a deployment secret alias, **Replace** writes a new encrypted
+credential, and **Clear** removes it. Aliases and replacement values use separate
+write-only inputs, clear when captured for submission and never appear in review.
+Stored secrets and aliases cannot be retrieved. Encryption root keys, trusted
+public origins, egress rules, TLS trust and locks remain deployment settings.
+
+Select **Prepare candidate** to review an inactive definition and its checks.
+For LDAP, enter a test identity. For OIDC/OAuth, register the exact callback shown
+for the candidate provider, then select **Test provider** and approve the bounded
+browser interaction. The server must have its public authentication origin and
+the frontend's exact return target registered. Keep the original tab open.
+Connectivity alone does not verify a browser identity. Review admission, stable
+subject and group preview; testing neither provisions an account nor issues a
+login session or writes memberships. Failed or incomplete tests leave live sign-in
+unchanged. OIDC may support fresh credential approval; OAuth does not, and never
+falls back to a password prompt. Local recovery remains available.
+
+After all required checks pass, **Review activation** names the exact candidate,
+group and base revision. Approve it with your local administrator password. A
+changed revision, secret, lock, expired candidate or originating credential
+invalidates its authority: reload, recreate and test again. Requests never replay
+automatically. If activation cannot be confirmed, inspect candidate status and
+reload current configuration before deciding what to do next. A committed
+revision is distinct from each replica applying it; inspect the responding
+replica and repeat on other replicas as needed. Discarding a draft forgets its
+private frontend verification state; inactive server candidates expire.
+
+The **Authorization** tab supports Local and Treetop with explicit runtime or
+deployment connection ownership. Runtime Treetop requires an HTTPS URL, an
+advertised trust profile and timeouts within deployment ceilings. Preparing its
+candidate checks connectivity and administrator access, including recovery.
+Unavailable or requested Treetop stays visible; it never silently becomes Local.
+**Release this group to deployment configuration** uses the same reviewed
+candidate/approval workflow.
+
+Group membership lists show whether the group is local or provider-managed.
+Provider-managed groups and synchronized memberships remain read-only. Local
+groups still support manual grants to external principals. These labels describe
+group management; the current API does not enumerate independent per-membership
+source history.
+
 ## Project #6 sign-in and approvals
 
 The `project/auth-support` interface uses the configured server's provider choices.

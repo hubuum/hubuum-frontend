@@ -8,6 +8,11 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Project #6 runtime LDAP, OIDC and OAuth provider administration, non-activating
+  identity/group previews and exact local-administrator-approved activation.
+  Add runtime Treetop connection controls, deployment ownership/lock visibility,
+  explicit credential keep/reference/replace/clear actions and group-management
+  source labels. These controls require the accepted project server capabilities.
 - Project #6 provider-aware browser login and exact-operation fresh approval.
   The original tab shows bounded progress and typed denial, expiry, unavailable
   provider and unsupported-freshness outcomes; provider exchange stays on Hubuum.
@@ -16,7 +21,7 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   private Valkey redemption state, ordinary rotating frontend sessions and
   exact-operation fresh approval. Provider verification keeps activation
   receipts private and returns a non-provisioning preview. The login and
-  administrator interfaces are delivered separately on `project/auth-support`.
+  administrator interfaces are delivered on `project/auth-support`.
 - Optional deployment-owned browser origin and registered BFF return-target
   settings. New authentication capabilities require the accepted project server;
   the declared released v0.0.22 compatibility target remains unchanged.

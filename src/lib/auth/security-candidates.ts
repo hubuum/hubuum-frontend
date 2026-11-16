@@ -97,7 +97,7 @@ async function upstream(
 function failure(
 	request: NextRequest,
 	error: unknown,
-	action?: "report" | "ldap" | "activate",
+	action?: "report" | "ldap" | "activate" | "discard",
 ): NextResponse {
 	const status =
 		error instanceof CandidateError
@@ -152,7 +152,7 @@ export async function createSecurityCandidate(
 export async function securityCandidateAction(
 	request: NextRequest,
 	candidateId: string,
-	action: "report" | "ldap" | "activate",
+	action: "report" | "ldap" | "activate" | "discard",
 ): Promise<NextResponse> {
 	if (action !== "report") {
 		const rejected = rejectCrossOriginBffMutation(request);
@@ -162,6 +162,10 @@ export async function securityCandidateAction(
 		const id = parse(z.uuid(), candidateId);
 		const auth = await authority(request);
 		const candidate = await loadCandidateReport(auth.actor, auth.target, id);
+		if (action === "discard") {
+			await forgetCandidateReport(auth.actor, id);
+			return interactionResponse(request, { discarded: true });
+		}
 		if (action === "report") {
 			const visible = await preserveCandidateReport(
 				auth.actor,
