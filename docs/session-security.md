@@ -184,3 +184,11 @@ reveal is a separate credential-management output. The `--browser-ui` mode of th
 production qualification driver exercises actual product login and token creation
 through the supported authentication method, with credentials only in memory,
 verified TLS and no screenshots, traces or persistent browser profiles.
+
+## Qualified product login and approval UI
+
+The clean production UI source `d3fcef25660594bfeaccfd42296c36f238f42644` passed **50/50** checks across local accounts (7), LDAPS (9), synthetic OAuth (10), and both real disposable Keycloak ID-token/UserInfo profiles (12 each). The [sanitized ledger](assets/authentication-qualification.json) pins server #598, controller/report/image hashes and the compiled standalone tree. Credentials, callback query strings, browser profiles and traces are excluded.
+
+The UI fixture allows complete form interactions on a 30-second eligibility schedule, then explicitly waits past the next renewal. Concurrent OIDC tabs preserve separate frozen operations: approval creates one credential, denial creates none, and the ordinary session retains its principal after renewal. Callback denial may close the approval dialog and surface on the original operation form; poll-first denial may remain in the dialog. Temporary read-only eligibility responses use bounded fixture retries; protected writes never replay. Separate server protocol fixtures retain five-second refresh stress coverage.
+
+This is implementing-agent local qualification. Final CI, production container and immutable candidate acceptance are required before #197 is completed. Provider administration #198 and the full native real GitHub/server #581 matrix remain separate required gates. Project integration does not promote main or stable.

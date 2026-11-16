@@ -35,7 +35,7 @@
     }
   ],
   "server_integration_commit": "a8a37e4b56058def8fdf3676defc6fee89cc5daa",
-  "native_qualification": "BFF #196 accepted; product login/approval UI #197 clean qualification in progress against accepted server #598. Administration #198 and final native real GitHub/server #581 matrix remain required.",
+  "native_qualification": "BFF #196 accepted; product login/approval UI #197 passed the clean production 50/50 matrix on source d3fcef25660594bfeaccfd42296c36f238f42644. Final CI/container/candidate acceptance is pending. Administration #198 and the final native real GitHub/server #581 matrix remain required.",
   "accepted_bff_foundation": {
     "pull_request": "https://github.com/hubuum/hubuum-frontend/pull/204",
     "integration_commit": "3a8dba71b20c7d3a5df06c0f1e75bc7c20ad3543",
