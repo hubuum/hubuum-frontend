@@ -5,7 +5,7 @@ Upgrade both components together and sign in again after deployment. No password
 is retained after login. Both credentials stay in the server-side Valkey record;
 the browser receives only the existing HttpOnly, SameSite session cookie.
 The generic BFF proxy blocks login and refresh paths, including encoded paths.
-Credential-management flows continue to require a fresh password approval.
+Released-server credential-management flows require a fresh password approval.
 Approvals are bound to the access credential that requested them; if rotation
 occurs before the approved write, obtain a new approval with the current session.
 
@@ -159,3 +159,28 @@ server-completion response loss, SIGKILL recovery after backend issuance and an
 uncertain protected mutation without replay. The
 [sanitized qualification ledger](assets/authentication-qualification.json) binds
 all five profiles to one clean source and compiled production server tree.
+
+### Project login and approval interface
+
+The login form discovers versioned methods through the BFF. Only a missing
+interaction contract permits legacy provider discovery. Other failures require
+an explicit local recovery choice, and a remembered provider that disappears
+requires a new selection. Browser providers never receive a password fallback.
+Fresh approval selects its method using the current principal's canonical
+identity scope, rather than parsing a display name.
+
+The initiating tab retains only public identifier/nonce/code metadata. Polling
+respects the server interval and Retry-After and ends at the bounded deadline.
+Cancellation addresses only that request. Completion does not repeat a protected
+mutation; an uncertain result requires inspection. Navigated callback failures
+have a friendly page with an allowlisted outcome, while JSON clients keep typed
+errors. The ordinary opaque session cookie is shared across tabs; approval
+ownership remains per request and exact operation.
+
+Login and approval passwords use uncontrolled fields and clear after submission.
+Browser storage and React state receive no session pair, redemption capability,
+activation receipt or upstream credential. The existing explicit one-time PAT
+reveal is a separate credential-management output. The `--browser-ui` mode of the
+production qualification driver exercises actual product login and token creation
+through the supported authentication method, with credentials only in memory,
+verified TLS and no screenshots, traces or persistent browser profiles.

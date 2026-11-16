@@ -35,5 +35,15 @@
     }
   ],
   "server_integration_commit": "b4bffc4db1703f3e8ca7c5ef5b302154a1f0cce9",
-  "native_qualification": "Frontend BFF #196 in implementation; web login/setup and full native qualification pending under #197/#198 and server #581."
+  "native_qualification": "BFF #196 accepted; product login/approval UI #197 implementation and qualification are in progress, with the server continuity correction in PR #598 awaiting final acceptance. Provider administration #198 and the full native real GitHub/server #581 matrix remain required.",
+  "accepted_bff_foundation": {
+    "pull_request": "https://github.com/hubuum/hubuum-frontend/pull/204",
+    "integration_commit": "3a8dba71b20c7d3a5df06c0f1e75bc7c20ad3543",
+    "source_commit": "63a16029e22f911bb8f872480657cbf62350f316",
+    "tested_commit": "a5d4c5a34fe9814d0a8d6e1df6e2fd0cfc8fb14c",
+    "tree": "8fe93d87be0d451fbc53bbf662b67f4016aa732e",
+    "candidate_artifact_id": 14261258695,
+    "candidate_sha256": "70973d2c4fb4ecfcf5279b2cbbf55f0bce224e3ee22b70c2b70ae95da470b1be",
+    "candidate_expires_at": "2026-12-16T19:33:01Z"
+  }
 }

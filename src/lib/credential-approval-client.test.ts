@@ -88,6 +88,55 @@ describe("optional credential reauthentication", () => {
 		expect(response.status).toBe(409);
 		expect(fetcher).toHaveBeenCalledOnce();
 	});
+	it("freezes one browser approval and prevents password downgrade or another begin", async () => {
+		const provider = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
+		const fetcher = vi
+			.fn()
+			.mockResolvedValueOnce(rejection())
+			.mockResolvedValueOnce(
+				Response.json(
+					{
+						id: provider,
+						nonce: "a".repeat(43),
+						purpose: "credential_approval",
+						expires_at: new Date(Date.now() + 300_000).toISOString(),
+						interval_seconds: 1,
+						next: {
+							kind: "browser",
+							verification_uri:
+								"https://auth.example/api/v1/auth/interactions/browser",
+							user_code: "PUBLIC",
+						},
+					},
+					{ status: 201 },
+				),
+			);
+		unregister = registerCredentialConfirmation(async ({ begin, submit }) => {
+			await begin(provider);
+			expect(() => submit("must-not-be-sent")).toThrow("cannot fall back");
+			expect(() => begin(provider)).toThrow("already started");
+			return Response.json({ token: "explicit-once" }, { status: 201 });
+		});
+		const body = {
+			name: "exact",
+			expires_at: "2026-11-17T12:34:56.123456789",
+			scope: { permissions: ["ReadObject"] },
+		};
+		const result = await fetchWithCredentialApproval(fetcher, url, url, {
+			method: "POST",
+			body: JSON.stringify(body),
+			headers: { "If-Match": '"r:2"', "Idempotency-Key": "one" },
+		});
+		expect(result.status).toBe(201);
+		expect(fetcher).toHaveBeenCalledTimes(2);
+		expect(JSON.parse(fetcher.mock.calls[1][1].body).mutation).toEqual({
+			method: "POST",
+			path: "/api/v1/iam/principals/42/tokens",
+			body,
+			ifMatch: '"r:2"',
+			idempotencyKey: "one",
+		});
+	});
 	it("does not prompt for an aborted mutation", async () => {
 		const controller = new AbortController();
 		const fetcher = vi.fn().mockImplementation(async () => {

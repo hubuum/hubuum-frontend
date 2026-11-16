@@ -10,6 +10,14 @@ const viewports = [
 const themes = ["light", "dark"] as const;
 const atmospheres = ["sunset", "golden-hour", "clouds", "forest"] as const;
 
+// These released-login layout fixtures deliberately exercise legacy discovery.
+// Modern provider/capability behavior is covered in authentication.spec.ts.
+test.beforeEach(async ({ page }) => {
+	await page.route("**/_hubuum-bff/auth/methods", (route) =>
+		route.fulfill({ status: 404, json: { reason: "interaction_unsupported" } }),
+	);
+});
+
 async function prepareLogin(
 	page: Page,
 	theme: (typeof themes)[number],

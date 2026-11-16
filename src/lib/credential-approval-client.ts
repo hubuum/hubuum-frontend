@@ -1,6 +1,10 @@
 import { frontendApiPath, HUBUUM_BFF_PREFIX } from "@/lib/api/frontend";
 import { CORRELATION_ID_HEADER } from "@/lib/correlation";
 import {
+	beginBrowserAuthentication,
+	type BrowserAuthenticationFlow,
+} from "@/lib/browser-authentication";
+import {
 	credentialOperation,
 	credentialOperationSummary,
 	isCredentialMutationPath,
@@ -11,6 +15,7 @@ export type CredentialConfirmation = {
 	summary: string;
 	signal: AbortSignal;
 	submit: (password: string) => Promise<Response>;
+	begin: (providerId: string) => Promise<BrowserAuthenticationFlow>;
 };
 type ConfirmationHandler = (
 	confirmation: CredentialConfirmation,
@@ -61,11 +66,39 @@ export async function fetchWithCredentialApproval(
 		const headers = new Headers({ "Content-Type": "application/json" });
 		const correlationId = snapshot.headers.get(CORRELATION_ID_HEADER);
 		if (correlationId) headers.set(CORRELATION_ID_HEADER, correlationId);
+		let transport: "password" | "browser" | null = null;
 		const result = await confirmationHandler({
 			summary: credentialOperationSummary(operation),
 			signal: snapshot.signal,
-			submit: (password) =>
-				fetcher(frontendApiPath("/credential-mutations"), {
+			begin: (providerId) => {
+				if (transport)
+					throw new Error(
+						"This prepared approval was already started. Inspect its outcome before retrying.",
+					);
+				transport = "browser";
+				return beginBrowserAuthentication(
+					{
+						provider_id: providerId,
+						purpose: "credential_approval",
+						return_path: "/authentication/complete",
+						mutation: {
+							method,
+							path,
+							body,
+							ifMatch: snapshot.headers.get("if-match") ?? undefined,
+							idempotencyKey:
+								snapshot.headers.get("idempotency-key") ?? undefined,
+						},
+					},
+					snapshot.signal,
+					fetcher,
+				);
+			},
+			submit: (password) => {
+				if (transport === "browser")
+					throw new Error("Browser approval cannot fall back to a password.");
+				transport = "password";
+				return fetcher(frontendApiPath("/credential-mutations"), {
 					method: "POST",
 					credentials: "include",
 					cache: "no-store",
@@ -79,7 +112,8 @@ export async function fetchWithCredentialApproval(
 						ifMatch: snapshot.headers.get("if-match"),
 						idempotencyKey: snapshot.headers.get("idempotency-key"),
 					}),
-				}),
+				});
+			},
 		});
 		return (
 			result ??
