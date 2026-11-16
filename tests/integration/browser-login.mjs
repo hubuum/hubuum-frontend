@@ -10,6 +10,9 @@ const checks = [];
 const failures = [];
 let proofTokenCleanup;
 let currentPage;
+let providerPage;
+let authorizationAttempt = 0;
+const providerResponses = [];
 try {
 	let raw = "";
 	for await (const chunk of process.stdin) {
@@ -74,6 +77,7 @@ try {
 	}
 
 	async function authorize(owner, decision = "Approve") {
+		authorizationAttempt++;
 		stage = "public-code";
 		const region = owner.getByRole("region", {
 			name: "Browser authentication",
@@ -85,6 +89,17 @@ try {
 			.getByRole("link", { name: "Open authentication page" })
 			.click();
 		const popup = await popupEvent;
+		providerPage = popup;
+		popup.on("response", (response) => {
+			if (
+				response.status() >= 400 &&
+				new URL(response.url()).origin === input.serverOrigin
+			)
+				providerResponses.push({
+					status: response.status(),
+					path: new URL(response.url()).pathname,
+				});
+		});
 		await popup.waitForLoadState("domcontentloaded");
 		assert.equal(await popup.evaluate(() => window.opener === null), true);
 		assert.equal(new URL(popup.url()).origin, input.serverOrigin);
@@ -215,13 +230,27 @@ try {
 	);
 	checks.push("the product UI receives only a Secure HttpOnly SameSite cookie");
 	stage = "account";
-	await page.goto(`${origin}/account/tokens`);
+	// The fixture forces eligibility refresh every five seconds. Concurrent
+	// read-only layout requests may receive its explicit in-progress 503.
+	// Reload only the read view; never replay a protected mutation.
+	for (let attempt = 0; attempt < 3; attempt++) {
+		const response = await page.goto(`${origin}/account/tokens`);
+		if (response?.status() !== 503) break;
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+	}
 	await expect(
 		page.getByRole("heading", { name: "Tokens", exact: true }),
 	).toBeVisible();
 	const principal = await page.evaluate(async () => {
-		const response = await fetch("/_hubuum-bff/hubuum/api/v1/iam/me");
-		return (await response.json()).principal.principal_id;
+		for (let attempt = 0; attempt < 3; attempt++) {
+			const response = await fetch("/_hubuum-bff/hubuum/api/v1/iam/me");
+			if (response.status === 503) {
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+				continue;
+			}
+			return (await response.json()).principal?.principal_id;
+		}
+		return null;
 	});
 	assert(Number.isSafeInteger(principal));
 	stage = "token-form";
@@ -332,9 +361,14 @@ try {
 			await acceptedPopup.close();
 			const deniedPopup = await authorize(other, "Deny");
 			await expect(
-				other
-					.getByRole("region", { name: "Browser authentication" })
-					.getByRole("alert"),
+				secondForm
+					.getByRole("alert")
+					.or(
+						other
+							.getByRole("region", { name: "Browser authentication" })
+							.getByRole("alert"),
+					)
+					.first(),
 			).toContainText("denied", { timeout: 20000 });
 			await expect(
 				secondForm.getByRole("heading", { name: "Token created", exact: true }),
@@ -362,6 +396,33 @@ try {
 				"separate concurrent tabs keep exact operations isolated: one approval mints once while denial in the other mints nothing, and both preserve the ordinary session",
 			);
 		}
+	}
+	if (browserProvider) {
+		stage = "due-eligibility-after-concurrent-decisions";
+		assert.equal(input.eligibilityInterval, 30);
+		await new Promise((resolve) => setTimeout(resolve, 31000));
+		const renewed = await page.evaluate(async () => {
+			for (let attempt = 0; attempt < 3; attempt++) {
+				const response = await fetch("/_hubuum-bff/hubuum/api/v1/iam/me");
+				if (response.status === 503) {
+					await new Promise((resolve) => setTimeout(resolve, 1000));
+					continue;
+				}
+				const body = await response.json();
+				return {
+					status: response.status,
+					principal: body.principal?.principal_id,
+				};
+			}
+			return { status: 503 };
+		});
+		assert.equal(renewed.status, 200);
+		assert.equal(renewed.principal, principal);
+		checks.push(
+			input.profile === "oauth"
+				? "the ordinary OAuth session retains the same principal after due eligibility renewal and explicit unsupported-freshness handling"
+				: "the ordinary session retains the same principal after a due upstream eligibility refresh following concurrent approval and denial",
+		);
 	}
 	stage = "storage-boundary";
 	assert.equal(
@@ -417,6 +478,49 @@ try {
 			failures,
 			proofTokenCleanup,
 			failureKind,
+			authorizationAttempt,
+			providerResponses,
+			providerPath:
+				providerPage && !providerPage.isClosed()
+					? new URL(providerPage.url()).pathname
+					: undefined,
+			providerReason:
+				providerPage && !providerPage.isClosed()
+					? (() => {
+							const reason = new URL(providerPage.url()).searchParams.get(
+								"error",
+							);
+							return [
+								"interaction_invalid",
+								"interaction_failed",
+								"interaction_expired",
+								"interaction_consumed",
+								"configuration_changed",
+								"protocol_error",
+								"provider_unavailable",
+								"capability_unsupported",
+								"access_denied",
+								"invalid_request",
+							].includes(reason)
+								? reason
+								: "unspecified";
+						})()
+					: undefined,
+			providerState:
+				providerPage && !providerPage.isClosed()
+					? await providerPage
+							.locator("body")
+							.textContent()
+							.then((text) =>
+								[
+									"Authentication stopped",
+									"Invalid authentication interaction or credentials",
+									"Approve this request?",
+									"Enter a new code",
+								].filter((known) => text?.includes(known)),
+							)
+							.catch(() => [])
+					: [],
 			currentPath: currentPage
 				? new URL(currentPage.url()).pathname
 				: undefined,

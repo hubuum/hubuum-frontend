@@ -375,10 +375,12 @@ class Consumer:
         result = subprocess.run([str(self.node), "tests/integration/browser-login.mjs"], cwd=ROOT, env=self.env,
                                 input=json.dumps({"profile": self.profile, "provider": self.provider, "serverOrigin": self.fixture.origin,
                                                   "spki": base64.b64encode(hashlib.sha256(der).digest()).decode(),
+                                                  "eligibilityInterval": 30,
                                                   "username": "admin" if self.profile == "local" else "amy" if self.profile == "ldap" else "alice", "password": password}),
                                 text=True, capture_output=True, timeout=180)
         if result.returncode:
             failure = json.loads(result.stderr)
+            failure["interaction_phases"] = json.loads(self.fixture.sql("SELECT coalesce(json_agg(json_build_object('state',document#>>'{lifecycle,phase,state}','reason',document#>>'{lifecycle,phase,reason}')), '[]')::text FROM auth_interactions"))
             failure["external_state_counts"] = {
                 "active_sessions": int(self.fixture.sql("SELECT count(*) FROM auth_sessions s JOIN principals p ON p.id=s.principal_id WHERE p.provider_managed AND s.revoked_at IS NULL")),
                 "revoked_sessions": int(self.fixture.sql("SELECT count(*) FROM auth_sessions s JOIN principals p ON p.id=s.principal_id WHERE p.provider_managed AND s.revoked_at IS NOT NULL")),
@@ -459,6 +461,14 @@ class Consumer:
         self.api(f"auth/interactions/{flow['id']}/result", {"nonce": flow["nonce"]}, expected=(409,))
         self.passed("lost protected mutation result is reported as uncertain without replay and its one created credential can be inspected and revoked")
 
+    def provider_configuration(self):
+        spec = definition(self.fixture, self.profile)
+        if self.browser_ui and "membership" in spec:
+            # Exercise complete UI actions before forcing the next due refresh.
+            # The server's protocol fixture separately stresses five-second leases.
+            spec["membership"].update(refresh_interval_seconds=30, max_stale_seconds=90)
+        return spec
+
     def configure(self):
         self.api("auth/login", {"name": "admin", "password": self.fixture.local_password}, browser=self.admin)
         administrator = self.snapshot(self.admin)
@@ -466,7 +476,7 @@ class Consumer:
         if self.profile == "local":
             self.provider = "local"
             return
-        spec = definition(self.fixture, self.profile)
+        spec = self.provider_configuration()
         candidate = self.fixture.api("/api/v1/admin/runtime-settings/security-candidates", {
             "group": "authentication", "expected_revision": 1,
             "providers": [{"name": "company", "enabled": True, "source": "runtime", "kind": self.profile if self.profile in ("oauth", "ldap") else "oidc", "configuration": spec}]}, token=administrator["token"])
