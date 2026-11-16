@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { hubuumBffPath } from "@/lib/api/frontend";
+import { securityCapabilitiesSchema } from "@/lib/security-candidate";
 import type {
 	RuntimeSettingsDescriptor as ServerRuntimeSettingsDescriptor,
 	RuntimeSettingsPatch,
@@ -26,6 +27,7 @@ const descriptorSchema: z.ZodType<RuntimeSettingsDescriptor> = z.object({
 const catalogueSchema = z.object({
 	schema_version: z.number().int(),
 	groups: z.array(descriptorSchema),
+	security: securityCapabilitiesSchema.optional(),
 });
 const stateSchema = z.object({
 	group: z.string(),
