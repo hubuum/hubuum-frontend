@@ -1,19 +1,19 @@
 {
   "project_only": true,
   "declared_release_target_unchanged": "0.0.22",
-  "accepted_server_source": "ad0c2c40bed5b0328f56f1327e10ffe7f9aac09a",
-  "source_openapi_url": "https://raw.githubusercontent.com/hubuum/hubuum/ad0c2c40bed5b0328f56f1327e10ffe7f9aac09a/docs/openapi.json",
+  "accepted_server_source": "db72627d72d6413893f776f6193efa393e6b7e33",
+  "source_openapi_url": "https://raw.githubusercontent.com/hubuum/hubuum/db72627d72d6413893f776f6193efa393e6b7e33/docs/openapi.json",
   "source_openapi_sha256": "11f894bd8a45abc2f85e80a8ccc9c88062a62b2e1c4f6871d1658fada200b720",
-  "source_fixture_url": "https://raw.githubusercontent.com/hubuum/hubuum/ad0c2c40bed5b0328f56f1327e10ffe7f9aac09a/docs/authentication/fixtures.json",
+  "source_fixture_url": "https://raw.githubusercontent.com/hubuum/hubuum/db72627d72d6413893f776f6193efa393e6b7e33/docs/authentication/fixtures.json",
   "source_fixture_sha256": "027eff028cb1c7252132f1f93225957f548ccb0dd839e2b7e5c291efb872c028",
   "source_fixture_cases": 48,
-  "candidate_artifact_id": 14208469576,
-  "candidate_archive_sha256": "a0b2711b0984bc53fdd1346d4c7c35a8017c6587e90d571f94c71923ef4e7fcc",
-  "server_pull_request": "https://github.com/hubuum/hubuum/pull/596",
+  "candidate_artifact_id": 14258848928,
+  "candidate_archive_sha256": "3d365c3de5ea4ba6f58bc34e1cb6c171978801d6f88d6ae7419c390dacd8977f",
+  "server_pull_request": "https://github.com/hubuum/hubuum/pull/597",
   "server_merge_state": "squash-merged into project/auth-support",
-  "candidate_tested_commit": "a15f90dca1d0dbddc27bfd5f5dbb1594b0937bc8",
-  "candidate_image_manifest": "sha256:c707c890b8821f247b6decccea136a8097cc6da17ad1d7ff4e3a4923e3b3b083",
-  "candidate_image_config": "sha256:9169855315562e1769fb2b300233a3ddb44689bdd3aebb3a41284790d52d6215",
+  "candidate_tested_commit": "50a3044f79d14a9301f7014904f0c82e31f3df2a",
+  "candidate_image_manifest": "sha256:0b1a409fb8f17af194a876475fe5bdbf6f95522ba007ce8dae11af53d24d4600",
+  "candidate_image_config": "sha256:78688244fd0d272e5cf8c0866f1b73fd819dc68739baf4f41e26d63d70aa982a",
   "source_canonical_spec_sha256": "839c32e8742fe28ba02cb367dcb8fdc8eb35cf971f13f964941f85b488d715e1",
   "source_live_fixture_sha256": {
     "tests/python/integration/keycloak.py": "5ad9252790cac0b2a2cc53e4e1944be4a8dc1fb7838d11f0710d71cb75a85cde",
@@ -21,19 +21,19 @@
   },
   "qualified_server_images": [
     {
-      "docker_image_id": "sha256:bf6ac41d8e8b927f5c5402b08709699f7f0c32af9d1266896ef52678eee76f37",
-      "manifest": "sha256:f7c920c410f0c5ef7b1eea2bf2e48c8d106dab9318567c103b48b3b78cad67ab",
-      "config": "sha256:d9592b8d01c7af44290088eb4f1922c0c00acf46662ba301ffe9e16d56ec4e3f",
+      "docker_image_id": "sha256:dcd20e6e06d520f59cef56e450cd8bdbfbabb353f318fa9d41de52f60cfe308a",
+      "manifest": "sha256:c3d2256764682e272cccb569d0c772a786fd8274349c7c464300688141bd1eb5",
+      "config": "sha256:496e8e3d31f14d2c8d560ab38d5b3c1db34236c9c7a405718cab92821e5591b7",
       "platform": "linux/arm64",
-      "source": "ad0c2c40bed5b0328f56f1327e10ffe7f9aac09a"
+      "source": "db72627d72d6413893f776f6193efa393e6b7e33"
     },
     {
-      "manifest": "sha256:c707c890b8821f247b6decccea136a8097cc6da17ad1d7ff4e3a4923e3b3b083",
-      "config": "sha256:9169855315562e1769fb2b300233a3ddb44689bdd3aebb3a41284790d52d6215",
+      "manifest": "sha256:0b1a409fb8f17af194a876475fe5bdbf6f95522ba007ce8dae11af53d24d4600",
+      "config": "sha256:78688244fd0d272e5cf8c0866f1b73fd819dc68739baf4f41e26d63d70aa982a",
       "platform": "linux/amd64",
-      "source": "a15f90dca1d0dbddc27bfd5f5dbb1594b0937bc8"
+      "source": "50a3044f79d14a9301f7014904f0c82e31f3df2a"
     }
   ],
-  "server_integration_commit": "9e665c05e223a2c47b2ae3964932b13ca1ea2a9c",
+  "server_integration_commit": "b4bffc4db1703f3e8ca7c5ef5b302154a1f0cce9",
   "native_qualification": "Frontend BFF #196 in implementation; web login/setup and full native qualification pending under #197/#198 and server #581."
 }

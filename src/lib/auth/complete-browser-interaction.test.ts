@@ -279,6 +279,13 @@ describe("owned BFF completion", () => {
 		const response = await completeBrowserInteraction(request());
 		expect(response.status).toBe(303);
 		expect(mocks.set.mock.calls[0][1]).toContain(receipt);
+		const stored = JSON.parse(mocks.set.mock.calls[0][1]);
+		expect(stored).toMatchObject({ sessionId });
+		expect(stored.credentialFingerprint).toMatch(/^[0-9a-f]{64}$/);
+		expect(mocks.set.mock.calls[0][1]).not.toContain("original-actor-credential");
 		expect(JSON.stringify(mocks.finish.mock.calls)).not.toContain(receipt);
+		expect(JSON.stringify(mocks.finish.mock.calls)).not.toContain(
+		"credentialFingerprint",
+	);
 	});
 });

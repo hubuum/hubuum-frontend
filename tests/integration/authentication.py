@@ -8,13 +8,14 @@ Reports contain only source/image identities, counts and sanitized check names.
 import argparse
 import base64
 import hashlib
-from http.client import HTTPConnection
+from http.client import HTTPConnection, HTTPSConnection
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib
 import json
 import os
 from pathlib import Path
 import signal
+import socket
 import ssl
 import subprocess
 import sys
@@ -43,12 +44,33 @@ class Proxy(BaseHTTPRequestHandler):
     def forward(self):
         body = self.rfile.read(min(int(self.headers.get("Content-Length", "0")), 1024 * 1024))
         headers = {key: value for key, value in self.headers.items() if key.lower() not in ("host", "connection", "transfer-encoding")}
-        headers.update({"Host": "localhost:48601", "X-Forwarded-Proto": "https", "X-Forwarded-Host": "localhost:48601"})
-        connection = HTTPConnection("127.0.0.1", 48600, timeout=40)
+        headers.update(self.upstream_headers())
+        connection = self.connection_to_upstream()
         try:
+            if self.command == "POST" and self.path == "/api/v1/auth/interactions":
+                self.server.begins = getattr(self.server, "begins", 0) + 1
             connection.request(self.command, self.path, body, headers)
             response = connection.getresponse()
             result = response.read(2 * 1024 * 1024)
+            completion = self.command == "POST" and self.path.startswith("/api/v1/auth/interactions/") and self.path.endswith("/complete")
+            if completion:
+                self.server.completions = getattr(self.server, "completions", 0) + 1
+            if completion and response.status == 200 and getattr(self.server, "hold_next_completion", False):
+                self.server.hold_next_completion = False
+                self.server.completion_received.set()
+                if not self.server.release_completion.wait(20):
+                    raise TimeoutError("Disposable completion barrier timed out")
+            lost_return = getattr(self.server, "drop_next_return", False) and self.path.startswith("/_hubuum-bff/auth/interactions/return?") and response.status == 303
+            lost_completion = getattr(self.server, "drop_next_completion", False) and self.command == "POST" and self.path.startswith("/api/v1/auth/interactions/") and self.path.endswith("/complete") and response.status == 200
+            mutation = self.command == "POST" and self.path.startswith("/api/v1/iam/principals/") and self.path.endswith("/tokens")
+            if mutation:
+                self.server.mutations = getattr(self.server, "mutations", 0) + 1
+            lost_mutation = mutation and response.status == 201 and getattr(self.server, "drop_next_mutation", False)
+            if lost_return or lost_completion or lost_mutation:
+                self.server.drop_next_return = self.server.drop_next_completion = self.server.drop_next_mutation = False
+                self.connection.shutdown(socket.SHUT_RDWR)
+                self.close_connection = True
+                return
             self.send_response(response.status)
             for key, value in response.getheaders():
                 if key.lower() not in ("connection", "transfer-encoding", "content-length"):
@@ -57,11 +79,28 @@ class Proxy(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(result)
         except (OSError, TimeoutError):
-            self.send_error(503, "Disposable frontend is starting or restarting")
+            try:
+                self.send_error(503, "Disposable frontend is starting or restarting")
+            except OSError:
+                pass
         finally:
             connection.close()
 
     do_GET = do_POST = do_PATCH = do_DELETE = forward
+
+    def upstream_headers(self):
+        return {"Host": "localhost:48601", "X-Forwarded-Proto": "https", "X-Forwarded-Host": "localhost:48601"}
+
+    def connection_to_upstream(self):
+        return HTTPConnection("127.0.0.1", 48600, timeout=40)
+
+
+class BackendProxy(Proxy):
+    def upstream_headers(self):
+        return {"Host": self.server.upstream_host}
+
+    def connection_to_upstream(self):
+        return HTTPSConnection("localhost", self.server.upstream_port, context=self.server.upstream_tls, timeout=40)
 
 
 def definition(fixture, profile):
@@ -107,6 +146,8 @@ class Consumer:
         self.log = (fixture.root / "frontend.log").open("w")
         os.chmod(fixture.root / "frontend.log", 0o600)
         self.secrets = [fixture.local_password, fixture.client_secret]
+        if profile == "ldap":
+            self.secrets.append(fixture.ldap_password)
 
     def start(self):
         self.valkey = self.fixture.run("valkey", "--publish", "127.0.0.1::6379", "--tmpfs", "/data", VALKEY,
@@ -114,7 +155,7 @@ class Consumer:
         port = self.module.command("docker", "port", self.valkey, "6379/tcp").rsplit(":", 1)[1]
         self.env = {key: value for key, value in os.environ.items() if key not in (
             "NODE_TLS_REJECT_UNAUTHORIZED", "NODE_OPTIONS", "SETUP_KEY")}
-        self.env.update(BACKEND_BASE_URL=self.fixture.origin, AUTH_BROWSER_ORIGIN=self.fixture.origin,
+        self.env.update(BACKEND_BASE_URL="https://localhost:48602", AUTH_BROWSER_ORIGIN=self.fixture.origin,
                         AUTH_BFF_RETURN_TARGET_ID="frontend", VALKEY_URL="redis://127.0.0.1:" + port + "/0",
                         SESSION_PREFIX=self.prefix, NODE_EXTRA_CA_CERTS=str(self.fixture.root / "mount/ca.pem"),
                         NEXT_TELEMETRY_DISABLED="1")
@@ -126,6 +167,15 @@ class Consumer:
         self.proxy.socket = tls.wrap_socket(self.proxy.socket, server_side=True)
         self.proxy_thread = threading.Thread(target=self.proxy.serve_forever, daemon=True)
         self.proxy_thread.start()
+        self.backend_proxy = ThreadingHTTPServer(("127.0.0.1", 48602), BackendProxy)
+        self.backend_proxy.daemon_threads = True
+        upstream = urllib.parse.urlsplit(self.fixture.origin)
+        self.backend_proxy.upstream_host = upstream.netloc
+        self.backend_proxy.upstream_port = upstream.port
+        self.backend_proxy.upstream_tls = ssl.create_default_context(cafile=str(self.fixture.root / "mount/ca.pem"))
+        self.backend_proxy.socket = tls.wrap_socket(self.backend_proxy.socket, server_side=True)
+        self.backend_thread = threading.Thread(target=self.backend_proxy.serve_forever, daemon=True)
+        self.backend_thread.start()
         self.start_process()
 
     def start_process(self):
@@ -158,21 +208,25 @@ class Consumer:
             self.proxy.shutdown()
             self.proxy.server_close()
             self.proxy_thread.join(timeout=5)
+        if hasattr(self, "backend_proxy"):
+            self.backend_proxy.shutdown()
+            self.backend_proxy.server_close()
+            self.backend_thread.join(timeout=5)
         self.log.close()
 
     def passed(self, name):
         self.results.append(name)
         print(self.profile + ": " + name, flush=True)
 
-    def api(self, path, body=None, *, browser=None, expected=(200,), credential_output=False, origin=FRONTEND):
-        status, headers, raw = (browser or self.front).request(FRONTEND + "/_hubuum-bff/" + path, body,
-                                                             headers={"Origin": origin})
+    def api(self, path, body=None, *, browser=None, expected=(200,), credential_output=False, origin=FRONTEND, headers=None):
+        status, response_headers, raw = (browser or self.front).request(FRONTEND + "/_hubuum-bff/" + path, body,
+                                                             headers={"Origin": origin, **(headers or {})})
         if status not in expected:
             reason = json.loads(raw).get("reason", "unspecified") if raw.startswith("{") else "non-json"
             # Reasons are selected from the server-owned stable vocabulary only.
             safe = reason if reason in ("interaction_invalid", "access_denied", "interaction_expired", "capability_unsupported", "protocol_error", "cleanup_unconfirmed") else "unspecified"
             raise RuntimeError(f"BFF request returned {status} ({safe})")
-        captured = raw + json.dumps(list(headers.items()))
+        captured = raw + json.dumps(list(response_headers.items()))
         if any(value in captured for value in self.secrets) or any(prefix in captured for prefix in ("hai1.", "hca1.", "hcv1.")):
             raise RuntimeError("BFF exposed a fixture secret or reusable proof")
         value = json.loads(raw) if raw else None
@@ -186,7 +240,7 @@ class Consumer:
                 for child in item:
                     check_fields(child)
         check_fields(value)
-        return value, headers
+        return value, response_headers
 
     def sid(self, browser):
         return next(cookie.value for cookie in browser.cookies if cookie.name == "hubuum.sid")
@@ -208,7 +262,7 @@ class Consumer:
             event["_operation"] = True
         browser.defer_return = defer
         try:
-            if self.profile == "ldap":
+            if self.profile in ("local", "ldap"):
                 url, status, page = browser.follow(flow["next"]["verification_uri"])
                 if status != 200:
                     raise RuntimeError("Hosted password entry unavailable")
@@ -219,7 +273,8 @@ class Consumer:
                     fields = {name for item in self.module.Forms(page).forms for name in item["fields"]}
                     known = sorted(fields & {"name", "password", "csrf", "user_code", "decision"})
                     raise RuntimeError(f"Hosted LDAP credentials form unavailable (HTTP {status}; fields {known})")
-                url, status, page = browser.submit(url, page, {"name": "amy", "password": self.fixture.ldap_password})
+                username, password = ("admin", self.fixture.local_password) if self.profile == "local" else ("amy", self.fixture.ldap_password)
+                url, status, page = browser.submit(url, page, {"name": username, "password": password})
                 if status != 200 or "Approve this request?" not in page:
                     raise RuntimeError("Hosted LDAP explicit approval unavailable")
                 url, status, _ = browser.submit(url, page, {"decision": decision})
@@ -274,10 +329,77 @@ class Consumer:
                 cookie.value = accepted["sid"]
         self.passed("actual Chromium return rotates a Secure HttpOnly cookie, leaves browser storage empty and cannot replay issuance")
 
-    def qualify(self):
+    def crash_owned_completion(self):
+        flow, _ = self.api("auth/interactions", {"provider_id": self.provider, "purpose": "login", "return_path": "/healthz"}, expected=(201,))
+        returned = self.authorize(flow, self.front, defer=True)
+        active = int(self.fixture.sql("SELECT count(*) FROM auth_sessions WHERE revoked_at IS NULL"))
+        retained = self.counts()["auth_upstream_credentials"]
+        self.backend_proxy.completion_received = threading.Event()
+        self.backend_proxy.release_completion = threading.Event()
+        self.backend_proxy.hold_next_completion = True
+
+        def callback():
+            try:
+                self.front.request(returned)
+            except OSError:
+                pass
+
+        request = threading.Thread(target=callback, daemon=True)
+        request.start()
+        try:
+            if not self.backend_proxy.completion_received.wait(15):
+                raise RuntimeError("Backend did not reach the post-commit crash barrier")
+            os.killpg(self.process.pid, signal.SIGKILL)
+            self.process.wait(timeout=10)
+        finally:
+            self.backend_proxy.release_completion.set()
+            request.join(timeout=10)
+        if request.is_alive():
+            raise RuntimeError("Crashed frontend request did not stop")
+        completions = self.backend_proxy.completions
+        self.start_process()
+        deadline = time.monotonic() + 135
+        while time.monotonic() < deadline:
+            record = self.private_value(self.prefix + "auth:interaction:" + flow["id"])
+            if record.get("state") == "finished":
+                break
+            time.sleep(2)
+        else:
+            raise RuntimeError("Restarted production cleanup worker did not recover its abandoned claim")
+        if self.backend_proxy.completions != completions:
+            raise RuntimeError("Crash recovery replayed backend completion")
+        if int(self.fixture.sql("SELECT count(*) FROM auth_sessions WHERE revoked_at IS NULL")) != active or self.counts()["auth_upstream_credentials"] != retained:
+            raise RuntimeError("Crash recovery left an active orphaned family or retained credential")
+        if "redemption_secret" in record or "hai1." in json.dumps(record):
+            raise RuntimeError("Crash recovery retained a completed redemption capability")
+        self.api("auth/session", expected=(401,))
+        self.passed("SIGKILL after backend issuance is recovered by the restarted production cleanup worker without replay or an orphaned family")
+
+    def lost_mutation_result(self, principal):
+        mutation = {"method": "POST", "path": f"/api/v1/iam/principals/{principal}/tokens", "body": {"name": "bff-lost-result"}}
+        flow, _ = self.api("auth/interactions", {"provider_id": self.provider, "purpose": "credential_approval", "mutation": mutation, "return_path": "/healthz"}, expected=(201,))
+        before = self.backend_proxy.mutations
+        self.backend_proxy.drop_next_mutation = True
+        self.authorize(flow, self.front)
+        result = self.result(flow, self.front)
+        if result["result"]["body"].get("reason") != "operation_outcome_unknown" or self.backend_proxy.mutations != before + 1 or self.backend_proxy.drop_next_mutation:
+            raise RuntimeError("Lost protected mutation result was replayed or presented as a confirmed outcome")
+        rows = self.fixture.sql("SELECT id FROM tokens WHERE name = 'bff-lost-result'").splitlines()
+        if len(rows) != 1 or not rows[0].isdigit():
+            raise RuntimeError("Lost protected operation did not create exactly one inspectable credential")
+        path = f"hubuum/api/v1/iam/principals/{principal}/tokens/{rows[0]}"
+        _, metadata = self.api(path)
+        self.api(path + "/revoke", {}, expected=(204,), headers={"If-Match": metadata["ETag"]})
+        self.api(f"auth/interactions/{flow['id']}/result", {"nonce": flow["nonce"]}, expected=(409,))
+        self.passed("lost protected mutation result is reported as uncertain without replay and its one created credential can be inspected and revoked")
+
+    def configure(self):
         self.api("auth/login", {"name": "admin", "password": self.fixture.local_password}, browser=self.admin)
         administrator = self.snapshot(self.admin)
         self.passed("ordinary local administrator login persists privately before external setup")
+        if self.profile == "local":
+            self.provider = "local"
+            return
         spec = definition(self.fixture, self.profile)
         candidate = self.fixture.api("/api/v1/admin/runtime-settings/security-candidates", {
             "group": "authentication", "expected_revision": 1,
@@ -303,6 +425,8 @@ class Consumer:
             self.passed("actual BFF provider preview leaves six identity/session tables unchanged")
             vault = self.private_value(self.prefix + "auth:candidate:" + self.sid(self.admin) + ":" + candidate["id"])
             verified = vault["report"]
+            if vault.get("credentialFingerprint") != hashlib.sha256(administrator["token"].encode()).hexdigest():
+                raise RuntimeError("Candidate receipt lost its initiating credential binding")
             if "verification_receipt" in preview["result"]["candidate"] or not verified["verification_receipt"].startswith("hcv1."):
                 raise RuntimeError("Candidate receipt did not stay in private Valkey")
             self.passed("activation receipt stays private while the browser receives a safe preview")
@@ -315,10 +439,13 @@ class Consumer:
         if status != 200:
             raise RuntimeError("Fixture activation did not accept its exact receipt and fresh approval")
         self.passed("runtime provider setup activates through the fixture with its exact verified receipt")
+
+    def qualify(self):
+        self.configure()
         methods, _ = self.api("auth/methods")
         if not any(method["provider_id"] == "local" for method in methods["methods"]) or not any(method["provider_id"] == self.provider for method in methods["methods"]):
             raise RuntimeError("Typed discovery omitted local recovery or the active provider")
-        self.passed("typed discovery includes the runtime provider and always-on local authentication")
+        self.passed("typed discovery includes the selected provider and always-on local authentication")
         flow, _ = self.api("auth/interactions", {"provider_id": self.provider, "purpose": "login", "return_path": "/healthz"}, expected=(201,))
         seed = self.sid(self.front)
         self.authorize(flow, self.front)
@@ -362,6 +489,20 @@ class Consumer:
             self.fixture.api("/api/v1/auth/logout", {}, token=result["result"]["body"]["token"])
             self.api(f"auth/interactions/{flow['id']}/result", {"nonce": flow["nonce"]}, expected=(409,))
             self.passed("fresh approval submits the current-principal mutation once and consumes its explicit result")
+            if self.profile == "id_token":
+                self.lost_mutation_result(principal)
+        if self.profile != "local":
+            before = self.backend_proxy.begins
+            self.api("auth/interactions", {"provider_id": self.provider, "purpose": "provider_verification",
+                     "candidate_id": "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"}, expected=(403,))
+            if self.backend_proxy.begins != before:
+                raise RuntimeError("BFF contacted privileged authentication before its administrator boundary")
+            self.passed("external non-administrator provider verification is rejected before backend interaction creation")
+        before = self.backend_proxy.begins
+        self.api("auth/interactions", {"provider_id": self.provider, "purpose": "login", "mutation": operation}, expected=(400,))
+        if self.backend_proxy.begins != before:
+            raise RuntimeError("Purpose-confused browser input reached backend interaction creation")
+        self.passed("purpose-confused browser input is rejected before backend interaction creation")
         self.api("auth/logout", {})
         self.api("auth/session", expected=(401,))
         self.passed("logout destroys the matching frontend session and opaque cookie")
@@ -377,6 +518,14 @@ class Consumer:
         self.api(f"auth/interactions/{flow['id']}/cancel", {"nonce": flow["nonce"]})
         self.api("auth/session", expected=(401,))
         self.passed("pending browser cancellation fences completion and leaves no frontend login")
+        if self.profile == "id_token":
+            flow, _ = self.api("auth/interactions", {"provider_id": self.provider, "purpose": "login", "return_path": "//attacker.example"}, expected=(201,))
+            returned = self.authorize(flow, self.front, defer=True)
+            status, headers, _ = self.front.request(returned)
+            if status != 303 or headers.get("Location") != "/app":
+                raise RuntimeError("Browser completion accepted an external return destination")
+            self.api("auth/logout", {})
+            self.passed("an external return destination completes only to the normalized local application path")
         flow, _ = self.api("auth/interactions", {"provider_id": self.provider, "purpose": "login", "return_path": "/healthz"}, expected=(201,))
         returned = self.authorize(flow, self.front, defer=True)
         parsed = urllib.parse.urlsplit(returned)
@@ -388,7 +537,22 @@ class Consumer:
         stranger = self.module.Browser(self.fixture.root / "mount/ca.pem")
         if stranger.request(returned)[0] != 401 or self.counts() != before:
             raise RuntimeError("Another browser consumed the approved interaction")
+        self.proxy.drop_next_return = True
+        try:
+            self.front.request(returned)
+        except OSError:
+            pass
+        else:
+            raise RuntimeError("Fixture did not lose the committed frontend response")
+        after_loss = self.counts()
+        if after_loss["auth_sessions"] != before["auth_sessions"] + 1:
+            raise RuntimeError("Lost frontend response did not create exactly one family")
+        self.stop_process()
+        self.start_process()
         self.browser_return(returned)
+        if self.counts() != after_loss:
+            raise RuntimeError("Recovery of a lost frontend response repeated backend issuance")
+        self.passed("lost frontend response survives process restart and redelivers the existing cookie without new issuance")
         accepted = self.snapshot(self.front)
         before = self.counts()
         if self.front.follow(returned)[1] != 200 or self.counts() != before or self.snapshot(self.front)["sessionId"] != accepted["sessionId"]:
@@ -396,12 +560,29 @@ class Consumer:
         self.passed("wrong nonce/browser cannot consume a return; accepted handoff replay preserves the same family")
         self.api("auth/interactions", {"provider_id": self.provider, "purpose": "login"}, expected=(403,), origin="https://attacker.example")
         self.passed("cross-origin browser mutation is rejected before new authentication")
-        self.api("hubuum/api/v1/auth/interactions", expected=(403,))
-        self.api("hubuum/api/v1/admin/runtime-settings/security-candidates", expected=(403,))
+        for path in ("auth/interactions", "%61uth/interactions", "auth%2Finteractions", "auth/%69nteractions"):
+            self.api("hubuum/api/v1/" + path, {"client_id": "hubuum-frontend", "provider_id": self.provider,
+                     "purpose": "login", "delivery": "poll", "interaction_mode": "browser"}, expected=(403,))
+        for path in ("security-candidates", "%73ecurity-candidates"):
+            self.api("hubuum/api/v1/admin/runtime-settings/" + path, expected=(403,))
         self.passed("production generic proxy blocks raw redemption and candidate secret surfaces")
         self.api("auth/logout", {})
+        flow, _ = self.api("auth/interactions", {"provider_id": self.provider, "purpose": "login", "return_path": "/healthz"}, expected=(201,))
+        returned = self.authorize(flow, self.front, defer=True)
+        active = int(self.fixture.sql("SELECT count(*) FROM auth_sessions WHERE revoked_at IS NULL"))
+        retained = self.counts()["auth_upstream_credentials"]
+        self.backend_proxy.drop_next_completion = True
+        status, _, _ = self.front.request(returned)
+        if status not in (502, 503) or self.backend_proxy.drop_next_completion:
+            raise RuntimeError("Fixture did not lose a successful backend completion response")
+        if int(self.fixture.sql("SELECT count(*) FROM auth_sessions WHERE revoked_at IS NULL")) != active or self.counts()["auth_upstream_credentials"] != retained:
+            raise RuntimeError("Lost backend response left an active issued family or retained credential")
+        self.api("auth/session", expected=(401,))
+        self.passed("lost successful backend completion response cancels and revokes only its issued family without installing a login")
+        if self.profile == "oauth":
+            self.crash_owned_completion()
         self.api("auth/login", {"name": "admin", "password": self.fixture.local_password}, browser=self.admin)
-        self.passed("local recovery remains available after external provider activation")
+        self.passed("local recovery remains available after browser login, approval and cancellation")
 
 
 def main():
@@ -409,7 +590,7 @@ def main():
     parser.add_argument("--server-source", type=Path, required=True)
     parser.add_argument("--image", required=True)
     parser.add_argument("--node", type=Path, required=True)
-    parser.add_argument("--profile", choices=("id_token", "userinfo", "oauth", "ldap"), required=True)
+    parser.add_argument("--profile", choices=("id_token", "userinfo", "oauth", "ldap", "local"), required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     args = parser.parse_args()
     node_version = subprocess.check_output([str(args.node), "--version"], text=True).strip()
@@ -427,7 +608,7 @@ def main():
     if not qualified:
         raise RuntimeError("Server image is not a qualified immutable candidate")
     sys.path.insert(0, str(source / "tests/python"))
-    module = importlib.import_module("integration.oauth" if args.profile in ("oauth", "ldap") else "integration.keycloak")
+    module = importlib.import_module("integration.oauth" if args.profile in ("oauth", "ldap", "local") else "integration.keycloak")
 
     class Fixture(module.Fixture):
         def certificates(self):
@@ -472,7 +653,7 @@ def main():
                 values["HUBUUM_SESSION_ACCESS_SECONDS"] = "30"
             return super().env(name, values)
 
-    fixture = Fixture(args.image, args.evidence, 48479, 48480) if args.profile in ("oauth", "ldap") else Fixture(args.image, args.evidence, 48477, 48478, args.profile)
+    fixture = Fixture(args.image, args.evidence, 48479, 48480) if args.profile in ("oauth", "ldap", "local") else Fixture(args.image, args.evidence, 48477, 48478, args.profile)
     report = {"profile": args.profile, "source": SOURCE, "server_image": qualified, "valkey": VALKEY,
               "node_version": node_version, "ldap_image": LDAP if args.profile == "ldap" else None,
               "browser_controller_sha256": hashlib.sha256((ROOT / "tests/integration/browser-security.mjs").read_bytes()).hexdigest(),

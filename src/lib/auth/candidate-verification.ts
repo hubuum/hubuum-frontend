@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { getServerEnv } from "@/lib/env";
 import { getValkeyClient } from "@/lib/valkey";
@@ -83,6 +84,9 @@ export async function preserveCandidatePreview(
 		JSON.stringify({
 			target: claimed.target,
 			sessionId: intent.actor.sessionId,
+			credentialFingerprint: createHash("sha256")
+				.update(intent.actor.token)
+				.digest("hex"),
 			report: candidate,
 		}),
 		"EX",

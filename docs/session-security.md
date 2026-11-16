@@ -103,8 +103,10 @@ Login installs the existing private access/refresh pair and rotates the opaque
 `hubuum.sid` cookie. Ordinary requests keep the existing distributed refresh
 protocol. Interaction callbacks read ownership metadata without refreshing the
 credential that owns an in-flight privileged operation. A lost frontend response
-can redeliver the same accepted opaque cookie, without issuing another backend
-session. Logout removes its session, so an old handoff cannot restore it.
+can redeliver the same accepted opaque cookie for five minutes, without issuing
+another backend session. After that handoff window, sign in again; any previously
+issued session retains its ordinary expiry/revocation policy. Logout removes its
+session, so an old handoff cannot restore it.
 
 Fresh approval captures the exact method, path, body, original bearer and relevant
 conditional/idempotency headers. Token expiry retains the server's microseconds.
@@ -115,7 +117,9 @@ pairs and approval capabilities stay private. OAuth freshness is explicitly
 unsupported and never triggers a password downgrade.
 
 Provider verification stores activation receipts privately and returns only its
-non-provisioning preview. Candidate ownership includes the initiating credential;
+non-provisioning preview. The private record also retains a one-way fingerprint
+of the initiating credential for the administrator activation handoff. Candidate
+ownership includes the initiating credential;
 credential rotation or expiry requires a fresh candidate/test. Raw interactions,
 callbacks and security candidates are blocked by the generic browser proxy.
 
@@ -137,7 +141,7 @@ Chromium return check pins the disposable TLS certificate's public key and
 checks cookie rotation, replay and empty browser storage without persistent
 browser profiles or trace files. Run after `npm run build`, supplying the accepted
 server fixture checkout, immutable image, Node 24 executable, provider profile
-(`id_token`, `userinfo`, `oauth` or `ldap`) and an evidence directory:
+(`id_token`, `userinfo`, `oauth`, `ldap` or `local`) and an evidence directory:
 
 ```bash
 python3 tests/integration/authentication.py --help
