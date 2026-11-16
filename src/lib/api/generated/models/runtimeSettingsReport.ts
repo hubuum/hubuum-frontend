@@ -10,6 +10,7 @@ import type { AuthorizationSettingsReport } from './authorizationSettingsReport'
 import type { PaginationSettingsReport } from './paginationSettingsReport';
 import type { QueryObservationSettingsReport } from './queryObservationSettingsReport';
 import type { RuntimeSettingsReplicaStatus } from './runtimeSettingsReplicaStatus';
+import type { RuntimeSettingsReportPolicies } from './runtimeSettingsReportPolicies';
 
 /**
  * Runtime-managed settings as applied by the responding replica.
@@ -18,6 +19,8 @@ export interface RuntimeSettingsReport {
   authentication: AuthenticationSettingsReport;
   authorization: AuthorizationSettingsReport;
   pagination: PaginationSettingsReport;
+  /** Additional policies, keyed by discovered group name. */
+  policies: RuntimeSettingsReportPolicies;
   query_observations: QueryObservationSettingsReport;
   replica: RuntimeSettingsReplicaStatus;
 }

@@ -11,6 +11,8 @@ export type RuntimeAuthenticationProviderRequest = {
   enabled: boolean;
   kind: RuntimeAuthenticationProviderKind;
   name: string;
+  /** @nullable */
+  provider_id?: string | null;
   source: 'deployment';
 } | {
   /** Required when taking ownership of an existing deployment definition. */
@@ -20,5 +22,7 @@ export type RuntimeAuthenticationProviderRequest = {
   enabled: boolean;
   kind: RuntimeAuthenticationProviderKind;
   name: string;
+  /** @nullable */
+  provider_id?: string | null;
   source: 'runtime';
 };

@@ -56,6 +56,16 @@ checksum-protected Compose archive pinned to the image digest. The image is
 `oci://ghcr.io/hubuum/charts/hubuum-frontend:0.0.25`.
 See [deployment](docs/deployment.md) and [release evidence](docs/compatibility.md).
 
+## Authentication project
+
+Project [#6](https://github.com/orgs/hubuum/projects/6) uses the dedicated
+`project/auth-support` integration branch. New browser interactions and runtime
+provider setup consume the checksum-pinned project server in the
+[source ledger](docs/authentication-project-source.json). The released v0.0.25
+compatibility statement above remains unchanged. BFF delivery, login controls,
+and provider administration have separate acceptance gates; see
+[session security](docs/session-security.md#project-6-browser-authentication).
+
 ## Features
 
 Browse classes and objects, edit data, follow relations, build reports, track

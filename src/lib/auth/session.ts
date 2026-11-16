@@ -163,6 +163,25 @@ export async function getSessionFromRequest(
 	return session;
 }
 
+/** Read ownership metadata without rotating the credential that binds an
+ * in-flight interaction. This does not authorize ordinary backend requests. */
+export async function readInteractionSessionBinding(
+	request: NextRequest,
+	target: BackendTarget,
+): Promise<Readonly<{ sessionId: string }> | null> {
+	const sid = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+	if (!sid) return null;
+	const stored = await getSessionStore().get(sid);
+	if (
+		!stored ||
+		stored.backendOrigin !== target.origin ||
+		stored.backendRevision !== target.revision ||
+		Math.min(stored.refreshExpiresAt, stored.absoluteExpiresAt) <= Date.now()
+	)
+		return null;
+	return { sessionId: stored.sessionId };
+}
+
 export async function getSessionFromServerCookies(): Promise<ActiveSession | null> {
 	const cookieStore = await Promise.resolve(cookies());
 	const sid = cookieStore.get(SESSION_COOKIE_NAME)?.value;

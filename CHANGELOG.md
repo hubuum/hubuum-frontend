@@ -6,6 +6,23 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Project #6 server-side browser authentication: bound handoff/completion,
+  private Valkey redemption state, ordinary rotating frontend sessions and
+  exact-operation fresh approval. Provider verification keeps activation
+  receipts private and returns a non-provisioning preview. The login and
+  administrator interfaces are delivered separately on `project/auth-support`.
+- Optional deployment-owned browser origin and registered BFF return-target
+  settings. New authentication capabilities require the accepted project server;
+  the declared released v0.0.22 compatibility target remains unchanged.
+
+### Security
+
+- Keep raw interaction, callback and security-candidate endpoints behind dedicated
+  BFF handlers. Generic browser proxy requests cannot obtain redemption secrets
+  or activation receipts. Repeat completion never repeats a protected mutation.
+
 ## [0.0.25] - 2026-11-09
 
 This release targets Hubuum Server v0.0.22 and its 272-operation, 431-schema

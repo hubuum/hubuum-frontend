@@ -5,6 +5,7 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.22
  */
+import type { AuthorizationConnection } from './authorizationConnection';
 import type { RuntimeSettingsOwnership } from './runtimeSettingsOwnership';
 
 export type AuthorizationSettingsReport = RuntimeSettingsOwnership & ({
@@ -13,4 +14,5 @@ export type AuthorizationSettingsReport = RuntimeSettingsOwnership & ({
   effective_backend: string;
   /** @nullable */
   runtime_backend?: string | null;
+  runtime_connection?: AuthorizationConnection | null;
 });

@@ -35,3 +35,7 @@ test-results
 
 # Generated documentation and pinned shared tooling.
 /target/
+
+# Python integration-driver caches.
+__pycache__/
+*.py[cod]

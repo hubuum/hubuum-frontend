@@ -9,4 +9,10 @@
 export interface PaginationPolicyValue {
   /** @minimum 1 */
   default_page_limit: number;
+  /**
+     * Omitted for legacy policies that inherit each replica's deployment maximum.
+     * @minimum 1
+     * @nullable
+     */
+  max_page_limit?: number | null;
 }

@@ -10,13 +10,20 @@ import type { NewTokenRequest } from './newTokenRequest';
 import type { NewUser } from './newUser';
 import type { PrincipalID } from './principalID';
 import type { RenewTokenRequest } from './renewTokenRequest';
+import type { ResourceRevision } from './resourceRevision';
 import type { RestoreConfirmRequest } from './restoreConfirmRequest';
 import type { RestoreJobID } from './restoreJobID';
+import type { RuntimeSettingsGroup } from './runtimeSettingsGroup';
 import type { TokenID } from './tokenID';
 import type { UpdateUser } from './updateUser';
 import type { UserID } from './userID';
 
 export type CredentialOperation = {
+  candidate_id: string;
+  expected_revision: ResourceRevision;
+  group: RuntimeSettingsGroup;
+  kind: 'activate_security_candidate';
+} | {
   import: ImportRequest;
   kind: 'import_credentials';
 } | {

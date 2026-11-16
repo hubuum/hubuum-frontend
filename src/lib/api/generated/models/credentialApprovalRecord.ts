@@ -20,6 +20,8 @@ export interface CredentialApprovalRecord {
   invalidated_at?: string | null;
   operation: string;
   restore_job_id?: RestoreJobID | null;
+  /** @nullable */
+  security_candidate_id?: string | null;
   target_id?: PrincipalID | null;
   token_id: TokenID;
 }
