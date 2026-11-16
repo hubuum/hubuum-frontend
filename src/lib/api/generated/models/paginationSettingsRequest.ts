@@ -8,18 +8,28 @@
 import type { ResourceRevision } from './resourceRevision';
 
 /**
- * Manage the default page size for every replica sharing storage.
+ * Manage page sizes for every replica sharing storage.
  */
 export interface PaginationSettingsRequest {
   /**
      * Maximum items in a page when a request omits its limit. Requests with an
-     * explicit limit keep that limit, subject to the deployment maximum. Larger
+     * explicit limit keep that limit, subject to the effective maximum. Larger
      * pages can use more memory and transfer more data. Must be at least 1 and
-     * must not exceed this replica's deployment maximum page size.
+     * must not exceed max_page_limit or this replica's deployment ceiling.
      * @minimum 1
      * @maximum 4294967295
      */
   default_page_limit: number;
   /** Current revision of the `pagination` group. */
   expected_revision: ResourceRevision;
+  /**
+     * Largest page size allowed, including requests with an explicit limit.
+     * Must be at least default_page_limit and no greater than this replica's
+     * HUBUUM_MAX_PAGE_LIMIT deployment ceiling. Larger pages can use more memory
+     * and transfer more data. Omit on PUT to inherit the deployment maximum;
+     * omit on PATCH to preserve the current value. Changes affect new requests.
+     * @minimum 1
+     * @nullable
+     */
+  max_page_limit?: number | null;
 }

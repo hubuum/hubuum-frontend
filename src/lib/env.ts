@@ -15,6 +15,14 @@ const serverEnvSchema = z.object({
 		z.string().min(32).max(256).optional(),
 	),
 	VALKEY_URL: z.string().url(),
+	AUTH_BROWSER_ORIGIN: z.preprocess(
+		(value) => (value === "" ? undefined : value),
+		z.string().url().optional(),
+	),
+	AUTH_BFF_RETURN_TARGET_ID: z
+		.string()
+		.regex(/^[A-Za-z0-9_.:-]{1,128}$/)
+		.default("frontend"),
 	SESSION_TTL_SECONDS: z.coerce
 		.number()
 		.int()

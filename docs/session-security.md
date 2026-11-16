@@ -67,3 +67,95 @@ HUBUUM_TEST_VALKEY_URL=redis://127.0.0.1:6379/0 \
 ```
 
 The tests use a unique key prefix and remove only their own records.
+
+## Project #6 browser authentication
+
+These routes belong to `project/auth-support` and require the accepted project
+server. The existing local/LDAP password and rotating-session APIs remain
+available. Browser login and administrator controls are delivered separately in
+frontend #197/#198 after the BFF #196 candidate is accepted. No project push
+publishes the stable website or container.
+
+The BFF creates a purpose-bound interaction using its registered client
+`hubuum-frontend`. Hubuum owns upstream callbacks, provider requests and explicit
+user approval. The browser receives the public verification URL/code and a return
+nonce; it never receives the interaction redemption capability. The nonce cannot
+redeem an interaction. Valkey binds it to the initiating opaque cookie, backend
+connection/revision, purpose and, for privileged work, the original session family.
+
+| Frontend route | Contract |
+| --- | --- |
+| `GET /_hubuum-bff/auth/methods` | Validated public methods and capabilities; only an actual unsupported discovery response permits the existing password interface. |
+| `POST /_hubuum-bff/auth/interactions` | Begin login, exact prepared credential approval or administrator provider verification. Requires same-origin mutation metadata. |
+| `GET /_hubuum-bff/auth/interactions/return` | Validate the bound identifier/nonce/cookie, claim completion once and redirect to the saved local return path. |
+| `POST /_hubuum-bff/auth/interactions/<id>/result` | Read nonce-bound progress or consume a completed result once. Upstream polling is serialized and respects its interval/Retry-After. |
+| `POST /_hubuum-bff/auth/interactions/<id>/cancel` | Cancel the matching nonce-bound flow and clean up its exact issued family. |
+
+Configure `AUTH_BROWSER_ORIGIN` when Hubuum's public browser origin differs from
+`BACKEND_BASE_URL`. Register a Hubuum BFF return target with ID
+`AUTH_BFF_RETURN_TARGET_ID` (default `frontend`), client `hubuum-frontend`, and the
+exact deployed URI `https://console.example/_hubuum-bff/auth/interactions/return`.
+These are deployment trust settings. Per-provider definitions and credentials
+remain runtime-managed by Hubuum. HTTPS and certificate validation remain enabled;
+use a trusted CA for the backend connection.
+
+Login installs the existing private access/refresh pair and rotates the opaque
+`hubuum.sid` cookie. Ordinary requests keep the existing distributed refresh
+protocol. Interaction callbacks read ownership metadata without refreshing the
+credential that owns an in-flight privileged operation. A lost frontend response
+can redeliver the same accepted opaque cookie for five minutes, without issuing
+another backend session. After that handoff window, sign in again; any previously
+issued session retains its ordinary expiry/revocation policy. Logout removes its
+session, so an old handoff cannot restore it.
+
+Fresh approval captures the exact method, path, body, original bearer and relevant
+conditional/idempotency headers. Token expiry retains the server's microseconds.
+Protected mutations are sent once. An interrupted result requires inspection of
+the affected account, task or restore before a new approval. Deliberate one-time
+PAT output remains an explicit credential-management result; login access/refresh
+pairs and approval capabilities stay private. OAuth freshness is explicitly
+unsupported and never triggers a password downgrade.
+
+Provider verification stores activation receipts privately and returns only its
+non-provisioning preview. The private record also retains a one-way fingerprint
+of the initiating credential for the administrator activation handoff. Candidate
+ownership includes the initiating credential;
+credential rotation or expiry requires a fresh candidate/test. Raw interactions,
+callbacks and security candidates are blocked by the generic browser proxy.
+
+Valkey allows at most four pending flows per browser. Completion and cancellation
+share an atomic claim. Abandoned claims retain cleanup authority for the server's
+bounded one-hour post-expiry window. Every frontend process runs a bounded cleanup
+worker; claim transfer fences a delayed handler, then cancellation precedes exact
+family revocation. Recovery never repeats completion or a protected mutation.
+Cleanup needs reachable Valkey and the original configured backend before that
+window ends. Unconfirmed cleanup is reported explicitly and requires local
+recovery administration. Long outages and backend changes cannot establish that
+an abandoned family was revoked.
+
+The stdlib-only Python 3.11+ driver `tests/integration/authentication.py` runs the
+actual production Next.js BFF over verified TLS with source-pinned provider/server
+fixtures and disposable private Valkey. Its reports exclude credentials and
+profile data and identify the compiled production server tree. Its actual
+Chromium return check pins the disposable TLS certificate's public key and
+checks cookie rotation, replay and empty browser storage without persistent
+browser profiles or trace files. Run after `npm run build`, supplying the accepted
+server fixture checkout, immutable image, Node 24 executable, provider profile
+(`id_token`, `userinfo`, `oauth`, `ldap` or `local`) and an evidence directory:
+
+```bash
+python3 tests/integration/authentication.py --help
+```
+
+The LDAP profile provisions and verifies the directory through the server fixture;
+it qualifies hosted BFF login and fresh approval, while the dedicated browser
+candidate preview runs for OIDC/OAuth. This BFF driver does not establish React
+login/setup UI or native real GitHub acceptance; those remain part of server #581.
+
+The clean-source production matrix passed **102/102 checks**: local 17, LDAPS 20,
+Keycloak ID-token 23, UserInfo 21 and synthetic OAuth 21. This includes actual
+Chromium cookie/storage/replay checks, response loss before cookie delivery,
+server-completion response loss, SIGKILL recovery after backend issuance and an
+uncertain protected mutation without replay. The
+[sanitized qualification ledger](assets/authentication-qualification.json) binds
+all five profiles to one clean source and compiled production server tree.

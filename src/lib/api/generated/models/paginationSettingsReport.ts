@@ -5,14 +5,15 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.22
  */
+import type { ClientPaginationConfig } from './clientPaginationConfig';
 import type { PaginationPolicyValue } from './paginationPolicyValue';
 import type { RuntimeSettingsOwnership } from './runtimeSettingsOwnership';
 
 export type PaginationSettingsReport = RuntimeSettingsOwnership & ({
-  /** The runtime default exceeds this replica's ceiling and is clamped to it. */
+  /** A runtime limit exceeds this replica's ceiling and is clamped to it. */
   constrained_by_ceiling: boolean;
-  deployment: PaginationPolicyValue;
-  effective: PaginationPolicyValue;
+  deployment: ClientPaginationConfig;
+  effective: ClientPaginationConfig;
   /**
      * Deployment resource ceiling of this replica. It is never runtime-managed.
      * @minimum 0

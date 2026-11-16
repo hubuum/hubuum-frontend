@@ -8,6 +8,7 @@
 import type {
   ApiErrorResponse,
   AuthProvidersResponse,
+  AuthenticationMethods,
   AuthenticationSettingsRequest,
   AuthorizationSettingsRequest,
   BackupDocument,
@@ -17,6 +18,7 @@ import type {
   ClassSchemaResponse,
   ClearRateLimitResponse,
   ClientConfig,
+  CodeForm,
   Collection,
   CollectionEventSink,
   CollectionPermissionSet,
@@ -33,9 +35,12 @@ import type {
   CredentialApprovalRecord,
   CredentialApprovalRequest,
   CredentialApprovalResponse,
+  CredentialsForm,
   DbStateResponse,
+  DecisionForm,
   DeleteApiV1AdminRuntimeSettingsAuthenticationParams,
   DeleteApiV1AdminRuntimeSettingsAuthorizationParams,
+  DeleteApiV1AdminRuntimeSettingsByGroupParams,
   DeleteApiV1AdminRuntimeSettingsPaginationParams,
   DeleteApiV1AdminRuntimeSettingsQueryObservationsParams,
   DeleteApiV1ClassesByClassIdQueryUsageByDeclarationIdParams,
@@ -54,6 +59,7 @@ import type {
   ExportTemplateRunRequest,
   GetApiV0MetaLoginRateLimitParams,
   GetApiV1AdminRuntimeSettingsHistoryByGroupParams,
+  GetApiV1AuthCallbacksByProviderIdParams,
   GetApiV1ClassesByClassIdByObjectIdEventsParams,
   GetApiV1ClassesByClassIdByObjectIdHistoryAsOfParams,
   GetApiV1ClassesByClassIdByObjectIdHistoryComputedAsOfParams,
@@ -152,6 +158,12 @@ import type {
   HubuumObjectWithPath,
   ImportRequest,
   ImportTaskResultResponse,
+  InteractionBeginRequest,
+  InteractionBegun,
+  InteractionClientRequest,
+  InteractionCompleted,
+  InteractionCredentialsRequest,
+  InteractionStatus,
   LoginRateLimitStateResponse,
   LoginResponse,
   LogoutTokenRequest,
@@ -184,6 +196,7 @@ import type {
   PrincipalTokenMetadata,
   PrincipalTokenPointResponse,
   ProbeResponse,
+  ProviderForm,
   QueryObservationSettingsRequest,
   QueryUsageAnalysisRequest,
   QueryUsageAnalysisResponse,
@@ -219,6 +232,12 @@ import type {
   SchemaWorkResponse,
   SearchHydrationRequest,
   SearchHydrationResponse,
+  SecurityCandidateActivated,
+  SecurityCandidateActivationRequest,
+  SecurityCandidateLdapVerification,
+  SecurityCandidateLdapVerificationResponse,
+  SecurityCandidateReport,
+  SecurityCandidateRequest,
   ServiceAccountPointResponse,
   ServiceAccountResponse,
   SessionLoginRequest,
@@ -736,16 +755,6 @@ export const getApiV1AdminRuntimeSettings = async ( options?: RequestInit): Prom
 
 
 
-export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse200 = {
-  data: RuntimeSettingsUpdateResponse
-  status: 200
-}
-
-export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
 export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse401 = {
   data: ApiErrorResponse
   status: 401
@@ -756,19 +765,17 @@ export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse403 = {
   status: 403
 }
 
-export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse412 = {
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse409 = {
   data: ApiErrorResponse
-  status: 412
+  status: 409
 }
 
-export type deleteApiV1AdminRuntimeSettingsAuthenticationResponseSuccess = (deleteApiV1AdminRuntimeSettingsAuthenticationResponse200) & {
-  headers: Headers;
-};
-export type deleteApiV1AdminRuntimeSettingsAuthenticationResponseError = (deleteApiV1AdminRuntimeSettingsAuthenticationResponse400 | deleteApiV1AdminRuntimeSettingsAuthenticationResponse401 | deleteApiV1AdminRuntimeSettingsAuthenticationResponse403 | deleteApiV1AdminRuntimeSettingsAuthenticationResponse412) & {
+;
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponseError = (deleteApiV1AdminRuntimeSettingsAuthenticationResponse401 | deleteApiV1AdminRuntimeSettingsAuthenticationResponse403 | deleteApiV1AdminRuntimeSettingsAuthenticationResponse409) & {
   headers: Headers;
 };
 
-export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse = (deleteApiV1AdminRuntimeSettingsAuthenticationResponseSuccess | deleteApiV1AdminRuntimeSettingsAuthenticationResponseError)
+export type deleteApiV1AdminRuntimeSettingsAuthenticationResponse = (deleteApiV1AdminRuntimeSettingsAuthenticationResponseError)
 
 export const getDeleteApiV1AdminRuntimeSettingsAuthenticationUrl = (params: DeleteApiV1AdminRuntimeSettingsAuthenticationParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -809,16 +816,6 @@ export const deleteApiV1AdminRuntimeSettingsAuthentication = async (params: Dele
 
 
 
-export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse200 = {
-  data: RuntimeSettingsUpdateResponse
-  status: 200
-}
-
-export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
 export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse401 = {
   data: ApiErrorResponse
   status: 401
@@ -829,24 +826,17 @@ export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse403 = {
   status: 403
 }
 
-export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse412 = {
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse409 = {
   data: ApiErrorResponse
-  status: 412
+  status: 409
 }
 
-export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse503 = {
-  data: ApiErrorResponse
-  status: 503
-}
-
-export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponseSuccess = (postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse200) & {
-  headers: Headers;
-};
-export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponseError = (postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse400 | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse401 | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse403 | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse412 | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse503) & {
+;
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponseError = (postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse401 | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse403 | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse409) & {
   headers: Headers;
 };
 
-export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse = (postApiV1AdminRuntimeSettingsAuthenticationPreflightResponseSuccess | postApiV1AdminRuntimeSettingsAuthenticationPreflightResponseError)
+export type postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse = (postApiV1AdminRuntimeSettingsAuthenticationPreflightResponseError)
 
 export const getPostApiV1AdminRuntimeSettingsAuthenticationPreflightUrl = () => {
 
@@ -894,16 +884,6 @@ const res = await fetch(getPostApiV1AdminRuntimeSettingsAuthenticationPreflightU
 
 
 
-export type putApiV1AdminRuntimeSettingsAuthorizationResponse200 = {
-  data: RuntimeSettingsUpdateResponse
-  status: 200
-}
-
-export type putApiV1AdminRuntimeSettingsAuthorizationResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
 export type putApiV1AdminRuntimeSettingsAuthorizationResponse401 = {
   data: ApiErrorResponse
   status: 401
@@ -914,24 +894,17 @@ export type putApiV1AdminRuntimeSettingsAuthorizationResponse403 = {
   status: 403
 }
 
-export type putApiV1AdminRuntimeSettingsAuthorizationResponse412 = {
+export type putApiV1AdminRuntimeSettingsAuthorizationResponse409 = {
   data: ApiErrorResponse
-  status: 412
+  status: 409
 }
 
-export type putApiV1AdminRuntimeSettingsAuthorizationResponse503 = {
-  data: ApiErrorResponse
-  status: 503
-}
-
-export type putApiV1AdminRuntimeSettingsAuthorizationResponseSuccess = (putApiV1AdminRuntimeSettingsAuthorizationResponse200) & {
-  headers: Headers;
-};
-export type putApiV1AdminRuntimeSettingsAuthorizationResponseError = (putApiV1AdminRuntimeSettingsAuthorizationResponse400 | putApiV1AdminRuntimeSettingsAuthorizationResponse401 | putApiV1AdminRuntimeSettingsAuthorizationResponse403 | putApiV1AdminRuntimeSettingsAuthorizationResponse412 | putApiV1AdminRuntimeSettingsAuthorizationResponse503) & {
+;
+export type putApiV1AdminRuntimeSettingsAuthorizationResponseError = (putApiV1AdminRuntimeSettingsAuthorizationResponse401 | putApiV1AdminRuntimeSettingsAuthorizationResponse403 | putApiV1AdminRuntimeSettingsAuthorizationResponse409) & {
   headers: Headers;
 };
 
-export type putApiV1AdminRuntimeSettingsAuthorizationResponse = (putApiV1AdminRuntimeSettingsAuthorizationResponseSuccess | putApiV1AdminRuntimeSettingsAuthorizationResponseError)
+export type putApiV1AdminRuntimeSettingsAuthorizationResponse = (putApiV1AdminRuntimeSettingsAuthorizationResponseError)
 
 export const getPutApiV1AdminRuntimeSettingsAuthorizationUrl = () => {
 
@@ -979,16 +952,6 @@ const res = await fetch(getPutApiV1AdminRuntimeSettingsAuthorizationUrl(),
 
 
 
-export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse200 = {
-  data: RuntimeSettingsUpdateResponse
-  status: 200
-}
-
-export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse400 = {
-  data: ApiErrorResponse
-  status: 400
-}
-
 export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse401 = {
   data: ApiErrorResponse
   status: 401
@@ -999,24 +962,17 @@ export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse403 = {
   status: 403
 }
 
-export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse412 = {
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse409 = {
   data: ApiErrorResponse
-  status: 412
+  status: 409
 }
 
-export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse503 = {
-  data: ApiErrorResponse
-  status: 503
-}
-
-export type deleteApiV1AdminRuntimeSettingsAuthorizationResponseSuccess = (deleteApiV1AdminRuntimeSettingsAuthorizationResponse200) & {
-  headers: Headers;
-};
-export type deleteApiV1AdminRuntimeSettingsAuthorizationResponseError = (deleteApiV1AdminRuntimeSettingsAuthorizationResponse400 | deleteApiV1AdminRuntimeSettingsAuthorizationResponse401 | deleteApiV1AdminRuntimeSettingsAuthorizationResponse403 | deleteApiV1AdminRuntimeSettingsAuthorizationResponse412 | deleteApiV1AdminRuntimeSettingsAuthorizationResponse503) & {
+;
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponseError = (deleteApiV1AdminRuntimeSettingsAuthorizationResponse401 | deleteApiV1AdminRuntimeSettingsAuthorizationResponse403 | deleteApiV1AdminRuntimeSettingsAuthorizationResponse409) & {
   headers: Headers;
 };
 
-export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse = (deleteApiV1AdminRuntimeSettingsAuthorizationResponseSuccess | deleteApiV1AdminRuntimeSettingsAuthorizationResponseError)
+export type deleteApiV1AdminRuntimeSettingsAuthorizationResponse = (deleteApiV1AdminRuntimeSettingsAuthorizationResponseError)
 
 export const getDeleteApiV1AdminRuntimeSettingsAuthorizationUrl = (params: DeleteApiV1AdminRuntimeSettingsAuthorizationParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1489,6 +1445,299 @@ export const getApiV1AdminRuntimeSettingsSchema = async ( options?: RequestInit)
 
 
 
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesResponse201 = {
+  data: SecurityCandidateReport
+  status: 201
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesResponseSuccess = (postApiV1AdminRuntimeSettingsSecurityCandidatesResponse201) & {
+  headers: Headers;
+};
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesResponseError = (postApiV1AdminRuntimeSettingsSecurityCandidatesResponse400 | postApiV1AdminRuntimeSettingsSecurityCandidatesResponse403 | postApiV1AdminRuntimeSettingsSecurityCandidatesResponse412 | postApiV1AdminRuntimeSettingsSecurityCandidatesResponse503) & {
+  headers: Headers;
+};
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesResponse = (postApiV1AdminRuntimeSettingsSecurityCandidatesResponseSuccess | postApiV1AdminRuntimeSettingsSecurityCandidatesResponseError)
+
+export const getPostApiV1AdminRuntimeSettingsSecurityCandidatesUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/security-candidates`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/admin/runtime-settings/security-candidates.
+ * @summary Post Api V1 Admin Runtime Settings Security Candidates
+ */
+export const postApiV1AdminRuntimeSettingsSecurityCandidates = async (securityCandidateRequest: SecurityCandidateRequest, options?: RequestInit): Promise<postApiV1AdminRuntimeSettingsSecurityCandidatesResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AdminRuntimeSettingsSecurityCandidatesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(securityCandidateRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AdminRuntimeSettingsSecurityCandidatesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AdminRuntimeSettingsSecurityCandidatesResponse
+}
+
+
+
+export type getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponse200 = {
+  data: SecurityCandidateReport
+  status: 200
+}
+
+export type getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponse404 = {
+  data: ApiErrorResponse
+  status: 404
+}
+
+export type getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponseSuccess = (getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponseError = (getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponse404) & {
+  headers: Headers;
+};
+
+export type getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponse = (getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponseSuccess | getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponseError)
+
+export const getGetApiV1AdminRuntimeSettingsSecurityCandidatesByIdUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/security-candidates/${id}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/admin/runtime-settings/security-candidates/{id}.
+ * @summary Get Api V1 Admin Runtime Settings Security Candidates By Id
+ */
+export const getApiV1AdminRuntimeSettingsSecurityCandidatesById = async (id: string, options?: RequestInit): Promise<getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponse> => {
+
+  const res = await fetch(getGetApiV1AdminRuntimeSettingsSecurityCandidatesByIdUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AdminRuntimeSettingsSecurityCandidatesByIdResponse
+}
+
+
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse200 = {
+  data: SecurityCandidateActivated
+  status: 200
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponseSuccess = (postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse200) & {
+  headers: Headers;
+};
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponseError = (postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse403 | postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse409 | postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse410 | postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse412) & {
+  headers: Headers;
+};
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse = (postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponseSuccess | postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponseError)
+
+export const getPostApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/security-candidates/${id}/activate`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/admin/runtime-settings/security-candidates/{id}/activate.
+ * @summary Post Api V1 Admin Runtime Settings Security Candidates By Id Activate
+ */
+export const postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivate = async (id: string,
+    securityCandidateActivationRequest: SecurityCandidateActivationRequest, options?: RequestInit): Promise<postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(securityCandidateActivationRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AdminRuntimeSettingsSecurityCandidatesByIdActivateResponse
+}
+
+
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse200 = {
+  data: SecurityCandidateLdapVerificationResponse
+  status: 200
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponseSuccess = (postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse200) & {
+  headers: Headers;
+};
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponseError = (postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse401 | postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse409 | postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse410 | postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse = (postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponseSuccess | postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponseError)
+
+export const getPostApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/security-candidates/${id}/verify-ldap`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/admin/runtime-settings/security-candidates/{id}/verify-ldap.
+ * @summary Post Api V1 Admin Runtime Settings Security Candidates By Id Verify Ldap
+ */
+export const postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdap = async (id: string,
+    securityCandidateLdapVerification: SecurityCandidateLdapVerification, options?: RequestInit): Promise<postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(securityCandidateLdapVerification)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AdminRuntimeSettingsSecurityCandidatesByIdVerifyLdapResponse
+}
+
+
+
 export type getApiV1AdminRuntimeSettingsByGroupResponse200 = {
   data: RuntimeSettingsGroupState
   status: 200
@@ -1541,6 +1790,81 @@ export const getApiV1AdminRuntimeSettingsByGroup = async (group: RuntimeSettings
 
   const data: getApiV1AdminRuntimeSettingsByGroupResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getApiV1AdminRuntimeSettingsByGroupResponse
+}
+
+
+
+export type deleteApiV1AdminRuntimeSettingsByGroupResponse200 = {
+  data: RuntimeSettingsUpdateResponse
+  status: 200
+}
+
+export type deleteApiV1AdminRuntimeSettingsByGroupResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type deleteApiV1AdminRuntimeSettingsByGroupResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type deleteApiV1AdminRuntimeSettingsByGroupResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type deleteApiV1AdminRuntimeSettingsByGroupResponse412 = {
+  data: ApiErrorResponse
+  status: 412
+}
+
+export type deleteApiV1AdminRuntimeSettingsByGroupResponseSuccess = (deleteApiV1AdminRuntimeSettingsByGroupResponse200) & {
+  headers: Headers;
+};
+export type deleteApiV1AdminRuntimeSettingsByGroupResponseError = (deleteApiV1AdminRuntimeSettingsByGroupResponse400 | deleteApiV1AdminRuntimeSettingsByGroupResponse401 | deleteApiV1AdminRuntimeSettingsByGroupResponse403 | deleteApiV1AdminRuntimeSettingsByGroupResponse412) & {
+  headers: Headers;
+};
+
+export type deleteApiV1AdminRuntimeSettingsByGroupResponse = (deleteApiV1AdminRuntimeSettingsByGroupResponseSuccess | deleteApiV1AdminRuntimeSettingsByGroupResponseError)
+
+export const getDeleteApiV1AdminRuntimeSettingsByGroupUrl = (group: RuntimeSettingsGroup,
+    params: DeleteApiV1AdminRuntimeSettingsByGroupParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/${group}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/admin/runtime-settings/${group}`
+}
+
+/**
+ * Auto-generated documentation for DELETE /api/v1/admin/runtime-settings/{group}.
+ * @summary Delete Api V1 Admin Runtime Settings By Group
+ */
+export const deleteApiV1AdminRuntimeSettingsByGroup = async (group: RuntimeSettingsGroup,
+    params: DeleteApiV1AdminRuntimeSettingsByGroupParams, options?: RequestInit): Promise<deleteApiV1AdminRuntimeSettingsByGroupResponse> => {
+
+  const res = await fetch(getDeleteApiV1AdminRuntimeSettingsByGroupUrl(group,params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteApiV1AdminRuntimeSettingsByGroupResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteApiV1AdminRuntimeSettingsByGroupResponse
 }
 
 
@@ -1622,6 +1946,967 @@ const res = await fetch(getPatchApiV1AdminRuntimeSettingsByGroupUrl(group),
 
   const data: patchApiV1AdminRuntimeSettingsByGroupResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as patchApiV1AdminRuntimeSettingsByGroupResponse
+}
+
+
+
+export type getApiV1AuthCallbacksByProviderIdResponse303 = {
+  data: void
+  status: 303
+}
+
+export type getApiV1AuthCallbacksByProviderIdResponse401 = {
+  data: void
+  status: 401
+}
+
+;
+export type getApiV1AuthCallbacksByProviderIdResponseError = (getApiV1AuthCallbacksByProviderIdResponse303 | getApiV1AuthCallbacksByProviderIdResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1AuthCallbacksByProviderIdResponse = (getApiV1AuthCallbacksByProviderIdResponseError)
+
+export const getGetApiV1AuthCallbacksByProviderIdUrl = (providerId: string,
+    params: GetApiV1AuthCallbacksByProviderIdParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${HUBUUM_BFF_PREFIX}/api/v1/auth/callbacks/${providerId}?${stringifiedParams}` : `${HUBUUM_BFF_PREFIX}/api/v1/auth/callbacks/${providerId}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/auth/callbacks/{provider_id}.
+ * @summary Get Api V1 Auth Callbacks By Provider Id
+ */
+export const getApiV1AuthCallbacksByProviderId = async (providerId: string,
+    params: GetApiV1AuthCallbacksByProviderIdParams, options?: RequestInit): Promise<getApiV1AuthCallbacksByProviderIdResponse> => {
+
+  const res = await fetch(getGetApiV1AuthCallbacksByProviderIdUrl(providerId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AuthCallbacksByProviderIdResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AuthCallbacksByProviderIdResponse
+}
+
+
+
+export type postApiV1AuthInteractionsResponse201 = {
+  data: InteractionBegun
+  status: 201
+}
+
+export type postApiV1AuthInteractionsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1AuthInteractionsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1AuthInteractionsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1AuthInteractionsResponse422 = {
+  data: ApiErrorResponse
+  status: 422
+}
+
+export type postApiV1AuthInteractionsResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1AuthInteractionsResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
+export type postApiV1AuthInteractionsResponseSuccess = (postApiV1AuthInteractionsResponse201) & {
+  headers: Headers;
+};
+export type postApiV1AuthInteractionsResponseError = (postApiV1AuthInteractionsResponse400 | postApiV1AuthInteractionsResponse401 | postApiV1AuthInteractionsResponse403 | postApiV1AuthInteractionsResponse422 | postApiV1AuthInteractionsResponse429 | postApiV1AuthInteractionsResponse503) & {
+  headers: Headers;
+};
+
+export type postApiV1AuthInteractionsResponse = (postApiV1AuthInteractionsResponseSuccess | postApiV1AuthInteractionsResponseError)
+
+export const getPostApiV1AuthInteractionsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions`
+}
+
+/**
+ * Login may begin anonymously. Credential approval requires an unscoped human
+ * bearer; provider verification additionally requires a local recovery administrator.
+ * The complete JSON request must fit 64 KiB. Larger credential imports use the
+ * direct credential-approval API. Hosted provider verification completes the
+ * pending LDAP, OIDC or OAuth identity check after the candidate's connection
+ * and trust checks pass. OAuth does not support fresh credential approval.
+ * @summary Begin an authentication interaction.
+ */
+export const postApiV1AuthInteractions = async (interactionBeginRequest: InteractionBeginRequest, options?: RequestInit): Promise<postApiV1AuthInteractionsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AuthInteractionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(interactionBeginRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AuthInteractionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AuthInteractionsResponse
+}
+
+
+
+export type getApiV1AuthInteractionsBrowserResponse200 = {
+  data: string
+  status: 200
+}
+
+export type getApiV1AuthInteractionsBrowserResponse422 = {
+  data: void
+  status: 422
+}
+
+export type getApiV1AuthInteractionsBrowserResponseSuccess = (getApiV1AuthInteractionsBrowserResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AuthInteractionsBrowserResponseError = (getApiV1AuthInteractionsBrowserResponse422) & {
+  headers: Headers;
+};
+
+export type getApiV1AuthInteractionsBrowserResponse = (getApiV1AuthInteractionsBrowserResponseSuccess | getApiV1AuthInteractionsBrowserResponseError)
+
+export const getGetApiV1AuthInteractionsBrowserUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/browser`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/auth/interactions/browser.
+ * @summary Get Api V1 Auth Interactions Browser
+ */
+export const getApiV1AuthInteractionsBrowser = async ( options?: RequestInit): Promise<getApiV1AuthInteractionsBrowserResponse> => {
+
+  const res = await fetch(getGetApiV1AuthInteractionsBrowserUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AuthInteractionsBrowserResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AuthInteractionsBrowserResponse
+}
+
+
+
+export type postApiV1AuthInteractionsBrowserResponse303 = {
+  data: void
+  status: 303
+}
+
+export type postApiV1AuthInteractionsBrowserResponse401 = {
+  data: void
+  status: 401
+}
+
+;
+export type postApiV1AuthInteractionsBrowserResponseError = (postApiV1AuthInteractionsBrowserResponse303 | postApiV1AuthInteractionsBrowserResponse401) & {
+  headers: Headers;
+};
+
+export type postApiV1AuthInteractionsBrowserResponse = (postApiV1AuthInteractionsBrowserResponseError)
+
+export const getPostApiV1AuthInteractionsBrowserUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/browser`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/auth/interactions/browser.
+ * @summary Post Api V1 Auth Interactions Browser
+ */
+export const postApiV1AuthInteractionsBrowser = async (codeForm: CodeForm, options?: RequestInit): Promise<postApiV1AuthInteractionsBrowserResponse> => {
+    const formUrlEncoded = new URLSearchParams();
+formUrlEncoded.append(`csrf`, codeForm.csrf);
+formUrlEncoded.append(`user_code`, codeForm.user_code);
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AuthInteractionsBrowserUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...getHeaders(options?.headers) },
+    body: formUrlEncoded
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AuthInteractionsBrowserResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AuthInteractionsBrowserResponse
+}
+
+
+
+export type getApiV1AuthInteractionsBrowserByIdResponse200 = {
+  data: string
+  status: 200
+}
+
+export type getApiV1AuthInteractionsBrowserByIdResponse401 = {
+  data: void
+  status: 401
+}
+
+export type getApiV1AuthInteractionsBrowserByIdResponseSuccess = (getApiV1AuthInteractionsBrowserByIdResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AuthInteractionsBrowserByIdResponseError = (getApiV1AuthInteractionsBrowserByIdResponse401) & {
+  headers: Headers;
+};
+
+export type getApiV1AuthInteractionsBrowserByIdResponse = (getApiV1AuthInteractionsBrowserByIdResponseSuccess | getApiV1AuthInteractionsBrowserByIdResponseError)
+
+export const getGetApiV1AuthInteractionsBrowserByIdUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/browser/${id}`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/auth/interactions/browser/{id}.
+ * @summary Get Api V1 Auth Interactions Browser By Id
+ */
+export const getApiV1AuthInteractionsBrowserById = async (id: string, options?: RequestInit): Promise<getApiV1AuthInteractionsBrowserByIdResponse> => {
+
+  const res = await fetch(getGetApiV1AuthInteractionsBrowserByIdUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AuthInteractionsBrowserByIdResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AuthInteractionsBrowserByIdResponse
+}
+
+
+
+export type postApiV1AuthInteractionsBrowserByIdCredentialsResponse303 = {
+  data: void
+  status: 303
+}
+
+export type postApiV1AuthInteractionsBrowserByIdCredentialsResponse401 = {
+  data: void
+  status: 401
+}
+
+;
+export type postApiV1AuthInteractionsBrowserByIdCredentialsResponseError = (postApiV1AuthInteractionsBrowserByIdCredentialsResponse303 | postApiV1AuthInteractionsBrowserByIdCredentialsResponse401) & {
+  headers: Headers;
+};
+
+export type postApiV1AuthInteractionsBrowserByIdCredentialsResponse = (postApiV1AuthInteractionsBrowserByIdCredentialsResponseError)
+
+export const getPostApiV1AuthInteractionsBrowserByIdCredentialsUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/browser/${id}/credentials`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/auth/interactions/browser/{id}/credentials.
+ * @summary Post Api V1 Auth Interactions Browser By Id Credentials
+ */
+export const postApiV1AuthInteractionsBrowserByIdCredentials = async (id: string,
+    credentialsForm: CredentialsForm, options?: RequestInit): Promise<postApiV1AuthInteractionsBrowserByIdCredentialsResponse> => {
+    const formUrlEncoded = new URLSearchParams();
+formUrlEncoded.append(`csrf`, credentialsForm.csrf);
+formUrlEncoded.append(`name`, credentialsForm.name);
+formUrlEncoded.append(`password`, credentialsForm.password);
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AuthInteractionsBrowserByIdCredentialsUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...getHeaders(options?.headers) },
+    body: formUrlEncoded
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AuthInteractionsBrowserByIdCredentialsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AuthInteractionsBrowserByIdCredentialsResponse
+}
+
+
+
+export type postApiV1AuthInteractionsBrowserByIdDecisionResponse200 = {
+  data: string
+  status: 200
+}
+
+export type postApiV1AuthInteractionsBrowserByIdDecisionResponse303 = {
+  data: void
+  status: 303
+}
+
+export type postApiV1AuthInteractionsBrowserByIdDecisionResponse401 = {
+  data: void
+  status: 401
+}
+
+export type postApiV1AuthInteractionsBrowserByIdDecisionResponseSuccess = (postApiV1AuthInteractionsBrowserByIdDecisionResponse200) & {
+  headers: Headers;
+};
+export type postApiV1AuthInteractionsBrowserByIdDecisionResponseError = (postApiV1AuthInteractionsBrowserByIdDecisionResponse303 | postApiV1AuthInteractionsBrowserByIdDecisionResponse401) & {
+  headers: Headers;
+};
+
+export type postApiV1AuthInteractionsBrowserByIdDecisionResponse = (postApiV1AuthInteractionsBrowserByIdDecisionResponseSuccess | postApiV1AuthInteractionsBrowserByIdDecisionResponseError)
+
+export const getPostApiV1AuthInteractionsBrowserByIdDecisionUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/browser/${id}/decision`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/auth/interactions/browser/{id}/decision.
+ * @summary Post Api V1 Auth Interactions Browser By Id Decision
+ */
+export const postApiV1AuthInteractionsBrowserByIdDecision = async (id: string,
+    decisionForm: DecisionForm, options?: RequestInit): Promise<postApiV1AuthInteractionsBrowserByIdDecisionResponse> => {
+    const formUrlEncoded = new URLSearchParams();
+formUrlEncoded.append(`csrf`, decisionForm.csrf);
+formUrlEncoded.append(`decision`, decisionForm.decision);
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AuthInteractionsBrowserByIdDecisionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...getHeaders(options?.headers) },
+    body: formUrlEncoded
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AuthInteractionsBrowserByIdDecisionResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AuthInteractionsBrowserByIdDecisionResponse
+}
+
+
+
+export type postApiV1AuthInteractionsBrowserByIdProviderResponse200 = {
+  data: string
+  status: 200
+}
+
+export type postApiV1AuthInteractionsBrowserByIdProviderResponse401 = {
+  data: void
+  status: 401
+}
+
+export type postApiV1AuthInteractionsBrowserByIdProviderResponseSuccess = (postApiV1AuthInteractionsBrowserByIdProviderResponse200) & {
+  headers: Headers;
+};
+export type postApiV1AuthInteractionsBrowserByIdProviderResponseError = (postApiV1AuthInteractionsBrowserByIdProviderResponse401) & {
+  headers: Headers;
+};
+
+export type postApiV1AuthInteractionsBrowserByIdProviderResponse = (postApiV1AuthInteractionsBrowserByIdProviderResponseSuccess | postApiV1AuthInteractionsBrowserByIdProviderResponseError)
+
+export const getPostApiV1AuthInteractionsBrowserByIdProviderUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/browser/${id}/provider`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/auth/interactions/browser/{id}/provider.
+ * @summary Post Api V1 Auth Interactions Browser By Id Provider
+ */
+export const postApiV1AuthInteractionsBrowserByIdProvider = async (id: string,
+    providerForm: ProviderForm, options?: RequestInit): Promise<postApiV1AuthInteractionsBrowserByIdProviderResponse> => {
+    const formUrlEncoded = new URLSearchParams();
+formUrlEncoded.append(`csrf`, providerForm.csrf);
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AuthInteractionsBrowserByIdProviderUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...getHeaders(options?.headers) },
+    body: formUrlEncoded
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AuthInteractionsBrowserByIdProviderResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AuthInteractionsBrowserByIdProviderResponse
+}
+
+
+
+export type postApiV1AuthInteractionsByIdCancelResponse204 = {
+  data: void
+  status: 204
+}
+
+export type postApiV1AuthInteractionsByIdCancelResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1AuthInteractionsByIdCancelResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1AuthInteractionsByIdCancelResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1AuthInteractionsByIdCancelResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
+export type postApiV1AuthInteractionsByIdCancelResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1AuthInteractionsByIdCancelResponseSuccess = (postApiV1AuthInteractionsByIdCancelResponse204) & {
+  headers: Headers;
+};
+export type postApiV1AuthInteractionsByIdCancelResponseError = (postApiV1AuthInteractionsByIdCancelResponse401 | postApiV1AuthInteractionsByIdCancelResponse403 | postApiV1AuthInteractionsByIdCancelResponse409 | postApiV1AuthInteractionsByIdCancelResponse410 | postApiV1AuthInteractionsByIdCancelResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1AuthInteractionsByIdCancelResponse = (postApiV1AuthInteractionsByIdCancelResponseSuccess | postApiV1AuthInteractionsByIdCancelResponseError)
+
+export const getPostApiV1AuthInteractionsByIdCancelUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/${id}/cancel`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/auth/interactions/{id}/cancel.
+ * @summary Post Api V1 Auth Interactions By Id Cancel
+ */
+export const postApiV1AuthInteractionsByIdCancel = async (id: string,
+    interactionClientRequest: InteractionClientRequest, options?: RequestInit): Promise<postApiV1AuthInteractionsByIdCancelResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AuthInteractionsByIdCancelUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(interactionClientRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AuthInteractionsByIdCancelResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as postApiV1AuthInteractionsByIdCancelResponse
+}
+
+
+
+export type postApiV1AuthInteractionsByIdCompleteResponse200 = {
+  data: InteractionCompleted
+  status: 200
+}
+
+export type postApiV1AuthInteractionsByIdCompleteResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1AuthInteractionsByIdCompleteResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1AuthInteractionsByIdCompleteResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1AuthInteractionsByIdCompleteResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
+export type postApiV1AuthInteractionsByIdCompleteResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1AuthInteractionsByIdCompleteResponseSuccess = (postApiV1AuthInteractionsByIdCompleteResponse200) & {
+  headers: Headers;
+};
+export type postApiV1AuthInteractionsByIdCompleteResponseError = (postApiV1AuthInteractionsByIdCompleteResponse401 | postApiV1AuthInteractionsByIdCompleteResponse403 | postApiV1AuthInteractionsByIdCompleteResponse409 | postApiV1AuthInteractionsByIdCompleteResponse410 | postApiV1AuthInteractionsByIdCompleteResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1AuthInteractionsByIdCompleteResponse = (postApiV1AuthInteractionsByIdCompleteResponseSuccess | postApiV1AuthInteractionsByIdCompleteResponseError)
+
+export const getPostApiV1AuthInteractionsByIdCompleteUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/${id}/complete`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/auth/interactions/{id}/complete.
+ * @summary Post Api V1 Auth Interactions By Id Complete
+ */
+export const postApiV1AuthInteractionsByIdComplete = async (id: string,
+    interactionClientRequest: InteractionClientRequest, options?: RequestInit): Promise<postApiV1AuthInteractionsByIdCompleteResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AuthInteractionsByIdCompleteUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(interactionClientRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AuthInteractionsByIdCompleteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AuthInteractionsByIdCompleteResponse
+}
+
+
+
+export type postApiV1AuthInteractionsByIdCredentialsResponse200 = {
+  data: InteractionStatus
+  status: 200
+}
+
+export type postApiV1AuthInteractionsByIdCredentialsResponse400 = {
+  data: ApiErrorResponse
+  status: 400
+}
+
+export type postApiV1AuthInteractionsByIdCredentialsResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1AuthInteractionsByIdCredentialsResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1AuthInteractionsByIdCredentialsResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1AuthInteractionsByIdCredentialsResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
+export type postApiV1AuthInteractionsByIdCredentialsResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1AuthInteractionsByIdCredentialsResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
+export type postApiV1AuthInteractionsByIdCredentialsResponseSuccess = (postApiV1AuthInteractionsByIdCredentialsResponse200) & {
+  headers: Headers;
+};
+export type postApiV1AuthInteractionsByIdCredentialsResponseError = (postApiV1AuthInteractionsByIdCredentialsResponse400 | postApiV1AuthInteractionsByIdCredentialsResponse401 | postApiV1AuthInteractionsByIdCredentialsResponse403 | postApiV1AuthInteractionsByIdCredentialsResponse409 | postApiV1AuthInteractionsByIdCredentialsResponse410 | postApiV1AuthInteractionsByIdCredentialsResponse429 | postApiV1AuthInteractionsByIdCredentialsResponse503) & {
+  headers: Headers;
+};
+
+export type postApiV1AuthInteractionsByIdCredentialsResponse = (postApiV1AuthInteractionsByIdCredentialsResponseSuccess | postApiV1AuthInteractionsByIdCredentialsResponseError)
+
+export const getPostApiV1AuthInteractionsByIdCredentialsUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/${id}/credentials`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/auth/interactions/{id}/credentials.
+ * @summary Post Api V1 Auth Interactions By Id Credentials
+ */
+export const postApiV1AuthInteractionsByIdCredentials = async (id: string,
+    interactionCredentialsRequest: InteractionCredentialsRequest, options?: RequestInit): Promise<postApiV1AuthInteractionsByIdCredentialsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AuthInteractionsByIdCredentialsUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(interactionCredentialsRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AuthInteractionsByIdCredentialsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AuthInteractionsByIdCredentialsResponse
+}
+
+
+
+export type postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse204 = {
+  data: void
+  status: 204
+}
+
+export type postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1AuthInteractionsByIdIssuedSessionRevokeResponseSuccess = (postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse204) & {
+  headers: Headers;
+};
+export type postApiV1AuthInteractionsByIdIssuedSessionRevokeResponseError = (postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse401 | postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse409 | postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse = (postApiV1AuthInteractionsByIdIssuedSessionRevokeResponseSuccess | postApiV1AuthInteractionsByIdIssuedSessionRevokeResponseError)
+
+export const getPostApiV1AuthInteractionsByIdIssuedSessionRevokeUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/${id}/issued-session/revoke`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/auth/interactions/{id}/issued-session/revoke.
+ * @summary Post Api V1 Auth Interactions By Id Issued Session Revoke
+ */
+export const postApiV1AuthInteractionsByIdIssuedSessionRevoke = async (id: string,
+    interactionClientRequest: InteractionClientRequest, options?: RequestInit): Promise<postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AuthInteractionsByIdIssuedSessionRevokeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(interactionClientRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as postApiV1AuthInteractionsByIdIssuedSessionRevokeResponse
+}
+
+
+
+export type postApiV1AuthInteractionsByIdStatusResponse200 = {
+  data: InteractionStatus
+  status: 200
+}
+
+export type postApiV1AuthInteractionsByIdStatusResponse401 = {
+  data: ApiErrorResponse
+  status: 401
+}
+
+export type postApiV1AuthInteractionsByIdStatusResponse403 = {
+  data: ApiErrorResponse
+  status: 403
+}
+
+export type postApiV1AuthInteractionsByIdStatusResponse409 = {
+  data: ApiErrorResponse
+  status: 409
+}
+
+export type postApiV1AuthInteractionsByIdStatusResponse410 = {
+  data: ApiErrorResponse
+  status: 410
+}
+
+export type postApiV1AuthInteractionsByIdStatusResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type postApiV1AuthInteractionsByIdStatusResponseSuccess = (postApiV1AuthInteractionsByIdStatusResponse200) & {
+  headers: Headers;
+};
+export type postApiV1AuthInteractionsByIdStatusResponseError = (postApiV1AuthInteractionsByIdStatusResponse401 | postApiV1AuthInteractionsByIdStatusResponse403 | postApiV1AuthInteractionsByIdStatusResponse409 | postApiV1AuthInteractionsByIdStatusResponse410 | postApiV1AuthInteractionsByIdStatusResponse429) & {
+  headers: Headers;
+};
+
+export type postApiV1AuthInteractionsByIdStatusResponse = (postApiV1AuthInteractionsByIdStatusResponseSuccess | postApiV1AuthInteractionsByIdStatusResponseError)
+
+export const getPostApiV1AuthInteractionsByIdStatusUrl = (id: string,) => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/interactions/${id}/status`
+}
+
+/**
+ * Auto-generated documentation for POST /api/v1/auth/interactions/{id}/status.
+ * @summary Post Api V1 Auth Interactions By Id Status
+ */
+export const postApiV1AuthInteractionsByIdStatus = async (id: string,
+    interactionClientRequest: InteractionClientRequest, options?: RequestInit): Promise<postApiV1AuthInteractionsByIdStatusResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPostApiV1AuthInteractionsByIdStatusUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(interactionClientRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postApiV1AuthInteractionsByIdStatusResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postApiV1AuthInteractionsByIdStatusResponse
 }
 
 
@@ -1940,6 +3225,62 @@ export const postApiV1AuthLogoutAll = async ( options?: RequestInit): Promise<po
 
   const data: postApiV1AuthLogoutAllResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as postApiV1AuthLogoutAllResponse
+}
+
+
+
+export type getApiV1AuthMethodsResponse200 = {
+  data: AuthenticationMethods
+  status: 200
+}
+
+export type getApiV1AuthMethodsResponse429 = {
+  data: ApiErrorResponse
+  status: 429
+}
+
+export type getApiV1AuthMethodsResponse503 = {
+  data: ApiErrorResponse
+  status: 503
+}
+
+export type getApiV1AuthMethodsResponseSuccess = (getApiV1AuthMethodsResponse200) & {
+  headers: Headers;
+};
+export type getApiV1AuthMethodsResponseError = (getApiV1AuthMethodsResponse429 | getApiV1AuthMethodsResponse503) & {
+  headers: Headers;
+};
+
+export type getApiV1AuthMethodsResponse = (getApiV1AuthMethodsResponseSuccess | getApiV1AuthMethodsResponseError)
+
+export const getGetApiV1AuthMethodsUrl = () => {
+
+
+
+
+  return `${HUBUUM_BFF_PREFIX}/api/v1/auth/methods`
+}
+
+/**
+ * Auto-generated documentation for GET /api/v1/auth/methods.
+ * @summary Get Api V1 Auth Methods
+ */
+export const getApiV1AuthMethods = async ( options?: RequestInit): Promise<getApiV1AuthMethodsResponse> => {
+
+  const res = await fetch(getGetApiV1AuthMethodsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getApiV1AuthMethodsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getApiV1AuthMethodsResponse
 }
 
 

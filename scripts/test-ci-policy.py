@@ -51,6 +51,10 @@ class ClassificationTests(unittest.TestCase):
             ".github/workflows/ci.yml",
             "scripts/ci-policy.py",
             "new-build-input",
+            "docs/authentication-project-source.json",
+            "tests/integration/authentication.py",
+            "tests/integration/browser-security.mjs",
+            "src/lib/auth/interaction-cleanup-worker.ts",
         ):
             with self.subTest(path=path):
                 self.assertTrue(policy.classify([path])["code"])

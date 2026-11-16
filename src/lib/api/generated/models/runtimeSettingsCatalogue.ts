@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.0.22
  */
 import type { RuntimeSettingsDescriptor } from './runtimeSettingsDescriptor';
+import type { SecurityConfigurationCapabilities } from './securityConfigurationCapabilities';
 
 /**
  * Version 1 uses JSON Schema 2020-12 field descriptions. New groups and fields
@@ -15,4 +16,5 @@ export interface RuntimeSettingsCatalogue {
   groups: RuntimeSettingsDescriptor[];
   /** @minimum 0 */
   schema_version: number;
+  security: SecurityConfigurationCapabilities;
 }

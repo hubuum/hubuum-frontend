@@ -78,6 +78,14 @@ describe("generic BFF proxy admin gate", () => {
 		"api/v0/auth/login",
 		"api/v1/auth/%72efresh",
 		"api/v1/auth/refresh/",
+		"api/v1/auth/interactions",
+		"api/v1/%61uth/interactions",
+		"api/v1/auth%2Finteractions",
+		"api/v1/auth/%69nteractions",
+		"api/v1/auth/interactions/aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa/complete",
+		"api/v1/auth/callbacks/aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
+		"api/v1/admin/runtime-settings/security-candidates",
+		"api/v1/admin/runtime-settings/%73ecurity-candidates",
 	])("blocks raw session issuance via %s", async (path) => {
 		const response = await POST(
 			new NextRequest(`https://console.example/_hubuum-bff/hubuum/${path}`, {
@@ -157,7 +165,9 @@ describe("generic BFF proxy admin gate", () => {
 
 	it("preserves a rotated session even if the rejected upstream body fails to cancel", async () => {
 		mocks.invalidateRejectedSession.mockResolvedValueOnce(false);
-		const cancel = vi.fn(() => Promise.reject(new Error("Upstream disconnected")));
+		const cancel = vi.fn(() =>
+			Promise.reject(new Error("Upstream disconnected")),
+		);
 		mocks.fetch.mockResolvedValue(
 			new Response(new ReadableStream({ cancel }), { status: 401 }),
 		);

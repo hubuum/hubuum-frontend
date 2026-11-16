@@ -5,6 +5,7 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.22
  */
+import type { BrowserSettings } from './browserSettings';
 import type { LoginRateLimitConfig } from './loginRateLimitConfig';
 import type { SecretStatus } from './secretStatus';
 
@@ -13,6 +14,7 @@ export interface AuthenticationConfig {
   admin_groupname: string;
   /** @nullable */
   admin_identity_scope?: string | null;
+  browser: BrowserSettings;
   credential_activity_enabled: boolean;
   credential_activity_retention_days: number;
   /** @minimum 0 */

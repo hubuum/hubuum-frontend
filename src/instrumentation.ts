@@ -8,4 +8,10 @@ export async function register() {
 			"[hubuum-setup] Setup initialization is unavailable; check the frontend configuration and Valkey connection.",
 		);
 	}
+	if (process.env.NEXT_PHASE !== "phase-production-build") {
+		const { startAuthenticationCleanup } = await import(
+			"@/lib/auth/interaction-cleanup-worker"
+		);
+		startAuthenticationCleanup();
+	}
 }
