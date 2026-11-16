@@ -9,7 +9,8 @@ import { approveProvider } from "./browser-provider.mjs";
 let browser;
 let stage = "input";
 const checks = [];
-const lines = createInterface({ input: process.stdin })[Symbol.asyncIterator]();
+const reader = createInterface({ input: process.stdin });
+const lines = reader[Symbol.asyncIterator]();
 async function checkpoint(event, extra = {}) {
 	process.stdout.write(`${JSON.stringify({ event, ...extra })}\n`);
 	assert.equal((await lines.next()).value, "ok");
@@ -177,5 +178,6 @@ try {
 	process.exitCode = 1;
 } finally {
 	if (browser) await browser.close();
-	await lines.return();
+	reader.close();
+	process.stdin.destroy();
 }
