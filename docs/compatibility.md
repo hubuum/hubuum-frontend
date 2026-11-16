@@ -53,6 +53,22 @@ Update `SUPPORTED_SERVER_VERSION` in `src/lib/backend-setup.ts` when advancing
 the supported release; its test checks alignment with the bundled OpenAPI file.
 Existing environment-configured deployments retain their current behavior.
 
+## Authentication project transport
+
+The `project/auth-support` BFF consumes the accepted server source and immutable
+images in [the source ledger](authentication-project-source.json). The clean
+production transport matrix passed 102 checks across local accounts, verified
+LDAPS, real Keycloak ID-token/UserInfo and synthetic OAuth. The
+[sanitized qualification ledger](assets/authentication-qualification.json)
+records the source, compiled server, fixture and report hashes and exact checks.
+
+The released compatibility target remains v0.0.22; its full 110-check backend
+regression passes separately. These results qualify the server-side BFF transport.
+React login/setup and native real GitHub qualification remain separate deliveries
+under frontend #197/#198 and server #581. Register the exact BFF return target
+and retain verified TLS before enabling browser interactions; see
+[session security](session-security.md#project-6-browser-authentication).
+
 ## Interactive session upgrade
 
 Frontend v0.0.22 requires the versioned login and rotating-refresh

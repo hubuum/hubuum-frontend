@@ -151,3 +151,11 @@ The LDAP profile provisions and verifies the directory through the server fixtur
 it qualifies hosted BFF login and fresh approval, while the dedicated browser
 candidate preview runs for OIDC/OAuth. This BFF driver does not establish React
 login/setup UI or native real GitHub acceptance; those remain part of server #581.
+
+The clean-source production matrix passed **102/102 checks**: local 17, LDAPS 20,
+Keycloak ID-token 23, UserInfo 21 and synthetic OAuth 21. This includes actual
+Chromium cookie/storage/replay checks, response loss before cookie delivery,
+server-completion response loss, SIGKILL recovery after backend issuance and an
+uncertain protected mutation without replay. The
+[sanitized qualification ledger](assets/authentication-qualification.json) binds
+all five profiles to one clean source and compiled production server tree.
