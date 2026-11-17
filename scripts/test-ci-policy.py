@@ -54,6 +54,7 @@ class ClassificationTests(unittest.TestCase):
             "docs/authentication-project-source.json",
             "tests/integration/authentication.py",
             "tests/integration/browser-security.mjs",
+            "tests/integration/browser-login.mjs",
             "src/lib/auth/interaction-cleanup-worker.ts",
         ):
             with self.subTest(path=path):

@@ -8,6 +8,10 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Project #6 provider-aware browser login and exact-operation fresh approval.
+  The original tab shows bounded progress and typed denial, expiry, unavailable
+  provider and unsupported-freshness outcomes; provider exchange stays on Hubuum.
+  Local/LDAP password and older-server flows remain available.
 - Project #6 server-side browser authentication: bound handoff/completion,
   private Valkey redemption state, ordinary rotating frontend sessions and
   exact-operation fresh approval. Provider verification keeps activation
@@ -19,6 +23,10 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- Require an explicit local recovery choice after modern discovery fails or a
+  remembered provider is removed. Browser-only providers never fall back to
+  password prompts. Approval methods use the canonical current identity scope;
+  session, redemption and approval credentials stay on the server.
 - Keep raw interaction, callback and security-candidate endpoints behind dedicated
   BFF handlers. Generic browser proxy requests cannot obtain redemption secrets
   or activation receipts. Repeat completion never repeats a protected mutation.

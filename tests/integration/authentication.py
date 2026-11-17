@@ -41,9 +41,47 @@ class Proxy(BaseHTTPRequestHandler):
     def log_message(self, *_args):
         pass
 
+    def request_body(self):
+        """The real BFF streams generic proxy writes using HTTP/1.1 chunks."""
+        limit = 1024 * 1024
+        if self.headers.get("Transfer-Encoding", "").lower() != "chunked":
+            size = int(self.headers.get("Content-Length", "0"))
+            if not 0 <= size <= limit:
+                raise ValueError("Fixture request exceeds its bound")
+            body = self.rfile.read(size)
+            if len(body) != size:
+                raise ValueError("Incomplete fixture request")
+            return body
+        body = bytearray()
+        while True:
+            line = self.rfile.readline(129)
+            if len(line) > 128 or not line.endswith(b"\r\n"):
+                raise ValueError("Invalid fixture chunk header")
+            size = int(line.split(b";", 1)[0], 16)
+            if not 0 <= size <= limit - len(body):
+                raise ValueError("Fixture request exceeds its bound")
+            if size == 0:
+                remaining = 8192
+                while remaining > 0:
+                    trailer = self.rfile.readline(remaining + 1)
+                    remaining -= len(trailer)
+                    if trailer == b"\r\n":
+                        return bytes(body)
+                    if not trailer.endswith(b"\r\n"):
+                        break
+                raise ValueError("Invalid fixture trailers")
+            chunk = self.rfile.read(size)
+            if len(chunk) != size or self.rfile.read(2) != b"\r\n":
+                raise ValueError("Incomplete fixture chunk")
+            body.extend(chunk)
+
     def forward(self):
-        body = self.rfile.read(min(int(self.headers.get("Content-Length", "0")), 1024 * 1024))
-        headers = {key: value for key, value in self.headers.items() if key.lower() not in ("host", "connection", "transfer-encoding")}
+        try:
+            body = self.request_body()
+        except ValueError:
+            self.send_error(400, "Invalid bounded fixture request")
+            return
+        headers = {key: value for key, value in self.headers.items() if key.lower() not in ("host", "connection", "transfer-encoding", "content-length")}
         headers.update(self.upstream_headers())
         connection = self.connection_to_upstream()
         try:
@@ -143,6 +181,7 @@ class Consumer:
         self.admin = Browser(fixture.root / "mount/ca.pem")
         self.prefix = fixture.prefix + ":"
         self.process = None
+        self.browser_ui = False
         self.log = (fixture.root / "frontend.log").open("w")
         os.chmod(fixture.root / "frontend.log", 0o600)
         self.secrets = [fixture.local_password, fixture.client_secret]
@@ -329,6 +368,35 @@ class Consumer:
                 cookie.value = accepted["sid"]
         self.passed("actual Chromium return rotates a Secure HttpOnly cookie, leaves browser storage empty and cannot replay issuance")
 
+    def browser_login_ui(self):
+        public_key = subprocess.check_output(["openssl", "x509", "-in", str(self.fixture.root / "mount/server.pem"), "-pubkey", "-noout"])
+        der = subprocess.check_output(["openssl", "pkey", "-pubin", "-outform", "DER"], input=public_key)
+        password = self.fixture.local_password if self.profile == "local" else self.fixture.ldap_password if self.profile == "ldap" else getattr(self.fixture, "password", "")
+        result = subprocess.run([str(self.node), "tests/integration/browser-login.mjs"], cwd=ROOT, env=self.env,
+                                input=json.dumps({"profile": self.profile, "provider": self.provider, "serverOrigin": self.fixture.origin,
+                                                  "spki": base64.b64encode(hashlib.sha256(der).digest()).decode(),
+                                                  "eligibilityInterval": 30,
+                                                  "username": "admin" if self.profile == "local" else "amy" if self.profile == "ldap" else "alice", "password": password}),
+                                text=True, capture_output=True, timeout=180)
+        if result.returncode:
+            failure = json.loads(result.stderr)
+            failure["interaction_phases"] = json.loads(self.fixture.sql("SELECT coalesce(json_agg(json_build_object('state',document#>>'{lifecycle,phase,state}','reason',document#>>'{lifecycle,phase,reason}')), '[]')::text FROM auth_interactions"))
+            failure["external_state_counts"] = {
+                "active_sessions": int(self.fixture.sql("SELECT count(*) FROM auth_sessions s JOIN principals p ON p.id=s.principal_id WHERE p.provider_managed AND s.revoked_at IS NULL")),
+                "revoked_sessions": int(self.fixture.sql("SELECT count(*) FROM auth_sessions s JOIN principals p ON p.id=s.principal_id WHERE p.provider_managed AND s.revoked_at IS NOT NULL")),
+                "retained_credentials": int(self.fixture.sql("SELECT count(*) FROM auth_upstream_credentials")),
+                "proof_tokens": int(self.fixture.sql("SELECT count(*) FROM tokens WHERE name='ui-fresh-proof'")),
+            }
+            for check in failure["checks"]:
+                self.passed(check)
+            self.fixture.evidence.joinpath("ui-failure.json").write_text(json.dumps(failure, indent=2) + "\n")
+            raise RuntimeError("Production browser login UI stopped at " + failure["stage"])
+        outcome = json.loads(result.stdout)
+        if outcome.get("passed") is not True:
+            raise RuntimeError("Production browser login UI returned no acceptance")
+        for check in outcome["checks"]:
+            self.passed(check)
+
     def crash_owned_completion(self):
         flow, _ = self.api("auth/interactions", {"provider_id": self.provider, "purpose": "login", "return_path": "/healthz"}, expected=(201,))
         returned = self.authorize(flow, self.front, defer=True)
@@ -393,6 +461,14 @@ class Consumer:
         self.api(f"auth/interactions/{flow['id']}/result", {"nonce": flow["nonce"]}, expected=(409,))
         self.passed("lost protected mutation result is reported as uncertain without replay and its one created credential can be inspected and revoked")
 
+    def provider_configuration(self):
+        spec = definition(self.fixture, self.profile)
+        if self.browser_ui and "membership" in spec:
+            # Exercise complete UI actions before forcing the next due refresh.
+            # The server's protocol fixture separately stresses five-second leases.
+            spec["membership"].update(refresh_interval_seconds=30, max_stale_seconds=90)
+        return spec
+
     def configure(self):
         self.api("auth/login", {"name": "admin", "password": self.fixture.local_password}, browser=self.admin)
         administrator = self.snapshot(self.admin)
@@ -400,7 +476,7 @@ class Consumer:
         if self.profile == "local":
             self.provider = "local"
             return
-        spec = definition(self.fixture, self.profile)
+        spec = self.provider_configuration()
         candidate = self.fixture.api("/api/v1/admin/runtime-settings/security-candidates", {
             "group": "authentication", "expected_revision": 1,
             "providers": [{"name": "company", "enabled": True, "source": "runtime", "kind": self.profile if self.profile in ("oauth", "ldap") else "oidc", "configuration": spec}]}, token=administrator["token"])
@@ -442,6 +518,9 @@ class Consumer:
 
     def qualify(self):
         self.configure()
+        if self.browser_ui:
+            self.browser_login_ui()
+            return
         methods, _ = self.api("auth/methods")
         if not any(method["provider_id"] == "local" for method in methods["methods"]) or not any(method["provider_id"] == self.provider for method in methods["methods"]):
             raise RuntimeError("Typed discovery omitted local recovery or the active provider")
@@ -592,6 +671,7 @@ def main():
     parser.add_argument("--node", type=Path, required=True)
     parser.add_argument("--profile", choices=("id_token", "userinfo", "oauth", "ldap", "local"), required=True)
     parser.add_argument("--evidence", type=Path, required=True)
+    parser.add_argument("--browser-ui", action="store_true", help="Qualify actual product login and fresh-approval UI")
     args = parser.parse_args()
     node_version = subprocess.check_output([str(args.node), "--version"], text=True).strip()
     if not node_version.startswith("v24."):
@@ -650,11 +730,13 @@ def main():
                 settings = json.loads(values["HUBUUM_AUTH_BROWSER"])
                 settings["return_targets"].append({"id": "frontend", "client_id": "hubuum-frontend", "uri": FRONTEND + "/_hubuum-bff/auth/interactions/return"})
                 values["HUBUUM_AUTH_BROWSER"] = json.dumps(settings)
-                values["HUBUUM_SESSION_ACCESS_SECONDS"] = "30"
+                values["HUBUUM_SESSION_ACCESS_SECONDS"] = "120" if args.browser_ui else "30"
             return super().env(name, values)
 
     fixture = Fixture(args.image, args.evidence, 48479, 48480) if args.profile in ("oauth", "ldap", "local") else Fixture(args.image, args.evidence, 48477, 48478, args.profile)
     report = {"profile": args.profile, "source": SOURCE, "server_image": qualified, "valkey": VALKEY,
+              "scope": "product login/approval UI" if args.browser_ui else "BFF transport",
+              "browser_ui_controller_sha256": hashlib.sha256((ROOT / "tests/integration/browser-login.mjs").read_bytes()).hexdigest() if args.browser_ui else None,
               "node_version": node_version, "ldap_image": LDAP if args.profile == "ldap" else None,
               "browser_controller_sha256": hashlib.sha256((ROOT / "tests/integration/browser-security.mjs").read_bytes()).hexdigest(),
               "controller_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), "checks": [], "passed": False,
@@ -677,6 +759,7 @@ def main():
         identity.update(server_source_commit=commit, frontend_source_commit=report["frontend_source_commit"], frontend_source_dirty=report["frontend_source_dirty"])
         identity_path.write_text(json.dumps(identity, indent=2) + "\n")
         consumer = Consumer(fixture, module, args.node.resolve(), args.profile)
+        consumer.browser_ui = args.browser_ui
         report["checks"] = consumer.results
         consumer.start()
         consumer.qualify()

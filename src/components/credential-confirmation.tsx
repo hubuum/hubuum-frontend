@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { CreateModal } from "@/components/create-modal";
+import { BrowserAuthentication } from "@/components/browser-authentication";
+import {
+	approvalAuthenticationMethod,
+	type BrowserAuthenticationFlow,
+	type BrowserAuthenticationMethod,
+} from "@/lib/browser-authentication";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
 	type CredentialConfirmation,
@@ -22,6 +28,12 @@ export function CredentialConfirmationDialog() {
 	const submitting = useRef(false);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [method, setMethod] = useState<BrowserAuthenticationMethod | null>(
+		null,
+	);
+	const [loading, setLoading] = useState(true);
+	const [flow, setFlow] = useState<BrowserAuthenticationFlow | null>(null);
+	const [unavailable, setUnavailable] = useState(false);
 
 	useEffect(() => {
 		const unregister = registerCredentialConfirmation((confirmation) => {
@@ -30,7 +42,7 @@ export function CredentialConfirmationDialog() {
 					Response.json(
 						{
 							message:
-								"Finish the current password confirmation, then retry this operation.",
+								"Finish the current authentication request, then retry this operation.",
 						},
 						{ status: 409 },
 					),
@@ -49,6 +61,10 @@ export function CredentialConfirmationDialog() {
 					},
 				};
 				pendingRef.current = next;
+				setFlow(null);
+				setLoading(true);
+				setUnavailable(false);
+				setMethod(null);
 				setError(null);
 				setPending(next);
 				confirmation.signal.addEventListener("abort", abort, { once: true });
@@ -60,97 +76,212 @@ export function CredentialConfirmationDialog() {
 			pendingRef.current?.finish(null);
 		};
 	}, []);
+	useEffect(() => {
+		if (!pending) return;
+		const controller = new AbortController();
+		setLoading(true);
+		setUnavailable(false);
+		setMethod(null);
+		void approvalAuthenticationMethod(controller.signal)
+			.then((selected) => {
+				if (!controller.signal.aborted) setMethod(selected);
+			})
+			.catch((caught) => {
+				if (!controller.signal.aborted) {
+					setUnavailable(true);
+					setError(
+						caught instanceof Error
+							? caught.message
+							: "Authentication capabilities are unavailable.",
+					);
+				}
+			})
+			.finally(() => {
+				if (!controller.signal.aborted) setLoading(false);
+			});
+		return () => controller.abort();
+	}, [pending]);
+	useEffect(() => {
+		if (
+			pending &&
+			!loading &&
+			!unavailable &&
+			!flow &&
+			method?.interaction !== "browser"
+		)
+			passwordRef.current?.focus();
+	}, [pending, loading, unavailable, flow, method]);
 
 	if (!pending) return null;
 	return createPortal(
 		<CreateModal
 			open
-			title="Confirm your password"
-			closeDisabled={busy}
-			onClose={() => pending.finish(null)}
+			title={
+				method?.interaction === "browser" || loading || unavailable
+					? "Approve this operation"
+					: "Confirm your password"
+			}
+			closeDisabled={busy || Boolean(flow)}
+			onClose={() => {
+				if (!flow) pending.finish(null);
+			}}
 		>
-			<form
-				className="stack"
-				onSubmit={async (event) => {
-					event.preventDefault();
-					if (submitting.current || !passwordRef.current?.value) return;
-					submitting.current = true;
-					setBusy(true);
-					setError(null);
-					try {
-						const submission = pending.submit(passwordRef.current.value);
-						passwordRef.current.value = "";
-						const response = await submission;
-						const payload: unknown =
-							response.status === 403
-								? await response
-										.clone()
-										.json()
-										.catch(() => null)
-								: null;
+			<pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+				{pending.summary}
+			</pre>
+			{flow ? (
+				<BrowserAuthentication
+					flow={flow}
+					signal={pending.signal}
+					onCancel={() => pending.finish(null)}
+					onComplete={(result) => {
 						if (
-							isRecord(payload) &&
-							payload.reason === "password_confirmation_failed"
-						) {
-							setError(
-								getApiErrorMessage(payload, "Password confirmation failed."),
+							isRecord(result) &&
+							typeof result.status === "number" &&
+							Number.isInteger(result.status) &&
+							result.status >= 200 &&
+							result.status <= 599
+						)
+							pending.finish(
+								new Response(
+									[204, 205].includes(result.status)
+										? null
+										: JSON.stringify(result.body),
+									{
+										status: result.status,
+										headers: { "Content-Type": "application/json" },
+									},
+								),
 							);
-							window.requestAnimationFrame(() => passwordRef.current?.focus());
-						} else {
-							pending.finish(response);
-						}
-					} catch {
-						pending.finish(
-							Response.json(
-								{
-									message:
-										"The result could not be confirmed. Check the affected account, task, or restore status before retrying.",
-								},
-								{ status: 502 },
-							),
-						);
-					} finally {
-						submitting.current = false;
-						setBusy(false);
-					}
-				}}
-			>
-				<p>
-					The server requires your current password to approve this operation
-					once.
-				</p>
-				<pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-					{pending.summary}
-				</pre>
-				<label className="control-field">
-					<span>Your current password</span>
-					<input
-						ref={passwordRef}
-						type="password"
-						autoComplete="current-password"
-						required
-						disabled={busy}
-					/>
-				</label>
-				{error ? (
-					<div className="error-banner" role="alert">
-						{error}
-					</div>
-				) : null}
-				<div className="form-actions">
-					<button
-						type="button"
-						className="ghost"
-						disabled={busy}
-						onClick={() => pending.finish(null)}
+						else
+							pending.finish(
+								Response.json(
+									{
+										message:
+											"The operation could not be confirmed. Inspect its current state before retrying.",
+									},
+									{ status: 502 },
+								),
+							);
+					}}
+				/>
+			) : (
+				<>
+					{loading && (
+						<p role="status">
+							Checking your account's authentication capabilities…
+						</p>
+					)}
+					<form
+						className="stack"
+						onSubmit={async (event) => {
+							event.preventDefault();
+							if (
+								submitting.current ||
+								loading ||
+								unavailable ||
+								(method?.interaction !== "browser" &&
+									!passwordRef.current?.value)
+							)
+								return;
+							submitting.current = true;
+							setBusy(true);
+							setError(null);
+							try {
+								if (method?.interaction === "browser") {
+									setFlow(await pending.begin(method.provider_id));
+									return;
+								}
+								const input = passwordRef.current;
+								if (!input?.value) return;
+								const submission = pending.submit(input.value);
+								input.value = "";
+								const response = await submission;
+								const payload: unknown =
+									response.status === 403
+										? await response
+												.clone()
+												.json()
+												.catch(() => null)
+										: null;
+								if (
+									isRecord(payload) &&
+									payload.reason === "password_confirmation_failed"
+								) {
+									setError(
+										getApiErrorMessage(
+											payload,
+											"Password confirmation failed.",
+										),
+									);
+									window.requestAnimationFrame(() =>
+										passwordRef.current?.focus(),
+									);
+								} else {
+									pending.finish(response);
+								}
+							} catch {
+								pending.finish(
+									Response.json(
+										{
+											message:
+												"The result could not be confirmed. Check the affected account, task, or restore status before retrying.",
+										},
+										{ status: 502 },
+									),
+								);
+							} finally {
+								submitting.current = false;
+								setBusy(false);
+							}
+						}}
 					>
-						Cancel
-					</button>
-					<button type="submit" disabled={busy}>
-						{busy ? "Confirming…" : "Confirm operation"}
-					</button>
-				</div>
-			</form>
+						<p>
+							{loading
+								? "The server selects the supported authentication method for your account."
+								: unavailable
+									? "Use a supported account to approve this operation."
+									: method?.interaction === "browser"
+										? "Authenticate as the same account in Hubuum's authentication page and approve this exact operation once."
+										: "The server requires your current password to approve this operation once."}
+						</p>
+						{!loading && !unavailable && method?.interaction !== "browser" && (
+							<label className="control-field">
+								<span>Your current password</span>
+								<input
+									ref={passwordRef}
+									type="password"
+									autoComplete="current-password"
+									required
+									disabled={busy}
+								/>
+							</label>
+						)}
+						{error ? (
+							<div className="error-banner" role="alert">
+								{error}
+							</div>
+						) : null}
+						<div className="form-actions">
+							<button
+								type="button"
+								className="ghost"
+								disabled={busy}
+								onClick={() => pending.finish(null)}
+							>
+								Cancel
+							</button>
+							<button type="submit" disabled={busy || loading || unavailable}>
+								{busy
+									? "Confirming…"
+									: method?.interaction === "browser"
+										? `Continue with ${method.name}`
+										: "Confirm operation"}
+							</button>
+						</div>
+					</form>
+				</>
+			)}
 		</CreateModal>,
 		document.body,
 	);

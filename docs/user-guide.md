@@ -804,3 +804,36 @@ settings. Reload replaces that group's draft with the latest server values.
 Discovery is part of the pinned Server v0.0.22 contract. Older servers without
 discovery retain read-only effective configuration; upgrade the server before
 using runtime editing.
+
+## Project #6 sign-in and approvals
+
+The `project/auth-support` interface uses the configured server's provider choices.
+Choose your account's provider. Local and LDAP accounts keep their password form;
+for a browser provider, copy the displayed code and open the authentication page
+in its new tab. Enter the code, sign in and review the identity and request before
+approving. The original tab resumes the intended page. Cancel ends that request;
+an expired or rejected request requires a new attempt.
+
+If discovery fails, retry or explicitly choose **Use local recovery account**.
+That choice accepts local accounts only. A removed remembered provider requires
+an explicit new choice. External account passwords are never requested as a
+fallback for unavailable browser authentication.
+
+A protected operation opens an approval dialog showing its exact prepared action.
+The server selects fresh password or browser authentication for the current
+account. Providers without supported freshness explain that limitation and offer
+no password fallback; use a supported account or local recovery administration.
+A lost or uncertain operation result requires inspecting the affected account,
+task or restore before retrying.
+
+Each tab keeps its own request and public code. Tabs share the browser's ordinary
+login cookie; approving one request cannot approve another operation. Keep the
+initiating tab open and inspect its result before closing it. Login and approval
+passwords clear after submission; session and redemption credentials are never
+stored in browser storage. Explicit one-time API-token creation retains its
+existing reveal-and-dismiss interface.
+
+See [session security](session-security.md#project-6-browser-authentication) for
+registered return targets, verified TLS and deployment requirements. Provider
+administration is delivered separately under frontend #198. These project
+features do not change the released server compatibility target.
