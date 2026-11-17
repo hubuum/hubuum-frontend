@@ -1,19 +1,19 @@
 {
   "project_only": true,
   "declared_release_target_unchanged": "0.0.22",
-  "accepted_server_source": "c8e4e196cee0bb87ccea4a44f0fae4e05cd8dbcd",
-  "source_openapi_url": "https://raw.githubusercontent.com/hubuum/hubuum/c8e4e196cee0bb87ccea4a44f0fae4e05cd8dbcd/docs/openapi.json",
+  "accepted_server_source": "8e6e8344c458765af556890572593775ca4fd9a0",
+  "source_openapi_url": "https://raw.githubusercontent.com/hubuum/hubuum/8e6e8344c458765af556890572593775ca4fd9a0/docs/openapi.json",
   "source_openapi_sha256": "11f894bd8a45abc2f85e80a8ccc9c88062a62b2e1c4f6871d1658fada200b720",
-  "source_fixture_url": "https://raw.githubusercontent.com/hubuum/hubuum/c8e4e196cee0bb87ccea4a44f0fae4e05cd8dbcd/docs/authentication/fixtures.json",
+  "source_fixture_url": "https://raw.githubusercontent.com/hubuum/hubuum/8e6e8344c458765af556890572593775ca4fd9a0/docs/authentication/fixtures.json",
   "source_fixture_sha256": "027eff028cb1c7252132f1f93225957f548ccb0dd839e2b7e5c291efb872c028",
   "source_fixture_cases": 48,
-  "candidate_artifact_id": 14280682804,
-  "candidate_archive_sha256": "8b9d41e2d752d1be8616f930132476beefb43b2d8398e8f038c2d1601c45da3d",
-  "server_pull_request": "https://github.com/hubuum/hubuum/pull/598",
+  "candidate_artifact_id": 14287879386,
+  "candidate_archive_sha256": "8b82fb62de8cebf089cb9f358f0b0f814d76011668a5f4fc87d5dcd2c44c4709",
+  "server_pull_request": "https://github.com/hubuum/hubuum/pull/599",
   "server_merge_state": "squash-merged into project/auth-support",
-  "candidate_tested_commit": "c167ca42130a43818f178dbcfd76dc4c37ec3400",
-  "candidate_image_manifest": "sha256:3bef4a6e26ed456143f7d98bfe3f02a773f6abe31908551228ab180bac854583",
-  "candidate_image_config": "sha256:6f05f6d5c9367d6198015c3e98d198008b9a495cf50875d12fa5becd398a6e45",
+  "candidate_tested_commit": "3d80c1552085f68de9b1af33d05c948df4fd184d",
+  "candidate_image_manifest": "sha256:eb246a78d2f32f660e4af33a0273ba274955e54dcc9c9a96d89055f2d9e4b3f7",
+  "candidate_image_config": "sha256:bb57dc1028296d19343a8813fe4b79bdcecdf454767df58d36bea6ac9562a6e0",
   "source_canonical_spec_sha256": "839c32e8742fe28ba02cb367dcb8fdc8eb35cf971f13f964941f85b488d715e1",
   "source_live_fixture_sha256": {
     "tests/python/integration/keycloak.py": "7e40d6b5d5ef70c2a6cd649736d56dd2f6ed8112c1ebd0444abe6b946e21c2a0",
@@ -21,21 +21,30 @@
   },
   "qualified_server_images": [
     {
-      "docker_image_id": "sha256:384b8bff392d0cb0a73bdc117e2f6bd8eefac4bb0f9c13cf9d153d41326dec07",
-      "manifest": "sha256:84971f9eab01eb58d5167580d48fc67b96313907671db4080aa709934b90f918",
-      "config": "sha256:0b1787009fe4a1ed64158a0b485cfeb97d330f4a4c4c81eeb246078c9ada54e4",
+      "docker_image_id": "sha256:5d8be6932ec997acd98dacfb4aff57eaee48c4cf28579167869d04133ca55442",
+      "manifest": "sha256:daaeef920b62eee0431b48045aaeaa56448def48812f927b2b1e357285a5175b",
+      "config": "sha256:f7f453db1e794b965c17591c4ff3ceb34886643027020116d1fa48a40f94dd24",
       "platform": "linux/arm64",
-      "source": "c8e4e196cee0bb87ccea4a44f0fae4e05cd8dbcd"
+      "source": "8e6e8344c458765af556890572593775ca4fd9a0",
+      "build_flags": "-F tls-rustls -F tls-openssl --locked --release"
     },
     {
-      "manifest": "sha256:3bef4a6e26ed456143f7d98bfe3f02a773f6abe31908551228ab180bac854583",
-      "config": "sha256:6f05f6d5c9367d6198015c3e98d198008b9a495cf50875d12fa5becd398a6e45",
+      "docker_image_id": "sha256:200dc29e4c5ba5cb0825ea14836e95650ef0e0a11e173020e98d3ab1d1dc66fd",
+      "manifest": "sha256:c0a58775ee5b558e41c1f40ac5e1f4a181a5123e24328c858397966d31fc3cc6",
+      "config": "sha256:55483c9725e64e188164b8dbeddf6b469b883037c34708b8738950f6b075596f",
+      "platform": "linux/arm64",
+      "source": "8e6e8344c458765af556890572593775ca4fd9a0",
+      "build_flags": "-F tls-rustls -F tls-openssl -F permissions-treetop --locked --release"
+    },
+    {
+      "manifest": "sha256:eb246a78d2f32f660e4af33a0273ba274955e54dcc9c9a96d89055f2d9e4b3f7",
+      "config": "sha256:bb57dc1028296d19343a8813fe4b79bdcecdf454767df58d36bea6ac9562a6e0",
       "platform": "linux/amd64",
-      "source": "c167ca42130a43818f178dbcfd76dc4c37ec3400"
+      "source": "3d80c1552085f68de9b1af33d05c948df4fd184d"
     }
   ],
-  "server_integration_commit": "a8a37e4b56058def8fdf3676defc6fee89cc5daa",
-  "native_qualification": "BFF #196 accepted; product login/approval UI #197 passed the clean production 50/50 matrix on source d3fcef25660594bfeaccfd42296c36f238f42644. Final CI/container/candidate acceptance is pending. Administration #198 and the final native real GitHub/server #581 matrix remain required.",
+  "server_integration_commit": "540a511e0936abeb6a73aee2c94c5e25eba210b9",
+  "native_qualification": "BFF #196 and browser UI #197 are accepted. Administration #198 passed 63 clean product checks plus 12 real Treetop checks; final frontend CI/candidate acceptance is required. Native real GitHub and full server #581 qualification remain required.",
   "accepted_bff_foundation": {
     "pull_request": "https://github.com/hubuum/hubuum-frontend/pull/204",
     "integration_commit": "3a8dba71b20c7d3a5df06c0f1e75bc7c20ad3543",
@@ -46,5 +55,15 @@
     "candidate_sha256": "70973d2c4fb4ecfcf5279b2cbbf55f0bce224e3ee22b70c2b70ae95da470b1be",
     "candidate_expires_at": "2026-12-16T19:33:01Z"
   },
-  "candidate_expires_at": "2026-12-16T23:01:55Z"
+  "candidate_expires_at": "2026-12-17T01:12:42Z",
+  "accepted_browser_ui": {
+    "pull_request": "https://github.com/hubuum/hubuum-frontend/pull/209",
+    "integration_commit": "09995e99197fd5ed496e16363cfa498831b00242",
+    "source_commit": "800221c96b6c86c4ea9af48bd66517f83f14ec03",
+    "tested_commit": "6d9363383cdc394102e57884a553f4b4b62557e8",
+    "tree": "b810543a1292a336dc3d365544fa68a90f3b7374",
+    "artifact_id": 14283753294,
+    "archive_sha256": "e141f2017d711e71ac462317360127ece7823d84cacb747c1dd7db8e008b0448",
+    "expires_at": "2026-12-16T23:59:49Z"
+  }
 }

@@ -191,7 +191,7 @@ The clean production UI source `d3fcef25660594bfeaccfd42296c36f238f42644` passed
 
 The UI fixture allows complete form interactions on a 30-second eligibility schedule, then explicitly waits past the next renewal. Concurrent OIDC tabs preserve separate frozen operations: approval creates one credential, denial creates none, and the ordinary session retains its principal after renewal. Callback denial may close the approval dialog and surface on the original operation form; poll-first denial may remain in the dialog. Temporary read-only eligibility responses use bounded fixture retries; protected writes never replay. Separate server protocol fixtures retain five-second refresh stress coverage.
 
-This is implementing-agent local qualification. Final CI, production container and immutable candidate acceptance are required before #197 is completed. Provider administration #198 and the full native real GitHub/server #581 matrix remain separate required gates. Project integration does not promote main or stable.
+Browser UI #197 is accepted through PR #209, integration `09995e99197fd5ed496e16363cfa498831b00242`, after final CI, container and immutable candidate verification. This is implementing-agent acceptance, not independent approval. Provider administration #198 and the full native real GitHub/server #581 matrix remain separate required gates. Project integration does not promote main or stable.
 
 ## Runtime security administration
 
@@ -234,3 +234,25 @@ callback query strings, traces, screenshots or persistent browser profile are
 retained. The synthetic OAuth profile is not real GitHub acceptance. Final clean
 source/image evidence must be recorded in the qualification ledger before an
 administration candidate is accepted.
+
+## Qualified runtime administration
+
+The [administration ledger](assets/provider-administration-qualification.json)
+records 63 clean production checks across local, LDAPS, synthetic OAuth and both
+real Keycloak profiles, plus 12 real Treetop checks. It pins qualified source
+`0ddc0e7be6357143003a1abc1144f750b2d4e702`, accepted server #599, separate normal/Treetop feature images,
+controller/report hashes and the compiled standalone tree. Candidate preparation
+leaves all six identity, membership, session and credential counts unchanged;
+exact fresh local approval activates the reviewed revision. Releasing ownership
+verifies the complete deployment selection and sends no runtime connection.
+
+Real Treetop coverage includes rejected unreachable and deny-policy preflight,
+restart/reconnect, fail-closed outage, explicit Local activation and deployment
+ownership release. Local accounts remain configured. During a policy outage,
+new login can fail because its audit snapshot consults the selected policy;
+use the server's documented offline `hubuum-admin --recover-security` procedure
+with privileged writes stopped across all replicas. Login is requalified after
+reconnect. No automatic authorization fallback is performed.
+
+Final frontend CI and immutable candidate acceptance are required before #198
+is completed. Native real GitHub and the full #581 matrix remain separate gates.
