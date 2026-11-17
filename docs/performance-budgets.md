@@ -35,7 +35,7 @@ stopping at the first violation.
   "version": 1,
   "maxChunkGzipBytes": 160000,
   "maxRouteGzipBytes": 470000,
-  "maxTotalGzipBytes": 1250000
+  "maxTotalGzipBytes": 1275000
 }
 ```
 
@@ -52,6 +52,17 @@ compared with 1,198,760 bytes before the graph changes. Loading the graph's shar
 configuration helper asynchronously removes 8,168 bytes from the first combined
 implementation. The 1,250,000-byte total limit leaves about 3.6 percent headroom
 for this measured baseline. The individual chunk and route limits are unchanged.
+
+Runtime provider administration increases the accepted browser-authentication
+baseline from 1,244,745 to 1,253,304 compressed bytes: 8,559 bytes (0.69 percent)
+for the provider editor, write-only credential intent validation, non-activating
+verification/review and exact activation controls. The largest chunk remains
+137,021 bytes; the largest route changes from 381,966 to 381,985 bytes. The
+1,275,000-byte total limit leaves 1.73 percent headroom for this required product
+workflow. Chunk and route limits remain unchanged. These measurements use the
+same local Node.js 24.22.3 build and gzip level nine; CI validates its pinned
+Node.js build independently.
+
 
 Budget changes should be intentional. Prefer reducing or lazy-loading the
 regression. When a product requirement genuinely increases the baseline,
