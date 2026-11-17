@@ -72,8 +72,8 @@ The tests use a unique key prefix and remove only their own records.
 
 These routes belong to `project/auth-support` and require the accepted project
 server. The existing local/LDAP password and rotating-session APIs remain
-available. Browser login and administrator controls are delivered separately in
-frontend #197/#198 after the BFF #196 candidate is accepted. No project push
+available. Browser login and administrator controls are delivered in frontend
+issues #197/#198 above the accepted BFF #196 foundation. No project push
 publishes the stable website or container.
 
 The BFF creates a purpose-bound interaction using its registered client
@@ -191,4 +191,68 @@ The clean production UI source `d3fcef25660594bfeaccfd42296c36f238f42644` passed
 
 The UI fixture allows complete form interactions on a 30-second eligibility schedule, then explicitly waits past the next renewal. Concurrent OIDC tabs preserve separate frozen operations: approval creates one credential, denial creates none, and the ordinary session retains its principal after renewal. Callback denial may close the approval dialog and surface on the original operation form; poll-first denial may remain in the dialog. Temporary read-only eligibility responses use bounded fixture retries; protected writes never replay. Separate server protocol fixtures retain five-second refresh stress coverage.
 
-This is implementing-agent local qualification. Final CI, production container and immutable candidate acceptance are required before #197 is completed. Provider administration #198 and the full native real GitHub/server #581 matrix remain separate required gates. Project integration does not promote main or stable.
+Browser UI #197 is accepted through PR #209, integration `09995e99197fd5ed496e16363cfa498831b00242`, after final CI, container and immutable candidate verification. This is implementing-agent acceptance, not independent approval. Provider administration #198 and the full native real GitHub/server #581 matrix remain separate required gates. Project integration does not promote main or stable.
+
+## Runtime security administration
+
+The fixed private BFF administrator routes enforce same-origin mutations,
+ordinary session ownership and administrator access. Candidate receipts remain
+in Valkey, bound to the backend target, opaque frontend session, original token
+fingerprint and server candidate identity/expiry. Rotation requires recreating
+and testing the candidate; a receipt is never rebound to a replacement token.
+The browser can submit settings and test identities, receive redacted checks and
+a non-provisioning preview, and approve activation with a local administrator
+password. It cannot select an arbitrary approval operation or supply a receipt.
+The BFF constructs the exact candidate/group/revision approval and performs the
+protected activation once. An uncertain result requires status/configuration
+inspection; it never starts an automatic mutation retry.
+
+The frontend preserves Keep/Reference/Replace/Clear intent for each credential.
+Values and aliases use uncontrolled write-only inputs, clear on capture, and
+never enter React state, local/session storage or review summaries. The server
+owns validation, encryption, secret-version/revision/lock fences, egress and TLS.
+Draft provider settings contain only non-secret protocol and membership policy.
+Unknown provider/backend definitions, missing capabilities, stale replicas and
+non-local or scoped actors leave security controls disabled or read-only.
+
+`tests/fixtures/authentication/fixtures.json` retains the unmodified 48-case
+shared corpus at SHA-256
+`027eff028cb1c7252132f1f93225957f548ccb0dd839e2b7e5c291efb872c028`.
+The owning Vitest checks cover bounded wire parsing, closed errors, interaction
+binding, connectivity versus identity verification, and private-receipt
+redaction. The historical discovery vector predates `browser_available`; its
+explicit augmentation is tested separately while production parsing remains
+strict. Database/provider/authorization and membership effects belong to the
+server's integration checks; wire fixtures do not establish those effects.
+
+The production fixture accepts `--admin-ui` to drive the real configuration,
+provider test and activation screens before native login/approval qualification.
+It checks six persistent table counts around preview through a bounded private
+stdin/stdout checkpoint controller, and updates the disposable Keycloak client's
+exact callback after candidate creation. No test credentials, profile data,
+callback query strings, traces, screenshots or persistent browser profile are
+retained. The synthetic OAuth profile is not real GitHub acceptance. Final clean
+source/image evidence must be recorded in the qualification ledger before an
+administration candidate is accepted.
+
+## Qualified runtime administration
+
+The [administration ledger](assets/provider-administration-qualification.json)
+records 63 clean production checks across local, LDAPS, synthetic OAuth and both
+real Keycloak profiles, plus 12 real Treetop checks. It pins qualified source
+`0ddc0e7be6357143003a1abc1144f750b2d4e702`, accepted server #599, separate normal/Treetop feature images,
+controller/report hashes and the compiled standalone tree. Candidate preparation
+leaves all six identity, membership, session and credential counts unchanged;
+exact fresh local approval activates the reviewed revision. Releasing ownership
+verifies the complete deployment selection and sends no runtime connection.
+
+Real Treetop coverage includes rejected unreachable and deny-policy preflight,
+restart/reconnect, fail-closed outage, explicit Local activation and deployment
+ownership release. Local accounts remain configured. During a policy outage,
+new login can fail because its audit snapshot consults the selected policy;
+use the server's documented offline `hubuum-admin --recover-security` procedure
+with privileged writes stopped across all replicas. Login is requalified after
+reconnect. No automatic authorization fallback is performed.
+
+Final frontend CI and immutable candidate acceptance are required before #198
+is completed. Native real GitHub and the full #581 matrix remain separate gates.

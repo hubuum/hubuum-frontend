@@ -8,6 +8,7 @@ import { TableExportMenu } from "@/components/table-export-menu";
 import { fetchPrincipalGroups } from "@/lib/api/principal-groups";
 import {
 	type ConsoleGroup,
+	isProviderManagedGroup,
 	normalizeIdentityScope,
 } from "@/lib/identity-scopes";
 import type { TableExportColumn, TableExportView } from "@/lib/table-export";
@@ -22,6 +23,12 @@ type PrincipalGroupMembershipsProps = {
 const groupMembershipExportColumns: TableExportColumn<ConsoleGroup>[] = [
 	{ key: "id", label: "ID", getValue: (group) => group.id },
 	{ key: "group", label: "Group", getValue: (group) => group.groupname },
+	{
+		key: "management",
+		label: "Group management",
+		getValue: (group) =>
+			isProviderManagedGroup(group) ? `Provider: ${group.managed_by}` : "Local",
+	},
 	{
 		key: "identity_scope",
 		label: "Identity scope",
@@ -69,6 +76,11 @@ export function PrincipalGroupMemberships({
 					compact
 				/>
 			</div>
+			<p className="muted">
+				Provider-managed groups are read-only. Local groups support manual
+				grants, including grants to external identities. This list shows group
+				management, not a separate history of each membership source.
+			</p>
 
 			{groupsQuery.isLoading ? (
 				<div className="muted">Loading groups...</div>
@@ -96,6 +108,7 @@ export function PrincipalGroupMemberships({
 								<th>ID</th>
 								<th>Scope</th>
 								<th>Group</th>
+								<th>Group management</th>
 								<th>Description</th>
 							</tr>
 						</thead>
@@ -111,6 +124,11 @@ export function PrincipalGroupMemberships({
 										>
 											{group.groupname}
 										</Link>
+									</td>
+									<td>
+										{isProviderManagedGroup(group)
+											? `Provider: ${group.managed_by}`
+											: "Local"}
 									</td>
 									<td>{group.description || "-"}</td>
 								</tr>

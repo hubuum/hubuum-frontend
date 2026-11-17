@@ -33,7 +33,12 @@ export default async function AdminConfigurationPage() {
 				</p>
 			</header>
 
-			<RuntimeSettingsEditor>
+			<RuntimeSettingsEditor
+				browserOrigin={config?.authentication?.browser?.origin}
+				authorizationAvailable={
+					config?.runtime_settings?.authorization?.available
+				}
+			>
 				{config ? (
 					<RuntimeConfigPanel config={config} />
 				) : (
