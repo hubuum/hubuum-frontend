@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { SecurityCandidateRequest } from "@/lib/api/generated/models";
 import type { RuntimeSettingsState } from "@/lib/api/runtime-settings";
 import {
 	externalProviderKind,
@@ -39,12 +40,35 @@ const authorization = z.object({
 });
 export function authorizationDraft(state: RuntimeSettingsState) {
 	const parsed = authorization.parse(state.runtime ?? state.effective);
+	const deployment = authorization.safeParse(state.deployment);
 	return {
 		...parsed,
+		deploymentBackend: deployment.success ? deployment.data.backend : null,
 		source:
 			state.source === "runtime"
 				? ("runtime" as const)
 				: ("deployment" as const),
+	};
+}
+
+export function authorizationReleaseRequest(
+	state: RuntimeSettingsState,
+): SecurityCandidateRequest {
+	const deployment = authorization.safeParse(state.deployment);
+	if (
+		state.group !== "authorization" ||
+		state.revision === null ||
+		!deployment.success
+	)
+		throw new Error(
+			"Reload a known deployment authorization configuration before releasing ownership.",
+		);
+	return {
+		group: "authorization",
+		expected_revision: state.revision,
+		backend: deployment.data.backend,
+		source: "deployment",
+		release_ownership: true,
 	};
 }
 

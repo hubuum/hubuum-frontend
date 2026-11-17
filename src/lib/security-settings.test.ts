@@ -3,6 +3,7 @@ import type { RuntimeSettingsState } from "@/lib/api/runtime-settings";
 import {
 	authenticationDraft,
 	authorizationDraft,
+	authorizationReleaseRequest,
 	providerCallback,
 } from "./security-settings";
 
@@ -95,6 +96,41 @@ describe("security settings draft boundaries", () => {
 				effective: { backend: "future" },
 			}),
 		).toThrow();
+	});
+	it.each([
+		["treetop", "local"],
+		["local", "treetop"],
+	] as const)(
+		"releases runtime %s to the complete deployment %s selection",
+		(runtime, deployment) => {
+			expect(
+				authorizationReleaseRequest({
+					...state,
+					group: "authorization",
+					runtime: { backend: runtime },
+					deployment: { backend: deployment },
+				}),
+			).toEqual({
+				group: "authorization",
+				expected_revision: 7,
+				backend: deployment,
+				source: "deployment",
+				release_ownership: true,
+			});
+		},
+	);
+	it.each([
+		{ revision: null, deployment: { backend: "local" } },
+		{ deployment: null },
+		{ deployment: { backend: "future" } },
+	])("refuses an unknown deployment or revision on release", (invalid) => {
+		expect(() =>
+			authorizationReleaseRequest({
+				...state,
+				group: "authorization",
+				...invalid,
+			}),
+		).toThrow("Reload a known deployment");
 	});
 	it("builds the public callback from the server's origin and candidate provider identity", () => {
 		expect(

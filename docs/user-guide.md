@@ -826,7 +826,8 @@ Credential actions are explicit: **Keep** preserves the configured credential,
 **Reference** selects a deployment secret alias, **Replace** writes a new encrypted
 credential, and **Clear** removes it. Aliases and replacement values use separate
 write-only inputs, clear when captured for submission and never appear in review.
-Stored secrets and aliases cannot be retrieved. Encryption root keys, trusted
+Stored secrets and aliases cannot be retrieved. LDAP anonymous bind also requires
+removing its service-bind DN when clearing the credential. Encryption root keys, trusted
 public origins, egress rules, TLS trust and locks remain deployment settings.
 
 Select **Prepare candidate** to review an inactive definition and its checks.
@@ -851,7 +852,8 @@ replica and repeat on other replicas as needed. Discarding a draft forgets its
 private frontend verification state; inactive server candidates expire.
 
 The **Authorization** tab supports Local and Treetop with explicit runtime or
-deployment connection ownership. Runtime Treetop requires an HTTPS URL, an
+deployment connection ownership. Treetop requires a server built with
+`permissions-treetop` support. Runtime Treetop requires an HTTPS URL, an
 advertised trust profile and timeouts within deployment ceilings. Preparing its
 candidate checks connectivity and administrator access, including recovery.
 Unavailable or requested Treetop stays visible; it never silently becomes Local.

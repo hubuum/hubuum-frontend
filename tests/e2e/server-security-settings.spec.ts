@@ -53,7 +53,13 @@ function candidate(group = "authentication", state = "verified") {
 }
 async function mockSettings(
 	page: Page,
-	options: { group?: string; external?: boolean; unknown?: boolean } = {},
+	options: {
+		group?: string;
+		external?: boolean;
+		unknown?: boolean;
+		longName?: boolean;
+		deploymentBackend?: "local" | "treetop" | "future";
+	} = {},
 ) {
 	const group = options.group ?? "authentication";
 	const requests: Record<string, unknown>[] = [];
@@ -120,10 +126,26 @@ async function mockSettings(
 					group === "authentication"
 						? {
 								providers: [
-									{ ...provider, kind: options.unknown ? "future" : "ldap" },
+									{
+										...provider,
+										kind: options.unknown ? "future" : "ldap",
+										...(options.longName
+											? {
+													name: "directory_" + "x".repeat(140),
+													runtime_definition: {
+														...provider.runtime_definition,
+														scope: "directory_" + "x".repeat(140),
+													},
+												}
+											: {}),
+									},
 								],
 							}
 						: { backend: "treetop" },
+				deployment:
+					group === "authorization"
+						? { backend: options.deploymentBackend ?? "local" }
+						: null,
 				runtime:
 					group === "authorization"
 						? {
@@ -301,7 +323,38 @@ test("an unknown provider leaves authentication read-only rather than omitting i
 	expect(requests).toEqual([]);
 });
 
-for (const theme of ["light", "dark"] as const)
+for (const theme of ["light", "dark"] as const) {
+	test(`provider controls preserve long names and write-only intent on a narrow ${theme} screen`, async ({
+		page,
+	}, testInfo) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.emulateMedia({ colorScheme: theme });
+		const { panel } = await mockSettings(page, { longName: true });
+		await panel.getByLabel("Credential action").selectOption("reference");
+		await panel
+			.getByLabel("Credential alias (write only)")
+			.fill("fixture_" + "x".repeat(100));
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth <= window.innerWidth,
+			),
+		).toBe(true);
+		expect(
+			(
+				await new AxeBuilder({ page })
+					.include(".runtime-settings-editor")
+					.analyze()
+			).violations,
+		).toEqual([]);
+		await panel.screenshot({
+			path: testInfo.outputPath(`provider-admin-${theme}.png`),
+		});
+		await panel.getByLabel("Credential action").selectOption("clear");
+		await expect(
+			panel.getByText("For LDAP, remove the bind DN too", { exact: false }),
+		).toBeVisible();
+	});
+
 	test(`Treetop settings preserve the requested backend on a narrow ${theme} screen`, async ({
 		page,
 	}) => {
@@ -340,3 +393,41 @@ for (const theme of ["light", "dark"] as const)
 			).violations,
 		).toEqual([]);
 	});
+}
+
+test("releasing authorization uses the deployment selection and omits the runtime connection", async ({
+	page,
+}) => {
+	const { panel, requests } = await mockSettings(page, {
+		group: "authorization",
+	});
+	await panel
+		.getByLabel("Release this group to deployment configuration")
+		.check();
+	await panel.getByRole("button", { name: "Prepare candidate" }).click();
+	expect(requests).toEqual([
+		{
+			group: "authorization",
+			expected_revision: 7,
+			backend: "local",
+			source: "deployment",
+			release_ownership: true,
+		},
+	]);
+	await expect(
+		panel.getByText("Release runtime ownership to deployment local.", {
+			exact: false,
+		}),
+	).toBeVisible();
+});
+test("releasing authorization is unavailable for an unknown deployment backend", async ({
+	page,
+}) => {
+	const { panel } = await mockSettings(page, {
+		group: "authorization",
+		deploymentBackend: "future",
+	});
+	await expect(
+		panel.getByLabel("Release this group to deployment configuration"),
+	).toBeDisabled();
+});

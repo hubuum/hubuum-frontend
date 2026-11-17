@@ -29,6 +29,7 @@ import {
 import {
 	authenticationDraft,
 	authorizationDraft,
+	authorizationReleaseRequest,
 	providerCallback,
 } from "@/lib/security-settings";
 import {
@@ -205,6 +206,8 @@ function SecurityForm({
 				release_ownership: release,
 				...(release ? {} : { providers }),
 			};
+		} else if (release) {
+			request = authorizationReleaseRequest(state);
 		} else {
 			request = {
 				group: "authorization",
@@ -231,7 +234,11 @@ function SecurityForm({
 			);
 		setSummary(
 			release
-				? ["Release runtime ownership to deployment configuration."]
+				? [
+						state.group === "authorization"
+							? `Release runtime ownership to deployment ${initialAuthorization?.deploymentBackend}. Other draft changes are ignored.`
+							: "Release runtime ownership to deployment configuration.",
+					]
 				: state.group === "authentication"
 					? drafts.map(
 							(draft) =>
@@ -280,8 +287,8 @@ function SecurityForm({
 						: authorizationAvailable === true
 							? "available on the responding replica"
 							: "not confirmed by this snapshot"}
-					. Selecting Treetop requires successful connectivity and administrator
-					access checks.
+					. Treetop requires a server built with Treetop support, successful
+					connectivity and administrator access checks.
 				</p>
 			)}
 			{actor.isPending ? (
@@ -493,9 +500,10 @@ function SecurityForm({
 												)}
 												{draft.credentialAction === "clear" && (
 													<p>
-														Clearing removes the configured credential.
-														Providers requiring one must be disabled or supplied
-														a valid replacement.
+														Clearing removes the configured credential. For
+														LDAP, remove the bind DN too when changing to
+														anonymous bind. Other settings must remain valid;
+														providers requiring a secret must stay disabled.
 													</p>
 												)}
 											</>
@@ -662,6 +670,10 @@ function SecurityForm({
 						<input
 							type="checkbox"
 							checked={release}
+							disabled={
+								state.group === "authorization" &&
+								!initialAuthorization?.deploymentBackend
+							}
 							onChange={(event) => {
 								setRelease(event.target.checked);
 								setDirty(true);
@@ -669,6 +681,13 @@ function SecurityForm({
 						/>{" "}
 						Release this group to deployment configuration
 					</label>
+					{state.group === "authorization" && (
+						<p className="muted">
+							{initialAuthorization?.deploymentBackend
+								? `Release restores deployment ${initialAuthorization.deploymentBackend}; other draft changes are ignored.`
+								: "Deployment authorization configuration is unavailable. Reload before releasing ownership."}
+						</p>
+					)}
 					<button type="submit" disabled={!dirty}>
 						Prepare candidate
 					</button>

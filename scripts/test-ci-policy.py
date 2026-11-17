@@ -57,6 +57,8 @@ class ClassificationTests(unittest.TestCase):
             "tests/integration/browser-login.mjs",
             "tests/integration/browser-admin.mjs",
             "tests/integration/browser-provider.mjs",
+            "tests/integration/browser-authorization.mjs",
+            "tests/integration/authorization.py",
             "tests/fixtures/authentication/fixtures.json",
             "src/lib/auth/interaction-cleanup-worker.ts",
         ):
