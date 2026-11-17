@@ -184,6 +184,7 @@ try {
 		async () => (await fetch("/_hubuum-bff/hubuum/api/v1/admin/config")).status,
 	);
 	assert.equal(status, 503);
+	await checkpoint("recovery-login");
 	stage = "policy-outage-local-browser-login";
 	const recovery = await login("/healthz");
 	await recovery.context.close();

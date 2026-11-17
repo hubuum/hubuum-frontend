@@ -90,6 +90,8 @@ class Proxy(BaseHTTPRequestHandler):
                 self.server.begins = getattr(self.server, "begins", 0) + 1
             connection.request(self.command, self.path, body, headers)
             response = connection.getresponse()
+            if self.path in getattr(self.server, "record_public_paths", ()):
+                self.server.public_statuses.append({"path": self.path, "status": response.status})
             result = response.read(2 * 1024 * 1024)
             completion = self.command == "POST" and self.path.startswith("/api/v1/auth/interactions/") and self.path.endswith("/complete")
             if completion:

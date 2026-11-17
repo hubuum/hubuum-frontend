@@ -181,6 +181,8 @@ def main():
         else:
             consumer = Consumer(fixture, oauth, args.node.resolve(), "local")
             consumer.start()
+            consumer.backend_proxy.record_public_paths = ("/api/v1/auth/login", "/api/v1/iam/me", "/api/v1/admin/config")
+            consumer.backend_proxy.public_statuses = []
             run_ui(consumer, fixture, args.node.resolve(), report)
         report["passed"] = True
     except Exception as error:
@@ -191,6 +193,7 @@ def main():
         raise
     finally:
         if consumer:
+            report["backend_public_statuses"] = consumer.backend_proxy.public_statuses
             consumer.cleanup()
         fixture.cleanup()
         (args.evidence / "authorization-qualification.json").write_text(json.dumps(report, indent=2) + "\n")
