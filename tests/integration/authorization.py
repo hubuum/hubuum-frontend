@@ -28,15 +28,26 @@ def main():
     parser.add_argument("--image", required=True)
     parser.add_argument("--node", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
+    parser.add_argument("--server-candidate-manifest", type=Path, help="Verified build provenance for an explicit candidate under test; does not imply acceptance")
     parser.add_argument("--fixture-only", action="store_true", help="Prepare/check the real policy fixture without claiming product qualification")
     args = parser.parse_args()
     source = args.server_source.resolve()
     commit = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
-    if commit != SOURCE["accepted_server_source"]:
-        raise RuntimeError("Server fixture checkout is not accepted")
     image = json.loads(subprocess.check_output(["docker", "image", "inspect", args.image], text=True))[0]
-    if not any(image["Id"] in (pin.get("docker_image_id"), pin["manifest"], pin["config"]) for pin in SOURCE["qualified_server_images"]):
-        raise RuntimeError("Server image is not a qualified immutable candidate")
+    candidate = None
+    if args.server_candidate_manifest:
+        candidate = json.loads(args.server_candidate_manifest.read_text())
+        if candidate["source"] != commit or candidate["docker_image_id"] != image["Id"]:
+            raise RuntimeError("Candidate source or immutable image differs from build provenance")
+        if subprocess.check_output(["git", "-C", str(source), "status", "--porcelain"]):
+            raise RuntimeError("Candidate server source must be clean")
+        if not candidate["oci_blobs_verified"] or not candidate["source_files_verified"] or "permissions-treetop" not in candidate["build_flags"]:
+            raise RuntimeError("Candidate needs verified source/OCI provenance and the Treetop feature")
+    else:
+        if commit != SOURCE["accepted_server_source"]:
+            raise RuntimeError("Server fixture checkout is not accepted")
+        if not any(image["Id"] in (pin.get("docker_image_id"), pin["manifest"], pin["config"]) for pin in SOURCE["qualified_server_images"]):
+            raise RuntimeError("Server image is not a qualified immutable candidate")
     if not subprocess.check_output([str(args.node), "--version"], text=True).startswith("v24."):
         raise RuntimeError("Qualification requires Node.js 24 LTS")
     sys.path.insert(0, str(source / "tests/python"))
@@ -157,7 +168,7 @@ def main():
     fixture = Fixture()
     consumer = None
     report = {"scope": "real Treetop fixture preparation only" if args.fixture_only else "actual runtime authorization administration UI",
-              "server_source": SOURCE, "treetop_image": treetop_image, "treetop_source": pins["HUBUUM_TREETOP_TEST_REVISION"], "checks": [], "passed": False,
+              "accepted_server_baseline": SOURCE, "server_source": commit, "server_image": image["Id"], "server_candidate_provenance": candidate, "treetop_image": treetop_image, "treetop_source": pins["HUBUUM_TREETOP_TEST_REVISION"], "checks": [], "passed": False,
               "controller_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               "frontend_source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
               "frontend_source_dirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True))}
