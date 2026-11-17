@@ -9,6 +9,7 @@ const lines = reader[Symbol.asyncIterator]();
 const checks = [];
 let browser;
 let stage = "input";
+const responses = [];
 async function checkpoint(event) {
 	process.stdout.write(`${JSON.stringify({ event })}\n`);
 	assert.equal((await lines.next()).value, "ok");
@@ -24,6 +25,19 @@ try {
 	async function login(returnPath) {
 		const context = await browser.newContext();
 		const page = await context.newPage();
+		page.on("response", (response) => {
+			const url = new URL(response.url());
+			if (
+				url.origin === origin &&
+				(url.pathname === "/_hubuum-bff/auth/login" ||
+					url.pathname === "/_hubuum-bff/hubuum/api/v1/iam/me")
+			)
+				responses.push({
+					stage,
+					path: url.pathname,
+					status: response.status(),
+				});
+		});
 		page.setDefaultTimeout(20000);
 		await page.goto(`${origin}/login?next=${encodeURIComponent(returnPath)}`);
 		await page.getByLabel("Username", { exact: true }).fill("admin");
@@ -170,6 +184,7 @@ try {
 		async () => (await fetch("/_hubuum-bff/hubuum/api/v1/admin/config")).status,
 	);
 	assert.equal(status, 503);
+	stage = "policy-outage-local-browser-login";
 	const recovery = await login("/healthz");
 	await recovery.context.close();
 	await checkpoint("recovery-login");
@@ -222,7 +237,7 @@ try {
 	);
 } catch (error) {
 	process.stdout.write(
-		`${JSON.stringify({ event: "failure", stage, type: error?.name ?? "Error" })}\n`,
+		`${JSON.stringify({ event: "failure", stage, type: error?.name ?? "Error", responses })}\n`,
 	);
 	process.exitCode = 1;
 } finally {
