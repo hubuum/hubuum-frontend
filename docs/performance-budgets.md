@@ -63,7 +63,6 @@ workflow. Chunk and route limits remain unchanged. These measurements use the
 same local Node.js 24.22.3 build and gzip level nine; CI validates its pinned
 Node.js build independently.
 
-
 Budget changes should be intentional. Prefer reducing or lazy-loading the
 regression. When a product requirement genuinely increases the baseline,
 include the measured before/after values and the reason in the pull request
