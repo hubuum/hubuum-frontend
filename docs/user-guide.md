@@ -898,3 +898,10 @@ See [session security](session-security.md#project-6-browser-authentication) for
 registered return targets, verified TLS and deployment requirements. Provider
 administration is delivered separately under frontend #198. These project
 features do not change the released server compatibility target.
+
+Runtime Treetop activation preserves the configured local accounts. While the
+remote policy service is unavailable, privileged access fails closed; new login
+can also fail because its audit snapshot uses the selected authorization policy.
+Reconnect the policy service or follow the server's documented offline
+`hubuum-admin --recover-security` procedure with writes stopped on every replica.
+The browser does not automatically switch authorization to Local.

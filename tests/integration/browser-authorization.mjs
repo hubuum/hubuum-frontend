@@ -184,20 +184,18 @@ try {
 		async () => (await fetch("/_hubuum-bff/hubuum/api/v1/admin/config")).status,
 	);
 	assert.equal(status, 503);
-	await checkpoint("recovery-login");
-	stage = "policy-outage-local-browser-login";
-	const recovery = await login("/healthz");
-	await recovery.context.close();
-	await checkpoint("recovery-login");
 	checks.push(
-		"policy outage fails protected access closed while actual local password login remains available; no Local fallback is accepted",
+		"policy outage fails protected access closed without changing the requested backend; remote-policy recovery uses the documented offline administrator command",
 	);
 	stage = "policy-reconnect";
 	await checkpoint("recover");
 	panel = await openAuthorization();
 	await current("treetop", 2, "runtime");
+	await checkpoint("recovery-login");
+	const recovery = await login("/healthz");
+	await recovery.context.close();
 	checks.push(
-		"real policy service recovery restores administrator access without changing the requested backend or revision",
+		"real policy service reconnect restores administrator access and actual local password login without changing the requested backend or revision",
 	);
 	stage = "explicit-local-activation";
 	await panel
