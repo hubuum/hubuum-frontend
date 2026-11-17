@@ -739,6 +739,7 @@ def main():
     parser.add_argument("--profile", choices=("id_token", "userinfo", "oauth", "ldap", "local"), required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--browser-ui", action="store_true", help="Qualify actual product login and fresh-approval UI")
+    parser.add_argument("--server-candidate-manifest", type=Path, help="Verified immutable candidate provenance; qualification does not imply acceptance")
     parser.add_argument("--admin-ui", action="store_true", help="Qualify actual provider configure/test/activate UI before native login")
     args = parser.parse_args()
     node_version = subprocess.check_output([str(args.node), "--version"], text=True).strip()
@@ -746,13 +747,17 @@ def main():
         raise RuntimeError("Qualification requires Node.js 24 LTS")
     source = args.server_source.resolve()
     commit = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
-    if commit != SOURCE["accepted_server_source"]:
-        raise RuntimeError("Server fixture checkout is not accepted")
+    candidate = json.loads(args.server_candidate_manifest.read_text()) if args.server_candidate_manifest else None
+    if commit != (candidate["source"] if candidate else SOURCE["accepted_server_source"]):
+        raise RuntimeError("Server fixture checkout differs from its source pin")
+    if candidate and (subprocess.check_output(["git", "-C", str(source), "status", "--porcelain"]) or not candidate["oci_blobs_verified"] or not candidate["source_files_verified"]):
+        raise RuntimeError("Candidate requires clean source and verified source/OCI provenance")
     for name, digest in SOURCE["source_live_fixture_sha256"].items():
         if hashlib.sha256((source / name).read_bytes()).hexdigest() != digest:
             raise RuntimeError("Server fixture source drift")
     image = json.loads(subprocess.check_output(["docker", "image", "inspect", args.image], text=True))[0]
-    qualified = next((pin for pin in SOURCE["qualified_server_images"] if image["Id"] in (pin.get("docker_image_id"), pin["manifest"], pin["config"])), None)
+    pins = [candidate] if candidate else SOURCE["qualified_server_images"]
+    qualified = next((pin for pin in pins if image["Id"] in (pin.get("docker_image_id"), pin["manifest"], pin["config"])), None)
     if not qualified:
         raise RuntimeError("Server image is not a qualified immutable candidate")
     sys.path.insert(0, str(source / "tests/python"))
@@ -802,7 +807,7 @@ def main():
             return super().env(name, values)
 
     fixture = Fixture(args.image, args.evidence, 48479, 48480) if args.profile in ("oauth", "ldap", "local") else Fixture(args.image, args.evidence, 48477, 48478, args.profile)
-    report = {"profile": args.profile, "source": SOURCE, "server_image": qualified, "valkey": VALKEY,
+    report = {"profile": args.profile, "source": SOURCE, "actual_server_source": commit, "server_candidate_provenance": candidate, "server_image": qualified, "valkey": VALKEY,
               "scope": "product provider administration and login/approval UI" if args.admin_ui else "product login/approval UI" if args.browser_ui else "BFF transport",
               "admin_ui_controller_sha256": hashlib.sha256((ROOT / "tests/integration/browser-admin.mjs").read_bytes()).hexdigest() if args.admin_ui else None,
               "provider_ui_controller_sha256": hashlib.sha256((ROOT / "tests/integration/browser-provider.mjs").read_bytes()).hexdigest() if args.browser_ui or args.admin_ui else None,
