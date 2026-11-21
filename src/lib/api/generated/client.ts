@@ -251,6 +251,26 @@ import type {
 import { HUBUUM_BFF_PREFIX } from '@/lib/api/frontend';
 
 
+const getHeaders = (...sources: (RequestInit['headers'] | Record<string, string | undefined>)[]) => {
+  const seen = new Set<string>();
+  const layers: [string, string | readonly string[]][][] = [];
+  for (const source of sources.reverse()) {
+    if (!source) continue;
+    const entries = source instanceof Headers
+      ? source.entries()
+      : Symbol.iterator in source
+        ? Array.from(source as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string])
+        : Object.entries<string | readonly string[] | undefined>(source);
+    const layer: [string, string | readonly string[]][] = [];
+    for (const [name, value] of entries) {
+      if (value !== undefined && !seen.has(name.toLowerCase())) layer.push([name, value]);
+    }
+    for (const [name] of layer) seen.add(name.toLowerCase());
+    layers.push(layer);
+  }
+  return Object.fromEntries(layers.reverse().flat()) as Extract<RequestInit['headers'], Record<string, unknown>>;
+};
+
 export type getApiV0MetaCountsResponse200 = {
   data: CountsResponse
   status: 200
@@ -862,25 +882,11 @@ export const getPostApiV1AdminRuntimeSettingsAuthenticationPreflightUrl = () => 
  */
 export const postApiV1AdminRuntimeSettingsAuthenticationPreflight = async (authenticationSettingsRequest: AuthenticationSettingsRequest, options?: RequestInit): Promise<postApiV1AdminRuntimeSettingsAuthenticationPreflightResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1AdminRuntimeSettingsAuthenticationPreflightUrl(),
+  const res = await fetch(getPostApiV1AdminRuntimeSettingsAuthenticationPreflightUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(authenticationSettingsRequest)
   }
 )
@@ -947,25 +953,11 @@ export const getPutApiV1AdminRuntimeSettingsAuthorizationUrl = () => {
  */
 export const putApiV1AdminRuntimeSettingsAuthorization = async (authorizationSettingsRequest: AuthorizationSettingsRequest, options?: RequestInit): Promise<putApiV1AdminRuntimeSettingsAuthorizationResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPutApiV1AdminRuntimeSettingsAuthorizationUrl(),
+  const res = await fetch(getPutApiV1AdminRuntimeSettingsAuthorizationUrl(),
   {
     ...options,
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(authorizationSettingsRequest)
   }
 )
@@ -1175,25 +1167,11 @@ export const getPutApiV1AdminRuntimeSettingsPaginationUrl = () => {
  */
 export const putApiV1AdminRuntimeSettingsPagination = async (paginationSettingsRequest: PaginationSettingsRequest, options?: RequestInit): Promise<putApiV1AdminRuntimeSettingsPaginationResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPutApiV1AdminRuntimeSettingsPaginationUrl(),
+  const res = await fetch(getPutApiV1AdminRuntimeSettingsPaginationUrl(),
   {
     ...options,
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(paginationSettingsRequest)
   }
 )
@@ -1328,25 +1306,11 @@ export const getPutApiV1AdminRuntimeSettingsQueryObservationsUrl = () => {
  */
 export const putApiV1AdminRuntimeSettingsQueryObservations = async (queryObservationSettingsRequest: QueryObservationSettingsRequest, options?: RequestInit): Promise<putApiV1AdminRuntimeSettingsQueryObservationsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPutApiV1AdminRuntimeSettingsQueryObservationsUrl(),
+  const res = await fetch(getPutApiV1AdminRuntimeSettingsQueryObservationsUrl(),
   {
     ...options,
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(queryObservationSettingsRequest)
   }
 )
@@ -1594,25 +1558,11 @@ export const getPatchApiV1AdminRuntimeSettingsByGroupUrl = (group: RuntimeSettin
 export const patchApiV1AdminRuntimeSettingsByGroup = async (group: RuntimeSettingsGroup,
     runtimeSettingsPatch: RuntimeSettingsPatch, options?: RequestInit): Promise<patchApiV1AdminRuntimeSettingsByGroupResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1AdminRuntimeSettingsByGroupUrl(group),
+  const res = await fetch(getPatchApiV1AdminRuntimeSettingsByGroupUrl(group),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(runtimeSettingsPatch)
   }
 )
@@ -1674,25 +1624,11 @@ export const getPostApiV1AuthLoginUrl = () => {
  */
 export const postApiV1AuthLogin = async (sessionLoginRequest: SessionLoginRequest, options?: RequestInit): Promise<postApiV1AuthLoginResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1AuthLoginUrl(),
+  const res = await fetch(getPostApiV1AuthLoginUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(sessionLoginRequest)
   }
 )
@@ -1800,25 +1736,11 @@ export const getPostApiV1AuthLogoutTokenUrl = () => {
  */
 export const postApiV1AuthLogoutToken = async (logoutTokenRequest: LogoutTokenRequest, options?: RequestInit): Promise<postApiV1AuthLogoutTokenResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1AuthLogoutTokenUrl(),
+  const res = await fetch(getPostApiV1AuthLogoutTokenUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(logoutTokenRequest)
   }
 )
@@ -2028,25 +1950,11 @@ export const getPostApiV1AuthRefreshUrl = () => {
  */
 export const postApiV1AuthRefresh = async (sessionRefreshRequest: SessionRefreshRequest, options?: RequestInit): Promise<postApiV1AuthRefreshResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1AuthRefreshUrl(),
+  const res = await fetch(getPostApiV1AuthRefreshUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(sessionRefreshRequest)
   }
 )
@@ -2164,25 +2072,11 @@ export const getPostApiV1BackupsUrl = () => {
  */
 export const postApiV1Backups = async (backupRequest: BackupRequest, options?: RequestInit): Promise<postApiV1BackupsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1BackupsUrl(),
+  const res = await fetch(getPostApiV1BackupsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(backupRequest)
   }
 )
@@ -2429,25 +2323,11 @@ export const getPostApiV1ClassesUrl = () => {
  */
 export const postApiV1Classes = async (newHubuumClass: NewHubuumClass, options?: RequestInit): Promise<postApiV1ClassesResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesUrl(),
+  const res = await fetch(getPostApiV1ClassesUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newHubuumClass)
   }
 )
@@ -2637,25 +2517,11 @@ export const getPatchApiV1ClassesByNameByClassNameUrl = (className: string,) => 
 export const patchApiV1ClassesByNameByClassName = async (className: string,
     updateHubuumClass: UpdateHubuumClass, options?: RequestInit): Promise<patchApiV1ClassesByNameByClassNameResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1ClassesByNameByClassNameUrl(className),
+  const res = await fetch(getPatchApiV1ClassesByNameByClassNameUrl(className),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateHubuumClass)
   }
 )
@@ -2951,25 +2817,11 @@ export const getPostApiV1ClassesByNameByClassNameObjectsUrl = (className: string
 export const postApiV1ClassesByNameByClassNameObjects = async (className: string,
     newHubuumObjectRequest: NewHubuumObjectRequest, options?: RequestInit): Promise<postApiV1ClassesByNameByClassNameObjectsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByNameByClassNameObjectsUrl(className),
+  const res = await fetch(getPostApiV1ClassesByNameByClassNameObjectsUrl(className),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newHubuumObjectRequest)
   }
 )
@@ -3179,25 +3031,11 @@ export const patchApiV1ClassesByNameByClassNameObjectsByNameByObjectName = async
     objectName: string,
     updateHubuumObjectRequest: UpdateHubuumObjectRequest, options?: RequestInit): Promise<patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl(className,objectName),
+  const res = await fetch(getPatchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameUrl(className,objectName),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateHubuumObjectRequest)
   }
 )
@@ -3292,25 +3130,11 @@ export const patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameData = a
     objectName: string,
     objectDataPatchDocument: ObjectDataPatchDocument, options?: RequestInit): Promise<patchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataUrl(className,objectName),
+  const res = await fetch(getPatchApiV1ClassesByNameByClassNameObjectsByNameByObjectNameDataUrl(className,objectName),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json-patch+json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json-patch+json' }, options?.headers),
     body: JSON.stringify(objectDataPatchDocument)
   }
 )
@@ -3963,25 +3787,11 @@ export const getPatchApiV1ClassesByClassIdUrl = (classId: number,) => {
 export const patchApiV1ClassesByClassId = async (classId: number,
     updateHubuumClass: UpdateHubuumClass, options?: RequestInit): Promise<patchApiV1ClassesByClassIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1ClassesByClassIdUrl(classId),
+  const res = await fetch(getPatchApiV1ClassesByClassIdUrl(classId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateHubuumClass)
   }
 )
@@ -4109,25 +3919,11 @@ export const getPostApiV1ClassesByClassIdTrailingUrl = (classId: number,) => {
 export const postApiV1ClassesByClassIdTrailing = async (classId: number,
     newHubuumObjectRequest: NewHubuumObjectRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdTrailingResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByClassIdTrailingUrl(classId),
+  const res = await fetch(getPostApiV1ClassesByClassIdTrailingUrl(classId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newHubuumObjectRequest)
   }
 )
@@ -4246,25 +4042,11 @@ export const getPostApiV1ClassesByClassIdComputedFieldsUrl = (classId: number,) 
 export const postApiV1ClassesByClassIdComputedFields = async (classId: number,
     computedFieldDefinitionRequest: ComputedFieldDefinitionRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdComputedFieldsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByClassIdComputedFieldsUrl(classId),
+  const res = await fetch(getPostApiV1ClassesByClassIdComputedFieldsUrl(classId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(computedFieldDefinitionRequest)
   }
 )
@@ -4312,25 +4094,11 @@ export const getPostApiV1ClassesByClassIdComputedFieldsPreviewUrl = (classId: nu
 export const postApiV1ClassesByClassIdComputedFieldsPreview = async (classId: number,
     computedFieldPreviewRequest: ComputedFieldPreviewRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdComputedFieldsPreviewResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByClassIdComputedFieldsPreviewUrl(classId),
+  const res = await fetch(getPostApiV1ClassesByClassIdComputedFieldsPreviewUrl(classId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(computedFieldPreviewRequest)
   }
 )
@@ -4557,25 +4325,11 @@ export const patchApiV1ClassesByClassIdComputedFieldsByFieldId = async (classId:
     fieldId: number,
     computedFieldDefinitionPatch: ComputedFieldDefinitionPatch, options?: RequestInit): Promise<patchApiV1ClassesByClassIdComputedFieldsByFieldIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1ClassesByClassIdComputedFieldsByFieldIdUrl(classId,fieldId),
+  const res = await fetch(getPatchApiV1ClassesByClassIdComputedFieldsByFieldIdUrl(classId,fieldId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(computedFieldDefinitionPatch)
   }
 )
@@ -5632,25 +5386,11 @@ export const getPostApiV1ClassesByClassIdQueryUsageUrl = (classId: HubuumClassID
 export const postApiV1ClassesByClassIdQueryUsage = async (classId: HubuumClassID,
     queryUsageCreateRequest: QueryUsageCreateRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdQueryUsageResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByClassIdQueryUsageUrl(classId),
+  const res = await fetch(getPostApiV1ClassesByClassIdQueryUsageUrl(classId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(queryUsageCreateRequest)
   }
 )
@@ -5708,25 +5448,11 @@ export const getPostApiV1ClassesByClassIdQueryUsageAnalysisUrl = (classId: Hubuu
 export const postApiV1ClassesByClassIdQueryUsageAnalysis = async (classId: HubuumClassID,
     queryUsageAnalysisRequest: QueryUsageAnalysisRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdQueryUsageAnalysisResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByClassIdQueryUsageAnalysisUrl(classId),
+  const res = await fetch(getPostApiV1ClassesByClassIdQueryUsageAnalysisUrl(classId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(queryUsageAnalysisRequest)
   }
 )
@@ -5791,25 +5517,11 @@ export const putApiV1ClassesByClassIdQueryUsageByDeclarationId = async (classId:
     declarationId: ResourceID,
     queryUsageReplaceRequest: QueryUsageReplaceRequest, options?: RequestInit): Promise<putApiV1ClassesByClassIdQueryUsageByDeclarationIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPutApiV1ClassesByClassIdQueryUsageByDeclarationIdUrl(classId,declarationId),
+  const res = await fetch(getPutApiV1ClassesByClassIdQueryUsageByDeclarationIdUrl(classId,declarationId),
   {
     ...options,
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(queryUsageReplaceRequest)
   }
 )
@@ -6145,25 +5857,11 @@ export const getPostApiV1ClassesByClassIdRelationsUrl = (classId: number,) => {
 export const postApiV1ClassesByClassIdRelations = async (classId: number,
     newHubuumClassRelationFromClass: NewHubuumClassRelationFromClass, options?: RequestInit): Promise<postApiV1ClassesByClassIdRelationsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByClassIdRelationsUrl(classId),
+  const res = await fetch(getPostApiV1ClassesByClassIdRelationsUrl(classId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newHubuumClassRelationFromClass)
   }
 )
@@ -6638,25 +6336,11 @@ export const getPostApiV1ClassesByClassIdSchemaProfilesUrl = (classId: number,) 
 export const postApiV1ClassesByClassIdSchemaProfiles = async (classId: number,
     schemaProfileRequest: SchemaProfileRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdSchemaProfilesResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByClassIdSchemaProfilesUrl(classId),
+  const res = await fetch(getPostApiV1ClassesByClassIdSchemaProfilesUrl(classId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(schemaProfileRequest)
   }
 )
@@ -6862,25 +6546,11 @@ export const getPostApiV1ClassesByClassIdSchemaRevisionsUrl = (classId: HubuumCl
 export const postApiV1ClassesByClassIdSchemaRevisions = async (classId: HubuumClassID,
     schemaStageRequest: SchemaStageRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdSchemaRevisionsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByClassIdSchemaRevisionsUrl(classId),
+  const res = await fetch(getPostApiV1ClassesByClassIdSchemaRevisionsUrl(classId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(schemaStageRequest)
   }
 )
@@ -7081,25 +6751,11 @@ export const postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivate = async 
     revision: SchemaRevision,
     schemaActivationRequest: SchemaActivationRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateUrl(classId,revision),
+  const res = await fetch(getPostApiV1ClassesByClassIdSchemaRevisionsByRevisionActivateUrl(classId,revision),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(schemaActivationRequest)
   }
 )
@@ -7518,25 +7174,11 @@ export const postApiV1ClassesByClassIdSchemaTasksByTaskIdReport = async (classId
     taskId: TaskID,
     schemaRepairReportRequest: SchemaRepairReportRequest, options?: RequestInit): Promise<postApiV1ClassesByClassIdSchemaTasksByTaskIdReportResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ClassesByClassIdSchemaTasksByTaskIdReportUrl(classId,taskId),
+  const res = await fetch(getPostApiV1ClassesByClassIdSchemaTasksByTaskIdReportUrl(classId,taskId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(schemaRepairReportRequest)
   }
 )
@@ -7932,25 +7574,11 @@ export const patchApiV1ClassesByClassIdByObjectId = async (classId: number,
     objectId: number,
     updateHubuumObjectRequest: UpdateHubuumObjectRequest, options?: RequestInit): Promise<patchApiV1ClassesByClassIdByObjectIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1ClassesByClassIdByObjectIdUrl(classId,objectId),
+  const res = await fetch(getPatchApiV1ClassesByClassIdByObjectIdUrl(classId,objectId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateHubuumObjectRequest)
   }
 )
@@ -8045,25 +7673,11 @@ export const patchApiV1ClassesByClassIdByObjectIdData = async (classId: number,
     objectId: number,
     objectDataPatchDocument: ObjectDataPatchDocument, options?: RequestInit): Promise<patchApiV1ClassesByClassIdByObjectIdDataResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1ClassesByClassIdByObjectIdDataUrl(classId,objectId),
+  const res = await fetch(getPatchApiV1ClassesByClassIdByObjectIdDataUrl(classId,objectId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json-patch+json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json-patch+json' }, options?.headers),
     body: JSON.stringify(objectDataPatchDocument)
   }
 )
@@ -8782,25 +8396,11 @@ export const getPostApiV1CollectionsUrl = () => {
  */
 export const postApiV1Collections = async (newCollectionWithAssignee: NewCollectionWithAssignee, options?: RequestInit): Promise<postApiV1CollectionsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1CollectionsUrl(),
+  const res = await fetch(getPostApiV1CollectionsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newCollectionWithAssignee)
   }
 )
@@ -8980,25 +8580,11 @@ export const getPatchApiV1CollectionsByCollectionIdUrl = (collectionId: number,)
 export const patchApiV1CollectionsByCollectionId = async (collectionId: number,
     updateCollection: UpdateCollection, options?: RequestInit): Promise<patchApiV1CollectionsByCollectionIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1CollectionsByCollectionIdUrl(collectionId),
+  const res = await fetch(getPatchApiV1CollectionsByCollectionIdUrl(collectionId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateCollection)
   }
 )
@@ -9214,25 +8800,11 @@ export const getPostApiV1CollectionsByCollectionIdEventSinksUrl = (collectionId:
 export const postApiV1CollectionsByCollectionIdEventSinks = async (collectionId: number,
     newEventSink: NewEventSink, options?: RequestInit): Promise<postApiV1CollectionsByCollectionIdEventSinksResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1CollectionsByCollectionIdEventSinksUrl(collectionId),
+  const res = await fetch(getPostApiV1CollectionsByCollectionIdEventSinksUrl(collectionId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newEventSink)
   }
 )
@@ -9418,25 +8990,11 @@ export const patchApiV1CollectionsByCollectionIdEventSinksBySinkId = async (coll
     sinkId: number,
     updateEventSink: UpdateEventSink, options?: RequestInit): Promise<patchApiV1CollectionsByCollectionIdEventSinksBySinkIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1CollectionsByCollectionIdEventSinksBySinkIdUrl(collectionId,sinkId),
+  const res = await fetch(getPatchApiV1CollectionsByCollectionIdEventSinksBySinkIdUrl(collectionId,sinkId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateEventSink)
   }
 )
@@ -9574,25 +9132,11 @@ export const getPostApiV1CollectionsByCollectionIdEventSubscriptionsUrl = (colle
 export const postApiV1CollectionsByCollectionIdEventSubscriptions = async (collectionId: number,
     newEventSubscription: NewEventSubscription, options?: RequestInit): Promise<postApiV1CollectionsByCollectionIdEventSubscriptionsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1CollectionsByCollectionIdEventSubscriptionsUrl(collectionId),
+  const res = await fetch(getPostApiV1CollectionsByCollectionIdEventSubscriptionsUrl(collectionId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newEventSubscription)
   }
 )
@@ -9798,25 +9342,11 @@ export const patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscription
     subscriptionId: number,
     updateEventSubscription: UpdateEventSubscription, options?: RequestInit): Promise<patchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdUrl(collectionId,subscriptionId),
+  const res = await fetch(getPatchApiV1CollectionsByCollectionIdEventSubscriptionsBySubscriptionIdUrl(collectionId,subscriptionId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateEventSubscription)
   }
 )
@@ -10166,25 +9696,11 @@ export const getPutApiV1CollectionsByCollectionIdParentUrl = (collectionId: numb
 export const putApiV1CollectionsByCollectionIdParent = async (collectionId: number,
     updateCollectionParent: UpdateCollectionParent, options?: RequestInit): Promise<putApiV1CollectionsByCollectionIdParentResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPutApiV1CollectionsByCollectionIdParentUrl(collectionId),
+  const res = await fetch(getPutApiV1CollectionsByCollectionIdParentUrl(collectionId),
   {
     ...options,
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateCollectionParent)
   }
 )
@@ -10489,25 +10005,11 @@ export const putApiV1CollectionsByCollectionIdPermissionsGroupByGroupId = async 
     groupId: number,
     permissions: Permissions[], options?: RequestInit): Promise<putApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPutApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl(collectionId,groupId),
+  const res = await fetch(getPutApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl(collectionId,groupId),
   {
     ...options,
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(permissions)
   }
 )
@@ -10581,25 +10083,11 @@ export const postApiV1CollectionsByCollectionIdPermissionsGroupByGroupId = async
     groupId: number,
     permissions: Permissions[], options?: RequestInit): Promise<postApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl(collectionId,groupId),
+  const res = await fetch(getPostApiV1CollectionsByCollectionIdPermissionsGroupByGroupIdUrl(collectionId,groupId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(permissions)
   }
 )
@@ -11408,25 +10896,11 @@ export const getPostApiV1EventSinksUrl = () => {
  */
 export const postApiV1EventSinks = async (newEventSink: NewEventSink, options?: RequestInit): Promise<postApiV1EventSinksResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1EventSinksUrl(),
+  const res = await fetch(getPostApiV1EventSinksUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newEventSink)
   }
 )
@@ -11626,25 +11100,11 @@ export const getPatchApiV1EventSinksBySinkIdUrl = (sinkId: number,) => {
 export const patchApiV1EventSinksBySinkId = async (sinkId: number,
     updateEventSink: UpdateEventSink, options?: RequestInit): Promise<patchApiV1EventSinksBySinkIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1EventSinksBySinkIdUrl(sinkId),
+  const res = await fetch(getPatchApiV1EventSinksBySinkIdUrl(sinkId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateEventSink)
   }
 )
@@ -11859,25 +11319,11 @@ export const getPostApiV1EventSinksBySinkIdPreviewUrl = (sinkId: number,) => {
 export const postApiV1EventSinksBySinkIdPreview = async (sinkId: number,
     eventNotificationRequest: EventNotificationRequest, options?: RequestInit): Promise<postApiV1EventSinksBySinkIdPreviewResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1EventSinksBySinkIdPreviewUrl(sinkId),
+  const res = await fetch(getPostApiV1EventSinksBySinkIdPreviewUrl(sinkId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(eventNotificationRequest)
   }
 )
@@ -11935,25 +11381,11 @@ export const getPostApiV1EventSinksBySinkIdTestUrl = (sinkId: number,) => {
 export const postApiV1EventSinksBySinkIdTest = async (sinkId: number,
     eventNotificationRequest: EventNotificationRequest, options?: RequestInit): Promise<postApiV1EventSinksBySinkIdTestResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1EventSinksBySinkIdTestUrl(sinkId),
+  const res = await fetch(getPostApiV1EventSinksBySinkIdTestUrl(sinkId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(eventNotificationRequest)
   }
 )
@@ -12141,25 +11573,11 @@ export const getPostApiV1ExportTemplatesUrl = () => {
  */
 export const postApiV1ExportTemplates = async (newExportTemplate: NewExportTemplate, options?: RequestInit): Promise<postApiV1ExportTemplatesResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ExportTemplatesUrl(),
+  const res = await fetch(getPostApiV1ExportTemplatesUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newExportTemplate)
   }
 )
@@ -12359,25 +11777,11 @@ export const getPatchApiV1ExportTemplatesByTemplateIdUrl = (templateId: number,)
 export const patchApiV1ExportTemplatesByTemplateId = async (templateId: number,
     updateExportTemplate: UpdateExportTemplate, options?: RequestInit): Promise<patchApiV1ExportTemplatesByTemplateIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1ExportTemplatesByTemplateIdUrl(templateId),
+  const res = await fetch(getPatchApiV1ExportTemplatesByTemplateIdUrl(templateId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateExportTemplate)
   }
 )
@@ -12515,25 +11919,11 @@ export const getPostApiV1ExportTemplatesByTemplateIdExportsUrl = (templateId: nu
 export const postApiV1ExportTemplatesByTemplateIdExports = async (templateId: number,
     exportTemplateRunRequest: ExportTemplateRunRequest, options?: RequestInit): Promise<postApiV1ExportTemplatesByTemplateIdExportsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ExportTemplatesByTemplateIdExportsUrl(templateId),
+  const res = await fetch(getPostApiV1ExportTemplatesByTemplateIdExportsUrl(templateId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(exportTemplateRunRequest)
   }
 )
@@ -12745,25 +12135,11 @@ export const getPostApiV1ExportsUrl = () => {
  */
 export const postApiV1Exports = async (exportRequest: ExportRequest, options?: RequestInit): Promise<postApiV1ExportsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ExportsUrl(),
+  const res = await fetch(getPostApiV1ExportsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(exportRequest)
   }
 )
@@ -12967,25 +12343,11 @@ export const getPostApiV1IamCredentialApprovalsUrl = () => {
  */
 export const postApiV1IamCredentialApprovals = async (credentialApprovalRequest: CredentialApprovalRequest, options?: RequestInit): Promise<postApiV1IamCredentialApprovalsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1IamCredentialApprovalsUrl(),
+  const res = await fetch(getPostApiV1IamCredentialApprovalsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(credentialApprovalRequest)
   }
 )
@@ -13161,25 +12523,11 @@ export const getPostApiV1IamGroupsUrl = () => {
  */
 export const postApiV1IamGroups = async (newGroup: NewGroup, options?: RequestInit): Promise<postApiV1IamGroupsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1IamGroupsUrl(),
+  const res = await fetch(getPostApiV1IamGroupsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newGroup)
   }
 )
@@ -13374,25 +12722,11 @@ export const getPatchApiV1IamGroupsByGroupIdUrl = (groupId: number,) => {
 export const patchApiV1IamGroupsByGroupId = async (groupId: number,
     updateGroup: UpdateGroup, options?: RequestInit): Promise<patchApiV1IamGroupsByGroupIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1IamGroupsByGroupIdUrl(groupId),
+  const res = await fetch(getPatchApiV1IamGroupsByGroupIdUrl(groupId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateGroup)
   }
 )
@@ -13862,25 +13196,11 @@ export const getPostApiV1IamMeComputedFieldsUrl = () => {
  */
 export const postApiV1IamMeComputedFields = async (personalComputedFieldDefinitionRequest: PersonalComputedFieldDefinitionRequest, options?: RequestInit): Promise<postApiV1IamMeComputedFieldsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1IamMeComputedFieldsUrl(),
+  const res = await fetch(getPostApiV1IamMeComputedFieldsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(personalComputedFieldDefinitionRequest)
   }
 )
@@ -13927,25 +13247,11 @@ export const getPostApiV1IamMeComputedFieldsPreviewUrl = () => {
  */
 export const postApiV1IamMeComputedFieldsPreview = async (computedFieldPreviewRequest: ComputedFieldPreviewRequest, options?: RequestInit): Promise<postApiV1IamMeComputedFieldsPreviewResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1IamMeComputedFieldsPreviewUrl(),
+  const res = await fetch(getPostApiV1IamMeComputedFieldsPreviewUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(computedFieldPreviewRequest)
   }
 )
@@ -14115,25 +13421,11 @@ export const getPatchApiV1IamMeComputedFieldsByFieldIdUrl = (fieldId: number,) =
 export const patchApiV1IamMeComputedFieldsByFieldId = async (fieldId: number,
     computedFieldDefinitionPatch: ComputedFieldDefinitionPatch, options?: RequestInit): Promise<patchApiV1IamMeComputedFieldsByFieldIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1IamMeComputedFieldsByFieldIdUrl(fieldId),
+  const res = await fetch(getPatchApiV1IamMeComputedFieldsByFieldIdUrl(fieldId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(computedFieldDefinitionPatch)
   }
 )
@@ -14350,25 +13642,11 @@ export const getPutApiV1IamMeSettingsUrl = () => {
  */
 export const putApiV1IamMeSettings = async (principalSettings: PrincipalSettings, options?: RequestInit): Promise<putApiV1IamMeSettingsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPutApiV1IamMeSettingsUrl(),
+  const res = await fetch(getPutApiV1IamMeSettingsUrl(),
   {
     ...options,
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(principalSettings)
   }
 )
@@ -14808,25 +14086,11 @@ export const getPutApiV1IamPrincipalsByPrincipalIdSettingsUrl = (principalId: nu
 export const putApiV1IamPrincipalsByPrincipalIdSettings = async (principalId: number,
     principalSettings: PrincipalSettings, options?: RequestInit): Promise<putApiV1IamPrincipalsByPrincipalIdSettingsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPutApiV1IamPrincipalsByPrincipalIdSettingsUrl(principalId),
+  const res = await fetch(getPutApiV1IamPrincipalsByPrincipalIdSettingsUrl(principalId),
   {
     ...options,
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(principalSettings)
   }
 )
@@ -15102,25 +14366,11 @@ export const getPostApiV1IamPrincipalsByPrincipalIdTokensUrl = (principalId: num
 export const postApiV1IamPrincipalsByPrincipalIdTokens = async (principalId: number,
     newTokenRequest: NewTokenRequest, options?: RequestInit): Promise<postApiV1IamPrincipalsByPrincipalIdTokensResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1IamPrincipalsByPrincipalIdTokensUrl(principalId),
+  const res = await fetch(getPostApiV1IamPrincipalsByPrincipalIdTokensUrl(principalId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newTokenRequest)
   }
 )
@@ -15320,25 +14570,11 @@ export const postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenew = async (pr
     tokenId: number,
     renewTokenRequest: RenewTokenRequest, options?: RequestInit): Promise<postApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewUrl(principalId,tokenId),
+  const res = await fetch(getPostApiV1IamPrincipalsByPrincipalIdTokensByTokenIdRenewUrl(principalId,tokenId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(renewTokenRequest)
   }
 )
@@ -15526,25 +14762,11 @@ export const getPostApiV1IamServiceAccountsUrl = () => {
  */
 export const postApiV1IamServiceAccounts = async (newServiceAccount: NewServiceAccount, options?: RequestInit): Promise<postApiV1IamServiceAccountsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1IamServiceAccountsUrl(),
+  const res = await fetch(getPostApiV1IamServiceAccountsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newServiceAccount)
   }
 )
@@ -15734,25 +14956,11 @@ export const getPatchApiV1IamServiceAccountsByServiceAccountIdUrl = (serviceAcco
 export const patchApiV1IamServiceAccountsByServiceAccountId = async (serviceAccountId: number,
     updateServiceAccount: UpdateServiceAccount, options?: RequestInit): Promise<patchApiV1IamServiceAccountsByServiceAccountIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1IamServiceAccountsByServiceAccountIdUrl(serviceAccountId),
+  const res = await fetch(getPatchApiV1IamServiceAccountsByServiceAccountIdUrl(serviceAccountId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateServiceAccount)
   }
 )
@@ -15948,25 +15156,11 @@ export const getPostApiV1IamUsersUrl = () => {
  */
 export const postApiV1IamUsers = async (newUser: NewUser, options?: RequestInit): Promise<postApiV1IamUsersResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1IamUsersUrl(),
+  const res = await fetch(getPostApiV1IamUsersUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newUser)
   }
 )
@@ -16161,25 +15355,11 @@ export const getPatchApiV1IamUsersByUserIdUrl = (userId: number,) => {
 export const patchApiV1IamUsersByUserId = async (userId: number,
     updateUser: UpdateUser, options?: RequestInit): Promise<patchApiV1IamUsersByUserIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1IamUsersByUserIdUrl(userId),
+  const res = await fetch(getPatchApiV1IamUsersByUserIdUrl(userId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateUser)
   }
 )
@@ -16377,25 +15557,11 @@ export const getPostApiV1ImportsUrl = () => {
  */
 export const postApiV1Imports = async (importRequest: ImportRequest, options?: RequestInit): Promise<postApiV1ImportsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1ImportsUrl(),
+  const res = await fetch(getPostApiV1ImportsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(importRequest)
   }
 )
@@ -16646,25 +15812,11 @@ export const getPostApiV1RelationsClassesUrl = () => {
  */
 export const postApiV1RelationsClasses = async (newHubuumClassRelation: NewHubuumClassRelation, options?: RequestInit): Promise<postApiV1RelationsClassesResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1RelationsClassesUrl(),
+  const res = await fetch(getPostApiV1RelationsClassesUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newHubuumClassRelation)
   }
 )
@@ -16854,25 +16006,11 @@ export const getPatchApiV1RelationsClassesByRelationIdUrl = (relationId: number,
 export const patchApiV1RelationsClassesByRelationId = async (relationId: number,
     updateClassRelationLabels: UpdateClassRelationLabels, options?: RequestInit): Promise<patchApiV1RelationsClassesByRelationIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1RelationsClassesByRelationIdUrl(relationId),
+  const res = await fetch(getPatchApiV1RelationsClassesByRelationIdUrl(relationId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateClassRelationLabels)
   }
 )
@@ -16992,25 +16130,11 @@ export const getPostApiV1RelationsObjectsUrl = () => {
  */
 export const postApiV1RelationsObjects = async (newHubuumObjectRelation: NewHubuumObjectRelation, options?: RequestInit): Promise<postApiV1RelationsObjectsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1RelationsObjectsUrl(),
+  const res = await fetch(getPostApiV1RelationsObjectsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newHubuumObjectRelation)
   }
 )
@@ -17252,25 +16376,11 @@ export const getPostApiV1RemoteTargetsUrl = () => {
  */
 export const postApiV1RemoteTargets = async (newRemoteTarget: NewRemoteTarget, options?: RequestInit): Promise<postApiV1RemoteTargetsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1RemoteTargetsUrl(),
+  const res = await fetch(getPostApiV1RemoteTargetsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newRemoteTarget)
   }
 )
@@ -17615,25 +16725,11 @@ export const getPatchApiV1RemoteTargetsByTargetIdUrl = (targetId: number,) => {
 export const patchApiV1RemoteTargetsByTargetId = async (targetId: number,
     updateRemoteTarget: UpdateRemoteTarget, options?: RequestInit): Promise<patchApiV1RemoteTargetsByTargetIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1RemoteTargetsByTargetIdUrl(targetId),
+  const res = await fetch(getPatchApiV1RemoteTargetsByTargetIdUrl(targetId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateRemoteTarget)
   }
 )
@@ -17766,25 +16862,11 @@ export const getPostApiV1RemoteTargetsByTargetIdInvokeUrl = (targetId: number,) 
 export const postApiV1RemoteTargetsByTargetIdInvoke = async (targetId: number,
     remoteTargetInvokeRequest: RemoteTargetInvokeRequest, options?: RequestInit): Promise<postApiV1RemoteTargetsByTargetIdInvokeResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1RemoteTargetsByTargetIdInvokeUrl(targetId),
+  const res = await fetch(getPostApiV1RemoteTargetsByTargetIdInvokeUrl(targetId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(remoteTargetInvokeRequest)
   }
 )
@@ -17846,25 +16928,11 @@ export const getPostApiV1RestoresUrl = () => {
  */
 export const postApiV1Restores = async (backupDocument: BackupDocument, options?: RequestInit): Promise<postApiV1RestoresResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1RestoresUrl(),
+  const res = await fetch(getPostApiV1RestoresUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(backupDocument)
   }
 )
@@ -17932,25 +17000,11 @@ export const getPostApiV1RestoresByRestoreIdConfirmUrl = (restoreId: number,) =>
 export const postApiV1RestoresByRestoreIdConfirm = async (restoreId: number,
     restoreConfirmRequest: RestoreConfirmRequest, options?: RequestInit): Promise<postApiV1RestoresByRestoreIdConfirmResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1RestoresByRestoreIdConfirmUrl(restoreId),
+  const res = await fetch(getPostApiV1RestoresByRestoreIdConfirmUrl(restoreId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(restoreConfirmRequest)
   }
 )
@@ -18141,25 +17195,11 @@ export const getPostApiV1SearchUrl = () => {
  */
 export const postApiV1Search = async (structuredSearchRequest: StructuredSearchRequest, options?: RequestInit): Promise<postApiV1SearchResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1SearchUrl(),
+  const res = await fetch(getPostApiV1SearchUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(structuredSearchRequest)
   }
 )
@@ -18226,25 +17266,11 @@ export const getPostApiV1SearchHydrateUrl = () => {
  */
 export const postApiV1SearchHydrate = async (searchHydrationRequest: SearchHydrationRequest, options?: RequestInit): Promise<postApiV1SearchHydrateResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1SearchHydrateUrl(),
+  const res = await fetch(getPostApiV1SearchHydrateUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(searchHydrationRequest)
   }
 )
@@ -18355,25 +17381,11 @@ export const getPostApiV1SearchStreamUrl = () => {
  */
 export const postApiV1SearchStream = async (structuredSearchRequest: StructuredSearchRequest, options?: RequestInit): Promise<postApiV1SearchStreamResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1SearchStreamUrl(),
+  const res = await fetch(getPostApiV1SearchStreamUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(structuredSearchRequest)
   }
 )
@@ -18501,25 +17513,11 @@ export const getPostApiV1SystemEventSubscriptionsUrl = () => {
  */
 export const postApiV1SystemEventSubscriptions = async (newEventSubscription: NewEventSubscription, options?: RequestInit): Promise<postApiV1SystemEventSubscriptionsResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1SystemEventSubscriptionsUrl(),
+  const res = await fetch(getPostApiV1SystemEventSubscriptionsUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(newEventSubscription)
   }
 )
@@ -18719,25 +17717,11 @@ export const getPatchApiV1SystemEventSubscriptionsBySubscriptionIdUrl = (subscri
 export const patchApiV1SystemEventSubscriptionsBySubscriptionId = async (subscriptionId: number,
     updateEventSubscription: UpdateEventSubscription, options?: RequestInit): Promise<patchApiV1SystemEventSubscriptionsBySubscriptionIdResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPatchApiV1SystemEventSubscriptionsBySubscriptionIdUrl(subscriptionId),
+  const res = await fetch(getPatchApiV1SystemEventSubscriptionsBySubscriptionIdUrl(subscriptionId),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateEventSubscription)
   }
 )
@@ -18934,25 +17918,11 @@ export const getPostApiV1TasksByTaskIdCancelUrl = (taskId: TaskID,) => {
 export const postApiV1TasksByTaskIdCancel = async (taskId: TaskID,
     taskCancelRequest: TaskCancelRequest, options?: RequestInit): Promise<postApiV1TasksByTaskIdCancelResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-const res = await fetch(getPostApiV1TasksByTaskIdCancelUrl(taskId),
+  const res = await fetch(getPostApiV1TasksByTaskIdCancelUrl(taskId),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(taskCancelRequest)
   }
 )
