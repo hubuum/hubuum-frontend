@@ -2,7 +2,7 @@ name: hubuum-frontend-dev
 
 services:
   valkey:
-    image: docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+    image: docker.io/valkey/valkey:9.2.0-alpine3.24@sha256:c8e2d17498838af5d91e12eb7c11220b3434a7b7131a333e3af52ad5e0b80882
     command: ["valkey-server", "--appendonly", "no", "--save", ""]
     user: "999:1000"
     restart: unless-stopped
