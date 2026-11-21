@@ -15,6 +15,7 @@ import json
 import os
 import select
 from pathlib import Path
+import re
 import signal
 import socket
 import ssl
@@ -30,6 +31,22 @@ SOURCE = json.loads((ROOT / "docs/authentication-project-source.json").read_text
 VALKEY = "docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11"
 LDAP = "ghcr.io/rroemhild/docker-test-openldap@sha256:3470e15c60119a1c0392cc162cdce71edfb42b55affdc69da574012f956317cd"
 FRONTEND = "https://localhost:48601"
+HEADER_NAME = re.compile(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+")
+HEADER_VALUE = re.compile(r"[\t\x20-\x7e\x80-\xff]*")
+
+
+def fixture_server_tls(root):
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_cert_chain(root / "mount/server.pem", root / "mount/server.key")
+    return context
+
+
+def checked_header_field(field, pattern):
+    single_line = field.replace("\r", "").replace("\n", "")
+    if single_line != field or not pattern.fullmatch(single_line):
+        raise ValueError("Invalid upstream header")
+    return single_line
 
 
 class DeferredReturn(Exception):
@@ -112,10 +129,18 @@ class Proxy(BaseHTTPRequestHandler):
                 self.connection.shutdown(socket.SHUT_RDWR)
                 self.close_connection = True
                 return
+            try:
+                response_headers = [
+                    (checked_header_field(name, HEADER_NAME), checked_header_field(value, HEADER_VALUE))
+                    for name, value in response.getheaders()
+                ]
+            except ValueError:
+                self.send_error(502, "Invalid upstream header")
+                return
             self.send_response(response.status)
-            for key, value in response.getheaders():
-                if key.lower() not in ("connection", "transfer-encoding", "content-length"):
-                    self.send_header(key, value)
+            for name, value in response_headers:
+                if name.lower() not in ("connection", "transfer-encoding", "content-length"):
+                    self.send_header(name, value)
             self.send_header("Content-Length", str(len(result)))
             self.end_headers()
             self.wfile.write(result)
@@ -205,8 +230,7 @@ class Consumer:
         self.env["PATH"] = str(self.node.parent) + os.pathsep + self.env.get("PATH", "")
         self.proxy = ThreadingHTTPServer(("127.0.0.1", 48601), Proxy)
         self.proxy.daemon_threads = True
-        tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        tls.load_cert_chain(self.fixture.root / "mount/server.pem", self.fixture.root / "mount/server.key")
+        tls = fixture_server_tls(self.fixture.root)
         self.proxy.socket = tls.wrap_socket(self.proxy.socket, server_side=True)
         self.proxy_thread = threading.Thread(target=self.proxy.serve_forever, daemon=True)
         self.proxy_thread.start()
@@ -216,6 +240,7 @@ class Consumer:
         self.backend_proxy.upstream_host = upstream.netloc
         self.backend_proxy.upstream_port = upstream.port
         self.backend_proxy.upstream_tls = ssl.create_default_context(cafile=str(self.fixture.root / "mount/ca.pem"))
+        self.backend_proxy.upstream_tls.minimum_version = ssl.TLSVersion.TLSv1_2
         self.backend_proxy.socket = tls.wrap_socket(self.backend_proxy.socket, server_side=True)
         self.backend_thread = threading.Thread(target=self.backend_proxy.serve_forever, daemon=True)
         self.backend_thread.start()

@@ -104,6 +104,8 @@ jobs:
         run: npm run test:server-options
       - name: Test credential approval fixtures
         run: npm run test:credential-fixtures
+      - name: Test integration proxy
+        run: python3 -m unittest discover -s tests/integration -p 'test_proxy.py'
       - name: Test local sandbox tooling
         run: npm run test:sandbox
       - name: Build

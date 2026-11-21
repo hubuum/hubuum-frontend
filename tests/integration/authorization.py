@@ -11,7 +11,6 @@ import os
 from pathlib import Path
 import select
 import shutil
-import ssl
 import subprocess
 import sys
 import threading
@@ -19,7 +18,7 @@ import time
 import traceback
 import urllib.request
 
-from authentication import Consumer, FRONTEND, Proxy, ROOT, SOURCE
+from authentication import Consumer, FRONTEND, Proxy, ROOT, SOURCE, fixture_server_tls
 
 
 def main():
@@ -144,8 +143,7 @@ def main():
 
             self.policy_proxy = ThreadingHTTPServer(("0.0.0.0", 0), PolicyProxy)
             self.policy_proxy.daemon_threads = True
-            tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            tls.load_cert_chain(self.root / "mount/server.pem", self.root / "mount/server.key")
+            tls = fixture_server_tls(self.root)
             self.policy_proxy.socket = tls.wrap_socket(self.policy_proxy.socket, server_side=True)
             threading.Thread(target=self.policy_proxy.serve_forever, daemon=True).start()
             self.treetop_url = "https://host.docker.internal:" + str(self.policy_proxy.server_address[1])
