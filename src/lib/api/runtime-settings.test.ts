@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+	conflictingRuntimeFields,
 	fetchRuntimeSettingsCatalogue,
 	fetchRuntimeSettingsGroup,
 	runtimeChanges,
@@ -180,6 +181,25 @@ describe("runtime configuration discovery", () => {
 			).toThrow();
 		},
 	);
+	it("flags only overlapping edits that differ from the latest typed value", () => {
+		const drafts = { new_option: "09", enabled: false };
+		const original = { new_option: 5, enabled: true };
+		expect(
+			conflictingRuntimeFields(descriptor, drafts, original, {
+				new_option: 7,
+				enabled: false,
+			}),
+		).toEqual(["new_option"]);
+		expect(
+			conflictingRuntimeFields(descriptor, drafts, original, {
+				new_option: 9,
+				enabled: true,
+			}),
+		).toEqual([]);
+		expect(
+			conflictingRuntimeFields(descriptor, {}, original, { new_option: 7 }),
+		).toEqual([]);
+	});
 	it("does not send unchanged fields", () => {
 		expect(
 			runtimeChanges(
@@ -268,7 +288,7 @@ describe("runtime configuration discovery", () => {
 		vi.stubGlobal("fetch", fetch);
 		await expect(
 			saveRuntimeSettings("future_policy", 4, { new_option: 12 }),
-		).rejects.toThrow("Reload settings");
+		).rejects.toThrow("Review the latest saved values");
 		expect(fetch).toHaveBeenCalledTimes(1);
 	});
 });

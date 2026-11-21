@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
 import { BrowserAuthentication } from "@/components/browser-authentication";
+import { ProviderInventory } from "@/components/provider-inventory";
 import { CreateModal } from "@/components/create-modal";
 import type {
 	SecurityConfigurationCapabilities,
@@ -33,6 +34,10 @@ import {
 	providerCallback,
 } from "@/lib/security-settings";
 import {
+	copyableDefinition,
+	duplicateProvider,
+	parseProviderSettings,
+	providerChangeSummary,
 	providerRequest,
 	providerTemplate,
 	securityCandidateInput,
@@ -54,6 +59,52 @@ const message = (error: unknown) =>
 		? error.message
 		: "The operation could not be confirmed. Reload configuration before retrying.";
 
+function LdapCopyFields({
+	draft,
+	onChange,
+}: {
+	draft: ProviderDraft;
+	onChange: (text: string) => void;
+}) {
+	let settings: Record<string, unknown>;
+	try {
+		settings = parseProviderSettings(draft.configurationText);
+	} catch {
+		return <p>Correct the advanced JSON to edit the directory fields.</p>;
+	}
+	return (
+		<div className="runtime-settings-fields">
+			{Object.entries({
+				url: "Directory URL",
+				user_base_dn: "User search base DN",
+				user_filter: "User search filter",
+				bind_dn: "Service bind DN",
+			}).map(([key, label]) => (
+				<label className="runtime-settings-field" key={key}>
+					{label}
+					<input
+						value={String(settings[key] ?? "")}
+						required={key !== "bind_dn"}
+						onChange={(event) => {
+							const text = event.target.value;
+							onChange(
+								JSON.stringify(
+									{
+										...settings,
+										[key]: key === "bind_dn" && !text ? null : text,
+									},
+									null,
+									2,
+								),
+							);
+						}}
+					/>
+				</label>
+			))}
+		</div>
+	);
+}
+
 export function SecuritySettingsEditor(props: Props) {
 	let initial: ReturnType<typeof authenticationDraft> | null = null;
 	let authz: ReturnType<typeof authorizationDraft> | null = null;
@@ -64,6 +115,9 @@ export function SecuritySettingsEditor(props: Props) {
 	} catch {
 		return (
 			<div className="stack">
+				{props.state.group === "authentication" && (
+					<ProviderInventory providers={props.state.effective.providers} />
+				)}
 				<p className="error-banner" role="alert">
 					The security configuration is not supported by this frontend. It is
 					read-only; upgrade the frontend before editing.
@@ -99,6 +153,7 @@ function SecurityForm({
 }) {
 	const prefix = useId();
 	const [drafts, setDrafts] = useState(initial?.drafts ?? []);
+	const focusDraft = useRef<string | null>(null);
 	const [backend, setBackend] = useState(
 		initialAuthorization?.backend ?? "local",
 	);
@@ -179,6 +234,14 @@ function SecurityForm({
 	}
 	async function prepare() {
 		if (!editable || state.revision === null || candidate) return;
+		if (initial && !release) {
+			const names = new Set(["local"]);
+			for (const draft of drafts) {
+				if (!draft.name.trim() || names.has(draft.name))
+					throw new Error("Each provider needs a unique login scope.");
+				names.add(draft.name);
+			}
+		}
 		const data = new FormData(formRef.current ?? undefined);
 		// Credentials and aliases never enter React state or the review summary.
 		formRef.current
@@ -240,10 +303,14 @@ function SecurityForm({
 							: "Release runtime ownership to deployment configuration.",
 					]
 				: state.group === "authentication"
-					? drafts.map(
-							(draft) =>
-								`${draft.name} (${draft.kind}): ${draft.enabled ? "enabled" : "disabled"}, ${draft.source}; credential ${draft.credentialAction}${draft.adoptDeployment ? "; adopt deployment definition" : ""}.`,
-						)
+					? [
+							...providerChangeSummary(initial?.drafts ?? [], drafts),
+							...(state.source === "deployment"
+								? [
+										"Activation moves the sign-in selection to runtime management. Future deployment providers will need to be enabled here.",
+									]
+								: []),
+						]
 					: [
 							`${backend}, ${source}${backend === "treetop" && source === "runtime" ? `; ${url}; trust profile ${trust}; timeouts ${connectTimeout}/${requestTimeout} ms` : ""}.`,
 						],
@@ -291,6 +358,44 @@ function SecurityForm({
 					connectivity and administrator access checks.
 				</p>
 			)}
+			{initial && (
+				<ProviderInventory
+					providers={initial.providers}
+					action={(name) => {
+						const provider = initial.providers.find(
+							(item) => item.name === name,
+						);
+						if (
+							!provider ||
+							provider.kind === "local" ||
+							!capabilities.configurable_provider_kinds.includes(provider.kind)
+						)
+							return null;
+						if (!copyableDefinition(provider))
+							return <span className="muted">Copy settings unavailable</span>;
+						return (
+							<button
+								type="button"
+								className="ghost"
+								disabled={frozen || release}
+								aria-label={`Duplicate ${name}`}
+								onClick={() => {
+									try {
+										const copy = duplicateProvider(provider);
+										focusDraft.current = copy.key;
+										setDrafts((current) => [...current, copy]);
+										setDirty(true);
+									} catch (cause) {
+										setError(message(cause));
+									}
+								}}
+							>
+								Duplicate
+							</button>
+						);
+					}}
+				/>
+			)}
 			{actor.isPending ? (
 				<p role="status">Checking administrator identity…</p>
 			) : actor.data !== true ? (
@@ -314,6 +419,10 @@ function SecurityForm({
 				className="stack"
 				ref={formRef}
 				noValidate={release}
+				onInvalidCapture={(event) => {
+					const details = (event.target as HTMLElement).closest("details");
+					if (details) details.open = true;
+				}}
 				onSubmit={(event) => {
 					event.preventDefault();
 					void run(prepare);
@@ -333,196 +442,244 @@ function SecurityForm({
 							{drafts.map((draft, index) => {
 								const status = initial?.providers.find(
 									(provider) =>
-										provider.provider_id === draft.providerId &&
-										provider.name === draft.name,
+										(provider.provider_id ?? `deployment:${provider.name}`) ===
+										draft.key,
 								);
-								const locked =
-									capabilities.deployment_locked_providers.includes(draft.name);
+								const locked = Boolean(
+									status &&
+										capabilities.deployment_locked_providers.includes(
+											status.name,
+										),
+								);
 								return (
-									<fieldset className="stack" key={draft.key} disabled={locked}>
-										<legend>
-											{draft.name || "New provider"} ({draft.kind})
-										</legend>
-										{status && (
-											<p>
-												Source: {status.source}.{" "}
-												{status.available
-													? "Applied adapter available."
-													: "Applied adapter unavailable."}{" "}
-												{status.source === "deployment"
-													? "Credentials are managed by deployment."
-													: status.credential_configured
-														? "A credential is configured."
-														: "No credential is configured."}
-											</p>
-										)}
-										{locked && (
-											<p>
-												Locked by deployment; this provider cannot be changed
-												here.
-											</p>
-										)}
-										<label
-											className="stack"
-											htmlFor={`${prefix}-name-${index}`}
-										>
-											Provider name
-											<input
-												id={`${prefix}-name-${index}`}
-												value={draft.name}
-												readOnly={Boolean(status)}
-												required
-												maxLength={160}
-												onChange={(event) =>
-													change(index, { name: event.target.value })
-												}
-											/>
-										</label>
-										<label>
-											<input
-												type="checkbox"
-												checked={draft.enabled}
-												onChange={(event) =>
-													change(index, { enabled: event.target.checked })
-												}
-											/>{" "}
-											Enabled
-										</label>
-										<label
-											className="stack"
-											htmlFor={`${prefix}-source-${index}`}
-										>
-											Definition source
-											<select
-												id={`${prefix}-source-${index}`}
-												value={draft.source}
-												onChange={(event) =>
-													change(index, {
-														source:
-															event.target.value === "runtime"
-																? "runtime"
-																: "deployment",
-														adoptDeployment:
-															status?.source === "deployment" &&
-															event.target.value === "runtime",
-													})
-												}
-											>
-												<option value="runtime">Runtime definition</option>
-												{status?.source === "deployment" && (
-													<option value="deployment">
-														Deployment reference
-													</option>
-												)}
-											</select>
-										</label>
-										{draft.adoptDeployment && (
-											<p>
-												This candidate explicitly adopts the deployment
-												definition into runtime management. Review every
-												setting.
-											</p>
-										)}
-										{draft.source === "runtime" && (
-											<>
-												<label
-													className="stack"
-													htmlFor={`${prefix}-config-${index}`}
-												>
-													Non-secret provider settings (JSON)
-													<textarea
-														id={`${prefix}-config-${index}`}
-														value={draft.configurationText}
-														rows={12}
-														spellCheck={false}
-														onChange={(event) =>
-															change(index, {
-																configurationText: event.target.value,
-															})
-														}
-													/>
-												</label>
-												<p className="muted">
-													Set connection, identity admission and membership
-													policy here. Keep passwords, client secrets and
-													credential aliases in the write-only controls below.
-													LDAP scope must match the provider name.
+									<details
+										className="runtime-settings-details"
+										key={draft.key}
+										open={!status || initial?.drafts.length === 1}
+									>
+										<summary>
+											{status
+												? `Settings for ${status.name}`
+												: `New ${draft.kind.toUpperCase()} provider`}
+										</summary>
+										<fieldset className="stack" disabled={locked}>
+											<legend>
+												{draft.name || "New provider"} ({draft.kind})
+											</legend>
+											{draft.copiedFrom && (
+												<p>
+													Copied from <strong>{draft.copiedFrom}</strong>. The
+													new login scope has its own users, groups and
+													credentials.
 												</p>
-												<label
-													className="stack"
-													htmlFor={`${prefix}-action-${index}`}
-												>
-													Credential action
-													<select
-														id={`${prefix}-action-${index}`}
-														value={draft.credentialAction}
-														onChange={(event) =>
-															change(index, {
-																credentialAction: event.target
-																	.value as ProviderDraft["credentialAction"],
-															})
+											)}
+											{status && (
+												<p>
+													Source: {status.source}.{" "}
+													{status.available
+														? "Applied adapter available."
+														: "Applied adapter unavailable."}{" "}
+													{status.source === "deployment"
+														? "Credentials are managed by deployment."
+														: status.credential_configured
+															? "A credential is configured."
+															: "No credential is configured."}
+												</p>
+											)}
+											{locked && (
+												<p>
+													Locked by deployment; this provider cannot be changed
+													here.
+												</p>
+											)}
+											<label
+												className="stack"
+												htmlFor={`${prefix}-name-${draft.key}`}
+											>
+												{draft.copiedFrom ? "New login scope" : "Provider name"}
+												<input
+													id={`${prefix}-name-${draft.key}`}
+													ref={(node) => {
+														if (node && focusDraft.current === draft.key) {
+															node.focus();
+															focusDraft.current = null;
 														}
-													>
-														<option value="keep">
-															Keep existing credential
+													}}
+													value={draft.name}
+													readOnly={Boolean(status)}
+													required
+													maxLength={160}
+													onChange={(event) =>
+														change(index, { name: event.target.value })
+													}
+												/>
+											</label>
+											<label>
+												<input
+													type="checkbox"
+													checked={draft.enabled}
+													onChange={(event) =>
+														change(index, { enabled: event.target.checked })
+													}
+												/>{" "}
+												Enabled
+											</label>
+											<label
+												className="stack"
+												htmlFor={`${prefix}-source-${index}`}
+											>
+												Definition source
+												<select
+													id={`${prefix}-source-${index}`}
+													value={draft.source}
+													onChange={(event) =>
+														change(index, {
+															source:
+																event.target.value === "runtime"
+																	? "runtime"
+																	: "deployment",
+															adoptDeployment:
+																status?.source === "deployment" &&
+																event.target.value === "runtime",
+														})
+													}
+												>
+													<option value="runtime">Runtime definition</option>
+													{status?.source === "deployment" && (
+														<option value="deployment">
+															Deployment reference
 														</option>
-														<option value="reference">
-															Reference a deployment secret alias
-														</option>
-														{capabilities.replacement_credentials_available && (
-															<option value="replace">
-																Replace with a new credential
-															</option>
-														)}
-														<option value="clear">Clear credential</option>
-													</select>
-												</label>
-												{(draft.credentialAction === "reference" ||
-													draft.credentialAction === "replace") && (
+													)}
+												</select>
+											</label>
+											{draft.adoptDeployment && (
+												<p>
+													This candidate explicitly adopts the deployment
+													definition into runtime management. Review every
+													setting.
+												</p>
+											)}
+											{draft.source === "runtime" && (
+												<>
+													{draft.kind === "ldap" && draft.copiedFrom && (
+														<LdapCopyFields
+															draft={draft}
+															onChange={(configurationText) =>
+																change(index, { configurationText })
+															}
+														/>
+													)}
+													<details open={!draft.copiedFrom}>
+														<summary>Advanced provider settings</summary>
+														<label
+															className="stack"
+															htmlFor={`${prefix}-config-${index}`}
+														>
+															Non-secret provider settings (JSON)
+															<textarea
+																id={`${prefix}-config-${index}`}
+																value={draft.configurationText}
+																rows={12}
+																spellCheck={false}
+																onChange={(event) =>
+																	change(index, {
+																		configurationText: event.target.value,
+																	})
+																}
+															/>
+														</label>
+													</details>
+													<p className="muted">
+														Set connection, identity admission and membership
+														policy here. Keep passwords, client secrets and
+														credential aliases in the write-only controls below.
+														{draft.kind === "ldap" &&
+															(draft.copiedFrom
+																? "The new login scope is applied when the candidate is prepared."
+																: "LDAP scope must match the provider name.")}
+													</p>
 													<label
 														className="stack"
-														htmlFor={`${prefix}-secret-${index}`}
-														key={draft.credentialAction}
+														htmlFor={`${prefix}-action-${index}`}
 													>
-														{draft.credentialAction === "reference"
-															? "Credential alias (write only)"
-															: "New credential (write only)"}
-														<input
-															id={`${prefix}-secret-${index}`}
-															name={`credential-${draft.key}`}
-															type="password"
-															autoComplete="off"
-															data-write-only
-															required
-															maxLength={16384}
-														/>
+														Credential action
+														<select
+															id={`${prefix}-action-${index}`}
+															value={draft.credentialAction}
+															onChange={(event) =>
+																change(index, {
+																	credentialAction: event.target
+																		.value as ProviderDraft["credentialAction"],
+																})
+															}
+														>
+															{!draft.copiedFrom && (
+																<option value="keep">
+																	Keep existing credential
+																</option>
+															)}
+															<option value="reference">
+																Reference a deployment secret alias
+															</option>
+															{capabilities.replacement_credentials_available && (
+																<option value="replace">
+																	Replace with a new credential
+																</option>
+															)}
+															<option value="clear">
+																{draft.copiedFrom
+																	? "No credential"
+																	: "Clear credential"}
+															</option>
+														</select>
 													</label>
-												)}
-												{draft.credentialAction === "clear" && (
-													<p>
-														Clearing removes the configured credential. For
-														LDAP, remove the bind DN too when changing to
-														anonymous bind. Other settings must remain valid;
-														providers requiring a secret must stay disabled.
-													</p>
-												)}
-											</>
-										)}
-										{!status && (
-											<button
-												type="button"
-												className="ghost"
-												onClick={() => {
-													setDrafts((current) =>
-														current.filter((item) => item.key !== draft.key),
-													);
-													setDirty(true);
-												}}
-											>
-												Remove new provider
-											</button>
-										)}
-									</fieldset>
+													{(draft.credentialAction === "reference" ||
+														draft.credentialAction === "replace") && (
+														<label
+															className="stack"
+															htmlFor={`${prefix}-secret-${index}`}
+															key={draft.credentialAction}
+														>
+															{draft.credentialAction === "reference"
+																? "Credential alias (write only)"
+																: "New credential (write only)"}
+															<input
+																id={`${prefix}-secret-${index}`}
+																name={`credential-${draft.key}`}
+																type="password"
+																autoComplete="off"
+																data-write-only
+																required
+																maxLength={16384}
+															/>
+														</label>
+													)}
+													{draft.credentialAction === "clear" && (
+														<p>
+															Clearing removes the configured credential. For
+															LDAP, remove the bind DN too when changing to
+															anonymous bind. Other settings must remain valid;
+															providers requiring a secret must stay disabled.
+														</p>
+													)}
+												</>
+											)}
+											{!status && (
+												<button
+													type="button"
+													className="ghost"
+													onClick={() => {
+														setDrafts((current) =>
+															current.filter((item) => item.key !== draft.key),
+														);
+														setDirty(true);
+													}}
+												>
+													Remove new provider
+												</button>
+											)}
+										</fieldset>
+									</details>
 								);
 							})}
 							<div className="actions">

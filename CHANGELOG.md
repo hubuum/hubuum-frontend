@@ -8,6 +8,12 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Runtime settings show provider ownership, activation and replica availability.
+  Administrators can duplicate supported LDAP, OIDC and OAuth definitions into
+  disabled providers and review each change to sign-in before activation.
+  Scalar settings show effective limits inline and retain edits during revision
+  conflicts.
+
 - Project #6 runtime LDAP, OIDC and OAuth provider administration, non-activating
   identity/group previews and exact local-administrator-approved activation.
   Add runtime Treetop connection controls, deployment ownership/lock visibility,

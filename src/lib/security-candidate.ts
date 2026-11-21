@@ -182,6 +182,7 @@ export const providerStatusesSchema = z
 			available: z.boolean(),
 			definition_mutable: z.boolean(),
 			credential_configured: z.boolean(),
+			deployment_copy_definition: z.record(z.string(), z.unknown()).nullish(),
 			runtime_definition: z
 				.record(z.string(), z.unknown())
 				.nullable()
@@ -194,6 +195,7 @@ export type ExternalProviderKind = "ldap" | "oidc" | "oauth";
 export type ProviderDraft = {
 	key: string;
 	providerId?: string | null;
+	copiedFrom?: string;
 	name: string;
 	kind: ExternalProviderKind;
 	source: "runtime" | "deployment";
@@ -257,6 +259,10 @@ export function providerTemplate(
 export function providerDraft(status: ProviderStatus): ProviderDraft | null {
 	const kind = externalProviderKind(status.kind);
 	if (!kind) return null;
+	if (status.source === "runtime" && !status.runtime_definition)
+		throw new Error(
+			"The server did not return the runtime provider definition.",
+		);
 	return {
 		key: status.provider_id ?? `deployment:${status.name}`,
 		providerId: status.provider_id,
@@ -278,6 +284,71 @@ export function providerDraft(status: ProviderStatus): ProviderDraft | null {
 	};
 }
 
+export function copyableDefinition(status: ProviderStatus) {
+	return status.source === "runtime"
+		? status.runtime_definition
+		: status.deployment_copy_definition;
+}
+
+export function duplicateProvider(status: ProviderStatus): ProviderDraft {
+	const kind = externalProviderKind(status.kind);
+	const source = copyableDefinition(status);
+	if (!kind || !source)
+		throw new Error("This server did not supply copyable settings.");
+	const settings = parseProviderSettings(JSON.stringify(source));
+	if (kind === "ldap") delete settings.scope;
+	return {
+		key: crypto.randomUUID(),
+		name: "",
+		kind,
+		source: "runtime",
+		enabled: false,
+		adoptDeployment: false,
+		copiedFrom: status.name,
+		configurationText: JSON.stringify(settings, null, 2),
+		credentialAction:
+			kind === "ldap" && !settings.bind_dn ? "clear" : "reference",
+	};
+}
+
+export function providerChangeSummary(
+	original: ProviderDraft[],
+	drafts: ProviderDraft[],
+): string[] {
+	const saved = new Map(original.map((draft) => [draft.key, draft]));
+	return drafts.map((draft) => {
+		const previous = saved.get(draft.key);
+		const activation = draft.enabled ? "enabled" : "disabled";
+		if (!previous)
+			return `Add ${draft.name} as ${activation}.${draft.copiedFrom ? ` Copied from ${draft.copiedFrom}.` : ""}`;
+		const changes: string[] = [];
+		if (draft.enabled !== previous.enabled)
+			changes.push(draft.enabled ? "Enable sign-in" : "Disable sign-in");
+		if (draft.source !== previous.source)
+			changes.push(
+				draft.source === "runtime"
+					? "Adopt the deployment definition"
+					: "Use the deployment definition",
+			);
+		if (
+			draft.source === "runtime" &&
+			draft.configurationText !== previous.configurationText
+		)
+			changes.push("Update provider settings");
+		if (draft.source === "runtime" && draft.credentialAction !== "keep")
+			changes.push(
+				{
+					clear: "Clear the credential",
+					reference: "Use a deployment secret alias",
+					replace: "Replace the credential",
+				}[draft.credentialAction],
+			);
+		return changes.length
+			? `${draft.name} · ${changes.join(". ")}.`
+			: `${draft.name} stays ${activation}.`;
+	});
+}
+
 export function providerRequest(
 	draft: ProviderDraft,
 	secret: ProviderCredentialInput,
@@ -290,6 +361,18 @@ export function providerRequest(
 	if (draft.source === "deployment")
 		return { ...base, kind: draft.kind, source: "deployment" };
 	const configuration = parseProviderSettings(draft.configurationText);
+	if (draft.copiedFrom) {
+		if (
+			secret.action === "keep" ||
+			(secret.action === "clear" &&
+				(draft.kind !== "ldap" || configuration.bind_dn))
+		) {
+			throw new Error(
+				"Supply a credential or deployment secret alias for the new provider.",
+			);
+		}
+		if (draft.kind === "ldap") configuration.scope = draft.name;
+	}
 	if (draft.kind === "ldap") {
 		if (configuration.scope !== draft.name)
 			throw new Error("The LDAP scope must match the provider name.");

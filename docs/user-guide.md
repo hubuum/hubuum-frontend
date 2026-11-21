@@ -796,8 +796,10 @@ Values above that maximum are rejected before saving.
 The form shows requested shared values when they differ from effective values
 because of a deployment ceiling. Source, revision, application status, and timing
 remain visible. Save sends only edited fields and the revision you loaded. If
-another administrator edited the group, reload and review the conflict before
-saving again. A successful commit does not promise every replica has applied it.
+another administrator edited the group, the editor fetches the latest revision
+and retains your edits. For each field changed by both administrators, choose
+**Keep my edit** or **Use saved value**, then save the reviewed changes. Fields
+limited by deployment show their saved request and effective value inline. A successful commit does not promise every replica has applied it.
 Expand **Effective values** to inspect the group's applied values or reload its
 settings. Reload replaces that group's draft with the latest server values.
 
@@ -821,6 +823,17 @@ select the claim source/pointer, group key mode and refresh/staleness intervals;
 LDAP uses its directory group attributes/rules. The server validates the complete
 definition. Deployment references remain deployment-owned; selecting runtime for
 one explicitly adopts its definition, subject to deployment locks.
+
+The **Current sign-in providers** table lists each scope's owner, sign-in state
+and availability on the responding server. Servers with status-only discovery
+support inspection. On a candidate-capable server, **Duplicate** opens an
+independent, disabled runtime provider. Enter a unique login scope and any
+required credential. For LDAP, edit the directory URL, search base, filter or
+service bind DN directly. Advanced settings include attribute and group mappings.
+Deployment LDAP providers can be copied when the server supplies a non-secret
+copy definition, including when the source is locked. Older servers may supply
+copyable definitions only for runtime providers. The review lists which scopes
+will be added, enabled or disabled and which will keep their current state.
 
 Credential actions are explicit: **Keep** preserves the configured credential,
 **Reference** selects a deployment secret alias, **Replace** writes a new encrypted

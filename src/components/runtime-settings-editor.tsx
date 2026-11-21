@@ -6,10 +6,13 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 import { GuidedFlowPanel, GuidedFlowTabs } from "@/components/guided-flow";
 import { BackendConnectionPanel } from "@/components/backend-connection-panel";
+import { ProviderInventory } from "@/components/provider-inventory";
 import { SecuritySettingsEditor } from "@/components/security-settings-editor";
 import type { SecurityConfigurationCapabilities } from "@/lib/api/generated/models";
 
 import {
+	RuntimeRevisionConflict,
+	conflictingRuntimeFields,
 	fetchRuntimeSettingsCatalogue,
 	fetchRuntimeSettingsGroup,
 	type RuntimeSettingsDescriptor,
@@ -210,14 +213,25 @@ function SettingsGroup({
 						onSaved();
 					}}
 				/>
+			) : state.data && descriptor.key === "authentication" ? (
+				<>
+					<ProviderInventory providers={state.data.effective.providers} />
+					<p className="muted">
+						{descriptor.read_only_reason ??
+							"Provider editing requires server support for security candidates."}
+					</p>
+				</>
 			) : (
 				state.data && (
 					<SettingsForm
-						key={`${descriptor.key}-${state.data.revision}-${reloadVersion}`}
+						key={`${descriptor.key}-${reloadVersion}`}
 						descriptor={descriptor}
 						state={state.data}
 						supported={supported}
 						onDirtyChange={onDirtyChange}
+						onRefresh={async () => {
+							await state.refetch({ throwOnError: true });
+						}}
 						onReload={async () => {
 							const result = await state.refetch();
 							if (result.isSuccess) {
@@ -242,6 +256,7 @@ function SettingsForm({
 	state,
 	supported,
 	onReload,
+	onRefresh,
 	onSaved,
 	onDirtyChange,
 }: {
@@ -249,6 +264,7 @@ function SettingsForm({
 	state: RuntimeSettingsState;
 	supported: boolean;
 	onReload: () => Promise<void>;
+	onRefresh: () => Promise<void>;
 	onSaved: (message: string) => void;
 	onDirtyChange: (group: string, dirty: boolean) => void;
 }) {
@@ -257,6 +273,31 @@ function SettingsForm({
 	const busy = operation !== null;
 	const [error, setError] = useState("");
 	const initial = state.runtime ?? state.effective;
+	const [original, setOriginal] = useState<Record<string, unknown>>({});
+	const [staleRevision, setStaleRevision] = useState<number | null>(null);
+	const needsRefresh =
+		staleRevision !== null && (state.revision ?? 0) <= staleRevision;
+	const conflicts = conflictingRuntimeFields(
+		descriptor,
+		drafts,
+		original,
+		initial,
+	);
+	function discardField(name: string) {
+		setDrafts((current) => {
+			const next = { ...current };
+			delete next[name];
+			return next;
+		});
+	}
+	function edit(name: string, value: string | boolean) {
+		if (!Object.hasOwn(drafts, name)) {
+			setOriginal((current) => ({ ...current, [name]: initial[name] }));
+		}
+		if (runtimeDraftCount(descriptor, { [name]: value }, initial) === 0)
+			discardField(name);
+		else setDrafts((current) => ({ ...current, [name]: value }));
+	}
 	const editable =
 		supported &&
 		descriptor.patch_supported &&
@@ -281,7 +322,14 @@ function SettingsForm({
 			className="stack"
 			onSubmit={async (event) => {
 				event.preventDefault();
-				if (!editable || busy || state.revision === null) return;
+				if (
+					!editable ||
+					busy ||
+					needsRefresh ||
+					conflicts.length ||
+					state.revision === null
+				)
+					return;
 				setError("");
 				setOperation("save");
 				try {
@@ -295,10 +343,17 @@ function SettingsForm({
 						state.revision,
 						changes,
 					);
+					setDrafts({});
+					setStaleRevision(null);
 					onSaved(
 						`Saved revision ${result.committed_revision}. ${result.applied_by_responding_replica ? "Applied by this server; other replicas update asynchronously." : "Committed; application by this server is pending."}`,
 					);
 				} catch (cause) {
+					if (cause instanceof RuntimeRevisionConflict) {
+						setStaleRevision(state.revision);
+						await onRefresh().catch(() => {});
+						return;
+					}
 					setError(
 						cause instanceof Error ? cause.message : "Unable to save settings.",
 					);
@@ -348,8 +403,16 @@ function SettingsForm({
 					const value = Object.hasOwn(drafts, field.name)
 						? drafts[field.name]
 						: initial[field.name];
+					const limited =
+						state.constrained_by_ceiling &&
+						state.runtime !== null &&
+						Object.hasOwn(state.runtime, field.name) &&
+						Object.hasOwn(state.effective, field.name) &&
+						initial[field.name] !== state.effective[field.name] &&
+						field.kind !== "readonly";
 					const hasHelp = Boolean(
-						field.description ||
+						limited ||
+							field.description ||
 							Object.keys(field.choiceDescriptions ?? {}).length,
 					);
 					const helpId = hasHelp ? `${id}-help` : undefined;
@@ -369,6 +432,12 @@ function SettingsForm({
 								{hasHelp && (
 									<div id={helpId} className="muted runtime-settings-help">
 										{field.description && <p>{field.description}</p>}
+										{limited && (
+											<p>
+												Requested {String(initial[field.name])} · Effective on
+												this server {String(state.effective[field.name])}
+											</p>
+										)}
 										{Object.keys(field.choiceDescriptions ?? {}).length > 0 && (
 											<dl>
 												{field.choices
@@ -401,9 +470,7 @@ function SettingsForm({
 											aria-describedby={helpId}
 											checked={value === true}
 											disabled={busy}
-											onChange={(e) =>
-												setDrafts({ ...drafts, [field.name]: e.target.checked })
-											}
+											onChange={(e) => edit(field.name, e.target.checked)}
 										/>
 										<span aria-hidden="true">
 											{value === true ? "Enabled" : "Disabled"}
@@ -415,9 +482,7 @@ function SettingsForm({
 										aria-describedby={helpId}
 										value={String(value ?? "")}
 										disabled={busy}
-										onChange={(e) =>
-											setDrafts({ ...drafts, [field.name]: e.target.value })
-										}
+										onChange={(e) => edit(field.name, e.target.value)}
 									>
 										{field.choices?.map((choice) => (
 											<option key={choice} value={choice}>
@@ -435,16 +500,67 @@ function SettingsForm({
 										max={field.maximum}
 										value={String(value ?? "")}
 										disabled={busy}
-										onChange={(e) =>
-											setDrafts({ ...drafts, [field.name]: e.target.value })
-										}
+										onChange={(e) => edit(field.name, e.target.value)}
 									/>
+								)}
+								{conflicts.includes(field.name) && (
+									<fieldset
+										className="stack runtime-settings-notice"
+										aria-label={`Resolve ${field.title}`}
+									>
+										<p>
+											Your edit {String(value)} · Latest saved value{" "}
+											{String(initial[field.name] ?? "unavailable")}
+										</p>
+										<div className="action-row">
+											<button
+												type="button"
+												className="ghost"
+												onClick={() =>
+													setOriginal((current) => ({
+														...current,
+														[field.name]: initial[field.name],
+													}))
+												}
+											>
+												Keep my edit
+											</button>
+											<button
+												type="button"
+												className="ghost"
+												onClick={() => discardField(field.name)}
+											>
+												Use saved value
+											</button>
+										</div>
+									</fieldset>
 								)}
 							</div>
 						</div>
 					);
 				})}
 			</div>
+			{staleRevision !== null && (
+				<div className="runtime-settings-notice" role="alert">
+					{needsRefresh ? (
+						<>
+							The server has a newer revision.{" "}
+							<button
+								type="button"
+								className="ghost"
+								disabled={busy}
+								onClick={() => void onRefresh().catch(() => {})}
+							>
+								Fetch latest values
+							</button>
+						</>
+					) : conflicts.length ? (
+						"Another administrator saved changes. Resolve the highlighted fields before saving."
+					) : (
+						"Latest saved values loaded. Review your edits before saving."
+					)}
+				</div>
+			)}
 			{error && (
 				<div className="error-banner stack action-card-header" role="alert">
 					<p>{error}</p>
@@ -482,7 +598,15 @@ function SettingsForm({
 							>
 								Discard
 							</button>
-							<button type="submit" disabled={busy || dirtyCount === 0}>
+							<button
+								type="submit"
+								disabled={
+									busy ||
+									dirtyCount === 0 ||
+									needsRefresh ||
+									conflicts.length > 0
+								}
+							>
 								{operation === "save" ? "Saving…" : "Save changes"}
 							</button>
 						</>
