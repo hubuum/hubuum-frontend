@@ -13,7 +13,7 @@ This workflow does not require `dev:deps` or edits to `.env.local`.
 
 ## First-time setup
 
-Install the latest Node.js 24 LTS release (currently 24.22.1) and Docker Compose
+Install the latest Node.js 24 LTS release (currently 24.22.3) and Docker Compose
 or Podman with a Compose provider,
 then install the project dependencies:
 
@@ -174,7 +174,7 @@ its own Valkey project and disables recordings containing the test setup key.
 
 Pixel comparisons run separately in CI so an intentional or accidental visual
 change does not hide the functional results. Both CI and baseline updates use
-the same digest-pinned Playwright 1.64.0 Noble `linux/amd64` image, bundled
+the same digest-pinned Playwright 1.65.1 Noble `linux/amd64` image, bundled
 Chromium, and the fixed `v0.0.0+visual` display version. Docker is required to
 refresh intentional baselines (Apple-silicon hosts run the image through Docker
 emulation):
@@ -330,7 +330,7 @@ npm run gen:api
 ```
 
 Generated output goes to `src/lib/api/generated`.
-The generator runs via `npx orval@8.45.0`, so network access is required when generating.
+The generator runs via `npx orval@8.48.0`, so network access is required when generating.
 
 ## Documentation-only CI
 
