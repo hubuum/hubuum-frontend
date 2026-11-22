@@ -1,0 +1,273 @@
+{
+  "scope": "Frontend #198 actual runtime administration and native login; implementing-agent qualification, independent approval not implied",
+  "qualified_source_commit": "0ddc0e7be6357143003a1abc1144f750b2d4e702",
+  "server_source": {
+    "project_only": true,
+    "declared_release_target_unchanged": "0.0.22",
+    "accepted_server_source": "8e6e8344c458765af556890572593775ca4fd9a0",
+    "source_openapi_url": "https://raw.githubusercontent.com/hubuum/hubuum/8e6e8344c458765af556890572593775ca4fd9a0/docs/openapi.json",
+    "source_openapi_sha256": "11f894bd8a45abc2f85e80a8ccc9c88062a62b2e1c4f6871d1658fada200b720",
+    "source_fixture_url": "https://raw.githubusercontent.com/hubuum/hubuum/8e6e8344c458765af556890572593775ca4fd9a0/docs/authentication/fixtures.json",
+    "source_fixture_sha256": "027eff028cb1c7252132f1f93225957f548ccb0dd839e2b7e5c291efb872c028",
+    "source_fixture_cases": 48,
+    "candidate_artifact_id": 14287879386,
+    "candidate_archive_sha256": "8b82fb62de8cebf089cb9f358f0b0f814d76011668a5f4fc87d5dcd2c44c4709",
+    "server_pull_request": "https://github.com/hubuum/hubuum/pull/599",
+    "server_merge_state": "squash-merged into project/auth-support",
+    "candidate_tested_commit": "3d80c1552085f68de9b1af33d05c948df4fd184d",
+    "candidate_image_manifest": "sha256:eb246a78d2f32f660e4af33a0273ba274955e54dcc9c9a96d89055f2d9e4b3f7",
+    "candidate_image_config": "sha256:bb57dc1028296d19343a8813fe4b79bdcecdf454767df58d36bea6ac9562a6e0",
+    "source_canonical_spec_sha256": "839c32e8742fe28ba02cb367dcb8fdc8eb35cf971f13f964941f85b488d715e1",
+    "source_live_fixture_sha256": {
+      "tests/python/integration/keycloak.py": "7e40d6b5d5ef70c2a6cd649736d56dd2f6ed8112c1ebd0444abe6b946e21c2a0",
+      "tests/python/integration/oauth.py": "fea7af036d5082f0de2372be9e90e6227449b0dcec2205b267eea84372373b02"
+    },
+    "qualified_server_images": [
+      {
+        "docker_image_id": "sha256:5d8be6932ec997acd98dacfb4aff57eaee48c4cf28579167869d04133ca55442",
+        "manifest": "sha256:daaeef920b62eee0431b48045aaeaa56448def48812f927b2b1e357285a5175b",
+        "config": "sha256:f7f453db1e794b965c17591c4ff3ceb34886643027020116d1fa48a40f94dd24",
+        "platform": "linux/arm64",
+        "source": "8e6e8344c458765af556890572593775ca4fd9a0",
+        "build_flags": "-F tls-rustls -F tls-openssl --locked --release"
+      },
+      {
+        "docker_image_id": "sha256:200dc29e4c5ba5cb0825ea14836e95650ef0e0a11e173020e98d3ab1d1dc66fd",
+        "manifest": "sha256:c0a58775ee5b558e41c1f40ac5e1f4a181a5123e24328c858397966d31fc3cc6",
+        "config": "sha256:55483c9725e64e188164b8dbeddf6b469b883037c34708b8738950f6b075596f",
+        "platform": "linux/arm64",
+        "source": "8e6e8344c458765af556890572593775ca4fd9a0",
+        "build_flags": "-F tls-rustls -F tls-openssl -F permissions-treetop --locked --release"
+      },
+      {
+        "manifest": "sha256:eb246a78d2f32f660e4af33a0273ba274955e54dcc9c9a96d89055f2d9e4b3f7",
+        "config": "sha256:bb57dc1028296d19343a8813fe4b79bdcecdf454767df58d36bea6ac9562a6e0",
+        "platform": "linux/amd64",
+        "source": "3d80c1552085f68de9b1af33d05c948df4fd184d"
+      }
+    ],
+    "server_integration_commit": "540a511e0936abeb6a73aee2c94c5e25eba210b9",
+    "native_qualification": "BFF #196 and browser UI #197 are accepted. Administration #198 passed 63 clean product checks plus 12 real Treetop checks; final frontend CI/candidate acceptance is required. Native real GitHub and full server #581 qualification remain required.",
+    "accepted_bff_foundation": {
+      "pull_request": "https://github.com/hubuum/hubuum-frontend/pull/204",
+      "integration_commit": "3a8dba71b20c7d3a5df06c0f1e75bc7c20ad3543",
+      "source_commit": "63a16029e22f911bb8f872480657cbf62350f316",
+      "tested_commit": "a5d4c5a34fe9814d0a8d6e1df6e2fd0cfc8fb14c",
+      "tree": "8fe93d87be0d451fbc53bbf662b67f4016aa732e",
+      "candidate_artifact_id": 14261258695,
+      "candidate_sha256": "70973d2c4fb4ecfcf5279b2cbbf55f0bce224e3ee22b70c2b70ae95da470b1be",
+      "candidate_expires_at": "2026-12-16T19:33:01Z"
+    },
+    "candidate_expires_at": "2026-12-17T01:12:42Z",
+    "accepted_browser_ui": {
+      "pull_request": "https://github.com/hubuum/hubuum-frontend/pull/209",
+      "integration_commit": "09995e99197fd5ed496e16363cfa498831b00242",
+      "source_commit": "800221c96b6c86c4ea9af48bd66517f83f14ec03",
+      "tested_commit": "6d9363383cdc394102e57884a553f4b4b62557e8",
+      "tree": "b810543a1292a336dc3d365544fa68a90f3b7374",
+      "artifact_id": 14283753294,
+      "archive_sha256": "e141f2017d711e71ac462317360127ece7823d84cacb747c1dd7db8e008b0448",
+      "expires_at": "2026-12-16T23:59:49Z"
+    }
+  },
+  "qualification_recorded_before_server_acceptance": true,
+  "server_acceptance_recorded_separately": true,
+  "total": 63,
+  "passed": 63,
+  "failed": 0,
+  "profiles": {
+    "local": {
+      "checks": [
+        "ordinary local administrator login persists privately before external setup",
+        "actual local or LDAP password login preserves the intended local return without a browser-provider downgrade",
+        "the product UI receives only a Secure HttpOnly SameSite cookie",
+        "the actual approval dialog displays the frozen operation and completes it once through the supported authentication method",
+        "one issued proof token is found and explicitly revoked without exposing its value in reports",
+        "browser storage contains no interaction, session or approval credential",
+        "product logout destroys the matching frontend login"
+      ],
+      "controller_sha256": "21381bfc4a8a62cf1f77a88200f04b48634f2c0ee42c2a7fa804e02969701085",
+      "admin_ui_controller_sha256": "d45f017be9afc734ea1c5c34a8bdd8817313afeafe27c8b8bcf4807ef4fefab1",
+      "provider_ui_controller_sha256": "f69bf70df9251f01d5bc164665c873e9702e1211df6e8941edd2203979787eea",
+      "browser_ui_controller_sha256": "36d21c6950688bdf782b0d6c0d53fe3b33764b0d13d42f45f0faa7574ea5ca86",
+      "browser_controller_sha256": "451ccf30b81fb42f0a05d7f392a28577726d40daf101830cc4327628364217aa",
+      "production_server_files": 1237,
+      "production_server_tree_sha256": "107a8d00ea3f47e98396c105b1b6a52202e3dfbae0c931ce281889c8bb3de797",
+      "node_version": "v24.22.3",
+      "passed": true,
+      "count": 7,
+      "report_sha256": "dbc41e473918f80a6aa6047e62e13261e0c4757ec900436434f22d5f8f4a04af",
+      "images_report_sha256": "7b1abc4e83121650038745a17df5d301c24ce0d48a4ca1f4c916a0d011f0f277"
+    },
+    "ldap": {
+      "checks": [
+        "ordinary local administrator login persists privately before external setup",
+        "product administration preview leaves all six persistent identity, membership, session and credential counts unchanged",
+        "actual local recovery login opens provider administration before external setup",
+        "actual provider form creates an inactive encrypted runtime candidate without displaying stored credentials or aliases",
+        "actual provider test renders identity and groups with no provisioning, membership, session or retained-credential writes",
+        "actual activation review uses a private receipt and fresh local approval for the exact candidate and revision",
+        "actual local recovery login remains available after runtime provider activation and browser storage contains no authority",
+        "actual local or LDAP password login preserves the intended local return without a browser-provider downgrade",
+        "the product UI receives only a Secure HttpOnly SameSite cookie",
+        "the actual approval dialog displays the frozen operation and completes it once through the supported authentication method",
+        "one issued proof token is found and explicitly revoked without exposing its value in reports",
+        "browser storage contains no interaction, session or approval credential",
+        "product logout destroys the matching frontend login"
+      ],
+      "controller_sha256": "21381bfc4a8a62cf1f77a88200f04b48634f2c0ee42c2a7fa804e02969701085",
+      "admin_ui_controller_sha256": "d45f017be9afc734ea1c5c34a8bdd8817313afeafe27c8b8bcf4807ef4fefab1",
+      "provider_ui_controller_sha256": "f69bf70df9251f01d5bc164665c873e9702e1211df6e8941edd2203979787eea",
+      "browser_ui_controller_sha256": "36d21c6950688bdf782b0d6c0d53fe3b33764b0d13d42f45f0faa7574ea5ca86",
+      "browser_controller_sha256": "451ccf30b81fb42f0a05d7f392a28577726d40daf101830cc4327628364217aa",
+      "production_server_files": 1237,
+      "production_server_tree_sha256": "107a8d00ea3f47e98396c105b1b6a52202e3dfbae0c931ce281889c8bb3de797",
+      "node_version": "v24.22.3",
+      "passed": true,
+      "count": 13,
+      "report_sha256": "203cbc15cb2f4050370aeb1173d58dfd2487c4d2798c65b69180ce0d777e5c2f",
+      "images_report_sha256": "7b1abc4e83121650038745a17df5d301c24ce0d48a4ca1f4c916a0d011f0f277"
+    },
+    "oauth": {
+      "checks": [
+        "ordinary local administrator login persists privately before external setup",
+        "product administration preview leaves all six persistent identity, membership, session and credential counts unchanged",
+        "actual local recovery login opens provider administration before external setup",
+        "actual provider form creates an inactive encrypted runtime candidate without displaying stored credentials or aliases",
+        "actual provider test renders identity and groups with no provisioning, membership, session or retained-credential writes",
+        "actual activation review uses a private receipt and fresh local approval for the exact candidate and revision",
+        "actual local recovery login remains available after runtime provider activation and browser storage contains no authority",
+        "actual login UI opens the server-owned provider flow and requires explicit approval before the intended local return",
+        "the product UI receives only a Secure HttpOnly SameSite cookie",
+        "unsupported OAuth freshness is explained without password input, new interaction or protected mutation replay",
+        "the ordinary OAuth session retains the same principal after due eligibility renewal and explicit unsupported-freshness handling",
+        "browser storage contains no interaction, session or approval credential",
+        "product logout destroys the matching frontend login"
+      ],
+      "controller_sha256": "21381bfc4a8a62cf1f77a88200f04b48634f2c0ee42c2a7fa804e02969701085",
+      "admin_ui_controller_sha256": "d45f017be9afc734ea1c5c34a8bdd8817313afeafe27c8b8bcf4807ef4fefab1",
+      "provider_ui_controller_sha256": "f69bf70df9251f01d5bc164665c873e9702e1211df6e8941edd2203979787eea",
+      "browser_ui_controller_sha256": "36d21c6950688bdf782b0d6c0d53fe3b33764b0d13d42f45f0faa7574ea5ca86",
+      "browser_controller_sha256": "451ccf30b81fb42f0a05d7f392a28577726d40daf101830cc4327628364217aa",
+      "production_server_files": 1237,
+      "production_server_tree_sha256": "107a8d00ea3f47e98396c105b1b6a52202e3dfbae0c931ce281889c8bb3de797",
+      "node_version": "v24.22.3",
+      "passed": true,
+      "count": 13,
+      "report_sha256": "4199f95e1fe41f8d0b1475711fdaf51a1531591acd68e02f75df7ad6b178ff68",
+      "images_report_sha256": "7b1abc4e83121650038745a17df5d301c24ce0d48a4ca1f4c916a0d011f0f277"
+    },
+    "id_token": {
+      "checks": [
+        "ordinary local administrator login persists privately before external setup",
+        "product administration preview leaves all six persistent identity, membership, session and credential counts unchanged",
+        "actual local recovery login opens provider administration before external setup",
+        "actual provider form creates an inactive encrypted runtime candidate without displaying stored credentials or aliases",
+        "actual provider test renders identity and groups with no provisioning, membership, session or retained-credential writes",
+        "actual activation review uses a private receipt and fresh local approval for the exact candidate and revision",
+        "actual local recovery login remains available after runtime provider activation and browser storage contains no authority",
+        "actual login UI opens the server-owned provider flow and requires explicit approval before the intended local return",
+        "the product UI receives only a Secure HttpOnly SameSite cookie",
+        "the actual approval dialog displays the frozen operation and completes it once through the supported authentication method",
+        "one issued proof token is found and explicitly revoked without exposing its value in reports",
+        "separate concurrent tabs keep exact operations isolated: one approval mints once while denial in the other mints nothing, and both preserve the ordinary session",
+        "the ordinary session retains the same principal after a due upstream eligibility refresh following concurrent approval and denial",
+        "browser storage contains no interaction, session or approval credential",
+        "product logout destroys the matching frontend login"
+      ],
+      "controller_sha256": "21381bfc4a8a62cf1f77a88200f04b48634f2c0ee42c2a7fa804e02969701085",
+      "admin_ui_controller_sha256": "d45f017be9afc734ea1c5c34a8bdd8817313afeafe27c8b8bcf4807ef4fefab1",
+      "provider_ui_controller_sha256": "f69bf70df9251f01d5bc164665c873e9702e1211df6e8941edd2203979787eea",
+      "browser_ui_controller_sha256": "36d21c6950688bdf782b0d6c0d53fe3b33764b0d13d42f45f0faa7574ea5ca86",
+      "browser_controller_sha256": "451ccf30b81fb42f0a05d7f392a28577726d40daf101830cc4327628364217aa",
+      "production_server_files": 1237,
+      "production_server_tree_sha256": "107a8d00ea3f47e98396c105b1b6a52202e3dfbae0c931ce281889c8bb3de797",
+      "node_version": "v24.22.3",
+      "passed": true,
+      "count": 15,
+      "report_sha256": "0f3c825c87144401b8ce651d71cf393989cd5f7c108787731f7a32b8ff63124f",
+      "images_report_sha256": "8a561b1999f7b7feb04dea862bb749a9b658dc4ec991b7ac48cbf5cb14cb4b0b"
+    },
+    "userinfo": {
+      "checks": [
+        "ordinary local administrator login persists privately before external setup",
+        "product administration preview leaves all six persistent identity, membership, session and credential counts unchanged",
+        "actual local recovery login opens provider administration before external setup",
+        "actual provider form creates an inactive encrypted runtime candidate without displaying stored credentials or aliases",
+        "actual provider test renders identity and groups with no provisioning, membership, session or retained-credential writes",
+        "actual activation review uses a private receipt and fresh local approval for the exact candidate and revision",
+        "actual local recovery login remains available after runtime provider activation and browser storage contains no authority",
+        "actual login UI opens the server-owned provider flow and requires explicit approval before the intended local return",
+        "the product UI receives only a Secure HttpOnly SameSite cookie",
+        "the actual approval dialog displays the frozen operation and completes it once through the supported authentication method",
+        "one issued proof token is found and explicitly revoked without exposing its value in reports",
+        "separate concurrent tabs keep exact operations isolated: one approval mints once while denial in the other mints nothing, and both preserve the ordinary session",
+        "the ordinary session retains the same principal after a due upstream eligibility refresh following concurrent approval and denial",
+        "browser storage contains no interaction, session or approval credential",
+        "product logout destroys the matching frontend login"
+      ],
+      "controller_sha256": "21381bfc4a8a62cf1f77a88200f04b48634f2c0ee42c2a7fa804e02969701085",
+      "admin_ui_controller_sha256": "d45f017be9afc734ea1c5c34a8bdd8817313afeafe27c8b8bcf4807ef4fefab1",
+      "provider_ui_controller_sha256": "f69bf70df9251f01d5bc164665c873e9702e1211df6e8941edd2203979787eea",
+      "browser_ui_controller_sha256": "36d21c6950688bdf782b0d6c0d53fe3b33764b0d13d42f45f0faa7574ea5ca86",
+      "browser_controller_sha256": "451ccf30b81fb42f0a05d7f392a28577726d40daf101830cc4327628364217aa",
+      "production_server_files": 1237,
+      "production_server_tree_sha256": "107a8d00ea3f47e98396c105b1b6a52202e3dfbae0c931ce281889c8bb3de797",
+      "node_version": "v24.22.3",
+      "passed": true,
+      "count": 15,
+      "report_sha256": "1fe2d4a64e1c5cc0e4c0292e3c843c00f59e56623f534c20fc6d14a5f525bd0b",
+      "images_report_sha256": "3af6bb67de2fb89abbe8cde30d858d84689ab305824aa4ce855014f13c665bfd"
+    }
+  },
+  "authorization": {
+    "total": 12,
+    "passed": true,
+    "checks": [
+      "immutable real Treetop loads the pinned schema before strict deny policies; uploads remain disabled",
+      "authorization candidate preparation leaves all six persistent identity, membership, session and credential counts unchanged",
+      "authorization candidate preparation leaves all six persistent identity, membership, session and credential counts unchanged",
+      "authorization candidate preparation leaves all six persistent identity, membership, session and credential counts unchanged",
+      "unreachable runtime Treetop preflight leaves live Local authorization and revision unchanged",
+      "a real deny policy cannot activate or remove the existing local recovery path",
+      "real Treetop connectivity and recovery checks prepare an inactive candidate, then exact local approval activates revision two",
+      "runtime Treetop ownership and the private ordinary session survive server and frontend process restart",
+      "policy outage fails protected access closed without changing the requested backend; remote-policy recovery uses the documented offline administrator command",
+      "real policy service reconnect restores administrator access and actual local password login without changing the requested backend or revision",
+      "switching back to Local is a separate verified and freshly approved runtime change",
+      "reviewed release restores deployment ownership and remains applied across restart"
+    ],
+    "report_sha256": "c18c0be4293c93411f186af34ec3c1b08a6112280ac147fa773b06254d38feb9",
+    "controller_sha256": "5aff6a3a078587f98956251eaee01bf6713035d73881e607ba048e4759d89aed",
+    "treetop_image": "ghcr.io/treetop-policy-engine/treetop-rest:v0.1.0@sha256:d1fdd7536f31dde0b922f9516baa16a1f5ee7ecd4ab1c0892afd555128acc43e",
+    "treetop_source": "a8356004af9970062eb8535364d4d53a6859cf9d",
+    "server_image": {
+      "source": "8e6e8344c458765af556890572593775ca4fd9a0",
+      "docker_image_id": "sha256:200dc29e4c5ba5cb0825ea14836e95650ef0e0a11e173020e98d3ab1d1dc66fd",
+      "manifest": "sha256:c0a58775ee5b558e41c1f40ac5e1f4a181a5123e24328c858397966d31fc3cc6",
+      "config": "sha256:55483c9725e64e188164b8dbeddf6b469b883037c34708b8738950f6b075596f",
+      "platform": "linux/arm64",
+      "build_flags": "-F tls-rustls -F tls-openssl -F permissions-treetop --locked --release"
+    }
+  },
+  "qualified_source_manifest_sha256": "909f070089abc0a720ddab0e8315a9c76ac626fc220dc28a4d52ab594e3791be",
+  "qualification_inputs": {
+    "count": 1426,
+    "exclusions": [
+      "docs/assets/authentication-qualification.json",
+      "docs/assets/provider-administration-qualification.json",
+      "docs/authentication-project-source.json",
+      "docs/session-security.md",
+      "docs/performance-budgets.md",
+      "performance-budgets.json"
+    ],
+    "budget_change": "1,244,745 to 1,253,304 gzip bytes (+8,559 / 0.69%); total budget 1,275,000, individual chunk and route limits unchanged; verified separately"
+  },
+  "candidate_acceptance": "pending final frontend CI and immutable candidate verification",
+  "limitations": [
+    "Synthetic OAuth is not native real GitHub acceptance; server #581 retains that requirement.",
+    "Remote Treetop outage can block new login audit snapshots; fail-closed privileged access and documented offline security recovery apply.",
+    "The read API does not enumerate independent per-membership source history.",
+    "Project integration does not authorize main/stable promotion."
+  ]
+}

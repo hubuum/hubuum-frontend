@@ -5,12 +5,22 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.22
  */
+import type { RuntimeAuthenticationProviderStatusRuntimeDefinition } from './runtimeAuthenticationProviderStatusRuntimeDefinition';
 import type { RuntimeSettingsSource } from './runtimeSettingsSource';
 
 export interface RuntimeAuthenticationProviderStatus {
   available: boolean;
+  credential_configured: boolean;
   definition_mutable: boolean;
   enabled: boolean;
+  kind: string;
   name: string;
+  /** @nullable */
+  provider_id?: string | null;
+  /**
+     * Requested runtime definition with credential material removed.
+     * @nullable
+     */
+  runtime_definition?: RuntimeAuthenticationProviderStatusRuntimeDefinition;
   source: RuntimeSettingsSource;
 }

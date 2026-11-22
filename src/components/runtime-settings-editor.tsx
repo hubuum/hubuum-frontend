@@ -6,6 +6,8 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 import { GuidedFlowPanel, GuidedFlowTabs } from "@/components/guided-flow";
 import { BackendConnectionPanel } from "@/components/backend-connection-panel";
+import { SecuritySettingsEditor } from "@/components/security-settings-editor";
+import type { SecurityConfigurationCapabilities } from "@/lib/api/generated/models";
 
 import {
 	fetchRuntimeSettingsCatalogue,
@@ -20,7 +22,15 @@ import {
 
 const tabPrefix = "runtime-settings";
 
-export function RuntimeSettingsEditor({ children }: { children: ReactNode }) {
+export function RuntimeSettingsEditor({
+	children,
+	browserOrigin,
+	authorizationAvailable,
+}: {
+	children: ReactNode;
+	browserOrigin?: string | null;
+	authorizationAvailable?: boolean;
+}) {
 	const router = useRouter();
 	const [selectedTab, setSelectedTab] = useState("effective");
 	const [dirtyGroups, setDirtyGroups] = useState<Record<string, boolean>>({});
@@ -46,7 +56,12 @@ export function RuntimeSettingsEditor({ children }: { children: ReactNode }) {
 			id: `group-${descriptor.key}`,
 			label: `${descriptor.title}${dirtyGroups[descriptor.key] ? " · Unsaved" : ""}`,
 			hint:
-				supported && descriptor.patch_supported
+				supported &&
+				(descriptor.patch_supported ||
+					Boolean(
+						catalogue.data?.security &&
+							["authentication", "authorization"].includes(descriptor.key),
+					))
 					? `Takes effect: ${descriptor.takes_effect.replaceAll("_", " ")}`
 					: "Read only",
 		})),
@@ -101,6 +116,9 @@ export function RuntimeSettingsEditor({ children }: { children: ReactNode }) {
 					>
 						<SettingsGroup
 							descriptor={descriptor}
+							capabilities={supported ? catalogue.data?.security : undefined}
+							browserOrigin={browserOrigin}
+							authorizationAvailable={authorizationAvailable}
 							supported={supported}
 							onDirtyChange={onDirtyChange}
 							onSaved={() => router.refresh()}
@@ -131,11 +149,17 @@ export function RuntimeSettingsEditor({ children }: { children: ReactNode }) {
 
 function SettingsGroup({
 	descriptor,
+	capabilities,
+	browserOrigin,
+	authorizationAvailable,
 	supported,
 	onDirtyChange,
 	onSaved,
 }: {
 	descriptor: RuntimeSettingsDescriptor;
+	capabilities?: SecurityConfigurationCapabilities;
+	browserOrigin?: string | null;
+	authorizationAvailable?: boolean;
 	supported: boolean;
 	onDirtyChange: (group: string, dirty: boolean) => void;
 	onSaved: () => void;
@@ -161,12 +185,17 @@ function SettingsGroup({
 				</p>
 			)}
 			{notice && <p role="status">{notice}</p>}
-			{state.data && (
-				<SettingsForm
+			{state.data &&
+			capabilities &&
+			capabilities.candidate_endpoint ===
+				"/api/v1/admin/runtime-settings/security-candidates" &&
+			["authentication", "authorization"].includes(descriptor.key) ? (
+				<SecuritySettingsEditor
 					key={`${descriptor.key}-${state.data.revision}-${reloadVersion}`}
-					descriptor={descriptor}
 					state={state.data}
-					supported={supported}
+					capabilities={capabilities}
+					browserOrigin={browserOrigin}
+					authorizationAvailable={authorizationAvailable}
 					onDirtyChange={onDirtyChange}
 					onReload={async () => {
 						const result = await state.refetch();
@@ -181,6 +210,28 @@ function SettingsGroup({
 						onSaved();
 					}}
 				/>
+			) : (
+				state.data && (
+					<SettingsForm
+						key={`${descriptor.key}-${state.data.revision}-${reloadVersion}`}
+						descriptor={descriptor}
+						state={state.data}
+						supported={supported}
+						onDirtyChange={onDirtyChange}
+						onReload={async () => {
+							const result = await state.refetch();
+							if (result.isSuccess) {
+								setNotice("");
+								setReloadVersion((version) => version + 1);
+							}
+						}}
+						onSaved={(message) => {
+							setNotice(message);
+							void state.refetch();
+							onSaved();
+						}}
+					/>
+				)
 			)}
 		</article>
 	);

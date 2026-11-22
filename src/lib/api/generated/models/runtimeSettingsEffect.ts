@@ -15,4 +15,6 @@ export type RuntimeSettingsEffect = typeof RuntimeSettingsEffect[keyof typeof Ru
 export const RuntimeSettingsEffect = {
   next_request: 'next_request',
   next_query: 'next_query',
+  next_operation: 'next_operation',
+  on_reconciliation: 'on_reconciliation',
 } as const;

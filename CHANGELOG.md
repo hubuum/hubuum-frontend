@@ -6,6 +6,42 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Project #6 runtime LDAP, OIDC and OAuth provider administration, non-activating
+  identity/group previews and exact local-administrator-approved activation.
+  Add runtime Treetop connection controls, deployment ownership/lock visibility,
+  explicit credential keep/reference/replace/clear actions and group-management
+  source labels. These controls require the accepted project server capabilities.
+- Project #6 provider-aware browser login and exact-operation fresh approval.
+  The original tab shows bounded progress and typed denial, expiry, unavailable
+  provider and unsupported-freshness outcomes; provider exchange stays on Hubuum.
+  Local/LDAP password and older-server flows remain available.
+- Project #6 server-side browser authentication: bound handoff/completion,
+  private Valkey redemption state, ordinary rotating frontend sessions and
+  exact-operation fresh approval. Provider verification keeps activation
+  receipts private and returns a non-provisioning preview. The login and
+  administrator interfaces are delivered on `project/auth-support`.
+- Optional deployment-owned browser origin and registered BFF return-target
+  settings. New authentication capabilities require the accepted project server;
+  the declared released v0.0.22 compatibility target remains unchanged.
+
+### Fixed
+
+- Configuration and other guided-flow tabs now wait for their click and keyboard
+  handlers before accepting input. The first click on Connection after signing
+  in shows the current server, including on a slow page load.
+
+### Security
+
+- Require an explicit local recovery choice after modern discovery fails or a
+  remembered provider is removed. Browser-only providers never fall back to
+  password prompts. Approval methods use the canonical current identity scope;
+  session, redemption and approval credentials stay on the server.
+- Keep raw interaction, callback and security-candidate endpoints behind dedicated
+  BFF handlers. Generic browser proxy requests cannot obtain redemption secrets
+  or activation receipts. Repeat completion never repeats a protected mutation.
+
 ## [0.0.25] - 2026-11-09
 
 This release targets Hubuum Server v0.0.22 and its 272-operation, 431-schema

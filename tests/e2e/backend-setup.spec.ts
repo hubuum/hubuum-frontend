@@ -241,11 +241,27 @@ test.describe("installation setup", () => {
 		};
 		await login(page.request);
 		await login(otherPage.request);
-		await page.goto("/admin/configuration");
+		// Hold application scripts to exercise the first server-rendered frame.
+		let releaseScripts = () => {};
+		const scripts = new Promise<void>((resolve) => {
+			releaseScripts = resolve;
+		});
+		await page.route("**/_next/static/**/*.js*", async (route) => {
+			await scripts;
+			await route.continue();
+		});
+		const connectionTab = page.getByRole("tab", { name: /^Connection/ });
+		try {
+			await page.goto("/admin/configuration", { waitUntil: "commit" });
+			await expect(connectionTab).toBeDisabled();
+		} finally {
+			releaseScripts();
+			await page.unrouteAll({ behavior: "wait" });
+		}
 		await expect(
 			page.getByRole("tab", { name: /^Effective configuration/ }),
 		).toHaveAttribute("aria-selected", "true");
-		await page.getByRole("tab", { name: /^Connection/ }).click();
+		await connectionTab.click();
 		await expect(
 			page.getByText(`Current server: ${origin}`, { exact: true }),
 		).toBeVisible();
@@ -279,13 +295,21 @@ test.describe("installation setup", () => {
 		await page
 			.getByRole("button", { name: "Switch server and sign out" })
 			.click();
-		await expect(page).toHaveURL(/\/login$/);
+		// Background requests may observe invalidation before the explicit redirect
+		// and preserve a session-expiry return path on the login URL.
+		await expect(page).toHaveURL((url) => url.pathname === "/login");
 		expect(
 			(await otherPage.request.get("/_hubuum-bff/connection")).status(),
 		).toBe(401);
-		await login(page.request);
-		await page.goto("/admin/configuration");
-		await page.getByRole("tab", { name: /^Connection/ }).click();
+		await page.goto("/login?next=%2Fadmin%2Fconfiguration");
+		await page.getByLabel("Username", { exact: true }).fill("admin");
+		await page.getByLabel("Password", { exact: true }).fill("fixture-password");
+		await page.getByRole("button", { name: "Enter workspace" }).click();
+		await expect(page).toHaveURL(
+			(url) => url.pathname === "/admin/configuration",
+		);
+		await connectionTab.click();
+		await expect(connectionTab).toHaveAttribute("aria-selected", "true");
 		await expect(
 			page.getByText(`Current server: ${secondOrigin}`, { exact: true }),
 		).toBeVisible();
