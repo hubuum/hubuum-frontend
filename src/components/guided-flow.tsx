@@ -1,6 +1,11 @@
 "use client";
 
-import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
+import {
+	type CSSProperties,
+	type KeyboardEvent,
+	type ReactNode,
+	useSyncExternalStore,
+} from "react";
 
 export type GuidedFlowStep<StepId extends string> = {
 	disabledHint?: string;
@@ -24,6 +29,10 @@ type GuidedFlowStyle = CSSProperties & {
 	"--guided-flow-columns": number;
 };
 
+const subscribe = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
+
 export function GuidedFlowTabs<StepId extends string>({
 	activeStep,
 	ariaLabel,
@@ -33,6 +42,7 @@ export function GuidedFlowTabs<StepId extends string>({
 	onChange,
 	steps,
 }: GuidedFlowTabsProps<StepId>) {
+	const ready = useSyncExternalStore(subscribe, clientReady, serverReady);
 	const availableSteps = steps.filter((step) => step.enabled !== false);
 
 	function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, stepId: StepId) {
@@ -84,7 +94,7 @@ export function GuidedFlowTabs<StepId extends string>({
 						aria-describedby={descriptionId}
 						tabIndex={activeStep === step.id ? 0 : -1}
 						className={activeStep === step.id ? "is-active" : ""}
-						disabled={!enabled}
+						disabled={!ready || !enabled}
 						onClick={() => onChange(step.id)}
 						onKeyDown={(event) => onKeyDown(event, step.id)}
 					>
