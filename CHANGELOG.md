@@ -26,6 +26,12 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   settings. New authentication capabilities require the accepted project server;
   the declared released v0.0.22 compatibility target remains unchanged.
 
+### Fixed
+
+- Configuration and other guided-flow tabs now wait for their click and keyboard
+  handlers before accepting input. The first click on Connection after signing
+  in shows the current server, including on a slow page load.
+
 ### Security
 
 - Require an explicit local recovery choice after modern discovery fails or a
