@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+	duplicateProvider,
+	providerDraft,
+	providerChangeSummary,
 	parseProviderSettings,
 	providerRequest,
 	providerTemplate,
@@ -8,6 +11,83 @@ import {
 } from "./security-candidate";
 
 describe("runtime provider settings", () => {
+	it.each(["ldap", "oidc", "oauth"] as const)(
+		"copies %s as a separate disabled identity and reviews its login impact",
+		(kind) => {
+			const source = {
+				provider_id: "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
+				name: "employees",
+				kind,
+				source: "runtime" as const,
+				enabled: true,
+				available: true,
+				definition_mutable: true,
+				credential_configured: true,
+				runtime_definition: {
+					...providerTemplate(kind, "employees"),
+					...(kind !== "ldap" ? { client_id: "office" } : {}),
+				},
+			};
+			const original = providerDraft(source)!;
+			const copy = { ...duplicateProvider(source), name: "partners" };
+			expect(copy.providerId).toBeUndefined();
+			expect(copy.enabled).toBe(false);
+			expect(copy.adoptDeployment).toBe(false);
+			expect(
+				providerRequest(copy, { action: "reference", alias: "new-alias" }),
+			).toMatchObject({
+				name: "partners",
+				enabled: false,
+				source: "runtime",
+				configuration:
+					kind === "ldap"
+						? { scope: "partners", bind_password_ref: "new-alias" }
+						: { credential: { action: "reference", alias: "new-alias" } },
+			});
+			expect(() => providerRequest(copy, { action: "keep" })).toThrow(
+				"Supply a credential",
+			);
+			expect(providerChangeSummary([original], [original, copy])).toEqual([
+				"employees stays enabled.",
+				"Add partners as disabled. Copied from employees.",
+			]);
+		},
+	);
+	it("requires an actual copy projection from deployment and rejects secret-bearing projections", () => {
+		const source = {
+			name: "employees",
+			kind: "ldap",
+			source: "deployment" as const,
+			enabled: true,
+			available: true,
+			definition_mutable: false,
+			credential_configured: true,
+		};
+		expect(() => duplicateProvider(source)).toThrow("did not supply");
+		expect(() =>
+			duplicateProvider({
+				...source,
+				deployment_copy_definition: { bind_password_ref: "private" },
+			}),
+		).toThrow("write-only");
+		const copy = duplicateProvider({
+			...source,
+			deployment_copy_definition: {
+				url: "ldaps://office.example",
+				bind_dn: "cn=service",
+			},
+		});
+		expect(copy).toMatchObject({
+			copiedFrom: "employees",
+			name: "",
+			source: "runtime",
+			credentialAction: "reference",
+		});
+		expect(JSON.parse(copy.configurationText)).toEqual({
+			url: "ldaps://office.example",
+			bind_dn: "cn=service",
+		});
+	});
 	it.each(["ldap", "oidc", "oauth"] as const)(
 		"round-trips a %s non-secret settings template",
 		(kind) => {

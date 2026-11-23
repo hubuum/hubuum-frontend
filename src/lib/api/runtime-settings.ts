@@ -185,28 +185,53 @@ export function runtimeDraftCount(
 	drafts: Record<string, string | boolean>,
 	initial: Record<string, unknown>,
 ): number {
-	return runtimeFields(descriptor).filter((field) => {
-		if (!Object.hasOwn(drafts, field.name) || field.kind === "readonly")
-			return false;
-		const input = drafts[field.name];
-		const value =
-			(field.kind === "integer" || field.kind === "number") &&
-			typeof input === "string" &&
-			input.trim() !== ""
-				? Number(input)
-				: input;
-		return value !== initial[field.name];
-	}).length;
+	return runtimeFields(descriptor).filter(
+		(field) =>
+			Object.hasOwn(drafts, field.name) &&
+			field.kind !== "readonly" &&
+			draftValue(field, drafts[field.name]) !== initial[field.name],
+	).length;
+}
+
+function draftValue(field: RuntimeField, input: string | boolean) {
+	return (field.kind === "integer" || field.kind === "number") &&
+		typeof input === "string" &&
+		input.trim() !== ""
+		? Number(input)
+		: input;
+}
+
+export class RuntimeRevisionConflict extends Error {
+	constructor() {
+		super(
+			"Settings changed since you loaded them. Review the latest saved values before saving again.",
+		);
+	}
+}
+
+// Compare typed controls with their originally loaded and latest saved values.
+export function conflictingRuntimeFields(
+	descriptor: RuntimeSettingsDescriptor,
+	drafts: Record<string, string | boolean>,
+	original: Record<string, unknown>,
+	latest: Record<string, unknown>,
+) {
+	return runtimeFields(descriptor)
+		.filter(
+			(field) =>
+				Object.hasOwn(drafts, field.name) &&
+				original[field.name] !== latest[field.name] &&
+				field.kind !== "readonly" &&
+				draftValue(field, drafts[field.name]) !== latest[field.name],
+		)
+		.map((field) => field.name);
 }
 
 const root = "/api/v1/admin/runtime-settings";
 async function read(response: Response): Promise<unknown> {
+	if (response.status === 412) throw new RuntimeRevisionConflict();
 	const body: unknown = await response.json();
 	if (!response.ok) {
-		if (response.status === 412)
-			throw new Error(
-				"Settings changed since you loaded them. Reload settings and review your changes before saving again.",
-			);
 		throw new Error(
 			getApiErrorMessage(body, "Unable to access runtime settings."),
 		);

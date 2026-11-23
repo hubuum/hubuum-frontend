@@ -40424,6 +40424,13 @@
           "definition_mutable": {
             "type": "boolean"
           },
+          "deployment_copy_definition": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Settings approved for copying from this replica's deployment LDAP definition.\nCredentials, secret references and the source identity scope are omitted."
+          },
           "enabled": {
             "type": "boolean"
           },

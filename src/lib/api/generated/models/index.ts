@@ -450,6 +450,7 @@ export * from './runningConfig';
 export * from './runtimeAuthenticationProviderKind';
 export * from './runtimeAuthenticationProviderRequest';
 export * from './runtimeAuthenticationProviderStatus';
+export * from './runtimeAuthenticationProviderStatusDeploymentCopyDefinition';
 export * from './runtimeAuthenticationProviderStatusRuntimeDefinition';
 export * from './runtimeAuthorizationBackend';
 export * from './runtimePolicyReport';

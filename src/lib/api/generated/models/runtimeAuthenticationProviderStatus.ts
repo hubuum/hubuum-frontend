@@ -5,6 +5,7 @@
  * OpenAPI documentation for the Hubuum REST service.
  * OpenAPI spec version: 0.0.22
  */
+import type { RuntimeAuthenticationProviderStatusDeploymentCopyDefinition } from './runtimeAuthenticationProviderStatusDeploymentCopyDefinition';
 import type { RuntimeAuthenticationProviderStatusRuntimeDefinition } from './runtimeAuthenticationProviderStatusRuntimeDefinition';
 import type { RuntimeSettingsSource } from './runtimeSettingsSource';
 
@@ -12,6 +13,12 @@ export interface RuntimeAuthenticationProviderStatus {
   available: boolean;
   credential_configured: boolean;
   definition_mutable: boolean;
+  /**
+     * Settings approved for copying from this replica's deployment LDAP definition.
+     * Credentials, secret references and the source identity scope are omitted.
+     * @nullable
+     */
+  deployment_copy_definition?: RuntimeAuthenticationProviderStatusDeploymentCopyDefinition;
   enabled: boolean;
   kind: string;
   name: string;

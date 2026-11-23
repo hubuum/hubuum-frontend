@@ -57,6 +57,7 @@ async function mockSettings(
 		group?: string;
 		external?: boolean;
 		unknown?: boolean;
+		deploymentCopy?: boolean;
 		longName?: boolean;
 		deploymentBackend?: "local" | "treetop" | "future";
 	} = {},
@@ -95,7 +96,12 @@ async function mockSettings(
 		route.fulfill({
 			json: {
 				schema_version: 1,
-				security: capabilities,
+				security: {
+					...capabilities,
+					deployment_locked_providers: options.deploymentCopy
+						? ["company"]
+						: [],
+				},
 				groups: [
 					{
 						key: group,
@@ -128,6 +134,17 @@ async function mockSettings(
 								providers: [
 									{
 										...provider,
+										...(options.deploymentCopy
+											? {
+													source: "deployment",
+													definition_mutable: false,
+													runtime_definition: null,
+													deployment_copy_definition: {
+														...provider.runtime_definition,
+														bind_dn: "cn=directory",
+													},
+												}
+											: {}),
 										kind: options.unknown ? "future" : "ldap",
 										...(options.longName
 											? {
@@ -139,6 +156,20 @@ async function mockSettings(
 												}
 											: {}),
 									},
+									...(options.deploymentCopy
+										? [
+												{
+													...provider,
+													provider_id: "cccccccc-cccc-4ccc-accc-cccccccccccc",
+													name: "warehouse",
+													enabled: false,
+													runtime_definition: {
+														...provider.runtime_definition,
+														scope: "warehouse",
+													},
+												},
+											]
+										: []),
 								],
 							}
 						: { backend: "treetop" },
@@ -235,6 +266,65 @@ test("provider metadata edits preserve the write-only credential and require exp
 	).toEqual([]);
 });
 
+test("duplicates a locked deployment LDAP provider and reviews the full login selection", async ({
+	page,
+}) => {
+	const { requests, panel } = await mockSettings(page, {
+		deploymentCopy: true,
+	});
+	await panel.getByRole("button", { name: "Duplicate company" }).click();
+	const scope = panel.getByRole("textbox", { name: "New login scope" });
+	await expect(scope).toBeFocused();
+	await scope.fill("partners");
+	await expect(panel.getByLabel("User search base DN")).toHaveValue(
+		"dc=example",
+	);
+	await panel.getByLabel("User search base DN").fill("ou=partners,dc=example");
+	await panel
+		.getByLabel("Credential alias (write only)")
+		.fill("partners-reference");
+	await panel.getByRole("button", { name: "Prepare candidate" }).click();
+	expect(requests).toHaveLength(1);
+	expect(requests[0]).toMatchObject({
+		expected_revision: 7,
+		providers: [
+			{
+				provider_id: providerId,
+				name: "company",
+				source: "deployment",
+				enabled: true,
+			},
+			{
+				name: "warehouse",
+				enabled: false,
+				source: "runtime",
+				configuration: { scope: "warehouse" },
+			},
+			{
+				name: "partners",
+				source: "runtime",
+				enabled: false,
+				configuration: {
+					scope: "partners",
+					user_base_dn: "ou=partners,dc=example",
+					bind_password_ref: "partners-reference",
+				},
+			},
+		],
+	});
+	const rows = requests[0].providers as Record<string, unknown>[];
+	expect(rows[0]).not.toHaveProperty("configuration");
+	expect(rows[2]).not.toHaveProperty("provider_id");
+	const review = panel.getByRole("region", {
+		name: "Security candidate review",
+	});
+	await expect(review.getByText("company stays enabled.")).toBeVisible();
+	await expect(review.getByText("warehouse stays disabled.")).toBeVisible();
+	await expect(
+		review.getByText("Add partners as disabled. Copied from company."),
+	).toBeVisible();
+	await expect(review).not.toContainText("partners-reference");
+});
 test("replacement values leave the form immediately and never appear in review or browser storage", async ({
 	page,
 }) => {

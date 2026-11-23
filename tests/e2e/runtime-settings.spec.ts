@@ -82,7 +82,16 @@ async function mockSettings(page: Page, schemaVersion = 1) {
 		},
 	];
 	const values: Record<string, Record<string, unknown>> = {
-		authentication: { enabled: true },
+		authentication: {
+			providers: [
+				{
+					name: "employees",
+					source: "deployment",
+					enabled: true,
+					available: false,
+				},
+			],
+		},
 		future_policy: {
 			limit: 5,
 			enabled: true,
@@ -251,12 +260,47 @@ test("runtime configuration tabs preserve drafts and scope saves, discards and r
 	expect(patches).toHaveLength(1);
 });
 
+test("accepts a concurrent saved value while preserving a separate draft", async ({
+	page,
+}) => {
+	const { states, patches } = await mockSettings(page);
+	await page.goto("/admin/configuration");
+	await page.getByRole("tab", { name: /^Future policy/ }).click();
+	const panel = page.getByRole("tabpanel", { name: /^Future policy/ });
+	await panel.getByLabel("Pattern limit (patterns)").fill("12");
+	await panel.getByLabel("Policy label").fill("My policy");
+	const current = states.future_policy;
+	current.revision = 5;
+	current.runtime = current.effective = { ...current.effective, limit: 9 };
+	await page.route(
+		`**${root}/future_policy`,
+		(route) => route.fulfill({ status: 412, json: { current_revision: 5 } }),
+		{ times: 1 },
+	);
+	await panel.getByRole("button", { name: "Save changes" }).click();
+	await panel.getByRole("button", { name: "Use saved value" }).click();
+	await expect(panel.getByLabel("Pattern limit (patterns)")).toHaveValue("9");
+	await expect(panel.getByLabel("Policy label")).toHaveValue("My policy");
+	await panel.getByRole("button", { name: "Save changes" }).click();
+	await expect(panel.getByText(/Saved revision 6/)).toBeVisible();
+	expect(patches).toEqual([
+		{
+			group: "future_policy",
+			body: { expected_revision: 5, changes: { name: "My policy" } },
+		},
+	]);
+});
+
 test("runtime configuration tabs remain accessible and responsive in both themes", async ({
 	page,
 }, testInfo) => {
 	await page.emulateMedia({ reducedMotion: "reduce" });
 	const { states } = await mockSettings(page);
 	states.future_policy.constrained_by_ceiling = true;
+	states.future_policy.effective = {
+		...states.future_policy.effective,
+		limit: 3,
+	};
 	await page.goto("/admin/configuration");
 	await page.getByRole("tab", { name: /^Future policy/ }).click();
 	await expect(
@@ -266,6 +310,9 @@ test("runtime configuration tabs remain accessible and responsive in both themes
 	await expect(
 		panel.getByRole("status").filter({ hasText: "deployment limit" }),
 	).toBeVisible();
+	await expect(
+		panel.getByLabel("Pattern limit (patterns)"),
+	).toHaveAccessibleDescription(/Requested 5 · Effective on this server 3/);
 	for (const theme of ["light", "dark"]) {
 		await page.getByRole("button", { name: /Open account menu for/ }).click();
 		await page
@@ -314,6 +361,14 @@ test("runtime configuration tabs remain accessible and responsive in both themes
 	await expect(
 		authentication.getByText("Use the dedicated authentication workflow."),
 	).toBeVisible();
+	await expect(
+		authentication.getByRole("row", {
+			name: /employees LDAP Deployment Enabled No/,
+		}),
+	).toBeVisible();
+	await expect(
+		authentication.getByRole("button", { name: /Duplicate/ }),
+	).toHaveCount(0);
 	await expect(authentication.getByRole("checkbox")).toHaveCount(0);
 	await expect(
 		authentication.getByRole("button", { name: "Save changes" }),
@@ -562,6 +617,7 @@ test("renders future fields and requires review after a revision conflict", asyn
 		patches.push(route.request().postDataJSON());
 		if (patches.length === 1) {
 			state.revision = 5;
+			state.runtime.new_option = state.effective.new_option = 9;
 			return route.fulfill({ status: 412, json: { current_revision: 5 } });
 		}
 		state.revision = 6;
@@ -586,11 +642,20 @@ test("renders future fields and requires review after a revision conflict", asyn
 	).toHaveAccessibleDescription("Controls the newly added limit.");
 	await card.getByLabel("new option", { exact: true }).fill("12");
 	await card.getByRole("button", { name: "Save changes" }).click();
-	await expect(card.getByRole("alert")).toContainText("Reload settings");
+	await expect(card.getByRole("alert")).toContainText(
+		"Resolve the highlighted fields",
+	);
 	expect(patches).toHaveLength(1);
-	await card.getByRole("button", { name: "Reload settings" }).click();
-	await expect(card.getByLabel("new option", { exact: true })).toHaveValue("5");
-	await card.getByLabel("new option", { exact: true }).fill("12");
+	await expect(card.getByLabel("new option", { exact: true })).toHaveValue(
+		"12",
+	);
+	await expect(
+		card.getByText("Your edit 12 · Latest saved value 9"),
+	).toBeVisible();
+	await expect(
+		card.getByRole("button", { name: "Save changes" }),
+	).toBeDisabled();
+	await card.getByRole("button", { name: "Keep my edit" }).click();
 	await card.getByRole("button", { name: "Save changes" }).click();
 	await expect(
 		card.getByRole("status").filter({ hasText: "Saved revision" }),
